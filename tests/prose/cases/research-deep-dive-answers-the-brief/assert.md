@@ -27,14 +27,15 @@ The prose should have taken this path:
    material, the sources kept inline; the thread is set `learned` and
    the row closed clean; the Opened list is judged line by line — the
    labelling question becomes a thread of origin `deep-dive-001` nested
-   under the folded thread, the query-log count is held as the
-   laboratory's cue — and one commit lands with the dive's id in its
-   subject, the section, the thread's move, and the opened thread
-   together and nothing unrelated
+   under the folded thread, and the query-log count becomes a thread the
+   same way — what the measurement would settle, as its question — the
+   laboratory's cue kept on the register; one commit lands with the
+   dive's id in its subject, the section, the thread's move, and both
+   opened threads together and nothing unrelated
 6. the session speaks the return to the user — the brief asked
    questions, so both answers reach them in full — and renders the
-   register: the folded thread now learned with its opened child beneath
-   it, the breakdown moved accordingly
+   register: the folded thread now learned with its two opened children
+   beneath it, the breakdown moved accordingly
 7. the Opened list named a measurement, so the laboratory is offered
    next, conversationally and in the session's own voice — the count a
    controlled measurement would settle, what a dependable answer takes
@@ -76,12 +77,12 @@ Further claims:
 - the dive's id and the row's id are used where each belongs: every
   `agent` verb takes the row id with its label; the register origin and
   the commit subject carry the bare `deep-dive-001`
-- the opened thread nests under `tail-regressions` — the folded thread
+- both opened threads nest under `tail-regressions` — the folded thread
   is top-level, so it is the parent
-- the measurement line becomes no thread: it is the laboratory's cue,
-  and the offer is made rather than the count recorded — no experiment
-  is created, no problem statement written, no now-or-later gate
-  rendered, and nothing is measured against any log
+- the measurement line is carried as a thread and offered, never
+  measured: the offer is made in the same turn — no experiment is
+  created, no problem statement written, no now-or-later gate rendered,
+  and nothing is run against any log
 - no fresh dispatch of any kind, no dive offer for the opened question
   (it is carried as a thread, not sent out), no review, no conclusion
 - the register's other rows are untouched: the brief's thread stays
@@ -92,8 +93,9 @@ Further claims:
 EXPECTED WORLD — the fixture plus: the research file carrying a new
 section headed by the folded question, `deep-dive-001`, and the date,
 answers first then material, sources inline; the register with
-`tail-regressions` learned, a child thread under it of origin
-`deep-dive-001` and status `open` carrying the labelling question,
+`tail-regressions` learned, two child threads under it of origin
+`deep-dive-001` and status `open` — the labelling question and the
+query-log measurement —
 `evaluation-harness` learned and `label-freshness` open exactly as the
 fixture left them; the store row `deep-dive-001-tail-regressions`
 `incorporated` with no findings; the report file still on disk; no
