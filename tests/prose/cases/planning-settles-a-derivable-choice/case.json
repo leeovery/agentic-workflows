@@ -1,5 +1,5 @@
 {
-  "origin": "The planning loop's choice lane and the Discuss exchange's Declined landing shipped with zero execution coverage — the review pass that built them found the choice lane could not even render under the original payload rules, and nothing walks a finding the user talks through and leaves. This pins both: a settled finding declined with a reason, and a choice that clears the bar at the session's dispose — search named, product-level, each side costing the customer — answered by picking the option that is not recommended.",
+  "origin": "The planning review's dispose landed with an arm the specification's lacks — a fork in the how nothing leans on is the planner's honest call, never a stop — and nothing walked it. Two staged choices had to be seen riding auto without a stop: one the specification settles (its duplicate-start rule decides a retried checkout, the derivation sitting in the agent's own recommended option with no search named), and one that is a fork in how the plan achieves idempotency, its search named and nothing leaning, settled on the planner's call and written as such. This pins both, with the user's opt-in at the first settled finding the only stop the review takes.",
   "entry": "workflow-planning-entry",
   "world": "claims",
   "files": [
@@ -25,20 +25,29 @@
     "skills/workflow-planning-process/references/verify-source-material.md",
     "skills/workflow-planning-process/references/plan-construction.md",
     "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/task-design.md",
     "skills/workflow-planning-process/references/analyze-task-graph.md",
     "skills/workflow-planning-process/references/plan-review.md",
     "skills/workflow-planning-process/references/invoke-review-traceability.md",
     "skills/workflow-planning-process/references/invoke-review-integrity.md",
     "skills/workflow-planning-process/references/process-review-findings.md",
-    "skills/workflow-planning-process/references/review-traceability.md",
+    "skills/workflow-planning-process/references/review-integrity.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-planning-process/references/conclude-plan.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments plan mid-review; offered the resume choice they pick the plan up where it left off, and they confirm the structure and graph still hold when asked. At finding 1 — the capture task restating that a repeat delivery changes nothing — they push back through the gate's Discuss option: the plan's Phase 2 table already names duplicate delivery against that task, the builder reads the table with the task, and a second copy in the task file is ink nobody needs. They want it declined, and they say so with that reason. At finding 2 they engage with the choice on its merits and pick the option that is NOT recommended — holding the customer on a payment-pending page until the webhook lands — because they would rather never tell a customer something they have to take back; retracted confirmations are what fills their support inbox. They approve the follow-up review's clean conclusion and confirm concluding the plan. They never opt into auto, never reopen what they settled, and answer everything else with plain agreement.",
+  "answers": [
+    "c — pick the plan up where it left off",
+    "y — the structure still matches",
+    "y — the graph is right",
+    "a — apply it, and settle the rest without stopping me",
+    "y — conclude the plan"
+  ],
   "stubs": {
     "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states (already-present values reapply unchanged), then return the content below as the agent's summary",
-    "plan-review-clean-c2": "each time the prose invokes a planning review agent via the Task tool — both the cycle-2 traceability and integrity reviews return the content below and write no file"
+    "plan-review-clean": "when the prose invokes the planning traceability review agent via the Task tool for review cycle 1 — return the content below and write no file",
+    "plan-integrity-derivable-and-honest-choices": "when the prose invokes the planning integrity review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
+    "plan-review-clean-c2": "each time the prose invokes a planning review agent via the Task tool for review cycle 2 or later — both the traceability and the integrity review return the content below and write no file"
   },
   "invariants": {
     "engine_before_write": true,
@@ -46,9 +55,13 @@
       "render entry-gate pay.planning.pay",
       "manifest get pay.planning.pay status",
       "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "manifest set pay.planning.pay review_cycle 1",
+      "tracking.review-integrity-tracking-c1 in-progress",
       "render findings-summary pay.planning.pay",
       "render finding pay.planning.pay",
-      "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "finding_gate_mode auto",
+      "tracking.review-integrity-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
       "render conclude-gate pay.planning.pay",
@@ -57,15 +70,20 @@
     ],
     "calls_in_order": [
       "render resume-gate pay.planning.pay --variant plan",
+      "manifest set pay.planning.pay review_cycle 1",
+      "tracking.review-integrity-tracking-c1 in-progress",
       "render findings-summary pay.planning.pay",
       "render finding pay.planning.pay",
+      "finding_gate_mode auto",
       "render finding pay.planning.pay",
-      "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "render finding pay.planning.pay",
+      "tracking.review-integrity-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
       "topic complete pay planning pay"
     ],
     "calls_exclude": [
-      "finding_gate_mode auto",
+      "tracking.review-traceability-tracking-c1",
+      "render plan-review-gate",
       "render incoherence-gate",
       "topic reopen",
       "restart planning",

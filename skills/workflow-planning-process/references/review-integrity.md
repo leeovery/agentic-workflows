@@ -78,14 +78,14 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. It holds only where the fork is what the product's user gets or how it behaves, nothing in the specification, the plan's own conventions, or a measurement breaks the tie, a side visibly costs the user, and the tie-break is the reader's — appetite, product intent, or a fact only they hold. A fork in how the plan achieves it is the planner's, and a fork every side of which leaves the user well served is a preference, not a decision: either settles on what leans, and where nothing leans, on your honest call, the Proposal naming it as such and what it weighed. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - Planning findings never route: the plan is the document under review, and its answers live in the specification or the record.
 
-A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
+A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference nothing leans on is settled on your honest call, never staged as a choice.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
 
-A plan defect the specification or the plan's own conventions determine is **settled**. Where the plan could go two defensible ways that survive the search — how to split a task, which phase owns a slice — it is a **choice**: name what was searched, and take a stance.
+A plan defect the specification or the plan's own conventions determine is **settled**. A fork in how the plan achieves it — how to split a task, which phase owns a slice, what a consumer keys on — is settled too: on what leans, or on your honest call where nothing does. A **choice** is a fork in what the product's user gets that survives the search with a side visibly costing them: name what was searched, and take a stance.
 
 ## Tracking File
 

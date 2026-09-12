@@ -109,9 +109,19 @@ that determines presentation is *who can answer it*.
   spec never invents. A point the spec has no rule for — a preference
   no side of which costs the user, a mechanism that is the builder's —
   is neither: nothing leans, so it is declined at dispose with its
-  reason. The planning loop keeps the lanes' one-way promotion (L3): a
-  settled call it cannot stand behind becomes a choice, never the
-  reverse, and every choice stops over `auto`.
+  reason. The planning loop holds the same bar with one arm beneath it
+  the spec lacks: a plan is HOW, so a fork in the how — phase
+  ownership, task grouping, what a consumer keys on, a bound — that the
+  specification, the plan's own conventions, and a measurement all
+  leave open is the planner's honest call, settled with a derivation
+  that names it as such and what it weighed; only a product-level fork
+  the user must own stops. The same rule governs the phase before the
+  walk: the planning principles stop for product gaps alone and hand
+  every how-fork to the planner, and the traceability review traces
+  product content only — a mechanism the spec leaves open is never
+  hallucinated content. Planning never routes (the plan is the document
+  under review) and never declines at dispose (with an honest call
+  available, a preference nothing leans on is settled, not dropped).
 
 - **F4 — a finding is report-class content.** It leads with what is
   wrong in product terms and what Claude would do about it, in the
@@ -145,38 +155,44 @@ that determines presentation is *who can answer it*.
   it stops. A choice finding presents options and proposes none as
   fait accompli.
 
-- **F8 — in the specification loop the reviewer proposes the move; the
-  session disposes it, in both directions.** The agent stages a move
-  cold; the session re-derives it before anything renders, with the
-  context the agent lacked — user rulings this sitting, findings landed
-  earlier in the walk, the spec's own decisions, ground that has moved,
-  the source document read where the row's excerpt does not settle the
-  point. A settled finding whose derivation no longer holds, or that
-  Claude cannot itself stand behind, becomes a choice and takes the F3
-  bar. A choice is held to the same bar: below it, the session settles
+- **F8 — the reviewer proposes the move; the session disposes it, in
+  both directions.** In both loops the agent stages a move cold; the
+  session re-derives it before anything renders, with the context the
+  agent lacked — user rulings this sitting, findings landed earlier in
+  the walk, the document's own decisions, ground that has moved, the
+  source document or the named task read where the row's excerpt does
+  not settle the point. A settled finding whose derivation no longer
+  holds, or that Claude cannot itself stand behind, becomes a choice
+  and takes the F3 bar. A choice is held to the same bar, and what lies
+  below it is where the loops part. The specification session settles
   it (the sources, the spec's own decisions, or a defensible derivation
   from precedent, constraints, or the feature's stated premise yield
   one answer — a point a source delegated to the spec included), routes
   it (a source-silent point a measurement or sibling artifact pins
   belongs in the owning document), or declines it (a point the spec has
-  no rule for — nothing leans), and writes the derivation into the
-  tracking row before the finding renders. The staged `(recommended)`
-  marker is the agent's argument, never a ground; a choice naming no
-  search is re-derived from scratch; a finding the gate's own exchange
-  revised is presented as it stands. Neither verdict is final on its
-  own, and both are accountable in writing: a stop costs a derivation
-  the session could not complete, a settle costs the derivation it
-  wrote — either way a misclassification is one exchange at the gate,
-  never a false menu or a stalled spec.
+  no rule for — nothing leans). The planning session settles it — on
+  what the specification, the plan's own conventions, or a measurement
+  yields, or on the planner's honest call where nothing leans — and
+  routes and declines nothing. Either way the derivation is written
+  into the tracking row before the finding renders; a row disposed to
+  settled gains the exact content the format requires, in plan format
+  on the planning side. The staged `(recommended)` marker is the
+  agent's argument, never a ground; a choice naming no search is
+  re-derived from scratch; a finding the gate's own exchange revised is
+  presented as it stands. Neither verdict is final on its own, and both
+  are accountable in writing: a stop costs a derivation the session
+  could not complete, a settle costs the derivation it wrote — either
+  way a misclassification is one exchange at the gate, never a false
+  menu or a stalled document.
 
 ## Divergence from the lanes protocol
 
 The lanes vocabulary carries over; the batching does not, `auto`
-survives here where L3 argued it was unnecessary, and in the
-specification loop the one-way direction does not carry either — what
-fences `auto` there is the bar applied at dispose with the derivation
-written down (F8), not one-way promotion. The two surfaces have
-different shapes for a reason:
+survives here where L3 argued it was unnecessary, and the one-way
+direction does not carry either — what fences `auto` in both loops is
+the bar applied at dispose with the derivation written down (F8), not
+one-way promotion. The two surfaces have different shapes for a
+reason:
 
 `background-agent-surfacing.md` handles findings that *arrive
 uninvited* mid-session, where volume is the complaint and the batch
@@ -220,8 +236,9 @@ Prose cases alongside: a settled finding riding `auto`, a choice
 stopping over `auto` after it clears the bar at dispose, a derivable
 choice the session settles at dispose and applies under `auto` with no
 stop, a preference the session declines at dispose with nothing
-rendered, an unsourced decision taking the new branch. Simulation
-re-pin where call sequences move.
+rendered, a fork in the how the planning session settles on its honest
+call under `auto`, an unsourced decision taking the new branch.
+Simulation re-pin where call sequences move.
 
 ## Decisions taken
 
@@ -239,19 +256,21 @@ re-pin where call sequences move.
   its gaps have always ridden `auto` — an asymmetry nobody chose. It
   passes the same move field, and it needs the presentation fix
   regardless: `add-task` and `add-phase` findings take the same
-  `content` dump path.
+  `content` dump path. Its loop disposes the same way (F8), with the
+  honest-call arm F3 names beneath the bar and no route or decline.
 
-- **In the specification loop the reviewer proposes the move; the
-  session disposes it.** Both directions, against the bar, before the
-  finding renders: a settled call the session cannot stand behind
-  becomes a choice; a choice the record settles is rewritten settled
-  with its derivation, or routed where a measurement or sibling
-  artifact pins a source-silent point. Spec has no judgment tier: an
-  underivable point stops as a choice, and a point the spec has no rule
-  for — a preference no side of which costs the user, a mechanism that
-  is the builder's, nothing leaning — is declined at dispose with its
-  reason, never stated as a rule. The planning loop keeps one-way
-  promotion.
+- **The reviewer proposes the move; the session disposes it.** Both
+  loops, both directions, against the bar, before the finding renders:
+  a settled call the session cannot stand behind becomes a choice; a
+  choice the record settles is rewritten settled with its derivation.
+  Spec has no judgment tier: an underivable point stops as a choice, a
+  source-silent point a measurement or sibling artifact pins routes,
+  and a point the spec has no rule for — a preference no side of which
+  costs the user, a mechanism that is the builder's, nothing leaning —
+  is declined at dispose with its reason, never stated as a rule.
+  Planning has one: a plan is HOW, so a fork in the how nothing leans
+  on is the planner's honest call, settled with the derivation saying
+  so; planning never routes and never declines.
 
 - **The claims agent's `Unreproducible → Gap/Ambiguity` mapping
   stands.** Under F1 it needs no category of its own: restate

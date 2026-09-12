@@ -57,9 +57,24 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 → Proceed to **C. After All Findings Processed**.
 
-Read the next unresolved finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer the specification, the plan's own shape, or a measurement yields → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
+Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer the specification, the plan's own conventions, or a measurement yields → `settled`, the derivation carried as the Proposal's reasoning; a fork in how the plan builds it that nothing leans on → `settled` on your honest call, the Proposal naming it as such; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
-Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice`: update the Move, replace its fix with options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
+Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's decisions, the plan's own conventions, ground that has moved, and the task or phase the finding names, read where the row's excerpt does not settle the point. Reclassification runs in both directions, always on a derivation written down; a finding this sitting's gate exchange revised is presented as it stands — the exchange was its disposal. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice` and takes the bar like any other. A `choice` stands only when every prong holds:
+
+- **Product level** — the fork is what the product's user gets or how it behaves, never how the plan achieves it: phase ownership, task grouping, helper extraction, internal naming, and internal bounds never qualify.
+- **Irreducible** — no specification decision, plan convention, measurement, or further trace breaks the tie.
+- **A side visibly costs the user** — a fork every side of which leaves the user well served is a preference, not a decision.
+- **The tie-break is the user's** — appetite, product intent, or a fact only they hold.
+
+Three rules govern the evidence:
+
+- The staged `(recommended)` marker is the reviewer's argument, never a ground.
+- A fork with one live side — a side no informed user would choose — is settled.
+- A choice that names no search is not a verdict: run the search yourself.
+
+A fork that clears every prong stands as a `choice` — the plan never invents product intent. Below the bar the move is `settled`: where the specification, the plan's own conventions, or a measurement yields exactly one answer, that derivation is the Proposal; where nothing leans, an honest call, the Proposal naming it as such and what it weighed — a fork the plan is left to settle is the planner's, however it was staged. Nothing routes and nothing is declined at the dispose: the plan is the document under review, and a preference nothing leans on is settled, never dropped.
+
+Where the disposal moved anything — the move, the derivation, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten; the Change Type re-read against the fix the derivation lands (a staged choice's was picked with no fix content behind it); the Proposal written with the derivation naming what decided it; the Options removed; Current and Proposed Text supplied — the exact content that lands on approval, Current copied from the live plan and omitted for `add-task`/`add-phase`, Proposed Text in full plan format and omitted for `remove-task`/`remove-phase`. A new task or phase takes the canonical template: load **[task-design.md](task-design.md)** before composing one. To `choice`: Move rewritten, the Proposal, Current, and Proposed Text replaced with Options, the search named.
 
 → Proceed to **Present Finding**.
 
@@ -71,11 +86,11 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 
 - `n`, `total`, `title` — the finding's position and Brief Title.
 - `meta` — `[label, value]` pairs: for traceability, Type / Spec Reference / Plan Reference / Change Type; for integrity, Severity / Plan Reference / Category / Change Type.
-- `move` — the finding's Move, as **B** settled it: `settled` or `choice`.
+- `move` — the finding's Move, as **B** disposed it: `settled` or `choice`.
 - `problem` — what is wrong, in the terms the user cares about: what the plan would build wrong, or fail to build. Never the analysis that found it.
 - `proposal` — `settled` only: the fix and what determined it.
 - `options` — `choice` only: `[{"summary": "…", "recommended": true}, …]`, at most one recommended. Where the finding names no options, they are yours to frame — one line each, and take a stance.
-- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side. Change Type `add-task` or `add-phase`: `content` — `{"label": "Proposed Text", "lines": […]}` with the full content as written by the review agent. Change Type `remove-task` or `remove-phase`: `content` — `{"label": "Current", "lines": […]}` with the content being removed. Either `content` is held for `v/view`, never rendered at the gate.
+- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side. Change Type `add-task` or `add-phase`: `content` — `{"label": "Proposed Text", "lines": […]}` with the full content the tracking file carries. Change Type `remove-task` or `remove-phase`: `content` — `{"label": "Current", "lines": […]}` with the content being removed. Either `content` is held for `v/view`, never rendered at the gate.
 - `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
@@ -155,7 +170,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 - **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
-- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
+- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it lands only as the outcome of an exchange, this one or the choice menu's Comment, never at **B**'s dispose.
 
 → Return to **B. Process One Item at a Time**.
 
@@ -188,7 +203,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
    ```
 4. Commit
-5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` still stops, and every finding is still rendered
+5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` that stands at **B**'s dispose still stops, and every finding is still rendered — **B** presents each one, declining none
 
 → Return to **B. Process One Item at a Time**.
 

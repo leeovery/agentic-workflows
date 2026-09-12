@@ -48,16 +48,16 @@ Before logging any task to the plan, ask yourself:
 
 ### Collaboration and Judgment
 
-**Stop and ask when judgment is needed.** Planning is collaborative — not in the sense that every line needs approval, but in the sense that the user guides structural decisions and resolves ambiguity. You must stop and ask when:
+**Stop and ask when the gap is the product's.** Planning is collaborative — not in the sense that every line needs approval, but in the sense that the user owns what the product does and resolves the ambiguities about it. You must stop and ask when:
 
-- The specification is ambiguous about implementation approach
-- Multiple valid ways to structure phases or tasks exist
-- You're uncertain whether a task is appropriately scoped
-- Edge cases aren't fully addressed in the specification
-- You need to make any decision the specification doesn't cover
-- Something doesn't add up or feels like a gap
+- The specification is silent or ambiguous about what the product does or how it behaves
+- An edge case in behaviour is not addressed in the specification
+- A decision the specification doesn't cover changes what the user gets
+- Something doesn't add up or feels like a gap in the record
 
-**Never invent to fill gaps.** If the specification doesn't address something, flag it with `[needs-info]` and ask the user. The specification is the golden document — everything in the plan must trace back to it. Assuming or guessing — even when it seems reasonable — is not acceptable. Surface the problem immediately rather than continuing and hoping to address it later.
+**A fork in how the plan builds it is the planner's.** Phase ownership, task grouping, what a consumer keys on, a bound, internal naming — where the specification, the plan's own conventions, and a measurement all leave it open, settle it on what leans, and on your honest call where nothing does, stating the call and what it weighed in the plan. A how-fork is never a stop and never a `[needs-info]`.
+
+**Never invent product intent.** Where the specification doesn't address what the product does, flag it with `[needs-info]` and ask the user. The specification is the golden document — everything the plan requires of the product must trace back to it. Assuming or guessing product intent — even when it seems reasonable — is not acceptable. Surface the problem immediately rather than continuing and hoping to address it later.
 
 ## Rules
 
