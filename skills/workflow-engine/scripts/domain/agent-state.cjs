@@ -195,16 +195,16 @@ function reportBacked(row, dir) {
 }
 
 /**
- * Completed review cycles for a topic. The agent store is authoritative:
+ * Completed review cycles for a discussion topic. The agent store is authoritative:
  * review rows past `in-flight` are cycles that happened, counted only when
  * a real report backs them; a finished-but-unscanned row counts — the
  * report landed, no scan has promoted it yet. Legacy review-*.md files with
  * no store row (pre-programme caches) count by existence alone. Tolerant
  * throughout — a derivation read must never brick a display.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @param {string} cwd @param {string} workUnit @param {string} topic
  */
-function completedReviewCycles(cwd, workUnit, phase, topic) {
-  const dir = agentDir(cwd, workUnit, phase, topic);
+function completedReviewCycles(cwd, workUnit, topic) {
+  const dir = agentDir(cwd, workUnit, 'discussion', topic);
   const rowIds = new Set();
   let fromRows = 0;
   for (const row of derivationRows(dir)) {
@@ -320,7 +320,7 @@ function reviewArming(cwd, workUnit, topic) {
   requireWorkUnit(cwd, workUnit);
   validateSegment(topic, 'topic');
   const dir = agentDir(cwd, workUnit, 'discussion', topic);
-  const cycles = completedReviewCycles(cwd, workUnit, 'discussion', topic);
+  const cycles = completedReviewCycles(cwd, workUnit, topic);
   const needed = Math.min(cycles, MOVEMENT_CAP);
   if (needed === 0) {
     return { armed: true, cycles, map_moves_seen: null, map_moves_needed: 0, reason: 'no completed review cycle — the first review is free' };

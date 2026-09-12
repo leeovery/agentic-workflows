@@ -203,10 +203,10 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('ack records findings and moves to acknowledged; --clean incorporates immediately', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     writeContent(dir, d.file);
-    runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    const acked = runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--findings', 'F1,F2']);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const acked = runJson(dir, ['ack', 'pay', 'discussion', 'alpha', d.id, '--findings', 'F1,F2']);
     assert.strictEqual(acked.status, 'acknowledged');
     assert.deepStrictEqual(acked.remaining, ['F1', 'F2']);
 
