@@ -16,7 +16,7 @@ The caller provides these via context before loading:
 
 ## A. Check
 
-List the topic's triage queue:
+List the topic's triage queue — this check's own read, never a count carried from resume detection or an earlier iteration:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {phase} {topic}

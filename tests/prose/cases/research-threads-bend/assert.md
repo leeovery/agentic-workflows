@@ -16,23 +16,30 @@ The prose should have taken this path:
    the knowledge base once as a contextual query, reads the work type,
    and routes into the single-topic session wrapper — the deep-dive and
    rerouted-concerns protocols loaded, nothing run at load
-4. the loop's first iteration checks what landed: the triage queue reads
-   empty, and the dive check finds nothing to fold — no dive was ever
-   dispatched, and the store says so
+4. the loop's first iteration checks what landed: the triage queue is
+   read again — the check's own read, not resume detection's — and
+   comes back empty, and the dive check finds nothing to fold — no dive
+   was ever dispatched, and the store says so
 5. the conversation bends the register as the user brings what they
    know, each move recorded through the engine as it happens and the
    file carrying the substance behind it:
    - the hosted-fields question is **reframed** in place when the
      user's answer reshapes it — hosted fields exist but only on the
      gateway's newer integration, so the question becomes what moving
-     the checkout onto that integration takes; the slug and the `seed`
-     origin are untouched, the status stays open, and the file records
-     why the question changed
+     the checkout onto that integration takes; one row goes on under
+     the new question — never a learned row for the part answered
+     beside a fresh thread for the part that remains — the slug and
+     the `seed` origin are untouched, the status stays open, and the
+     file records why the question changed. The reshaped question is
+     one nobody in the room can answer, so the dive is offered on it —
+     once — and declined: the thread stays open and the conversation
+     carries it
    - the user's follow-on — whether the newer integration changes how
      capture is confirmed back to the shop — is **added** as a thread
      nested under the reframed one, origin `user`, the parent named on
-     the add; it is carried, not sent out: the user has their own route
-     to the answer, so no dive is offered
+     the add, its status open — the user is chasing it, not setting it
+     aside; it is carried, not sent out: the user has their own route
+     to the answer, so no dive is offered on it
    - the 3-D Secure question is answered from the user's own knowledge
      — the shop sells into markets where strong customer authentication
      applies, so a hosted challenge step is mandatory on most card
@@ -66,8 +73,10 @@ Register claims — the lens is the behaviour under test:
   resume is at most the number of thread moves, every render follows at
   least one move the previous render had not shown, and at least one
   exchange that moved no thread produced no render
-- no deep dive is offered anywhere: every question raised was answered
-  in the room or carried at the user's own ask
+- one deep dive is offered in the whole session — on the reshaped
+  hosted-fields question, the one nobody in the room could answer — and
+  declined; none on the follow-on the user carries themselves, none on
+  a question the user answered in the room, and nothing is dispatched
 - no review of any kind is dispatched, considered, or mentioned —
   research has none; no experiment is offered; no concern is rerouted
 
@@ -89,4 +98,5 @@ question, `three-d-secure` learned, and `second-provider` parked with a
 one-line note; the research file grown with the session's substance —
 the SCA answer, the reshaped hosted-fields question, the parked reason;
 the research item still `in-progress`; no agent row in the topic's
-cache, no experiment item, no discussion item.
+cache — the declined offer's payload under `.workflows/.cache/` is
+machinery, not a change — no experiment item, no discussion item.
