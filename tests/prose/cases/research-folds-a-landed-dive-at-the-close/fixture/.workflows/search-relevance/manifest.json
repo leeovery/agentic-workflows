@@ -1,0 +1,69 @@
+{
+  "name": "search-relevance",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Overhaul search relevance across the catalogue",
+  "phases": {
+    "discovery": {
+      "items": {
+        "behavioural-ranking": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Close the loop from click and purchase events into the ranker.",
+          "description": "Click and purchase events land in the events pipeline but nothing feeds them back into ranking. The pipeline is reliable; the work is deciding what signals feed the ranker and how.",
+          "brief_path": "discovery/briefs/behavioural-ranking.md"
+        },
+        "synonym-handling": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Replace the hand-maintained synonym and misspelling list.",
+          "description": "Synonyms and misspellings are handled by a hand-maintained list nobody trusts. The leaning is to replace it rather than clean it, but with what is unknown.",
+          "brief_path": "discovery/briefs/synonym-handling.md"
+        },
+        "relevance-measurement": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "How to tell whether a relevance change makes results better or worse.",
+          "description": "There is no evaluation set and no metrics — every ranking tweak is decided by argument. The area the user understands least; they have never built an evaluation harness.",
+          "brief_path": "discovery/briefs/relevance-measurement.md",
+          "brief_incorporated": true
+        }
+      }
+    },
+    "research": {
+      "items": {
+        "relevance-measurement": {
+          "status": "in-progress",
+          "threads": {
+            "evaluation-harness": {
+              "question": "What does a good evaluation harness look like for this catalogue?",
+              "status": "learned",
+              "origin": "brief",
+              "parent": null
+            },
+            "tail-regressions": {
+              "question": "How do search evaluation harnesses handle a change that lifts the aggregate metric while a query slice regresses?",
+              "status": "digging",
+              "origin": "conversation",
+              "parent": null
+            },
+            "label-freshness": {
+              "question": "How often do click-derived judgments need refreshing before they mislead?",
+              "status": "open",
+              "origin": "user",
+              "parent": null
+            },
+            "offline-judges": {
+              "question": "Would a small panel of human raters catch a bias the click-derived judgments share?",
+              "status": "parked",
+              "origin": "conversation",
+              "parent": null,
+              "note": "no budget for human raters this year"
+            }
+          }
+        }
+      }
+    }
+  }
+}

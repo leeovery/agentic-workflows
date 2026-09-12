@@ -1,0 +1,17 @@
+{
+  "agents": {
+    "deep-dive-001-tail-regressions": {
+      "id": "deep-dive-001-tail-regressions",
+      "kind": "deep-dive",
+      "phase": "research",
+      "topic": "relevance-measurement",
+      "set": "001",
+      "label": "tail-regressions",
+      "status": "pending",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z"
+    }
+  }
+}
