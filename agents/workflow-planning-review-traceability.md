@@ -55,8 +55,8 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 3. **No git writes** — do not commit or stage. Writing the tracking file is your only file write.
 4. **No user interaction** — return status to the orchestrator. The orchestrator handles presentation and approval.
 5. **Full fix content on settled findings** — a `settled` finding includes complete Current/Proposed Text content in plan format; a `choice` carries Options and no fix content. No summaries on either.
-6. **Trace, don't invent** — if content can't be traced to the spec, flag it. Don't justify it.
-7. **Spec-grounded fixes** — proposed content must come from the specification. Do not hallucinate plan content.
+6. **Trace, don't invent** — if the plan requires something of the product the spec never decided, flag it. Don't justify it. How the plan builds a decided requirement is the planner's and is not traced.
+7. **Spec-grounded fixes** — proposed product content comes from the specification; a mechanism the specification leaves open is settled on what leans or your honest call, named as such in the Proposal. Do not hallucinate product content.
 8. **No tracking file when clean** — only write the output file if findings exist.
 9. **Never lose your work** — the findings you generate must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 

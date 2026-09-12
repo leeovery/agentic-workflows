@@ -109,16 +109,19 @@ that determines presentation is *who can answer it*.
   spec never invents. A point the spec has no rule for — a preference
   no side of which costs the user, a mechanism that is the builder's —
   is neither: nothing leans, so it is declined at dispose with its
-  reason. The planning loop holds the same bar with one arm beneath
-  it the spec lacks: a plan is HOW, so a fork in the how — phase
-  ownership, task grouping, what a consumer keys on, a bound — that
-  the specification, the plan's own conventions, and a measurement all
+  reason. The planning loop holds the same bar with one arm beneath it
+  the spec lacks: a plan is HOW, so a fork in the how — phase
+  ownership, task grouping, what a consumer keys on, a bound — that the
+  specification, the plan's own conventions, and a measurement all
   leave open is the planner's honest call, settled with a derivation
   that names it as such and what it weighed; only a product-level fork
-  the user must own stops. Planning never routes (the plan is the
-  document under review) and never declines at dispose (with an honest
-  call available, a preference nothing leans on is settled, not
-  dropped).
+  the user must own stops. The same rule governs the phase before the
+  walk: the planning principles stop for product gaps alone and hand
+  every how-fork to the planner, and the traceability review traces
+  product content only — a mechanism the spec leaves open is never
+  hallucinated content. Planning never routes (the plan is the document
+  under review) and never declines at dispose (with an honest call
+  available, a preference nothing leans on is settled, not dropped).
 
 - **F4 — a finding is report-class content.** It leads with what is
   wrong in product terms and what Claude would do about it, in the

@@ -16,7 +16,7 @@ First comes structure. An agent reads the whole spec and proposes a set of phase
 
 Then, phase by phase, comes the detail. For each phase an agent proposes a task list — each task a one-line summary with its edge cases — which you approve or adjust. Once the list is agreed, another agent writes the full detail for every task: the steps, the acceptance criteria, the edge cases, the tests. The phase checks that the number of tasks written matches the list you approved, so nothing is silently added or dropped.
 
-Throughout, everything must trace back to the spec. Where the spec is ambiguous or silent, planning is forbidden to invent a reasonable-sounding answer — it flags the gap and asks you rather than guessing. A plan that quietly fills spec gaps with invention would smuggle undecided decisions into the build, which is exactly what the spec exists to prevent.
+Throughout, everything the plan requires of the product must trace back to the spec. Where the spec is ambiguous or silent about what the product does, planning is forbidden to invent a reasonable-sounding answer — it flags the gap and asks you rather than guessing. A plan that quietly fills product gaps with invention would smuggle undecided decisions into the build, which is exactly what the spec exists to prevent. How the plan builds a decided requirement is a different matter: a fork in the how that the spec leaves open — which phase owns a slice, how tasks group, what a consumer keys on — is the planner's, settled on whatever leans and on an honest call where nothing does, with the call and what it weighed written down rather than put to you.
 
 ## Why it gates task by task
 

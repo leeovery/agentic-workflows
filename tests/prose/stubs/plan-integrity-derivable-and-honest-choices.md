@@ -48,7 +48,6 @@ Create a gateway payment intent when checkout begins, card-only enforced.
 
 **Proposed Text**:
 Create a gateway payment intent when checkout begins, card-only enforced.
-
 **Acceptance Criteria**:
 - [ ] Card is the only payment method the intent accepts
 - [ ] A gateway rejection surfaces as a user-visible checkout error
@@ -98,9 +97,11 @@ on the gateway's event id or on the intent id and the capture status;
 either satisfies the specification's rule, but they are different
 code, different tests, and different stored state, and the pick is
 written nowhere. Searched the specification's Capture Webhooks section
-(duplicate deliveries are idempotent, and nothing more), the
-discussion (webhooks confirm capture; the checkout never polls), the
-plan's phases and task tables, and the tree: no key is named, no other
+(webhook-confirmed, idempotent deliveries, an unknown intent logged and
+ignored — the last says how a delivery finds its order, not what makes
+two deliveries the same one), the discussion (webhooks confirm capture;
+the checkout never polls), the plan's phases and task tables, and the
+tree: no key is named, no other
 consumer sets a precedent, and no gateway client exists to measure.
 
 **Options**:
