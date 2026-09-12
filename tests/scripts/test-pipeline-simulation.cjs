@@ -34,6 +34,7 @@ const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
+const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -143,6 +144,10 @@ function auditState(dir, label) {
         // vocabulary, every parent top-level, a note on a parked row alone.
         if (phase === 'research') {
           assert.doesNotThrow(() => registerState(manifest, topic), ctx(`${wu}.research.${topic}: thread register`));
+        }
+        // A discussion item's map derives the same way: every subtopic in vocabulary.
+        if (phase === 'discussion') {
+          assert.doesNotThrow(() => mapState(manifest, topic), ctx(`${wu}.discussion.${topic}: discussion map`));
         }
       }
       // Derivation must hold for every phase present.
@@ -1944,6 +1949,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', feat, 'research', feat]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
+    // The Discussion Map the feature built travels with it.
+    sim.run(['discussion-map', 'add', feat, feat, 'cutover']);
+    sim.run(['discussion-map', 'add', feat, feat, 'rollback', '--parent', 'cutover']);
+    sim.run(['discussion-map', 'set', feat, feat, 'cutover=exploring', 'rollback=decided']);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
@@ -1974,6 +1983,9 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(m.phases.research.items['stray-topic'].threads,
       { reach: { question: 'How far does stray reach?', status: 'parked', origin: 'seed', parent: null, note: 'not this year' } },
       'the thread register follows the material to its new name');
+    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].subtopics,
+      { cutover: { status: 'exploring', parent: null }, rollback: { status: 'decided', parent: 'cutover' } },
+      'the Discussion Map follows the material to its new name');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
 
