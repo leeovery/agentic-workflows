@@ -42,7 +42,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Read all research files** in `.workflows/{work_unit}/research/`. These are the working documents this skill creates. Their content is your source of truth for progress. The thread register — what the topic set out to learn and where each question stands — lives in the manifest; read it with `node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}`.
 3. **Check agent state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` — `in_flight` deep dives still running, `pending` reports landed and not yet folded.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-5. **Announce your position** to the user before continuing: render the register (the call above — emit its DISPLAY section verbatim as a code block), state what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
+5. **Announce your position** to the user before continuing: render the register (the call above — emit its DISPLAY section verbatim as a code block; an empty response means no thread is registered, so nothing is shown), state what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 

@@ -4,7 +4,7 @@
 
 ---
 
-The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
+The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own — on `research`, its register `slug` comes with it). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
 
 **If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
 
@@ -32,7 +32,7 @@ On a `grown-thread` entry the current topic is never the answer — the thread g
 
 #### If the resolved target is the current topic
 
-It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, add it to the register as a thread (`research-threads add {work_unit} {topic} {slug} --question "…" --origin conversation`) and carry it in the file.
+It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` concern enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
 
 → Return to caller for **B. Session Loop**.
 
@@ -62,7 +62,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `keep`:**
 
-Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, add it to the register as a thread (`research-threads add {work_unit} {topic} {slug} --question "…" --origin conversation`) and carry it in the file.
+Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` concern enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
 
 → Return to caller for **B. Session Loop**.
 
@@ -102,7 +102,7 @@ Nothing landed.
 
 **Otherwise:**
 
-The concern landed in `{landed_topic}`'s `{landing_phase}` triage queue — the delivery committed itself. This session's own record is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
+The concern landed in `{landed_topic}`'s `{landing_phase}` triage queue — the delivery committed itself. This session's own record is unchanged — rerouting sends the concern away from this topic, it doesn't mark it — with one exception: a research `grown-thread` landing takes its register rows with it, `research-threads remove {work_unit} {topic} {child}` for each child and then `research-threads remove {work_unit} {topic} {slug}`, and the file's note names where the question went.
 
 **If the response carried `reconcile_flagged` or `sources_staled`:** also tell the user what the landing flagged — on a research landing, `{landed_topic}`'s discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion landing, the specification(s) named in `sources_staled`, whose extraction of `{landed_topic}` is now stale.
 

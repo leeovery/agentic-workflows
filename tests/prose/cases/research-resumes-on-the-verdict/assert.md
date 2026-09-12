@@ -12,8 +12,7 @@ The prose should have taken this path:
    pre-registered rule's mechanical outcome, the conversation's to
    override — and the flag is cleared before the handoff; the epic
    context arm finds the map-shaped source and gathers nothing
-3. the process renders the thread register once (empty here — the
-   header line alone) above resume detection and the user continues;
+3. the process renders the thread register once (empty here — the call answers nothing, so nothing is shown) above resume detection and the user continues;
    initialisation is skipped; the walk passes through file strategy,
    the guidelines, one contextual query, and into the epic research
    session

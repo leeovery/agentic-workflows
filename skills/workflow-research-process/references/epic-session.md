@@ -42,9 +42,9 @@ When you notice convergence signals (from the research guidelines), flag it and 
 
 Either the session's written material keeps deepening ground that deserves a map topic of its own — sustained accumulation over multiple exchanges, not a clean thematic separation alone — or the user names a thread and asks for it to become a topic.
 
-Hold the thread with the full context worked out about it. Its register row goes with it — once the reroute lands, `research-threads remove {work_unit} {topic} {slug}` (with `--into {survivor}` when children nest under it); the new topic owns the question, and the file's note names where it went. On `keep` the row stays:
+Hold the thread with the full context worked out about it — its children's questions travel in that context — and name its slug: once the reroute lands, the reference drops its rows; on `keep` they stay:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`, reason = `grown-thread`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`, reason = `grown-thread`, slug = `{slug}`.
 
 → On return, proceed as the reference directed.
 
@@ -56,7 +56,13 @@ Hold the thread with the full context worked out about it. Its register row goes
 
 ## E. In-Flight Dive Handling
 
-Before concluding, check for in-flight deep dives — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (dives dispatched but not yet returned). A dive an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are; enter **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)** first — it closes the dead rows and folds every landed report — then re-scan and count this session's `in_flight` rows alone.
+Before concluding, check for in-flight deep dives — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (dives dispatched but not yet returned). A dive an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are; enter **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)** first — it closes the dead rows and folds what landed — then re-scan and count this session's `in_flight` rows alone.
+
+#### If a fold ended on a question to the user
+
+The conversation has the turn; the next done-signal re-enters here.
+
+→ Return to **B. Session Loop**.
 
 #### If no dive is in flight
 

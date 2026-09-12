@@ -195,12 +195,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 #### If `phase` is `research`
 
-Fold the concern into the freeform body as a `### {title}` section opening with the provenance line, followed by the body and what the discussion made of it. Enter it on the thread register with the rerouting topic as its origin, `learned` when the fold holds its answer and `open` when research is still owed:
+Fold the concern into the freeform body as a `### {title}` section opening with the provenance line, followed by the body and what the discussion made of it. Then the thread register, the rerouting topic as the origin:
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the concern's question}" --origin {origin}
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {title:(kebabcase)} learned
-```
+- **The fold holds the answer** — enter it and mark it learned:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the concern's question}" --origin "{origin}"
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {title:(kebabcase)} learned
+  ```
+- **Research is still owed** — enter it and leave it open:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the concern's question}" --origin "{origin}"
+  ```
+- **The slug is already on the register** — nothing enters twice; `research-threads set {work_unit} {topic} {title:(kebabcase)} learned` when the fold holds the answer, otherwise leave it as it stands.
 
 → Proceed to **E. Absorb**.
 

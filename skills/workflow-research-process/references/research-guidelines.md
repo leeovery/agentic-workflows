@@ -104,7 +104,7 @@ These are natural pauses, not every exchange. Capture the substance — not a ve
 
 **Create the file early.** After understanding the starting point, create the research file with initial context. Don't wait for findings.
 
-**The register carries the questions; the file carries the answers.** A question this topic set out to learn is a thread on the register (`research-threads`), and it moves as the conversation moves — learned when the file holds its answer, reframed when the answer reshapes it, parked when the user sets it aside. The file's **Open Threads** section is written once, at conclusion, from whatever the register still holds open — the hand-off the discussion reads in full — never maintained by hand during the session.
+**The register carries the questions; the file carries the answers.** A question this topic set out to learn is a thread on the register (`research-threads`), and it moves as the conversation moves — learned when the file holds its answer, reframed when the answer reshapes it, parked when the user sets it aside. The file's **Open Threads** section is written once, at conclusion, from whatever the register has not learned — open, being dug, or parked — the hand-off the discussion reads in full — never maintained by hand during the session.
 
 ## Critical Rules
 

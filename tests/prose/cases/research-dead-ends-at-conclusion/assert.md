@@ -7,7 +7,7 @@ The prose should have taken this path:
    map item's source, finds it map-shaped rather than direct-start, and
    gathers nothing
 2. the process reads the status again, finds the file, renders the
-   thread register once (empty here — the header line alone) above
+   thread register once (empty here — the call answers nothing, so nothing is shown) above
    resume detection, and the user continues; initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the

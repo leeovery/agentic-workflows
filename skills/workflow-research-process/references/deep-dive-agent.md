@@ -66,7 +66,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} re
 
 #### If the limit is reached
 
-Say so in a line; the thread stays `open` on the register — offer it again through **A. Offer** when a dive lands (the fold's last exit names it).
+Say so in a line; the thread stays `open` on the register — the fold offers it again once a dive lands.
 
 → Return to caller.
 
@@ -141,11 +141,21 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} open
 ```
 
+A thread that left the register while the dive ran — merged or rerouted — has no row to reopen; the row closes and that is all.
+
 → Return to **C. Land and Fold**.
 
 #### If no row is `pending`
 
 Nothing has landed.
+
+**If this pass folded a report and a thread the dive limit held back is still `open`:**
+
+The user already said yes to that dive; it needs no second offer.
+
+→ Proceed to **A. Offer**.
+
+**Otherwise:**
 
 → Return to caller.
 
@@ -172,7 +182,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
    ```
 
-   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and, on an epic, raised through the session wrapper's **C. Topic Awareness** at the next break; a feature has no other topic, so the note stands. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step.
+   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and raised through the session wrapper's off-topic route at the next break — **C. Topic Awareness** on an epic, **E. Off-Topic Concerns** on a single-topic work type. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step; a fold at the close carries it into Open Threads, where the discussion's own laboratory offer meets it.
 
    Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
 
@@ -200,6 +210,6 @@ The turn ends on it; a further landed dive folds at the next break.
 
 **Otherwise:**
 
-The next landed dive folds in the same pass; when none remains, a thread the limit held back is offered again through **A. Offer**, and a measurement thread meets the loop's laboratory cue at its next step.
+The next landed dive folds in the same pass.
 
 → Return to **C. Land and Fold**.
