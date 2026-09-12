@@ -169,7 +169,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
    ```
 
-   A line the file already covers, or one another topic owns, is folded as a note in the section instead — an epic's off-topic route carries an owned concern to its home when the session judges it worth sending. A measurement line is the laboratory's cue — hold it for the offer below.
+   A line the file already covers, or one another topic owns, is folded as a note in the section instead — an epic's off-topic route carries an owned concern to its home when the session judges it worth sending. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue: offered below, or at the next natural break when this fold ends on a question.
 
    Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
 
@@ -177,7 +177,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
    ```
 
-5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers verbatim — they are what was asked. Otherwise a digest: what was asked, what came back in three to five lines, what it opened. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
+5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back in three to five lines, what it opened. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
 
 6. **Render the register:**
 
@@ -189,7 +189,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
 
 **If step 5 put a question to the user:**
 
-The turn ends on it; a further landed dive folds at the next break.
+The turn ends on it; a further landed dive folds at the next break, and a measurement thread is offered there through the session loop's laboratory cue.
 
 **STOP.** Wait for user response.
 

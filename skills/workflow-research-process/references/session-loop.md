@@ -57,7 +57,7 @@ The register is what this topic set out to learn — typed state in the manifest
 
 - **A thread merges** into another when two questions turn out to be one: the survivor's file section carries the folded substance, then `research-threads remove {work_unit} {topic} {slug}` drops the absorbed row.
 
-**Render the register at a natural break where a thread changed state since the last render** — a thread learned, parked, added, or reframed in the exchange just closed — and when the user asks. Never after every exchange, never twice for one state:
+**Render the register once per move, at the natural break that follows it** — a thread learned, parked, added, or reframed since the last render — and when the user asks. An exchange that moved nothing renders nothing, and a state already shown is never shown again for its own sake:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
