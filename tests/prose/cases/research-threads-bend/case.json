@@ -27,9 +27,10 @@
     "skills/workflow-shared/references/rerouted-concerns.md"
   ],
   "answers": [
-    "c — continue"
+    "c — continue",
+    "n — no"
   ],
-  "conduct": "The user runs the shop and is coming back to the payments research with three things to bring, one at a time as the conversation reaches each. First, they have heard back from the gateway's account manager since last time: hosted card fields are supported on their account, but only on the gateway's newer checkout integration, not the legacy tokenisation form the site uses today — so what they actually want to know now is what moving the checkout onto the newer integration would take. Off the back of that they wonder whether moving would change how a capture gets confirmed back to them; they want that kept as a question under the same heading, and they will put it to the account manager themselves next week — they do not want anyone sent off to look into it. Second, on 3-D Secure they know the answer: the shop sells into the UK and the EU, strong customer authentication applies, and a challenge step on most card payments is mandatory rather than a choice; what it adds is a step the gateway hosts, and that settles the question for them. Third, on a second provider they are firm it is not this year's problem — one gateway, declines fall back to nothing for now — and they want it set aside with exactly that reason. They answer the session's questions from what they know and invent nothing, decline optional extras — no deep dive, no new threads beyond the one they asked for — and after the third point they say they have to step away for the day: the research is not finished, the integration question is still open, and they will pick it up next time.",
+  "conduct": "The user runs the shop and is coming back to the payments research with three things to bring, one at a time as the conversation reaches each. First, they have heard back from the gateway's account manager since last time: hosted card fields are supported on their account, but only on the gateway's newer checkout integration, not the legacy tokenisation form the site uses today — so what they actually want to know now is what moving the checkout onto the newer integration would take; nobody in the room can answer that, and if the session offers to send a dive after it they decline — they would rather cover it in conversation. Off the back of that they wonder whether moving would change how a capture gets confirmed back to them; they want that kept as a question of its own under the same heading, and they will put it to the account manager themselves next week — they do not want anyone sent off to look into it. Second, on 3-D Secure they know the answer: the shop sells into the UK and the EU, strong customer authentication applies, and a challenge step on most card payments is mandatory rather than a choice; what it adds is a step the gateway hosts, and that settles the question for them. Third, on a second provider they are firm it is not this year's problem — one gateway, declines fall back to nothing for now — and they want it set aside with exactly that reason. They answer the session's questions from what they know and invent nothing, decline optional extras — no deep dive, no new threads beyond the one they asked for — and after the third point they say they have to step away for the day: the research is not finished, the integration question is still open, and they will pick it up next time.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
@@ -38,6 +39,7 @@
       "render resume-gate pay.research.pay",
       "topic queue pay research pay",
       "manifest get pay work_type",
+      "render deep-dive-offer pay.research.pay",
       "research-threads reframe pay pay hosted-fields --question",
       "research-threads add pay pay",
       "--origin user --parent hosted-fields",
@@ -56,7 +58,6 @@
       "agent dispatch",
       "--kind review",
       "--kind deep-dive",
-      "render deep-dive-offer",
       "render finding-announce",
       "agent announce",
       "agent surface",
