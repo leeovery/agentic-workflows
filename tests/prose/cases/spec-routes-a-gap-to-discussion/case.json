@@ -1,5 +1,5 @@
 {
-  "origin": "the gap stop had no prose coverage \u2014 this walks a conflict raise whose exchange reveals neither side stands, the re-classification to a genuine gap, the acknowledgement gate, the queue landing, the pause, and the return to the epic menu",
+  "origin": "the gap stop had no prose coverage — this walks a conflict raise whose exchange reveals neither side stands, the re-classification to a genuine gap, the acknowledgement gate, the queue landing, the pause, and the return to the epic menu",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -9,6 +9,7 @@
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-specification-entry/references/validate-source.md",
     "skills/workflow-specification-entry/references/validate-phase.md",
     "skills/workflow-specification-entry/references/invoke-skill.md",
@@ -31,7 +32,7 @@
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-shared/references/compliance-check.md"
   ],
-  "conduct": "The user is specifying the expansion pipeline and knows both records cold. When the batch-vs-live-stream conflict is raised they do not pick a side: they explain that neither decision survives, because what expansion freshness the product actually needs was never explored in either discussion \u2014 the live stream was rejected on cost, the daily batch was assumed without measuring, and picking either here would invent ground. They engage briefly on the merits but hold that this needs real discussion work, not a menu answer. When the gap raise appears stating it will route to synonym-handling and pause the spec, they confirm \u2014 they would push back only if asked to choose or classify, and they expect to land back on the epic menu told which discussion to re-conclude. They never ask to reopen anything themselves and never offer a settling decision.",
+  "conduct": "The user is specifying the expansion pipeline and knows both records cold. When the batch-vs-live-stream conflict is raised they do not pick a side: they explain that neither decision survives, because what expansion freshness the product actually needs was never explored in either discussion — the live stream was rejected on cost, the daily batch was assumed without measuring, and picking either here would invent ground. They engage briefly on the merits but hold that this needs real discussion work, not a menu answer. When the gap raise appears stating it will route to synonym-handling and pause the spec, they confirm — they would push back only if asked to choose or classify, and they expect to land back on the epic menu told which discussion to re-conclude. They never ask to reopen anything themselves and never offer a settling decision.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
