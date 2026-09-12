@@ -165,10 +165,10 @@ permanent decline.
 
 Three edits, all reusing existing machinery:
 
-- **Shared surfacing section H** (`background-agent-surfacing.md`): a
-  route target may be a **new topic name**, not only an existing owner
-  — `triage-landing.md` already creates it. One edit, fixes research
-  and discussion at once.
+- **Discussion's surfacing, section H**
+  (`workflow-discussion-process/references/background-agent-surfacing.md`):
+  a route target may be a **new topic name**, not only an existing
+  owner — `triage-landing.md` already creates it.
 - **Unowned threads leave through the off-topic route**: a thread
   outside this topic's remit that no topic owns is rerouted with a
   proposed name — never written into the artifact as "unexplored".
@@ -325,7 +325,7 @@ engine's fresh-file-per-concern delivery already supports it.
 
 - Pipeline simulation: research-analysis calls removed; spawn
   permutation added; gate flow re-pinned.
-- Prose cases: route-to-new-topic at research conclusion; user-invoked
+- Prose cases: a research topic concluding with open threads; user-invoked
   spawn; gap-analysis gate without the lead-in; dead-end offer.
 - Migration suite for the staging sweep.
 - Engine suites re-pinned where vocabulary changes renders
