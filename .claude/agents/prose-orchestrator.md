@@ -45,14 +45,18 @@ a walk.
 
 2. **Walk** — `node tests/prose/run.cjs prompt <case-id> --world <dir>`.
    Dispatch the **prose-walker** agent with that output as its prompt,
-   verbatim and unmodified. Its tool calls and every turn it takes are
-   recorded into the world by its own hook — you do nothing to collect
-   them, and the message it returns to you is not evidence.
+   verbatim and unmodified — an Agent call with `subagent_type:
+   "prose-walker"`, always: the field is what attaches the recording
+   hook, and a dispatch without it walks unrecorded. Its tool calls and
+   every turn it takes are recorded into the world by that hook — you do
+   nothing to collect them, and the message it returns to you is not
+   evidence.
 
 3. **Assert** — `node tests/prose/run.cjs assert <case-id> --world <dir>`.
-   Dispatch the **prose-asserter** agent with that output verbatim. It
-   already carries the walk; never append the walker's returned message
-   to it, and never paste it anywhere else.
+   Dispatch the **prose-asserter** agent with that output verbatim — an
+   Agent call with `subagent_type: "prose-asserter"`, always. It already
+   carries the walk; never append the walker's returned message to it,
+   and never paste it anywhere else.
 
    If that command **fails** rather than printing a prompt, the harness
    is broken, not the prose. Stop there, destroy the world, and report
