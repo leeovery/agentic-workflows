@@ -36,15 +36,13 @@ Match the decision topic against the polarity-pair table below. Pick the pair wh
 | structure, hierarchy, taxonomy, monolith, microservices, organise | **Classifier** ↔ **Emergence** | Predictable categories vs let structure emerge |
 | design, approach, strategy, architecture _(default)_ | **Assumption Destroyer** ↔ **First-Principles** | Top-down questioning vs bottom-up rebuilding |
 
-> *Output the next fenced block as markdown (not a code block):*
+Write the offer payload to `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-offer.json` with the Write tool (`{"tension": "…"}` — the tension description as it opens the offer), then render it:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render perspective-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/perspective-offer.json
 ```
-· · · · · · · · · · · ·
-This decision sits on a {tension description} tension. Want to explore both lenses?
 
-**`y/yes`** → Spin up perspective agents arguing each lens
-**`n/no`**  → Continue without perspectives
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

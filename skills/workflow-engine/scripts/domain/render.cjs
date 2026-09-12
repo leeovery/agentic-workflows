@@ -2070,6 +2070,36 @@ function deepDiveOffer(cwd, { dotpath, file }) {
   ));
 }
 
+// perspective-offer — the discussion orchestrator's offer to argue a decision
+// from two opposing lenses. The tension description is the judgment content;
+// the statement names the tension and stays context, the question beneath it
+// is the ask and takes the decision glyph.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function perspectiveOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render perspective-offer: --file <payload.json> is required');
+  const { phase } = resolveAddress(cwd, dotpath, 'perspective-offer');
+  if (phase !== 'discussion') {
+    throw new Error(`render perspective-offer: address must be <work_unit>.discussion.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'perspective-offer');
+  if (!isFilled(p.tension)) {
+    throw new Error('render perspective-offer: "tension" must be a non-empty string — the tension description as it opens the offer');
+  }
+  return section('MENU: perspective offer', STOP_FOR_RESPONSE, menu(
+    `This decision sits on a ${p.tension} tension.`,
+    [
+      cmdOption('y', 'yes', 'Spin up perspective agents arguing each lens'),
+      cmdOption('n', 'no', 'Continue without perspectives'),
+    ],
+    { question: 'Want to explore both lenses?' },
+  ));
+}
+
 // in-flight-agents-gate — the wait-or-conclude gate a session takes when
 // background agents are still running at conclusion. Research and discussion
 // both dispatch and both conclude, so the gate serves the pair. Served to the
@@ -4819,6 +4849,7 @@ const SURFACES = {
   'research-threads': researchThreadsSurface,
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
+  'perspective-offer': perspectiveOffer,
   'in-flight-agents-gate': inFlightAgentsGate,
   'review-findings-gate': reviewFindingsGate,
   'reroute-candidates': rerouteCandidates,
