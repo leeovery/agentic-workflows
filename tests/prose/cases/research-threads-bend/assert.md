@@ -4,10 +4,10 @@ The prose should have taken this path:
    is its name, so no topic question is put to the user — and the
    discovery-item check no-ops without an engine call: only an epic has
    a map; the research status reads in progress, the resuming phase
-   note is emitted, the reconcile flag is absent, and the feature
-   context arm reads the discovery log's Exploration, finds the shaping
-   there, and gathers nothing — no interview; the handoff is the
-   continue shape
+   note is emitted, the reconcile flag is absent, and the resume routes
+   straight to the handoff — context gathering is the fresh path's, and
+   a resumed topic already has its carrier — no interview, no read of
+   the discovery log; the handoff is the continue shape
 2. the process reads the status again, finds the file, renders the
    thread register once above resume detection — three threads, all
    open, so the header carries no breakdown — and the user continues;
@@ -16,10 +16,10 @@ The prose should have taken this path:
    the knowledge base once as a contextual query, reads the work type,
    and routes into the single-topic session wrapper — the deep-dive and
    rerouted-concerns protocols loaded, nothing run at load
-4. the loop's first iteration checks what landed: the triage queue is
-   read again — the check's own read, not resume detection's — and
-   comes back empty, and the dive check finds nothing to fold — no dive
-   was ever dispatched, and the store says so
+4. the loop's first iteration checks what landed: the triage queue
+   reads empty — resume detection's read moments earlier may stand for
+   it — and the dive check finds nothing to fold — no dive was ever
+   dispatched, and the store says so
 5. the conversation bends the register as the user brings what they
    know, each move recorded through the engine as it happens and the
    file carrying the substance behind it:
@@ -56,8 +56,9 @@ The prose should have taken this path:
 7. when the user says they are stepping away, the session documents
    what the exchange left, commits with the cadence message, renders
    the register if a thread moved since the last render, and ends its
-   turn — no conclusion is attempted: the user was explicit the research
-   is not finished, and a sign-off is not the done-signal
+   turn — no conclusion is attempted: a sign-off that leaves the topic
+   open is the wrapper's pause arm, not its done-signal, so no in-flight
+   check, no wait gate, no document review, and no conclude gate run
 
 Register claims — the lens is the behaviour under test:
 
