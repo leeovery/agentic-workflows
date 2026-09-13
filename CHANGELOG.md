@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+🔧 Changed
+
+- The tmux session-label opt-in is now per project, recorded in the project's `.workflows/manifest.json` — each project asks once on its next `/workflow-start`.
+
+🐛 Fixed
+
+- The original tmux session name now comes back when a session ends: the restore runs from a hook the workflows install in the project's `.claude/settings.json`, so a finished session no longer leaves its label behind.
+
 ## [0.7.45] - 2026-09-13
 
 🔧 Changed
