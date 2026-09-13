@@ -1,0 +1,90 @@
+{
+  "origin": "live failure (fumi, search-and-retrieval, 2026-09-12) — with a background review still in flight the close rendered the generic mandatory gate, whose yes row read \"Run the final review\": the screen said a review was running and offered to run one in the same breath, and yes then met a second wait-or-proceed ask. This walk pins the close over a running review: the review-running variant renders, yes is the wait, the in-flight gate never asks again, nothing new is dispatched, and the landed pass is heard before the conclusion",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-discussion-process/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-discussion-process/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning to close the discussion out, with one thing first: before wrapping up they want a fresh pair of eyes over the whole document, and they open by asking directly for a review of the discussion as it stands. They decide nothing, settle nothing, and add no new material; if asked whether anything changed for them, nothing has. Once the review is dispatched and announced they do not wait for it — they say that covers it and ask to wrap up. On the way out they are agreeable to required steps: told a review is still running and asked whether to wait for it, they say yes; asked whether to conclude, they say yes. When the review lands and the session hands the floor back to them, they say again that it covers it and to wrap up. They decline optional extras — one more review, offers of new threads — and never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "not at the dispatch — the review stays in flight while the user wraps up; once the session has taken the closing gate's yes and begins waiting on the running review, write the content to the path the dispatch response returned, and let the next scan find it"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "knowledge.cjs query",
+      "agent scan pay discussion pay",
+      "agent dispatch pay discussion pay --kind review --final",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "render closing-gate pay.discussion.pay --variant review-running",
+      "agent ack pay discussion pay review-004 --clean",
+      "render closing-gate pay.discussion.pay --variant wrap-up",
+      "render conclude-gate pay.discussion.pay",
+      "topic complete pay discussion pay"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "agent dispatch pay discussion pay --kind review --final",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "render closing-gate pay.discussion.pay --variant review-running",
+      "write:.workflows/.cache/pay/discussion/pay/review-004.md",
+      "agent ack pay discussion pay review-004 --clean",
+      "render closing-gate pay.discussion.pay --variant wrap-up",
+      "render conclude-gate pay.discussion.pay",
+      "topic complete pay discussion pay"
+    ],
+    "calls_exclude": [
+      "--variant final-review",
+      "--variant findings-owed",
+      "--variant re-review",
+      "--reason",
+      "render in-flight-agents-gate",
+      "agent surface",
+      "--kind perspective",
+      "discussion-map set",
+      "discussion-map add",
+      "topic reopen",
+      "knowledge.cjs index"
+    ]
+  }
+}

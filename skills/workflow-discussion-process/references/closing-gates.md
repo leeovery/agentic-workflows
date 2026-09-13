@@ -36,9 +36,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} di
 
 Classify what the final-review step still owes — first match wins:
 
-1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → **findings-owed**: "background findings are still to be walked through"
-2. Any `review` row is `in-flight` → **review-running**: "a dispatched review is still running"
-3. No `review` row exists → **never-reviewed**: "no review has run yet"
+1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → **findings-owed**
+2. Any `review` row is `in-flight` → **review-running**
+3. No `review` row exists → **never-reviewed**
 4. Otherwise the highest-numbered `review` row is `incorporated` — classify by movement, anchored on the last **real** review: the highest-numbered `review` row whose report exists on disk (`.workflows/.cache/{work_unit}/discussion/{topic}/{id}.md`, non-empty). An `incorporated` row with no report is a killed dispatch closed as bookkeeping, never a review — anchoring on it would hide every commit between the real review and the kill. If no review row has a report, no review has ever completed → **never-reviewed**. Otherwise run `git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md` (`{created}` = the anchor row's `created` timestamp; git does the time comparison), then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work. Classify the residue:
    1. No commits remain → **satisfied**: the final review is up to date — no judgment
    2. A remaining commit is meaningful — a decision documented, a subtopic explored; not typo fixes, not bookkeeping (document-review reconciliation, summary maintenance) → **re-review**: the discussion has moved since the last review
@@ -110,12 +110,32 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 → Return to caller for **B. Session Loop**.
 
-#### Otherwise
+#### If the classification is `review-running`
 
-`{reason}` is the matched classification's quoted description. Fetch the gate and emit its MENU section verbatim per its marker:
+Nothing new runs on `yes` — the pass in flight is the mandatory one, and `yes` is the decision to wait for it. The gate says that plainly, so "another review" is never the reading the user answers to. Fetch it and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant final-review --reason "{reason}"
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant review-running
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+The wait is chosen here — **E** asks no second time.
+
+→ Proceed to **E. In-Flight Agent Check**.
+
+**If keep going:**
+
+→ Return to caller for **B. Session Loop**.
+
+#### Otherwise
+
+Fetch the gate and emit its MENU section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant final-review
 ```
 
 **STOP.** Wait for user response.
@@ -154,6 +174,12 @@ The last gate before leaving the session, whichever path led here. Run `node .cl
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
+#### If agents are still running and the review-running gate's `yes` led here
+
+The wait is already chosen — no second ask.
+
+→ Proceed to **F. Wait for Results**.
+
 #### If agents are still running
 
 ```bash
@@ -166,10 +192,14 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `wait`:**
 
-Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
-
-→ Return to caller for **B. Session Loop**.
+→ Proceed to **F. Wait for Results**.
 
 **If `proceed`:**
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+## F. Wait for Results
+
+Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+
+→ Return to caller for **B. Session Loop**.
