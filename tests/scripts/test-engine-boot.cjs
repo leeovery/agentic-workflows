@@ -157,11 +157,10 @@ describe('engine boot', () => {
 
   it('happy path: no pending migrations, knowledge ready — compact runs', () => {
     // TMUX pinned so the label-state leg is deterministic whatever terminal
-    // runs the suite; the empty config dir makes it `prompt`.
+    // runs the suite; no project manifest makes it `prompt`.
     const res = runEngine(fix.engine, fix.project, ['boot'], {
       STUB_CHECK: 'ready',
       TMUX: '/fake/sock,123,7',
-      WORKFLOWS_CONFIG_DIR: path.join(fix.root, 'wf-config'),
     });
 
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
@@ -174,6 +173,7 @@ describe('engine boot', () => {
       warnings: [],
       tmux_labels: 'prompt',
       label_repaired: false,
+      label_hook_installed: false,
       baseline: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
       // and the tree it arrived into holds no project file.
@@ -462,12 +462,13 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
   });
 
-  it('a peer session\'s staged work survives both of boot\'s commits', () => {
+  it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its two commits — the migration config pass
-    // and the store commit — must take their own paths and nothing else,
-    // staged peer content included.
+    // other one on the checkout. Its three commits — the migration config
+    // pass, the store commit, and the session-label hook install — must take
+    // their own paths and nothing else, staged peer content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'a peer topic']);
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
@@ -479,7 +480,14 @@ describe('engine boot', () => {
     });
 
     assert.strictEqual(res.ok, true);
-    for (const sha of git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 2)) {
+    assert.strictEqual(res.label_hook_installed, true);
+    const shas = git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 3);
+    assert.deepStrictEqual(shas.map((sha) => git(fix.project, ['log', '-1', '--pretty=%s', sha]).trim()), [
+      'chore: install session-label cleanup hook',
+      'chore(knowledge): initialise store',
+      'chore: apply workflow migration config changes',
+    ]);
+    for (const sha of shas) {
       const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
       assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
         `boot swept a peer session's staged file:\n${files.join('\n')}`);
@@ -603,45 +611,93 @@ describe('engine boot system-config detection', () => {
 
 describe('engine boot tmux-label state', () => {
   let fix;
-  let configDir;
-  beforeEach(() => {
-    fix = setupSkillsFixture();
-    configDir = path.join(fix.root, 'wf-config');
-    fs.mkdirSync(configDir, { recursive: true });
-  });
+  beforeEach(() => { fix = setupSkillsFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Boot with the tmux identity and config dir pinned; `tmux` absent unless given. */
-  function bootWith({ tmux = false, config = null } = {}) {
-    if (config !== null) {
-      writeFile(configDir, 'config.json', JSON.stringify({ session: { tmux_labels: config } }));
-    }
-    const env = { ...process.env, WORKFLOWS_CONFIG_DIR: configDir };
+  const HOOK_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+
+  /** Stamp the opt-in on the project manifest and commit it, so boot's only new dirt is its own. */
+  function recordChoice(value) {
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
+    git(fix.project, ['add', '--', '.workflows/manifest.json']);
+    git(fix.project, ['commit', '-q', '-m', 'record the choice']);
+  }
+
+  /** Boot with the tmux identity pinned; `tmux` absent unless given. */
+  function bootWith({ tmux = false } = {}) {
+    const env = { ...process.env };
     delete env.TMUX;
     if (tmux) env.TMUX = '/fake/sock,123,7';
     const out = execFileSync('node', [fix.engine, 'boot'], { cwd: fix.project, encoding: 'utf8', env });
     return JSON.parse(out.trim());
   }
 
-  it('reports no-tmux outside tmux regardless of config', () => {
-    assert.strictEqual(bootWith({ tmux: false, config: true }).tmux_labels, 'no-tmux');
+  function settings() {
+    return JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'));
+  }
+
+  it('reports no-tmux outside tmux regardless of the recorded choice', () => {
+    recordChoice(true);
+    assert.strictEqual(bootWith({ tmux: false }).tmux_labels, 'no-tmux');
   });
 
-  it('reports prompt in tmux when never configured', () => {
+  it('reports prompt in tmux when never recorded', () => {
     assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'prompt');
   });
 
-  it('reports on/off in tmux when configured', () => {
-    assert.strictEqual(bootWith({ tmux: true, config: true }).tmux_labels, 'on');
-    assert.strictEqual(bootWith({ tmux: true, config: false }).tmux_labels, 'off');
+  it('reports on/off in tmux from the project manifest', () => {
+    recordChoice(true);
+    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'on');
+    recordChoice(false);
+    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'off');
   });
 
-  it('the project manifest override beats the system value and suppresses the prompt', () => {
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: false } }, null, 2) + '\n');
-    assert.strictEqual(bootWith({ tmux: true, config: true }).tmux_labels, 'off');
-    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'off');
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'on');
+  it('installs the missing cleanup hook while labels are on, commits it confined, and is idempotent', () => {
+    recordChoice(true);
+    const first = bootWith();
+    assert.strictEqual(first.label_hook_installed, true);
+    assert.deepStrictEqual(first.warnings, []);
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: HOOK_COMMAND }] }] } });
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install session-label cleanup hook');
+    assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
+    const head = git(fix.project, ['rev-parse', 'HEAD']);
+
+    const second = bootWith();
+    assert.strictEqual(second.label_hook_installed, false);
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.workflows']).trim(), '', 'and no new dirt');
+  });
+
+  it('installs into existing settings without disturbing them', () => {
+    writeFile(fix.project, '.claude/settings.json', JSON.stringify({ permissions: { allow: ['Bash(ls)'] } }, null, 2) + '\n');
+    git(fix.project, ['add', '--', '.claude/settings.json']);
+    git(fix.project, ['commit', '-q', '-m', 'settings baseline']);
+    recordChoice(true);
+    assert.strictEqual(bootWith().label_hook_installed, true);
+    assert.deepStrictEqual(settings(), {
+      permissions: { allow: ['Bash(ls)'] },
+      hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: HOOK_COMMAND }] }] },
+    });
+  });
+
+  it('never touches the settings while labels are off or unset — removal is label-config\'s', () => {
+    assert.strictEqual(bootWith().label_hook_installed, false);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
+    recordChoice(false);
+    writeFile(fix.project, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: HOOK_COMMAND }] }] } }, null, 2) + '\n');
+    assert.strictEqual(bootWith().label_hook_installed, false);
+    assert.strictEqual(settings().hooks.SessionEnd.length, 1, 'a hook left behind is not boot\'s to remove');
+  });
+
+  it('a settings file that does not parse is a warning, never a block — left as found', () => {
+    recordChoice(true);
+    writeFile(fix.project, '.claude/settings.json', '{not json');
+    const res = bootWith();
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.label_hook_installed, false);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /session-label cleanup hook not installed: \.claude\/settings\.json is not valid JSON/);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 });
 

@@ -1,9 +1,9 @@
 'use strict';
 
 //
-// Tests for the presence heartbeat: beat / clear / scan / cleanup, the
-// held-process identity check (the one verdict — idle time is shown, never
-// judged), and the engine-rendered deferral section.
+// Tests for the presence heartbeat: beat / clear / scan, the held-process
+// identity check (the one verdict — idle time is shown, never judged), and
+// the engine-rendered deferral section.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -43,9 +43,9 @@ function engineFails(dir, args, env = {}) {
   assert.strictEqual(r.status, 1);
   return JSON.parse(r.stderr.trim());
 }
-function engineWith(dir, args, { env = {}, input, cwd = dir } = {}) {
+function engineWith(dir, args, { env = {} } = {}) {
   const r = spawnSync('node', [ENGINE, ...args], {
-    cwd, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: input ?? '',
+    cwd: dir, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: '',
   });
   assert.strictEqual(r.status, 0, r.stderr);
   const nl = r.stdout.indexOf('\n');
@@ -248,8 +248,6 @@ describe('engine presence', () => {
     const res = engine(dir, ['presence', 'scan']).res;
     assert.deepStrictEqual(res.sessions, []);
     assert.strictEqual(res.held, 0);
-    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup', 'sess-one']).cleared, []);
-    assert.ok(fs.existsSync(path.join(store, 'abcd1234-7.json')), 'the sweep leaves the store alone');
   });
 
   it('the project scan answers empty on a project that has never cached anything', () => {
@@ -366,41 +364,6 @@ describe('engine presence', () => {
       if (beforePid === undefined) delete process.env.CLAUDE_PID;
       else process.env.CLAUDE_PID = beforePid;
     }
-  });
-
-  it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
-    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
-    craftRecord(dir, 'research', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
-    craftRecord(dir, 'discussion', 'gamma', { pid: null, pid_start: null, session_id: 'sess-b' });
-
-    const swept = engineWith(dir, ['presence', 'cleanup', 'sess-a']);
-    assert.strictEqual(swept.cleared.length, 2);
-    assert.deepStrictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions.map((r) => r.topic), ['gamma']);
-
-    const viaStdin = engineWith(dir, ['presence', 'cleanup'], { input: JSON.stringify({ session_id: 'sess-b', reason: 'clear' }) });
-    assert.deepStrictEqual(viaStdin.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'gamma' }]);
-    assert.strictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions.length, 0);
-  });
-
-  it('cleanup fired outside the project root finds the heartbeat through CLAUDE_PROJECT_DIR', () => {
-    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-outside-'));
-    try {
-      const swept = engineWith(dir, ['presence', 'cleanup', 'sess-a'], { cwd: outside, env: { CLAUDE_PROJECT_DIR: dir } });
-      assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'alpha' }]);
-      assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')));
-    } finally {
-      cleanup(outside);
-    }
-  });
-
-  it('cleanup is hook-safe: no session id, empty stdin, malformed stdin all exit clean', () => {
-    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
-    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup']).cleared, []);
-    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup'], { input: 'not json' }).cleared, []);
-    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup'], { input: '{}' }).cleared, []);
-    assert.ok(fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'nothing swept without an owner match');
   });
 
   it('a queue read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {

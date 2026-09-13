@@ -16,13 +16,19 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
-const { labelConfigStatus, repairSessionLabels, configDir } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncCleanupHook, SETTINGS_SPEC } = require('./session-label.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
+
+/** The system config directory — `WORKFLOWS_CONFIG_DIR` overrides for tests. */
+function configDir() {
+  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
+}
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -64,6 +70,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a stranded session label (its owner gone) was found on this terminal and the original name put back
+ * @property {boolean} label_hook_installed this boot wrote the SessionEnd cleanup hook into `.claude/settings.json` — labels are on and the hook was missing; false when it was already present, or while labels are off or unset
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
@@ -76,8 +83,8 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * mirrors the knowledge CLI's own detection: a parseable file with a
  * top-level `knowledge` object is valid (a providerless one means
  * keyword-only mode); a parseable file without the key is absent — the file
- * is shared with other subsystems (`session`), so its existence alone says
- * nothing about knowledge; anything else is invalid.
+ * may carry other subsystems' keys, so its existence alone says nothing
+ * about knowledge; anything else is invalid.
  * @returns {SystemConfigReport}
  */
 function detectSystemConfig() {
@@ -165,7 +172,7 @@ function boot(cwd) {
   // so a commit failure is a warning, never a block.
   if (migrations.changed) {
     try {
-      const configSpecs = ['.claude/settings.json', '.gitignore']
+      const configSpecs = [SETTINGS_SPEC, '.gitignore']
         .filter((p) => fs.existsSync(path.join(cwd, p)));
       if (configSpecs.length > 0) {
         commitPathspecScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
@@ -218,9 +225,29 @@ function boot(cwd) {
     }
   }
 
+  // The cleanup hook lives in the project's settings, so a checkout that
+  // recorded the opt-in before the hook existed — or lost the hook to a
+  // hand edit — gets it back here while labels are on. Install only: the
+  // removal is `label-config false`'s. The file is written either way; the
+  // commit failing is a warning, never a block.
+  let labelHookInstalled = false;
+  if (resolveEnabled(cwd) === true) {
+    const sync = syncCleanupHook(cwd, true);
+    if (sync.error) {
+      warnings.push(`session-label cleanup hook not installed: ${sync.error}`);
+    } else if (sync.changed) {
+      labelHookInstalled = true;
+      try {
+        commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install session-label cleanup hook');
+      } catch (err) {
+        warnings.push(`session-label hook commit failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, baseline };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, label_hook_installed: labelHookInstalled, baseline };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

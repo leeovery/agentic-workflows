@@ -4,21 +4,23 @@
 // Domain ring: tmux session labels — an opt-in rename of the user's tmux
 // session to show where the workflow session is working
 // (`{original} · {work-unit} · {phase} · {topic}`). Applied by each process
-// skill at Step 0, restored by the `session cleanup` SessionEnd hook. The
+// skill at Step 0, restored by `session cleanup` at session end. The
 // feature is a display courtesy, never state: for the user who has not
 // opted in, or outside tmux, or on any tmux error, every path degrades to
 // a no-op JSON response and the label never gates a flow. (A bad argument
 // from an opted-in call site still fails loudly — that is an authoring
 // bug, not an environment condition.)
 //
-// Opt-in lives in the system config (`~/.config/workflows/config.json`)
-// under `session.tmux_labels` — absent means unconfigured, which is what
-// workflow-start's one-time prompt keys on (boot reports it via
-// `labelConfigStatus`). A `defaults.tmux_labels` boolean in the project
-// manifest overrides the system value for that project — the per-project
-// off-switch, and what keeps a prose-test world from ever labelling the
-// terminal the suite runs in. `WORKFLOWS_CONFIG_DIR` overrides the config
-// directory for tests.
+// Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
+// means never asked, which is what workflow-start's one-time prompt keys on
+// (boot reports it via `labelConfigStatus`); a prose-test world stamps
+// `false` so a walk never labels the terminal the suite runs in.
+//
+// The restore runs from a SessionEnd hook in the project's committed
+// `.claude/settings.json` — a SessionEnd hook declared in skill frontmatter
+// never fires, so cleanup must be a settings-level hook. Recording the
+// choice installs or removes it (`recordLabelChoice`), and boot self-heals
+// a missing hook while the setting is on (`syncCleanupHook`).
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
@@ -44,97 +46,142 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { processStartTime, processAlive } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
+const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { commitPathspecScoped, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 
-/** The system config directory — `WORKFLOWS_CONFIG_DIR` overrides for tests. */
-function configDir() {
-  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
-}
+/** The project's committed Claude Code settings — where the cleanup hook lives. */
+const SETTINGS_SPEC = '.claude/settings.json';
+const CLEANUP_HOOK_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+// What makes a hook ours: the engine and the verb, whatever surrounds them —
+// so a hand-adjusted path or quoting is recognised, never twinned.
+const CLEANUP_HOOK_MARK = 'engine.cjs" session cleanup';
 
-function configPath() {
-  return path.join(configDir(), 'config.json');
-}
-
-/**
- * The stored opt-in: true/false when configured, null when unconfigured
- * (absent file, absent key, or unreadable — all mean "never asked").
- * @returns {boolean|null}
- */
-function readLabelConfig() {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
-    const s = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed.session : null;
-    if (s && typeof s === 'object' && !Array.isArray(s) && typeof s.tmux_labels === 'boolean') return s.tmux_labels;
-  } catch { /* absent or unreadable — unconfigured */ }
-  return null;
+/** @param {unknown} v @returns {v is Record<string, any>} */
+function isObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
 /**
  * The project manifest's `defaults.tmux_labels`, when it is a boolean —
- * the per-project override. Null when absent or unreadable.
+ * the opt-in. Null when absent or unreadable.
  * @param {string} cwd @returns {boolean|null}
  */
 function readProjectOverride(cwd) {
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
-    const d = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed.defaults : null;
-    if (d && typeof d === 'object' && !Array.isArray(d) && typeof d.tmux_labels === 'boolean') return d.tmux_labels;
-  } catch { /* no project manifest — no override */ }
+    const d = isObject(parsed) ? parsed.defaults : null;
+    if (isObject(d) && typeof d.tmux_labels === 'boolean') return d.tmux_labels;
+  } catch { /* no project manifest — never asked */ }
   return null;
 }
 
 /**
- * The effective opt-in for this project: the project override wins, then
- * the system value. Null means unconfigured everywhere.
+ * The opt-in for this project: true/false when recorded, null when never
+ * asked.
  * @param {string} cwd @returns {boolean|null}
  */
 function resolveEnabled(cwd) {
-  const project = readProjectOverride(cwd);
-  if (project !== null) return project;
-  return readLabelConfig();
+  return readProjectOverride(cwd);
 }
 
 /**
- * Record the opt-in under `session.tmux_labels`, preserving every other
- * top-level key (the knowledge subsystem shares this file). An existing
- * file that does not parse is refused loudly — silently replacing it
- * would destroy the sibling subsystem's settings. Atomic pid-tagged
- * tmp-then-rename, matching the store/manifest convention.
- * @param {boolean} value
+ * Record the opt-in as the project manifest's `defaults.tmux_labels`,
+ * every other key preserved — under the project lock, the manifest's own
+ * atomic write. A manifest that does not parse refuses loudly through the
+ * kernel read: silently replacing it would drop every registered work unit.
+ * @param {string} cwd @param {boolean} value
+ * @returns {{tmux_labels: boolean}}
  */
-function setLabelConfig(value) {
-  const p = configPath();
-  /** @type {Record<string, unknown>} */
-  let existing = {};
-  if (fs.existsSync(p)) {
-    /** @type {unknown} */
-    let parsed;
-    try {
-      parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    } catch {
-      throw new Error(`config file at ${p} is not valid JSON — fix or remove it before recording the session-label choice`);
-    }
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) existing = /** @type {Record<string, unknown>} */ (parsed);
-  }
-  const session = existing.session && typeof existing.session === 'object' && !Array.isArray(existing.session)
-    ? /** @type {Record<string, unknown>} */ (existing.session)
-    : {};
-  const payload = { ...existing, session: { ...session, tmux_labels: value } };
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  const tmp = `${p}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n');
-  fs.renameSync(tmp, p);
+function setLabelConfig(cwd, value) {
+  withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const defaults = isObject(manifest.defaults) ? manifest.defaults : {};
+    manifest.defaults = { ...defaults, tmux_labels: value };
+    writeProjectManifestAtomic(cwd, manifest);
+  });
   return { tmux_labels: value };
+}
+
+/** @param {unknown} hook */
+function isCleanupHook(hook) {
+  return isObject(hook) && hook.type === 'command' && typeof hook.command === 'string' && hook.command.includes(CLEANUP_HOOK_MARK);
+}
+
+/**
+ * Ensure the SessionEnd cleanup hook is present (`enabled`) or absent in
+ * the project's `.claude/settings.json`, every other key — permissions,
+ * other events, sibling SessionEnd groups — preserved. Idempotent on the
+ * hook's identity, so a second install never adds a twin, and a removal
+ * takes our hook alone, dropping only the group it emptied. A settings
+ * file that does not parse is left untouched and reported rather than
+ * thrown: neither caller may fail over hook plumbing it cannot read.
+ * @param {string} cwd @param {boolean} enabled
+ * @returns {{changed: boolean, error?: string}}
+ */
+function syncCleanupHook(cwd, enabled) {
+  const file = path.join(cwd, SETTINGS_SPEC);
+  /** @type {Record<string, any>} */
+  let settings = {};
+  if (fs.existsSync(file)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (!isObject(parsed)) throw new Error('root is not an object');
+      settings = parsed;
+    } catch (err) {
+      return { changed: false, error: `${SETTINGS_SPEC} is not valid JSON — ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+  const hooks = isObject(settings.hooks) ? settings.hooks : {};
+  /** @type {any[]} */
+  const groups = Array.isArray(hooks.SessionEnd) ? hooks.SessionEnd : [];
+  const holdsOurs = (/** @type {unknown} */ g) => isObject(g) && Array.isArray(g.hooks) && g.hooks.some(isCleanupHook);
+  if (enabled === groups.some(holdsOurs)) return { changed: false };
+
+  const nextGroups = enabled
+    ? [...groups, { hooks: [{ type: 'command', command: CLEANUP_HOOK_COMMAND }] }]
+    : groups.flatMap((g) => {
+      if (!holdsOurs(g)) return [g];
+      const kept = g.hooks.filter((/** @type {unknown} */ h) => !isCleanupHook(h));
+      return kept.length > 0 ? [{ ...g, hooks: kept }] : [];
+    });
+  const nextHooks = { ...hooks };
+  if (nextGroups.length > 0) nextHooks.SessionEnd = nextGroups;
+  else delete nextHooks.SessionEnd;
+  const next = { ...settings };
+  if (Object.keys(nextHooks).length > 0) next.hooks = nextHooks;
+  else delete next.hooks;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, next);
+  return { changed: true };
+}
+
+/**
+ * workflow-start's one-time answer: record the opt-in, install or remove
+ * the cleanup hook to match, and commit the two together, confined. A
+ * settings file the hook sync could not read comes back as a warning —
+ * the choice is recorded either way, and boot re-tries the install.
+ * @param {string} cwd @param {boolean} value
+ * @returns {{tmux_labels: boolean, warnings?: string[]}}
+ */
+function recordLabelChoice(cwd, value) {
+  /** @type {{tmux_labels: boolean, warnings?: string[]}} */
+  const result = setLabelConfig(cwd, value);
+  const sync = syncCleanupHook(cwd, value);
+  const specs = sync.changed ? [PROJECT_MANIFEST_SPEC, SETTINGS_SPEC] : [PROJECT_MANIFEST_SPEC];
+  commitPathspecScoped(cwd, specs, 'chore: record session-label choice');
+  if (sync.error) result.warnings = [`session-label cleanup hook not synced: ${sync.error}`];
+  return result;
 }
 
 /**
  * Boot's report for workflow-start's one-time prompt: `no-tmux` (never
- * prompt, never label), `on`/`off` (settled — by the project override or
- * the system value), `prompt` (in tmux and never asked anywhere).
+ * prompt, never label), `on`/`off` (recorded on the project manifest),
+ * `prompt` (in tmux and never asked).
  * @param {string} cwd
  * @returns {'no-tmux'|'on'|'off'|'prompt'}
  */
@@ -293,7 +340,7 @@ function liveSessions(socket) {
 
 /**
  * Rename the tmux session to carry the working position. No-op JSON when
- * the feature is off (system or project), the session runs outside tmux,
+ * the feature is off for the project, the session runs outside tmux,
  * tmux errors, or the stash cannot be written — the label never blocks a
  * flow. Bad arguments from an enabled call site throw: an authoring bug
  * fails loudly.
@@ -357,8 +404,8 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
 /**
  * Put the original tmux session name back — `session cleanup`, the
  * SessionEnd sweep over the checkout's stash store. Without a session
- * id nothing is touched (an id-less sweep could take a live peer's label —
- * the presence sweep refuses the same way). Sweeps stashes the named
+ * id nothing is touched (an id-less sweep could take a live peer's
+ * label). Sweeps stashes the named
  * session owns (an ownerless stash counts) plus any whose owning process
  * is dead — a stranding no other sweep would ever reach. A session is
  * renamed only when its current name is exactly the one we applied — found
@@ -475,4 +522,8 @@ function repairSessionLabels(cwd) {
   return { repaired };
 }
 
-module.exports = { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig, labelConfigStatus, configDir };
+module.exports = {
+  applySessionLabel, restoreSessionLabel, repairSessionLabels,
+  resolveEnabled, labelConfigStatus, setLabelConfig, syncCleanupHook, recordLabelChoice,
+  SETTINGS_SPEC,
+};
