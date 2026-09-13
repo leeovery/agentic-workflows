@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.44] - 2026-09-13
+
+🔧 Changed
+- Discussion close now shows a dedicated gate when a review is already in flight, telling you plainly that answering "yes" just waits for it rather than starting a new one.
+- The mandatory pre-conclusion review gate drops its dynamic reason text in favour of fixed per-case wording, so what "yes" does is always unambiguous.
+- Research sign-offs that leave a topic open (e.g. "picking this up later") are now treated as a pause rather than a completion signal, and resuming skips redundant context-gathering.
+- A follow-up question that reshapes an existing research thread now updates that thread instead of adding a duplicate row.
+
+🐛 Fixed
+- Discovery session logs are now read with the proper file-reading tool instead of being treated as plain text, avoiding truncation on large logs.
+
 ## [0.7.43] - 2026-09-12
 
 🔧 Changed
