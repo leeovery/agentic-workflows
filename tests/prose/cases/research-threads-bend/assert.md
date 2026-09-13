@@ -6,8 +6,8 @@ The prose should have taken this path:
    a map; the research status reads in progress, the resuming phase
    note is emitted, the reconcile flag is absent, and the resume routes
    straight to the handoff — context gathering is the fresh path's, and
-   a resumed topic already has its carrier — no interview, no read of
-   the discovery log; the handoff is the continue shape
+   a resumed topic already has its carrier — no interview; the handoff
+   is the continue shape
 2. the process reads the status again, finds the file, renders the
    thread register once above resume detection — three threads, all
    open, so the header carries no breakdown — and the user continues;
