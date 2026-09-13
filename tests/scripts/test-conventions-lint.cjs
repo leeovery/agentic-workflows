@@ -913,27 +913,24 @@ function checkConditionalOptions(files) {
   return out;
 }
 
-// Check 18 — every presence phase's process skill declares the SessionEnd
-// cleanup hook. A session that leaves without sweeping its own heartbeat
-// leaves a hold nothing releases: a doc topic reads occupied to its peers, and
-// a code topic locks the checkout's one code slot. The phase set is the
-// schema's, minus discovery (engine-serialised, no heartbeat) — so a new
-// phase arrives here the moment it arrives in the schema.
-const PRESENCE_CLEANUP_HOOK =
-  '\'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup\'';
-
-function checkPresenceCleanupHook(files, root = REPO) {
-  const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
+// Check 18 — no skill frontmatter declares a SessionEnd hook. Claude Code
+// never fires one from skill frontmatter (other events do fire there), so a
+// declaration is dead plumbing that reads as cleanup nobody runs. Session-end
+// cleanup is the settings-level hook the engine installs in the project's
+// `.claude/settings.json`.
+function checkNoFrontmatterSessionEndHooks(files) {
   const out = [];
-  for (const phase of VALID_PHASES) {
-    if (phase === 'discovery') continue;
-    const file = path.join(root, 'skills', `workflow-${phase}-process`, 'SKILL.md');
-    if (!files.includes(file)) {
-      out.push({ file, line: 1, message: `no process skill for presence phase "${phase}" — the heartbeat has no owner to sweep it` });
-      continue;
-    }
-    if (!readLines(file).some((l) => l.includes(PRESENCE_CLEANUP_HOOK))) {
-      out.push({ file, line: 1, message: `presence phase "${phase}" but no SessionEnd \`presence cleanup\` hook — a session leaving by /clear or logout strands its hold` });
+  for (const file of files) {
+    if (path.basename(file) !== 'SKILL.md') continue;
+    const lines = readLines(file);
+    if (lines[0] === undefined || lines[0].trim() !== '---') continue;
+    let inHooks = false;
+    for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+      const line = lines[i];
+      if (/^\S/.test(line)) inHooks = line === 'hooks:';
+      else if (inHooks && /^\s+SessionEnd:/.test(line)) {
+        out.push({ file, line: i + 1, message: 'SessionEnd hook in skill frontmatter — Claude Code never fires it; session-end cleanup is the settings-level hook the engine installs in .claude/settings.json' });
+      }
     }
   }
   return out;
@@ -959,7 +956,7 @@ const CHECKS = [
   ['15: cross-file section references', checkCrossFileSections],
   ['16: menu option alignment', checkMenuAlignment],
   ['17: conditional menu options', checkConditionalOptions],
-  ['18: presence-phase SessionEnd cleanup hooks', checkPresenceCleanupHook],
+  ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
 ];
 
 function report(violations) {
@@ -1409,26 +1406,28 @@ test('check 17 (conditional menu options) — catches @if-guarded rows, permits 
   });
 });
 
-test('check 18 (presence cleanup hooks) — catches a missing hook and a missing skill', () => {
+test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declaration, permits other events', () => {
   withTemp((dir) => {
-    const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
-    const phases = VALID_PHASES.filter((p) => p !== 'discovery');
-    const hooked = (phase) => write(dir, `skills/workflow-${phase}-process/SKILL.md`,
-      `---\nname: workflow-${phase}-process\nhooks:\n  SessionEnd:\n    - hooks:\n        - type: command\n          command: ${PRESENCE_CLEANUP_HOOK}\n---\n`);
+    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+    const hookBlock = (event) => `hooks:\n  ${event}:\n    - hooks:\n        - type: command\n          command: '${cleanup}'\n`;
 
-    const complete = phases.map(hooked);
-    assert.strictEqual(checkPresenceCleanupHook(complete, dir).length, 0, 'every presence phase sweeps its own heartbeat');
+    const plain = write(dir, 'skills/workflow-a-process/SKILL.md',
+      '---\nname: workflow-a-process\nuser-invocable: false\n---\n\nBody.\n');
+    // Other events do fire from skill frontmatter and stay allowed.
+    const preToolUse = write(dir, 'skills/workflow-b-process/SKILL.md',
+      `---\nname: workflow-b-process\n${hookBlock('PreToolUse')}---\n`);
+    // The event name in the body is prose, not a declaration.
+    const bodyMention = write(dir, 'skills/workflow-c-process/SKILL.md',
+      '---\nname: workflow-c-process\n---\n\n```\nSessionEnd:\n```\n');
+    assert.strictEqual(checkNoFrontmatterSessionEndHooks([plain, preToolUse, bodyMention]).length, 0, 'no SessionEnd declared — clean');
 
-    // The hook dropped: a session leaving by /clear strands its hold.
-    const unhooked = write(dir, `skills/workflow-${phases[0]}-process/SKILL.md`,
-      `---\nname: workflow-${phases[0]}-process\n---\n`);
-    const v = checkPresenceCleanupHook([unhooked, ...complete.slice(1)], dir);
-    assert.strictEqual(v.length, 1, `expected the unhooked phase to be caught, got ${report(v)}`);
-    assert.match(v[0].message, /no SessionEnd `presence cleanup` hook/);
-
-    // A presence phase with no process skill at all.
-    const missing = checkPresenceCleanupHook(complete.slice(1), dir);
-    assert.strictEqual(missing.length, 1);
-    assert.match(missing[0].message, /no process skill for presence phase/);
+    // A SessionEnd hook declared in frontmatter never fires.
+    const sessionEnd = write(dir, 'skills/workflow-d-process/SKILL.md',
+      `---\nname: workflow-d-process\n${hookBlock('SessionEnd')}---\n`);
+    const v = checkNoFrontmatterSessionEndHooks([plain, preToolUse, sessionEnd]);
+    assert.strictEqual(v.length, 1, `expected the SessionEnd declaration to be caught, got ${report(v)}`);
+    assert.strictEqual(v[0].file, sessionEnd);
+    assert.strictEqual(v[0].line, 4);
+    assert.match(v[0].message, /SessionEnd hook in skill frontmatter/);
   });
 });

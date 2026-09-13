@@ -2,11 +2,6 @@
 name: workflow-discovery
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log), Bash(mkdir -p .workflows/), Bash(rm .workflows/), Bash(rm -f .workflows/)
-hooks:
-  SessionEnd:
-    - hooks:
-        - type: command
-          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 The universal first phase. Shape the work the user is bringing — confirm what kind of work it is, sketch its outline — then persist it and route into the pipeline.
