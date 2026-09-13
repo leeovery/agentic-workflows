@@ -16,6 +16,12 @@ module.exports = {
     e.init(h);
     e.create(h);
     e.harvest(h);
+    // The map gates a discussion's birth: relevance-measurement is
+    // research-routed at the harvest, and the deliveries below park
+    // concerns on its discussion — which can only start once the map
+    // names discussion as the topic's next step. Shaped here as a
+    // discussion topic, the way synonym-handling is in the mainline.
+    h.engine('discovery-map', 'reroute', WU, 'relevance-measurement', 'discussion');
     e.completeDiscussions(h);
 
     // The mainline's synonym-handling decision rests on the live
