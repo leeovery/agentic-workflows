@@ -43,12 +43,14 @@ The prose should have taken this path:
 6. with the map fully decided again, the user signals the discussion
    covers it; the map is read through the gateway and the closing
    gates load
-7. the user passes the review gate per their conduct (a mandatory
-   review proceeds — the stubbed report comes back clean; the optional
-   offer of one more review is declined), confirms the conclude
-   gate, and the final gap review and document review steps run
-   without unwinding the timeline — the revision landing survives
-   reconciliation intact
+7. no review has ever run on the topic, so the mandatory review gate
+   renders and the user passes it per their conduct; the final gap
+   review dispatches the review, the stubbed report comes back clean,
+   and the gate is satisfied — the optional offer of one more review
+   never renders on this path (nothing moves after the clean pass),
+   and the wrap-up gate is never reached. The document review then
+   runs without unwinding the timeline — the revision landing survives
+   reconciliation intact — and the user confirms the conclude gate
 8. the conclusion marks the discussion complete (`topic complete`),
    commits, finds no leavings to sweep, and the walk stops at the
    bridge invocation

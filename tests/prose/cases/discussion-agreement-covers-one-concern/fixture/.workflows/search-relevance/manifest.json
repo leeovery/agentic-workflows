@@ -24,7 +24,7 @@
           "order": 2
         },
         "relevance-measurement": {
-          "routing": "research",
+          "routing": "discussion",
           "source": "discovery",
           "summary": "How to tell whether a relevance change makes results better or worse.",
           "description": "There is no evaluation set and no metrics — every ranking tweak is decided by argument. The area the user understands least; they have never built an evaluation harness.",
