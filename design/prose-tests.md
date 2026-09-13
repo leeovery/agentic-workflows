@@ -169,6 +169,14 @@ testing.
   scales past a handful of cases. Standing instructions live in
   `.claude/agents/prose-*.md`; only the per-case payload comes from
   `tests/prose/prompts/`, so no agent ever reads words composed in code.
+  The asserter's payload never passes through the orchestrator's hands:
+  `run.cjs assert` writes it into the world (`.assert-prompt.md`, excluded
+  from the tree like the logs and lifted with them on archive) and the
+  orchestrator dispatches the asserter with the path alone. The record
+  runs past 100 KB on a long walk, and a copy relayed by an agent arrives
+  cut — an asserter judging a cut record reads everything past the cut as
+  something the walk never did. The asserter's one permitted tool use is
+  reading that file to its end.
 - **P6c — run the test, nothing else.** Every agent in the chain is
   forbidden from fixing anything and from working out why a case failed.
   A failure is a finished result; diagnosing it is a separate, human-led

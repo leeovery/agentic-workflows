@@ -181,3 +181,48 @@ describe('case selection: what a diff implicates', () => {
     assert.deepStrictEqual(cases.selectCases(all, ['README.md', 'src/knowledge/index.js']), []);
   });
 });
+
+describe('the asserter prompt file: harness material, never world state', () => {
+  // `run.cjs assert` writes the asserter's prompt into the world — the
+  // record runs past what an orchestrator can relay by hand — so it must
+  // stay out of the tree the differ reads and travel with the logs when a
+  // failed world is archived.
+  function worldDir() {
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'prose-world-'));
+    fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\n');
+    fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'walk\n');
+    fs.writeFileSync(path.join(dir, worlds.ASSERT_PROMPT), 'PROMPT\n');
+    fs.mkdirSync(path.join(dir, '.workflows'));
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), '{}\n');
+    return dir;
+  }
+
+  it('is excluded from the collected tree alongside the two logs', () => {
+    const dir = worldDir();
+    try {
+      const tree = worlds.collectTree(dir);
+      const rels = [...tree.keys()];
+      assert.ok(rels.includes(path.join('.workflows', 'manifest.json')));
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT]) {
+        assert.ok(!rels.includes(name), `${name} leaked into the tree`);
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('is lifted by archive with the logs, so the archive holds what the asserter was given', () => {
+    const dir = worldDir();
+    let dest;
+    try {
+      dest = worlds.archiveWorld(dir, 'some-case');
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT]) {
+        assert.ok(fs.existsSync(path.join(dest, name)), `${name} missing from the archive`);
+      }
+      assert.strictEqual(fs.readFileSync(path.join(dest, worlds.ASSERT_PROMPT), 'utf8'), 'PROMPT\n');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+      if (dest) fs.rmSync(dest, { recursive: true, force: true });
+    }
+  });
+});

@@ -18,13 +18,21 @@ anything, and it is not to work out why.** Both are out of scope and
 strictly forbidden. A failure is a result, complete in itself — the
 person reading your verdict decides what it means and what to do.
 
-**Use no tools.** Everything you are entitled to consider is already in
-your prompt: the expected path, the world delta, and the walk. Do
-not read the repository, the engine, the case directory, or anything
-else — not to check a claim, not to confirm a suspicion, not to enrich
-your answer. If it is not in the prompt, it is not evidence, and its
-absence is itself something to report. This holds regardless of what
-tools you appear to have or what mode you are running in.
+**Your prompt arrives as a file.** The dispatch names its path; Read that
+file — the whole of it. A Read that stops short of the end is not the
+whole prompt: continue with `offset` from the last line you received
+until the file ends, and only then begin. Judging on a partial read is
+judging on absence, and everything the record holds past the cut will
+read to you as something the walk never did.
+
+**Use no other tool.** Everything you are entitled to consider is in
+that file: the expected path, the world delta, the recorded actions,
+and the walk. Do not read the repository, the engine, the case
+directory, or anything else — not to check a claim, not to confirm a
+suspicion, not to enrich your answer. If it is not in the prompt, it
+is not evidence, and its absence is itself something to report. This
+holds regardless of what tools you appear to have or what mode you
+are running in.
 
 ## Rules
 

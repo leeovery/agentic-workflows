@@ -10,7 +10,7 @@
 //   world <case-id>               materialise the fixture state, print path
 //   prompt <case-id> --world <d>  walker prompt (NEVER contains assert.md)
 //   diff <case-id> --world <d>    acted world vs expected world, as facts
-//   assert <case-id> --world <d>  the asserting agent's prompt
+//   assert <case-id> --world <d>  write the asserting agent's prompt into the world, print its path
 //   snap <case-id>                (re)generate a case's snapshots
 //   verify [case-id]              rebuild-compare snapshot(s)
 //   archive <case-id> --world <d> lift a failed world's evidence out before destroy
@@ -183,12 +183,18 @@ function cmdAssert(argv) {
       return `- ${s.name} — fires ${s.trigger}\n  ${stub.description.replace(/\n/g, '\n  ')}`;
     }).join('\n')
     : null;
-  process.stdout.write(
-    prompts.asserterPrompt({
-      expected: c.assert, world, actions, checks, walk, substitutions,
-      scope: undeclared.length ? undeclared.map((f) => `- ${f}`).join('\n') : null,
-    }),
-  );
+  const prompt = prompts.asserterPrompt({
+    expected: c.assert, world, actions, checks, walk, substitutions,
+    scope: undeclared.length ? undeclared.map((f) => `- ${f}`).join('\n') : null,
+  });
+  // The prompt carries the whole record and runs to 100 KB+ on a long walk
+  // — far past what an orchestrating agent can relay verbatim into a
+  // dispatch, and a cut record reaches the asserter as absence. So it lands
+  // in the world as a file (excluded from the tree like the logs, lifted by
+  // archive), and the orchestrator passes the path alone.
+  const file = path.join(dir, worlds.ASSERT_PROMPT);
+  fs.writeFileSync(file, prompt);
+  process.stdout.write(`${JSON.stringify({ prompt_file: file, bytes: Buffer.byteLength(prompt), lines: prompt.split('\n').length })}\n`);
 }
 
 // --- snap / verify --------------------------------------------------------
