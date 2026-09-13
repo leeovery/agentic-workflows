@@ -48,6 +48,11 @@ const ACTION_LOG = '.walk-actions.log';
 // turn by turn, lifted from the runtime's own transcript. An agent
 // returns one final message; the walk happens across dozens of turns.
 const WALK_LOG = '.walk-transcript.log';
+// The asserter's prompt, written by `run.cjs assert` into the world so the
+// orchestrator hands over a path, never the text — a 100 KB record relayed
+// by hand arrives cut, and an asserter judging a cut record rules on
+// absence. Harness material like the logs: never world state, lifted with them.
+const ASSERT_PROMPT = '.assert-prompt.md';
 
 // A recipe's git history dies at the world's fresh init, so a fixture
 // that needs one (implementation commits the review scope-grep reads)
@@ -166,7 +171,7 @@ function runRecipe(caseId, which) {
 function excluded(rel) {
   const parts = rel.split(path.sep);
   if (parts.includes('.git')) return true;
-  if (rel === HASH_FILE || rel === ACTION_LOG || rel === WALK_LOG) return true;
+  if (rel === HASH_FILE || rel === ACTION_LOG || rel === WALK_LOG || rel === ASSERT_PROMPT) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
@@ -478,7 +483,7 @@ function buildWorld(caseId) {
   // The harness's logs live inside the world but are not world state — a
   // walker staging broadly must never commit them. info/exclude keeps the
   // rule out of the working tree, so snapshots and deltas never see it.
-  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), '.walk-actions.log\n.walk-transcript.log\n');
+  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), `${ACTION_LOG}\n${WALK_LOG}\n${ASSERT_PROMPT}\n`);
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
 
@@ -564,7 +569,7 @@ function archiveWorld(dir, caseId) {
     throw new Error(`refusing to archive non-world directory: ${dir}`);
   }
   const dest = fs.mkdtempSync(path.join(os.tmpdir(), `${ARCHIVE_PREFIX}${caseId}-`));
-  for (const name of [ACTION_LOG, WALK_LOG]) {
+  for (const name of [ACTION_LOG, WALK_LOG, ASSERT_PROMPT]) {
     const src = path.join(dir, name);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dest, name));
   }
@@ -611,7 +616,7 @@ function readWalkLog(worldDir) {
 
 module.exports = {
   ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
-  ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog,
+  ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
   stampLabelKill, unstampLabelKill, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST,

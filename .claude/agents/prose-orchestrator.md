@@ -53,10 +53,18 @@ a walk.
    evidence.
 
 3. **Assert** — `node tests/prose/run.cjs assert <case-id> --world <dir>`.
-   Dispatch the **prose-asserter** agent with that output verbatim — an
-   Agent call with `subagent_type: "prose-asserter"`, always. It already
-   carries the walk; never append the walker's returned message to it,
-   and never paste it anywhere else.
+   It writes the asserter's prompt into the world and answers with the
+   file's path (`prompt_file`). Dispatch the **prose-asserter** agent —
+   an Agent call with `subagent_type: "prose-asserter"`, always — with
+   exactly this one line as its prompt:
+
+   `Your prompt is the file at <prompt_file>. Read it in full and follow it.`
+
+   Never paste the file's content into the dispatch: the record it
+   carries runs to 100 KB and more on a long walk, and a copy relayed by
+   hand arrives cut — the asserter then rules on what it cannot see.
+   The file already carries the walk; never append the walker's returned
+   message to it, and never paste it anywhere else.
 
    If that command **fails** rather than printing a prompt, the harness
    is broken, not the prose. Stop there, destroy the world, and report
