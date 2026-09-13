@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 🔧 Changed
 
 - The tmux session-label opt-in is now per project, recorded in the project's `.workflows/manifest.json` — each project asks once on its next `/workflow-start`.
+- The workflows now keep a session-end hook in each project's `.claude/settings.json`, installed at `/workflow-start`: it restores the tmux session name and clears the session's presence markers when a session ends. A project can opt out with `defaults.manage_session_end_hooks: false`.
 
 🐛 Fixed
 
-- The original tmux session name now comes back when a session ends: the restore runs from a hook the workflows install in the project's `.claude/settings.json`, so a finished session no longer leaves its label behind.
+- The original tmux session name now comes back when a session ends — the restore runs from the session-end hook, so a finished session no longer leaves its label behind.
+- A session ended with `/clear` or `/logout` no longer holds its topics — or the checkout's code slot — until the Claude process exits: the session-end hook sweeps its presence markers, so peers stop seeing a stale "held".
 
 ## [0.7.45] - 2026-09-13
 

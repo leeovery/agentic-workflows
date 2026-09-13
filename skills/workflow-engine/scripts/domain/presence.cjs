@@ -22,10 +22,15 @@
 // it from a verb acting on another topic manufactures a false hold. Read
 // verbs are reachable for any topic, so they take `refreshQuietly` instead:
 // re-stamp a heartbeat this session already owns, never create one, never
-// overwrite a peer's. No exit sweep exists: `held` follows the owning
-// process, so a row outlives its conversation only while that process still
-// runs — and a later conversation in the same process owns the row
-// (`ownsRow`'s pid arm), never gating against it.
+// overwrite a peer's. The exit sweep is `cleanupPresence`, run from a
+// settings-level SessionEnd hook the engine installs in the project's
+// `.claude/settings.json` (a SessionEnd hook declared in skill frontmatter
+// never fires): it drops every row the ending session owns, by session id,
+// on the exits that keep the process alive (`/clear`, `/logout`) — rows that
+// would otherwise read held until the process exits. A dead process's row
+// reads unheld through the pid check regardless, and a later conversation
+// in the same process owns its predecessor's row (`ownsRow`'s pid arm),
+// never gating against it.
 //
 // Every phase a session sits in carries presence except discovery:
 // `discovery-session open` already refuses a second session per epic
@@ -348,6 +353,47 @@ function heldCodeSessions(cwd) {
 }
 
 /**
+ * Sweep every heartbeat the named session owns, across all work units — the
+ * SessionEnd hook's target, covering the exits that keep the process alive
+ * (/clear, logout). Never throws on malformed or missing state: a hook must
+ * exit clean.
+ * @param {string} cwd @param {string|null} sessionId
+ * @returns {{session_id: string|null, cleared: {work_unit: string, phase: string, topic: string}[]}}
+ */
+function cleanupPresence(cwd, sessionId) {
+  /** @type {{work_unit: string, phase: string, topic: string}[]} */
+  const cleared = [];
+  if (!sessionId) return { session_id: null, cleared };
+  const cacheRoot = path.join(cwd, '.workflows', '.cache');
+  /** @type {string[]} */
+  let workUnits = [];
+  try {
+    workUnits = fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch { return { session_id: sessionId, cleared }; }
+  for (const wu of workUnits) {
+    for (const phase of PHASES) {
+      const dir = path.join(cacheRoot, wu, phase);
+      /** @type {string[]} */
+      let topics = [];
+      try {
+        topics = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+      } catch { continue; }
+      for (const topic of topics) {
+        const file = path.join(dir, topic, 'presence');
+        const record = readRecord(file);
+        if (record && record.session_id === sessionId) {
+          try {
+            fs.unlinkSync(file);
+            cleared.push({ work_unit: wu, phase, topic });
+          } catch { /* raced away */ }
+        }
+      }
+    }
+  }
+  return { session_id: sessionId, cleared };
+}
+
+/**
  * The deferral callout, rendered engine-side so calling flows emit it
  * verbatim (only where an analysis defers — the marker says so). Counts the
  * source phases alone, like the deferral itself, naming each held row with
@@ -370,6 +416,6 @@ function deferralSection(scan) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
-  scanPresence, scanProject, heldCodeSessions, heldDocument, deferralSection,
+  scanPresence, scanProject, heldCodeSessions, heldDocument, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
 };

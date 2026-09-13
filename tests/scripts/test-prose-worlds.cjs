@@ -102,9 +102,13 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       const stamped = worlds.stampLabelKill(dir);
       assert.deepStrictEqual(stamped, { baseline: true });
       const tree = worlds.collectTree(dir);
-      assert.deepStrictEqual(manifestOf(tree), { work_units: {}, defaults: { tmux_labels: false }, baseline: { status: 'native' } });
+      assert.deepStrictEqual(manifestOf(tree), {
+        work_units: {},
+        defaults: { tmux_labels: false, manage_session_end_hooks: false },
+        baseline: { status: 'native' },
+      });
       worlds.unstampLabelKill(tree, stamped);
-      assert.deepStrictEqual(manifestOf(tree), { work_units: {} }, 'both stamps gone, nothing else touched');
+      assert.deepStrictEqual(manifestOf(tree), { work_units: {} }, 'every stamp gone, nothing else touched');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -118,11 +122,42 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.deepStrictEqual(stamped, { baseline: false });
       // The walk records its verdict.
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
-        JSON.stringify({ work_units: {}, defaults: { tmux_labels: false }, baseline: { status: 'native' } }, null, 2) + '\n');
+        JSON.stringify({ work_units: {}, defaults: { tmux_labels: false, manage_session_end_hooks: false }, baseline: { status: 'native' } }, null, 2) + '\n');
       const tree = worlds.collectTree(dir);
       worlds.unstampLabelKill(tree, stamped);
       assert.deepStrictEqual(manifestOf(tree), { work_units: {}, baseline: { status: 'native' } },
         'the recorded verdict is a real delta, never mistaken for the stamp');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('a recipe\'s boot runs under the settings-hook opt-out and leaves no trace of it', () => {
+    const dir = scratch();
+    try {
+      const file = path.join(dir, worlds.PROJECT_MANIFEST);
+      const during = () => JSON.parse(fs.readFileSync(file, 'utf8')).defaults.manage_session_end_hooks;
+      // No manifest: one exists for the call and is gone after.
+      assert.strictEqual(worlds.withoutSessionEndHooks(dir, during), false);
+      assert.ok(!fs.existsSync(file));
+      // A manifest without defaults comes back byte-identical.
+      const bare = JSON.stringify({ work_units: {} }, null, 2) + '\n';
+      fs.writeFileSync(file, bare);
+      assert.strictEqual(worlds.withoutSessionEndHooks(dir, during), false);
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), bare);
+      // A sibling default keeps its place.
+      const withDefaults = JSON.stringify({ defaults: { plan_format: 'tick' }, work_units: {} }, null, 2) + '\n';
+      fs.writeFileSync(file, withDefaults);
+      assert.strictEqual(worlds.withoutSessionEndHooks(dir, during), false);
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), withDefaults);
+      // What the call writes beside the stamp stays.
+      worlds.withoutSessionEndHooks(dir, () => {
+        const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+        m.work_units.pay = { work_type: 'feature' };
+        fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
+      });
+      assert.deepStrictEqual(manifestOf(worlds.collectTree(dir)),
+        { defaults: { plan_format: 'tick' }, work_units: { pay: { work_type: 'feature' } } });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -140,6 +175,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.ok(all.indexOf(arrival[0]) > 0, `.workflows/ arrives after the root commit: ${all.join(' | ')}`);
       const manifest = JSON.parse(fs.readFileSync(path.join(dir, worlds.PROJECT_MANIFEST), 'utf8'));
       assert.strictEqual(manifest.defaults.tmux_labels, false, 'the label kill lands on the layered manifest');
+      assert.strictEqual(manifest.defaults.manage_session_end_hooks, false, 'and the settings-hook opt-out with it');
       assert.deepStrictEqual(manifest.baseline, {}, 'the fixture\'s nothing-recorded baseline is left alone');
       assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false });
       assert.strictEqual(statusLines(dir).length, 0, 'no dirt for the walk to sweep up');

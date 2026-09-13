@@ -1221,24 +1221,38 @@ describe('pipeline simulation', () => {
     const project = sim.run(['presence', 'scan']);
     assert.strictEqual(project.scope, 'project');
     assert.ok(project.sessions.every((r) => typeof r.work_unit === 'string'), 'every row names its work unit');
+    // The SessionEnd cleanup sweeps by owning session id — a peer session's
+    // heartbeat survives.
+    sim.write(`.workflows/.cache/${wu}/discussion/beta/presence`,
+      JSON.stringify({ pid: null, pid_start: null, session_id: 'sim-sess' }) + '\n');
+    sim.write(`.workflows/.cache/${wu}/discussion/gamma/presence`,
+      JSON.stringify({ pid: null, pid_start: null, session_id: 'peer-sess' }) + '\n');
+    const swept = sim.run(['presence', 'cleanup', 'sim-sess']);
+    assert.deepStrictEqual(swept.cleared, [{ work_unit: wu, phase: 'discussion', topic: 'beta' }]);
+    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), 'the peer\'s heartbeat is left alone');
+    sim.run(['presence', 'cleanup', 'peer-sess']);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), undefined);
     // Session labels, as every process skill's Step 0 issues them: an
     // unrecorded opt-in answers a disabled no-op — even on a bad argument,
     // since the enable check precedes validation; opted in (the choice
-    // lands on the project manifest with the SessionEnd cleanup hook in
-    // the project's settings, committed together) but outside tmux (the
-    // sim strips the identity) answers no-tmux; an unknown phase from an
-    // enabled call site refuses; a hand-stamped manifest false disables;
-    // the SessionEnd restore sweep answers with nothing to restore; opting
-    // out takes the hook back out.
+    // lands on the project manifest, and the SessionEnd hook in the
+    // project's settings gains `session cleanup` beside the `presence
+    // cleanup` every project carries, committed together) but outside
+    // tmux (the sim strips the identity) answers no-tmux; an unknown phase
+    // from an enabled call site refuses; a hand-stamped manifest false
+    // disables; the SessionEnd restore sweep answers with nothing to
+    // restore; opting out takes `session cleanup` back out and leaves
+    // `presence cleanup`.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     assert.deepStrictEqual(sim.run(['session', 'label', wu, 'deploying', 'alpha']),
       { ok: true, labelled: false, reason: 'disabled' });
     sim.run(['session', 'label-config', 'true']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'true');
-    const settings = () => JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8'));
-    assert.ok(settings().hooks.SessionEnd.some((g) => g.hooks.some((h) => h.command.endsWith('engine.cjs" session cleanup'))),
-      'the opt-in installs the cleanup hook');
+    const hookVerbs = () => JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8'))
+      .hooks.SessionEnd.flatMap((g) => g.hooks.map((h) => h.command.slice(h.command.indexOf('engine.cjs"'))));
+    assert.deepStrictEqual(hookVerbs(), ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup'],
+      'the opt-in installs both session-end hooks');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice');
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
@@ -1250,7 +1264,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['session', 'cleanup', 'sim-sess']), { ok: true, restored: false });
     sim.run(['session', 'label-config', 'false']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
-    assert.ok(!('hooks' in settings()), 'opting out removes the hook');
+    assert.deepStrictEqual(hookVerbs(), ['engine.cjs" presence cleanup'], 'opting out leaves the presence sweep in place');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

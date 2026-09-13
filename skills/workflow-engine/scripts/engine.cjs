@@ -33,7 +33,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, recordLabelChoice } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -160,6 +160,7 @@ Commands:
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan [work-unit]
+  presence cleanup [session-id]
   session label <work-unit> <phase> <topic>
   session label-config <true|false>
   session cleanup [session-id]
@@ -830,7 +831,12 @@ function runPresence(argv) {
       respondSections(deferralSection(res));
       return;
     }
-    throw new Error('Usage: engine presence <beat|clear|scan> …');
+    if (command === 'cleanup') {
+      // The SessionEnd hook's target.
+      respond(cleanupPresence(hookProjectDir(), hookSessionId(rest, 'Usage: engine presence cleanup [session-id]')));
+      return;
+    }
+    throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
   } catch (err) {
     failJson(err);
   }

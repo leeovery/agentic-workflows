@@ -3,7 +3,8 @@
 //
 // Tests for tmux session labels: `session label` / `session label-config` /
 // `session repair` / `session cleanup`, the project-manifest opt-in and the
-// SessionEnd cleanup hook it installs in the project's settings, the
+// SessionEnd hook it syncs in the project's settings (`session cleanup`
+// while labels are on, `presence cleanup` regardless), the
 // per-checkout stash, phase-hop recomposition, peer-checkout isolation,
 // user-rename adoption, id drift across a server restart (chain resolution,
 // drifted restore, boot repair, orphan pruning), owner identity, restore
@@ -20,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { syncCleanupHook } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { resolveEnabled, syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -29,8 +30,13 @@ const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine
 process.env.GIT_CONFIG_GLOBAL = '/dev/null';
 process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
-const HOOK_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
-const OUR_HOOK = { type: 'command', command: HOOK_COMMAND };
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
+const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
+// The settings a project reaches with labels on, and with them off — one
+// group, ours alone.
+const BOTH_HOOKS = { hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }] } };
+const PRESENCE_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
 
 const TMUX_STUB = `#!/bin/bash
 echo "$@" >> "$TMUX_STUB_LOG"
@@ -101,8 +107,8 @@ function teardown() {
  * Claude process (`claudePid: null` withholds identity — the record shape
  * a call with no CLAUDE_PID writes).
  */
-function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined } = {}) {
-  const env = { ...process.env };
+function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {} } = {}) {
+  const env = { ...process.env, ...extraEnv };
   delete env.TMUX;
   delete env.TMUX_PANE;
   delete env.TMUX_STUB_FAIL;
@@ -404,18 +410,27 @@ describe('engine session label — the manifest stamp', () => {
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
+
+  it('the opt-in is the manifest alone — a system config carrying one is never read', () => {
+    const configDir = path.join(dir, '.wf-config');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { WORKFLOWS_CONFIG_DIR: configDir } });
+    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
+    assert.strictEqual(resolveEnabled(dir), null);
+  });
 });
 
 describe('engine session label-config', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('records the opt-in on the project manifest, installs the cleanup hook, and commits both confined', () => {
+  it('records the opt-in on the project manifest, installs both session-end hooks, and commits both files confined', () => {
     fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } }, 'a missing manifest is created around the choice');
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: [OUR_HOOK] }] } });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
     assert.deepStrictEqual(head(), {
       subject: 'chore: record session-label choice',
       files: ['.claude/settings.json', '.workflows/manifest.json'],
@@ -434,23 +449,30 @@ describe('engine session label-config', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
   });
 
-  it('opting out records false, removes the hook, and commits both', () => {
+  it('opting out records false, takes `session cleanup` out, leaves `presence cleanup` standing, and commits both', () => {
     engine(['session', 'label-config', 'true']);
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.strictEqual(projectManifest().defaults.tmux_labels, false);
-    assert.deepStrictEqual(settings(), {}, 'the hook, its group, the event, and the emptied hooks object all go');
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY, 'the presence sweep is infrastructure, not a label preference');
     assert.deepStrictEqual(head(), {
       subject: 'chore: record session-label choice',
       files: ['.claude/settings.json', '.workflows/manifest.json'],
     });
   });
 
+  it('declining on a project the hooks never reached still installs `presence cleanup`', () => {
+    const res = engine(['session', 'label-config', 'false']);
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+    assert.deepStrictEqual(head().files, ['.claude/settings.json', '.workflows/manifest.json']);
+  });
+
   it('re-recording the same choice is idempotent — no twin hook, nothing to commit', () => {
     engine(['session', 'label-config', 'true']);
     const before = git(['rev-parse', 'HEAD']);
     engine(['session', 'label-config', 'true']);
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: [OUR_HOOK] }] } });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
     assert.strictEqual(git(['rev-parse', 'HEAD']), before);
   });
 
@@ -463,25 +485,59 @@ describe('engine session label-config', () => {
     assert.ok(!fs.existsSync(settingsPath()), 'no hook lands for a choice that was not recorded');
   });
 
-  it('a settings file that does not parse is left alone — the choice is recorded and the hook reported', () => {
+  it('a settings file that does not parse is left alone — the choice is recorded and the hooks reported', () => {
     writeSettings('{not json');
     const res = engine(['session', 'label-config', 'true']);
     assert.strictEqual(res.tmux_labels, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /cleanup hook not synced: \.claude\/settings\.json is not valid JSON/);
+    assert.match(res.warnings[0], /session-end hooks not synced: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
+    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+  });
+
+  it('a commit git refuses is a warning, never a failure — the choice and the hooks are on disk', () => {
+    const hooksDir = path.join(dir, '.git', 'hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    fs.writeFileSync(path.join(hooksDir, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const res = engine(['session', 'label-config', 'true']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^commit failed: /);
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'init', 'nothing landed');
+    assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
+  });
+
+  it('a project that keeps its settings to itself records the choice and installs nothing', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+      JSON.stringify({ defaults: { manage_session_end_hooks: false } }, null, 2) + '\n');
+    const res = engine(['session', 'label-config', 'true']);
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
+    assert.deepStrictEqual(projectManifest(), { defaults: { manage_session_end_hooks: false, tmux_labels: true } });
+    assert.ok(!fs.existsSync(settingsPath()));
     assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
   });
 });
 
-describe('syncCleanupHook', () => {
+describe('syncSessionEndHooks', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('installs into an absent settings file', () => {
-    assert.deepStrictEqual(syncCleanupHook(dir, true), { changed: true });
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: [OUR_HOOK] }] } });
+  const BOTH = { session: true, presence: true };
+  const PRESENCE = { session: false, presence: true };
+  const NONE = { session: false, presence: false };
+
+  it('installs both into an absent settings file, as one group', () => {
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
+  });
+
+  it('installs presence alone while labels are off', () => {
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
   });
 
   it('installs beside everything already there — permissions, other events, other SessionEnd groups', () => {
@@ -491,43 +547,63 @@ describe('syncCleanupHook', () => {
       hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }], SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] },
       showClearContextOnPlanAccept: true,
     });
-    assert.deepStrictEqual(syncCleanupHook(dir, true), { changed: true });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
-        SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [OUR_HOOK] }],
+        SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK] }],
       },
       showClearContextOnPlanAccept: true,
     });
   });
 
-  it('a second install changes nothing — the hook is recognised by its command, whatever surrounds it', () => {
-    syncCleanupHook(dir, true);
-    assert.deepStrictEqual(syncCleanupHook(dir, true), { changed: false });
+  it('a second sync changes nothing — the hooks are recognised by their command, whatever surrounds them', () => {
+    syncSessionEndHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
     assert.strictEqual(settings().hooks.SessionEnd.length, 1);
-    // A hand-adjusted copy — a different path prefix, a timeout — is still ours.
-    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }] }] } });
-    assert.deepStrictEqual(syncCleanupHook(dir, true), { changed: false });
+    // Hand-adjusted copies — a different path prefix, a timeout, ours split
+    // across groups, a foreign group added after ours — still make up the
+    // wanted set, so nothing is rewritten and nothing moves.
+    writeSettings({
+      hooks: {
+        SessionEnd: [
+          { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }] },
+          { hooks: [PRESENCE_HOOK] },
+          { matcher: 'clear', hooks: [{ type: 'command', command: 'say goodbye' }] },
+        ],
+      },
+    });
+    const text = fs.readFileSync(settingsPath(), 'utf8');
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
+    assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), text, 'no reorder, no rewrite');
   });
 
-  it('removes the hook, dropping only the group it emptied and the containers that emptied with it', () => {
-    syncCleanupHook(dir, true);
-    assert.deepStrictEqual(syncCleanupHook(dir, false), { changed: true });
-    assert.deepStrictEqual(settings(), {});
-    assert.deepStrictEqual(syncCleanupHook(dir, false), { changed: false });
+  it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs' presence cleanup" }] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });
 
-  it('removes ours alone from a shared group and leaves sibling groups, events, and keys standing', () => {
+  it('turning labels off takes `session cleanup` out and leaves `presence cleanup`; nothing wanted empties the file', () => {
+    syncSessionEndHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(settings(), {}, 'the hook, its group, the event, and the emptied hooks object all go');
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
+  });
+
+  it('strips ours alone from a shared group and leaves sibling groups, events, and keys standing', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
-        SessionEnd: [{ hooks: [theirs, OUR_HOOK] }, { matcher: 'clear', hooks: [theirs] }],
+        SessionEnd: [{ hooks: [theirs, SESSION_HOOK, PRESENCE_HOOK] }, { matcher: 'clear', hooks: [theirs] }],
       },
     });
-    assert.deepStrictEqual(syncCleanupHook(dir, false), { changed: true });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
@@ -537,20 +613,26 @@ describe('syncCleanupHook', () => {
     });
   });
 
+  it('collapses twins into the one wanted group', () => {
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [SESSION_HOOK] }, { hooks: [SESSION_HOOK] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+  });
+
   it('nothing to remove is nothing changed — an absent file stays absent', () => {
-    assert.deepStrictEqual(syncCleanupHook(dir, false), { changed: false });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
     assert.ok(!fs.existsSync(settingsPath()));
   });
 
   it('a settings file that does not parse is left untouched and reported, never thrown', () => {
     writeSettings('{not json');
-    for (const enabled of [true, false]) {
-      const res = syncCleanupHook(dir, enabled);
+    for (const want of [BOTH, NONE]) {
+      const res = syncSessionEndHooks(dir, want);
       assert.strictEqual(res.changed, false);
       assert.match(res.error, /\.claude\/settings\.json is not valid JSON/);
     }
     writeSettings('[]');
-    assert.match(syncCleanupHook(dir, true).error, /root is not an object/);
+    assert.match(syncSessionEndHooks(dir, BOTH).error, /root is not an object/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '[]');
   });
 });

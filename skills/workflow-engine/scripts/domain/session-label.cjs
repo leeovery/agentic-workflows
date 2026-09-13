@@ -18,9 +18,14 @@
 //
 // The restore runs from a SessionEnd hook in the project's committed
 // `.claude/settings.json` — a SessionEnd hook declared in skill frontmatter
-// never fires, so cleanup must be a settings-level hook. Recording the
-// choice installs or removes it (`recordLabelChoice`), and boot self-heals
-// a missing hook while the setting is on (`syncCleanupHook`).
+// never fires, so cleanup must be a settings-level hook. That hook carries
+// two commands: `session cleanup`, present while labels are on, and
+// `presence cleanup`, present in every workflow project regardless — the
+// heartbeat sweep is infrastructure, not a label preference. Recording the
+// choice syncs the hook (`recordLabelChoice`) and every boot re-syncs it
+// (`syncSessionEndHooks`); a project keeps the engine out of its settings
+// file with `defaults.manage_session_end_hooks: false`
+// (`manageSessionEndHooks`).
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
@@ -52,14 +57,19 @@ const { processStartTime, processAlive } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { commitPathspecScoped, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 
-/** The project's committed Claude Code settings — where the cleanup hook lives. */
+/** The project's committed Claude Code settings — where the session-end hooks live. */
 const SETTINGS_SPEC = '.claude/settings.json';
-const CLEANUP_HOOK_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
-// What makes a hook ours: the engine and the verb, whatever surrounds them —
-// so a hand-adjusted path or quoting is recognised, never twinned.
-const CLEANUP_HOOK_MARK = 'engine.cjs" session cleanup';
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const SESSION_HOOK_COMMAND = `${HOOK_ENGINE} session cleanup`;
+const PRESENCE_HOOK_COMMAND = `${HOOK_ENGINE} presence cleanup`;
+// What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
+// before it and any arguments after are free, so a hook under another
+// install prefix or carrying a timeout is recognised and never twinned; the
+// closing quote is part of the mark, so a re-quoted command is not.
+const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
+const HOOK_MARKS = [SESSION_HOOK_COMMAND, PRESENCE_HOOK_COMMAND].map(hookMark);
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
@@ -67,26 +77,37 @@ function isObject(v) {
 }
 
 /**
- * The project manifest's `defaults.tmux_labels`, when it is a boolean —
- * the opt-in. Null when absent or unreadable.
- * @param {string} cwd @returns {boolean|null}
+ * The project manifest's `defaults`, read tolerantly — `{}` when the
+ * manifest is absent, unreadable, or carries none.
+ * @param {string} cwd @returns {Record<string, any>}
  */
-function readProjectOverride(cwd) {
+function readProjectDefaults(cwd) {
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
-    const d = isObject(parsed) ? parsed.defaults : null;
-    if (isObject(d) && typeof d.tmux_labels === 'boolean') return d.tmux_labels;
-  } catch { /* no project manifest — never asked */ }
-  return null;
+    if (isObject(parsed) && isObject(parsed.defaults)) return parsed.defaults;
+  } catch { /* no project manifest */ }
+  return {};
 }
 
 /**
- * The opt-in for this project: true/false when recorded, null when never
- * asked.
+ * The opt-in for this project — `defaults.tmux_labels` when it is a
+ * boolean; null when never asked.
  * @param {string} cwd @returns {boolean|null}
  */
 function resolveEnabled(cwd) {
-  return readProjectOverride(cwd);
+  const v = readProjectDefaults(cwd).tmux_labels;
+  return typeof v === 'boolean' ? v : null;
+}
+
+/**
+ * May the engine edit this project's `.claude/settings.json`? False only
+ * when the project manifest says `defaults.manage_session_end_hooks: false`
+ * — the opt-out for a project that keeps its own settings, and the switch
+ * the prose harness stamps so a walk's boot never writes into a world.
+ * @param {string} cwd
+ */
+function manageSessionEndHooks(cwd) {
+  return readProjectDefaults(cwd).manage_session_end_hooks !== false;
 }
 
 /**
@@ -107,23 +128,28 @@ function setLabelConfig(cwd, value) {
   return { tmux_labels: value };
 }
 
-/** @param {unknown} hook */
-function isCleanupHook(hook) {
-  return isObject(hook) && hook.type === 'command' && typeof hook.command === 'string' && hook.command.includes(CLEANUP_HOOK_MARK);
+/** The mark a hook of ours carries, or null for a foreign one. @param {unknown} hook */
+function ourMark(hook) {
+  if (!isObject(hook) || hook.type !== 'command' || typeof hook.command !== 'string') return null;
+  return HOOK_MARKS.find((m) => hook.command.includes(m)) || null;
 }
 
 /**
- * Ensure the SessionEnd cleanup hook is present (`enabled`) or absent in
- * the project's `.claude/settings.json`, every other key — permissions,
- * other events, sibling SessionEnd groups — preserved. Idempotent on the
- * hook's identity, so a second install never adds a twin, and a removal
- * takes our hook alone, dropping only the group it emptied. A settings
- * file that does not parse is left untouched and reported rather than
- * thrown: neither caller may fail over hook plumbing it cannot read.
- * @param {string} cwd @param {boolean} enabled
+ * Ensure the SessionEnd hook in the project's `.claude/settings.json`
+ * carries `session cleanup` iff `session` and `presence cleanup` iff
+ * `presence`, every other key — permissions, other events, foreign
+ * SessionEnd groups and their matchers — preserved. A file whose hooks of
+ * ours are already exactly the wanted set is left alone, wherever and
+ * however they sit (a recognised hook is never rewritten, never twinned,
+ * never reordered); otherwise ours are stripped from every group — a group
+ * emptied by that goes, one still holding foreign hooks stays — and the
+ * wanted set lands as one group. A settings file that does not parse is
+ * left untouched and reported rather than thrown: neither caller may fail
+ * over hook plumbing it cannot read.
+ * @param {string} cwd @param {{session: boolean, presence: boolean}} want
  * @returns {{changed: boolean, error?: string}}
  */
-function syncCleanupHook(cwd, enabled) {
+function syncSessionEndHooks(cwd, { session, presence }) {
   const file = path.join(cwd, SETTINGS_SPEC);
   /** @type {Record<string, any>} */
   let settings = {};
@@ -139,16 +165,18 @@ function syncCleanupHook(cwd, enabled) {
   const hooks = isObject(settings.hooks) ? settings.hooks : {};
   /** @type {any[]} */
   const groups = Array.isArray(hooks.SessionEnd) ? hooks.SessionEnd : [];
-  const holdsOurs = (/** @type {unknown} */ g) => isObject(g) && Array.isArray(g.hooks) && g.hooks.some(isCleanupHook);
-  if (enabled === groups.some(holdsOurs)) return { changed: false };
+  const marksOf = (/** @type {unknown} */ g) => (isObject(g) && Array.isArray(g.hooks) ? g.hooks.map(ourMark).filter(Boolean) : []);
+  const desired = [session && SESSION_HOOK_COMMAND, presence && PRESENCE_HOOK_COMMAND].filter(Boolean);
+  if (groups.flatMap(marksOf).sort().join('\n') === desired.map(hookMark).sort().join('\n')) return { changed: false };
 
-  const nextGroups = enabled
-    ? [...groups, { hooks: [{ type: 'command', command: CLEANUP_HOOK_COMMAND }] }]
-    : groups.flatMap((g) => {
-      if (!holdsOurs(g)) return [g];
-      const kept = g.hooks.filter((/** @type {unknown} */ h) => !isCleanupHook(h));
-      return kept.length > 0 ? [{ ...g, hooks: kept }] : [];
-    });
+  const kept = groups.flatMap((g) => {
+    if (marksOf(g).length === 0) return [g];
+    const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
+    return foreign.length > 0 ? [{ ...g, hooks: foreign }] : [];
+  });
+  const nextGroups = desired.length > 0
+    ? [...kept, { hooks: desired.map((command) => ({ type: 'command', command })) }]
+    : kept;
   const nextHooks = { ...hooks };
   if (nextGroups.length > 0) nextHooks.SessionEnd = nextGroups;
   else delete nextHooks.SessionEnd;
@@ -161,21 +189,26 @@ function syncCleanupHook(cwd, enabled) {
 }
 
 /**
- * workflow-start's one-time answer: record the opt-in, install or remove
- * the cleanup hook to match, and commit the two together, confined. A
- * settings file the hook sync could not read comes back as a warning —
- * the choice is recorded either way, and boot re-tries the install.
+ * workflow-start's one-time answer: record the opt-in, sync the session-end
+ * hooks to match (`presence cleanup` stays whatever the answer), and commit
+ * the two together, confined. The choice is recorded either way: a settings
+ * file the sync could not read, or a commit git refused, comes back as a
+ * warning — boot re-syncs, and the state is saved.
  * @param {string} cwd @param {boolean} value
  * @returns {{tmux_labels: boolean, warnings?: string[]}}
  */
 function recordLabelChoice(cwd, value) {
-  /** @type {{tmux_labels: boolean, warnings?: string[]}} */
-  const result = setLabelConfig(cwd, value);
-  const sync = syncCleanupHook(cwd, value);
-  const specs = sync.changed ? [PROJECT_MANIFEST_SPEC, SETTINGS_SPEC] : [PROJECT_MANIFEST_SPEC];
-  commitPathspecScoped(cwd, specs, 'chore: record session-label choice');
-  if (sync.error) result.warnings = [`session-label cleanup hook not synced: ${sync.error}`];
-  return result;
+  setLabelConfig(cwd, value);
+  /** @type {string[]} */
+  const warnings = [];
+  const specs = [PROJECT_MANIFEST_SPEC];
+  if (manageSessionEndHooks(cwd)) {
+    const sync = syncSessionEndHooks(cwd, { session: value, presence: true });
+    if (sync.error) warnings.push(`session-end hooks not synced: ${sync.error}`);
+    if (sync.changed) specs.push(SETTINGS_SPEC);
+  }
+  commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
+  return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
 }
 
 /**
@@ -524,6 +557,6 @@ function repairSessionLabels(cwd) {
 
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels,
-  resolveEnabled, labelConfigStatus, setLabelConfig, syncCleanupHook, recordLabelChoice,
+  resolveEnabled, labelConfigStatus, manageSessionEndHooks, syncSessionEndHooks, recordLabelChoice,
   SETTINGS_SPEC,
 };
