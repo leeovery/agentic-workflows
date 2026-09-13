@@ -51,7 +51,6 @@
     "calls_in_order": [
       "manifest get pay.research.pay status",
       "render resume-gate pay.research.pay",
-      "topic queue pay research pay",
       "research-threads set pay pay second-provider parked",
       "render research-threads pay.research.pay"
     ],

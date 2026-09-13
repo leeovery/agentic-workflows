@@ -48,7 +48,13 @@ Hold the thread with the full context worked out about it — its children's que
 
 → On return, proceed as the reference directed.
 
-#### If the current topic is converging (tradeoffs clear, approaching decision territory) or the user indicates they're done
+#### If the user's sign-off leaves the topic open
+
+Stepping away for the day, picking it up next time — a pause, not a done-signal. Commit what the exchange left and end the turn.
+
+→ Return to **B. Session Loop**.
+
+#### If the current topic is converging (tradeoffs clear, approaching decision territory) or the user indicates the topic is done
 
 → Proceed to **E. In-Flight Dive Handling**.
 

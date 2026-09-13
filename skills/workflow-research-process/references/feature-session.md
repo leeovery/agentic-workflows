@@ -24,7 +24,13 @@ Focused, single-topic session — one research file; off-topic concerns route th
 
 ## C. Session Conclusion
 
-When the topic feels well-explored or the user indicates they're done:
+#### If the user's sign-off leaves the topic open
+
+Stepping away for the day, picking it up next time — a pause, not a done-signal. Commit what the exchange left and end the turn.
+
+→ Return to **B. Session Loop**.
+
+#### If the topic feels well-explored or the user indicates the topic is done
 
 → Proceed to **D. In-Flight Dive Handling**.
 
