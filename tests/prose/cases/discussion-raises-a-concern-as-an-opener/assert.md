@@ -35,17 +35,19 @@ Presentation claims — the opener shape is the behaviour under test:
   nothing), a before/after, a small diagram — chosen for
   understanding-speed, never all of them
 - the raise states a position — a lean between the fallback tier and
-  the seeded import, with one load-bearing reason — never a neutral
-  option survey and never an abdication; the alternative gets at most
-  one clause naming the kind of cost it carries, never two costs,
-  never a cost with its consequence spelled out
+  the seeded import, with one load-bearing reason riding as a clause,
+  never its derivation — never a neutral option survey and never an
+  abdication; the alternative gets at most one clause naming the kind
+  of cost it carries, never two costs, never a cost with its
+  consequence spelled out
 - the entry's tuning stays back: the seed weight (three-tenths of a
-  real pair), the decay window (ninety days), the lookup cost
-  (thirty-five milliseconds) and the search budget (three hundred)
-  appear nowhere in the raise; the coverage measurement may reach the
-  user only as its consequence — everyday terms are covered,
-  misspellings of rare products are not — with or without its
-  percentages, which is the product level, not a leak
+  real pair), the decay window (ninety days) and the search budget
+  (three hundred milliseconds, a threshold) appear nowhere in the
+  raise; the two measurements — coverage, and the lookup's cost — may
+  reach the user only as what they mean for the product (everyday
+  terms are covered, misspellings of rare products are not; a second
+  lookup on every search), with or without their figures, and never
+  as a figure weighed against the budget
 - the rejected parallel-merge alternative appears nowhere in the raise
 - the raise's last beat says where the ball sits — a literal question
   whose sides are product end states (a hand-kept safety net for
@@ -54,9 +56,9 @@ Presentation claims — the opener shape is the behaviour under test:
   reason the raise already gave — never "what do you think?", no
   keyed menu, no bundled follow-ups, never a dead stop after the
   position, and nothing drawn from the held-back depth
-- the raise is a fraction of the entry's length — readable in a
-  glance, well under the entry's own word count — and the entry is
-  never emitted verbatim: no paragraph of it appears in the turn
+- the raise's prose is well under half the entry's length, a diagram
+  aside — readable in a glance — and the entry is never emitted
+  verbatim: no paragraph of it appears in the turn
 - the raise covers this concern alone: no other item, finding, or
   gap rides along
 - no outcome is documented in the raise's turn: nothing is written to

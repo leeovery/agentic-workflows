@@ -158,7 +158,7 @@ Re-read the spec item's status as at the top of this section; a terminal status 
 
 **If the work type is not `epic`:**
 
-Write the concern (what the topic needs, the quotes where sources frame it, what was just explored) to `.workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
+Write the concern in the triage entry shape pinned in [triage-landing.md](../../workflow-shared/references/triage-landing.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source phase} {doc} --concern .workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"

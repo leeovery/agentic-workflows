@@ -69,7 +69,6 @@
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
-      "render concern",
       "--kind perspective",
       "topic reopen",
       "topic start search-relevance discussion synonym-handling",

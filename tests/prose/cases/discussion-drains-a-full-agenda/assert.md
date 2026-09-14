@@ -25,8 +25,10 @@ The prose should have taken this path:
    `decided`, and the concern absorbed under its own commit naming
    file and origin
 7. the second concern is raised without a fresh offer — the opt-in
-   stands — through the same arm/surface/fold/absorb path, absorbing
-   under its own distinct commit; with the queue empty the clear line
+   stands — through the same arm/surface/fold/absorb path, its raise
+   opening with a one-line bridge (what the first concern settled, and
+   that nothing follows this one) above the problem, absorbing under
+   its own distinct commit; with the queue empty the clear line
    renders
 8. with both settled the user wraps; the closing gates run the review
    machinery per the conduct (the stubbed review returns clean); the

@@ -116,7 +116,7 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 ## C. Raise One Concern
 
-Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool; `{origin}` is the topic its provenance line names. The entry is your brief, never the user's display: it reaches the conversation only through the raise you compose from it and the responses that follow, and the raw entry is shown only when the user asks.
+Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool; `{origin}` is where its provenance line says the concern came from — the topic named there, or that topic's phase when the name is this topic's own. The entry is your brief, never the user's display: it reaches the conversation only through the raise you compose from it and the responses that follow, and the raw entry is shown only when the user asks.
 
 **If the entry's ask is owed the topic's other phase-side** — `phase` is `research` or `discussion`, and the ask calls for what the pair's other phase does: a decision owed, or a correction to material the other side's document records, while this session explores; an open question needing exploration while this session decides — offer the move before any raise, once per concern (a declined or refused offer never re-renders). Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json` with the Write tool — `{"file": "{NNN-slug}.md", "title": "…", "reason": "…"}`, the reason one sentence naming why the ask belongs the other side — then render:
 
@@ -159,11 +159,13 @@ Route on the ground the concern reopens — the subtopic its title names (`{titl
 
 - `exploring` or `converging` — already live. Leave it.
 
-Compose the raise from the entry — digested, never read out — with the rerouting topic as where it came from:
+The raise covers this concern alone — for a walked entry, this ask alone: no other queued concern, open item, or finding rides along, and a gap you spot while preparing it is your finding, not the entry's — it parks as a tangent (below), never joins the raise. An entry carrying one ask is one raise. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: a one-line map of what the entry brings (titles only) sits above the raise, beside the bridge where one is owed, then the first unresolved ask is raised alone — on a fresh raise that is the first ask; on a re-raise of a half-walked entry, the first its earlier walk left open; each later ask waits for the one before it to resolve and gets its own raise when its turn comes.
+
+Compose the raise from the entry — or from the ask on the table — digested, never read out, with where it came from as the source:
 
 → Load **[composing-a-raise.md](composing-a-raise.md)** with source = `reroute`, origin = `{origin}`.
 
-The raise covers this concern alone — for a walked entry, this ask alone: no other queued concern, open item, or finding rides along, and a gap you spot while preparing it is your finding, not the entry's — it parks as a tangent (below), never joins the raise. An entry carrying one ask is raised whole. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: a one-line map of what the entry brings (titles only) opens the raise, beside the bridge where one is owed, then the first unresolved ask is raised alone — on a fresh raise that is the first ask; on a re-raise of a half-walked entry, the first its earlier walk left open; each later ask waits for the one before it to resolve and gets its own raise when its turn comes. The entry's depth is not lost to the raise's restraint: it enters as responses when the user's reply calls for it, and the fold records the outcome, the entry's body where its shape carries it. Vary the shape across a multi-concern queue — identical raises read as a template, not a colleague. Raise it in the current turn, then stop: the raise proposes and never lands — nothing is documented until the user has replied.
+Raise it in the current turn, then stop: the raise proposes and never lands — nothing is documented until the user has replied. Their reply calibrates what comes next: the depth the raise held back — the entry's full case, its costs, what the origin weighed — enters as responses, each piece when the direction on the table calls for it, and the fold records the outcome. Vary the shape across a multi-concern queue — identical raises read as a template, not a colleague.
 
 **STOP.** Wait for user response.
 

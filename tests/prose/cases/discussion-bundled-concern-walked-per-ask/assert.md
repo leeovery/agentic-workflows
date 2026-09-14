@@ -19,8 +19,9 @@ The prose should have taken this path:
 6. the raise recognises a bundled entry — three asks the user could
    accept or reject independently — and walks it: a one-line map of
    the three (titles only), then the first ask raised alone as an
-   opener, ending awaiting the user (at most one question, no menu);
-   the second and third asks are absent from that first raise
+   opener, ending awaiting the user (at most one question, no menu,
+   and its last beat says where the ball sits — a genuine question, or an invitation to push back on the stated lean — never a dead stop after the position); the second and third asks are absent from that
+   first raise
 7. each later ask is raised only after the previous one resolves,
    with its own opener and its own close — three sequential raises,
    never two asks in one message

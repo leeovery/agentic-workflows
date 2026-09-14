@@ -65,7 +65,6 @@
       "topic complete search-relevance discussion relevance-measurement"
     ],
     "calls_exclude": [
-      "render concern",
       "topic reopen",
       "discovery-map add",
       "--kind perspective",

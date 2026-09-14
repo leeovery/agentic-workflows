@@ -20,7 +20,9 @@ The prose should have taken this path:
    from the title alone. Because the concern's title names an
    existing subtopic in a settled state, the ground re-arms at the
    raise: `expansion-source` is set to `exploring` before the
-   discussion starts, and the map is no longer all-decided
+   discussion starts, and the map is no longer all-decided; the raise
+   puts what the settled call rested on beside what has moved and
+   says whether the call still holds
 5. the session discusses the concern as real material and the user
    lands the changed decision (batch aggregates, daily refresh). The
    outcome re-decides ground this document didn't introduce — the

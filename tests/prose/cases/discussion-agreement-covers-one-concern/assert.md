@@ -25,7 +25,8 @@ The prose should have taken this path:
    concern is folded or absorbed on the strength of it
 7. the second concern is raised individually — armed on the map,
    its own opener ending awaiting the user (at most one question, no
-   menu) — and the walk stops there when the user leaves
+   menu, and its last beat says where the ball sits — a genuine question, or an invitation to push back on the stated lean — never a dead stop after the position) — and the walk stops there when the user
+   leaves
 
 Further claims:
 

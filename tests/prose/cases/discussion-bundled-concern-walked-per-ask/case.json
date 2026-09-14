@@ -63,7 +63,6 @@
       "absorb 001-measurement-gates-for-ranking-changes (from behavioural-ranking)"
     ],
     "calls_exclude": [
-      "render concern",
       "topic complete search-relevance discussion relevance-measurement",
       "topic reopen",
       "--kind perspective",

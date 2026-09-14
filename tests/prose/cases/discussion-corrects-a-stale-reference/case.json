@@ -62,7 +62,6 @@
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
-      "render concern",
       "discussion-map add search-relevance synonym-handling",
       "topic start search-relevance discussion synonym-handling",
       "topic reopen",

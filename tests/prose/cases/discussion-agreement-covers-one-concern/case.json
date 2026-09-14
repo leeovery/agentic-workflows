@@ -63,7 +63,6 @@
       "absorb 001-offline-metrics-baseline (from behavioural-ranking)"
     ],
     "calls_exclude": [
-      "render concern",
       "absorb 002-expansion-quality-tracking",
       "topic complete search-relevance discussion relevance-measurement",
       "topic reopen",

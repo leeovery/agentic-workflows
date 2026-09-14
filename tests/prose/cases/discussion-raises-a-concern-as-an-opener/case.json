@@ -55,6 +55,7 @@
       "render entry-gate search-relevance.discussion.synonym-handling",
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
+      "topic queue search-relevance discussion synonym-handling",
       "render triage-offer search-relevance.discussion.synonym-handling",
       "discussion-map add search-relevance synonym-handling hand-list-cutover",
       "discussion-map set search-relevance synonym-handling hand-list-cutover exploring"
@@ -62,7 +63,6 @@
     "calls_exclude": [
       "render requeue-offer",
       "render triage-announce",
-      "render concern",
       "topic absorb",
       "topic requeue",
       "topic start search-relevance discussion synonym-handling",

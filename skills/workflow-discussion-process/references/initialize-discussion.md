@@ -88,7 +88,7 @@ The inputs just read — the seed, the brief or carrier, and any completed resea
 
    The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s) — under Context → References, so a later session can re-open what seeded this discussion.
 
-   Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised with their full context and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
+   Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash
