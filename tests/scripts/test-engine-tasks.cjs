@@ -295,10 +295,10 @@ describe('engine task start answers do_banking', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  // A plan phase's bank is open only while its own tasks run: a work type
-  // whose plan takes a boundary, a phase the machinery did not create, the
-  // phase's boundary walk not staged, the phase not consolidated. Derived
-  // from the manifest on every call — both modes answer it, nothing is stored.
+  // A phase's bank is open only while its own tasks run: a work type whose
+  // plan takes a boundary, the phase's boundary walk not staged, the phase
+  // not consolidated. Derived from the manifest on every call — both modes
+  // answer it, nothing is stored.
 
   /** @param {Record<string, unknown>} fields @param {Record<string, unknown>} [manifest] */
   function seed(fields, manifest = {}) {
@@ -335,13 +335,14 @@ describe('engine task start answers do_banking', () => {
     assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
   });
 
-  it('a machinery-created phase never banks — no boundary follows it', () => {
-    seed({ analysis_cycle_total: 1, machine_phases: [2] });
-    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: false, resumed: false });
+  it('a phase the analysis loop added banks — its own boundary drains the deposit', () => {
+    seed({ analysis_cycle_total: 1, consolidated_phases: [1], completed_phases: [1] });
+    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
   });
 
-  it('a plan phase still banks after an analysis cycle has run — the counter is not the switch', () => {
-    seed({ analysis_cycle_total: 2, machine_phases: [2], consolidated_phases: [1], completed_phases: [1, 2] });
+  it('the cycle count is never the switch — a phase closed through its boundary stops banking, the next banks', () => {
+    seed({ analysis_cycle_total: 2, consolidated_phases: [1, 2], completed_phases: [1, 2] });
+    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: false, resumed: false });
     assert.deepStrictEqual(bothModes('auth-flow-3-1'), { started: true, resumed: true });
   });
 

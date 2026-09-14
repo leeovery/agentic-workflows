@@ -58,8 +58,8 @@ The prose should have taken this path:
     pass
 17. the pass announces itself (marker and signpost), reads
     consolidation_gate_mode and the durable state (the staging and
-    consolidated_phases reads print empty), sees a plan-authored phase
-    label with no resume state, and dispatches the consolidation
+    consolidated_phases reads print empty), sees no resume state, and
+    dispatches the consolidation
     finder — the stub returns clean with no file, so no findings
     commit runs; the clean announce renders
 18. the pass records the phase: the bank check finds no field (no

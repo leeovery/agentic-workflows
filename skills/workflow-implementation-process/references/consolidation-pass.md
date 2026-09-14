@@ -35,12 +35,6 @@ A quick-fix plan never grows — record the phase without a sweep.
 
 → Proceed to **F. Record the Phase**.
 
-#### If the phase's label (the planning file's `Phase {N}:` heading) names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`)
-
-The boundary never applies to remediation phases — record the phase without a sweep.
-
-→ Proceed to **F. Record the Phase**.
-
 #### If `staging.p{N}` holds a `pending` task
 
 The walk is mid-approval.

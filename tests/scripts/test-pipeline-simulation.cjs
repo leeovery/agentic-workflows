@@ -2291,8 +2291,9 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
 
     // A second cycle stages a task the user approves, and the writer lands it
-    // in a machinery-created phase (analysis-loop.md H). A task of that phase
-    // never banks — no boundary follows it, so nothing would drain a deposit.
+    // in a new analysis phase (analysis-loop.md H). That phase banks and takes
+    // the boundary like any other — every phase but a quick-fix's does
+    // (task-loop.md H, consolidation-pass.md).
     assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).cycle_total, 2, 'the count carries across cycles');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);
@@ -2310,21 +2311,24 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['proposed-task', `${wu}.implementation.${wu}`, '--file', correctionsPayload, '--gate', 'gated'], { expect: 'content' }),
       /\*\*`▪ Corrections`\*\* \(corrections\)/, 'a corrections proposal renders its severity beside the head');
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-2-1`, `${wu}-2-1`]);
-    // The flow that lands a machinery-created phase records it (analysis-loop.md H,
-    // the review loop's remediation landing) — the switch the engine keys on.
-    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'machine_phases', '2']);
     const analysisTask = sim.run(['task', 'start', wu, wu, `${wu}-2-1`]);
     assert.strictEqual(analysisTask.mode, 'started', 'the analysis task is taken up fresh');
-    assert.strictEqual(analysisTask.do_banking, false,
-      'a task of a machinery-created phase never banks — no boundary follows it to drain the deposit');
-    // A machinery-created phase takes no consolidation boundary — the fused
-    // completion closes it (task-loop H).
-    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~', '--phase-complete']);
-    // A plan phase added at the tail afterwards (ad-hoc-plan-changes.md) is not
-    // machinery-created: its tasks bank, whatever the cycle count says.
+    assert.strictEqual(analysisTask.do_banking, true,
+      'a task of an analysis phase banks — its own boundary drains the deposit');
+    // The analysis phase closes through its boundary like a plan phase: the
+    // completion defers its flag, the sweep finds nothing, the boundary is
+    // marked, and the re-record closes the phase (consolidation-pass.md F).
+    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~']);
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'consolidated_phases', '2']);
+    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--phase-complete']);
+    const analysisItem = sim.manifest(wu).phases.implementation.items[wu];
+    assert.deepStrictEqual(analysisItem.consolidated_phases, [1, 2], 'the analysis phase records its boundary');
+    assert.deepStrictEqual(analysisItem.completed_phases, [1, 2], 'the analysis phase completes consolidated');
+    // A plan phase added at the tail afterwards (ad-hoc-plan-changes.md) banks
+    // too — every phase but a quick-fix's does, whatever the cycle count says.
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-3-1`, `${wu}-3-1`]);
     assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-3-1`]).do_banking, true,
-      'a plan-authored phase banks after the analysis loop has run — the switch is the phase, not the counter');
+      'a phase added after the analysis loop has run banks — the cycle count is never the switch');
     sim.run(['task', 'complete', wu, wu, `${wu}-3-1`, '--phase', '3', '--next-task', '~']);
     // From the fourth cycle the lifetime count trips the gate: the record says
     // so, and the over-limit callout renders (analysis-loop.md A).

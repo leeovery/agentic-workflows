@@ -54,8 +54,8 @@ The prose should have taken this path:
     pass
 12. the pass announces itself, reads consolidation_gate_mode and the
     durable state (the staging and consolidated_phases prints are
-    empty; the gate mode reads gated), sees a plan-authored phase
-    label with no resume state, and dispatches the consolidation
+    empty; the gate mode reads gated), sees no resume state, and
+    dispatches the consolidation
     finder — the stub returns clean with no file; the pass records the
     phase: consolidated_phases gains 1, the plan-side phase completion
     lands, the engine re-records pay-1-2 with --phase 1

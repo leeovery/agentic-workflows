@@ -40,6 +40,8 @@ Dispatch a **fresh** agent via the Task tool — fresh context is the point: the
 8. **Topic name** — the implementation topic
 9. **Phase number** — `{N}`, and the commit grep token `impl({work_unit}): T{topic}-{N}-` for reading the phase's diff
 
+The prompt carries these inputs and nothing else — no reviewer observations, no findings held in conversation, no notes from earlier tasks; the bank is the only route by which a task-time finding reaches the sweep.
+
 The agent writes its findings to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
 
 ---
