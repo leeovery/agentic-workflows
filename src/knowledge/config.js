@@ -19,7 +19,12 @@ const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 
 // Default values for all config fields.
 const DEFAULTS = {
-  similarity_threshold: 0.8,
+  // Minimum cosine similarity for a vector hit to count. Its one job is to
+  // return nothing when nothing is relevant, so it sits low: too low and an
+  // off-topic query returns a few noise chunks; too high and the vector leg
+  // of every hybrid query comes back empty — silently keyword-only. Measured
+  // on OpenAI text-embedding-3-small: noise peaks ≈0.2, relevance ≥0.5.
+  similarity_threshold: 0.3,
   // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S),
   // in "feature-equivalents" (see decay_weights). Higher = slower decay;
   // half-life ≈ 6.6 × S0. Set to 5 (not 3) because weighting inflates

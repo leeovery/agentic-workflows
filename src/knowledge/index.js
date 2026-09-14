@@ -1805,7 +1805,7 @@ async function cmdQuery(args, options, cfg, provider) {
   // ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
   // "accept all vector matches, no filtering" setting — isn't silently
   // rewritten to the default.
-  const similarity = cfg.similarity_threshold ?? 0.8;
+  const similarity = cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
   const whereClause = Object.keys(where).length > 0 ? where : undefined;
 
   // Run a search per term and merge.

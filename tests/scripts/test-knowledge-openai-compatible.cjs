@@ -314,18 +314,20 @@ describe('config merge carries base_url', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildSystemConfigCompatible', () => {
-  it('produces a knowledge block with provider, base_url, model, dimensions', () => {
+  it('produces a knowledge block with provider, base_url, model, dimensions — and nothing else', () => {
     const cfg = setup.buildSystemConfigCompatible({
       baseUrl: 'http://localhost:1234/v1',
       model: 'nomic-embed-text-v1.5',
       dimensions: 768,
     });
-    assert.strictEqual(cfg.knowledge.provider, 'openai-compatible');
-    assert.strictEqual(cfg.knowledge.base_url, 'http://localhost:1234/v1');
-    assert.strictEqual(cfg.knowledge.model, 'nomic-embed-text-v1.5');
-    assert.strictEqual(cfg.knowledge.dimensions, 768);
-    assert.ok(typeof cfg.knowledge.similarity_threshold === 'number');
-    assert.ok(typeof cfg.knowledge.decay_prune_below === 'number');
+    assert.deepStrictEqual(cfg, {
+      knowledge: {
+        provider: 'openai-compatible',
+        base_url: 'http://localhost:1234/v1',
+        model: 'nomic-embed-text-v1.5',
+        dimensions: 768,
+      },
+    });
   });
 });
 
