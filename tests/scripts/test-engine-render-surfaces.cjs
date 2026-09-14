@@ -3281,6 +3281,8 @@ describe('render author-task-gate', () => {
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
       '',
+      '**`◆ Write it to the plan?`**',
+      '',
       '**`y/yes`**                  → Write it to the plan',
       '**`a/auto`**                 → Approve this and all remaining tasks',
       `${NB(25)}automatically`,

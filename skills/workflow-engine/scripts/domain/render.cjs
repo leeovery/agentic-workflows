@@ -1627,7 +1627,7 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
       cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
       promptOption('Tell me what to change', 'what to revise in this task'),
       promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
-    ]),
+    ], { question: 'Write it to the plan?' }),
   );
 }
 
