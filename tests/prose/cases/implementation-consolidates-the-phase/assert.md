@@ -25,16 +25,15 @@ The prose should have taken this path:
    menu is emitted, and the third scripted answer approves
 8. progress lands for pay-1-2: frontmatter flips to completed, and
    the phase disposition comes out `boundary` — no open tasks
-   remain, the work type is feature, and
-   consolidated_phases is absent — so the
-   plan-side phase completion is deferred, the engine call carries
-   --next-task ~ WITHOUT --phase-complete, the code commit lands
-   as impl(pay): Tpay-1-2, and the stage routes to the consolidation
-   pass
+   remain, the work type is feature, and consolidated_phases is
+   absent — so the plan-side phase completion is deferred, the
+   engine call carries --next-task ~ WITHOUT --phase-complete, the
+   code commit lands as impl(pay): Tpay-1-2, and the stage routes to
+   the consolidation pass
 9. the pass announces itself, reads consolidation_gate_mode (gated)
-   and the durable state (staging and consolidated_phases both print
-   empty), sees no resume state,
-   and dispatches the consolidation finder
+   and the durable state (the implementation staging,
+   consolidated_phases and review staging reads all print empty),
+   sees no resume state, and dispatches the consolidation finder
 10. the finder stub writes the findings file — one finding naming the
     failure it prevents, one comment correction — and returns STATUS
     findings with the banked entry confirmed; the findings commit

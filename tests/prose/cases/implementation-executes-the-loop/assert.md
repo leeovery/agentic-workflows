@@ -57,9 +57,9 @@ The prose should have taken this path:
     impl(pay): Tpay-1-2, and the stage routes to the consolidation
     pass
 17. the pass announces itself (marker and signpost), reads
-    consolidation_gate_mode and the durable state (the staging and
-    consolidated_phases reads print empty), sees no resume state, and
-    dispatches the consolidation
+    consolidation_gate_mode and the durable state (the implementation
+    staging, consolidated_phases and review staging reads print
+    empty), sees no resume state, and dispatches the consolidation
     finder — the stub returns clean with no file, so no findings
     commit runs; the clean announce renders
 18. the pass records the phase: the bank check finds no field (no

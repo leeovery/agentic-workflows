@@ -57,7 +57,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Ad Hoc Plan Changes
 
-Unplanned work surfaces mid-implementation — the user hits a bug while testing, the conversation exposes a gap, a decision changes. When it does, load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
+Unplanned work the user raises mid-implementation — a bug they hit while testing, a gap they name, a decision they change. When they do, load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
 
 → On return, resume the interrupted flow — never fall through to Step 0.
 

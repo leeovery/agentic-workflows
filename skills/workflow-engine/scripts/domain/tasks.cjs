@@ -47,7 +47,7 @@ const PHASE_BOUNDED_GATES = /** @type {(keyof GateModes)[]} */ (
  * @property {string} task  the internal id
  * @property {'started'|'resumed'} mode  `resumed` when the task was already in flight with its fix-tracking file
  * @property {{task_gate_mode: string, fix_gate_mode: string}} gates
- * @property {boolean} do_banking  the task's plan phase is still taking BANK deposits
+ * @property {boolean} do_banking  the task's phase is still taking BANK deposits
  */
 
 /**
@@ -245,7 +245,7 @@ function initTasks(cwd, workUnit, topic) {
  * which happened: the task loop dispatches an executor for a `started` task
  * and routes a `resumed` one to its pending fix gate, where the recorded
  * findings are still unanswered. Both modes answer `do_banking` — whether
- * the task's plan phase is still taking BANK deposits.
+ * the task's phase is still taking BANK deposits.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic

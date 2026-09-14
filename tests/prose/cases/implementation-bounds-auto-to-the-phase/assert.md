@@ -28,16 +28,16 @@ The prose should have taken this path:
    `auto`) and progress lands in the same turn
 7. progress lands for pay-1-2: frontmatter flips to completed, and the
    phase disposition comes out `boundary` — no open phase-1 tasks
-   remain, the work type is feature, and
-   consolidated_phases is absent — so the
-   plan-side phase completion is deferred, the engine call carries
-   --next-task ~ WITHOUT --phase-complete, the code commit lands as
-   impl(pay): Tpay-1-2, and the stage routes to the consolidation
-   pass
+   remain, the work type is feature, and consolidated_phases is
+   absent — so the plan-side phase completion is deferred, the engine
+   call carries --next-task ~ WITHOUT --phase-complete, the code
+   commit lands as impl(pay): Tpay-1-2, and the stage routes to the
+   consolidation pass
 8. the pass announces itself, reads consolidation_gate_mode (gated)
-   and the durable state (staging and consolidated_phases both print
-   empty), sees no resume state, and
-   dispatches the consolidation finder for phase 1; the finder stub
+   and the durable state (the implementation staging,
+   consolidated_phases and review staging reads all print empty),
+   sees no resume state, and dispatches the consolidation finder for
+   phase 1; the finder stub
    writes the findings file and returns STATUS findings with the
    banked entry confirmed; the findings commit picks the file up
 9. the orchestrator judges: it loads the floor, derives the settled
@@ -91,10 +91,10 @@ The prose should have taken this path:
     stops at the first task of the next phase — and the fifth scripted
     answer approves
 17. progress lands for pay-2-1: frontmatter flips to completed and the
-    disposition is `boundary` (phase 2 is not yet
-    consolidated), so the engine call carries --phase 2 --next-task ~
-    WITHOUT --phase-complete, the code commit lands as
-    impl(pay): Tpay-2-1, and the stage routes to the consolidation pass
+    disposition is `boundary` (phase 2 is not yet consolidated), so
+    the engine call carries --phase 2 --next-task ~ WITHOUT
+    --phase-complete, the code commit lands as impl(pay): Tpay-2-1,
+    and the stage routes to the consolidation pass
 18. the pass reads consolidation_gate_mode (gated) and the phase-2
     state (no staging.p2, consolidated_phases holds 1 only, no
     findings file), and dispatches the consolidation finder for

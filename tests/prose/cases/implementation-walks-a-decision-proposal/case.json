@@ -70,6 +70,7 @@
       "impl(pay): Tpay-1-2",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "manifest get pay.implementation.pay staging",
+      "manifest get pay.review.pay staging",
       "phase 1 consolidation — findings",
       "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
       "specification(pay): corrigendum from implementation/pay",

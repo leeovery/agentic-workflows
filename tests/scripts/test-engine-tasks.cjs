@@ -335,8 +335,9 @@ describe('engine task start answers do_banking', () => {
     assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
   });
 
-  it('a phase the analysis loop added banks — its own boundary drains the deposit', () => {
-    seed({ analysis_cycle_total: 1, consolidated_phases: [1], completed_phases: [1] });
+  it('a staged analysis cycle never closes a bank — only the phase\'s own boundary key does', () => {
+    seed({ staging: { c1: { tasks: { 1: 'approved' } } } });
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: true, resumed: true });
     assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
   });
 

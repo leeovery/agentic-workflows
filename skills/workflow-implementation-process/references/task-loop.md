@@ -108,7 +108,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's plan phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 The `start` response's `mode` says whether this task is being taken up or resumed.

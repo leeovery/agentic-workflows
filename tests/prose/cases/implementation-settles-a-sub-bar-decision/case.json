@@ -56,6 +56,7 @@
       "task init pay pay",
       "manifest get pay work_type",
       "manifest get pay.implementation.pay staging",
+      "manifest get pay.review.pay staging",
       "task analysis-cycle pay pay",
       "impl(pay): analysis cycle 1 — findings",
       "impl(pay): analysis cycle 1 — synthesis",

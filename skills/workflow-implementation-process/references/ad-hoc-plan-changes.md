@@ -209,7 +209,6 @@ The agent creates exactly the approved tasks; a crash-resume re-invocation is sa
 ```
 STATUS: complete
 TASKS_CREATED: {N}
-PHASES: {comma-separated phase numbers}
 SUMMARY: {1 sentence}
 ```
 

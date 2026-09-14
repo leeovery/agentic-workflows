@@ -31,7 +31,8 @@ The prose should have taken this path:
    unescaped. One returns findings, so the all-clean arm never applies:
    the findings commit lands scoped to the implementation topic, and
    the bank is never read
-8. the manifest's staging is read — absent, so the print is empty — and
+8. the implementation and review staging are read — both absent, so
+   the prints are empty — and
    the synthesizer dispatches with work unit, topic, cycle number and
    the floor's path, no settled directions; it stages two proposals — the webhook guard as a plain proposal whose Solution
    carries the settled direction (look the intent up; log and
