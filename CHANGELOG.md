@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.49] - 2026-09-14
+
+🔧 Changed
+
+- Every implementation phase now takes the consolidation boundary and BANK deposits — the machinery-phase exemption for analysis-cycle and review-remediation phases is gone, so their tasks report cross-scope consolidation opportunities like any other phase.
+- Review remediation proposals are now weighed against directions settled in earlier review passes, not just implementation ones, so a later fix can't quietly reverse a call review already made.
+- An abandoned review restart now closes out any partially-built remediation phase properly — draining its bank, dropping its boundary walk, and marking it consolidated — instead of leaving it in limbo.
+- Knowledge base tuning (similarity threshold, decay pruning/pace/weights) is now documented as explicit config-file keys you can set yourself, with project settings overriding machine-wide ones.
+
 ## [0.7.48] - 2026-09-14
 
 🔧 Changed
