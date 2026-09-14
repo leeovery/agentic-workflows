@@ -1,0 +1,32 @@
+{
+  "name": "crash-fix",
+  "work_type": "bugfix",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Checkout crashes when an order has no shipping address",
+  "phases": {
+    "investigation": {
+      "items": {
+        "crash-fix": {
+          "status": "in-progress"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "crash-fix": {
+          "status": "in-progress",
+          "sources": {
+            "crash-fix": {
+              "status": "pending"
+            }
+          },
+          "review_cycle": 0,
+          "finding_gate_mode": "gated",
+          "construction_gate_mode": "gated",
+          "date": "2026-01-01"
+        }
+      }
+    }
+  }
+}

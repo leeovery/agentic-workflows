@@ -1,0 +1,61 @@
+{
+  "origin": "the triage raise composes through the shared opener contract from every phase that loads rerouted-concerns, and its review pass landed three fixes that only matter outside discussion: the origin binds to the specification when the provenance line names this topic's own name (every bugfix — topic is work unit), the reroute clause never claims the origin settled anything (a spec gap settled nothing), and the registers are conditioned on the phase and the work type — no experiment or research pass proposed where the pipeline carries neither. No case walked the raise from an investigation. This one does: a bugfix whose paused specification routed a gap back to its investigation, the session resumed cold, the concern taken and raised as an opener, the walk stopped awaiting the user. The entry is fixture-authored rich on purpose — itemised costs, tuning numbers, a rejected zero-rating, and an unmeasured conversion cost as bait for the measurement the bugfix cannot run — so what the raise omits is checkable against what the entry holds",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-investigation-entry/references/validate-phase.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md"
+  ],
+  "answers": [
+    "c — continue",
+    "d — discuss"
+  ],
+  "conduct": "The user concluded the crash-fix investigation in an earlier sitting and returns because the specification stalled on a question it could not answer and sent it back here — they know one concern is waiting and want to hear it before anything else. They continue at the resume gate and take the queue when it is offered, and they read the raised concern with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render phase-note crash-fix.investigation.crash-fix --verb Resuming",
+      "topic queue crash-fix investigation crash-fix",
+      "render resume-gate crash-fix.investigation.crash-fix --triage 1",
+      "render triage-offer crash-fix.investigation.crash-fix"
+    ],
+    "calls_in_order": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render phase-note crash-fix.investigation.crash-fix --verb Resuming",
+      "topic queue crash-fix investigation crash-fix",
+      "render resume-gate crash-fix.investigation.crash-fix --triage 1",
+      "topic queue crash-fix investigation crash-fix",
+      "write:.workflows/.cache/crash-fix/investigation/crash-fix/triage-offer.json",
+      "render triage-offer crash-fix.investigation.crash-fix"
+    ],
+    "calls_exclude": [
+      "render requeue-offer",
+      "render triage-announce",
+      "topic absorb",
+      "topic requeue",
+      "topic start crash-fix investigation crash-fix",
+      "topic reopen",
+      "topic complete",
+      "discussion-map",
+      "experiment create",
+      "agent dispatch",
+      "knowledge.cjs index",
+      "knowledge.cjs query"
+    ]
+  }
+}
