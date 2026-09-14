@@ -229,11 +229,20 @@ function isGlyphable(label) {
  * label carries the decision glyph; a longer one stays prose. An empty label
  * opens straight on the options — the label-less selection menu, for gates
  * whose context is carried by the display directly above them.
+ * A `y/yes` row makes the menu a consent gate, and a consent gate asks on
+ * its diamond line: `question`, else a glyphable label, ending in `?`. A
+ * statement is refused, and so is a long or marked-up label with no
+ * `question` — the split is the fix.
  * @param {string} label @param {string[]} options
  * @param {{prompt?: string, question?: string}} [opts]
  * @returns {string}
  */
 function menu(label, options, { prompt, question } = {}) {
+  if (options.some((o) => o.startsWith('**`y/yes`**'))) {
+    const ask = question || label || '';
+    if (!ask.endsWith('?')) throw new Error(`menu: a y/yes row answers a question — the diamond line "${ask}" does not end in "?"`);
+    if (!question && !isGlyphable(label)) throw new Error(`menu: a y/yes row answers a glyphed question — "${label}" cannot take the glyph; split it into a statement label and a question`);
+  }
   const lines = label ? [label, ''] : [];
   // A yes/no gate whose label is a statement carries its ask separately: the
   // statement stays context, the short question takes the decision glyph.

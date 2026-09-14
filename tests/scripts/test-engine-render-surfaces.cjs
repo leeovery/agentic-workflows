@@ -558,8 +558,33 @@ describe('surfaces primitives', () => {
 
   it('leaves a long or marked-up label as prose — the glyph span cannot nest markup', () => {
     const long = 'Whether the pipeline can expose **click windows** belongs to a different topic entirely';
-    const out = menu(long, ['**`y/yes`**']);
-    assert.strictEqual(out, [DOTS, long, '', '**`y/yes`**'].join('\n'));
+    const out = menu(long, ['**`y/yes`**'], { question: 'Move it there?' });
+    assert.strictEqual(out, [DOTS, long, '', '**`◆ Move it there?`**', '', '**`y/yes`**'].join('\n'));
+  });
+
+  it('refuses a y/yes row under a statement — a consent gate asks its question', () => {
+    const yes = ['**`y/yes`**', '**`n/no`**'];
+    assert.throws(() => menu('Proceed.', yes), /the diamond line "Proceed\." does not end in "\?"/);
+    assert.throws(() => menu('The tree is dirty.', yes, { question: 'Carry on.' }), /the diamond line "Carry on\." does not end in "\?"/);
+    assert.throws(() => menu('', ['**`y/yes`** → Apply it']), /the diamond line "" does not end in "\?"/);
+  });
+
+  it('refuses a y/yes row under a question the label cannot glyph — the split is the fix', () => {
+    const long = 'Does the pipeline exposing **click windows** belong to a different topic entirely?';
+    assert.throws(() => menu(long, ['**`y/yes`**']), /"Does the pipeline exposing .*" cannot take the glyph; split it into a statement label and a question/);
+  });
+
+  it('a y/yes row passes under a glyphable question — the label itself, or one split beneath a statement', () => {
+    assert.strictEqual(menu('Proceed?', ['**`y/yes`** → Carry on', '**`n/no`** → Stop here']).split('\n')[1], '**`◆ Proceed?`**');
+    assert.strictEqual(
+      menu('The tree is dirty.', ['**`y/yes`**', '**`n/no`**'], { question: 'Carry on?' }),
+      [DOTS, 'The tree is dirty.', '', '**`◆ Carry on?`**', '', '**`y/yes`**', '**`n/no`**'].join('\n'),
+    );
+  });
+
+  it('a statement label stands over a route menu — no y/yes row, no question owed', () => {
+    const out = menu('Where this belongs.', ['**`d/discussion`** → Discuss it', '**`r/research`** → Research it']);
+    assert.strictEqual(out.split('\n')[1], '**`◆ Where this belongs.`**');
   });
 
   it('menu appends an optional trailing prompt after a blank line', () => {
