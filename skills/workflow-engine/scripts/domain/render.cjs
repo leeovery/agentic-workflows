@@ -587,23 +587,27 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
 
   const growth = hasGrowth ? p.live_words - p.review_baseline_words : 0;
   const head = [
-    `${CONVERGENCE_LOOPS[p.loop_type]} — cycle ${p.latest_cycle} diagnostic`,
-    '',
-    `  Trend: ${p.trend}`,
-    `  Latest cycle: ${fresh.length + recurring.length} findings (${fresh.length} new, ${recurring.length} recurring)`,
+    `Trend: ${p.trend}`,
+    `Latest cycle: ${fresh.length + recurring.length} findings (${fresh.length} new, ${recurring.length} recurring)`,
   ];
-  if (multi) head.push(`  Per stream: ${p.stream_counts.map((st) => `${st.label} ${st.count}`).join(' · ')}`);
-  if (hasGrowth) head.push(`  Document growth: ${p.review_baseline_words} → ${p.live_words} words (${growth >= 0 ? `+${growth}` : growth} net across review)`);
+  if (multi) head.push(`Per stream: ${p.stream_counts.map((st) => `${st.label} ${st.count}`).join(' · ')}`);
+  if (hasGrowth) head.push(`Document growth: ${p.review_baseline_words} → ${p.live_words} words (${growth >= 0 ? `+${growth}` : growth} net across review)`);
 
-  const parts = [head.join('\n')];
+  // Findings sit one step in from their section label; a hypothesis hangs
+  // under its finding's text, so a wrapped row and its note share a column.
+  const row = (/** @type {string} */ text) => bulletRow(text, { indent: '    ' });
+  const note = (/** @type {string} */ text) => indentedBody([text], { indent: '      ' });
+  const block = (/** @type {string} */ label, /** @type {string[]} */ rows) => [...indentedBody([label]), ...rows].join('\n');
+
+  const parts = [[`▪ ${CONVERGENCE_LOOPS[p.loop_type]} — cycle ${p.latest_cycle} diagnostic`, '', ...indentedBody(head)].join('\n')];
   if (resolved.length > 0) {
-    parts.push(['  Resolved:', ...resolved.map((f) => `    • ${f.title} (fixed in cycle ${f.last_seen_cycle})`)].join('\n'));
+    parts.push(block('Resolved:', resolved.flatMap((f) => row(`${f.title} (fixed in cycle ${f.last_seen_cycle})`))));
   }
   if (recurring.length > 0) {
-    parts.push(['  Recurring:', ...recurring.map((f) => `    • ${f.title} (cycles ${f.cycles})\n      ${f.hypothesis}`)].join('\n'));
+    parts.push(block('Recurring:', recurring.flatMap((f) => [...row(`${f.title} (cycles ${f.cycles})`), ...note(String(f.hypothesis))])));
   }
   if (fresh.length > 0) {
-    parts.push(['  New this cycle:', ...fresh.map((f) => `    • ${f.title}`)].join('\n'));
+    parts.push(block('New this cycle:', fresh.flatMap((f) => row(String(f.title)))));
   }
 
   const flags = [callout(CONVERGENCE_TRENDS[p.trend])];

@@ -311,22 +311,22 @@ function callout(text, { width = displayWidth() } = {}) {
  * wrapped at the display width, two columns in. A hand-picked column drifts
  * with the pane; a measured one cannot.
  * @param {string[]} paragraphs
- * @param {{width?: number}} [opts]
+ * @param {{indent?: string, width?: number}} [opts]
  * @returns {string[]}
  */
-function indentedBody(paragraphs, { width = displayWidth() } = {}) {
-  const budget = width - 2;
-  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `  ${line}`));
+function indentedBody(paragraphs, { indent = '  ', width = displayWidth() } = {}) {
+  const budget = width - indent.length;
+  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `${indent}${line}`));
 }
 
 /**
  * One `•` row at the callout indent, continuations aligned under the text.
  * @param {string} text
- * @param {{width?: number}} [opts]
+ * @param {{indent?: string, width?: number}} [opts]
  * @returns {string[]}
  */
-function bulletRow(text, { width = displayWidth() } = {}) {
-  return wrap(text, width - 4).map((s, i) => (i === 0 ? `  • ${s}` : `    ${s}`));
+function bulletRow(text, { indent = '  ', width = displayWidth() } = {}) {
+  return wrap(text, width - indent.length - 2).map((s, i) => (i === 0 ? `${indent}• ${s}` : `${indent}  ${s}`));
 }
 
 /**
