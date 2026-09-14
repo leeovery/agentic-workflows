@@ -4672,7 +4672,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
   it('roadmap-harvest-gate: the sort confirm', () => {
     const out = renderSurface(dir, 'roadmap-harvest-gate', {});
     assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
-    assert.match(out, /`◆ Confirm the sort, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Commit this sort to the roadmap\?`/);
     assert.match(out, /`y\/yes`.*Commit these items to the roadmap/);
     assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
     assert.match(out, /\*\*Adjust\*\*.*Tell me what to change \(move, split, merge, rename,/);

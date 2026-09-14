@@ -278,7 +278,7 @@ function roadmapHarvestGate() {
     cmdOption('y', 'yes', 'Commit these items to the roadmap'),
     cmdOption('e', 'explore', 'Go back to the conversation; not ready yet'),
     promptOption('Adjust', 'Tell me what to change (move, split, merge, rename, re-word)'),
-  ], { question: 'Confirm the sort, or tell me what to adjust.' });
+  ], { question: 'Commit this sort to the roadmap?' });
 }
 
 /** The epic synthesis' parks-only confirm — the whole sort is the roadmap's. */
