@@ -3294,6 +3294,40 @@ assert_eq "bulk index skips session state" "true" \
   "$(echo "$output" | grep -q 'dossier-core' && echo false || echo true)"
 teardown_project
 
+# --- Test 91: String similarity_threshold rejected ---
+echo "Test 91: String similarity_threshold rejected"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "similarity_threshold": "0.5" } }
+CONF
+create_discussion_file "alpha" "alpha"
+run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "topic" 2>&1 || true)
+run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
+assert_eq "string threshold exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "mentions invalid threshold" "true" "$(echo "$output" | grep -q 'Invalid similarity_threshold' && echo true || echo false)"
+teardown_project
+
+# --- Test 92: Out-of-range (>1) similarity_threshold rejected ---
+echo "Test 92: Out-of-range similarity_threshold rejected"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "similarity_threshold": 2 } }
+CONF
+create_discussion_file "alpha" "alpha"
+run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "topic" 2>&1 || true)
+run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
+assert_eq "out-of-range threshold exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "mentions invalid threshold" "true" "$(echo "$output" | grep -q 'Invalid similarity_threshold' && echo true || echo false)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

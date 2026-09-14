@@ -28,6 +28,7 @@ const {
   detectProjectInit,
   describeValidationError,
 } = require('../../src/knowledge/setup');
+const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
 
 let tmpDir;
 
@@ -104,13 +105,43 @@ describe('DEFAULTS', () => {
     // OpenAI text-embedding-3-small scores relevant query→chunk pairs at
     // 0.5–0.7 and off-topic ones around 0.2. A threshold at or above 0.5
     // empties the vector leg of every hybrid query and the store degrades to
-    // keyword-only without saying so — which is how 0.8 (Orama's generic
-    // default) shipped unnoticed.
+    // keyword-only without saying so.
     assert.ok(
       DEFAULTS.similarity_threshold < 0.5,
       `similarity_threshold ${DEFAULTS.similarity_threshold} reaches the 0.5–0.7 band relevant OpenAI vectors score in — hybrid search would silently run keyword-only`
     );
+    assert.ok(
+      DEFAULTS.similarity_threshold > 0.2,
+      `similarity_threshold ${DEFAULTS.similarity_threshold} sits in the noise band (off-topic pairs score ≈0.2) — every query would return unrelated chunks`
+    );
   });
+});
+
+// ---------------------------------------------------------------------------
+// resolveSimilarityThreshold
+// ---------------------------------------------------------------------------
+
+describe('resolveSimilarityThreshold', () => {
+  it('falls back to DEFAULTS when the key is absent', () => {
+    assert.strictEqual(resolveSimilarityThreshold({}), DEFAULTS.similarity_threshold);
+  });
+
+  it('passes an explicit 0 through unrewritten', () => {
+    assert.strictEqual(resolveSimilarityThreshold({ similarity_threshold: 0 }), 0);
+  });
+
+  it('passes a configured override through', () => {
+    assert.strictEqual(resolveSimilarityThreshold({ similarity_threshold: 0.45 }), 0.45);
+  });
+
+  for (const bad of ['0.5', 2, -1, NaN]) {
+    it(`refuses ${JSON.stringify(bad)} as a UserError naming the key`, () => {
+      assert.throws(
+        () => resolveSimilarityThreshold({ similarity_threshold: bad }),
+        (err) => err.name === 'UserError' && /Invalid similarity_threshold/.test(err.message)
+      );
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -165,6 +196,13 @@ describe('loadConfig', () => {
     assert.strictEqual(cfg.provider, 'stub');
     assert.strictEqual(cfg.dimensions, 256); // project overrides
     assert.strictEqual(cfg.decay_prune_below, 0.2); // system falls through
+  });
+
+  it('carries an explicit similarity_threshold: 0 through the merge', () => {
+    const projPath = path.join(tmpDir, 'proj.json');
+    writeJSON(projPath, { knowledge: { provider: 'stub', similarity_threshold: 0 } });
+    const cfg = loadConfig({ systemPath: path.join(tmpDir, 'sys.json'), projectPath: projPath });
+    assert.strictEqual(cfg.similarity_threshold, 0);
   });
 
   it('resolves api key from OPENAI_API_KEY when provider is openai', () => {
@@ -607,9 +645,8 @@ describe('buildSystemConfigOpenAI', () => {
   });
 
   it('leaves similarity_threshold and decay_prune_below to DEFAULTS at load time', () => {
-    // A default persisted at setup freezes at that day's value. The shipped
-    // default has to reach the loaded config through DEFAULTS so a retune
-    // lands on every install without touching its config file.
+    // A default persisted at setup freezes at that day's value; the shipped
+    // default reaches a loaded config only through DEFAULTS.
     const sysPath = path.join(tmpDir, 'sys.json');
     writeConfigFile(sysPath, buildSystemConfigOpenAI({ model: 'text-embedding-3-small', dimensions: 1536 }));
     const cfg = loadConfig({ systemPath: sysPath, projectPath: path.join(tmpDir, 'proj.json') });

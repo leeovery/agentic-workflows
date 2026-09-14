@@ -1743,6 +1743,20 @@ function csv(value) {
   return parts.length === 1 ? { eq: parts[0] } : { in: parts };
 }
 
+// ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
+// "accept all vector matches, no filtering" setting — isn't silently
+// rewritten to the default. Anything but a number in [0, 1] is refused here:
+// the store drops a wrong-typed value and Orama's own default takes over.
+function resolveSimilarityThreshold(cfg) {
+  const similarity = cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
+  if (typeof similarity !== 'number' || !Number.isFinite(similarity) || similarity < 0 || similarity > 1) {
+    throw new UserError(
+      `Invalid similarity_threshold: ${JSON.stringify(similarity)}. Expected a number in [0, 1].`
+    );
+  }
+  return similarity;
+}
+
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
     process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N]\n');
@@ -1802,10 +1816,7 @@ async function cmdQuery(args, options, cfg, provider) {
   if (options.workUnit) where.work_unit = csv(options.workUnit);
   if (options.topic) where.topic = csv(options.topic);
 
-  // ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
-  // "accept all vector matches, no filtering" setting — isn't silently
-  // rewritten to the default.
-  const similarity = cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
+  const similarity = resolveSimilarityThreshold(cfg);
   const whereClause = Object.keys(where).length > 0 ? where : undefined;
 
   // Run a search per term and merge.
@@ -2604,6 +2615,7 @@ module.exports = {
   getProgressClock,
   retrievability,
   rerank,
+  resolveSimilarityThreshold,
 };
 
 if (require.main === module) {

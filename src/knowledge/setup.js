@@ -208,7 +208,8 @@ async function askDimensions(rl, prompt, defaultValue) {
 
 // Provider identity only — never a tuning default (similarity_threshold,
 // decay_prune_below): a default written here freezes at the value of the day
-// setup ran. Those keys stay user overrides; DEFAULTS applies at load time.
+// setup ran. Those keys are honoured as overrides when present; DEFAULTS
+// applies at load time.
 function buildSystemConfig(fields) {
   return { knowledge: { ...fields } };
 }

@@ -525,7 +525,7 @@ describe('knowledge store — vector and hybrid search', () => {
     // embedding model gives relevant text (OpenAI: 0.5–0.7); the far doc
     // scores what off-topic text gets (≈0.2). A default above the relevance
     // band empties the vector leg and every hybrid query silently runs
-    // keyword-only — the 0.8 that shipped did exactly that.
+    // keyword-only.
     const db = await createStore(2);
     await insertDocument(db, makeDoc({
       id: 'near',
