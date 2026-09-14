@@ -3125,10 +3125,11 @@ const BATCH_MAX = 5;
 /** A confirm's remainder tail — how many of the lane wait beyond this screen. @param {number} more */
 const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
 
-/** @type {Record<string, {intro: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, fields: string[]}>} */
+/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
+    question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
     confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
     ask: "Tell me a number to expand, or one you don't think is settled",
     fields: ['title', 'detail'],
@@ -3137,6 +3138,7 @@ const BATCH_LANES = {
     intro: (n) => (n === 1
       ? "This one has a single defensible answer, settled by what's already decided or by first principles. I've made the call and named what determined it."
       : "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it."),
+    question: (n) => (n === 1 ? 'Document it?' : 'Document them?'),
     confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
     discuss: "Say discuss and a number — I'll raise it after the rest land",
     ask: 'Tell me a number to expand',
@@ -3146,6 +3148,7 @@ const BATCH_LANES = {
     intro: (n) => (n === 1
       ? "Not this topic's to answer. It goes to its owner's triage queue as a concern, carrying the context built here."
       : "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here."),
+    question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
     confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
     ask: 'Tell me a number to expand, or one that should stay here',
     fields: ['title', 'target', 'detail'],
@@ -3195,7 +3198,7 @@ function findingBatch(cwd, { dotpath, file }) {
         cmdOption('y', 'yes', lane.confirm(p.items.length, more)),
         ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
         promptOption('Ask', lane.ask),
-      ]),
+      ], { question: lane.question(p.items.length) }),
     ),
   ].join('\n');
 }

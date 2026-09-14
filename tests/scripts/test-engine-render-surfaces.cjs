@@ -1509,6 +1509,8 @@ describe('render finding-batch', () => {
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
+      '**`◆ Apply them?`**',
+      '',
       '**`y/yes`** → Apply all 2, then move on',
       "**Ask**   → Tell me a number to expand, or one you don't think is",
       `${NB(8)}settled`,
@@ -1538,6 +1540,8 @@ describe('render finding-batch', () => {
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
+      '**`◆ Document them?`**',
+      '',
       '**`y/yes`**   → Document all 2 and move on',
       "**Discuss** → Say discuss and a number — I'll raise it after the rest",
       `${NB(10)}land`,
@@ -1555,24 +1559,22 @@ describe('render finding-batch', () => {
         { title: 'B', detail: 'b.' },
       ],
     });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two }),
-      /→ Document all 2 and move on \(7 more after this\)$/m,
-    );
+    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
+    assert.match(plural, /`◆ Document them\?`/);
+    assert.match(plural, /→ Document all 2 and move on \(7 more after this\)$/m);
     const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: one });
+    assert.match(out, /`◆ Document it\?`/);
     assert.match(out, /→ Document it and move on$/m);
     assert.match(out, /^This one has a single defensible answer/m);
     const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne }),
-      /→ Apply it, then move on$/m,
-    );
+    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne });
+    assert.match(applied, /`◆ Apply it\?`/);
+    assert.match(applied, /→ Apply it, then move on$/m);
     const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne }),
-      /→ Send it$/m,
-    );
+    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne });
+    assert.match(routed, /`◆ Send it\?`/);
+    assert.match(routed, /→ Send it$/m);
     const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
     assert.throws(
       () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: bad }),
@@ -1606,7 +1608,7 @@ describe('render finding-batch', () => {
     assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
     assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
     assert.match(out, /one that should stay here/);
-    assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
+    assert.ok(out.includes(`${DOTS}\n**\`◆ Send it?\`**\n\n**\`y/yes\`**`), 'a label-less menu opens on its question');
   });
 
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {

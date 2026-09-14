@@ -2612,13 +2612,17 @@ describe('pipeline simulation', () => {
       }));
       return sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
     };
-    assert.match(screen(0, 6), /\(6 more after this\)/, 'screen one names the remainder');
+    const first = screen(0, 6);
+    assert.match(first, /`◆ Apply them\?`/, 'the screen asks its question');
+    assert.match(first, /\(6 more after this\)/, 'screen one names the remainder');
     let row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(0, 5).join(',')]);
     assert.strictEqual(row.remaining.length, 6, 'first screen drains five');
     assert.match(screen(5, 1), /\(1 more after this\)/, 'screen two names the remainder');
     row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(5, 10).join(',')]);
     assert.strictEqual(row.remaining.length, 1, 'second screen drains five more');
-    assert.match(screen(10, 0), /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
+    const singleton = screen(10, 0);
+    assert.match(singleton, /`◆ Apply it\?`/, 'a singleton asks in the singular');
+    assert.match(singleton, /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
     row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, 'F11']);
     assert.strictEqual(row.status, 'incorporated', 'the last screen incorporates the row');
 
