@@ -1,0 +1,20 @@
+[
+  {
+    "message": "discussion(pay/pay): decided webhook reconciliation (review-001 F2)",
+    "files": [
+      ".workflows/pay/discussion/pay.md"
+    ]
+  },
+  {
+    "message": "spec(pay): construct",
+    "files": [
+      ".workflows/pay/specification/pay/specification.md"
+    ]
+  },
+  {
+    "message": "spec(pay): gap routed to pay",
+    "files": [
+      ".workflows/pay/discussion/.triage/pay/001-failed-payment-retries.md"
+    ]
+  }
+]
