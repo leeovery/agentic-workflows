@@ -3007,11 +3007,12 @@ function planFormatGate(cwd) {
     throw new Error('render plan-format-gate: no project default plan_format — the offer only renders over an existing default');
   }
   return section('MENU: plan format gate', STOP_FOR_RESPONSE, menu(
-    `Project default format is **${format}**. Use the same format?`,
+    `Project default format is **${format}**.`,
     [
       cmdOption('y', 'yes', `Use ${format}`),
       cmdOption('n', 'no', 'See all available formats'),
     ],
+    { question: 'Use the same format?' },
   ));
 }
 

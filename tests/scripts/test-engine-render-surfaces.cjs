@@ -5428,7 +5428,9 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
       "=== MENU: plan format gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Project default format is **local-markdown**. Use the same format?',
+      'Project default format is **local-markdown**.',
+      '',
+      '**`◆ Use the same format?`**',
       '',
       '**`y/yes`** → Use local-markdown',
       '**`n/no`**  → See all available formats',
