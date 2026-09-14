@@ -22,7 +22,7 @@ The prose should have taken this path:
    expansion leads. The released wait on E1 is narrated and the
    register re-renders
 5. the return leg reads the series, finds E2 live, and renders the
-   next-or-menu gate; the user chooses `next`, the same resolution the
+   next-or-menu gate; the user chooses `yes`, the same resolution the
    entry runs re-runs — exactly one live record now, so E2 resolves
    with nothing asked (`Starting E2`; the picker does not render a
    second time) — and flow re-enters the process at initialisation

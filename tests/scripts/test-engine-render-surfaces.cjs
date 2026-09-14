@@ -186,7 +186,7 @@ describe('the experiment surfaces', () => {
     assert.match(out, /The series still holds E2 multi-monitor, E3 focus-order\./,
       'the statement names the live ids — terminal rows and subs stay out');
     assert.match(out, /◆ Work the next experiment\?/);
-    assert.match(out, /\*\*`n\/next`\*\*\s+→ Work the next experiment/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Work the next experiment/);
     assert.match(out, /\*\*`m\/menu`\*\*\s+→ Back to the menu/);
   });
 

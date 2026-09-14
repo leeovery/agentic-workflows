@@ -32,7 +32,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-next-ga
 
 **STOP.** Wait for user response.
 
-#### If `next`
+#### If `yes`
 
 Load **[select-record.md](../../workflow-experiment-entry/references/select-record.md)** and follow its instructions as written — the same resolution the entry runs.
 

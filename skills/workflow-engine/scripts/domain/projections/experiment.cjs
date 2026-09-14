@@ -111,7 +111,7 @@ function experimentNextGate(live) {
   const names = live.map((r) => `${r.id} ${r.slug}`).join(', ');
   const statement = `The series still holds ${names}.`;
   return section('MENU: experiment next gate', MENU_INSTRUCTION, menu(statement, [
-    cmdOption('n', 'next', 'Work the next experiment'),
+    cmdOption('y', 'yes', 'Work the next experiment'),
     cmdOption('m', 'menu', 'Back to the menu'),
   ], { question: 'Work the next experiment?' }));
 }
