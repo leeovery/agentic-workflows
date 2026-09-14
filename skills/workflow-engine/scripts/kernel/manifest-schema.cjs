@@ -160,12 +160,16 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 // consumer (transitions, derivations, the roadmap's cross-join flag).
 const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
 
+// The project-level places with no work unit, named by identity alone:
+// `baseline` is the knowledge base's pseudo-identity for the project-level
+// baseline docs (.workflows/.baseline/); `roadmap` is the product-roadmap
+// layer's identity (the project manifest's `roadmap` node and the
+// project-level sessions under .workflows/.roadmap/).
+const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
+
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest; `baseline` is the knowledge base's pseudo-identity for the
-// project-level baseline docs (.workflows/.baseline/); `roadmap` is the
-// product-roadmap layer's identity (the project manifest's `roadmap` node and
-// the project-level sessions under .workflows/.roadmap/).
-const RESERVED_WORK_UNIT_NAMES = ['project', 'baseline', 'roadmap'];
+// project manifest, and the project identities are places of their own.
+const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES];
 
 module.exports = {
   VALID_WORK_TYPES,
@@ -187,5 +191,6 @@ module.exports = {
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,
+  PROJECT_IDENTITIES,
   RESERVED_WORK_UNIT_NAMES,
 };

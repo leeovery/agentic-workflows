@@ -50,6 +50,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 # **`■ Project Baseline`**
 ```
 
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label baseline
+```
+
 Read the baseline status (empty output, or `native`, means no assessment has been started):
 
 ```bash

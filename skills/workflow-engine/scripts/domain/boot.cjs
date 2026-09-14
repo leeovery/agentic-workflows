@@ -70,7 +70,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
- * @property {boolean} label_repaired a stranded session label (its owner gone) was found on this terminal and the original name put back
+ * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_end_hooks_installed this boot wrote the SessionEnd hooks into `.claude/settings.json` — `presence cleanup` for every project, `session cleanup` while labels are on; false when the file already carried exactly those
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read

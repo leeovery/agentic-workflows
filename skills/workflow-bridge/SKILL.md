@@ -23,6 +23,12 @@ This skill receives positional arguments:
 
 ## Step 1: Read Work Type and Run Discovery
 
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
