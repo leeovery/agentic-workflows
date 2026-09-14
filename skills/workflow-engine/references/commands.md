@@ -429,6 +429,7 @@ engine render baseline-doc-pick                                   # manage's doc
 engine render baseline-offer-gate                                 # workflow-start's Step 0.4 offer menu; refuses once any status is recorded — a native verdict included
 engine render migration-gate                                      # workflow-start's Step 0.1 confirm gate after the migration summary — static yes/ask menu
 engine render label-gate                                          # workflow-start's Step 0.2 tmux session-label opt-in — static yes/no menu
+engine render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]  # workflow-start's Step 0.3 knowledge gate menus, static and variant-keyed: reuse = adopt the system configuration (yes/different/terminal — `--provider` + `--model` name it on the yes row, both omitted for keyword-only, one without the other refused, either on another variant refused), deviate = the per-project alternatives (keyword/terminal), mode = the search-mode pick (openai/compatible/keyword/terminal), retry = the re-run after the key is stored (yes/keyword)
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: it runs its own navigation-gateway index dump and emits that response's `DISPLAY: selection` / `MENU: selection` sections, per their markers.

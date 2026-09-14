@@ -4059,7 +4059,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate\)/);
   });
 });
 
@@ -4411,6 +4411,60 @@ describe('baseline surfaces', () => {
     assert.match(label, /\*\*`◆ Label your tmux session as you work\?`\*\*/);
     assert.match(label, /\*\*`y\/yes`\*\* → Turn session labels on/);
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
+  });
+
+  it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai', model: 'text-embedding-3-small' }), [
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Use the existing configuration for this project?`**',
+      '',
+      '**`y/yes`**       → Use the existing configuration (openai ·',
+      `${NB(14)}text-embedding-3-small)`,
+      '**`d/different`** → Choose a different mode for this project',
+      '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
+      '',
+    ].join('\n'));
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse' }), [
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Use the existing configuration for this project?`**',
+      '',
+      '**`y/yes`**       → Use the existing configuration (keyword-only)',
+      '**`d/different`** → Choose a different mode for this project',
+      '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
+      '',
+    ].join('\n'));
+
+    const deviate = renderSurface(dir, 'knowledge-gate', { variant: 'deviate' });
+    assert.match(deviate, /=== MENU: knowledge deviate gate/);
+    assert.match(deviate, /\*\*`◆ How should this project deviate\?`\*\*/);
+    assert.match(unwrap(deviate), /\*\*`k\/keyword`\*\*\s+→ Keyword-only for this project \(the system configuration stays untouched for every other project\)/);
+    assert.match(unwrap(deviate), /\*\*`t\/terminal`\*\* → Run the interactive wizard to change the system-wide configuration/);
+
+    const mode = renderSurface(dir, 'knowledge-gate', { variant: 'mode' });
+    assert.match(mode, /=== MENU: knowledge mode gate/);
+    assert.match(mode, /\*\*`◆ How should this project's knowledge base work\?`\*\*/);
+    assert.match(unwrap(mode), /\*\*`o\/openai`\*\*\s+→ OpenAI embeddings — full semantic search \(recommended; needs an API key\)/);
+    assert.match(unwrap(mode), /\*\*`c\/compatible`\*\* → A local or self-hosted OpenAI-compatible endpoint \(LM Studio, Ollama, vLLM\)/);
+    assert.match(unwrap(mode), /\*\*`k\/keyword`\*\*\s+→ Keyword-only search — the no-key backstop; upgrade anytime later/);
+    assert.match(unwrap(mode), /\*\*`t\/terminal`\*\*\s+→ Run the interactive wizard in your terminal instead/);
+
+    const retry = renderSurface(dir, 'knowledge-gate', { variant: 'retry' });
+    assert.match(retry, /=== MENU: knowledge retry gate/);
+    assert.match(retry, /\*\*`◆ Ready to retry\?`\*\*/);
+    assert.match(unwrap(retry), /\*\*`y\/yes`\*\*\s+→ The key is stored — re-run the setup/);
+    assert.match(unwrap(retry), /\*\*`k\/keyword`\*\* → Skip the key for now — use keyword-only search instead/);
+    assert.doesNotMatch(retry, /d\/done/);
+  });
+
+  it('the knowledge gate refuses a missing or unknown variant, a lone provider or model, and a configuration on any variant but reuse', () => {
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', {}), /--variant must be one of reuse, deviate, mode, retry, got ""/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'setup' }), /--variant must be one of reuse, deviate, mode, retry, got "setup"/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /--provider and --model travel together/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--provider and --model travel together/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider\/--model belong to the reuse variant — the mode variant names no configuration/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', model: 'x' }), /belong to the reuse variant — the retry variant/);
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {

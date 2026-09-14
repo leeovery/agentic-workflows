@@ -25,13 +25,12 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 
 ```
 > The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: no workflow runs until it is initialised. Your machine already has a system configuration this project can reuse.
+```
 
-· · · · · · · · · · · ·
-**`◆ Set up the knowledge base for this project:`**
+Fetch the gate and emit its `MENU: knowledge reuse gate` section verbatim as markdown (not a code block). Pass `--provider` and `--model` from `system_config` when it names a provider; omit both when it does not (keyword-only):
 
-**`y/yes`**       → Use the existing configuration (@if(system_config.provider) {system_config.provider} · {system_config.model} @else keyword-only @endif)
-**`d/different`** → Choose a different mode for this project
-**`t/terminal`**  → Run the interactive wizard in your terminal instead
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant reuse [--provider {system_config.provider} --model {system_config.model}]
 ```
 
 **STOP.** Wait for user response.
@@ -50,14 +49,10 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
 
 A per-project deviation never touches the system-wide configuration. Keyword-only is the per-project mode; a different *provider* is a system-wide decision — the wizard's job.
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: knowledge deviate gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`◆ How should this project deviate?`**
-
-**`k/keyword`**  → Keyword-only for this project (the system configuration stays untouched for every other project)
-**`t/terminal`** → Run the interactive wizard to change the system-wide configuration
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant deviate
 ```
 
 **STOP.** Wait for user response.
@@ -80,14 +75,12 @@ A per-project deviation never touches the system-wide configuration. Keyword-onl
 
 ```
 > Pick how this project's knowledge base should search. OpenAI needs an API key — stored in your terminal, never pasted here. Keyword-only needs no key and can be upgraded anytime.
+```
 
-· · · · · · · · · · · ·
-**`◆ How should this project's knowledge base work?`**
+Fetch the gate and emit its `MENU: knowledge mode gate` section verbatim as markdown (not a code block):
 
-**`o/openai`**     → OpenAI embeddings — full semantic search (recommended; needs an API key)
-**`c/compatible`** → A local or self-hosted OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)
-**`k/keyword`**    → Keyword-only search — the no-key backstop; upgrade anytime later
-**`t/terminal`**   → Run the interactive wizard in your terminal instead
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant mode
 ```
 
 **STOP.** Wait for user response.
@@ -181,12 +174,12 @@ this chat — run this in your terminal, then come back:
 
 ```
 > Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.
+```
 
-· · · · · · · · · · · ·
-**`◆ Ready to retry?`**
+Fetch the gate and emit its `MENU: knowledge retry gate` section verbatim as markdown (not a code block):
 
-**`y/yes`**     → The key is stored — re-run the setup
-**`k/keyword`** → Skip the key for now — use keyword-only search instead
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant retry
 ```
 
 **STOP.** Wait for user response.

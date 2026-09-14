@@ -29,7 +29,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
-const { migrationGate, labelGate } = require('./projections/boot.cjs');
+const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -4834,6 +4834,25 @@ function baselineDocPickSurface(cwd, _args) {
   return baselineDocPick();
 }
 
+/**
+ * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
+ * the reuse variant alone — the system configuration its yes row names —
+ * together, or neither for keyword-only.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function knowledgeGateSurface(_cwd, { variant, provider, model }) {
+  if (variant === undefined || !KNOWLEDGE_GATE_VARIANTS.includes(variant)) {
+    throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (variant !== 'reuse' && (provider !== undefined || model !== undefined)) {
+    throw new Error(`render knowledge-gate: --provider/--model belong to the reuse variant — the ${variant} variant names no configuration`);
+  }
+  if (isFilled(provider) !== isFilled(model)) {
+    throw new Error('render knowledge-gate: --provider and --model travel together — both name the system configuration, or neither for keyword-only');
+  }
+  return knowledgeGate(variant, { provider, model });
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -4951,6 +4970,7 @@ const SURFACES = {
   'baseline-offer-gate': baselineOfferGateSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
+  'knowledge-gate': knowledgeGateSurface,
 };
 
 /**
