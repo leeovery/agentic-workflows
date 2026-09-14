@@ -22,7 +22,7 @@ The prose should have taken this path:
    never not this session — and the user takes it; the raise reads
    the queue file as the session's own brief, arms the map — the
    concern is new ground (`discussion-map add` then set `exploring`)
-   — and presents a breakdown — the entry never emitted verbatim —
+   — and raises it as an opener — the entry never emitted verbatim —
    then the concern is discussed to a decision
 7. the fold writes the armed subtopic: a provenance-led Context, the
    decision documented, the map set `decided`, and the concern

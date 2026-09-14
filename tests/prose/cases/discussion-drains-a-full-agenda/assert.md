@@ -17,9 +17,9 @@ The prose should have taken this path:
    bodies unread — with the offer menu, and stops for the user
 5. the user opts in; the first concern's queue file is read as the
    session's own brief, the concern armed on the map (`discussion-map
-   add` then set `exploring`), and presented as a breakdown — the
-   entry never emitted verbatim, and never from the title alone —
-   then discussed to the baseline decision
+   add` then set `exploring`), and raised as an opener — the entry
+   never emitted verbatim, and never from the title alone — then
+   discussed to the baseline decision
 6. the fold documents the decision: a new `##` section whose Context
    opens with the provenance line and the concern body, the map set
    `decided`, and the concern absorbed under its own commit naming

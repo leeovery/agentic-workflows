@@ -18,12 +18,12 @@ The prose should have taken this path:
    set `exploring`)
 6. the raise recognises a bundled entry — three asks the user could
    accept or reject independently — and walks it: a one-line map of
-   the three (titles only), then a breakdown of the first ask alone,
-   ending in a single question; the second and third asks are absent
-   from that first breakdown
+   the three (titles only), then the first ask raised alone as an
+   opener, ending awaiting the user (at most one question, no menu);
+   the second and third asks are absent from that first raise
 7. each later ask is raised only after the previous one resolves,
-   with its own breakdown and its own single question — three
-   sequential raises, never two asks in one message
+   with its own opener and its own close — three sequential raises,
+   never two asks in one message
 8. after the third ask resolves (the user amends the sampling refresh
    cadence to quarterly), the fold records the entry once — its
    section, its map state `decided`, its single absorb commit — and

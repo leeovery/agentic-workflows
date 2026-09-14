@@ -328,7 +328,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
    ```
 3. Compose the raise from the finding's section of the content file — digested, never read out:
 
-   → Load **[composing-a-raise.md](composing-a-raise.md)** with agent_type = `{agent_type}`.
+   → Load **[composing-a-raise.md](../../workflow-shared/references/composing-a-raise.md)** with source = `{agent_type}`.
 
 4. Raise it in the current turn, then stop — one raise per turn. The raise proposes and never lands: whatever its firmness, nothing is documented until the user has replied, and the next finding waits until this one's outcome is documented — the write-up turn picks it up (below).
 
