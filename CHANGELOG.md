@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.47] - 2026-09-14
+
+🔧 Changed
+
+- The knowledge base's default vector-similarity threshold dropped from 0.8 to 0.3, fixing relevant results being silently filtered out of hybrid search.
+- Setup no longer freezes `similarity_threshold`/`decay_prune_below` into the system config at write time, so future tuning changes take effect instead of being locked to the values in place when setup ran.
+- `decay_prune_below: null` no longer disables compaction — use `false` instead.
+
 ## [0.7.46] - 2026-09-14
 
 🐛 Fixed
