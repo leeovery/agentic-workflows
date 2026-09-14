@@ -421,7 +421,7 @@ engine render baseline-progress                                   # the baseline
 engine render baseline-area-gate --area <name>                    # the between-areas yes/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
 engine render baseline-paused                                     # the interview's pause receipt — documented count + the workflow-start pointer; in-progress only
 engine render baseline-receipt                                    # the completion receipt — doc list + the knowledge-query note; refuses before the completed write, and refuses to name an unlanded doc
-engine render baseline-scope-gate --file <payload.json>           # the scope confirmation: proposed-area list (payload {mode: fresh|expand, areas: [{name, detail}]}, names validated kebab/dot-free) + the approve/back/adjust gate; stateless — runs before anything persists
+engine render baseline-scope-gate --file <payload.json>           # the scope confirmation: proposed-area list (payload {mode: fresh|expand, areas: [{name, detail}]}, names validated kebab/dot-free) + the yes/back/adjust gate; stateless — runs before anything persists
 engine render baseline-round --file <payload.json>                # one interview round: payload {area, questions: [{text, candidates?}]} (1-4 questions, up to 4 candidates each), rendered numbered + lettered over a researched area
 engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static approve/view/adjust menu
 engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only

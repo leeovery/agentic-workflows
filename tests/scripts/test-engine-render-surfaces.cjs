@@ -4346,7 +4346,7 @@ describe('baseline surfaces', () => {
     assert.match(out, /=== DISPLAY: baseline scope \(emit verbatim as markdown \(not a code block\)\) ===/);
     assert.match(out, /\*\*overview\*\* — What the product is\n\*\*dispatcher\*\* — The downstream push pipeline/);
     assert.match(out, /\*\*`◆ Assess these areas\?`\*\*/);
-    assert.match(out, /\*\*`a\/approve`\*\* → Lock the list and start the research/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Lock the list and start the research/);
     assert.match(out, /\*\*`b\/back`\*\*\s+→ Leave without changing anything/);
     assert.match(out, /\*\*Adjust\*\*\s+→ Tell me what to add, drop, rename, or merge/);
   });

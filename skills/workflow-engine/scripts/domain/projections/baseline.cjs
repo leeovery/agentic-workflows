@@ -101,7 +101,7 @@ function baselineReceipt(d) {
 
 /**
  * The scope confirmation — the proposed area list (judgment content, via
- * payload) above its approve/back/adjust gate.
+ * payload) above its yes/back/adjust gate.
  * @param {ScopePayload} payload
  * @returns {string}
  */
@@ -110,7 +110,7 @@ function baselineScopeGate(payload) {
   const body = menu(
     '',
     [
-      cmdOption('a', 'approve', 'Lock the list and start the research'),
+      cmdOption('y', 'yes', 'Lock the list and start the research'),
       cmdOption('b', 'back', 'Leave without changing anything'),
       promptOption('Adjust', 'Tell me what to add, drop, rename, or merge'),
     ],
