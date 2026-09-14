@@ -3062,12 +3062,13 @@ function correctionGate(cwd, { dotpath }) {
   }
   const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
   return section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
-    `Apply the correction protocol to ${specPath}?`,
+    `Correcting ${specPath}.`,
     [
       cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
       cmdOption('v', 'view', 'Show the full correction list'),
       cmdOption('n', 'no', 'Leave the specification as-is'),
     ],
+    { question: 'Apply the correction protocol?' },
   ));
 }
 

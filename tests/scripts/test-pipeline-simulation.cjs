@@ -635,8 +635,9 @@ describe('pipeline simulation', () => {
       /Feature Completed/, 'pipeline completion renders the banner receipt');
     // A completed unit is the one state the corrigendum protocol edits — the
     // gate derives the spec path from the address it is given.
-    assert.match(sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' }),
-      new RegExp(`Apply the correction protocol to \\.workflows/${wu}/specification/${wu}/specification\\.md\\?`));
+    const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' });
+    assert.match(correctionScreen, new RegExp(`Correcting \\.workflows/${wu}/specification/${wu}/specification\\.md\\.`));
+    assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
 
   it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {

@@ -5467,7 +5467,9 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(out, [
       "=== MENU: correction gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Apply the correction protocol to .workflows/done/specification/done/specification.md?',
+      'Correcting .workflows/done/specification/done/specification.md.',
+      '',
+      '**`◆ Apply the correction protocol?`**',
       '',
       '**`y/yes`**  → Edit in place + corrigendum + knowledge re-index',
       '**`v/view`** → Show the full correction list',
