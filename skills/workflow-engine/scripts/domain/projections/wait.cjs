@@ -6,7 +6,7 @@
 // the experiments a conversation spawned. The engine's completion refusal
 // is the backstop; this is its graceful face — the blocker names what is
 // owed, the guidance names the ways out, and the menu offers the pause the
-// spawn gate's `now` takes.
+// spawn gate's `yes` takes.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption } = require('./surfaces.cjs');

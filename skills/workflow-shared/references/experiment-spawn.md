@@ -62,7 +62,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-spawn-g
 
 **STOP.** Wait for user response.
 
-#### If `now`
+#### If `yes`
 
 The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; say where the ball sits:
 

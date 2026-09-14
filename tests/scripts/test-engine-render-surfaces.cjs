@@ -219,9 +219,9 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing', id: 'E1' });
     assert.match(out, /=== MENU: experiment spawn gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Work E1 now\?/);
-    const n = out.indexOf('**`n/now`**');
+    const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
-    assert.ok(n > -1 && l > n, 'now leads, later follows');
+    assert.ok(n > -1 && l > n, 'yes leads, later follows');
     assert.match(unwrap(out), /Pause this research here — the session ends and the menu takes over with E1 queued/);
     assert.match(unwrap(out), /Keep the conversation going — this research cannot conclude until E1's evidence lands/);
   });

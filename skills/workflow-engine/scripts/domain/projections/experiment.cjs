@@ -127,7 +127,7 @@ function experimentNextGate(live) {
  */
 function experimentSpawnGate(phase, id) {
   return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('n', 'now', `Pause this ${phase} here — the session ends and the menu takes over with ${id} queued`),
+    cmdOption('y', 'yes', `Pause this ${phase} here — the session ends and the menu takes over with ${id} queued`),
     cmdOption('l', 'later', `Keep the conversation going — this ${phase} cannot conclude until ${id}'s evidence lands`),
   ], { question: `Work ${id} now?` }));
 }
