@@ -38,7 +38,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 **STOP.** Wait for user response.
 
-**If `pause`:**
+**If `yes`:**
 
 Commit any uncommitted session work with the session's cadence commit:
 

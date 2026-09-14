@@ -242,7 +242,7 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
       /address must be <work_unit>\.<research\|discussion>\.<topic>/);
   });
 
-  it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the pause/keep menu', () => {
+  it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the yes/keep menu', () => {
     holderWith('discussion', ['E1', 'E2']);
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' });
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
@@ -287,7 +287,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /> Work the research first — cancelling it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /\*\*`p\/pause`\*\* → Pause this discussion here — the session ends and the menu takes over with the research queued/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here — the session ends and the menu takes over with the research queued/);
     assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
     assert.ok(!out.includes('experiment'), 'no experiment clause without an experiment wait');
   });

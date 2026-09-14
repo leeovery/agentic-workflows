@@ -60,7 +60,7 @@ function waitGate(phase, topic, waits) {
     ),
     section('DISPLAY: wait guidance', 'emit verbatim as markdown', `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('p', 'pause', `Pause this ${phase} here — the session ends and the menu takes over with ${queued.join(' and ')} queued`),
+      cmdOption('y', 'yes', `Pause this ${phase} here — the session ends and the menu takes over with ${queued.join(' and ')} queued`),
       cmdOption('k', 'keep', `Keep the conversation going — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
     ], { question: 'Pause to the menu?' })),
   ].join('\n');
