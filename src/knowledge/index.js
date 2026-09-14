@@ -2439,10 +2439,10 @@ async function cmdCompact(_args, options, cfg) {
   // Decay is progress-based now (idea #33). `compact` is a pure storage
   // backstop: it prunes a unit's non-spec chunks only once their retrievability
   // R has fallen below decay_prune_below — by then they're already unreachable
-  // in ranking, so removal is hygiene, not a relevance call. false/null
-  // disables pruning entirely; relevance still decays live in query ranking.
+  // in ranking, so removal is hygiene, not a relevance call. false disables
+  // pruning entirely; relevance still decays live in query ranking.
   const rawPrune = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
-  if (rawPrune === false || rawPrune === null) {
+  if (rawPrune === false) {
     process.stdout.write('Compaction disabled\n');
     return;
   }

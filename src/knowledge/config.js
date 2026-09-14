@@ -33,7 +33,7 @@ const DEFAULTS = {
   decay_base_stability: 5,
   // Storage backstop: `compact` prunes a unit's non-spec chunks once their
   // retrievability R falls below this floor (i.e. already unreachable in
-  // ranking). false/null disables pruning. Replaces the old wall-clock
+  // ranking). false disables pruning. Replaces the old wall-clock
   // decay_months — decay is progress-based now.
   decay_prune_below: 0.05,
   // Significance weighting for the progress clock. progressElapsed sums
