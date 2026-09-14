@@ -3036,7 +3036,7 @@ function planReviewGate(cwd, { dotpath, variant }) {
     ], { question: 'Continue with review?' }));
   }
   return section('MENU: plan review reloop gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('r', 'reanalyse', 'Run another round (traceability + integrity)'),
+    cmdOption('y', 'yes', 'Run another round (traceability + integrity)'),
     cmdOption('p', 'proceed', 'Proceed to conclusion'),
   ], { question: 'Run another review round?' }));
 }

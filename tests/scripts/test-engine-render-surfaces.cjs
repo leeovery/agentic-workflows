@@ -5388,7 +5388,7 @@ describe('render — the adopted phase gates', () => {
     const reloop = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'reloop' });
     assert.match(reloop, /MENU: plan review reloop gate/);
     assert.match(reloop, /`◆ Run another review round\?`/);
-    assert.match(unwrap(reloop), /\*\*`r\/reanalyse`\*\* → Run another round \(traceability \+ integrity\)/);
+    assert.match(unwrap(reloop), /\*\*`y\/yes`\*\*\s+→ Run another round \(traceability \+ integrity\)/);
     assert.match(reloop, /\*\*`p\/proceed`\*\*\s+→ Proceed to conclusion/);
 
     assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout' }),
