@@ -1,6 +1,6 @@
 # Configuration
 
-The system configures itself the way it does everything else: conversationally, once, with the answer recorded where the next session will find it. There is no configuration file to author by hand and no setup procedure to follow. This page describes where each kind of setting comes from and how it behaves, so nothing surprises you.
+The system configures itself the way it does everything else: conversationally, once, with the answer recorded where the next session will find it. There is no setup procedure to follow, and the one file you might ever open by hand is optional tuning for the knowledge base, described at the end of this page. This page describes where each kind of setting comes from and how it behaves, so nothing surprises you.
 
 ## Installing and updating
 
@@ -38,4 +38,15 @@ The first time [implementation](implementation.md) runs, it asks whether there a
 
 ## Knowledge configuration
 
-The [knowledge base](knowledge-base.md) has two layers of settings, both established through its one-time setup rather than by hand: system-wide defaults that apply across your projects, and per-project settings for this project's store. If a cloud embedding service is involved, its key is stored securely on your machine and never travels through the chat. A project can also choose to run in keyword-only mode regardless of any system default, if you would rather it not depend on an external service. None of this needs revisiting once set; it is described in full on the knowledge base page.
+The [knowledge base](knowledge-base.md) reads its settings from three layers. Built-in defaults sit at the bottom. A system config at `~/.config/workflows/config.json` applies across every project on your machine. A project config at `.workflows/.knowledge/config.json` applies to one project and wins over both. A key present in a file overrides the layers beneath it, and a key set to `null` unsets it — which is how a project switches off a machine-level embedding provider and runs keyword-only on its own.
+
+Setup writes provider identity only: which embedding provider, which model, its dimensions, and an endpoint for a compatible service. If a cloud service is involved, its key is stored separately and securely on your machine and never travels through the chat. Setup never writes a tuning value, so a default that improves in a later version reaches you without anything to redo.
+
+Four tuning keys exist, and the only way one appears in a file is that you put it there. They belong in either file, and a project's value beats the machine's:
+
+- `similarity_threshold` (default `0.3`) — the floor a search-by-meaning match must clear to count. Its one job is returning nothing when nothing is relevant. Too low and an unrelated question returns a few noise results; too high and search-by-meaning silently falls back to keywords.
+- `decay_prune_below` (default `0.05`) — how far a work unit's material must have sunk before it is pruned from the store. `false` disables pruning.
+- `decay_base_stability` (default `5`) — how quickly material sinks as later work completes. Higher is slower.
+- `decay_weights` — how much each kind of completed work counts toward that sinking, per work type.
+
+Specifications never decay whatever these say. Changing a value takes effect on the next query; nothing needs re-running.

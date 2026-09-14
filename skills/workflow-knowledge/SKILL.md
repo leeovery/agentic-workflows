@@ -217,7 +217,7 @@ Skills do not call these directly during normal operation. Users run them manual
 
 ## `setup` — initialise the knowledge base
 
-Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts. Two surfaces: an interactive wizard (no flags) and non-interactive forms (flag-dispatched) that skills can run.
+Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts. Config resolves defaults ← system ← project; `null` unsets a key. Setup writes provider identity only — the tuning keys `similarity_threshold` (the vector leg's cosine floor, 0.3), `decay_prune_below` (0.05; `false` disables), `decay_base_stability` (5) and `decay_weights` (per work type) are honoured as overrides in either file and never written. Two surfaces: an interactive wizard (no flags) and non-interactive forms (flag-dispatched) that skills can run.
 
 **The API key never passes through a flag, a chat, or stdout.** There is deliberately no `--key` flag — any setup invocation carrying one is refused (argv lands in shell history and process listings). Keys resolve from the provider env var (`$OPENAI_API_KEY` — wins) or `~/.config/workflows/credentials.json` (mode 0600, written by `--key-only` or the wizard). Setup output names active settings only (provider · model), never key material.
 

@@ -28,7 +28,7 @@ A specification sometimes turns out to be wrong after the fact. As the record of
 
 Left alone, the memory would grow forever and stale thinking would crowd the results. So material decays and eventually gets pruned — but the important nuance is *how* staleness is judged. It is not a wall-clock timer. A note does not fade because six months passed; it fades based on how much later work has since completed. As the project moves on and more work lands past an old unit, that unit's material sinks in the rankings, and once it has effectively sunk out of reach it becomes eligible to be pruned. Staleness is measured by the project's progress, not by the calendar.
 
-Two protections sit on top of this. Specifications are exempt — validated decisions of record are never auto-pruned. And the behaviour can be dialled down or switched off entirely. The intent is a memory that keeps recent, still-relevant thinking near the surface and quietly lets the distant past recede, without ever discarding the decisions the project was built on.
+Two protections sit on top of this. Specifications are exempt — validated decisions of record are never auto-pruned. And the behaviour can be dialled down or switched off entirely — the floor and the pace are settings described on the [configuration page](configuration.md#knowledge-configuration). The intent is a memory that keeps recent, still-relevant thinking near the surface and quietly lets the distant past recede, without ever discarding the decisions the project was built on.
 
 ## Turning it on
 

@@ -272,7 +272,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. Add a test alongside any `src/knowledge/` change.
 
-**Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system defaults), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
+**Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system config — setup writes provider identity only; the tuning keys `similarity_threshold`, `decay_prune_below`, `decay_base_stability`, `decay_weights` are never written, only honoured as overrides in either config file, project over system, `null` unsetting a key; defaults live in `src/knowledge/config.js` `DEFAULTS`), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
 
 ## Skill Authoring
 
