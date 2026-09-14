@@ -3397,7 +3397,7 @@ function triageQueue(cwd, workUnit, phase, topic) {
 // triage-offer — the offer gate over a non-empty queue: the agenda (count
 // and order from the live queue, per-entry lines from the caller's payload,
 // keyed by queue file so payload and queue stay in exact correspondence)
-// plus the discuss/later menu.
+// plus the yes/later menu.
 
 /**
  * @param {string} cwd
@@ -3441,7 +3441,7 @@ function triageOffer(cwd, { dotpath, file }) {
       'MENU: triage offer',
       "emit verbatim as markdown, then STOP for the user's response",
       menu('Work through them now?', [
-        cmdOption('d', 'discuss', 'Surface and discuss them one at a time'),
+        cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
         cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude"),
       ]),
     ),

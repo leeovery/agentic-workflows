@@ -1646,7 +1646,7 @@ describe('render triage surfaces', () => {
     assert.ok(two.includes('2 rerouted concerns from other topics wait'), two);
   });
 
-  it('triage-offer renders the agenda in queue order and the discuss/later menu', () => {
+  it('triage-offer renders the agenda in queue order and the yes/later menu', () => {
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
@@ -1664,7 +1664,7 @@ describe('render triage surfaces', () => {
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
-    assert.ok(/\*\*`d\/discuss`\*\* +→ Surface and discuss them one at a time/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Surface and discuss them one at a time/.test(out));
     assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
   });
 

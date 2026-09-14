@@ -9,8 +9,8 @@ The prose should have taken this path:
    guidelines load; the session's first triage consult finds the
    resumed sitting with a non-empty queue and renders the offer
    before any session output: the one-concern agenda plus the
-   discuss/later menu
-3. the user says discuss; the raise reads the queue file as the
+   yes/later menu
+3. the user says yes; the raise reads the queue file as the
    session's own brief and judges its ask owed the other phase-side —
    an open empirical question in a deciding session — so before any
    raise or map arming it renders the engine's requeue offer: the

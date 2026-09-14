@@ -102,7 +102,7 @@ Emit its `DISPLAY: triage agenda` section verbatim as markdown (not a code block
 
 **STOP.** Wait for user response.
 
-**If `discuss`:**
+**If `yes`:**
 
 The opt-in now stands — it authorises surfacing each remaining concern in turn, never agreement to any concern's content, and the user can park the queue at any point by saying so.
 
