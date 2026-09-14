@@ -1,10 +1,13 @@
 'use strict';
 
 // A live discussion with an empty queue: both epic discussions concluded,
-// then synonym-handling reopened for one late subtopic (result caching).
-// Mid-walk, an armed substitution acts as a peer session and delivers a
-// concern into this topic's queue — the world itself starts with nothing
-// queued, so everything the drain surfaces arrives during the session.
+// then synonym-handling reopened for two late subtopics (result caching
+// and the shape of its key) — two, so the first decision leaves the map
+// open and the session has a thread to carry on with when the landing is
+// offered and parked. Mid-walk, an armed substitution acts as a peer
+// session and delivers a concern into this topic's queue — the world
+// itself starts with nothing queued, so everything the drain surfaces
+// arrives during the session.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -19,6 +22,7 @@ module.exports = {
 
     h.engine('topic', 'reopen', WU, 'discussion', 'synonym-handling');
     h.engine('discussion-map', 'add', WU, 'synonym-handling', 'result-caching');
+    h.engine('discussion-map', 'add', WU, 'synonym-handling', 'cache-key-shape');
     h.engine('commit', WU, '--topic', 'discussion/synonym-handling', '-m',
       `discussion(${WU}): reopen synonym-handling for result caching`);
   },

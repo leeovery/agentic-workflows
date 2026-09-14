@@ -18,7 +18,7 @@ These instructions are loaded into context at the start of the discussion sessio
 - □ Review armed? (`review_arming.armed` is `true` on that scan — the engine's movement backoff: a review arms only once the Discussion Map has moved enough since the last one. Triage folds never count — each absorb settles its concern's ground into the anchor, so a sitting that only drained the queue stays quiet and its review duty falls to the closing gates. When quiet, `reason` names the moves owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
 - □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
-- □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
+- □ The closing gates aren't next? (a wrap-up signal, or this commit's own `discussion-map set` answering `all_decided: true`, hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
 
 **Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check, so no trigger is lost — whether it dispatches is then the movement backoff's call. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the surfacing protocol.
 
@@ -102,3 +102,13 @@ Delegate all check-for-results and presentation behaviour to the surfacing proto
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+
+**If a `decide` landing this drain answered `all_decided: true` on its set:**
+
+The map settled under the landing — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
+
+→ Return to caller.

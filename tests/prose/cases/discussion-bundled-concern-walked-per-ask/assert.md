@@ -28,7 +28,10 @@ The prose should have taken this path:
    cadence to quarterly), the fold records the entry once — its
    section, its map state `decided`, its single absorb commit — and
    the queue empties
-9. the user is out of time and the walk stops there
+9. the user is out of time and the walk stops there — where the
+   absorb's set settled the map, the closing flow's first gate may
+   have rendered first; the user leaves it unanswered and nothing
+   completes
 
 Further claims:
 

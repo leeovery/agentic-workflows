@@ -147,4 +147,3 @@ The marker opens the Decision block on a fresh section, and follows the `*Trigge
 - All subtopics on the Discussion Map are `decided` (or `deferred`)
 - Trade-offs understood
 - Path forward clear
-- No new subtopics emerging without breaking scope

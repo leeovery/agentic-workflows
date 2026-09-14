@@ -97,7 +97,3 @@ authoritative payment state.
 - Webhook reconciliation decided — hourly sweep for stuck orders.
 - Declined-card messaging still open — what the shopper sees when
   the gateway declines the card was raised but not settled.
-
-## Triage
-
-(none)

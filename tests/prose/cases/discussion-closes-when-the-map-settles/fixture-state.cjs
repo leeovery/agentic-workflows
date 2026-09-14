@@ -124,10 +124,6 @@ module.exports = {
       '- Declined-card messaging still open — what the shopper sees when',
       '  the gateway declines the card was raised but not settled.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'failed-payment-retries');

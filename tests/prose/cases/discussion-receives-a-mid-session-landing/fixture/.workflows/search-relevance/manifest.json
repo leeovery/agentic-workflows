@@ -62,6 +62,10 @@
             "result-caching": {
               "status": "pending",
               "parent": null
+            },
+            "cache-key-shape": {
+              "status": "pending",
+              "parent": null
             }
           }
         }

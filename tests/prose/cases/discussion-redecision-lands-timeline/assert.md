@@ -40,9 +40,10 @@ The prose should have taken this path:
    set to `decided` — the recorded state reflects the re-decision
    that just happened — and the queue file is deleted and absorbed
    under its own commit naming the concern and its origin
-6. with the map fully decided again, the user signals the discussion
-   covers it; the map is read through the gateway and the closing
-   gates load
+6. the fold's set answered `all_decided: true`, so the absorb's clear
+   line is followed in the same turn by the closing flow — the wait
+   gate (empty), the map read through the gateway, the settled line —
+   and the closing gates load, with or without the user's own wrap-up
 7. no review has ever run on the topic, so the mandatory review gate
    renders and the user passes it per their conduct; the final gap
    review dispatches the review, the stubbed report comes back clean,

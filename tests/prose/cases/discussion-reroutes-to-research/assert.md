@@ -14,15 +14,13 @@ The prose should have taken this path:
    store — the session proceeds); the session loop's first triage
    check reads the queue and finds it empty — no agenda, nothing
    surfaced
-4. the session works result caching to a decision (per-session cache
-   on the normalised query, invalidated at the nightly refresh); the
-   map records it decided and the write commits action-scoped
-5. the user's click-window worry is recognised as another topic's
-   ground: the target is resolved before the offer — behavioural-ranking,
-   one clear home — and the reroute offer itself names it, reading
-   research-side with a phase override available; the user accepts with
-   a plain reroute, overriding nothing
-6. triage landing resolves behavioural-ranking on the live map and
+4. mid-flow, before result caching lands, the user's click-window
+   worry is recognised as another topic's ground: the target is
+   resolved before the offer — behavioural-ranking, one clear home —
+   and the reroute offer itself names it, reading research-side with
+   a phase override available; the user accepts with a plain reroute,
+   overriding nothing
+5. triage landing resolves behavioural-ranking on the live map and
    delivers at the recommended research landing through the
    self-committing `topic triage`: the research item is created as
    `triaged` (parked, never started), the concern lands as one
@@ -31,10 +29,18 @@ The prose should have taken this path:
    commits under the reroute message. The response carries
    `reconcile_flagged` — behavioural-ranking's discussion is
    completed — and the landing line tells the user so
-7. the session returns to its own thread; the user wraps; the closing
-   gates run the review machinery per the conduct (the stubbed review
-   returns clean), the conclude gate finds the queue still empty, and
-   the discussion completes with the `--kb` commit
+6. the session returns to its own thread and works result caching to
+   its decision (per-session cache on the normalised query,
+   invalidated at the nightly refresh); the map records it decided —
+   the set answering `all_decided: true` — and the write commits
+   action-scoped; once it is committed the ceremony opens in the same
+   turn, with or without the user's own wrap-up. Should the worry
+   come after the decision instead, the closing gates render first,
+   the user raises it at the keep-going, steps 4–5 land it, and the
+   ceremony re-enters on their wrap-up
+7. the closing gates run the review machinery per the conduct (the
+   stubbed review returns clean), the conclude gate finds the queue
+   still empty, and the discussion completes with the `--kb` commit
 8. the sweep finds no leavings, and the walk stops at the bridge
    invocation
 

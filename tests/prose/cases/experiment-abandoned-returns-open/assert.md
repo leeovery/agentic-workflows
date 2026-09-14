@@ -28,12 +28,16 @@ The prose should have taken this path:
    review dispatches at a natural break, the stubbed report returns
    clean and is drained — so by the wrap the record already holds an
    incorporated review
-6. the user wraps; the ceremony's wait-gate fetch comes back empty —
+6. the deciding write's set answered `all_decided: true`, so once it
+   is committed the ceremony opens in the same turn — with or without
+   the user's own wrap-up; its wait-gate fetch comes back empty —
    nothing is owed, the release already happened, and no gate is
    emitted — every subtopic is settled, and the closing gates run: the
-   triage queue reads empty
-   and the classification finds the review satisfied (nothing moved
-   since it drained), so no mandatory gate is owed; document review
+   triage queue reads empty and the classification reads satisfied,
+   or re-review where the deciding commit postdates the drained review
+   — declined per the conduct; either way no mandatory gate is owed
+   and no review is dispatched on the deciding commit itself (the
+   closing gates are next, so the dispatch check holds); document review
    reconciles the file against the session; the compliance check
    passes
 7. the conclude gate renders and the user confirms; the completion the

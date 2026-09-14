@@ -89,7 +89,7 @@ You own transitions between subtopics. The goal is natural flow, not rigid seque
 
 **When the last subtopic settles:**
 
-No template and no question — the closing gates are the offer, and **G. Concluding** renders them.
+No template and no question — the closing gates are the offer; enter **G. Concluding**.
 
 **When a tangent surfaces a new concern:**
 
@@ -156,7 +156,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 One ceremony, two ways in — enter when either, or both at once, holds:
 
-- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`: the session loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**. Enter once the write behind it is documented and committed (session loop steps 4–5) and any protocol mid-flight has run out — a drain with entries remaining continues to its next raise, a flush with screens left continues — in the same turn, never held for a later break, never put to the user in prose: the closing gates carry the way back. The transition is the trigger, not the standing state — after a keep-going or `no` at the closing gates, the way back in is the user's signal or a later flip; a map that already stands settled never re-renders the gates on its own.
+- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever it runs: the session loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues), and the topic's triage queue is empty — a queued concern is raised first: the settle is the break the triage check offers it at (**A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**, the close holding over an earlier `later`), and the drain's last fold enters here — a `later` at that offer returns to **B. Session Loop**, the queue holding the close until it drains. Then in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
 A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
@@ -211,7 +211,7 @@ Run the map call:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so.
+Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so. First match wins.
 
 #### If `all_decided` is true
 
@@ -277,9 +277,9 @@ Nothing is owed. Delete the file if it exists.
 
 → Return to **G. Concluding**.
 
-**If entered from the session loop and a landed call's set answered `all_decided: true`:**
+**If entered from the session loop and a call this flush landed answered `all_decided: true` on its set:**
 
-→ Proceed to **G. Concluding**.
+→ Return to **G. Concluding**.
 
 **Otherwise:**
 

@@ -28,7 +28,9 @@ The prose should have taken this path:
    into the discussion document
 6. the session works result caching to its decision, the map records
    it decided, and the write commits action-scoped
-7. the user wraps; the concluding ceremony has no calls to flush and
+7. the deciding write's set answered `all_decided: true`, so once it
+   is committed the concluding ceremony opens in the same turn — with
+   or without the user's own wrap-up; it has no calls to flush and
    fetches the wait gate before anything is deferred; the gate comes
    back populated — the blocker naming research on Synonym Handling as
    parked and not yet started (the stub this session's own move
