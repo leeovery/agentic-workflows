@@ -70,7 +70,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-**If `proceed`:**
+**If `yes`:**
 
 → Proceed to **C. Traceability Review**.
 

@@ -5382,7 +5382,7 @@ describe('render — the adopted phase gates', () => {
     const cont = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'continue' });
     assert.match(cont, /MENU: plan review continue gate/);
     assert.match(cont, /`◆ Continue with review\?`/);
-    assert.match(cont, /\*\*`p\/proceed`\*\* → Continue review/);
+    assert.match(cont, /\*\*`y\/yes`\*\*\s+→ Continue review/);
     assert.match(cont, /\*\*`s\/skip`\*\*\s+→ Skip review, proceed to completion/);
 
     const reloop = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'reloop' });

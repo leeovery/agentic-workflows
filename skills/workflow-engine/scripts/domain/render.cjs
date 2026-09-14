@@ -3031,7 +3031,7 @@ function planReviewGate(cwd, { dotpath, variant }) {
   resolvePlanning(cwd, dotpath, 'plan-review-gate');
   if (variant === 'continue') {
     return section('MENU: plan review continue gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('y', 'yes', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }
