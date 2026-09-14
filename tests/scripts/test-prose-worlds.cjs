@@ -94,17 +94,38 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const buf = tree.get(worlds.PROJECT_MANIFEST);
     return buf ? JSON.parse(buf.toString('utf8')) : null;
   }
+  function settingsOf(tree) {
+    const buf = tree.get(worlds.SETTINGS);
+    return buf ? JSON.parse(buf.toString('utf8')) : null;
+  }
+  /** Every SessionEnd command in a settings object, in order. */
+  function hooksOf(settings) {
+    return (settings.hooks?.SessionEnd ?? []).flatMap((g) => g.hooks.map((h) => h.command));
+  }
+  function writeSettings(dir, settings) {
+    const file = path.join(dir, worlds.SETTINGS);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
+  }
+  const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
+  const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+  const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
+  const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
 
   it('a fixture with no baseline is stamped native, and the stamp is stripped back out', () => {
     const dir = scratch();
     try {
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST), JSON.stringify({ work_units: {} }, null, 2) + '\n');
-      const stamped = worlds.stampLabelKill(dir);
-      assert.deepStrictEqual(stamped, { baseline: true });
+      const stamped = worlds.stampHarnessState(dir);
+      assert.deepStrictEqual(stamped, { baseline: true, settings_created: true });
       const tree = worlds.collectTree(dir);
-      assert.deepStrictEqual(manifestOf(tree), { work_units: {}, defaults: { tmux_labels: false }, baseline: { status: 'native' } });
-      worlds.unstampLabelKill(tree, stamped);
-      assert.deepStrictEqual(manifestOf(tree), { work_units: {} }, 'both stamps gone, nothing else touched');
+      assert.deepStrictEqual(manifestOf(tree), {
+        work_units: {},
+        defaults: { tmux_labels: false },
+        baseline: { status: 'native' },
+      });
+      worlds.unstampHarnessState(tree, stamped);
+      assert.deepStrictEqual(manifestOf(tree), { work_units: {} }, 'every stamp gone, nothing else touched');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -114,18 +135,119 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const dir = scratch();
     try {
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST), JSON.stringify({ work_units: {}, baseline: {} }, null, 2) + '\n');
-      const stamped = worlds.stampLabelKill(dir);
-      assert.deepStrictEqual(stamped, { baseline: false });
+      const stamped = worlds.stampHarnessState(dir);
+      assert.deepStrictEqual(stamped, { baseline: false, settings_created: true });
       // The walk records its verdict.
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({ work_units: {}, defaults: { tmux_labels: false }, baseline: { status: 'native' } }, null, 2) + '\n');
       const tree = worlds.collectTree(dir);
-      worlds.unstampLabelKill(tree, stamped);
+      worlds.unstampHarnessState(tree, stamped);
       assert.deepStrictEqual(manifestOf(tree), { work_units: {}, baseline: { status: 'native' } },
         'the recorded verdict is a real delta, never mistaken for the stamp');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('a world with no settings file is seeded the presence hook alone, and the marker records the file as the harness\'s', () => {
+    const dir = scratch();
+    try {
+      const stamped = worlds.stampHarnessState(dir);
+      assert.strictEqual(stamped.settings_created, true);
+      const settings = settingsOf(worlds.collectTree(dir));
+      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK], 'presence cleanup, never session cleanup under the label kill');
+      assert.deepStrictEqual(Object.keys(settings), ['hooks'], 'and nothing the harness invented');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('a fixture\'s own settings file keeps its permissions around the seeded hook', () => {
+    const dir = scratch();
+    try {
+      writeSettings(dir, { permissions: PERMISSIONS });
+      const stamped = worlds.stampHarnessState(dir);
+      assert.strictEqual(stamped.settings_created, false);
+      const settings = settingsOf(worlds.collectTree(dir));
+      assert.deepStrictEqual(settings.permissions, PERMISSIONS);
+      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('the strip removes our hooks and drops a harness-created file, but a permission the walk edited and a foreign hook stand', () => {
+    const dir = scratch();
+    try {
+      // A harness-created file the walk never touched goes entirely.
+      const created = worlds.stampHarnessState(dir);
+      let tree = worlds.collectTree(dir);
+      worlds.unstampHarnessState(tree, created);
+      assert.strictEqual(tree.has(worlds.SETTINGS), false, 'nothing but the seed — the file was never the world\'s');
+
+      // The walk turned labels on (a session hook joined ours), edited a
+      // permission and the user's own hook sits in its own group: only
+      // ours go, and the file stays because the fixture brought it.
+      writeSettings(dir, {
+        permissions: PERMISSIONS,
+        hooks: {
+          SessionEnd: [
+            { hooks: [FOREIGN_HOOK] },
+            { hooks: [{ type: 'command', command: PRESENCE_HOOK }, { type: 'command', command: SESSION_HOOK }] },
+          ],
+        },
+      });
+      tree = worlds.collectTree(dir);
+      worlds.unstampHarnessState(tree, { baseline: false, settings_created: false });
+      assert.deepStrictEqual(settingsOf(tree), { permissions: PERMISSIONS, hooks: { SessionEnd: [{ hooks: [FOREIGN_HOOK] }] } });
+
+      // A harness-created file the walk filled stays, minus our hooks.
+      writeSettings(dir, { permissions: PERMISSIONS, hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: PRESENCE_HOOK }] }] } });
+      tree = worlds.collectTree(dir);
+      worlds.unstampHarnessState(tree, { baseline: false, settings_created: true });
+      assert.deepStrictEqual(settingsOf(tree), { permissions: PERMISSIONS }, 'the permission edit is a real delta');
+
+      // A file holding none of ours is not rewritten — not even its bytes.
+      const untouched = Buffer.from('{"permissions": {"allow": []}}\n');
+      tree = new Map([[worlds.SETTINGS, untouched]]);
+      worlds.unstampHarnessState(tree, { baseline: false, settings_created: false });
+      assert.strictEqual(tree.get(worlds.SETTINGS), untouched);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('a settings file the harness cannot parse makes the strip throw, never silently keep the seeded hooks', () => {
+    const tree = new Map([[worlds.SETTINGS, Buffer.from('{not json')]]);
+    assert.throws(
+      () => worlds.unstampHarnessState(tree, { baseline: false, settings_created: true }),
+      /cannot strip the session-end hooks: .*not valid JSON/);
+  });
+
+  it('a live boot — no skip switch, the walker\'s real environment — finds the hooks it wants and writes nothing', function () {
+    if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
+    const dir = worlds.buildWorld(NATIVE_CASE);
+    try {
+      const env = worlds.recipeEnv();
+      delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
+      const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
+      const before = head();
+      const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
+      const boot = JSON.parse(out.trim());
+      assert.strictEqual(boot.session_end_hooks_installed, false, 'the seeded set is exactly what boot wants');
+      assert.deepStrictEqual(boot.warnings, []);
+      assert.deepStrictEqual(statusLines(dir), [], 'nothing written');
+      assert.strictEqual(head(), before, 'nothing committed');
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+
+  it('the recipe env carries the engine\'s test-only hook switch, so a recipe\'s boot never writes a world\'s settings', () => {
+    const env = worlds.recipeEnv();
+    assert.strictEqual(env.WORKFLOWS_SKIP_SESSION_END_HOOKS, '1');
+    assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
+    assert.ok(!('TMUX' in env), 'and no tmux identity');
   });
 
   it('a layered project manifest keeps `.workflows/` out of the root commit and is stamped when its layer lands', function () {
@@ -141,7 +263,10 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       const manifest = JSON.parse(fs.readFileSync(path.join(dir, worlds.PROJECT_MANIFEST), 'utf8'));
       assert.strictEqual(manifest.defaults.tmux_labels, false, 'the label kill lands on the layered manifest');
       assert.deepStrictEqual(manifest.baseline, {}, 'the fixture\'s nothing-recorded baseline is left alone');
-      assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false });
+      assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false, settings_created: false },
+        'the fixture brought its own settings file');
+      assert.deepStrictEqual(hooksOf(JSON.parse(fs.readFileSync(path.join(dir, worlds.SETTINGS), 'utf8'))), [PRESENCE_HOOK],
+        'the seeded hook lands with the manifest layer');
       assert.strictEqual(statusLines(dir).length, 0, 'no dirt for the walk to sweep up');
     } finally {
       worlds.destroyWorld(dir);

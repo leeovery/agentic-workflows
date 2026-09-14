@@ -2,15 +2,16 @@
 
 //
 // Tests for tmux session labels: `session label` / `session label-config` /
-// `session repair` / `session cleanup`, the config gate and project
-// override, the per-checkout stash, phase-hop recomposition, peer-checkout
-// isolation, user-rename adoption, id drift across a server restart
-// (chain resolution, drifted restore, boot repair, orphan pruning), owner
-// identity, restore ownership, and the SessionEnd stdin contract. tmux
-// itself is a PATH stub modelling one session, backed by state files
-// holding the session's name and id (a test renumbers the id to simulate a
-// server restart that carried the name across); the engine only ever sees
-// the stub.
+// `session repair` / `session cleanup`, the project-manifest opt-in and the
+// SessionEnd hook it syncs in the project's settings (`session cleanup`
+// while labels are on, `presence cleanup` regardless), the
+// per-checkout stash, phase-hop recomposition, peer-checkout isolation,
+// user-rename adoption, id drift across a server restart (chain resolution,
+// drifted restore, boot repair, orphan pruning), owner identity, restore
+// ownership, and the SessionEnd stdin contract. tmux itself is a PATH stub
+// modelling one session, backed by state files holding the session's name
+// and id (a test renumbers the id to simulate a server restart that
+// carried the name across); the engine only ever sees the stub.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -20,8 +21,22 @@ const os = require('os');
 const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
+const { syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+
+// Hermetic git: no user/system config leaks into the fixture or the
+// engine's spawned git subprocesses (the opt-in commits).
+process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+process.env.GIT_CONFIG_SYSTEM = '/dev/null';
+
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
+const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
+// The settings a project reaches with labels on, and with them off — one
+// group, ours alone.
+const BOTH_HOOKS = { hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }] } };
+const PRESENCE_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
 
 const TMUX_STUB = `#!/bin/bash
 echo "$@" >> "$TMUX_STUB_LOG"
@@ -57,35 +72,43 @@ fi
 exit 0
 `;
 
-let dir; // temp project root
+let dir; // temp project root — a git repo, since recording the opt-in commits
 let stubDir; // holds the tmux stub + state/log files
-let configDir; // WORKFLOWS_CONFIG_DIR
+
+/** @param {string[]} args */
+function git(args) {
+  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+}
 
 function setup() {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-'));
   fs.mkdirSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+  git(['init', '-q', '-b', 'main']);
+  git(['config', 'user.email', 'test@example.com']);
+  git(['config', 'user.name', 'Test']);
+  git(['config', 'commit.gpgsign', 'false']);
+  git(['commit', '-q', '--allow-empty', '-m', 'init']);
   stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-stub-'));
   fs.writeFileSync(path.join(stubDir, 'tmux'), TMUX_STUB, { mode: 0o755 });
   fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc\n');
   fs.writeFileSync(path.join(stubDir, 'id'), '$7\n');
   fs.writeFileSync(path.join(stubDir, 'log'), '');
-  configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-config-'));
 }
 
 function teardown() {
-  for (const d of [dir, stubDir, configDir]) {
+  for (const d of [dir, stubDir]) {
     fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
 
 /**
- * Run the engine with a controlled environment: tmux stub on PATH, config
- * dir pinned, tmux identity present unless `noTmux`. The suite's own pid
- * plays the owning Claude process (`claudePid: null` withholds identity —
- * the record shape a call with no CLAUDE_PID writes).
+ * Run the engine with a controlled environment: tmux stub on PATH, tmux
+ * identity present unless `noTmux`. The suite's own pid plays the owning
+ * Claude process (`claudePid: null` withholds identity — the record shape
+ * a call with no CLAUDE_PID writes).
  */
-function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined } = {}) {
-  const env = { ...process.env };
+function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {} } = {}) {
+  const env = { ...process.env, ...extraEnv };
   delete env.TMUX;
   delete env.TMUX_PANE;
   delete env.TMUX_STUB_FAIL;
@@ -99,7 +122,6 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = proces
   env.TMUX_STUB_STATE = path.join(stubDir, 'state');
   env.TMUX_STUB_ID = path.join(stubDir, 'id');
   env.TMUX_STUB_LOG = path.join(stubDir, 'log');
-  env.WORKFLOWS_CONFIG_DIR = configDir;
   if (!noTmux) {
     env.TMUX = '/fake/sock,123,7';
     env.TMUX_PANE = '%3';
@@ -162,6 +184,31 @@ function optIn() {
   engine(['session', 'label-config', 'true']);
 }
 
+function projectManifest() {
+  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8'));
+}
+
+function settingsPath() {
+  return path.join(dir, '.claude', 'settings.json');
+}
+
+function settings() {
+  return JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+}
+
+function writeSettings(content) {
+  fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
+  fs.writeFileSync(settingsPath(), typeof content === 'string' ? content : JSON.stringify(content, null, 2) + '\n');
+}
+
+/** HEAD's subject and the sorted paths it touched. */
+function head() {
+  return {
+    subject: git(['log', '-1', '--pretty=%s']).trim(),
+    files: git(['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
+  };
+}
+
 describe('engine session label', () => {
   beforeEach(setup);
   afterEach(teardown);
@@ -198,7 +245,8 @@ describe('engine session label', () => {
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     const file = stashFile();
     assert.ok(file, 'stash written under .workflows/.cache/.session-labels');
-    assert.deepStrictEqual(fs.readdirSync(configDir), ['config.json'], 'the config dir holds the opt-in and nothing else');
+    assert.strictEqual(git(['status', '--porcelain', '--', '.workflows/manifest.json', '.claude']).trim(), '',
+      'the label writes the cache alone — the opt-in and its hook were committed at the choice');
     const stash = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.strictEqual(stash.original, 'proj-abc');
     assert.strictEqual(stash.applied, 'proj-abc · pay · discussion · alpha');
@@ -335,7 +383,7 @@ describe('engine session label', () => {
   });
 });
 
-describe('engine session label — project override', () => {
+describe('engine session label — the manifest stamp', () => {
   beforeEach(setup);
   afterEach(teardown);
 
@@ -343,7 +391,7 @@ describe('engine session label — project override', () => {
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
   }
 
-  it('project false beats the system opt-in', () => {
+  it('a manifest stamped false — the prose-test world — is disabled, whatever was recorded before', () => {
     optIn();
     writeProjectManifest({ tmux_labels: false });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
@@ -351,10 +399,24 @@ describe('engine session label — project override', () => {
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  it('project true enables without a system opt-in', () => {
+  it('a manifest stamped true enables without label-config having run', () => {
     writeProjectManifest({ tmux_labels: true });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.labelled, true);
+  });
+
+  it('only a boolean counts — anything else reads as never asked', () => {
+    writeProjectManifest({ tmux_labels: 'true' });
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
+  });
+
+  it('the opt-in is the manifest alone — a system config carrying one is never read', () => {
+    const configDir = path.join(dir, '.wf-config');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { WORKFLOWS_CONFIG_DIR: configDir } });
+    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
 });
 
@@ -362,23 +424,220 @@ describe('engine session label-config', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('writes the session key and preserves siblings', () => {
-    const p = path.join(configDir, 'config.json');
-    fs.writeFileSync(p, JSON.stringify({ knowledge: { provider: 'stub' } }) + '\n');
+  it('records the opt-in on the project manifest, installs both session-end hooks, and commits both files confined', () => {
+    fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    assert.deepStrictEqual(parsed, { knowledge: { provider: 'stub' }, session: { tmux_labels: true } });
-    engine(['session', 'label-config', 'false']);
-    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).session.tmux_labels, false);
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } }, 'a missing manifest is created around the choice');
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.deepStrictEqual(head(), {
+      subject: 'chore: record session-label choice',
+      files: ['.claude/settings.json', '.workflows/manifest.json'],
+    });
+    assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the commit takes its own two paths and nothing else');
   });
 
-  it('refuses to replace a config file that no longer parses', () => {
-    const p = path.join(configDir, 'config.json');
+  it('preserves every other manifest key and every other default', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+      JSON.stringify({ work_units: { pay: { work_type: 'feature' } }, defaults: { plan_format: 'tick' } }, null, 2) + '\n');
+    engine(['session', 'label-config', 'true']);
+    assert.deepStrictEqual(projectManifest(), {
+      work_units: { pay: { work_type: 'feature' } },
+      defaults: { plan_format: 'tick', tmux_labels: true },
+    });
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
+  });
+
+  it('opting out records false, takes `session cleanup` out, leaves `presence cleanup` standing, and commits both', () => {
+    engine(['session', 'label-config', 'true']);
+    const res = engine(['session', 'label-config', 'false']);
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
+    assert.strictEqual(projectManifest().defaults.tmux_labels, false);
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY, 'the presence sweep is infrastructure, not a label preference');
+    assert.deepStrictEqual(head(), {
+      subject: 'chore: record session-label choice',
+      files: ['.claude/settings.json', '.workflows/manifest.json'],
+    });
+  });
+
+  it('declining on a project the hooks never reached still installs `presence cleanup`', () => {
+    const res = engine(['session', 'label-config', 'false']);
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+    assert.deepStrictEqual(head().files, ['.claude/settings.json', '.workflows/manifest.json']);
+  });
+
+  it('re-recording the same choice is idempotent — no twin hook, nothing to commit', () => {
+    engine(['session', 'label-config', 'true']);
+    const before = git(['rev-parse', 'HEAD']);
+    engine(['session', 'label-config', 'true']);
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.strictEqual(git(['rev-parse', 'HEAD']), before);
+  });
+
+  it('refuses to replace a project manifest that no longer parses', () => {
+    const p = path.join(dir, '.workflows', 'manifest.json');
     fs.writeFileSync(p, '{not json', 'utf8');
     const err = engine(['session', 'label-config', 'true'], { expectFail: true });
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(fs.readFileSync(p, 'utf8'), '{not json');
+    assert.ok(!fs.existsSync(settingsPath()), 'no hook lands for a choice that was not recorded');
+  });
+
+  it('a settings file that does not parse is left alone — the choice is recorded and the hooks reported', () => {
+    writeSettings('{not json');
+    const res = engine(['session', 'label-config', 'true']);
+    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /session-end hooks not synced: \.claude\/settings\.json is not valid JSON/);
+    assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
+    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+  });
+
+  it('a commit git refuses is a warning, never a failure — the choice and the hooks are on disk', () => {
+    const hooksDir = path.join(dir, '.git', 'hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    fs.writeFileSync(path.join(hooksDir, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const res = engine(['session', 'label-config', 'true']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^commit failed: /);
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'init', 'nothing landed');
+    assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
+  });
+
+  it('WORKFLOWS_SKIP_SESSION_END_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_END_HOOKS: '1' } });
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
+    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+  });
+});
+
+describe('syncSessionEndHooks', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  const BOTH = { session: true, presence: true };
+  const PRESENCE = { session: false, presence: true };
+  const NONE = { session: false, presence: false };
+
+  it('installs both into an absent settings file, as one group', () => {
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
+  });
+
+  it('installs presence alone while labels are off', () => {
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+  });
+
+  it('installs beside everything already there — permissions, other events, other SessionEnd groups', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({
+      permissions: { allow: ['Bash(ls)'] },
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }], SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] },
+      showClearContextOnPlanAccept: true,
+    });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), {
+      permissions: { allow: ['Bash(ls)'] },
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+        SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK] }],
+      },
+      showClearContextOnPlanAccept: true,
+    });
+  });
+
+  it('a second sync changes nothing — the hooks are recognised by their command, whatever surrounds them', () => {
+    syncSessionEndHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
+    assert.strictEqual(settings().hooks.SessionEnd.length, 1);
+    // Hand-adjusted copies — a different path prefix, a timeout, ours split
+    // across groups, a foreign group added after ours — still make up the
+    // wanted set, so nothing is rewritten and nothing moves.
+    writeSettings({
+      hooks: {
+        SessionEnd: [
+          { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }] },
+          { hooks: [PRESENCE_HOOK] },
+          { matcher: 'clear', hooks: [{ type: 'command', command: 'say goodbye' }] },
+        ],
+      },
+    });
+    const text = fs.readFileSync(settingsPath(), 'utf8');
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
+    assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), text, 'no reorder, no rewrite');
+  });
+
+  it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs' presence cleanup" }] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
+  });
+
+  it('turning labels off takes `session cleanup` out and leaves `presence cleanup`; nothing wanted empties the file', () => {
+    syncSessionEndHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(settings(), {}, 'the hook, its group, the event, and the emptied hooks object all go');
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
+  });
+
+  it('strips ours alone from a shared group and leaves sibling groups, events, and keys standing', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({
+      permissions: { allow: ['Bash(ls)'] },
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+        SessionEnd: [{ hooks: [theirs, SESSION_HOOK, PRESENCE_HOOK] }, { matcher: 'clear', hooks: [theirs] }],
+      },
+    });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(settings(), {
+      permissions: { allow: ['Bash(ls)'] },
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+        SessionEnd: [{ hooks: [theirs] }, { matcher: 'clear', hooks: [theirs] }],
+      },
+    });
+  });
+
+  it('a shared group keeps its matcher when ours come out of it', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({ hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs, SESSION_HOOK] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] } });
+  });
+
+  it('collapses twins into the one wanted group', () => {
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [SESSION_HOOK] }, { hooks: [SESSION_HOOK] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+  });
+
+  it('nothing to remove is nothing changed — an absent file stays absent', () => {
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
+    assert.ok(!fs.existsSync(settingsPath()));
+  });
+
+  it('a settings file that does not parse is left untouched and reported, never thrown', () => {
+    writeSettings('{not json');
+    for (const want of [BOTH, NONE]) {
+      const res = syncSessionEndHooks(dir, want);
+      assert.strictEqual(res.changed, false);
+      assert.match(res.error, /\.claude\/settings\.json is not valid JSON/);
+    }
+    writeSettings('[]');
+    assert.match(syncSessionEndHooks(dir, BOTH).error, /root is not an object/);
+    assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '[]');
   });
 });
 
@@ -526,14 +785,6 @@ describe('engine session cleanup', () => {
     const res = engine(['session', 'cleanup', 'sess-1'], { fail: true });
     assert.strictEqual(res.restored, false);
     assert.strictEqual(stashFile(), null);
-  });
-
-  it('presence cleanup carries only presence fields and leaves the stash alone', () => {
-    optIn();
-    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    const res = engine(['presence', 'cleanup', 'sess-1']);
-    assert.deepStrictEqual(res, { ok: true, session_id: 'sess-1', cleared: [] });
-    assert.ok(stashFile());
   });
 });
 

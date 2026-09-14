@@ -120,7 +120,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Many sessions, one checkout.** Run as many document phases in parallel as you like — every commit stages only its own topic's files, so nothing gets swept into someone else's record. Writing code is the exception a working tree forces: implementation and review run one at a time, and a second one meets a red stop naming who holds the slot, which you can override.
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
-- **tmux session labels.** Opt in once and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases, restoring the original name on exit.
+- **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases, restoring the original name on exit.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation

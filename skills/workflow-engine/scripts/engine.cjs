@@ -34,7 +34,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
-const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
+const { applySessionLabel, restoreSessionLabel, repairSessionLabels, recordLabelChoice } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -859,7 +859,7 @@ function runSession(argv) {
       if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
         throw new Error('Usage: engine session label-config <true|false>');
       }
-      respond(setLabelConfig(value === 'true'));
+      respond(recordLabelChoice(process.cwd(), value === 'true'));
       return;
     }
     if (command === 'repair') {

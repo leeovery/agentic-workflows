@@ -726,6 +726,8 @@ Load directive → reference file
 
 **Stays inline:** Migrations (Step 0), simple routing conditionals (a few lines), frontmatter.
 
+**Frontmatter never declares a `SessionEnd` hook.** Claude Code does not fire SessionEnd hooks declared in skill frontmatter; session-end cleanup is the settings-level hook the engine installs in `.claude/settings.json`. Other hook events may be declared where a skill needs them. (Lint check 18.)
+
 ### The Framework Load
 
 Every flow skill opens its `## Instructions` section with one line and nothing else:

@@ -24,7 +24,9 @@ On a project whose code predates the workflows, the first `/workflow-start` offe
 
 ## Session labels
 
-If you work inside tmux, the first `/workflow-start` there asks once whether the workflows may rename your tmux session to show where you are — `myproject · payments · discussion · auth-flow` — restoring the original name when the session ends. The answer applies across all your projects and is remembered in `~/.config/workflows/config.json` under `session.tmux_labels`; edit that value to change your mind. A project can opt out on its own with `defaults.tmux_labels: false` in its `.workflows/manifest.json`. Outside tmux the feature is silent and the question is never asked.
+If you work inside tmux, the first `/workflow-start` in a project asks once whether the workflows may rename your tmux session to show where you are — `myproject · payments · discussion · auth-flow` — and put the original name back when the session ends. You answer once per project. Outside tmux nothing is renamed and the question is never asked.
+
+Whatever you answer, the workflows keep a small session-end hook in the project's Claude settings. It tidies up after a finished session — clearing the markers that tell other sessions a topic is in use, and restoring your tmux name if you opted in — so you may see that hook appear in `.claude/settings.json` after your first start.
 
 ## Handing over the gates
 

@@ -31,6 +31,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
+const { syncSessionEndHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -117,6 +118,10 @@ function recipeEnv() {
     // this env — without a pin, a recipe would render against whatever pane
     // happened to be open, and resizing would move the snapshots.
     WORKFLOWS_DISPLAY_WIDTH: '65',
+    // Boot installs the session-end hooks into `.claude/settings.json` — a
+    // file a snapshot holds as world state. The engine's test-only switch
+    // keeps a recipe's boot out of it.
+    WORKFLOWS_SKIP_SESSION_END_HOOKS: '1',
   };
   // Session labels read the real tmux identity — a recipe's engine calls
   // must never rename the terminal session the suite happens to run in.
@@ -318,25 +323,30 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
-// --- the session-label kill switch --------------------------------------
+// --- harness world stamping — label kill + session-end hook seed ---------
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
+const SETTINGS = path.join('.claude', 'settings.json');
 
 // Where materialise records what it stamped, so the differ strips exactly
 // that and never a value the walk wrote itself. Under `.git/`, which no
 // collected tree ever holds.
 const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
 
+/** @typedef {{baseline: boolean, settings_created: boolean}} Stamped */
+
 /**
  * Write `defaults.tmux_labels: false` into the world's project manifest
- * (creating the manifest when the fixture has none) — the engine's
- * per-project override, which beats the developer's real system opt-in.
- * Canonical manifest style, so mid-walk engine rewrites stay byte-stable.
- * Returns what was stamped beyond the label kill.
+ * (creating the manifest when the fixture has none) — the engine's sole
+ * label opt-in, pinned off so a walk never renames the terminal the suite
+ * runs in. Canonical manifest style, so mid-walk engine rewrites stay
+ * byte-stable. Then seed the session-end hooks boot wants under that kill
+ * into `.claude/settings.json` (creating the file when the fixture has
+ * none). Returns what was stamped beyond the label kill.
  * @param {string} dir
- * @returns {{baseline: boolean}}
+ * @returns {Stamped}
  */
-function stampLabelKill(dir) {
+function stampHarnessState(dir) {
   const file = path.join(dir, PROJECT_MANIFEST);
   /** @type {Record<string, any>} */
   let manifest = {};
@@ -352,27 +362,50 @@ function stampLabelKill(dir) {
   if (baseline) manifest.baseline = { status: 'native' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-  return { baseline };
+  // Boot syncs the session-end hooks into `.claude/settings.json` and
+  // commits the write — and a live walk's boot runs under the developer's
+  // real environment, which no env switch reaches. Seeding exactly the set
+  // boot wants under the label kill makes that sync a no-op: no write, no
+  // commit, nothing in the delta. The engine's own sync does the seeding,
+  // so the hooks are the ones boot recognises.
+  const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
+  const sync = syncSessionEndHooks(dir, { session: false, presence: true });
+  if (sync.error) throw new Error(`cannot seed the session-end hooks: ${sync.error}`);
+  return { baseline, settings_created: settingsCreated };
 }
 
-/** What materialise stamped into a world, per its marker. @param {string} dir @returns {{baseline: boolean}} */
+/** What materialise stamped into a world, per its marker. @param {string} dir @returns {Stamped} */
 function readStampMarker(dir) {
   const file = path.join(dir, STAMP_MARKER);
-  if (!fs.existsSync(file)) return { baseline: false };
-  try { return { baseline: Boolean(JSON.parse(fs.readFileSync(file, 'utf8')).baseline) }; } catch { return { baseline: false }; }
+  const none = { baseline: false, settings_created: false };
+  if (!fs.existsSync(file)) return none;
+  try {
+    const marker = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return { baseline: Boolean(marker.baseline), settings_created: Boolean(marker.settings_created) };
+  } catch { return none; }
 }
 
 /**
  * Reverse the stamp on a collected tree so deltas compare against
- * unstamped snapshots: drop `defaults.tmux_labels` when it carries the
- * harness value, drop an emptied `defaults`, drop the baseline stamp only
- * when materialise stamped one (a verdict the walk recorded itself is a
- * real delta the case pins, never a stamp), and drop the manifest entirely
- * when the stamp was all it held.
+ * unstamped snapshots: the manifest's label kill and baseline stamp, then
+ * the seeded session-end hooks.
  * @param {Map<string, Buffer>} tree
- * @param {{baseline: boolean}} stamped  what materialise recorded stamping
+ * @param {Stamped} stamped  what materialise recorded stamping
  */
-function unstampLabelKill(tree, stamped) {
+function unstampHarnessState(tree, stamped) {
+  unstampManifest(tree, stamped);
+  unstampSettings(tree, stamped);
+}
+
+/**
+ * Drop `defaults.tmux_labels` when it carries the harness value, drop an
+ * emptied `defaults`, drop the baseline stamp only when materialise
+ * stamped one (a verdict the walk recorded itself is a real delta the
+ * case pins, never a stamp), and drop the manifest entirely when the
+ * stamp was all it held.
+ * @param {Map<string, Buffer>} tree @param {Stamped} stamped
+ */
+function unstampManifest(tree, stamped) {
   const buf = tree.get(PROJECT_MANIFEST);
   if (!buf) return;
   /** @type {Record<string, any>} */
@@ -392,12 +425,40 @@ function unstampLabelKill(tree, stamped) {
   tree.set(PROJECT_MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n'));
 }
 
+/**
+ * Strip the hooks materialise seeded from the tree's settings file — the
+ * engine's own sync, run to the empty set against a scratch copy, so what
+ * counts as ours is decided once, in the engine — leaving every other key
+ * (a permission the walk edited, a hook the user added) standing. A file
+ * holding none of ours is untouched byte for byte; one the harness created
+ * that nothing else filled goes entirely.
+ * @param {Map<string, Buffer>} tree @param {Stamped} stamped
+ */
+function unstampSettings(tree, stamped) {
+  const buf = tree.get(SETTINGS);
+  if (!buf) return;
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-unstamp-'));
+  try {
+    const file = path.join(scratch, SETTINGS);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, buf);
+    const sync = syncSessionEndHooks(scratch, { session: false, presence: false });
+    if (sync.error) throw new Error('cannot strip the session-end hooks: ' + sync.error);
+    if (!sync.changed) return;
+    const next = fs.readFileSync(file);
+    if (stamped.settings_created && Object.keys(JSON.parse(next.toString('utf8'))).length === 0) tree.delete(SETTINGS);
+    else tree.set(SETTINGS, next);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 function diffWorld(caseId, worldDir, claimsMode = false) {
   const which = !claimsMode && fs.existsSync(snapshotDir(caseId, 'assertion')) ? 'assertion' : 'fixture';
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
-  unstampLabelKill(actual, readStampMarker(worldDir));
+  unstampHarnessState(actual, readStampMarker(worldDir));
 
   const added = [];
   const removed = [];
@@ -466,15 +527,16 @@ function buildWorld(caseId) {
   }
 
   // The walker's engine calls inherit the developer's real environment —
-  // tmux identity and system config included — so every world carries the
-  // project-level session-label kill switch. Stamped before the first
-  // commit (no dirt for the walk to sweep up) and stripped back out by
-  // diffWorld, so snapshots never see it. A fixture that layers the
-  // project manifest through its history is stamped when that layer lands
-  // instead — the root commit then holds no `.workflows/` at all, which is
-  // what lets a case put commits before the workflows' arrival.
+  // tmux identity included — so every world carries the project-level
+  // session-label kill switch and the session-end hooks boot would
+  // otherwise install and commit. Stamped before the first commit (no
+  // dirt for the walk to sweep up) and stripped back out by diffWorld, so
+  // snapshots never see them. A fixture that layers the project manifest
+  // through its history is stamped when that layer lands instead — the
+  // root commit then holds no `.workflows/` at all, which is what lets a
+  // case put commits before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
-  let stamped = manifestLayered ? { baseline: false } : stampLabelKill(dir);
+  let stamped = manifestLayered ? { baseline: false, settings_created: false } : stampHarnessState(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');
@@ -499,7 +561,7 @@ function buildWorld(caseId) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, snap.get(rel));
     }
-    if (manifestLayered && group.files.includes(PROJECT_MANIFEST)) stamped = stampLabelKill(dir);
+    if (manifestLayered && group.files.includes(PROJECT_MANIFEST)) stamped = stampHarnessState(dir);
     git('add', '-A');
     git('commit', '-q', '-m', group.message);
   }
@@ -615,9 +677,9 @@ function readWalkLog(worldDir) {
 }
 
 module.exports = {
-  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
+  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
-  stampLabelKill, unstampLabelKill, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST,
+  stampHarnessState, unstampHarnessState, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST, SETTINGS,
 };

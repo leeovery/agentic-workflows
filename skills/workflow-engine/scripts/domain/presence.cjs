@@ -22,8 +22,15 @@
 // it from a verb acting on another topic manufactures a false hold. Read
 // verbs are reachable for any topic, so they take `refreshQuietly` instead:
 // re-stamp a heartbeat this session already owns, never create one, never
-// overwrite a peer's. The SessionEnd hook on the session skills sweeps by
-// session id for the exits that keep the process alive (/clear, logout).
+// overwrite a peer's. The exit sweep is `cleanupPresence`, run from a
+// settings-level SessionEnd hook the engine installs in the project's
+// `.claude/settings.json` (a SessionEnd hook declared in skill frontmatter
+// never fires): it drops every row the ending session owns, by session id,
+// on the exits that keep the process alive (`/clear`, `/logout`) — rows that
+// would otherwise read held until the process exits. A dead process's row
+// reads unheld through the pid check regardless, and a later conversation
+// in the same process owns its predecessor's row (`ownsRow`'s pid arm),
+// never gating against it.
 //
 // Every phase a session sits in carries presence except discovery:
 // `discovery-session open` already refuses a second session per epic

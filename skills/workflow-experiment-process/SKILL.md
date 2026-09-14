@@ -2,13 +2,6 @@
 name: workflow-experiment-process
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.cache/), Bash(git status), Bash(git log), Bash(grep), Bash(rg), Bash(ls), Bash(wc), Bash(find)
-hooks:
-  SessionEnd:
-    - hooks:
-        - type: command
-          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
-        - type: command
-          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Experiment Process

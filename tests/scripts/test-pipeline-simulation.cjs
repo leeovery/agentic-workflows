@@ -224,9 +224,9 @@ class Sim {
     // cache is ephemeral session machinery, mechanical heartbeats included.
     fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
     this.step = 0;
-    // Hermetic session-label environment: the config dir pins into the
-    // sandbox and the tmux identity is stripped, so `session label` can
-    // never read the developer's real opt-in or rename their real session.
+    // Hermetic environment: the system config dir pins into the sandbox
+    // (the knowledge CLI reads it) and the tmux identity is stripped, so
+    // `session label` can never rename the developer's real session.
     // A real session always carries its identity, and presence reads it to
     // tell its own holds from a peer's — pin one so the sim never gates
     // against itself, whatever the host environment carries.
@@ -1233,17 +1233,27 @@ describe('pipeline simulation', () => {
     sim.run(['presence', 'cleanup', 'peer-sess']);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), undefined);
     // Session labels, as every process skill's Step 0 issues them: an
-    // unconfigured opt-in answers a disabled no-op — even on a bad argument,
-    // since the enable check precedes validation; opted in but outside tmux
-    // (the sim strips the identity) answers no-tmux; an unknown phase from
-    // an enabled call site refuses; a project-manifest override beats the
-    // system opt-in; the SessionEnd restore sweep answers with nothing to
-    // restore.
+    // unrecorded opt-in answers a disabled no-op — even on a bad argument,
+    // since the enable check precedes validation; opted in (the choice
+    // lands on the project manifest, and the SessionEnd hook in the
+    // project's settings gains `session cleanup` beside the `presence
+    // cleanup` every project carries, committed together) but outside
+    // tmux (the sim strips the identity) answers no-tmux; an unknown phase
+    // from an enabled call site refuses; a hand-stamped manifest false
+    // disables; the SessionEnd restore sweep answers with nothing to
+    // restore; opting out takes `session cleanup` back out and leaves
+    // `presence cleanup`.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     assert.deepStrictEqual(sim.run(['session', 'label', wu, 'deploying', 'alpha']),
       { ok: true, labelled: false, reason: 'disabled' });
     sim.run(['session', 'label-config', 'true']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'true');
+    const hookVerbs = () => JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8'))
+      .hooks.SessionEnd.flatMap((g) => g.hooks.map((h) => h.command.slice(h.command.indexOf('engine.cjs"'))));
+    assert.deepStrictEqual(hookVerbs(), ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup'],
+      'the opt-in installs both session-end hooks');
+    assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice');
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
@@ -1253,6 +1263,8 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'delete', 'project.defaults.tmux_labels']);
     assert.deepStrictEqual(sim.run(['session', 'cleanup', 'sim-sess']), { ok: true, restored: false });
     sim.run(['session', 'label-config', 'false']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
+    assert.deepStrictEqual(hookVerbs(), ['engine.cjs" presence cleanup'], 'opting out leaves the presence sweep in place');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.
@@ -2757,9 +2769,8 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'planning', 'dispatch']);
     sim.run(['commit', wu, '-m', `workflow(${wu}): set the board`]);
 
-    // The setup ran as one session and its verbs beat as it went. Clear its
-    // heartbeats so the scenario opens on a checkout nobody holds.
-    sim.run(['presence', 'cleanup', 'sim-session']);
+    // The setup ran as one session: its starts beat and its completions
+    // cleared, so the scenario opens on a checkout nobody holds.
     assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, [],
       'the board starts with no session holding anything');
 
