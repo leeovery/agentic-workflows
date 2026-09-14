@@ -141,7 +141,7 @@ Branch on the boot response's `tmux_labels` — `prompt` means the session runs 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. The choice is per project, recorded in `.workflows/manifest.json`.
+> You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. You're asked once per project.
 ```
 
 Fetch the opt-in and emit its `MENU: label gate` section verbatim as markdown (not a code block):
@@ -154,7 +154,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
 
 **If `yes`:**
 
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed:
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
@@ -164,7 +164,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 
 **If `no`:**
 
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed:
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false

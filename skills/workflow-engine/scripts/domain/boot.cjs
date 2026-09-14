@@ -20,6 +20,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
+const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionEndHooks, SETTINGS_SPEC } = require('./session-label.cjs');
@@ -232,20 +233,18 @@ function boot(cwd) {
   // hooks, or lost them to a hand edit, gets them back here. The file is
   // written either way, and the commit failing is a warning, never a block.
   let sessionEndHooksInstalled = false;
-  // WORKFLOWS_SKIP_SESSION_END_HOOKS is the test harness's hermeticity
-  // switch — a walk's boot must never write the world's settings file. Real
-  // projects never set it: the hooks are infrastructure, not a setting.
-  if (!process.env.WORKFLOWS_SKIP_SESSION_END_HOOKS) {
-    const sync = syncSessionEndHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true });
-    if (sync.error) {
-      warnings.push(`session-end hooks not installed: ${sync.error}`);
-    } else if (sync.changed) {
-      sessionEndHooksInstalled = true;
-      try {
-        commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install workflow session-end hooks');
-      } catch (err) {
-        warnings.push(`session-end hooks commit failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
+  // The opt-in read and the sync share one hold: a `label-config` landing
+  // between them would have this boot strip the hook it just installed.
+  // The commit stays outside the lock.
+  const sync = withProjectLock(cwd, () => syncSessionEndHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }));
+  if (sync.error) {
+    warnings.push(`session-end hooks not installed: ${sync.error}`);
+  } else if (sync.changed) {
+    sessionEndHooksInstalled = true;
+    try {
+      commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install workflow session-end hooks');
+    } catch (err) {
+      warnings.push(`session-end hooks commit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

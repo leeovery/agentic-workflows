@@ -31,7 +31,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
-const { syncSessionEndHooks, SETTINGS_SPEC } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { syncSessionEndHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -323,10 +323,10 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
-// --- the session-label kill switch --------------------------------------
+// --- harness world stamping — label kill + session-end hook seed ---------
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
-const SETTINGS = path.join(SETTINGS_SPEC);
+const SETTINGS = path.join('.claude', 'settings.json');
 
 // Where materialise records what it stamped, so the differ strips exactly
 // that and never a value the walk wrote itself. Under `.git/`, which no
@@ -346,7 +346,7 @@ const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
  * @param {string} dir
  * @returns {Stamped}
  */
-function stampLabelKill(dir) {
+function stampHarnessState(dir) {
   const file = path.join(dir, PROJECT_MANIFEST);
   /** @type {Record<string, any>} */
   let manifest = {};
@@ -392,7 +392,7 @@ function readStampMarker(dir) {
  * @param {Map<string, Buffer>} tree
  * @param {Stamped} stamped  what materialise recorded stamping
  */
-function unstampLabelKill(tree, stamped) {
+function unstampHarnessState(tree, stamped) {
   unstampManifest(tree, stamped);
   unstampSettings(tree, stamped);
 }
@@ -443,7 +443,8 @@ function unstampSettings(tree, stamped) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, buf);
     const sync = syncSessionEndHooks(scratch, { session: false, presence: false });
-    if (sync.error || !sync.changed) return;
+    if (sync.error) throw new Error('cannot strip the session-end hooks: ' + sync.error);
+    if (!sync.changed) return;
     const next = fs.readFileSync(file);
     if (stamped.settings_created && Object.keys(JSON.parse(next.toString('utf8'))).length === 0) tree.delete(SETTINGS);
     else tree.set(SETTINGS, next);
@@ -457,7 +458,7 @@ function diffWorld(caseId, worldDir, claimsMode = false) {
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
-  unstampLabelKill(actual, readStampMarker(worldDir));
+  unstampHarnessState(actual, readStampMarker(worldDir));
 
   const added = [];
   const removed = [];
@@ -535,7 +536,7 @@ function buildWorld(caseId) {
   // root commit then holds no `.workflows/` at all, which is what lets a
   // case put commits before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
-  let stamped = manifestLayered ? { baseline: false, settings_created: false } : stampLabelKill(dir);
+  let stamped = manifestLayered ? { baseline: false, settings_created: false } : stampHarnessState(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');
@@ -560,7 +561,7 @@ function buildWorld(caseId) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, snap.get(rel));
     }
-    if (manifestLayered && group.files.includes(PROJECT_MANIFEST)) stamped = stampLabelKill(dir);
+    if (manifestLayered && group.files.includes(PROJECT_MANIFEST)) stamped = stampHarnessState(dir);
     git('add', '-A');
     git('commit', '-q', '-m', group.message);
   }
@@ -680,5 +681,5 @@ module.exports = {
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
-  stampLabelKill, unstampLabelKill, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST, SETTINGS,
+  stampHarnessState, unstampHarnessState, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST, SETTINGS,
 };

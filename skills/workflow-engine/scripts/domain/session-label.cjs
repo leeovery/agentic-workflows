@@ -129,6 +129,10 @@ function ourMark(hook) {
  * @returns {{changed: boolean, error?: string}}
  */
 function syncSessionEndHooks(cwd, { session, presence }) {
+  // WORKFLOWS_SKIP_SESSION_END_HOOKS is the test harness's hermeticity
+  // switch — a walk's boot must never write the world's settings file. Real
+  // projects never set it: the hooks are infrastructure, not a setting.
+  if (process.env.WORKFLOWS_SKIP_SESSION_END_HOOKS) return { changed: false };
   const file = path.join(cwd, SETTINGS_SPEC);
   /** @type {Record<string, any>} */
   let settings = {};
@@ -181,7 +185,9 @@ function recordLabelChoice(cwd, value) {
   /** @type {string[]} */
   const warnings = [];
   const specs = [PROJECT_MANIFEST_SPEC];
-  const sync = syncSessionEndHooks(cwd, { session: value, presence: true });
+  // Sequential with setLabelConfig's own hold, never nested: the lock is a
+  // file lock, not reentrant.
+  const sync = withProjectLock(cwd, () => syncSessionEndHooks(cwd, { session: value, presence: true }));
   if (sync.error) warnings.push(`session-end hooks not synced: ${sync.error}`);
   if (sync.changed) specs.push(SETTINGS_SPEC);
   commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
@@ -413,9 +419,9 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
 
 /**
  * Put the original tmux session name back — `session cleanup`, the
- * SessionEnd sweep over the checkout's stash store. Without a session
- * id nothing is touched (an id-less sweep could take a live peer's
- * label). Sweeps stashes the named
+ * SessionEnd sweep over the checkout's stash store. Without a session id
+ * nothing is touched (an id-less sweep could take a live peer's label —
+ * the presence sweep refuses the same way). Sweeps stashes the named
  * session owns (an ownerless stash counts) plus any whose owning process
  * is dead — a stranding no other sweep would ever reach. A session is
  * renamed only when its current name is exactly the one we applied — found

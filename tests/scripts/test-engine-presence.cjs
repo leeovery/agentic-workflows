@@ -403,6 +403,13 @@ describe('engine presence', () => {
     assert.ok(fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'nothing swept without an owner match');
   });
 
+  it('an id-less sweep never takes an id-less record — null matching null is not ownership', () => {
+    craftRecord(dir, 'discussion', 'alpha', { pid: process.pid, pid_start: null, session_id: null });
+    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup']).cleared, []);
+    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup'], { input: '{}' }).cleared, []);
+    assert.ok(fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'the record stands');
+  });
+
   it('a queue read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
     const res = engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.count, 0);

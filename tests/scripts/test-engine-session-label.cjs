@@ -21,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { resolveEnabled, syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -417,7 +417,6 @@ describe('engine session label — the manifest stamp', () => {
     fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { WORKFLOWS_CONFIG_DIR: configDir } });
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
-    assert.strictEqual(resolveEnabled(dir), null);
   });
 });
 
@@ -510,6 +509,13 @@ describe('engine session label-config', () => {
     assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
   });
 
+  it('WORKFLOWS_SKIP_SESSION_END_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_END_HOOKS: '1' } });
+    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
+    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+  });
 });
 
 describe('syncSessionEndHooks', () => {
@@ -602,6 +608,13 @@ describe('syncSessionEndHooks', () => {
         SessionEnd: [{ hooks: [theirs] }, { matcher: 'clear', hooks: [theirs] }],
       },
     });
+  });
+
+  it('a shared group keeps its matcher when ours come out of it', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({ hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs, SESSION_HOOK] }] } });
+    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] } });
   });
 
   it('collapses twins into the one wanted group', () => {

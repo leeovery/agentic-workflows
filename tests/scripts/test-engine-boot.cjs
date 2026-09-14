@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const REAL_ENGINE = path.join(REAL_SCRIPTS, 'engine.cjs');
@@ -25,6 +25,8 @@ function writeFile(dir, rel, content) {
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The session-end hooks boot keeps in every project's `.claude/settings.json`.
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
@@ -639,14 +641,11 @@ describe('engine boot session-end hooks', () => {
   beforeEach(() => { fix = setupSkillsFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Stamp project defaults on the manifest and commit them, so boot's only new dirt is its own. */
-  function recordDefaults(defaults) {
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults }, null, 2) + '\n');
+  /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
+  function recordChoice(value) {
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
     git(fix.project, ['add', '--', '.workflows/manifest.json']);
     git(fix.project, ['commit', '-q', '-m', 'record the defaults']);
-  }
-  function recordChoice(value) {
-    recordDefaults({ tmux_labels: value });
   }
 
   /** Take the fixture's settings away — a project the hooks have never reached. */
@@ -718,11 +717,43 @@ describe('engine boot session-end hooks', () => {
     assert.strictEqual(bootWith().session_end_hooks_installed, false);
   });
 
-  it('labels off or unset wants `presence cleanup` alone — a `session cleanup` left behind comes back out', () => {
-    assert.strictEqual(bootWith().session_end_hooks_installed, false, 'the fixture already carries it');
+  it('labels off wants `presence cleanup` alone — a `session cleanup` left behind comes back out', () => {
     recordChoice(false);
     commitSettings(hooked([SESSION_HOOK, PRESENCE_HOOK]));
     const res = bootWith();
+    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
+  });
+
+  it('labels never asked wants `presence cleanup` alone too — a stale `session cleanup` comes back out', () => {
+    assert.strictEqual(bootWith().session_end_hooks_installed, false, 'the fixture already carries it');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')), 'no choice recorded');
+    commitSettings(hooked([SESSION_HOOK, PRESENCE_HOOK]));
+    const res = bootWith();
+    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
+  });
+
+  it('the hook sync waits on a live project lock — the opt-in read and the write are one hold', async () => {
+    dropSettings();
+    const lock = path.join(fix.project, '.workflows', '.project-lock');
+    fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
+    const env = { ...process.env };
+    delete env.TMUX;
+    delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
+    const child = spawn('node', [fix.engine, 'boot'], { cwd: fix.project, env });
+    let stdout = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
+    const exit = new Promise((resolve) => child.on('close', resolve));
+
+    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
+    assert.strictEqual(raced, 'waiting', 'boot must wait on a live project lock');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')), 'no settings write while the lock is held');
+
+    fs.unlinkSync(lock);
+    assert.strictEqual(await exit, 0);
+    const res = JSON.parse(stdout.trim());
     assert.strictEqual(res.session_end_hooks_installed, true);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
   });
