@@ -16,7 +16,7 @@ Any of these qualifies:
 - The user just said "what's next?", "move on", "anything else?", "ok", "done", or similar navigation cues
 - The user just raised a new topic themselves (a clear pivot away from the current thread)
 - A commit just landed AND the exchange prior to that commit resolved your outstanding question
-- The phase is about to conclude (convergence menu, the conclude gate, wrap-up)
+- The phase is about to conclude (the closing gates, the conclude gate, wrap-up)
 - The user explicitly asked about background-agent state ("anything come back yet?", "any results?")
 - The session just opened or resumed and no conversation thread is underway yet — a pending announcement lands here, before momentum builds, rather than falling to **C**'s default
 

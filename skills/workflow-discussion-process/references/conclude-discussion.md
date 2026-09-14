@@ -4,7 +4,7 @@
 
 ---
 
-When the discussion session returns here (either through natural convergence or user-initiated conclusion), first check the topic's triage queue:
+When the discussion session returns here (the map settled, or the user signalled conclusion), first check the topic's triage queue:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} discussion {topic}

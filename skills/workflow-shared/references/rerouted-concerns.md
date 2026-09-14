@@ -232,13 +232,13 @@ Absorb the concern — one engine transaction deletes its queue file and commits
 node .claude/skills/workflow-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md [--subtopic {subtopic}] -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
-**If `remaining` is non-zero:**
+#### If `remaining` is non-zero
 
 Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise.
 
 → Return to **A. Check**.
 
-**If `remaining` is `0`:**
+#### If `remaining` is `0`
 
 Emit the clear line and nothing else — no recap of the walk:
 
@@ -248,7 +248,13 @@ Emit the clear line and nothing else — no recap of the walk:
 Triage queue clear — every rerouted concern is folded in.
 ```
 
-The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.
+**If `phase` is `discussion` and the fold's `discussion-map set` answered `all_decided: true`:**
+
+The map settled on that fold — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
 
 → Return to caller.
 
@@ -282,6 +288,12 @@ Announce the move in the same one line, then emit the clear line and nothing els
 Triage queue clear — nothing further queued for this topic.
 ```
 
-The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.
+**If `phase` is `discussion` and the last `discussion-map set` this drain ran answered `all_decided: true`:**
+
+The map stands settled — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
 
 → Return to caller.
