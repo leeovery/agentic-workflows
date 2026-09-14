@@ -36,7 +36,13 @@ A surviving Decision whose staged block lacks a Stakes line gains one now, in `{
 
 #### If the Decision falls below the bar
 
-Settle it on what leans, read now: the fork's own site in the tree and how that surface already handles the neighbouring case — a refusal beside the fork's input leans toward refusing, a coercion beside it toward coercing, whether or not anything names the input itself — then the plan's landed criteria for that surface and the specification's entry. Nothing already in context stands in for the read. The staging's `(recommended)` marker is its argument, never a ground. An honest call only where the read found no neighbouring case handled either way. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming the read that decided it (`file:line`, the criterion, or the spec section); the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+Settle it on what leans, read now — nothing already in context stands in for the read, and the settled direction is always one of the staged sides, never neither:
+
+- **The walk's own ground first.** A sibling proposal approved earlier in this walk that forecloses a side leaves the other side settled — one live side is no fork.
+- **Then the fork's own site in the tree**, and how that surface already handles the neighbouring case — a refusal beside the fork's input leans toward refusing, a coercion beside it toward coercing, whether or not anything names the input itself.
+- **Then the plan's landed criteria for that surface and the specification's entry**, where either speaks to the fork. An entry about a neighbouring behaviour, or silence, is not a ground and kills no side.
+
+The staging's `(recommended)` marker is its argument, never a ground. An honest call only where the reads found nothing that leans. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming the read that decided it (`file:line`, the criterion, the spec section, or the sibling's approval); the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 
