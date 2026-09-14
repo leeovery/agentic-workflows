@@ -4692,7 +4692,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
     assert.match(shape, /\*\*Adjust\*\*.*epic vs feature, the framing/);
     const conclude = renderSurface(dir, 'roadmap-conclude-gate', {});
     assert.match(conclude, /`◆ Pull a slice into delivery now\?`/);
-    assert.match(conclude, /`p\/pull`.*Pick the item\(s\) going into delivery/);
+    assert.match(conclude, /`y\/yes`.*Pick the item\(s\) going into delivery/);
     assert.match(conclude, /`s\/stop`.*Stop here — the roadmap keeps everything warm/);
   });
 });

@@ -301,7 +301,7 @@ function roadmapShapeGate() {
 /** Conclude's stop-or-pull offer. */
 function roadmapConcludeGate() {
   return menu('', [
-    cmdOption('p', 'pull', 'Pick the item(s) going into delivery'),
+    cmdOption('y', 'yes', 'Pick the item(s) going into delivery'),
     cmdOption('s', 'stop', 'Stop here — the roadmap keeps everything warm'),
   ], { question: 'Pull a slice into delivery now?' });
 }

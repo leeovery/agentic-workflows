@@ -62,7 +62,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-conclude-g
 
 **STOP.** Wait for user response.
 
-#### If `pull`
+#### If `yes`
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
 
