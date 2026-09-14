@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, menuFrame, menu, callout, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, menuFrame, menu, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
 
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
@@ -671,6 +671,20 @@ describe('surfaces primitives', () => {
     assert.ok(lines[lastBranch + 1].startsWith('        two'), 'last continuation is blank-guttered');
   });
 
+  it('indentedBody wraps each paragraph two columns in; indent moves the column and the budget with it', () => {
+    assert.deepStrictEqual(indentedBody(['short', 'lines'], { width: 40 }), ['  short', '  lines']);
+    assert.deepStrictEqual(indentedBody(['x'.repeat(50)], { width: 40 }), [`  ${'x'.repeat(38)}`, `  ${'x'.repeat(12)}`], 'the default budget is the width less two columns');
+    const deep = indentedBody(['beta '.repeat(20).trim()], { indent: '      ', width: 40 });
+    assert.ok(deep.length > 1 && deep.every((l) => l.startsWith('      beta') && [...l].length <= 40));
+  });
+
+  it('bulletRow glyphs at the callout indent by default; indent shifts the glyph, continuations stay under the text', () => {
+    assert.deepStrictEqual(bulletRow('short row', { width: 40 }), ['  • short row']);
+    assert.deepStrictEqual(bulletRow('x'.repeat(50), { width: 40 }), [`  • ${'x'.repeat(36)}`, `    ${'x'.repeat(14)}`], 'the default budget reserves the indent and the glyph');
+    const lines = bulletRow('gamma '.repeat(20).trim(), { indent: '    ', width: 40 });
+    assert.ok(lines[0].startsWith('    • gamma') && lines[1].startsWith('      gamma'));
+    assert.ok(lines.every((l) => [...l].length <= 40));
+  });
 });
 
 describe('render resume-gate', () => {
@@ -1793,13 +1807,14 @@ describe('render convergence-diagnostic', () => {
     const file = writePayload(dir, 'c.json', base);
     const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('=== DISPLAY: convergence diagnostic (emit verbatim as a code block) ==='));
-    assert.ok(out.includes('Spec Review — cycle 5 diagnostic'));
+    assert.ok(out.includes('===\n── Spec Review — cycle 5 diagnostic ─'), 'the heading is the drawn in-fence divider');
+    assert.strictEqual([...out.split('\n')[1]].length, 65, 'the divider fills the display width');
     assert.ok(out.includes('  Trend: converging'));
     assert.ok(out.includes('  Latest cycle: 2 findings (1 new, 1 recurring)'), 'counts derive from the arrays');
     assert.ok(out.includes('  Per stream: claims 0 · input review 1 · gap analysis 1'));
     assert.ok(out.includes('  Document growth: 6835 → 13637 words (+6802 net across review)'));
     assert.ok(out.includes('    • Marker semantics restated twice (fixed in cycle 4)'));
-    assert.ok(out.includes('    • Guard scope drifts per section (cycles 3, 4, 5)\n      Each fix re-words the guard where it lands instead of at its home.'));
+    assert.ok(out.includes('    • Guard scope drifts per section (cycles 3, 4, 5)\n      · Each fix re-words the guard where it lands instead of at\n        its home.'), 'the hypothesis is a sub-detail under the bullet text, wrapped under its own marker');
     assert.ok(out.includes('  ⚑ Continuing is likely to resolve remaining items.'));
     assert.ok(out.includes('⚑ Review has added 6802 words'), 'the >25% growth note fires');
     assert.ok(!out.includes('reviewing earlier reviews'), 'the churn warning stays quiet on a converging trend');
@@ -1820,11 +1835,65 @@ describe('render convergence-diagnostic', () => {
     writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
     const file = writePayload(dir, 'f.json', { loop_type: 'fix', latest_cycle: 3, trend: 'stable', resolved: [], recurring: [{ title: 'Assertion drifts', cycles: '2, 3', hypothesis: 'The fixture regenerates with a shifting seed.' }], new: [] });
     const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    assert.ok(out.includes('Fix Loop — cycle 3 diagnostic'));
+    assert.ok(out.includes('── Fix Loop — cycle 3 diagnostic ─'));
     assert.ok(!out.includes('Per stream'));
     assert.ok(!out.includes('Document growth'));
     assert.ok(!out.includes('Resolved:'), 'empty sections are skipped');
     assert.ok(out.includes('  ⚑ Same issues are cycling. Consider manual intervention on the'), 'the stable flag wraps via the callout');
+  });
+
+  it('a long finding wraps with its continuation under the text, never at column 0', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'w.json', {
+      loop_type: 'fix', latest_cycle: 3, trend: 'converging',
+      resolved: [{ title: 'Detached-element mute is a no-op — a re-parented <style> goes live in the app document', last_seen_cycle: 1 }],
+      recurring: [{ title: 'A hostile document stylesheet still reaches the application chrome (criterion 3)', cycles: '1, 2, 3', hypothesis: 'Containment rests on two mechanisms of unequal strength — the engine\'s own @scope matching, which has held under every probe, and a fallback the tests never reach.' }],
+      new: [{ title: 'Nothing verifies the composed stylesheet\'s structure before it is published' }],
+    });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
+    const body = out.split('\n').slice(1).filter((l) => l !== '' && !l.startsWith('==='));
+    assert.ok(body.every((l) => [...l].length <= 65), 'every line fits the pinned width');
+    assert.ok(body.every((l) => l === body[0] || l.startsWith('  ')), 'only the heading sits at column 0');
+    assert.ok(out.includes('    • Detached-element mute is a no-op — a re-parented <style>\n      goes live in the app document (fixed in cycle 1)'), 'a resolved row wraps under its text');
+    assert.ok(out.includes('    • A hostile document stylesheet still reaches the application\n      chrome (criterion 3) (cycles 1, 2, 3)\n      · Containment rests on two mechanisms of unequal strength —\n        the engine\'s own @scope matching, which has held under\n        every probe, and a fallback the tests never reach.'), 'the hypothesis wraps under its own marker at the bullet-text column');
+    assert.ok(out.includes('    • Nothing verifies the composed stylesheet\'s structure before\n      it is published'), 'a new row wraps under its text');
+  });
+
+  it('short content renders one line per item, unchanged', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 's.json', {
+      loop_type: 'fix', latest_cycle: 2, trend: 'converging',
+      resolved: [{ title: 'Off-by-one', last_seen_cycle: 1 }],
+      recurring: [{ title: 'Flaky seed', cycles: '1, 2', hypothesis: 'The fixture reseeds.' }],
+      new: [{ title: 'Missing guard' }],
+    });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: convergence diagnostic (emit verbatim as a code block) ===',
+      `── Fix Loop — cycle 2 diagnostic ${'─'.repeat(32)}`,
+      '',
+      '  Trend: converging',
+      '  Latest cycle: 2 findings (1 new, 1 recurring)',
+      '',
+      '  Resolved:',
+      '    • Off-by-one (fixed in cycle 1)',
+      '',
+      '  Recurring:',
+      '    • Flaky seed (cycles 1, 2)',
+      '      · The fixture reseeds.',
+      '',
+      '  New this cycle:',
+      '    • Missing guard',
+      '',
+      '  ⚑ Continuing is likely to resolve remaining items.',
+      '',
+    ].join('\n'));
+  });
+
+  it('a head line past the budget wraps beneath its indent', () => {
+    const file = writePayload(dir, 'g.json', { ...base, review_baseline_words: 123456, live_words: 234567 });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('  Document growth: 123456 → 234567 words (+111111 net across\n  review)'), 'the growth line wraps at the head indent');
   });
 
   it('validates loudly: enums, cycle floor, shapes, stream and growth pairing', () => {
