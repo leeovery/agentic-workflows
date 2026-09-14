@@ -81,7 +81,7 @@ You MUST NOT choose on the user's behalf.
 
 **STOP.** Wait for user response.
 
-**If `proceed`:**
+**If `yes`:**
 
 → Proceed to **B. Git Checkpoint**.
 

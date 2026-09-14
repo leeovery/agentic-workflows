@@ -901,8 +901,8 @@ describe('engine render task surfaces', () => {
     '· · · · · · · · · · · ·',
     '**`◆ Continue with analysis?`**',
     '',
-    '**`p/proceed`** → Continue analysis',
-    '**`s/skip`**    → Skip analysis, proceed to completion',
+    '**`y/yes`**  → Continue analysis',
+    '**`s/skip`** → Skip analysis, proceed to completion',
     '',
   ].join('\n');
 

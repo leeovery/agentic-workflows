@@ -155,7 +155,7 @@ function cycleGateMenu() {
     'MENU: cycle gate',
     MENU_INSTRUCTION,
     menu('Continue with analysis?', [
-      cmdOption('p', 'proceed', 'Continue analysis'),
+      cmdOption('y', 'yes', 'Continue analysis'),
       cmdOption('s', 'skip', 'Skip analysis, proceed to completion'),
     ]),
   );
