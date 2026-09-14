@@ -4727,7 +4727,7 @@ describe('render — the adopted cross-flow static gates', () => {
 
   it('synthesis-gate: the epic topic sort confirm', () => {
     const out = renderSurface(dir, 'synthesis-gate', {});
-    assert.match(out, /`◆ Confirm to commit, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Commit these topics\?`/);
     assert.match(out, /`y\/yes`.*Commit these topics and conclude/);
     assert.match(out, /`e\/explore`.*Go back to exploration; not ready to commit yet/);
     assert.match(out, /\*\*Adjust\*\*.*split, merge, rename,/);

@@ -41,7 +41,7 @@ One rule you will feel: **topics are never named during the conversation.** Disc
 When the conversation converges, discovery drops a light, ambient invitation to harvest — woven into normal prose, requiring no answer, never repeated as a nagging check-in. **You** pull the harvest when you are ready ("let's pull topics," "that covers it," "good enough to start"); discovery never forces it. When you pull, it reads out the distinct surfaces the conversation named, merges the ones that share a domain or decision space, proposes a routing for each — research or discussion — and shows you the proposed topic set as a preview:
 
 ```
-◆ Confirm to commit, or tell me what to adjust.
+◆ Commit these topics?
 
 y/yes     → commit these topics and conclude
 e/explore → go back to exploration; not ready yet

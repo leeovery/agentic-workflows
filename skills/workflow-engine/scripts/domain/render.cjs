@@ -4660,7 +4660,7 @@ function synthesisGateSurface(_cwd, _args) {
     cmdOption('y', 'yes', 'Commit these topics and conclude'),
     cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
     promptOption('Adjust', 'Tell me what to change (split, merge, rename, re-route, edit summary)'),
-  ], { question: 'Confirm to commit, or tell me what to adjust.' }));
+  ], { question: 'Commit these topics?' }));
 }
 
 /** The knowledge query-failure gate — retry or proceed without context. @param {string} _cwd @param {object} _args @returns {string} */
