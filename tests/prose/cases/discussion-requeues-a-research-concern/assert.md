@@ -14,7 +14,7 @@ The prose should have taken this path:
    session's own brief and judges its ask owed the other phase-side —
    an open empirical question in a deciding session — so before any
    raise or map arming it renders the engine's requeue offer: the
-   statement, the diamond question naming research, the move/discuss
+   statement, the diamond question naming research, the yes/discuss
    options
 4. the user takes the move; one `topic requeue` transaction renumbers
    the file into synonym-handling's research queue, creates the

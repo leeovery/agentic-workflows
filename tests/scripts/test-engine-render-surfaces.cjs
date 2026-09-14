@@ -1704,7 +1704,7 @@ describe('render triage surfaces', () => {
     assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
   });
 
-  it('requeue-offer renders the statement, the diamond question naming the other phase, and the move/discuss menu', () => {
+  it('requeue-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
     writeQueue('measurement', { '001-a-decision-owed.md': 'x' });
     const file = writePayload(dir, 'rq.json', {
       file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
@@ -1713,7 +1713,7 @@ describe('render triage surfaces', () => {
     assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown, then STOP for the user's response) ==="), out);
     assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
     assert.ok(out.includes('**`◆ Move it to research?`**'), out);
-    assert.ok(/\*\*`m\/move`\*\* +→ Move it to this topic's research queue/.test(out), out);
+    assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research queue/.test(out), out);
     assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
 
     const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');

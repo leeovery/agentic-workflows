@@ -3525,7 +3525,7 @@ function requeueOffer(cwd, { dotpath, file }) {
     'MENU: requeue offer',
     "emit verbatim as markdown, then STOP for the user's response",
     menu(`**${p.title}** — ${p.reason}`, [
-      cmdOption('m', 'move', `Move it to this topic's ${other} queue — raised when ${other} runs`),
+      cmdOption('y', 'yes', `Move it to this topic's ${other} queue — raised when ${other} runs`),
       cmdOption('d', 'discuss', 'Work it here now'),
     ], { question: `Move it to ${other}?` }),
   );

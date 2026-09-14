@@ -128,7 +128,7 @@ Emit its `MENU: requeue offer` section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 
-**If `move`:**
+**If `yes`:**
 
 → Proceed to **F. Move to the Other Phase**.
 
