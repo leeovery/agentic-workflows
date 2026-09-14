@@ -29,14 +29,14 @@ The staging proposed; this session disposes. Re-derive the Decision against the 
 
 Two rules govern the evidence:
 
-- **The Stakes line is the staging's argument, never its evidence.** A cost it asserts is read against the tree before it counts; a cost the tree shows hypothetical — a path no input the product actually receives reaches — carries nothing.
+- **The Stakes line is the staging's argument, never its evidence.** A cost it asserts is read against the tree before it counts — the site it names, read now, nothing already in context standing in for the read; a cost the tree shows hypothetical — a path no input the product actually receives reaches — carries nothing.
 - **A side no informed user would choose is not a side.** A fork with one live side is settled.
 
 A surviving Decision whose staged block lacks a Stakes line gains one now, in `{staging_file}`, from this re-derivation.
 
 #### If the Decision falls below the bar
 
-Settle it on what leans — the convention or precedent, searched for in the tree and the plan's landed criteria before any call is made; the staging's `(recommended)` marker is its argument, never a ground; an honest call only where nothing leans. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming what decided it; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+Settle it on what leans, read now: the fork's own site in the tree and how that surface already handles the neighbouring case — a refusal beside the fork's input leans toward refusing, a coercion beside it toward coercing, whether or not anything names the input itself — then the plan's landed criteria for that surface and the specification's entry. Nothing already in context stands in for the read. The staging's `(recommended)` marker is its argument, never a ground. An honest call only where the read found no neighbouring case handled either way. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming the read that decided it (`file:line`, the criterion, or the spec section); the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 
