@@ -2016,7 +2016,7 @@ function researchThreadsSurface(cwd, { dotpath }) {
 function researchConcludeGate(cwd, args) {
   const { topic, manifest } = resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
   const options = [
-    cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
+    cmdOption('y', 'yes', 'Mark this topic as complete, ready for discussion'),
   ];
   if (args['dead-end']) {
     options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
@@ -2025,7 +2025,7 @@ function researchConcludeGate(cwd, args) {
   const gate = section(
     'MENU: research conclude gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu('', options, { question: 'This topic looks ready to conclude.' }),
+    menu('This topic looks ready to conclude.', options, { question: 'Conclude it?' }),
   );
   const register = registerState(manifest, topic).total > 0
     ? researchThreadsSection(topic, manifest, 'emit verbatim as a code block')

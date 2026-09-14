@@ -76,7 +76,7 @@ The response carries the thread register as a DISPLAY section whenever the topic
 
 **STOP.** Wait for user response.
 
-#### If `conclude`
+#### If `yes`
 
 → Load **[conclude-research.md](conclude-research.md)** with closure = `discussion`.
 

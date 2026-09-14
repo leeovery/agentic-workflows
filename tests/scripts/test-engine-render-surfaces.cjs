@@ -1181,11 +1181,11 @@ describe('render research-conclude-gate', () => {
       /render research-conclude-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
   });
 
-  it('renders conclude/keep without the flag — no dead-end row', () => {
+  it('renders yes/keep without the flag — no dead-end row', () => {
     const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout' });
     assert.match(out, /=== MENU: research conclude gate/);
-    assert.match(out, /\*\*`◆ This topic looks ready to conclude\.`\*\*/);
-    assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+    assert.match(out, /This topic looks ready to conclude\.\n\n\*\*`◆ Conclude it\?`\*\*/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Mark this topic as complete, ready for discussion/);
     assert.match(out, /\*\*`k\/keep`\*\*\s+→ Keep digging, there's more to understand/);
     assert.ok(!out.includes('dead end'), 'no dead-end row without the flag');
   });
@@ -1218,7 +1218,7 @@ describe('render research-conclude-gate', () => {
       assert.ok(out.indexOf('DISPLAY: research threads') < out.indexOf('=== MENU: research conclude gate'), 'display above the menu');
       assert.match(out, /Research Threads — Checkout \(2 threads — 1 open · 1 learned\)/);
       assert.match(out, /├─ ○ Can a guest check out at all\?\s+\[brief\]\n {2}└─ ● Does the cart survive a session\?\s+\[seed\]/);
-      assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+      assert.match(out, /\*\*`y\/yes`\*\*\s+→ Mark this topic as complete, ready for discussion/);
       assert.strictEqual(out.includes('dead end'), 'dead-end' in args, 'the dead-end row still follows the flag alone');
     }
   });
