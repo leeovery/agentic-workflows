@@ -287,7 +287,7 @@ function roadmapParksGate() {
     cmdOption('y', 'yes', 'Commit these items to the roadmap and conclude'),
     cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
     promptOption('Adjust', 'Tell me what to change (move between horizons, rename, re-word)'),
-  ], { question: 'Park these on the roadmap, or tell me what to adjust.' });
+  ], { question: 'Park these on the roadmap?' });
 }
 
 /** The pull's shape confirm — epic vs feature, the framing. */

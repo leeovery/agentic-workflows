@@ -4680,7 +4680,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
 
   it('roadmap-parks-gate: the parks-only confirm in the park register', () => {
     const out = renderSurface(dir, 'roadmap-parks-gate', {});
-    assert.match(out, /`◆ Park these on the roadmap, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Park these on the roadmap\?`/);
     assert.match(out, /`y\/yes`.*Commit these items to the roadmap and conclude/);
     assert.match(out, /\*\*Adjust\*\*.*move between horizons/);
   });
