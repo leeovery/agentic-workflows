@@ -16,9 +16,10 @@ The prose should have taken this path:
    title names no subtopic, so the subtopic whose recorded content it
    corrects, expansion-source, re-arms from decided to exploring; no
    discussion-map add is issued
-5. the concern is presented as a breakdown — the entry never emitted
-   verbatim — that covers it alone, and a single question closes the
-   turn; the user accepts the correction as prescribed
+5. the concern is raised as an opener — the entry never emitted
+   verbatim — that covers it alone and ends awaiting the user (at
+   most one question, no menu, and its last beat says where the ball sits — a genuine question, or an invitation to push back on the stated lean — never a dead stop after the position); the user accepts the
+   correction as prescribed
 6. the fold takes the pure-correction branch: the two citing sites are
    amended in place, each amendment a dated note naming
    behavioural-ranking's retiring decision, the stale table citations

@@ -15,7 +15,7 @@ The prose should have taken this path:
    menu, stopping for the user
 5. the user opts in; the first concern's queue file is read as the
    session's own brief, the concern armed on the map (`discussion-map
-   add` then set `exploring`), and presented as a breakdown in the
+   add` then set `exploring`), and raised as an opener in the
    session's voice — the entry never emitted verbatim — then discussed
    to a resolution; the user answers with broad agreement that names
    "the rest" of the queue
@@ -24,8 +24,9 @@ The prose should have taken this path:
    its map state, its absorb commit — and nothing of the second
    concern is folded or absorbed on the strength of it
 7. the second concern is raised individually — armed on the map,
-   presented with its own breakdown, ending in its own single
-   question — and the walk stops there when the user leaves
+   its own opener ending awaiting the user (at most one question, no
+   menu, and its last beat says where the ball sits — a genuine question, or an invitation to push back on the stated lean — never a dead stop after the position) — and the walk stops there when the user
+   leaves
 
 Further claims:
 

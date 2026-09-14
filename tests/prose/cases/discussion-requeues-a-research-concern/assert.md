@@ -13,7 +13,7 @@ The prose should have taken this path:
 3. the user says discuss; the raise reads the queue file as the
    session's own brief and judges its ask owed the other phase-side —
    an open empirical question in a deciding session — so before any
-   breakdown or map arming it renders the engine's requeue offer: the
+   raise or map arming it renders the engine's requeue offer: the
    statement, the diamond question naming research, the move/discuss
    options
 4. the user takes the move; one `topic requeue` transaction renumbers
@@ -24,7 +24,7 @@ The prose should have taken this path:
    session closes, until the research lands, the menu carrying the way
    in — and, the queue being empty, emits the clear line
 5. the concern never becomes session material: no subtopic is added
-   for it, no breakdown is presented, nothing about it is written
+   for it, no raise is composed, nothing about it is written
    into the discussion document
 6. the session works result caching to its decision, the map records
    it decided, and the write commits action-scoped

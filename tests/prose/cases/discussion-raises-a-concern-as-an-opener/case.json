@@ -1,0 +1,78 @@
+{
+  "origin": "the triage raise is an opener, never a case: a rerouted concern puts the user in front of the problem in the product's terms, names the rerouting topic once the situation is on the page, states a position with one load-bearing reason, and says where the ball sits — the entry's depth (itemised costs, tuning numbers, the rejected alternative) stays back until the conversation asks and lands at the fold. The drift this guards is the wall: an exhaustive entry surfaced whole — every option costed, every number carried, the position with its derivation — leaving the user asking to be told what is actually being suggested. The entry is fixture-authored rich on purpose, so what the raise omits is checkable against what the entry holds",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review-menu.md"
+  ],
+  "answers": [
+    "c — continue",
+    "d — discuss"
+  ],
+  "conduct": "The user concluded synonym handling in an earlier sitting and returns because a concern from behavioural-ranking landed in its triage queue — they know one is waiting and want to hear it before anything else. They continue at the resume gate and take the queue when it is offered, and they read the raised concern with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate search-relevance.discussion.synonym-handling",
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "render resume-gate search-relevance.discussion.synonym-handling",
+      "topic queue search-relevance discussion synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "discussion-map add search-relevance synonym-handling hand-list-cutover",
+      "discussion-map set search-relevance synonym-handling hand-list-cutover exploring"
+    ],
+    "calls_in_order": [
+      "render entry-gate search-relevance.discussion.synonym-handling",
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "render resume-gate search-relevance.discussion.synonym-handling",
+      "topic queue search-relevance discussion synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "discussion-map add search-relevance synonym-handling hand-list-cutover",
+      "discussion-map set search-relevance synonym-handling hand-list-cutover exploring"
+    ],
+    "calls_exclude": [
+      "render requeue-offer",
+      "render triage-announce",
+      "topic absorb",
+      "topic requeue",
+      "topic start search-relevance discussion synonym-handling",
+      "topic reopen",
+      "topic complete",
+      "hand-list-cutover decided",
+      "agent dispatch",
+      "--kind review",
+      "--kind perspective",
+      "knowledge.cjs index"
+    ]
+  }
+}

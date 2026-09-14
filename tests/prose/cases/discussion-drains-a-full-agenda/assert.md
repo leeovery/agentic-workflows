@@ -17,16 +17,18 @@ The prose should have taken this path:
    bodies unread — with the offer menu, and stops for the user
 5. the user opts in; the first concern's queue file is read as the
    session's own brief, the concern armed on the map (`discussion-map
-   add` then set `exploring`), and presented as a breakdown — the
-   entry never emitted verbatim, and never from the title alone —
-   then discussed to the baseline decision
+   add` then set `exploring`), and raised as an opener — the entry
+   never emitted verbatim, and never from the title alone — then
+   discussed to the baseline decision
 6. the fold documents the decision: a new `##` section whose Context
    opens with the provenance line and the concern body, the map set
    `decided`, and the concern absorbed under its own commit naming
    file and origin
 7. the second concern is raised without a fresh offer — the opt-in
-   stands — through the same arm/surface/fold/absorb path, absorbing
-   under its own distinct commit; with the queue empty the clear line
+   stands — through the same arm/surface/fold/absorb path, its raise
+   opening with a one-line bridge (what the first concern settled, and
+   that nothing follows this one) above the problem, absorbing under
+   its own distinct commit; with the queue empty the clear line
    renders
 8. with both settled the user wraps; the closing gates run the review
    machinery per the conduct (the stubbed review returns clean); the
