@@ -130,7 +130,7 @@ describe('the experiment surfaces', () => {
     const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' });
     assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Approve E1's design\?/);
-    const a = out.indexOf('**`a/approve`**');
+    const a = out.indexOf('**`y/yes`**');
     const b = out.indexOf('**`b/abandon`**');
     const amend = out.indexOf('**Amend**');
     assert.ok(a > -1 && b > a && amend > b, 'command options lead, the prompt option closes');

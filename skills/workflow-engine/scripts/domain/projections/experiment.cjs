@@ -77,7 +77,7 @@ function experimentRegister(topic, rows) {
 /**
  * The briefing gate — the user-confirmed freeze between a written design and
  * the first measurement. Rendered after the design is presented
- * conversationally; approve records the freeze (`experiment approve`), abandon
+ * conversationally; yes records the freeze (`experiment approve`), abandon
  * ends the record with its reason and the row kept, an amendment folds in
  * before the freeze.
  * @param {string} id
@@ -85,7 +85,7 @@ function experimentRegister(topic, rows) {
  */
 function experimentApprovalGate(id) {
   return section('MENU: experiment approval gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('a', 'approve', 'Freeze the design and start measuring'),
+    cmdOption('y', 'yes', 'Freeze the design and start measuring'),
     cmdOption('b', 'abandon', `Abandon ${id} — recorded with its reason; the register keeps the row`),
     promptOption('Amend', 'Tell me what to change — the design folds it in before the freeze'),
   ], { question: `Approve ${id}'s design?` }));
