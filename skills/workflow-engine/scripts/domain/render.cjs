@@ -509,7 +509,7 @@ function specReviewGate(cwd, { dotpath, variant }) {
     ], { question: 'Continue with review?' }));
   }
   return section('MENU: spec review reloop gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('r', 'reanalyse', 'Run another review cycle (all three phases)'),
+    cmdOption('y', 'yes', 'Run another review cycle (all three phases)'),
     cmdOption('p', 'proceed', 'Proceed to completion'),
   ], { question: 'Run another review cycle?' }));
 }

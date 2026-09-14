@@ -1775,7 +1775,7 @@ describe('render spec-review-gate', () => {
     const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'reloop' });
     assert.ok(out.includes('=== MENU: spec review reloop gate'));
     assert.ok(out.includes('**`◆ Run another review cycle?`**'));
-    assert.ok(/\*\*`r\/reanalyse`\*\* +→ Run another review cycle \(all three phases\)/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Run another review cycle \(all three phases\)/.test(out));
     assert.ok(/\*\*`p\/proceed`\*\* +→ Proceed to completion/.test(out));
   });
 

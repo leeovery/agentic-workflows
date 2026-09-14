@@ -223,7 +223,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {
 
 **STOP.** Wait for user response.
 
-**If `reanalyse`:**
+**If `yes`:**
 
 → Return to **A. Cycle Initialization**.
 
@@ -243,7 +243,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {
 
 **STOP.** Wait for user response.
 
-**If `reanalyse`:**
+**If `yes`:**
 
 → Return to **A. Cycle Initialization**.
 
