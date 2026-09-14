@@ -418,7 +418,7 @@ engine render synthesis-gate                                      # the epic syn
 engine render query-failure-gate                                  # the knowledge query-failure gate (r/retry, s/skip)
 engine render roadmap-session-receipt [--warn]                    # roadmap session-close advisory — empty without --warn
 engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses while no assessment has been started (`none`/`native`) or with no areas
-engine render baseline-area-gate --area <name>                    # the between-areas continue/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
+engine render baseline-area-gate --area <name>                    # the between-areas yes/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
 engine render baseline-paused                                     # the interview's pause receipt — documented count + the workflow-start pointer; in-progress only
 engine render baseline-receipt                                    # the completion receipt — doc list + the knowledge-query note; refuses before the completed write, and refuses to name an unlanded doc
 engine render baseline-scope-gate --file <payload.json>           # the scope confirmation: proposed-area list (payload {mode: fresh|expand, areas: [{name, detail}]}, names validated kebab/dot-free) + the approve/back/adjust gate; stateless — runs before anything persists

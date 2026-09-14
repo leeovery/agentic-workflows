@@ -4300,7 +4300,7 @@ describe('baseline surfaces', () => {
     assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
     assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
-    assert.match(out, /\*\*`c\/continue`\*\* → Interview the next area/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Interview the next area/);
     assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from workflow-start/);
   });
 

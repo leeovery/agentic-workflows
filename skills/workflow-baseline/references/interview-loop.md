@@ -114,7 +114,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate
 
 **STOP.** Wait for user response.
 
-**If `continue`:**
+**If `yes`:**
 
 → Return to **B. Next Area**.
 

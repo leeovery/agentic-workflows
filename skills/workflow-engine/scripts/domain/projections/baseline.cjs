@@ -47,7 +47,7 @@ function baselineAreaGate(d, area) {
   const body = menu(
     `**${titlecase(area)}** is documented. ${d.remaining} area(s) remain.`,
     [
-      cmdOption('c', 'continue', 'Interview the next area'),
+      cmdOption('y', 'yes', 'Interview the next area'),
       cmdOption('p', 'pause', 'Stop here — resume any time from workflow-start'),
     ],
     { question: 'Keep going?' },
