@@ -504,7 +504,7 @@ function specReviewGate(cwd, { dotpath, variant }) {
   }
   if (variant === 'continue') {
     return section('MENU: spec review continue gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('y', 'yes', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }

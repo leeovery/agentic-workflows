@@ -1767,7 +1767,7 @@ describe('render spec-review-gate', () => {
     const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'continue' });
     assert.ok(out.includes('=== MENU: spec review continue gate'));
     assert.ok(out.includes('**`◆ Continue with review?`**'));
-    assert.ok(/\*\*`p\/proceed`\*\* +→ Continue review/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Continue review/.test(out));
     assert.ok(/\*\*`s\/skip`\*\* +→ Skip review, proceed to completion/.test(out));
   });
 
