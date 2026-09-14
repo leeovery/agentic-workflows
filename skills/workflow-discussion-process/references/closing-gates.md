@@ -200,6 +200,6 @@ Emit the call's MENU section verbatim per its marker.
 
 ## F. Wait for Results
 
-Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass. The ceremony stays open: once what came back is walked, the session loop's check re-enters **G. Concluding** and these gates classify afresh.
 
 → Return to caller for **B. Session Loop**.
