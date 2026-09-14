@@ -13,7 +13,7 @@
     "skills/workflow-start/references/active-work.md"
   ],
   "answers": [
-    "c — continue"
+    "y — yes"
   ],
   "conduct": "The user boots into their project expecting the routine overview. Shown the migration summary describing a recovered parked concern, they read it, are satisfied, and continue. At the workflow overview menu they are done — they select nothing.",
   "invariants": {

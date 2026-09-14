@@ -4404,7 +4404,7 @@ describe('baseline surfaces', () => {
     const migration = renderSurface(dir, 'migration-gate', {});
     assert.match(migration, /=== MENU: migration gate/);
     assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
-    assert.match(migration, /\*\*`c\/continue`\*\* → Proceed/);
+    assert.match(migration, /\*\*`y\/yes`\*\*\s+→ Proceed/);
     assert.match(unwrap(migration), /\*\*Ask\*\*\s+→ Ask questions about the changes/);
     const label = renderSurface(dir, 'label-gate', {});
     assert.match(label, /=== MENU: label gate/);

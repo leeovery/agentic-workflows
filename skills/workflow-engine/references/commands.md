@@ -427,7 +427,7 @@ engine render baseline-doc-gate                                   # the doc-land
 engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only
 engine render baseline-doc-pick                                   # manage's doc picker prompt; completed only
 engine render baseline-offer-gate                                 # workflow-start's Step 0.4 offer menu; refuses once any status is recorded — a native verdict included
-engine render migration-gate                                      # workflow-start's Step 0.1 confirm gate after the migration summary — static continue/ask menu
+engine render migration-gate                                      # workflow-start's Step 0.1 confirm gate after the migration summary — static yes/ask menu
 engine render label-gate                                          # workflow-start's Step 0.2 tmux session-label opt-in — static yes/no menu
 ```
 

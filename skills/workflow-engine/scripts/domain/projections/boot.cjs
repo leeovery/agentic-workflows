@@ -19,7 +19,7 @@ function migrationGate() {
   const body = menu(
     '',
     [
-      cmdOption('c', 'continue', 'Proceed'),
+      cmdOption('y', 'yes', 'Proceed'),
       promptOption('Ask', 'Ask questions about the changes'),
     ],
     { question: 'Ready to continue?' },
