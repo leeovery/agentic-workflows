@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.46] - 2026-09-14
+
+🐛 Fixed
+- Session cleanup on exit (restoring your tmux session name, clearing in-progress markers) now actually runs — it was silently never firing because Claude Code ignores SessionEnd hooks declared inside skill files.
+
+🔧 Changed
+- tmux session-label opt-in is now asked and remembered per project instead of once globally.
+
 ## [0.7.45] - 2026-09-13
 
 🔧 Changed
