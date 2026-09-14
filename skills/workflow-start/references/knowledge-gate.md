@@ -185,13 +185,13 @@ this chat — run this in your terminal, then come back:
 · · · · · · · · · · · ·
 **`◆ Ready to retry?`**
 
-**`d/done`**    → The key is stored — re-run the setup
+**`y/yes`**     → The key is stored — re-run the setup
 **`k/keyword`** → Skip the key for now — use keyword-only search instead
 ```
 
 **STOP.** Wait for user response.
 
-#### If `done`
+#### If `yes`
 
 Re-run the setup command whose key failure routed here — `origin` names it — skipping the originating branch's menus and questions; its values are already collected. The re-run lands back at **G** to handle the fresh result.
 
