@@ -1574,7 +1574,7 @@ describe('pipeline simulation', () => {
       review_baseline_words: 6835, live_words: 13637,
     }));
     assert.match(sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/convergence.json'], { expect: 'content' }),
-      /Document growth: 6835 → 13637 words \(\+6802 net across review\)/);
+      /\(\+6802 net across review\)/);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);

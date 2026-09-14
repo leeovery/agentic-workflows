@@ -15,7 +15,8 @@
 const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
+const { signpost } = require('../kernel/render.cjs');
+const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
@@ -593,21 +594,20 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   if (multi) head.push(`Per stream: ${p.stream_counts.map((st) => `${st.label} ${st.count}`).join(' · ')}`);
   if (hasGrowth) head.push(`Document growth: ${p.review_baseline_words} → ${p.live_words} words (${growth >= 0 ? `+${growth}` : growth} net across review)`);
 
-  // Findings sit one step in from their section label; a hypothesis hangs
-  // under its finding's text, so a wrapped row and its note share a column.
   const row = (/** @type {string} */ text) => bulletRow(text, { indent: '    ' });
-  const note = (/** @type {string} */ text) => indentedBody([text], { indent: '      ' });
+  const note = (/** @type {string} */ text) => subDetail(text, { indent: '      ' });
   const block = (/** @type {string} */ label, /** @type {string[]} */ rows) => [...indentedBody([label]), ...rows].join('\n');
 
-  const parts = [[`▪ ${CONVERGENCE_LOOPS[p.loop_type]} — cycle ${p.latest_cycle} diagnostic`, '', ...indentedBody(head)].join('\n')];
+  const heading = signpost(`${CONVERGENCE_LOOPS[p.loop_type]} — cycle ${p.latest_cycle} diagnostic`, { width: TREE_WIDTH });
+  const parts = [[heading, '', ...indentedBody(head)].join('\n')];
   if (resolved.length > 0) {
     parts.push(block('Resolved:', resolved.flatMap((f) => row(`${f.title} (fixed in cycle ${f.last_seen_cycle})`))));
   }
   if (recurring.length > 0) {
-    parts.push(block('Recurring:', recurring.flatMap((f) => [...row(`${f.title} (cycles ${f.cycles})`), ...note(String(f.hypothesis))])));
+    parts.push(block('Recurring:', recurring.flatMap((f) => [...row(`${f.title} (cycles ${f.cycles})`), note(`${f.hypothesis}`)])));
   }
   if (fresh.length > 0) {
-    parts.push(block('New this cycle:', fresh.flatMap((f) => row(String(f.title)))));
+    parts.push(block('New this cycle:', fresh.flatMap((f) => row(`${f.title}`))));
   }
 
   const flags = [callout(CONVERGENCE_TRENDS[p.trend])];
