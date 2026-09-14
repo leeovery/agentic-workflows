@@ -90,6 +90,5 @@ Return a brief status to the orchestrator:
 ```
 STATUS: complete
 TASKS_CREATED: {N}
-PHASES: {comma-separated numbers of every phase this run touched}
 SUMMARY: {1 sentence}
 ```

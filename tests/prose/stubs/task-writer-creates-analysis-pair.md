@@ -42,6 +42,5 @@ The status block:
 ```
 STATUS: complete
 TASKS_CREATED: 2
-PHASES: 2
 SUMMARY: Created both approved analysis tasks in a new phase 2.
 ```

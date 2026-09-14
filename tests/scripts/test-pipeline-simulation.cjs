@@ -1605,6 +1605,58 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'delete', `${wu}.review.unified`, 'staging']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'false');
     sim.refuses(['manifest', 'delete', `${wu}.review.unified`, 'staging'], /not found/);
+
+    // Review remediation lands as a plan phase the writer appends
+    // (review-actions-loop.md F), and that phase banks and closes through its
+    // boundary like any other — every phase but a quick-fix's does
+    // (task-loop.md H, consolidation-pass.md).
+    sim.run(['task', 'init', wu, 'unified']);
+    sim.run(['manifest', 'set', `${wu}.planning.unified`, 'task_map.unified-2-1=unified-2-1', 'task_map.unified-2-2=unified-2-2']);
+    assert.strictEqual(sim.run(['task', 'start', wu, 'unified', 'unified-2-1']).do_banking, true,
+      'a remediation task banks — its phase takes the boundary that drains the deposit');
+    sim.run(['manifest', 'push', `${wu}.implementation.unified`, 'bank',
+      '{"task":"unified-2-1","source":"reviewer","summary":"guard duplicated from the fix","failure":"a rule change lands in one copy and not the other — the two callers disagree silently","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}']);
+    sim.run(['task', 'complete', wu, 'unified', 'unified-2-1', '--phase', '2', '--next-task', 'unified-2-2']);
+    sim.run(['task', 'start', wu, 'unified', 'unified-2-2']);
+    sim.run(['task', 'complete', wu, 'unified', 'unified-2-2', '--phase', '2', '--next-task', '~']);
+    // The pass's prelude reads the review item's staging as its second
+    // settled-directions source — cleared by the restart above, so it prints
+    // empty — and the sweep finds nothing (consolidation-pass.md F).
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.review.unified`, 'staging']).trim(), '',
+      'the restart left no review staging for the pass to read');
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.unified`, 'bank']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.implementation.unified`, 'bank']);
+    sim.run(['manifest', 'push', `${wu}.implementation.unified`, 'consolidated_phases', '2']);
+    sim.run(['task', 'complete', wu, 'unified', 'unified-2-2', '--phase', '2', '--phase-complete']);
+    const remediated = sim.manifest(wu).phases.implementation.items.unified;
+    assert.deepStrictEqual(remediated.consolidated_phases, [2], 'the remediation phase records its boundary');
+    assert.deepStrictEqual(remediated.completed_phases, [2], 'the remediation phase completes consolidated');
+    assert.strictEqual('bank' in remediated, false, 'the boundary emptied the remediation phase\'s bank');
+
+    // The review restart closes an abandoned remediation phase without a
+    // sweep (workflow-review-process/SKILL.md, restart step 4): the bank and
+    // the half-walked boundary are dropped, the boundary is marked, and the
+    // unrun task is skipped on the phase's close — a task of that phase never
+    // banks again.
+    sim.run(['manifest', 'set', `${wu}.planning.unified`, 'task_map.unified-3-1=unified-3-1', 'task_map.unified-3-2=unified-3-2']);
+    sim.run(['task', 'start', wu, 'unified', 'unified-3-1']);
+    sim.run(['manifest', 'push', `${wu}.implementation.unified`, 'bank',
+      '{"task":"unified-3-1","source":"executor","summary":"dead scaffolding the fix orphaned","failure":"a reader wires the orphaned export into new code and ships a path nothing tests","detail":"src/c.js:8 export unused","files":["src/c.js"]}']);
+    sim.run(['task', 'complete', wu, 'unified', 'unified-3-1', '--phase', '3', '--next-task', '~']);
+    sim.run(['manifest', 'set', `${wu}.implementation.unified`, 'staging.p3.gate_mode=gated', 'staging.p3.tasks.1=pending']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.unified`, 'bank']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.implementation.unified`, 'bank']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.unified`, 'staging.p3']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.implementation.unified`, 'staging.p3']);
+    sim.run(['manifest', 'push', `${wu}.implementation.unified`, 'consolidated_phases', '3']);
+    sim.run(['task', 'complete', wu, 'unified', 'unified-3-2', '--phase', '3', '--skipped', '--phase-complete']);
+    const abandoned = sim.manifest(wu).phases.implementation.items.unified;
+    assert.deepStrictEqual(abandoned.completed_phases, [2, 3], 'the abandoned phase records complete');
+    assert.deepStrictEqual(abandoned.consolidated_phases, [2, 3], 'the abandoned phase records its boundary without a sweep');
+    assert.strictEqual('bank' in abandoned, false, 'the restart dropped the bank');
+    assert.strictEqual('p3' in (abandoned.staging || {}), false, 'the restart dropped the half-walked boundary');
+    assert.strictEqual(sim.run(['task', 'start', wu, 'unified', 'unified-3-2']).do_banking, false,
+      'a task of the closed remediation phase never banks again');
     // The discovery-gap-analysis approval gate: candidates staged under the
     // analysis' own subtree, decided one at a time, an approved candidate
     // landing on the map with the analysis' provenance, and the subtree
@@ -2291,8 +2343,9 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
 
     // A second cycle stages a task the user approves, and the writer lands it
-    // in a machinery-created phase (analysis-loop.md H). A task of that phase
-    // never banks — no boundary follows it, so nothing would drain a deposit.
+    // in a new analysis phase (analysis-loop.md H). That phase banks and takes
+    // the boundary like any other — every phase but a quick-fix's does
+    // (task-loop.md H, consolidation-pass.md).
     assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).cycle_total, 2, 'the count carries across cycles');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);
@@ -2310,21 +2363,33 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['proposed-task', `${wu}.implementation.${wu}`, '--file', correctionsPayload, '--gate', 'gated'], { expect: 'content' }),
       /\*\*`▪ Corrections`\*\* \(corrections\)/, 'a corrections proposal renders its severity beside the head');
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-2-1`, `${wu}-2-1`]);
-    // The flow that lands a machinery-created phase records it (analysis-loop.md H,
-    // the review loop's remediation landing) — the switch the engine keys on.
-    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'machine_phases', '2']);
     const analysisTask = sim.run(['task', 'start', wu, wu, `${wu}-2-1`]);
     assert.strictEqual(analysisTask.mode, 'started', 'the analysis task is taken up fresh');
-    assert.strictEqual(analysisTask.do_banking, false,
-      'a task of a machinery-created phase never banks — no boundary follows it to drain the deposit');
-    // A machinery-created phase takes no consolidation boundary — the fused
-    // completion closes it (task-loop H).
-    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~', '--phase-complete']);
-    // A plan phase added at the tail afterwards (ad-hoc-plan-changes.md) is not
-    // machinery-created: its tasks bank, whatever the cycle count says.
+    assert.strictEqual(analysisTask.do_banking, true,
+      'a task of an analysis phase banks — its own boundary drains the deposit');
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank',
+      `{"task":"${wu}-2-1","source":"executor","summary":"corrections helper duplicated","failure":"a rule change lands in one copy and not the other — the two callers disagree silently","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
+    // The analysis phase closes through its boundary like a plan phase: the
+    // completion defers its flag; the pass reads the review item's staging as
+    // its second settled-directions source — empty on a topic no review has
+    // staged — and the sweep finds nothing; the bank empties, the boundary is
+    // marked, and the re-record closes the phase (consolidation-pass.md F).
+    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~']);
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.review.${wu}`, 'staging']).trim(), '',
+      'a topic with no review item prints an empty review staging');
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${wu}`, 'bank']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'bank']);
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'consolidated_phases', '2']);
+    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--phase-complete']);
+    const analysisItem = sim.manifest(wu).phases.implementation.items[wu];
+    assert.deepStrictEqual(analysisItem.consolidated_phases, [1, 2], 'the analysis phase records its boundary');
+    assert.deepStrictEqual(analysisItem.completed_phases, [1, 2], 'the analysis phase completes consolidated');
+    assert.strictEqual('bank' in analysisItem, false, 'the boundary emptied the analysis phase\'s bank');
+    // A plan phase added at the tail afterwards (ad-hoc-plan-changes.md) banks
+    // too — every phase but a quick-fix's does, whatever the cycle count says.
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-3-1`, `${wu}-3-1`]);
     assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-3-1`]).do_banking, true,
-      'a plan-authored phase banks after the analysis loop has run — the switch is the phase, not the counter');
+      'a phase added after the analysis loop has run banks — the cycle count is never the switch');
     sim.run(['task', 'complete', wu, wu, `${wu}-3-1`, '--phase', '3', '--next-task', '~']);
     // From the fourth cycle the lifetime count trips the gate: the record says
     // so, and the over-limit callout renders (analysis-loop.md A).
