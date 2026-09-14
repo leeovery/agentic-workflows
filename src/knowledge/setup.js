@@ -206,16 +206,12 @@ async function askDimensions(rl, prompt, defaultValue) {
 // Config shape builders — pure, unit-testable
 // ---------------------------------------------------------------------------
 
-// Generic system-config builder. Provider-specific scalar fields ride on top
-// of the shared defaults block. Used by the per-provider wrappers below and
-// by the setup toolkit so driver descriptors stay free of config internals.
+// Provider identity only — never a tuning default (similarity_threshold,
+// decay_prune_below): a default written here freezes at the value of the day
+// setup ran. Those keys are honoured as overrides when present; DEFAULTS
+// applies at load time.
 function buildSystemConfig(fields) {
-  return {
-    knowledge: Object.assign({}, fields, {
-      similarity_threshold: config.DEFAULTS.similarity_threshold,
-      decay_prune_below: config.DEFAULTS.decay_prune_below,
-    }),
-  };
+  return { knowledge: { ...fields } };
 }
 
 function buildSystemConfigOpenAI({ model, dimensions }) {
@@ -227,12 +223,7 @@ function buildSystemConfigCompatible({ baseUrl, model, dimensions }) {
 }
 
 function buildSystemConfigStub() {
-  return {
-    knowledge: {
-      similarity_threshold: config.DEFAULTS.similarity_threshold,
-      decay_prune_below: config.DEFAULTS.decay_prune_below,
-    },
-  };
+  return { knowledge: {} };
 }
 
 function buildProjectConfigEmpty() {

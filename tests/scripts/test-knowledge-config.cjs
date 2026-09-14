@@ -28,6 +28,7 @@ const {
   detectProjectInit,
   describeValidationError,
 } = require('../../src/knowledge/setup');
+const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
 
 let tmpDir;
 
@@ -96,6 +97,54 @@ describe('readConfigFile', () => {
 });
 
 // ---------------------------------------------------------------------------
+// DEFAULTS
+// ---------------------------------------------------------------------------
+
+describe('DEFAULTS', () => {
+  it('keeps similarity_threshold below the scores a real embedding model gives relevant text', () => {
+    // OpenAI text-embedding-3-small scores relevant query→chunk pairs at
+    // 0.5–0.7 and off-topic ones around 0.2. A threshold at or above 0.5
+    // empties the vector leg of every hybrid query and the store degrades to
+    // keyword-only without saying so.
+    assert.ok(
+      DEFAULTS.similarity_threshold < 0.5,
+      `similarity_threshold ${DEFAULTS.similarity_threshold} reaches the 0.5–0.7 band relevant OpenAI vectors score in — hybrid search would silently run keyword-only`
+    );
+    assert.ok(
+      DEFAULTS.similarity_threshold > 0.2,
+      `similarity_threshold ${DEFAULTS.similarity_threshold} sits in the noise band (off-topic pairs score ≈0.2) — every query would return unrelated chunks`
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveSimilarityThreshold
+// ---------------------------------------------------------------------------
+
+describe('resolveSimilarityThreshold', () => {
+  it('falls back to DEFAULTS when the key is absent', () => {
+    assert.strictEqual(resolveSimilarityThreshold({}), DEFAULTS.similarity_threshold);
+  });
+
+  it('passes an explicit 0 through unrewritten', () => {
+    assert.strictEqual(resolveSimilarityThreshold({ similarity_threshold: 0 }), 0);
+  });
+
+  it('passes a configured override through', () => {
+    assert.strictEqual(resolveSimilarityThreshold({ similarity_threshold: 0.45 }), 0.45);
+  });
+
+  for (const bad of ['0.5', 2, -1, NaN]) {
+    it(`refuses ${JSON.stringify(bad)} as a UserError naming the key`, () => {
+      assert.throws(
+        () => resolveSimilarityThreshold({ similarity_threshold: bad }),
+        (err) => err.name === 'UserError' && /Invalid similarity_threshold/.test(err.message)
+      );
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // loadConfig
 // ---------------------------------------------------------------------------
 
@@ -147,6 +196,13 @@ describe('loadConfig', () => {
     assert.strictEqual(cfg.provider, 'stub');
     assert.strictEqual(cfg.dimensions, 256); // project overrides
     assert.strictEqual(cfg.decay_prune_below, 0.2); // system falls through
+  });
+
+  it('carries an explicit similarity_threshold: 0 through the merge', () => {
+    const projPath = path.join(tmpDir, 'proj.json');
+    writeJSON(projPath, { knowledge: { provider: 'stub', similarity_threshold: 0 } });
+    const cfg = loadConfig({ systemPath: path.join(tmpDir, 'sys.json'), projectPath: projPath });
+    assert.strictEqual(cfg.similarity_threshold, 0);
   });
 
   it('resolves api key from OPENAI_API_KEY when provider is openai', () => {
@@ -575,34 +631,44 @@ describe('writeConfigFile', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildSystemConfigOpenAI', () => {
-  it('produces a config with provider, model, dimensions, and defaults (no api_key_env)', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('writes provider identity only — no tuning default stamped', () => {
     const cfg = buildSystemConfigOpenAI({
       model: 'text-embedding-3-small',
       dimensions: 1536,
     });
-    assert.strictEqual(cfg.knowledge.provider, 'openai');
-    assert.strictEqual(cfg.knowledge.model, 'text-embedding-3-small');
-    assert.strictEqual(cfg.knowledge.dimensions, 1536);
-    assert.strictEqual(cfg.knowledge.api_key_env, undefined);
-    assert.strictEqual(cfg.knowledge.similarity_threshold, DEFAULTS.similarity_threshold);
-    assert.strictEqual(cfg.knowledge.decay_prune_below, DEFAULTS.decay_prune_below);
+    assert.deepStrictEqual(cfg, {
+      knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 },
+    });
+  });
+
+  it('leaves similarity_threshold and decay_prune_below to DEFAULTS at load time', () => {
+    // A default persisted at setup freezes at that day's value; the shipped
+    // default reaches a loaded config only through DEFAULTS.
+    const sysPath = path.join(tmpDir, 'sys.json');
+    writeConfigFile(sysPath, buildSystemConfigOpenAI({ model: 'text-embedding-3-small', dimensions: 1536 }));
+    const cfg = loadConfig({ systemPath: sysPath, projectPath: path.join(tmpDir, 'proj.json') });
+    assert.strictEqual(cfg.similarity_threshold, DEFAULTS.similarity_threshold);
+    assert.strictEqual(cfg.decay_prune_below, DEFAULTS.decay_prune_below);
   });
 });
 
 describe('buildSystemConfigStub', () => {
-  it('produces a stub-mode config with no provider field', () => {
-    const cfg = buildSystemConfigStub();
-    assert.strictEqual(cfg.knowledge.provider, undefined);
-    assert.strictEqual(cfg.knowledge.model, undefined);
-    assert.strictEqual(cfg.knowledge.dimensions, undefined);
-    assert.strictEqual(cfg.knowledge.api_key_env, undefined);
-    assert.strictEqual(cfg.knowledge.similarity_threshold, DEFAULTS.similarity_threshold);
-    assert.strictEqual(cfg.knowledge.decay_prune_below, DEFAULTS.decay_prune_below);
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('produces an empty knowledge block — no provider, no tuning default', () => {
+    assert.deepStrictEqual(buildSystemConfigStub(), { knowledge: {} });
   });
 
   it('round-trips through loadConfig as keyword-only (no provider)', () => {
     // Writing the stub config to disk then loading it should produce a
-    // config where resolveProvider returns null — the keyword-only path.
+    // config where resolveProvider returns null — the keyword-only path —
+    // with the tuning values resolving to DEFAULTS. The empty block is still
+    // a present, valid system config: setup tells "stub" from "absent" by
+    // the knowledge wrapper, never by the keys inside it.
     const sysPath = path.join(tmpDir, 'sys.json');
     writeConfigFile(sysPath, buildSystemConfigStub());
     const cfg = loadConfig({
@@ -611,6 +677,11 @@ describe('buildSystemConfigStub', () => {
     });
     assert.strictEqual(cfg.provider, undefined);
     assert.strictEqual(resolveProvider(cfg), null);
+    assert.strictEqual(cfg.similarity_threshold, DEFAULTS.similarity_threshold);
+    assert.strictEqual(cfg.decay_prune_below, DEFAULTS.decay_prune_below);
+    const detected = detectSystemConfig(sysPath);
+    assert.strictEqual(detected.exists, true);
+    assert.strictEqual(detected.valid, true);
   });
 });
 

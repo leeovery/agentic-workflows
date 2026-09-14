@@ -25,6 +25,7 @@ const {
   readMetadata,
 } = require('../../src/knowledge/store.js');
 const { StubProvider } = require('../../src/knowledge/embeddings.js');
+const { DEFAULTS } = require('../../src/knowledge/config.js');
 
 const STUB_DIMS = 128;
 
@@ -516,6 +517,37 @@ describe('knowledge store — vector and hybrid search', () => {
       limit: 10,
     });
     assert.ok(hits.every((h) => h.topic === 'alpha'));
+  });
+
+  it('admits a vector-only hit at the default similarity threshold', async () => {
+    // The term shares no token with either document, so anything returned
+    // came from the vector leg alone. The near doc scores the cosine a real
+    // embedding model gives relevant text (OpenAI: 0.5–0.7); the far doc
+    // scores what off-topic text gets (≈0.2). A default above the relevance
+    // band empties the vector leg and every hybrid query silently runs
+    // keyword-only.
+    const db = await createStore(2);
+    await insertDocument(db, makeDoc({
+      id: 'near',
+      content: 'rate limiting prevents refresh storms',
+      embedding: [0.6, 0.8],
+    }));
+    await insertDocument(db, makeDoc({
+      id: 'far',
+      content: 'webhook retry backoff',
+      embedding: [0.2, 0.98],
+    }));
+    const query = { term: 'throttle bursts', vector: [1, 0], limit: 10 };
+
+    const hits = await searchHybrid(db, { ...query, similarity: DEFAULTS.similarity_threshold });
+    assert.deepStrictEqual(
+      hits.map((h) => h.id),
+      ['near'],
+      'the relevant vector-only hit is returned and the off-topic one is not'
+    );
+
+    const strangled = await searchHybrid(db, { ...query, similarity: 0.8 });
+    assert.strictEqual(strangled.length, 0, 'a threshold above the relevance band drops the vector leg entirely');
   });
 
   it('rejects hybrid search without term or vector', async () => {
