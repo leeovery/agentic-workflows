@@ -510,15 +510,6 @@ describe('engine session label-config', () => {
     assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
   });
 
-  it('a project that keeps its settings to itself records the choice and installs nothing', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
-      JSON.stringify({ defaults: { manage_session_end_hooks: false } }, null, 2) + '\n');
-    const res = engine(['session', 'label-config', 'true']);
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest(), { defaults: { manage_session_end_hooks: false, tmux_labels: true } });
-    assert.ok(!fs.existsSync(settingsPath()));
-    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
-  });
 });
 
 describe('syncSessionEndHooks', () => {

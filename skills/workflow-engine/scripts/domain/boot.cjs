@@ -22,7 +22,7 @@ const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, manageSessionEndHooks, syncSessionEndHooks, SETTINGS_SPEC } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionEndHooks, SETTINGS_SPEC } = require('./session-label.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 
 /** The system config directory — `WORKFLOWS_CONFIG_DIR` overrides for tests. */
@@ -70,7 +70,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a stranded session label (its owner gone) was found on this terminal and the original name put back
- * @property {boolean} session_end_hooks_installed this boot wrote the SessionEnd hooks into `.claude/settings.json` — `presence cleanup` for every project, `session cleanup` while labels are on; false when the file already carried exactly those, or while the project opts out (`defaults.manage_session_end_hooks: false`)
+ * @property {boolean} session_end_hooks_installed this boot wrote the SessionEnd hooks into `.claude/settings.json` — `presence cleanup` for every project, `session cleanup` while labels are on; false when the file already carried exactly those
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
@@ -229,11 +229,13 @@ function boot(cwd) {
   // re-syncs them: `presence cleanup` for every project — a /clear'd
   // session's heartbeats otherwise read held until its process exits — and
   // `session cleanup` while labels are on. A checkout that predates the
-  // hooks, or lost them to a hand edit, gets them back here. Skipped where
-  // the project keeps its settings to itself; the file is written either
-  // way, and the commit failing is a warning, never a block.
+  // hooks, or lost them to a hand edit, gets them back here. The file is
+  // written either way, and the commit failing is a warning, never a block.
   let sessionEndHooksInstalled = false;
-  if (manageSessionEndHooks(cwd)) {
+  // WORKFLOWS_SKIP_SESSION_END_HOOKS is the test harness's hermeticity
+  // switch — a walk's boot must never write the world's settings file. Real
+  // projects never set it: the hooks are infrastructure, not a setting.
+  if (!process.env.WORKFLOWS_SKIP_SESSION_END_HOOKS) {
     const sync = syncSessionEndHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true });
     if (sync.error) {
       warnings.push(`session-end hooks not installed: ${sync.error}`);

@@ -31,6 +31,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
+const { syncSessionEndHooks, SETTINGS_SPEC } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -117,6 +118,10 @@ function recipeEnv() {
     // this env — without a pin, a recipe would render against whatever pane
     // happened to be open, and resizing would move the snapshots.
     WORKFLOWS_DISPLAY_WIDTH: '65',
+    // Boot installs the session-end hooks into `.claude/settings.json` — a
+    // file a snapshot holds as world state. The engine's test-only switch
+    // keeps a recipe's boot out of it.
+    WORKFLOWS_SKIP_SESSION_END_HOOKS: '1',
   };
   // Session labels read the real tmux identity — a recipe's engine calls
   // must never rename the terminal session the suite happens to run in.
@@ -137,9 +142,7 @@ function makeHarness(dir) {
   };
   return {
     dir,
-    engine: (...args) => (args[0] === 'boot'
-      ? withoutSessionEndHooks(dir, () => node(ENGINE, args))
-      : node(ENGINE, args)),
+    engine: (...args) => node(ENGINE, args),
     knowledge: (...args) => node(KNOWLEDGE, args),
     git: (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env }),
     write(rel, content) {
@@ -323,70 +326,32 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
 // --- the session-label kill switch --------------------------------------
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
-
-// The two project-manifest defaults every world carries: the engine's
-// session-label opt-in, pinned off so a walk never renames the terminal
-// the suite runs in, and the settings-hook opt-out, so a walk's boot never
-// writes the session-end hooks into `.claude/settings.json` — a file the
-// snapshot holds as world state.
-const HARNESS_DEFAULTS = { tmux_labels: false, manage_session_end_hooks: false };
+const SETTINGS = path.join(SETTINGS_SPEC);
 
 // Where materialise records what it stamped, so the differ strips exactly
 // that and never a value the walk wrote itself. Under `.git/`, which no
 // collected tree ever holds.
 const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
 
-/**
- * Run one engine call with the settings-hook opt-out stamped on the
- * scratch project's manifest for its duration — the recipe-time seal a
- * snapshot build needs where a live world takes `stampLabelKill`. A
- * recipe's `boot` would otherwise install the session-end hooks into
- * `.claude/settings.json` and commit them, and the file would land in the
- * snapshot as engine plumbing masquerading as world state. The stamp is
- * lifted the moment the call returns, so it never reaches a snapshot and
- * never shifts the key order of a manifest the recipe goes on to write.
- * @template T
- * @param {string} dir @param {() => T} fn
- * @returns {T}
- */
-function withoutSessionEndHooks(dir, fn) {
-  const file = path.join(dir, PROJECT_MANIFEST);
-  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-  /** @type {Record<string, any>} */
-  const manifest = before === null ? {} : JSON.parse(before);
-  if (manifest.defaults && manifest.defaults.manage_session_end_hooks === false) return fn();
-  const hadDefaults = Boolean(manifest.defaults);
-  manifest.defaults = { ...(manifest.defaults || {}), manage_session_end_hooks: false };
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-  try {
-    return fn();
-  } finally {
-    const after = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (after.defaults) {
-      delete after.defaults.manage_session_end_hooks;
-      if (!hadDefaults && Object.keys(after.defaults).length === 0) delete after.defaults;
-    }
-    if (before === null && Object.keys(after).length === 0) fs.rmSync(file);
-    else fs.writeFileSync(file, JSON.stringify(after, null, 2) + '\n');
-  }
-}
+/** @typedef {{baseline: boolean, settings_created: boolean}} Stamped */
 
 /**
- * Write the harness defaults into the world's project manifest (creating
- * the manifest when the fixture has none) — `tmux_labels: false`, the
- * engine's sole label opt-in, and `manage_session_end_hooks: false`, its
- * settings-file opt-out. Canonical manifest style, so mid-walk engine
- * rewrites stay byte-stable. Returns what was stamped beyond the defaults.
+ * Write `defaults.tmux_labels: false` into the world's project manifest
+ * (creating the manifest when the fixture has none) — the engine's sole
+ * label opt-in, pinned off so a walk never renames the terminal the suite
+ * runs in. Canonical manifest style, so mid-walk engine rewrites stay
+ * byte-stable. Then seed the session-end hooks boot wants under that kill
+ * into `.claude/settings.json` (creating the file when the fixture has
+ * none). Returns what was stamped beyond the label kill.
  * @param {string} dir
- * @returns {{baseline: boolean}}
+ * @returns {Stamped}
  */
 function stampLabelKill(dir) {
   const file = path.join(dir, PROJECT_MANIFEST);
   /** @type {Record<string, any>} */
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-  manifest.defaults = { ...(manifest.defaults || {}), ...HARNESS_DEFAULTS };
+  manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
   // A world grows up on the workflows, and workflow-start's one-time
   // baseline judgment would record exactly that — a manifest write and a
   // commit in every start case's delta. `native` pins the branch shut; a
@@ -397,36 +362,57 @@ function stampLabelKill(dir) {
   if (baseline) manifest.baseline = { status: 'native' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-  return { baseline };
+  // Boot syncs the session-end hooks into `.claude/settings.json` and
+  // commits the write — and a live walk's boot runs under the developer's
+  // real environment, which no env switch reaches. Seeding exactly the set
+  // boot wants under the label kill makes that sync a no-op: no write, no
+  // commit, nothing in the delta. The engine's own sync does the seeding,
+  // so the hooks are the ones boot recognises.
+  const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
+  const sync = syncSessionEndHooks(dir, { session: false, presence: true });
+  if (sync.error) throw new Error(`cannot seed the session-end hooks: ${sync.error}`);
+  return { baseline, settings_created: settingsCreated };
 }
 
-/** What materialise stamped into a world, per its marker. @param {string} dir @returns {{baseline: boolean}} */
+/** What materialise stamped into a world, per its marker. @param {string} dir @returns {Stamped} */
 function readStampMarker(dir) {
   const file = path.join(dir, STAMP_MARKER);
-  if (!fs.existsSync(file)) return { baseline: false };
-  try { return { baseline: Boolean(JSON.parse(fs.readFileSync(file, 'utf8')).baseline) }; } catch { return { baseline: false }; }
+  const none = { baseline: false, settings_created: false };
+  if (!fs.existsSync(file)) return none;
+  try {
+    const marker = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return { baseline: Boolean(marker.baseline), settings_created: Boolean(marker.settings_created) };
+  } catch { return none; }
 }
 
 /**
  * Reverse the stamp on a collected tree so deltas compare against
- * unstamped snapshots: drop each harness default that still carries its
- * harness value, drop an emptied `defaults`, drop the baseline stamp only
- * when materialise stamped one (a verdict the walk recorded itself is a
- * real delta the case pins, never a stamp), and drop the manifest entirely
- * when the stamp was all it held.
+ * unstamped snapshots: the manifest's label kill and baseline stamp, then
+ * the seeded session-end hooks.
  * @param {Map<string, Buffer>} tree
- * @param {{baseline: boolean}} stamped  what materialise recorded stamping
+ * @param {Stamped} stamped  what materialise recorded stamping
  */
 function unstampLabelKill(tree, stamped) {
+  unstampManifest(tree, stamped);
+  unstampSettings(tree, stamped);
+}
+
+/**
+ * Drop `defaults.tmux_labels` when it carries the harness value, drop an
+ * emptied `defaults`, drop the baseline stamp only when materialise
+ * stamped one (a verdict the walk recorded itself is a real delta the
+ * case pins, never a stamp), and drop the manifest entirely when the
+ * stamp was all it held.
+ * @param {Map<string, Buffer>} tree @param {Stamped} stamped
+ */
+function unstampManifest(tree, stamped) {
   const buf = tree.get(PROJECT_MANIFEST);
   if (!buf) return;
   /** @type {Record<string, any>} */
   let manifest;
   try { manifest = JSON.parse(buf.toString('utf8')); } catch { return; }
-  if (!manifest || typeof manifest !== 'object' || !manifest.defaults) return;
-  const stampedKeys = Object.keys(HARNESS_DEFAULTS).filter((k) => manifest.defaults[k] === HARNESS_DEFAULTS[k]);
-  if (stampedKeys.length === 0) return;
-  for (const k of stampedKeys) delete manifest.defaults[k];
+  if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
+  delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
   if (stamped.baseline && manifest.baseline && typeof manifest.baseline === 'object'
       && manifest.baseline.status === 'native' && Object.keys(manifest.baseline).length === 1) {
@@ -437,6 +423,33 @@ function unstampLabelKill(tree, stamped) {
     return;
   }
   tree.set(PROJECT_MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n'));
+}
+
+/**
+ * Strip the hooks materialise seeded from the tree's settings file — the
+ * engine's own sync, run to the empty set against a scratch copy, so what
+ * counts as ours is decided once, in the engine — leaving every other key
+ * (a permission the walk edited, a hook the user added) standing. A file
+ * holding none of ours is untouched byte for byte; one the harness created
+ * that nothing else filled goes entirely.
+ * @param {Map<string, Buffer>} tree @param {Stamped} stamped
+ */
+function unstampSettings(tree, stamped) {
+  const buf = tree.get(SETTINGS);
+  if (!buf) return;
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-unstamp-'));
+  try {
+    const file = path.join(scratch, SETTINGS);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, buf);
+    const sync = syncSessionEndHooks(scratch, { session: false, presence: false });
+    if (sync.error || !sync.changed) return;
+    const next = fs.readFileSync(file);
+    if (stamped.settings_created && Object.keys(JSON.parse(next.toString('utf8'))).length === 0) tree.delete(SETTINGS);
+    else tree.set(SETTINGS, next);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 function diffWorld(caseId, worldDir, claimsMode = false) {
@@ -514,15 +527,15 @@ function buildWorld(caseId) {
 
   // The walker's engine calls inherit the developer's real environment —
   // tmux identity included — so every world carries the project-level
-  // harness defaults: the session-label kill switch and the settings-hook
-  // opt-out. Stamped before the first commit (no dirt for the walk to
-  // sweep up) and stripped back out by diffWorld, so snapshots never see
-  // them. A fixture that layers the project manifest through its history
-  // is stamped when that layer lands instead — the root commit then holds
-  // no `.workflows/` at all, which is what lets a case put commits before
-  // the workflows' arrival.
+  // session-label kill switch and the session-end hooks boot would
+  // otherwise install and commit. Stamped before the first commit (no
+  // dirt for the walk to sweep up) and stripped back out by diffWorld, so
+  // snapshots never see them. A fixture that layers the project manifest
+  // through its history is stamped when that layer lands instead — the
+  // root commit then holds no `.workflows/` at all, which is what lets a
+  // case put commits before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
-  let stamped = manifestLayered ? { baseline: false } : stampLabelKill(dir);
+  let stamped = manifestLayered ? { baseline: false, settings_created: false } : stampLabelKill(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');
@@ -663,9 +676,9 @@ function readWalkLog(worldDir) {
 }
 
 module.exports = {
-  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
+  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
-  stampLabelKill, unstampLabelKill, withoutSessionEndHooks, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST,
+  stampLabelKill, unstampLabelKill, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST, SETTINGS,
 };

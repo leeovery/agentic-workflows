@@ -111,7 +111,7 @@ Safe already, untouched by this stack: manifest lock, cache
 partitioning, KB store locking, harness stale-write protection, the
 commit lock and index.lock retry, `TOPIC_COMMIT_ARTIFACTS` (all seven
 phases), triage sidecar (research/discussion/investigation), the
-`held` identity verdict, the SessionEnd `presence cleanup` sweep.
+`held` identity verdict, the SessionEnd cleanup hook.
 
 The gaps, each owned by a PR below:
 
@@ -180,12 +180,8 @@ Prose is stripped: the beat lines at the session-loop heads and the
 `presence clear` conclusion steps go. `presence scan` stays — the one
 read that feeds judgment (the sweep, the spec-side held-doc check,
 the gates). The `beat`/`clear` CLI verbs remain for tests and repair.
-The exit sweep — `presence cleanup`, by session id, for the exits
-that keep the process alive (`/clear`, `/logout`) — runs from a
-settings-level SessionEnd hook the engine installs in the project's
-`.claude/settings.json` at every boot: a SessionEnd hook declared in
-skill frontmatter never fires. A dead process's row reads unheld
-through the pid check regardless.
+SessionEnd `presence cleanup` hooks extend to every presence-phase
+process skill.
 
 ### Commit door adoption (prose) + new scopes (engine)
 
@@ -286,17 +282,16 @@ visible check with a deterministic backstop instead of silent loss.
 1. **PR 1 — this document.** Base; keeps logging; merges at the end.
 2. **PR 2 — engine: presence + beats + commit confinement.**
    `PHASES` widening, mechanical beats/clears with the
-   self-referential rule, project-wide scan, the settings-level
-   SessionEnd sweep, `--discovery` scope,
+   self-referential rule, project-wide scan, `--discovery` scope,
    `--paths` verb, `--plan` confinement, transaction-tail audit.
    Contract suites; the two-process commit-door stress test whose
    invariant is the whole programme in one line: *no commit ever
    contains a foreign session's path*.
 3. **PR 3 — discovery prose conversion.** The 12 sites to
    `--discovery`. Independently valuable — fixes a live theft.
-4. **PR 4 — specification prose.** `--topic` conversion, and the
-   research/discussion prose strip (beat lines, clear steps — now
-   mechanical).
+4. **PR 4 — specification prose.** `--topic` conversion + presence
+   hooks (SessionEnd cleanup), and the research/discussion prose
+   strip (beat lines, clear steps — now mechanical).
 5. **PR 5 — planning, investigation, scoping prose.** Same
    conversion; planning also adopts the confined `--plan`.
 6. **PR 6 — implementation + review prose.** Artifact commits to

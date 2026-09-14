@@ -23,9 +23,7 @@
 // `presence cleanup`, present in every workflow project regardless — the
 // heartbeat sweep is infrastructure, not a label preference. Recording the
 // choice syncs the hook (`recordLabelChoice`) and every boot re-syncs it
-// (`syncSessionEndHooks`); a project keeps the engine out of its settings
-// file with `defaults.manage_session_end_hooks: false`
-// (`manageSessionEndHooks`).
+// (`syncSessionEndHooks`).
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
@@ -77,37 +75,18 @@ function isObject(v) {
 }
 
 /**
- * The project manifest's `defaults`, read tolerantly — `{}` when the
- * manifest is absent, unreadable, or carries none.
- * @param {string} cwd @returns {Record<string, any>}
- */
-function readProjectDefaults(cwd) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
-    if (isObject(parsed) && isObject(parsed.defaults)) return parsed.defaults;
-  } catch { /* no project manifest */ }
-  return {};
-}
-
-/**
  * The opt-in for this project — `defaults.tmux_labels` when it is a
- * boolean; null when never asked.
+ * boolean; null when never asked, or when the project manifest is absent,
+ * unreadable, or carries no defaults.
  * @param {string} cwd @returns {boolean|null}
  */
 function resolveEnabled(cwd) {
-  const v = readProjectDefaults(cwd).tmux_labels;
-  return typeof v === 'boolean' ? v : null;
-}
-
-/**
- * May the engine edit this project's `.claude/settings.json`? False only
- * when the project manifest says `defaults.manage_session_end_hooks: false`
- * — the opt-out for a project that keeps its own settings, and the switch
- * the prose harness stamps so a walk's boot never writes into a world.
- * @param {string} cwd
- */
-function manageSessionEndHooks(cwd) {
-  return readProjectDefaults(cwd).manage_session_end_hooks !== false;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
+    const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.tmux_labels : undefined;
+    if (typeof v === 'boolean') return v;
+  } catch { /* no project manifest */ }
+  return null;
 }
 
 /**
@@ -202,11 +181,9 @@ function recordLabelChoice(cwd, value) {
   /** @type {string[]} */
   const warnings = [];
   const specs = [PROJECT_MANIFEST_SPEC];
-  if (manageSessionEndHooks(cwd)) {
-    const sync = syncSessionEndHooks(cwd, { session: value, presence: true });
-    if (sync.error) warnings.push(`session-end hooks not synced: ${sync.error}`);
-    if (sync.changed) specs.push(SETTINGS_SPEC);
-  }
+  const sync = syncSessionEndHooks(cwd, { session: value, presence: true });
+  if (sync.error) warnings.push(`session-end hooks not synced: ${sync.error}`);
+  if (sync.changed) specs.push(SETTINGS_SPEC);
   commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
   return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
 }
@@ -557,6 +534,6 @@ function repairSessionLabels(cwd) {
 
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels,
-  resolveEnabled, labelConfigStatus, manageSessionEndHooks, syncSessionEndHooks, recordLabelChoice,
+  resolveEnabled, labelConfigStatus, syncSessionEndHooks, recordLabelChoice,
   SETTINGS_SPEC,
 };

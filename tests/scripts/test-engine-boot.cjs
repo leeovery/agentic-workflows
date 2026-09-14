@@ -663,10 +663,12 @@ describe('engine boot session-end hooks', () => {
   }
 
   /** Boot with the tmux identity pinned; `tmux` absent unless given. */
-  function bootWith({ tmux = false } = {}) {
+  function bootWith({ tmux = false, skipHooks = false } = {}) {
     const env = { ...process.env };
     delete env.TMUX;
+    delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
     if (tmux) env.TMUX = '/fake/sock,123,7';
+    if (skipHooks) env.WORKFLOWS_SKIP_SESSION_END_HOOKS = '1';
     const out = execFileSync('node', [fix.engine, 'boot'], { cwd: fix.project, encoding: 'utf8', env });
     return JSON.parse(out.trim());
   }
@@ -734,13 +736,12 @@ describe('engine boot session-end hooks', () => {
     });
   });
 
-  it('a project that keeps its settings to itself is never touched — labels on or off', () => {
+  it('WORKFLOWS_SKIP_SESSION_END_HOOKS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
-    recordDefaults({ manage_session_end_hooks: false });
-    assert.strictEqual(bootWith().session_end_hooks_installed, false);
+    assert.strictEqual(bootWith({ skipHooks: true }).session_end_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
-    recordDefaults({ manage_session_end_hooks: false, tmux_labels: true });
-    assert.strictEqual(bootWith().session_end_hooks_installed, false);
+    recordChoice(true);
+    assert.strictEqual(bootWith({ skipHooks: true }).session_end_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
   });
