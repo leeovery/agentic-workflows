@@ -161,7 +161,7 @@ function baselineDocGate() {
   const body = menu(
     '',
     [
-      cmdOption('a', 'approve', 'Index and commit the doc'),
+      cmdOption('y', 'yes', 'Index and commit the doc'),
       cmdOption('v', 'view', 'Read the full doc first'),
       promptOption('Adjust', 'Tell me what to change'),
     ],

@@ -423,7 +423,7 @@ engine render baseline-paused                                     # the intervie
 engine render baseline-receipt                                    # the completion receipt — doc list + the knowledge-query note; refuses before the completed write, and refuses to name an unlanded doc
 engine render baseline-scope-gate --file <payload.json>           # the scope confirmation: proposed-area list (payload {mode: fresh|expand, areas: [{name, detail}]}, names validated kebab/dot-free) + the yes/back/adjust gate; stateless — runs before anything persists
 engine render baseline-round --file <payload.json>                # one interview round: payload {area, questions: [{text, candidates?}]} (1-4 questions, up to 4 candidates each), rendered numbered + lettered over a researched area
-engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static approve/view/adjust menu
+engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static yes/view/adjust menu
 engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only
 engine render baseline-doc-pick                                   # manage's doc picker prompt; completed only
 engine render baseline-offer-gate                                 # workflow-start's Step 0.4 offer menu; refuses once any status is recorded — a native verdict included

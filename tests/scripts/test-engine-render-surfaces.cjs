@@ -4414,7 +4414,7 @@ describe('baseline surfaces', () => {
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {
-    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`a\/approve`\*\* → Index and commit the doc/);
+    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`y\/yes`\*\*\s+→ Index and commit the doc/);
     writeBaseline({ status: 'in-progress', areas: { overview: 'researched' } });
     assert.throws(() => renderSurface(dir, 'baseline-manage-gate', {}), /not completed/);
     assert.throws(() => renderSurface(dir, 'baseline-doc-pick', {}), /not completed/);
