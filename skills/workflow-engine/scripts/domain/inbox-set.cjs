@@ -2,11 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: inbox pickup collation — the combined, date-ordered item list
-// the pickup and archived sub-views number, and the working-set detail (the
-// selection the pickup carries toward discovery). Pure over the project's
-// `.workflows/.inbox/` tree plus the caller-held set paths: same files, same
-// paths, same answer. Path validation comes from domain/inbox — the same
-// layout rules the inbox transactions enforce.
+// the pickup and archived sub-views number, the working-set detail (the
+// selection the pickup carries toward discovery), and one archived item by
+// its store path (the gates the archived sub-view fetches over it). Pure over
+// the project's `.workflows/.inbox/` tree plus the caller-held paths: same
+// files, same paths, same answer. Path validation comes from domain/inbox —
+// the same layout rules the inbox transactions enforce.
 // ---------------------------------------------------------------------------
 
 const { discoverInbox } = require('./start.cjs');
@@ -112,4 +113,19 @@ function workingSetDetail(cwd, paths) {
   };
 }
 
-module.exports = { combinedInbox, workingSetDetail };
+/**
+ * One archived item by its store path — the selection the archived sub-view
+ * holds while it acts on it. Loud on anything outside the archived store: a
+ * live path, or one nothing sits at.
+ * @param {string} cwd
+ * @param {string} given  project-relative archived inbox path
+ * @returns {PickupItem}
+ */
+function archivedItem(cwd, given) {
+  const parsed = parseInboxPath(given, { archived: true });
+  const found = combinedInbox(discoverInbox(cwd).archived, { archived: true }).find((item) => item.path === parsed.given);
+  if (!found) throw new Error(`not in the archived store: "${given}"`);
+  return found;
+}
+
+module.exports = { combinedInbox, workingSetDetail, archivedItem };

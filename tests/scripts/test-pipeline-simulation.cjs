@@ -2732,6 +2732,15 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], /travel together/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /belong to the reuse variant/);
+    // The archived sub-view's gates resolve the selected item by its store
+    // path — the title on the label is the file's own; a missing path, a live
+    // path, and a path the store does not hold each refuse.
+    const archived = sim.write('.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    assert.match(sim.render(['archived-actions', '--path', archived], { expect: 'content' }), /Selected: \*\*Old Idea\*\* \(idea, archived\)[\s\S]*What would you like to do with it\?/);
+    assert.match(sim.render(['archived-delete-gate', '--path', archived], { expect: 'content' }), /Permanently deleting "Old Idea" removes the file from the repo and cannot be undone\.[\s\S]*Delete it\?/);
+    sim.refuses(['render', 'archived-actions'], /--path is required/);
+    sim.refuses(['render', 'archived-delete-gate', '--path', '.workflows/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
+    sim.refuses(['render', 'archived-actions', '--path', '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
     arrive(sim, 'baseline');
     sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);

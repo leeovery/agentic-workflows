@@ -22,7 +22,8 @@ const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
+const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
+const { archivedItem } = require('./inbox-set.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
   baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
@@ -4535,6 +4536,34 @@ function absorbConfirmGateSurface(cwd, args) {
   return absorbConfirmGate();
 }
 
+// ---------------------------------------------------------------------------
+// Archived-store gates — the sub-view's menus over one archived item,
+// resolved by its store path so the title on the label is the file's own.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd @param {{dotpath: string, path?: string}} args @param {string} surface
+ * @returns {import('./inbox-set.cjs').PickupItem}
+ */
+function resolveArchivedItem(cwd, { path: given }, surface) {
+  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — the selected archived item`);
+  try {
+    return archivedItem(cwd, /** @type {string} */ (given));
+  } catch (err) {
+    throw new Error(`render ${surface}: ${/** @type {Error} */ (err).message}`);
+  }
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function archivedActionsSurface(cwd, args) {
+  return archivedActions(resolveArchivedItem(cwd, args, 'archived-actions'));
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function archivedDeleteGateSurface(cwd, args) {
+  return archivedDeleteGate(resolveArchivedItem(cwd, args, 'archived-delete-gate'));
+}
+
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function revisitPhasesSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
@@ -4951,6 +4980,8 @@ const SURFACES = {
   'absorb-name-gate': absorbNameGateSurface,
   'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
+  'archived-actions': archivedActionsSurface,
+  'archived-delete-gate': archivedDeleteGateSurface,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,
   'roadmap-add-gate': roadmapAddGateSurface,

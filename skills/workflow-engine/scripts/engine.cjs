@@ -319,6 +319,8 @@ Commands:
   render absorb-name-gate  <feature> --into <epic>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
+  render archived-actions  --path <archived path>
+  render archived-delete-gate --path <archived path>
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>

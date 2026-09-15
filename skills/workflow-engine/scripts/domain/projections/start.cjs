@@ -413,6 +413,42 @@ function archivedView(items) {
   return { data, display, menu };
 }
 
+/**
+ * The archived item's action menu, served by `render archived-actions` once
+ * the sub-view holds a selection: view, restore, delete, back.
+ * @param {PickupItem} item
+ * @returns {string}
+ */
+function archivedActions(item) {
+  return labelled(
+    'MENU: archived actions',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Selected: **${item.title}** (${item.type}, archived)`, [
+      cmdOption('v', 'view', 'View full content'),
+      cmdOption('u', 'unarchive', 'Restore to the inbox'),
+      cmdOption('d', 'delete', 'Permanently delete (removes the file from git)'),
+      cmdOption('b', 'back', 'Return to the archived list'),
+    ], { question: 'What would you like to do with it?' }),
+  );
+}
+
+/**
+ * The archived item's delete consent, served by `render archived-delete-gate`
+ * — the consequence stated, then the ask.
+ * @param {PickupItem} item
+ * @returns {string}
+ */
+function archivedDeleteGate(item) {
+  return labelled(
+    'MENU: archived delete gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Permanently deleting "${item.title}" removes the file from the repo and cannot be undone.`, [
+      cmdOption('y', 'yes', 'Delete permanently'),
+      cmdOption('n', 'no', 'Return'),
+    ], { question: 'Delete it?' }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Working set
 // ---------------------------------------------------------------------------
@@ -817,6 +853,8 @@ module.exports = {
   emptyMenu,
   inboxPickupView,
   archivedView,
+  archivedActions,
+  archivedDeleteGate,
   workingSetView,
   workingSetAddGate,
   workingSetDropGate,
