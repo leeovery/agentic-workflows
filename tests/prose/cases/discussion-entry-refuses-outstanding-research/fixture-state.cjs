@@ -104,10 +104,6 @@ module.exports = {
       '- Signal weighting decided: purchase-weighted blend with position-bias',
       '  correction.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, TOPIC, 'signal-ingestion');
     h.engine('discussion-map', 'set', WU, TOPIC, 'signal-ingestion', 'decided');

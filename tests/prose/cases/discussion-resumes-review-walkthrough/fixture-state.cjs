@@ -60,10 +60,6 @@ module.exports = {
       '- Capture confirmation decided — webhooks, never polling.',
       '- Failed-payment retries and card-data handling still open.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'failed-payment-retries');

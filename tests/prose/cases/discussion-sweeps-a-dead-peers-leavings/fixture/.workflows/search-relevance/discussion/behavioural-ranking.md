@@ -66,7 +66,3 @@ last year's sales.
 ### Current State
 - Signal ingestion decided: batch nightly aggregation, no streaming.
 - Signal weighting decided: purchases at ten times clicks, ninety-day decay.
-
-## Triage
-
-(none)

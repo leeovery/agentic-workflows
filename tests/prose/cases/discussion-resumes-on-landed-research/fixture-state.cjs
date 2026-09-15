@@ -105,10 +105,6 @@ module.exports = {
       '- Signal weighting decided: purchase-weighted blend with position-bias',
       '  correction.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, TOPIC, 'signal-ingestion');
     h.engine('discussion-map', 'set', WU, TOPIC, 'signal-ingestion', 'decided');
@@ -185,8 +181,6 @@ module.exports = {
       '  feature at all.',
       '- Whether the stability line (about fifty clicks in thirty days) is a',
       '  fixed threshold or recomputed with each nightly run.',
-      '',
-      '## Triage',
       '',
       '### How dense is the behavioural signal per query?',
       '*From: relevance-measurement · research · 2026-01-01*',

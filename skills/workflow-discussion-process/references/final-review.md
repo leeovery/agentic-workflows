@@ -6,7 +6,7 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the surfacing protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
+This step runs once per entry into the close. It dispatches a fresh review if needed, raises one finding via the surfacing protocol, then bounces back to the discussion session so the user can engage naturally — the ceremony stays open, and once the raise is engaged the session loop's check re-enters the close and Step 6 re-runs. Eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the surfacing protocol.
 
@@ -46,7 +46,7 @@ Nothing awaited engagement — drain any further rows before proceeding.
 
 **If the row still holds unraised findings** (the user deferred at the announce menu):
 
-The session owns the deferral — the next done-signal re-enters this gate.
+The session owns the deferral — the close holds until the findings are walked: the loop's check offers them again at a later break, and the ceremony resumes once they drain.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
@@ -200,7 +200,7 @@ When the agent returns:
 
 #### If the menu raised a finding (the `review` choice)
 
-Control belongs to the conversation — return the user to the discussion session so they can engage naturally, whether or not that was the last finding. When the user signals done again, Step 6 re-runs and either raises the next one or finds the row incorporated.
+Control belongs to the conversation — return the user to the discussion session so they can engage naturally, whether or not that was the last finding. The ceremony stays open: once the raise is engaged, the session loop's check re-enters the close and Step 6 re-runs, raising the next one or finding the row incorporated.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 

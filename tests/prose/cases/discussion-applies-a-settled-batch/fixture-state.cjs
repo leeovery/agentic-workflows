@@ -73,10 +73,6 @@ module.exports = {
       '- Currency handling decided — integer minor units.',
       '- Failed-payment retries still open.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'currency-handling');

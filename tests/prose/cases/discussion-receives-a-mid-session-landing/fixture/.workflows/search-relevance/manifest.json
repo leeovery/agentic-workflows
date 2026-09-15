@@ -33,7 +33,7 @@
         }
       },
       "gap_analysis_cache": {
-        "checksum": "dd57cafdcf966fd2a2d6613b58994b3a",
+        "checksum": "ef8f5a930a8a0231eda7662acb2a85ff",
         "generated": "2026-01-01T00:00:00.000Z",
         "input_files": [
           "behavioural-ranking.md",
@@ -60,6 +60,10 @@
               "parent": null
             },
             "result-caching": {
+              "status": "pending",
+              "parent": null
+            },
+            "cache-key-shape": {
               "status": "pending",
               "parent": null
             }

@@ -64,10 +64,6 @@ module.exports = {
       '### Current State',
       '- Signal ingestion decided — nightly batch, never a live stream.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-ingestion');
     h.engine('discussion-map', 'set', WU, 'behavioural-ranking', 'signal-ingestion', 'decided');

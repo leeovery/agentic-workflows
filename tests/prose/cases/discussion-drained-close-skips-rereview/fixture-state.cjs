@@ -118,10 +118,6 @@ module.exports = {
       '- Failed-payment retries decided — three attempts, exponential backoff.',
       '- Webhook reconciliation decided — hourly sweep for stuck orders.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'failed-payment-retries');

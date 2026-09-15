@@ -45,7 +45,3 @@ only, and no live signal stream will be built.
 
 ### Current State
 - Signal ingestion decided: batch nightly aggregation, no streaming.
-
-## Triage
-
-(none)

@@ -29,10 +29,13 @@ The prose should have taken this path:
 7. topic absorb deletes the queue file and commits action-scoped;
    remaining is 0, the clear line renders, and nothing recaps the
    absorbed concern
-8. the user wraps; the closing gates run the review machinery per the
-   conduct (the stubbed review returns clean); the conclude gate reads
-   the empty queue; the discussion completes with the `--kb` commit;
-   the walk stops at the bridge invocation
+8. the fold's set back to `decided` answered `all_decided: true`, so
+   the absorb's clear line is followed in the same turn by the closing
+   flow — with or without the user's own wrap-up; the closing gates
+   run the review machinery per the conduct (the stubbed review
+   returns clean); the conclude gate reads the empty queue; the
+   discussion completes with the `--kb` commit; the walk stops at the
+   bridge invocation
 
 Further claims:
 

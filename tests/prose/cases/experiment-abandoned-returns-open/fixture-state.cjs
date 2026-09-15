@@ -79,10 +79,6 @@ module.exports = {
       '### Current State',
       '- Retry policy decided; webhook timing awaiting evidence.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'retry-policy');
     h.engine('discussion-map', 'set', WU, WU, 'retry-policy', 'decided');

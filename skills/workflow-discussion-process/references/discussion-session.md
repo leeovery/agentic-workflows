@@ -31,6 +31,8 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the surfacing protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
+
+   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` or `p/pause` at the wait gate ends the ceremony; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened ends it at **H. The Map Gate**. Nothing else ends it.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -44,7 +46,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
    ```
 
-   The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
+   The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Route on it: `all_decided: true` is the map settling — finish this iteration's document and commit (steps 4–5), then follow **G. Concluding**. Otherwise guide the user to what's still open (**D. Navigation**) — don't force transitions, suggest them; the user can follow your suggestion or go wherever they want.
 4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — an absorbed triage concern, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
@@ -83,9 +85,13 @@ Child subtopics can exist under parents. A parent might be `exploring` while one
 
 You own transitions between subtopics. The goal is natural flow, not rigid sequencing.
 
-**After a decision lands:**
+**After a decision lands and subtopics remain:**
 
 > "That rounds out {subtopic}. We still have {X} and {Y} on the map — {X} is closely related, want to continue there? Or we could pick up {Y}."
+
+**When the last subtopic settles:**
+
+No template and no question — the closing gates are the offer; enter **G. Concluding**.
 
 **When a tangent surfaces a new concern:**
 
@@ -152,10 +158,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 One ceremony, two ways in — enter when either, or both at once, holds:
 
-- **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
+- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A queued rerouted concern meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
-A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
+A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and the ceremony resumes once `pulled` drains — the session loop's check re-enters here. An unlanded call is undocumented knowledge.
 
 The topic's waits gate the ceremony next, before anything is deferred — a point blocked on a wait is never written `deferred` by the sweep below, because deferral is a choice and this point is blocked pending input. Fetch the gate (empty when nothing is owed; the engine would refuse the completion anyway):
 
@@ -207,7 +213,7 @@ Run the map call:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so.
+Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so. First match wins.
 
 #### If `all_decided` is true
 
@@ -221,7 +227,7 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 → On return, proceed as the reference directed.
 
-#### If `all_decided` is false and the user signalled conclusion
+#### If `all_decided` is false and this entry is the user's signal
 
 Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
 
@@ -245,9 +251,9 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 → Return to **B. Session Loop**.
 
-#### If `all_decided` is false and you read convergence
+#### Otherwise
 
-It isn't convergence — undecided subtopics remain. Keep exploring.
+The map moved since the close opened — ground an interruption re-opened, or a settle the gate no longer reads. The ceremony ends here; the next settling set or signal re-enters.
 
 → Return to **B. Session Loop**.
 
@@ -273,13 +279,17 @@ Nothing is owed. Delete the file if it exists.
 
 → Return to **G. Concluding**.
 
+**If entered from the session loop and a call this flush landed answered `all_decided: true` on its set:**
+
+→ Return to **G. Concluding**.
+
 **Otherwise:**
 
 → Return to **B. Session Loop**.
 
 #### If `items` is empty and `pulled` holds calls
 
-The screens have landed; each pulled call is owed its raise — one per turn. Raise the first as a plain conversational question, derivation on the table, asking what it missed. Control then belongs to the conversation: when the engagement's outcome is documented and committed (session loop steps 4–5), remove the entry from `pulled` — the loop's next check re-enters here for whatever remains.
+The screens have landed; each pulled call is owed its raise — one per turn. Raise the first as a plain conversational question, derivation on the table, asking what it missed. Control then belongs to the conversation: when the engagement's outcome is documented and committed (session loop steps 4–5), remove the entry from `pulled` — the loop's next check re-enters here for whatever remains, and, for a flush the ceremony opened, re-enters **G. Concluding** once `pulled` drains.
 
 → Return to **B. Session Loop**.
 

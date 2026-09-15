@@ -57,7 +57,3 @@ choice waits on measured sandbox delivery timing.
 
 ### Current State
 - Retry policy decided; webhook timing awaiting evidence.
-
-## Triage
-
-(none)

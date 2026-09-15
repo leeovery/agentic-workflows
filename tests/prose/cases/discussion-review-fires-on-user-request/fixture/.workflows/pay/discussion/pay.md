@@ -67,7 +67,3 @@ the exact bound and reset condition are still open.
 - Capture confirmation decided — webhooks, never polling.
 - Card data decided — hosted fields, nothing touches our servers.
 - Failed-payment retries still exploring — bound and reset open.
-
-## Triage
-
-(none)

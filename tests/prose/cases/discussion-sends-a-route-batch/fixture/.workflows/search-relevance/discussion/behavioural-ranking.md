@@ -40,7 +40,3 @@ if freshness ever becomes a ranking requirement.
 
 ### Current State
 - Signal ingestion decided — nightly batch, never a live stream.
-
-## Triage
-
-(none)

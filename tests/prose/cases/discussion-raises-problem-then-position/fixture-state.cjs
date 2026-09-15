@@ -79,10 +79,6 @@ module.exports = {
       '- Failed-payment retries exploring — two options on the table.',
       '- Card-data handling identified but untouched.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'currency-handling');

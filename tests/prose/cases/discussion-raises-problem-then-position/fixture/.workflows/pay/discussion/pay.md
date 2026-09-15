@@ -56,7 +56,3 @@ starts over from the basket.
 - Currency handling decided — GBP only, integer minor units.
 - Failed-payment retries exploring — two options on the table.
 - Card-data handling identified but untouched.
-
-## Triage
-
-(none)

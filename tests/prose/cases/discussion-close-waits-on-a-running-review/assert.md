@@ -18,7 +18,8 @@ The prose should have taken this path:
 5. the user asks for a fresh review of the document. Their request is
    the trigger: the movement backoff does not apply. Nothing settled is
    waiting to be written, the prior reviews are all drained, both
-   queues are empty, and no wrap-up was signalled — so nothing blocks
+   queues are empty, and the closing gates are neither next nor
+   underway — so nothing blocks
 6. the session dispatches the review with `--final` — review-004 —
    announces that the background review is dispatched, and does not
    wait on the agent. The stub holds its report back: the row stays in
@@ -41,9 +42,13 @@ The prose should have taken this path:
     next scan promotes the row to pending — and surfacing delegates to
     the protocol: the report is clean, the row is acknowledged
     `--clean` and incorporated, the one-line "nothing new" note is
-    emitted, and control returns to the session loop
-11. the user says again that it covers it; the map comes back fully
-    decided; the closing gates classify afresh: review-004 is
+    emitted, and control returns to the session loop — where the
+    check, finding nothing pending and no raise open, re-enters the
+    close on its own: the ceremony the user's wrap-up opened was
+    interrupted, not ended
+11. no second signal is asked for or given — the user adds nothing;
+    the map comes back fully decided; the closing gates classify
+    afresh: review-004 is
     incorporated with its report on disk, and no commit to the
     discussion file postdates its dispatch — satisfied, no judgment.
     No review gate renders; the wrap-up gate does, and the user says

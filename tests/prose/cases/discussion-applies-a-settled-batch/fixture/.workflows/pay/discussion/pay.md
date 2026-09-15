@@ -54,7 +54,3 @@ is called with the store currency.
 - Capture confirmation decided — webhooks, never polling.
 - Currency handling decided — integer minor units.
 - Failed-payment retries still open.
-
-## Triage
-
-(none)

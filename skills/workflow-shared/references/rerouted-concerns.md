@@ -64,7 +64,7 @@ Emit its `DISPLAY: triage announce` section verbatim as a code block, then open 
 
 #### If at a natural break
 
-A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist, with two readings of its own: a recent `later` defers the re-offer until the conversation has genuinely moved on — except when the user is concluding, which is the break a deferred concern was waiting for and holds over the `later` — and the just-opened signal does not count here, the announce having spent it; a break in the session's own thread is what qualifies.
+A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist, with two readings of its own: a recent `later` defers the re-offer until the conversation has genuinely moved on — except at the close, the user's signal or, in discussion, the map settling, which is the break a deferred concern was waiting for and holds over the `later` — and the just-opened signal does not count here, the announce having spent it; a break in the session's own thread is what qualifies.
 
 → Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
 
@@ -238,15 +238,15 @@ Absorb the concern — one engine transaction deletes its queue file and commits
 node .claude/skills/workflow-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md [--subtopic {subtopic}] -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
-**If `remaining` is non-zero:**
+#### If `remaining` is non-zero
 
 Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise.
 
 → Return to **A. Check**.
 
-**If `remaining` is `0`:**
+#### If `remaining` is `0`
 
-Emit the clear line and nothing else — no recap of the walk:
+Emit the clear line — no recap of the walk:
 
 > *Output the next fenced block as a code block:*
 
@@ -254,7 +254,13 @@ Emit the clear line and nothing else — no recap of the walk:
 Triage queue clear — every rerouted concern is folded in.
 ```
 
-The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.
+**If `phase` is `discussion` and the fold's `discussion-map set` answered `all_decided: true`:**
+
+The map settled on that fold — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
 
 → Return to caller.
 
@@ -280,7 +286,7 @@ Announce the move in one line — the concern now waits in this topic's `{other_
 
 #### If `remaining` is `0`
 
-Announce the move in the same one line, then emit the clear line and nothing else:
+Announce the move in the same one line, then emit the clear line — no recap of the walk:
 
 > *Output the next fenced block as a code block:*
 
@@ -288,6 +294,12 @@ Announce the move in the same one line, then emit the clear line and nothing els
 Triage queue clear — nothing further queued for this topic.
 ```
 
-The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.
+**If `phase` is `discussion` and the last `discussion-map set` this drain ran answered `all_decided: true`:**
+
+The map stands settled — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
 
 → Return to caller.

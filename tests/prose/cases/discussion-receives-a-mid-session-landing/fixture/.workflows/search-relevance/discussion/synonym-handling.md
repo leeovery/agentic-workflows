@@ -47,7 +47,3 @@ once behavioural coverage matches it.
 ### Current State
 - Expansion source decided: behaviour-driven, reading the live
   click-signal stream.
-
-## Triage
-
-(none)

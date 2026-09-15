@@ -2599,7 +2599,8 @@ function concludeGate(cwd, { dotpath }) {
 }
 
 // closing-gate — the discussion close's own consents, on the road between
-// "we're done talking" and the conclude gate: the optional re-review offer,
+// the close opening (the user's word, or the map settling) and the conclude
+// gate: the optional re-review offer,
 // the three faces of the mandatory review gate (findings already back,
 // a review still running, no review ever run — each names what yes
 // does, so "another review" is never the reading), and the wrap-up

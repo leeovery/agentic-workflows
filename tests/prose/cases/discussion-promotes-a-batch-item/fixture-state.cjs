@@ -78,10 +78,6 @@ module.exports = {
       '- Currency handling decided — integer minor units.',
       "- Retries decided — the gateway's ceiling governs.",
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'currency-handling');

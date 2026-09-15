@@ -1,0 +1,81 @@
+{
+  "origin": "the closing ceremony was entered only on the user's signal or a convergence read, and every close case had the user say the words — nothing pinned the map settling as the trigger: this walk holds a user who never signals conclusion and pins that the decided write which settles the map opens the closing gates in the same turn, after its commit, with no prose question in between",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user is settling how card payments at checkout should work and is back to close out the one thread still open from the last sitting: what the shopper sees when the gateway declines their card. Everything else they cared about is already decided and written — webhook capture, hosted fields, the retry cap, the reconciliation sweep — and they add nothing to any of it. On the open thread they know what they want and say so with reasons when it comes up: the shopper sees a plain message keyed to the gateway's decline category — insufficient funds, card not supported, try another card — never the raw decline code, because raw codes mean nothing to a shopper and only invite support tickets, and the gateway's own guidance is to map its categories; and the order stays open so they can try another card rather than starting the checkout again. They engage with challenges on the merits, answer concretely, and leave nothing hanging — they decide, they don't park. Beyond that decision they volunteer nothing. They never say the discussion covers it, never ask to wrap up, finish, or conclude, and never ask what comes next. They answer what a rendered menu or a direct question asks and nothing more; a question put to them in prose once the messaging decision has landed — anything else, shall we wrap up, where next — gets one flat sentence that they have nothing to add, and never more than that. On rendered gates they are agreeable: offered one more review they decline it; told a review must run before concluding they agree; asked on the rendered conclude menu whether to conclude they say yes. They never introduce new material.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "knowledge.cjs query",
+      "discussion-map set pay pay declined-card-messaging decided",
+      "commit pay --topic discussion/pay",
+      "render wait-gate pay.discussion.pay",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay",
+      "git log --since=",
+      "--format=%h %s -- .workflows/pay/discussion/pay.md",
+      "render closing-gate pay.discussion.pay --variant re-review",
+      "render closing-gate pay.discussion.pay --variant wrap-up"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "discussion-map set pay pay declined-card-messaging decided",
+      "commit pay --topic discussion/pay",
+      "render wait-gate pay.discussion.pay",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay",
+      "render closing-gate pay.discussion.pay --variant re-review",
+      "render closing-gate pay.discussion.pay --variant wrap-up"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "--kind review",
+      "--kind perspective",
+      "agent ack",
+      "agent surface",
+      "agent incorporate",
+      "topic complete",
+      "topic reopen",
+      "(deferral)",
+      "render triage-block",
+      "knowledge.cjs index"
+    ]
+  }
+}

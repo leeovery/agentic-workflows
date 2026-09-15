@@ -1,0 +1,45 @@
+{
+  "agents": {
+    "review-001": {
+      "id": "review-001",
+      "kind": "review",
+      "phase": "discussion",
+      "topic": "pay",
+      "set": "001",
+      "status": "incorporated",
+      "announced": true,
+      "findings": [
+        "F1",
+        "F2"
+      ],
+      "surfaced": [
+        "F1",
+        "F2"
+      ],
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "failed-payment-retries": "pending",
+        "card-data-handling": "decided"
+      }
+    },
+    "review-002": {
+      "id": "review-002",
+      "kind": "review",
+      "phase": "discussion",
+      "topic": "pay",
+      "set": "002",
+      "status": "incorporated",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "failed-payment-retries": "decided",
+        "card-data-handling": "decided",
+        "webhook-reconciliation": "decided"
+      }
+    }
+  }
+}

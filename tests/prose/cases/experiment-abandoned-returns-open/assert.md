@@ -24,16 +24,24 @@ The prose should have taken this path:
    that E1 was abandoned and why the point was settled without
    measurement — the awaiting note gives way to the decision, the map
    records the subtopic decided, and the write commits
-5. along the way the review cadence arms its free first pass — a
-   review dispatches at a natural break, the stubbed report returns
-   clean and is drained — so by the wrap the record already holds an
-   incorporated review
-6. the user wraps; the ceremony's wait-gate fetch comes back empty —
-   nothing is owed, the release already happened, and no gate is
-   emitted — every subtopic is settled, and the closing gates run: the
-   triage queue reads empty
-   and the classification finds the review satisfied (nothing moved
-   since it drained), so no mandatory gate is owed; document review
+5. no review is dispatched on the deciding commit itself — its set
+   answered `all_decided: true`, so the closing gates are next and
+   the dispatch check holds. Where an earlier write of this session
+   committed on its own (the abandonment surfaced into the file before
+   the decision), the cadence's free first pass may have dispatched
+   there, the stubbed report returning clean and draining at a later
+   check; where the deciding commit is the session's only meaningful
+   one, no review runs before the close
+6. once the deciding write is committed the ceremony opens in the same
+   turn — with or without the user's own wrap-up; its wait-gate fetch
+   comes back empty — nothing is owed, the release already happened,
+   and no gate is emitted — every subtopic is settled, and the closing
+   gates run: the triage queue reads empty and the classification
+   follows step 5: never-reviewed, so the mandatory final-review gate
+   renders and the user says yes and the final review step dispatches
+   with `--final` (the stub returns clean); or, where a review already
+   drained, satisfied or re-review — the optional offer declined per
+   the conduct. Either way the walk proceeds: document review
    reconciles the file against the session; the compliance check
    passes
 7. the conclude gate renders and the user confirms; the completion the

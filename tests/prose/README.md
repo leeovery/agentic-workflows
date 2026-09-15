@@ -81,8 +81,8 @@ file is shaped by the template" outsources the expectation to a document
 the asserter cannot fully see: file *reads* are truncated in the record
 (writes are kept whole), so template-equivalence is unanswerable from
 the evidence. Enumerate the shape instead — "holding Symptoms, Analysis,
-and Fix Direction sections, with a terminal `## Triage` holding
-`(none)`" — which the write record answers completely. Naming which
+and Fix Direction sections, and no others" — which the write record
+answers completely. Naming which
 reference *fed* a step ("created from the template") is fine in the
 path; it is the world claims that must carry their own expectations.
 

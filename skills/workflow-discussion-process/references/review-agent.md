@@ -6,7 +6,7 @@
 
 These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — not optional, not deferred.
 
-**If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, both queues empty, no wrap-up signal: a review is stale on arrival over any of them, whoever asked. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the queue), then:
+**If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, both queues empty, the closing gates neither next nor underway: a review is stale on arrival over any of them, whoever asked — at the close it is the gates' to offer. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the queue), then:
 
 → Proceed to **A. Dispatch**.
 
@@ -18,7 +18,7 @@ These instructions are loaded into context at the start of the discussion sessio
 - □ Review armed? (`review_arming.armed` is `true` on that scan — the engine's movement backoff: a review arms only once the Discussion Map has moved enough since the last one. Triage folds never count — each absorb settles its concern's ground into the anchor, so a sitting that only drained the queue stays quiet and its review duty falls to the closing gates. When quiet, `reason` names the moves owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
 - □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
-- □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
+- □ The closing gates neither next nor underway? (a wrap-up signal, this commit's own `discussion-map set` answering `all_decided: true`, or a ceremony the loop's check will resume, hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
 
 **Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check, so no trigger is lost — whether it dispatches is then the movement backoff's call. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the surfacing protocol.
 
@@ -102,3 +102,13 @@ Delegate all check-for-results and presentation behaviour to the surfacing proto
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+
+**If the protocol returned with no lane holding findings and a `decide` landing in that drain answered `all_decided: true` on its set:**
+
+The drain ran out over a map its landing settled — the closing gates are the offer.
+
+→ Return to caller for **G. Concluding**.
+
+**Otherwise:**
+
+→ Return to caller.

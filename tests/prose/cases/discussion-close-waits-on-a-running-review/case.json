@@ -42,7 +42,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning to close the discussion out, with one thing first: before wrapping up they want a fresh pair of eyes over the whole document, and they open by asking directly for a review of the discussion as it stands. They decide nothing, settle nothing, and add no new material; if asked whether anything changed for them, nothing has. Once the review is dispatched and announced they do not wait for it — they say that covers it and ask to wrap up. On the way out they are agreeable to required steps: told a review is still running and asked whether to wait for it, they say yes; asked whether to conclude, they say yes. When the review lands and the session hands the floor back to them, they say again that it covers it and to wrap up. They decline optional extras — one more review, offers of new threads — and never introduce new material.",
+  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning to close the discussion out, with one thing first: before wrapping up they want a fresh pair of eyes over the whole document, and they open by asking directly for a review of the discussion as it stands. They decide nothing, settle nothing, and add no new material; if asked whether anything changed for them, nothing has. Once the review is dispatched and announced they do not wait for it — they say that covers it and ask to wrap up. On the way out they are agreeable to required steps: told a review is still running and asked whether to wait for it, they say yes; asked whether to conclude, they say yes. When the review lands they add nothing and never repeat their wrap-up: a question put to them in prose after that — anything else, shall we wrap up, where next — gets one flat sentence that they have nothing to add, and never more than that; they answer what a rendered menu asks. They decline optional extras — one more review, offers of new threads — and never introduce new material.",
   "stubs": {
     "discussion-review-clean": "not at the dispatch — the review stays in flight while the user wraps up; once the session has taken the closing gate's yes and begins waiting on the running review, write the content to the path the dispatch response returned, and let the next scan find it"
   },
@@ -59,7 +59,8 @@
       "agent ack pay discussion pay review-004 --clean",
       "render closing-gate pay.discussion.pay --variant wrap-up",
       "render conclude-gate pay.discussion.pay",
-      "topic complete pay discussion pay"
+      "topic complete pay discussion pay",
+      "render wait-gate pay.discussion.pay"
     ],
     "calls_in_order": [
       "manifest get pay.discussion.pay status",

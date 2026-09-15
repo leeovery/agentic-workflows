@@ -32,7 +32,3 @@ How the checkout learns that a card payment was actually captured.
   nothing decided.
 - Currency handling, failed-payment retries, card-data handling
   identified but untouched.
-
-## Triage
-
-(none)

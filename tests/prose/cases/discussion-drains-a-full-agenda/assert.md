@@ -30,8 +30,11 @@ The prose should have taken this path:
    that nothing follows this one) above the problem, absorbing under
    its own distinct commit; with the queue empty the clear line
    renders
-8. with both settled the user wraps; the closing gates run the review
-   machinery per the conduct (the stubbed review returns clean); the
+8. with both settled the ceremony opens — on the second absorb, where
+   its fold's set answered `all_decided: true`, or on the user's wrap
+   where seeded ground still stands open (the defer gate then sweeps
+   it); the closing gates run the review machinery per the conduct
+   (the stubbed review returns clean); the
    conclude gate reads the queue, finds it empty, and the discussion
    completes with the `--kb` commit
 9. the sweep finds no leavings, and the walk stops at the bridge
