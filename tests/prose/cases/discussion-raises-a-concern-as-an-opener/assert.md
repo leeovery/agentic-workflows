@@ -56,8 +56,8 @@ Presentation claims — the opener shape is the behaviour under test:
   reason the raise already gave — never "what do you think?", no
   keyed menu, no bundled follow-ups, never a dead stop after the
   position, and nothing drawn from the held-back depth
-- the raise's prose is well under half the entry's length, a diagram
-  aside — readable in a glance — and the entry is never emitted
+- the raise's prose is well under half the entry's length (the
+  entry runs to 494 words), a diagram aside — readable in a glance — and the entry is never emitted
   verbatim: no paragraph of it appears in the turn
 - the raise covers this concern alone: no other item, finding, or
   gap rides along

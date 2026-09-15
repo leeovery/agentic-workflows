@@ -12,7 +12,7 @@ The level a turn runs at. [voice.md](voice.md) governs how a sentence sounds and
 
 **Code is evidence, never the spine.** A measurement, a symbol, a source snippet enters the conversation as what it means for the product, in a line, and only where the point turns on it. The command and its output belong to the document. A code identifier reaches the user only when they have to go and look at it.
 
-**Translate internal names.** A helper, a flag, a framework class, an API is named by what it does on first mention; the real name follows in a clause when the user will need it, and not otherwise.
+**Translate internal names.** A helper, a flag, a framework class, an API, a work unit's or topic's slug is named by what it does on first mention; the real name follows in a clause when the user will need it, and not otherwise.
 
 **Mechanism belongs to the implementer.** How the code would achieve the behaviour is the implementation phase's question. Before it, mechanism enters only where a feasibility call or an edge case genuinely turns on it — and then at the depth seeing the point needs, no deeper. A report or finding written in code is retold upward, never digested at the level it was written.
 
