@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.50] - 2026-09-15
+
+🔧 Changed
+
+- Rerouted concerns are now raised as an opener — problem, position, then what reply is wanted — instead of a bare breakdown, matching how findings from a review walk are already presented.
+- The decision-raise dispose now re-reads the actual code and plan/spec criteria at the neighbouring surface before settling a fork, rather than trusting context already in hand or a bare recommendation marker.
+
 ## [0.7.49] - 2026-09-14
 
 🔧 Changed
