@@ -39,8 +39,9 @@ The prose should have taken this path:
    and the session stops. The map gate never runs, the closing gates
    are never loaded, and no completion is attempted — the session
    never asks the engine to do what it would refuse
-8. the user takes the pause; the cadence commit runs, the session says
-   where the ball sits — the ceremony runs once the research has
+8. the user takes the pause; the cadence commit runs only over
+   uncommitted session work — a clean tree makes it a no-op, not a
+   miss — the session says where the ball sits — the ceremony runs once the research has
    landed, and the menu carries the way in — and stops at the terminal
    condition
 
