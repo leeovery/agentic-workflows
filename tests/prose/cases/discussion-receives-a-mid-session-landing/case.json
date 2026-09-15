@@ -79,6 +79,9 @@
       "topic triage search-relevance discussion synonym-handling",
       "discussion-map set search-relevance synonym-handling cache-key-shape decided",
       "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
+      "render closing-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ]
   }
