@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.51] - 2026-09-15
+
+✨ Added
+- tmux session labels now apply at every place a session works — a work unit's own menu, the roadmap, and the baseline — not only inside a phase.
+- A resumed session (`claude --resume`) gets its tmux label put back automatically.
+- A discussion that settles or gets interrupted mid-close now resumes the close on its own instead of waiting for you to say "done" again.
+
+🔧 Changed
+- The discussion close now enters as soon as the map settles, in the same turn — no more waiting on a prose question to notice.
+- A rerouted concern queued during discussion is now raised before the closing gates instead of blocking them outright.
+- Triage's queue and offer text are now read fresh each time rather than reused from an earlier check, so a peer session's landed concern isn't missed.
+- Raised findings and triage offers no longer name a work unit's or topic's internal slug — they speak only in product terms.
+- An alternative option in a raised choice now gets a one-clause cost, not two.
+
+🐛 Fixed
+- The tmux label-restore hook no longer strands labels for sessions that were only `/clear`'d or resumed, not fully exited.
+
 ## [0.7.50] - 2026-09-15
 
 🔧 Changed
