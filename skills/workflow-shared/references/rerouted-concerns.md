@@ -240,7 +240,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic absorb {work_unit} 
 
 #### If `remaining` is non-zero
 
-Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise.
+Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise — whose bridge, the line above its problem, says what this one settled and how many remain.
 
 → Return to **A. Check**.
 
