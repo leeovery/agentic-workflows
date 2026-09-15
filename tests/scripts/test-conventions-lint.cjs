@@ -1010,7 +1010,72 @@ const CHECKS = [
   ['17: conditional menu options', checkConditionalOptions],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
   ['19: yes rows ask a question', checkYesAsksQuestion],
+  ['20: footerless load directives', checkFooterlessLoads],
 ];
+
+// ---------------------------------------------------------------------------
+// Check 20 — a Load directive is never the last word of a step. CONVENTIONS
+// (Load Directive Format): a step is never left with no footer at all —
+// silence reads as the end of the step, and the next heading gets treated as
+// the fall-through. Within a SKILL.md, a Load **[...]** directive must be
+// followed, before the next heading, by a routing line (→ On return / →
+// Proceed / → Return), a **STOP.** gate, or a bold conditional — inline or
+// as an H4 `#### If`/`#### Otherwise` branch heading — that re-keys the
+// routing to its branches. Only an H2/H3 heading is a fall-through target.
+// The `## Instructions` framework load composes the whole skill and carries
+// no footer by design; the file's final `## ` step is terminal and exempt, as
+// is any segment that declares itself Terminal; a trailing `## Notes` is
+// documentation, not a step, and never counts as the last step.
+// ---------------------------------------------------------------------------
+
+function checkFooterlessLoads(files) {
+  const out = [];
+  for (const file of files) {
+    if (!file.endsWith('SKILL.md')) continue;
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    const lastH2 = lines.reduce((acc, l, i) => (/^##\s/.test(l) && !/^##\s+Notes\b/.test(l) ? i : acc), -1);
+    let pending = -1;
+    let segmentStart = 0;
+    let instructions = false;
+    const flush = (end) => {
+      if (pending < 0) return;
+      const segment = lines.slice(segmentStart, end).join('\n');
+      const terminal = segmentStart >= lastH2 || /\bTerminal\b/.test(segment);
+      if (!terminal) {
+        out.push({
+          file,
+          line: pending + 1,
+          message: 'Load directive with no footer before the next heading — add "→ On return, …" (or the deferring "→ On return, proceed as the reference directed.")',
+        });
+      }
+      pending = -1;
+    };
+    lines.forEach((line, i) => {
+      if (inFence[i] || /^\s*```/.test(line)) return;
+      if (/^#{2,3}\s/.test(line)) {
+        flush(i);
+        segmentStart = i;
+        instructions = /^##\s+Instructions\b/.test(line);
+        return;
+      }
+      if (instructions) return;
+      if (/^####\s+(If |Otherwise)/.test(line)) {
+        pending = -1;
+        return;
+      }
+      if (/Load \*\*\[/.test(line)) {
+        pending = i;
+        return;
+      }
+      if (pending >= 0 && (/^\s*→/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*(If |Otherwise)/.test(line))) {
+        pending = -1;
+      }
+    });
+    flush(lines.length);
+  }
+  return out;
+}
 
 function report(violations) {
   return violations.map((v) => `  ${rel(v.file)}:${v.line} — ${v.message}`).join('\n');
@@ -1269,6 +1334,41 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
 
     const of = write(dir, 'skills/workflow-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
     assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
+  });
+});
+
+test('check 20 (footerless loads) — catches a load that ends its step, permits footers, gates, branches, and the terminal step', () => {
+  withTemp((dir) => {
+    const bad = write(
+      dir,
+      'skills/x/SKILL.md',
+      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n---\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: C\n\nDone.\n'
+    );
+    assert.strictEqual(checkFooterlessLoads([bad]).length, 1, 'a load left as the last word of a non-terminal step must be caught');
+
+    const deferred = write(
+      dir,
+      'skills/y/SKILL.md',
+      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n→ On return, proceed as the reference directed.\n\n---\n\n## Step 1: B\n\nDone.\n'
+    );
+    assert.strictEqual(checkFooterlessLoads([deferred]).length, 0, 'the deferring footer must pass');
+
+    const gated = write(
+      dir,
+      'skills/z/SKILL.md',
+      '## Step 0: A\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n**STOP.** Wait for user response.\n\n**If `yes`:**\n\n→ Proceed to **Step 1**.\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n**If ready:**\n\n→ Proceed to **Step 2**.\n\n## Step 2: C\n\nLoad **[c.md](references/c.md)** and follow its instructions as written.\n\n## Notes\n\nDocumentation.\n'
+    );
+    assert.strictEqual(checkFooterlessLoads([gated]).length, 0, 'a STOP or bold conditional re-keys the routing, and the final step before a trailing Notes section is terminal');
+
+    const instr = write(
+      dir,
+      'skills/w/SKILL.md',
+      '## Instructions\n\nLoad **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
+    );
+    assert.strictEqual(checkFooterlessLoads([instr]).length, 1, 'the Instructions load and an H4-branched load pass; the Otherwise branch that ends in a load before the next step is caught');
+
+    const ref = write(dir, 'skills/x/references/r.md', '## A. One\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n## B. Two\n');
+    assert.strictEqual(checkFooterlessLoads([ref]).length, 0, 'references are out of scope');
   });
 });
 
