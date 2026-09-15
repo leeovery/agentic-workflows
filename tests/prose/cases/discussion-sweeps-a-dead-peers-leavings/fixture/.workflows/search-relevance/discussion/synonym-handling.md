@@ -29,7 +29,3 @@ If the list goes, something has to produce expansions at query time.
 
 ### Current State
 - Expansion source exploring.
-
-## Triage
-
-(none)

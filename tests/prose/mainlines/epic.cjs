@@ -274,10 +274,6 @@ function completeDiscussions(h) {
     '### Current State',
     '- Signal ingestion decided: batch nightly aggregation, no streaming.',
     '',
-    '## Triage',
-    '',
-    '(none)',
-    '',
   ].join('\n'));
   h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-ingestion');
   h.engine('commit', WU, '-m', `discussion(${WU}): initialize behavioural-ranking discussion`);
@@ -336,10 +332,6 @@ function completeDiscussions(h) {
     '### Current State',
     '- Expansion source decided: behaviour-driven, reading the live',
     '  click-signal stream.',
-    '',
-    '## Triage',
-    '',
-    '(none)',
     '',
   ].join('\n'));
   h.engine('discussion-map', 'add', WU, 'synonym-handling', 'expansion-source');

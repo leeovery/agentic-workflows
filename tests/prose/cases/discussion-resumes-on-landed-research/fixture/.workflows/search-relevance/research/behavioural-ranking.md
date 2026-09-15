@@ -40,8 +40,6 @@ clicks amplifies a single event into a ranking swing.
 - Whether the stability line (about fifty clicks in thirty days) is a
   fixed threshold or recomputed with each nightly run.
 
-## Triage
-
 ### How dense is the behavioural signal per query?
 *From: relevance-measurement · research · 2026-01-01*
 

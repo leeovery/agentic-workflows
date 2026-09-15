@@ -95,7 +95,3 @@ authoritative payment state.
 - Card data decided — hosted fields, nothing touches our servers.
 - Failed-payment retries decided — three attempts, exponential backoff.
 - Webhook reconciliation decided — hourly sweep for stuck orders.
-
-## Triage
-
-(none)

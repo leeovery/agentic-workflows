@@ -97,10 +97,6 @@ module.exports = {
       '- Card data decided — hosted fields, nothing touches our servers.',
       '- Failed-payment retries decided — three attempts, exponential backoff.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'card-data-handling');

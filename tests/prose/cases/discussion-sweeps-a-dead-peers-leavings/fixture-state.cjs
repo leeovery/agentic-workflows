@@ -105,10 +105,6 @@ module.exports = {
       '- Signal ingestion decided: batch nightly aggregation, no streaming.',
       '- Signal weighting decided: purchases at ten times clicks, ninety-day decay.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-ingestion');
     h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-weighting');
@@ -154,10 +150,6 @@ module.exports = {
       '',
       '### Current State',
       '- Expansion source exploring.',
-      '',
-      '## Triage',
-      '',
-      '(none)',
       '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, 'synonym-handling', 'expansion-source');

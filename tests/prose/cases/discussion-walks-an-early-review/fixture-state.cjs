@@ -52,10 +52,6 @@ module.exports = {
       '- Currency handling, failed-payment retries, card-data handling',
       '  identified but untouched.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'currency-handling');

@@ -59,7 +59,3 @@ impose a lower one.
 - Capture confirmation decided — webhooks, never polling.
 - Currency handling decided — integer minor units.
 - Retries decided — the gateway's ceiling governs.
-
-## Triage
-
-(none)

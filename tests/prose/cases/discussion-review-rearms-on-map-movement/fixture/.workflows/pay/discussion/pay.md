@@ -50,7 +50,3 @@ the exact bound and reset condition are still open.
 ### Current State
 - Capture confirmation decided — webhooks, never polling.
 - Failed-payment retries still exploring — bound and reset open.
-
-## Triage
-
-(none)

@@ -75,7 +75,3 @@ only on a new checkout.
 - Capture confirmation decided — webhooks, never polling.
 - Card data decided — hosted fields, nothing touches our servers.
 - Failed-payment retries decided — three attempts, exponential backoff.
-
-## Triage
-
-(none)

@@ -55,7 +55,3 @@ it against the real sandbox.
 
 ### Current State
 - Retry policy decided; webhook timing still open.
-
-## Triage
-
-(none)

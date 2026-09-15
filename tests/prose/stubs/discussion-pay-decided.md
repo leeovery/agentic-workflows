@@ -39,6 +39,3 @@ Shaped in discovery as a single feature; card-only for v1.
 - Wallet support (Apple and Google Pay) — revisit after v1 ships and we
   know the card flow holds.
 
-## Triage
-
-(none)

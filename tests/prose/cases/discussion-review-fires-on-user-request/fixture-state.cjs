@@ -112,10 +112,6 @@ module.exports = {
       '- Card data decided — hosted fields, nothing touches our servers.',
       '- Failed-payment retries still exploring — bound and reset open.',
       '',
-      '## Triage',
-      '',
-      '(none)',
-      '',
     ].join('\n'));
 
     // Three completed review cycles, each dispatch through the real

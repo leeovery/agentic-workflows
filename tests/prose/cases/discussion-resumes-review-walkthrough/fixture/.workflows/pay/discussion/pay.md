@@ -40,7 +40,3 @@ polls.
 ### Current State
 - Capture confirmation decided — webhooks, never polling.
 - Failed-payment retries and card-data handling still open.
-
-## Triage
-
-(none)

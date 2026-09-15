@@ -77,7 +77,3 @@ the nightly job.
 - Signal ingestion decided: batch nightly aggregation, no streaming.
 - Signal weighting decided: purchase-weighted blend with position-bias
   correction.
-
-## Triage
-
-(none)
