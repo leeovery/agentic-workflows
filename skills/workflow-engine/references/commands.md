@@ -405,8 +405,8 @@ engine render absorb-name-gate <feature> --into <epic>            # the absorb f
 engine render absorb-confirm-gate <feature>                       # the absorb flow's proceed consent, rendered beneath the summary the calling prose displays; refuses when the guard doesn't hold
 engine render absorb-continuation <epic> --feature <name>         # the post-absorption continue-as-epic/back menu, the pivot continuation's sibling
 engine render plan-topics <wu>                                    # the view-plan topic selection menu; refuses without a multi-topic epic plan
-engine render archived-actions --path <archived path>            # the archived sub-view's action menu over the selected item (view/unarchive/delete/back) — the title on the label is the file's own; refuses without --path, a live inbox path, or one the store does not hold
-engine render archived-delete-gate --path <archived path>        # the archived item's delete consent — the consequence stated, then "Delete it?" (y/n); same refusals
+engine render archived-actions --path <archived path>             # the archived sub-view's action menu over the selected item (view/unarchive/delete/back) — the title on the label is the file's own; refuses without --path, a live inbox path, or one the store does not hold
+engine render archived-delete-gate --path <archived path>         # the archived item's delete consent — the consequence stated, then "Delete it?" (y/n); same refusals
 engine render revisit-phases <wu>                                 # the revisit-phase selection menu over completed earlier phases; linear work types only, refuses when nothing is revisitable
 engine render roadmap-view                                        # the Roadmap display — horizon groups, item rows with join notes, the breakdown header; refuses a never-born roadmap
 engine render roadmap-add-gate --horizon <name>                   # the add-to-joined-horizon routed confirm: fully-in-delivery → strict two-way (into the epic / another horizon), partly composed → three-way (waiting beside its uncommitted members); refuses an unknown horizon and one with no delivery
