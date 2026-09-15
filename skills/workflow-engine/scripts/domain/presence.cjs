@@ -40,7 +40,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { processStartTime, processAlive } = require('../kernel/process.cjs');
+const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
@@ -202,16 +202,14 @@ function startTimeReader() {
 }
 
 /**
- * Does the record's process still run? Pid + start time where the record
- * carries both, bare aliveness where it predates start times. A record with
- * no identity cannot be verified and is never held.
+ * Is the heartbeat held — its owning process verified alive (the kernel's
+ * liveness rule)? A missing record is never held.
  * @param {PresenceRecord|null} record
  * @param {(pid: number) => string|null|undefined} startOf
  * @returns {boolean}
  */
 function heldBy(record, startOf) {
-  if (!record || !record.pid) return false;
-  return record.pid_start ? startOf(record.pid) === record.pid_start : processAlive(record.pid);
+  return record !== null && ownerAlive(record, startOf);
 }
 
 /**
@@ -322,20 +320,6 @@ function scanProject(cwd) {
     held: sessions.filter((r) => r.held).length,
     sessions,
   };
-}
-
-/**
- * Does the calling session own this heartbeat? Its own session id, or its own
- * pid where the record predates a session id. The one home for the question,
- * because every surface that marks or gates on a peer's hold must exclude the
- * caller's own — a session must never gate against, or strike through, itself.
- * @param {{session_id?: string|null, pid?: number|null}} row
- * @returns {boolean}
- */
-function ownsRow(row) {
-  const mySession = process.env.CLAUDE_CODE_SESSION_ID || null;
-  const myPid = Number(process.env.CLAUDE_PID) || null;
-  return (mySession !== null && row.session_id === mySession) || (myPid !== null && row.pid === myPid);
 }
 
 /**

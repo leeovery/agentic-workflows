@@ -161,8 +161,9 @@ Commands:
   presence clear <work-unit> <phase> <topic>
   presence scan [work-unit]
   presence cleanup [session-id]
-  session label <work-unit> <phase> <topic>
+  session label <name> [<phase> <topic>]
   session label-config <true|false>
+  session repair
   session cleanup [session-id]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
@@ -847,11 +848,13 @@ function runSession(argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'label') {
-      const [workUnit, phase, topic] = rest;
-      if (!workUnit || !phase || !topic || rest.length !== 3) {
-        throw new Error('Usage: engine session label <work-unit> <phase> <topic>');
+      // A place labels itself: the name alone on arrival, name + phase +
+      // topic inside a phase — never a phase without its topic.
+      const [name, phase, topic] = rest;
+      if (![1, 3].includes(rest.length) || rest.some((a) => !a)) {
+        throw new Error('Usage: engine session label <name> [<phase> <topic>]');
       }
-      respond(applySessionLabel(process.cwd(), workUnit, phase, topic));
+      respond(applySessionLabel(process.cwd(), name, phase, topic));
       return;
     }
     if (command === 'label-config') {

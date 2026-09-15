@@ -5,13 +5,13 @@
 // `session repair` / `session cleanup`, the project-manifest opt-in and the
 // SessionEnd hook it syncs in the project's settings (`session cleanup`
 // while labels are on, `presence cleanup` regardless), the
-// per-checkout stash, phase-hop recomposition, peer-checkout isolation,
+// per-checkout stash, the arrival forms (a work unit alone, the roadmap and
+// baseline identities), phase-hop recomposition, peer-checkout isolation,
 // user-rename adoption, id drift across a server restart (chain resolution,
-// drifted restore, boot repair, orphan pruning), owner identity, restore
-// ownership, and the SessionEnd stdin contract. tmux itself is a PATH stub
-// modelling one session, backed by state files holding the session's name
-// and id (a test renumbers the id to simulate a server restart that
-// carried the name across); the engine only ever sees the stub.
+// drifted restore, boot repair, orphan pruning), owner identity, the
+// repair's own-label restore, restore ownership, and the SessionEnd stdin
+// contract. tmux itself is the shared PATH stub (`tmux-stub.cjs`)
+// modelling one session; the engine only ever sees the stub.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -22,6 +22,7 @@ const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -37,40 +38,6 @@ const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence clean
 // group, ours alone.
 const BOTH_HOOKS = { hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }] } };
 const PRESENCE_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
-
-const TMUX_STUB = `#!/bin/bash
-echo "$@" >> "$TMUX_STUB_LOG"
-[ -n "$TMUX_STUB_FAIL" ] && exit 1
-if [ "$1" = "-S" ]; then shift 2; fi
-cmd="$1"; shift
-name=$(cat "$TMUX_STUB_STATE")
-id=$(cat "$TMUX_STUB_ID")
-target=""; positional=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -t) target="$2"; shift 2 ;;
-    -p|-F) shift ;;
-    *) positional="$1"; shift ;;
-  esac
-done
-case "$target" in
-  '$'*) [ "$target" != "$id" ] && exit 1 ;;
-esac
-if [ "$cmd" = "display-message" ]; then
-  if [ "$positional" = '#{session_id}|#{session_name}' ]; then
-    echo "$id|$name"
-  elif [ "$positional" = '#{session_name}' ]; then
-    echo "$name"
-  fi
-elif [ "$cmd" = "list-sessions" ]; then
-  [ -n "$TMUX_STUB_FAIL_LS" ] && exit 1
-  echo "$id|$name"
-elif [ "$cmd" = "rename-session" ]; then
-  [ -n "$TMUX_STUB_FAIL_RENAME" ] && exit 1
-  echo "$positional" > "$TMUX_STUB_STATE"
-fi
-exit 0
-`;
 
 let dir; // temp project root — a git repo, since recording the opt-in commits
 let stubDir; // holds the tmux stub + state/log files
@@ -88,11 +55,7 @@ function setup() {
   git(['config', 'user.name', 'Test']);
   git(['config', 'commit.gpgsign', 'false']);
   git(['commit', '-q', '--allow-empty', '-m', 'init']);
-  stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-stub-'));
-  fs.writeFileSync(path.join(stubDir, 'tmux'), TMUX_STUB, { mode: 0o755 });
-  fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc\n');
-  fs.writeFileSync(path.join(stubDir, 'id'), '$7\n');
-  fs.writeFileSync(path.join(stubDir, 'log'), '');
+  stubDir = installTmuxStub();
 }
 
 function teardown() {
@@ -118,10 +81,7 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = proces
   delete env.CLAUDE_PID;
   delete env.CLAUDE_PROJECT_DIR;
   if (projectDir) env.CLAUDE_PROJECT_DIR = projectDir;
-  env.PATH = `${stubDir}:${env.PATH}`;
-  env.TMUX_STUB_STATE = path.join(stubDir, 'state');
-  env.TMUX_STUB_ID = path.join(stubDir, 'id');
-  env.TMUX_STUB_LOG = path.join(stubDir, 'log');
+  Object.assign(env, tmuxStubEnv(stubDir, env.PATH));
   if (!noTmux) {
     env.TMUX = '/fake/sock,123,7';
     env.TMUX_PANE = '%3';
@@ -141,12 +101,17 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = proces
 }
 
 function tmuxName() {
-  return fs.readFileSync(path.join(stubDir, 'state'), 'utf8').trim();
+  return tmuxStubName(stubDir);
+}
+
+/** A rename made outside the engine — the user's own. */
+function setTmuxName(name) {
+  setTmuxStubName(stubDir, name);
 }
 
 /** Simulate a tmux server restart: the session keeps its name, renumbered. */
 function setTmuxId(id) {
-  fs.writeFileSync(path.join(stubDir, 'id'), `${id}\n`);
+  setTmuxStubId(stubDir, id);
 }
 
 function stashStore() {
@@ -178,6 +143,11 @@ function writeStash(basename, record) {
 /** The suite process's kernel start time — a live owner identity for hand-written records. */
 function ownStartTime() {
   return processStartTime(process.pid);
+}
+
+/** A live peer's identity — the suite's parent process, alive for the whole run and never the caller's own. */
+function peerIdentity() {
+  return { pid: process.ppid, pid_start: processStartTime(process.ppid) };
 }
 
 function optIn() {
@@ -280,6 +250,39 @@ describe('engine session label', () => {
     assert.strictEqual(stash.original, 'proj-abc');
   });
 
+  it('labels the place alone on arrival — a work unit with no phase', () => {
+    optIn();
+    const res = engine(['session', 'label', 'pay']);
+    assert.strictEqual(res.name, 'proj-abc · pay');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay');
+    const stash = JSON.parse(fs.readFileSync(/** @type {string} */ (stashFile()), 'utf8'));
+    assert.strictEqual(stash.original, 'proj-abc');
+    assert.strictEqual(stash.applied, 'proj-abc · pay');
+  });
+
+  it('labels the roadmap and the baseline by identity — project-level places with no directory', () => {
+    optIn();
+    for (const place of ['roadmap', 'baseline']) {
+      assert.ok(!fs.existsSync(path.join(dir, '.workflows', place)), `${place} has no work-unit directory`);
+      const res = engine(['session', 'label', place]);
+      assert.strictEqual(res.name, `proj-abc · ${place}`);
+      assert.strictEqual(tmuxName(), `proj-abc · ${place}`);
+    }
+  });
+
+  it('a phase label after an arrival, and an arrival after a phase, both recompose from the true original', () => {
+    optIn();
+    engine(['session', 'label', 'pay']);
+    const phase = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.strictEqual(phase.name, 'proj-abc · pay · discussion · alpha');
+    const back = engine(['session', 'label', 'pay']);
+    assert.strictEqual(back.name, 'proj-abc · pay');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay');
+    const records = stashRecords();
+    assert.strictEqual(records.length, 1, 'one record per terminal, whatever the hops');
+    assert.strictEqual(records[0].original, 'proj-abc');
+  });
+
   it('a peer checkout\'s cleanup and repair never touch this checkout\'s records', () => {
     optIn();
     const dirB = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-b-'));
@@ -314,7 +317,7 @@ describe('engine session label', () => {
   it('adopts a user rename as the new original', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    fs.writeFileSync(path.join(stubDir, 'state'), 'my-new-name\n');
+    setTmuxName('my-new-name');
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.name, 'my-new-name · pay · discussion · alpha');
   });
@@ -339,7 +342,7 @@ describe('engine session label', () => {
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
     writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
     setTmuxId('$9');
     const res = engine(['session', 'label', 'pay', 'planning', 'alpha']);
     assert.strictEqual(res.name, 'proj-abc · pay · planning · alpha');
@@ -380,6 +383,20 @@ describe('engine session label', () => {
     optIn();
     const err = engine(['session', 'label', 'ghost', 'discussion', 'alpha'], { expectFail: true });
     assert.match(err.error, /no work unit directory/);
+  });
+
+  it('rejects a phase without its topic — one argument or three, never two', () => {
+    optIn();
+    const err = engine(['session', 'label', 'pay', 'discussion'], { expectFail: true });
+    assert.match(err.error, /Usage: engine session label <name> \[<phase> <topic>\]/);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+  });
+
+  it('rejects an unknown name-only when enabled, and a project identity carrying a phase', () => {
+    optIn();
+    assert.match(engine(['session', 'label', 'ghost'], { expectFail: true }).error, /no work unit directory/);
+    assert.match(engine(['session', 'label', 'roadmap', 'discovery', 'roadmap'], { expectFail: true }).error, /no work unit directory/);
+    assert.strictEqual(tmuxName(), 'proj-abc');
   });
 });
 
@@ -654,6 +671,15 @@ describe('engine session cleanup', () => {
     assert.strictEqual(stashFile(), null);
   });
 
+  it('restores the original from a name-only label', () => {
+    optIn();
+    engine(['session', 'label', 'pay']);
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, true);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
   it('touches nothing without a session id — argument, stdin JSON, or otherwise', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
@@ -727,7 +753,7 @@ describe('engine session cleanup', () => {
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
     writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-1' });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
     setTmuxId('$9');
     const res = engine(['session', 'cleanup', 'sess-1']);
     assert.strictEqual(res.restored, true);
@@ -741,7 +767,7 @@ describe('engine session cleanup', () => {
     // holds the only path to the true original — its sweep must not drop it.
     writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-1' });
     writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
     setTmuxId('$9');
     const res = engine(['session', 'cleanup', 'sess-1']);
     assert.strictEqual(res.restored, false);
@@ -760,7 +786,7 @@ describe('engine session cleanup', () => {
   it('never clobbers a manual rename — stash dropped, name kept', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    fs.writeFileSync(path.join(stubDir, 'state'), 'renamed-by-hand\n');
+    setTmuxName('renamed-by-hand');
     const res = engine(['session', 'cleanup', 'sess-1']);
     assert.strictEqual(res.restored, false);
     assert.strictEqual(tmuxName(), 'renamed-by-hand');
@@ -795,7 +821,7 @@ describe('engine session repair', () => {
   /** A stranded label on the current terminal: dead owner, name still worn. */
   function strand() {
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha\n');
+    setTmuxName('proj-abc · pay · discussion · alpha');
   }
 
   it('no-ops as disabled — a stranded label included', () => {
@@ -826,7 +852,7 @@ describe('engine session repair', () => {
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
     writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
     setTmuxId('$9');
     const res = engine(['session', 'repair']);
     assert.deepStrictEqual(res, { ok: true, repaired: true });
@@ -834,9 +860,27 @@ describe('engine session repair', () => {
     assert.strictEqual(stashFile(), null, 'both links consumed');
   });
 
-  it('leaves a label whose owning process still runs', () => {
+  it('restores the calling session\'s own label — the start menu is the original name', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const res = engine(['session', 'repair']);
+    assert.deepStrictEqual(res, { ok: true, repaired: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
+  it('owns its label through the pid arm — a later conversation in the same process', () => {
+    optIn();
+    engine(['session', 'label', 'pay']);
+    const res = engine(['session', 'repair'], { sessionId: 'sess-2' });
+    assert.deepStrictEqual(res, { ok: true, repaired: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
+  it('leaves a live peer\'s label — another process, still running', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { sessionId: 'sess-peer', claudePid: process.ppid });
     const res = engine(['session', 'repair'], { sessionId: 'sess-2' });
     assert.deepStrictEqual(res, { ok: true, repaired: false });
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
@@ -847,11 +891,12 @@ describe('engine session repair', () => {
     optIn();
     // The orphan: a label for a session this server no longer has, worn by
     // nothing. The link: dead-owner too, but the live compounded name still
-    // chains through it (its head record's owner runs — repair defers).
+    // chains through it (its head record's owner — a peer process — runs;
+    // repair defers).
     writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
     writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
-    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', ...peerIdentity() });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
     setTmuxId('$9');
     const res = engine(['session', 'repair']);
     assert.deepStrictEqual(res, { ok: true, repaired: false });

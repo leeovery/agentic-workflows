@@ -355,16 +355,27 @@ function sessionLog(sim, wu, n = 1) {
 
 // Shared phase walk used by the linear pipelines: specification → planning →
 // implementation (→ review), with the bookkeeping each phase records.
-// Every process skill's Step 0 refreshes the session label before anything
-// else — mirrored at each phase entry below. The sim strips the tmux
-// identity and pins an empty config dir, so the call is the disabled or
-// no-tmux no-op; what the sim pins is the call sequence and that every
-// phase literal the prose passes validates.
+// Every place labels itself on arrival: a navigation skill, the bridge, the
+// roadmap, and the baseline label the place alone (`arrive`), and every
+// process skill's Step 0 refreshes the phase label before anything else
+// (`label`). The sim strips the tmux identity and pins an empty config dir,
+// so the call is the disabled or no-tmux no-op; what the sim pins is the
+// call sequence and that every name and phase literal the prose passes
+// validates.
+function arrive(sim, name) {
+  const res = sim.run(['session', 'label', name]);
+  assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${name})`);
+}
+
+// A process skill is only ever entered from a place that labelled itself
+// first — the bridge, or the work unit's continue menu — so every phase
+// entry carries the arrival label, then the process skill's own.
 function label(sim, wu, phase, topic) {
+  arrive(sim, wu);
   const res = sim.run(['session', 'label', wu, phase, topic]);
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${phase})`);
-  // Boot runs the stranded-label repair on every entry; hermetic here for
-  // the same reason the label is.
+  // Boot's repair runs at every workflow-start; hermetic here for the same
+  // reason the label is.
   const repair = sim.run(['session', 'repair']);
   assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
 }
@@ -926,6 +937,10 @@ describe('pipeline simulation', () => {
     // research or discussion session's topic file is never swept.
     sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
+    // The discovery hand-off lands on the epic menu — the bridge's epic
+    // continuation into workflow-continue-epic — which labels the work unit
+    // alone on arrival.
+    arrive(sim, wu);
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
@@ -1257,6 +1272,16 @@ describe('pipeline simulation', () => {
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
+    // The arrival forms, enabled and outside tmux: a work unit and the two
+    // project identities (no directory behind them) validate and answer
+    // no-tmux; a phase without its topic, a name that is neither, and an
+    // identity carrying a phase refuse.
+    for (const name of [wu, 'roadmap', 'baseline']) {
+      assert.deepStrictEqual(sim.run(['session', 'label', name]), { ok: true, labelled: false, reason: 'no-tmux' });
+    }
+    sim.refuses(['session', 'label', wu, 'discussion'], /Usage: engine session label <name> \[<phase> <topic>\]/);
+    sim.refuses(['session', 'label', 'ghost'], /no work unit directory/);
+    sim.refuses(['session', 'label', 'roadmap', 'discovery', 'roadmap'], /no work unit directory/);
     sim.run(['manifest', 'set', 'project.defaults.tmux_labels', 'false']);
     assert.deepStrictEqual(sim.run(['session', 'label', wu, 'discussion', 'alpha']),
       { ok: true, labelled: false, reason: 'disabled' });
@@ -1801,7 +1826,9 @@ describe('pipeline simulation', () => {
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
     // The genesis conversation: a product-road session opens before any item
     // or work unit exists, its cadence commit is --roadmap, and imports land
-    // at the product altitude.
+    // at the product altitude. The skill labels the terminal `roadmap` before
+    // its mode dispatch, every mode.
+    arrive(sim, 'roadmap');
     const roadmapDraft = sim.write('.workflows/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
@@ -2659,8 +2686,9 @@ describe('pipeline simulation', () => {
     sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
     sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
 
-    // The project baseline walks its lifecycle on the project manifest, and
-    // each render surface serves its prescribed moment: the offer only while
+    // The project baseline labels the terminal on arrival, then walks its
+    // lifecycle on the project manifest, and each render surface serves its
+    // prescribed moment: the offer only while
     // nothing is recorded, then the progress map and area gate mid-interview,
     // the pause receipt, the doc list and completion receipt once every area
     // lands. A native verdict is a recorded state like any other: the offer
@@ -2668,6 +2696,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
+    arrive(sim, 'baseline');
     sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);
     const verdict = sim.run(['baseline', 'record', 'native']);
     assert.match(verdict.committed, /^[0-9a-f]+$/, 'the verdict commits in the same call');

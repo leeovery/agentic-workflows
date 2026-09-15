@@ -112,6 +112,14 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ## Step 5: Backfill
 
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
+```
+
+Run the legacy research-split detector:
+
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
 ```

@@ -45,6 +45,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 1: Dispatch
 
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label roadmap
+```
+
 Read the positional argument:
 
 - `$0` — **mode**: `genesis` (from discovery's shaping gate — the conversation is live), `open` (from the workflow-start menu), or `pull` (from a recognition offer — straight to the pull ceremony).

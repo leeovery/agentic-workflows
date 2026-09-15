@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
+const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const REAL_ENGINE = path.join(REAL_SCRIPTS, 'engine.cjs');
@@ -661,9 +662,9 @@ describe('engine boot session-end hooks', () => {
     git(fix.project, ['commit', '-q', '-m', 'settings']);
   }
 
-  /** Boot with the tmux identity pinned; `tmux` absent unless given. */
-  function bootWith({ tmux = false, skipHooks = false } = {}) {
-    const env = { ...process.env };
+  /** Boot with the tmux identity pinned; `tmux` absent unless given; `env` layered over the process's own. */
+  function bootWith({ tmux = false, skipHooks = false, env: extra = {} } = {}) {
+    const env = { ...process.env, ...extra };
     delete env.TMUX;
     delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
     if (tmux) env.TMUX = '/fake/sock,123,7';
@@ -690,6 +691,21 @@ describe('engine boot session-end hooks', () => {
     assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'on');
     recordChoice(false);
     assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'off');
+  });
+
+  it('label_repaired is true when this session\'s own label is on the terminal — the start menu is the original name', () => {
+    recordChoice(true);
+    const stub = installTmuxStub();
+    try {
+      const identity = { ...tmuxStubEnv(stub), TMUX_PANE: '%3', CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid) };
+      runEngine(fix.engine, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], { ...identity, TMUX: '/fake/sock,123,7' });
+      assert.strictEqual(tmuxStubName(stub), 'proj-abc · payments · discussion');
+      assert.strictEqual(bootWith({ tmux: true, env: identity }).label_repaired, true);
+      assert.strictEqual(tmuxStubName(stub), 'proj-abc');
+      assert.strictEqual(bootWith({ tmux: true, env: identity }).label_repaired, false, 'nothing left to repair');
+    } finally {
+      fs.rmSync(stub, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 
   it('a project with no settings gets `presence cleanup` installed, committed confined — and a second boot changes nothing', () => {

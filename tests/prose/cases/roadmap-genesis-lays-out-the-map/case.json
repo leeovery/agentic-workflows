@@ -42,10 +42,12 @@
       "commit --roadmap",
       "workflow-roadmap/scripts/gateway.cjs proposal --file",
       "roadmap add-batch",
-      "roadmap session close"
+      "roadmap session close",
+      "session label roadmap"
     ],
     "calls_in_order": [
       "engine.cjs boot",
+      "session label roadmap",
       "roadmap session open",
       "workflow-roadmap/scripts/gateway.cjs proposal --file",
       "roadmap add-batch",

@@ -44,6 +44,8 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-feature/scripts/gateway.cjs",
+      "session label pay",
+      "workflow-continue-feature/scripts/gateway.cjs view pay",
       "manifest get pay.discussion.pay status",
       "topic start pay discussion pay",
       "write:.workflows/pay/discussion/pay.md",

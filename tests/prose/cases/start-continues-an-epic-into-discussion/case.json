@@ -51,6 +51,7 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
       "discovery-map sequence search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "manifest get search-relevance.discovery.behavioural-ranking brief_path",

@@ -2,14 +2,18 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: tmux session labels — an opt-in rename of the user's tmux
-// session to show where the workflow session is working
-// (`{original} · {work-unit} · {phase} · {topic}`). Applied by each process
-// skill at Step 0, restored by `session cleanup` at session end. The
-// feature is a display courtesy, never state: for the user who has not
-// opted in, or outside tmux, or on any tmux error, every path degrades to
-// a no-op JSON response and the label never gates a flow. (A bad argument
-// from an opted-in call site still fails loudly — that is an authoring
-// bug, not an environment condition.)
+// session to show where the workflow session is working. Every place labels
+// itself on arrival: a process skill's Step 0 applies `{original} ·
+// {work-unit} · {phase} · {topic}`, a navigation skill and the bridge
+// `{original} · {work-unit}`, the roadmap and the baseline `{original} ·
+// roadmap` / `{original} · baseline`, and workflow-start puts the original
+// back through boot's `repair`. Leaving a place is never an event: the name
+// changes on arrival, and at session end, where `session cleanup` restores
+// it. The feature is a display courtesy, never state: for
+// the user who has not opted in, or outside tmux, or on any tmux error,
+// every path degrades to a no-op JSON response and the label never gates a
+// flow. (A bad argument from an opted-in call site still fails loudly —
+// that is an authoring bug, not an environment condition.)
 //
 // Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
 // means never asked, which is what workflow-start's one-time prompt keys on
@@ -51,8 +55,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { processStartTime, processAlive } = require('../kernel/process.cjs');
-const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { PROJECT_IDENTITIES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -324,17 +328,9 @@ function chainOriginal(records, name) {
   return { original: current, visited };
 }
 
-/**
- * Is the record's owning Claude process gone? Identity is pid + start time
- * (the presence discipline — a recycled pid carries a different start
- * time). A record without a pid carries no identity to verify and counts
- * as dead: a label written with no CLAUDE_PID is sweepable by whoever
- * finds it.
- * @param {LabelStash} stash
- */
+/** Is the record's owning Claude process gone — the kernel's liveness rule, negated? @param {LabelStash} stash */
 function ownerDead(stash) {
-  if (!stash.pid) return true;
-  return stash.pid_start ? processStartTime(stash.pid) !== stash.pid_start : !processAlive(stash.pid);
+  return !ownerAlive(stash);
 }
 
 /**
@@ -355,20 +351,25 @@ function liveSessions(socket) {
 }
 
 /**
- * Rename the tmux session to carry the working position. No-op JSON when
- * the feature is off for the project, the session runs outside tmux,
- * tmux errors, or the stash cannot be written — the label never blocks a
- * flow. Bad arguments from an enabled call site throw: an authoring bug
- * fails loudly.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * Rename the tmux session to carry the working position: `{name}` alone
+ * on arrival at a work unit's menu or a project-level place, `{name} ·
+ * {phase} · {topic}` inside a phase (topic collapsed when it equals the
+ * work unit). `name` is a work-unit directory, or in the name-only form a
+ * project identity — `roadmap`, `baseline` — which has no directory and no
+ * phase. No-op JSON when the feature is off for the project, the session
+ * runs outside tmux, tmux errors, or the stash cannot be written — the
+ * label never blocks a flow. Bad arguments from an enabled call site
+ * throw: an authoring bug fails loudly.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
  */
-function applySessionLabel(cwd, workUnit, phase, topic) {
+function applySessionLabel(cwd, name, phase, topic) {
   if (resolveEnabled(cwd) !== true) return { labelled: false, reason: 'disabled' };
-  if (!VALID_PHASES.includes(phase)) {
+  if (phase !== undefined && !VALID_PHASES.includes(phase)) {
     throw new Error(`unknown phase "${phase}" — one of ${VALID_PHASES.join('|')}`);
   }
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
-    throw new Error(`no work unit directory: .workflows/${workUnit}`);
+  const projectLevel = phase === undefined && PROJECT_IDENTITIES.includes(name);
+  if (!projectLevel && !fs.existsSync(path.join(cwd, '.workflows', name))) {
+    throw new Error(`no work unit directory: .workflows/${name}`);
   }
   /** @type {ReturnType<typeof tmuxContext>} */
   let ctx = null;
@@ -380,8 +381,8 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
   // alone: a server restart renumbers the id, so a stranded label's record
   // sits under a key this session will never look up directly.
   const { original, visited } = chainOriginal(listStashes(cwd, ctx.socket), ctx.name);
-  const position = topic === workUnit ? `${workUnit} · ${phase}` : `${workUnit} · ${phase} · ${topic}`;
-  const name = `${original} · ${position}`;
+  const position = [name, phase, topic === name ? undefined : topic].filter(Boolean).join(' · ');
+  const applied = `${original} · ${position}`;
   const pid = Number(process.env.CLAUDE_PID) || null;
   // Stash before rename: a rename with no restore record strands the label,
   // while a stash whose `applied` never landed is inert (restore skips it,
@@ -391,7 +392,7 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
     tmux_id: ctx.id,
     socket: ctx.socket,
     original,
-    applied: name,
+    applied,
     session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
     pid,
     pid_start: pid ? processStartTime(pid) : null,
@@ -404,8 +405,8 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
   } catch {
     return { labelled: false, reason: 'stash-error' };
   }
-  if (name !== ctx.name) {
-    try { tmux(['rename-session', '-t', ctx.id, name], ctx.socket); }
+  if (applied !== ctx.name) {
+    try { tmux(['rename-session', '-t', ctx.id, applied], ctx.socket); }
     catch { return { labelled: false, reason: 'tmux-error' }; }
   }
   // The chain's links are spent — the new id-keyed record holds the true
@@ -414,7 +415,7 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
   for (const f of visited) {
     if (f !== file) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
   }
-  return { labelled: true, name };
+  return { labelled: true, name: applied };
 }
 
 /**
@@ -494,15 +495,18 @@ function restoreSessionLabel(cwd, sessionId) {
 }
 
 /**
- * Boot's stranded-label detector: when the current tmux session's name is
- * a name this module applied and its owner is gone — a session that never
- * restored, a restart that carried the label across — put the true
- * original back, then prune the spent and orphaned records. Gated exactly
- * like `label` (a disabled project must never touch the terminal), no-op
- * outside tmux or on any tmux error, and a label whose owning process
- * still runs is live, not stranded — left alone. Prune keeps every record
- * a live session's name still chains through, and touches nothing on an
- * unreachable server: an unverifiable name proves nothing.
+ * Boot's pass over the current terminal — workflow-start is the place
+ * whose label is the original name. When the tmux session's name is a
+ * name this module applied and the label is the calling session's own
+ * (`ownsRow`: its session id, or its pid for a later conversation in the
+ * same process) or its owner is gone — a session that never restored, a
+ * restart that carried the label across — put the true original back,
+ * then prune the spent and orphaned records. Gated exactly like `label`
+ * (a disabled project must never touch the terminal), no-op outside tmux
+ * or on any tmux error, and a peer's label whose owning process still runs
+ * is live — left alone. Prune keeps every record a live session's name
+ * still chains through, and touches nothing on an unreachable server: an
+ * unverifiable name proves nothing.
  * @param {string} cwd
  * @returns {{repaired: boolean}}
  */
@@ -515,7 +519,7 @@ function repairSessionLabels(cwd) {
   let repaired = false;
   const records = listStashes(cwd, ctx.socket);
   const head = records.find((r) => r.applied === ctx.name);
-  if (head && ownerDead(head)) {
+  if (head && (ownsRow(head) || ownerDead(head))) {
     const { original, visited } = chainOriginal(records, ctx.name);
     try {
       tmux(['rename-session', '-t', ctx.id, original], ctx.socket);
