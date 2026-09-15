@@ -564,14 +564,27 @@ describe('surfaces primitives', () => {
 
   it('refuses a y/yes row under a statement — a consent gate asks its question', () => {
     const yes = ['**`y/yes`**', '**`n/no`**'];
-    assert.throws(() => menu('Proceed.', yes), /the diamond line "Proceed\." does not end in "\?"/);
-    assert.throws(() => menu('The tree is dirty.', yes, { question: 'Carry on.' }), /the diamond line "Carry on\." does not end in "\?"/);
-    assert.throws(() => menu('', ['**`y/yes`** → Apply it']), /the diamond line "" does not end in "\?"/);
+    assert.throws(() => menu('Proceed.', yes), /"Proceed\." is not one/);
+    assert.throws(() => menu('The tree is dirty.', yes, { question: 'Carry on.' }), /"Carry on\." is not one/);
+    assert.throws(() => menu('', ['**`y/yes`** → Apply it']), /no `◆ …\?` line stands above the rows/);
   });
 
   it('refuses a y/yes row under a question the label cannot glyph — the split is the fix', () => {
     const long = 'Does the pipeline exposing **click windows** belong to a different topic entirely?';
-    assert.throws(() => menu(long, ['**`y/yes`**']), /"Does the pipeline exposing .*" cannot take the glyph; split it into a statement label and a question/);
+    assert.throws(() => menu(long, ['**`y/yes`**']), /no `◆ …\?` line stands above the rows/);
+    assert.throws(() => menu('The tree is dirty.', ['**`y/yes`**'], { question: long }), /"Does the pipeline exposing .*" is not one/);
+  });
+
+  it('holds a projection-composed frame to the same rule — the check reads the composed lines', () => {
+    const rows = ['**`y/yes`** → Proceed anyway', '**`b/back`** → Return to menu'];
+    const lines = menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '', ...rows], { glyphLabel: false }).split('\n');
+    assert.deepStrictEqual(lines.slice(0, 5), [DOTS, 'Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '']);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway.`**', '', ...rows], { glyphLabel: false }), /"Proceed anyway\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', ...rows], { glyphLabel: false }), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses an n/no row without a y/yes row — a refusal answers yes, never a verb synonym', () => {
+    assert.throws(() => menu('Proceed?', ['**`p/proceed`** → Carry on', '**`n/no`** → Stop here']), /an n\/no row answers a y\/yes row/);
   });
 
   it('a y/yes row passes under a glyphable question — the label itself, or one split beneath a statement', () => {

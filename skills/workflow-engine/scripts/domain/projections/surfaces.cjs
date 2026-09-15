@@ -208,7 +208,35 @@ function menuFrame(lines, { glyphLabel = true, width, skip = 0 } = {}) {
   if (glyphLabel && body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
     body[0] = `**\`${MENU_GLYPH} ${body[0]}\`**`;
   }
+  consentAsks(body);
   return [DOTS, ...body].join('\n');
+}
+
+// A `y/yes` row makes the menu a consent gate, and a consent gate asks on
+// its diamond line: a glyphed question above the rows, glyphable and ending
+// in `?`. An `n/no` row answers a `y/yes` row — never a verb synonym. The
+// check runs over the composed lines, so a menu grouped by `menu` and one a
+// projection composes itself meet the same rule.
+const YES_ROW = '**`y/yes`**';
+const NO_ROW = '**`n/no`**';
+const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
+
+/** @param {string[]} body */
+function consentAsks(body) {
+  if (!body.some((line) => line.startsWith(YES_ROW))) {
+    if (body.some((line) => line.startsWith(NO_ROW))) {
+      throw new Error('menu: an n/no row answers a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym');
+    }
+    return;
+  }
+  const glyphed = body.map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
+  if (!glyphed) {
+    throw new Error('menu: a y/yes row answers a glyphed question — no `◆ …?` line stands above the rows; a statement label takes a question, a long or marked-up label splits into a statement and a question');
+  }
+  const ask = glyphed[1];
+  if (!ask.endsWith('?') || !isGlyphable(ask)) {
+    throw new Error(`menu: a y/yes row answers a glyphed question — "${ask}" is not one`);
+  }
 }
 
 // A label earns the decision glyph only when it is a short plain phrase.
@@ -229,20 +257,11 @@ function isGlyphable(label) {
  * label carries the decision glyph; a longer one stays prose. An empty label
  * opens straight on the options — the label-less selection menu, for gates
  * whose context is carried by the display directly above them.
- * A `y/yes` row makes the menu a consent gate, and a consent gate asks on
- * its diamond line: `question`, else a glyphable label, ending in `?`. A
- * statement is refused, and so is a long or marked-up label with no
- * `question` — the split is the fix.
  * @param {string} label @param {string[]} options
  * @param {{prompt?: string, question?: string}} [opts]
  * @returns {string}
  */
 function menu(label, options, { prompt, question } = {}) {
-  if (options.some((o) => o.startsWith('**`y/yes`**'))) {
-    const ask = question || label || '';
-    if (!ask.endsWith('?')) throw new Error(`menu: a y/yes row answers a question — the diamond line "${ask}" does not end in "?"`);
-    if (!question && !isGlyphable(label)) throw new Error(`menu: a y/yes row answers a glyphed question — "${label}" cannot take the glyph; split it into a statement label and a question`);
-  }
   const lines = label ? [label, ''] : [];
   // A yes/no gate whose label is a statement carries its ask separately: the
   // statement stays context, the short question takes the decision glyph.
