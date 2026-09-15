@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.52] - 2026-09-15
+
+🔧 Changed
+- Consent gates now answer with `y/yes` consistently across the engine's menus, replacing verb-synonym keys like `approve`, `continue`, `proceed`, `conclude`, `next`, `pull`, and `review` — one predictable keypress everywhere a yes/no decision comes up.
+- Every consent gate's diamond line is now a real question ("Commit these topics?", "Delete it?", "Walk them now?") instead of a trailing "or tell me what to adjust" statement.
+- The engine now enforces menu consent conventions itself — a `y/yes` row must sit under a glyphed question, and any `n/no` row must pair with a `y/yes` row — refusing malformed menus.
+- The archived inbox sub-view's action and delete-confirm menus moved from hand-authored prose to engine-rendered surfaces.
+- The knowledge base setup gate and the legacy research-split dialog's gates and displays moved from hand-authored prose to engine-rendered surfaces.
+
 ## [0.7.51] - 2026-09-15
 
 ✨ Added
