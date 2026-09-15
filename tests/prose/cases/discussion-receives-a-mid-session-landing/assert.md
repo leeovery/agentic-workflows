@@ -17,7 +17,10 @@ The prose should have taken this path:
    settled, so the dispatch check fires the cadence's free first pass:
    a background review is recorded, the stubbed report lands clean,
    and a later check acknowledges it `--clean` — no announce, no
-   finding surfaced
+   finding surfaced. Should the check be passed over at that commit
+   instead, no review runs before the close and the closing gates
+   classify never-reviewed; either outcome is a pass, and step 9
+   follows whichever happened
 4. after the result-caching commit the armed substitution delivers the
    peer concern — the engine's self-committing delivery, performed
    once as the peer, landing one file in this topic's queue
@@ -44,12 +47,15 @@ The prose should have taken this path:
    queue now empty, the same turn enters the close: the wait gate
    (empty), the map read through the gateway, the settled line, the
    closing gates — with or without the user's own wrap-up
-9. the closing gates classify: the review from step 3 is drained and
-   report-backed, and the key-shape commit and the absorb both
-   postdate it, so the optional re-review gate renders and the user
-   declines it; the wrap-up gate renders and they say yes; the
-   in-flight check finds nothing running; the final review step finds
-   the row incorporated and the gate satisfied; document review and
+9. the closing gates classify from step 3's outcome: a drained,
+   report-backed review with the key-shape commit and the absorb
+   postdating it renders the optional re-review gate and the user
+   declines it; no review at all renders the mandatory final-review
+   gate, the user says yes, and the final review step dispatches with
+   `--final` (the stub returns clean). Either way the wrap-up gate
+   renders and they say yes; the in-flight check finds nothing
+   running; the final review step finds the row incorporated and the
+   gate satisfied; document review and
    the compliance check run; the conclude gate reads the queue, finds
    it empty again, and the discussion completes with the `--kb`
    commit; the sweep finds no leavings, and the walk stops at the
@@ -74,8 +80,8 @@ Further claims:
   relevance-measurement), the key-shape commit, and the absorb commit
   — four distinct commits telling the concern's whole story
 - the agent store holds exactly one review row, incorporated, its
-  report on disk; no second review was dispatched at the key-shape
-  commit or at the close
+  report on disk — dispatched at the result-caching commit or at the
+  close, never both; nothing dispatched at the key-shape commit
 - the manifest holds `discussion.synonym-handling` as `completed`;
   behavioural-ranking's items are untouched
 - the delivery's scratch file under `.workflows/.cache/` is consumed

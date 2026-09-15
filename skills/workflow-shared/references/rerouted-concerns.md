@@ -192,8 +192,8 @@ A cross-topic correction tempts you to write guidance about the documents themse
 Write the outcome into the document:
 
 - **A pure correction** (the outcome is only that cited material is out of date — nothing new was decided): amend the affected sites in place, each amendment a dated note naming the superseding decision — e.g. *(Amended {date} — this cited {thing}; {origin} retired it on {date})* — striking or rewriting the stale text as each site needs. No dedicated section and no Context block: the dated amendments and the absorb commit are the concern's record.
-- **The concern's own ground** (the subtopic exists only because raising this concern added it — this raise's `add`, or an earlier raise of it the user moved on from): create a `## {title}` section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body, then document what the discussion concluded in the section's usual shape.
-- **Pre-existing subtopic**: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own — and, where the outcome re-decides the block, land the re-decision as a dated entry on its Decision per the template's revision convention. The Context join and the timeline entry are both this fold's writes — one without the other is half a fold. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the branch above prescribes.
+- **The concern's own ground** (the subtopic exists only because raising this concern added it — this raise's `add`, or an earlier raise of it the user moved on from): create a `## {title}` section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body verbatim — the entry is the record, never a summary of it — then document what the discussion concluded in the section's usual shape.
+- **Pre-existing subtopic**: append the provenance line and the concern's body verbatim to that subtopic's existing `### Context` — never a new heading of your own — and, where the outcome re-decides the block, land the re-decision as a dated entry on its Decision per the template's revision convention. The Context join and the timeline entry are both this fold's writes — one without the other is half a fold. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the branch above prescribes.
 
 Then set the map state — the fold corrects the record, it never advances the session's own open ground:
 
@@ -209,7 +209,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 #### If `phase` is `research`
 
-Fold the concern into the freeform body as a `### {title}` section opening with the provenance line, followed by the body and what the discussion made of it. Then the thread register, the rerouting topic as the origin:
+Fold the concern into the freeform body as a `### {title}` section opening with the provenance line, followed by the body verbatim and what the discussion made of it. Then the thread register, the rerouting topic as the origin:
 
 - **The fold holds the answer** — enter it and mark it learned:
   ```bash
@@ -280,7 +280,7 @@ Surface the engine's error verbatim — it names the recovery path. The concern 
 
 #### If `remaining` is non-zero
 
-Announce the move in one line — the concern now waits in this topic's `{other_phase}` queue, raised when that phase runs; when the response carries `reconcile_flagged` or `sources_staled`, say which downstream work the move flagged, and when the move parked the concern research-side, that this discussion now waits on that research — it cannot conclude, nor be re-entered once this session closes, until the research lands — the menu carries the way in. Then re-enter the check now, in this same turn — the move is the next raise's natural break, and the standing opt-in routes it straight to the next raise.
+Announce the move in one line carrying every fact that applies: the concern now waits in this topic's `{other_phase}` queue, raised when that phase runs; which downstream work the move flagged, when the response carries `reconcile_flagged` or `sources_staled`; and, when the move parked the concern research-side, that this discussion now waits on that research — it cannot conclude, and cannot be re-entered once this session closes, until the research lands — the menu carries the way in. Nothing about the moved concern is written into this document: the queue file travelled whole, and the announcement is its only trace here. Then re-enter the check now, in this same turn — the move is the next raise's natural break, and the standing opt-in routes it straight to the next raise.
 
 → Return to **A. Check**.
 
