@@ -1946,7 +1946,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     ), gate.stdout);
     const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
     assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
-    assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`p/proceed`'), 'back leads the family\'s options');
+    assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`y/yes`'), 'back leads the family\'s options');
     const unheld = run(['in-session-gate', 'v1', 'r']);
     assert.ok(unheld.stdout.includes('is not held by another session'), unheld.stdout);
 
