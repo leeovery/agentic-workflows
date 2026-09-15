@@ -19,6 +19,7 @@ const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
 const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
+const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -423,7 +424,7 @@ function archivedActions(item) {
   return labelled(
     'MENU: archived actions',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Selected: **${item.title}** (${item.type}, archived)`, [
+    menu(`Selected: **${escapeMarkdown(item.title)}** (${item.type}, archived)`, [
       cmdOption('v', 'view', 'View full content'),
       cmdOption('u', 'unarchive', 'Restore to the inbox'),
       cmdOption('d', 'delete', 'Permanently delete (removes the file from git)'),
@@ -442,7 +443,7 @@ function archivedDeleteGate(item) {
   return labelled(
     'MENU: archived delete gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Permanently deleting "${item.title}" removes the file from the repo and cannot be undone.`, [
+    menu(`Permanently deleting "${escapeMarkdown(item.title)}" removes the file from the repo and cannot be undone.`, [
       cmdOption('y', 'yes', 'Delete permanently'),
       cmdOption('n', 'no', 'Return'),
     ], { question: 'Delete it?' }),

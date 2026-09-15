@@ -496,6 +496,10 @@ describe('start projections: archived store', () => {
       '',
     ].join('\n'));
 
+    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md', '# A title with **bold** and a [link]\n');
+    const tricky = renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' });
+    assert.match(tricky, /Selected: \*\*A title with \\\*\\\*bold\\\*\\\* and a \\\[link\\\]\*\* \(bug, archived\)/, 'user-authored title markup is escaped');
+    assert.match(renderSurface(dir, 'archived-delete-gate', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' }), /deleting "A title with \\\*\\\*bold/);
     assert.throws(() => renderSurface(dir, 'archived-actions', {}), /render archived-actions: --path is required — the selected archived item/);
     assert.throws(() => renderSurface(dir, 'archived-delete-gate', {}), /render archived-delete-gate: --path is required/);
     assert.throws(() => renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/ideas/2026-06-01--live-idea.md' }), /not an archived inbox path/);
