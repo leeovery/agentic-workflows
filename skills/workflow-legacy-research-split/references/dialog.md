@@ -81,15 +81,10 @@ Candidate themes for {current_source}.md:
 @endforeach
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: legacy split themes gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`◆ Proceed with these themes?`**
-
-**`y/yes`**     → Proceed to draft cache files
-**`a/abandon`** → Skip this source file
-**Redirect**  → Adjust the theme list (rename, merge two, split one, add, remove)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant themes
 ```
 
 **STOP.** Wait for user response.
@@ -195,15 +190,10 @@ Plan for {current_source}.md:
 Source file will be renamed to {current_source}-superseded-{datetime}.md.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: legacy split plan gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`◆ Apply this plan?`**
-
-**`y/yes`**     → Apply this plan
-**`a/abandon`** → Skip this source file
-**Edit**      → Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant plan
 ```
 
 **STOP.** Wait for user response.
@@ -408,12 +398,10 @@ User specifies `theme_name`. Confirm before destructive removal:
 > Removing "{theme_name}" will drop its drafted content. Has its content been reabsorbed into another theme, or are you intentionally discarding it?
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`y/yes`** → Remove the theme and drop its content
-**`n/no`**  → Back out
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove
 ```
 
 **STOP.** Wait for user response.

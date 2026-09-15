@@ -2732,6 +2732,11 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], /travel together/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /belong to the reuse variant/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
+    sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.

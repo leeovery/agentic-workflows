@@ -4705,6 +4705,47 @@ function queryFailureGateSurface(_cwd, _args) {
   ], { question: 'How should I proceed?' }));
 }
 
+// The legacy research split's dialog gates, keyed by what each asks: themes
+// = the candidate theme list's early sanity gate, plan = the drafted plan's
+// apply consent, remove = the destructive theme-removal confirm.
+/** @type {Record<string, {question: string, options: string[]}>} */
+const LEGACY_SPLIT_GATES = {
+  themes: {
+    question: 'Proceed with these themes?',
+    options: [
+      cmdOption('y', 'yes', 'Proceed to draft cache files'),
+      cmdOption('a', 'abandon', 'Skip this source file'),
+      promptOption('Redirect', 'Adjust the theme list (rename, merge two, split one, add, remove)'),
+    ],
+  },
+  plan: {
+    question: 'Apply this plan?',
+    options: [
+      cmdOption('y', 'yes', 'Apply this plan'),
+      cmdOption('a', 'abandon', 'Skip this source file'),
+      promptOption('Edit', 'Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.'),
+    ],
+  },
+  remove: {
+    question: 'Remove the theme?',
+    options: [
+      cmdOption('y', 'yes', 'Remove the theme and drop its content'),
+      cmdOption('n', 'no', 'Back out'),
+    ],
+  },
+};
+
+const LEGACY_SPLIT_GATE_VARIANTS = Object.keys(LEGACY_SPLIT_GATES);
+
+/** One of the legacy split dialog's gates. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
+function legacySplitGateSurface(_cwd, { variant }) {
+  if (variant === undefined || !LEGACY_SPLIT_GATE_VARIANTS.includes(variant)) {
+    throw new Error(`render legacy-split-gate: --variant must be one of ${LEGACY_SPLIT_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  const gate = LEGACY_SPLIT_GATES[variant];
+  return section(`MENU: legacy split ${variant} gate`, STOP_FOR_RESPONSE, menu('', gate.options, { question: gate.question }));
+}
+
 // ---------------------------------------------------------------------------
 // The baseline surfaces — project-level, no address. Each handler resolves
 // the one BaselineState (domain/baseline.cjs), refuses states the calling
@@ -5007,6 +5048,7 @@ const SURFACES = {
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
+  'legacy-split-gate': legacySplitGateSurface,
 };
 
 /**
