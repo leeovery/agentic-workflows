@@ -1,0 +1,93 @@
+{
+  "origin": "the closing gates refused a map that settled over a parked rerouted concern — the red triage block rendered unprompted; split out of an hour-long case: this walk holds only that the last decision settling the map over a queued concern meets the queue as an offer, never as a refusal, and that the drain re-enters the close",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-discussion-process/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "conduct": "The user returned to settle result caching. Shown the parked concern the moment the session resumes, they say later — they want result caching settled first, and they settle it decisively: a per-session cache keyed on the normalised query, invalidated at the nightly aggregate refresh. Offered the concern again once that decision has landed, they say discuss. They engage it from its substance — the peer topic asking whether cache invalidation needs an expansion-side decision — and decide it does not: invalidation piggybacks the same nightly refresh event the cache already watches, nothing new to build, recorded as its own settled subtopic. They add nothing beyond these threads, never signal conclusion, and never ask what comes next; they answer what a rendered menu or a direct question asks and nothing more — a question put to them in prose once the concern has landed gets one flat sentence that they have nothing to add. On rendered gates they are agreeable to required steps: told a review must run before concluding they say yes; offered an optional extra they decline it.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "topic queue search-relevance discussion synonym-handling",
+      "render resume-gate search-relevance.discussion.synonym-handling --triage 1",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "discussion-map set search-relevance synonym-handling result-caching decided",
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
+      "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
+      "discussion-map set search-relevance synonym-handling expansion-cache-invalidation exploring",
+      "discussion-map set search-relevance synonym-handling expansion-cache-invalidation decided",
+      "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
+      "render closing-gate search-relevance.discussion.synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "render resume-gate search-relevance.discussion.synonym-handling --triage 1",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "discussion-map set search-relevance synonym-handling result-caching decided",
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "discussion-map set search-relevance synonym-handling expansion-cache-invalidation decided",
+      "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "render closing-gate search-relevance.discussion.synonym-handling"
+    ],
+    "calls_exclude": [
+      "render triage-block",
+      "render triage-announce",
+      "agent dispatch",
+      "topic complete",
+      "topic reopen search-relevance",
+      "topic requeue",
+      "discovery-map add",
+      "--kind perspective",
+      "(deferral)",
+      "knowledge.cjs index"
+    ]
+  }
+}

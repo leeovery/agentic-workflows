@@ -1,5 +1,5 @@
 {
-  "origin": "mid-session triage landings had no walk coverage — the framework's stub arming stands in for the peer session's delivery, and the walk pins the loop noticing a landing that postdates the entry pass: the natural-break offer, the later re-offer cadence, the surfaced discussion, the absorb, and the conclusion gate over the re-emptied queue",
+  "origin": "a landing mid-session was pinned only as one leg of an hour-long case that fused a landing, a deferral, a second decision, a settle, a drain and two entries into the close — split out: this walk holds only that a concern a peer lands after a decision is offered at the next break and stays queued when the user says later",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -45,7 +45,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user returned to settle result caching and the shape of its key, and does both decisively: a per-session cache keyed on the normalised query, invalidated at the nightly aggregate refresh; and the key is the normalised query alone — no session or user id folded in, since the cache is already per-session. When the session first offers the concern that lands mid-flight, they say later — they want the key shape settled first. Offered it again once the key shape has landed, they say yes. They engage the surfaced concern from its substance — the peer topic asking whether cache invalidation needs an expansion-side decision — and decide it does not: invalidation piggybacks the same nightly refresh event the cache already watches, nothing new to build, recorded as its own settled subtopic. They add nothing beyond these threads. They never volunteer a wrap-up; they answer what a rendered menu or a direct question asks. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: one more review is declined when offered, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user returned to settle result caching and the shape of its key, and settles result caching first, decisively: a per-session cache keyed on the normalised query, invalidated at the nightly aggregate refresh. When the session offers the concern that lands mid-flight, they say later — they want the key shape settled first. They add nothing beyond that, never signal conclusion, and answer what a rendered menu asks.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned",
     "discussion-peer-landing": "once, immediately after the commit that records the result-caching decision — before the session takes its next turn, and before any other subtopic is touched — acting as the peer relevance-measurement session, not as this session — write the stub content to .workflows/.cache/search-relevance/discussion/relevance-measurement/concern-expansion-cache-invalidation.md, then run: node .claude/skills/workflow-engine/scripts/engine.cjs topic triage search-relevance discussion synonym-handling --concern .workflows/.cache/search-relevance/discussion/relevance-measurement/concern-expansion-cache-invalidation.md --slug expansion-cache-invalidation -m \"discussion(search-relevance/relevance-measurement): reroute concern to synonym-handling\""
@@ -54,35 +54,34 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "discussion-map set search-relevance synonym-handling result-caching",
+      "render resume-gate search-relevance.discussion.synonym-handling",
+      "discussion-map set search-relevance synonym-handling result-caching decided",
       "topic triage search-relevance discussion synonym-handling",
-      "render triage-offer search-relevance.discussion.synonym-handling",
-      "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
-      "discussion-map set search-relevance synonym-handling expansion-cache-invalidation exploring",
-      "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
-      "render conclude-gate search-relevance.discussion.synonym-handling",
-      "topic complete search-relevance discussion synonym-handling",
-      "discussion-map set search-relevance synonym-handling cache-key-shape decided",
-      "render wait-gate search-relevance.discussion.synonym-handling",
-      "agent ack search-relevance discussion synonym-handling"
-    ],
-    "calls_exclude": [
-      "topic reopen search-relevance",
-      "discovery-map add",
-      "--kind perspective",
-      "knowledge.cjs index",
-      "drain triage",
-      "render triage-block"
+      "reroute concern to synonym-handling",
+      "topic queue search-relevance discussion synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
+      "render resume-gate search-relevance.discussion.synonym-handling",
+      "discussion-map set search-relevance synonym-handling result-caching decided",
       "topic triage search-relevance discussion synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling"
+    ],
+    "calls_exclude": [
+      "topic absorb",
+      "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
+      "discussion-map set search-relevance synonym-handling expansion-cache-invalidation",
       "discussion-map set search-relevance synonym-handling cache-key-shape decided",
-      "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
-      "render wait-gate search-relevance.discussion.synonym-handling",
-      "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
-      "render closing-gate search-relevance.discussion.synonym-handling",
-      "topic complete search-relevance discussion synonym-handling"
+      "render triage-block",
+      "render wait-gate",
+      "render closing-gate",
+      "render conclude-gate",
+      "topic complete",
+      "topic reopen search-relevance",
+      "discovery-map add",
+      "--kind perspective",
+      "knowledge.cjs index"
     ]
   }
 }
