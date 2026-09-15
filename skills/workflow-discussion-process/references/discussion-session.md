@@ -32,7 +32,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
-   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. A keep-going, `n/no`, or pause at a gate ends the ceremony, as does a `later` at an offer it raised; nothing else does.
+   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` or `p/pause` at the wait gate ends the ceremony; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened ends it at **H. The Map Gate**. Nothing else ends it.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -158,7 +158,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 One ceremony, two ways in — enter when either, or both at once, holds:
 
-- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever it runs: the session loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues), and the topic's triage queue is empty — a queued concern is raised first: the settle is the break the triage check offers it at (**A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**, the close holding over an earlier `later`), and the drain's last fold enters here — a `later` at that offer returns to **B. Session Loop**, the queue holding the close until it drains. Then in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
+- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A queued rerouted concern meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
 A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and the ceremony resumes once `pulled` drains — the session loop's check re-enters here. An unlanded call is undocumented knowledge.
@@ -227,7 +227,7 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 → On return, proceed as the reference directed.
 
-#### If `all_decided` is false and the user signalled conclusion
+#### If `all_decided` is false and this entry is the user's signal
 
 Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
 
@@ -251,9 +251,9 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 → Return to **B. Session Loop**.
 
-#### If `all_decided` is false and the map settling led here
+#### Otherwise
 
-The map moved between the flip and the gate. Undecided subtopics remain — keep exploring.
+The map moved since the close opened — ground an interruption re-opened, or a settle the gate no longer reads. The ceremony ends here; the next settling set or signal re-enters.
 
 → Return to **B. Session Loop**.
 

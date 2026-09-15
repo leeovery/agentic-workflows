@@ -61,7 +61,9 @@
       "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
       "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling",
-      "discussion-map set search-relevance synonym-handling cache-key-shape decided"
+      "discussion-map set search-relevance synonym-handling cache-key-shape decided",
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "agent ack search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
       "render concern",
@@ -75,6 +77,7 @@
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "topic triage search-relevance discussion synonym-handling",
+      "discussion-map set search-relevance synonym-handling cache-key-shape decided",
       "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
       "topic complete search-relevance discussion synonym-handling"
     ]

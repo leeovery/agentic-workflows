@@ -34,10 +34,7 @@ The prose should have taken this path:
    invalidated at the nightly refresh); the map records it decided —
    the set answering `all_decided: true` — and the write commits
    action-scoped; once it is committed the ceremony opens in the same
-   turn, with or without the user's own wrap-up. Should the worry
-   come after the decision instead, the closing gates render first,
-   the user raises it at the keep-going, steps 4–5 land it, and the
-   ceremony re-enters on their wrap-up
+   turn, with or without the user's own wrap-up
 7. the closing gates run the review machinery per the conduct (the
    stubbed review returns clean), the conclude gate finds the queue
    still empty, and the discussion completes with the `--kb` commit

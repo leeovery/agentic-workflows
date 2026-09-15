@@ -12,13 +12,19 @@ The triage queue precedes both gates — a queued concern is work the conclusion
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} discussion {topic}
 ```
 
-**If `count` is non-zero:**
+**If `count` is non-zero and this entry is the user's signal:**
 
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.discussion.{topic}
 ```
+
+→ Return to caller for **B. Session Loop**.
+
+**If `count` is non-zero:**
+
+The map settled, or the ceremony resumed, over a queued concern — it is raised before the gates, never refused: the session loop's triage check offers the queue at this break (the close holds over an earlier `later`), and the drain's last fold re-enters the close.
 
 → Return to caller for **B. Session Loop**.
 
@@ -80,7 +86,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 **If `no`:**
 
-One more review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
+One more review is declined for this ceremony — Step 6 honours the decline, a resumed ceremony does not re-offer it, and a later ceremony classifies afresh and offers again.
 
 → Proceed to **D. Conclude Gate**.
 

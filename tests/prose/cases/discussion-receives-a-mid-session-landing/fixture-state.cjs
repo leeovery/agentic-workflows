@@ -24,6 +24,6 @@ module.exports = {
     h.engine('discussion-map', 'add', WU, 'synonym-handling', 'result-caching');
     h.engine('discussion-map', 'add', WU, 'synonym-handling', 'cache-key-shape');
     h.engine('commit', WU, '--topic', 'discussion/synonym-handling', '-m',
-      `discussion(${WU}): reopen synonym-handling for result caching`);
+      `discussion(${WU}): reopen synonym-handling for result caching and its key`);
   },
 };

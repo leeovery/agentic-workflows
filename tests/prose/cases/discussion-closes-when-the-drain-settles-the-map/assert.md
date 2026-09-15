@@ -44,7 +44,7 @@ The prose should have taken this path:
    ground (`--subtopic failed-payment-retries`): the queue file
    deleted, the fold committed under the absorb's own message, the
    subtopic settled into the review-arming anchor. `remaining` is 0,
-   so the clear line renders and nothing else — no recap of the walk
+   so the clear line renders, and nothing recaps the walk
 8. in the same turn, with no question put to the user, the settled
    map is the trigger: the concluding flow renders the wait gate
    (`render wait-gate pay.discussion.pay`), which comes back empty —

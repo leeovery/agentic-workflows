@@ -18,7 +18,8 @@ The prose should have taken this path:
 5. the user asks for a fresh review of the document. Their request is
    the trigger: the movement backoff does not apply. Nothing settled is
    waiting to be written, the prior reviews are all drained, both
-   queues are empty, and no wrap-up was signalled — so nothing blocks
+   queues are empty, and the closing gates are neither next nor
+   underway — so nothing blocks
 6. the session dispatches the review with `--final` — review-004 —
    announces that the background review is dispatched, and does not
    wait on the agent. The stub holds its report back: the row stays in

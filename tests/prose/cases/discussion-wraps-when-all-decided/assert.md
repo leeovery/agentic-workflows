@@ -27,15 +27,15 @@ The prose should have taken this path:
    write is committed the ceremony opens in the same turn — before
    the user has to say anything, though they may still offer their
    wrap-up: the map is read through the gateway and comes back fully
-   decided — and the closing work is still classified and gated: the pending closing work is read from the agent store, and
-   the user is asked — one more review offered where the
-   discussion moved since the last one, or the conclude ask where the
-   review is up to date — with the walk ending only after their
-   answer(s). Nothing passes silently from the settled map into the
-   final review
+   decided — and the closing work is still classified and gated: the
+   pending closing work is read from the agent store, and the user is
+   asked — one more review offered where the discussion moved since
+   the last one, or the conclude ask where the review is up to date —
+   with the walk ending only after their answer(s). Nothing passes
+   silently from the settled map into the final review
 8. the walk stops before the final gap review step runs — no review
-   executes after the wrap, document review and the compliance check
-   never load, and the discussion is not completed
+   executes after the closing gates, document review and the
+   compliance check never load, and the discussion is not completed
 
 Further claims:
 

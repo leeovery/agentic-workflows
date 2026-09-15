@@ -64,7 +64,7 @@ Emit its `DISPLAY: triage announce` section verbatim as a code block, then open 
 
 #### If at a natural break
 
-A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist, with two readings of its own: a recent `later` defers the re-offer until the conversation has genuinely moved on — except at the close, the user's signal or the map settling, which is the break a deferred concern was waiting for and holds over the `later` — and the just-opened signal does not count here, the announce having spent it; a break in the session's own thread is what qualifies.
+A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist, with two readings of its own: a recent `later` defers the re-offer until the conversation has genuinely moved on — except at the close, the user's signal or, in discussion, the map settling, which is the break a deferred concern was waiting for and holds over the `later` — and the just-opened signal does not count here, the announce having spent it; a break in the session's own thread is what qualifies.
 
 → Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
 
@@ -280,7 +280,7 @@ Announce the move in one line — the concern now waits in this topic's `{other_
 
 #### If `remaining` is `0`
 
-Announce the move in the same one line, then emit the clear line and nothing else:
+Announce the move in the same one line, then emit the clear line — no recap of the walk:
 
 > *Output the next fenced block as a code block:*
 

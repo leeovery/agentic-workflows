@@ -46,7 +46,7 @@ Nothing awaited engagement — drain any further rows before proceeding.
 
 **If the row still holds unraised findings** (the user deferred at the announce menu):
 
-The session owns the deferral — the loop's check offers the findings again at this break; the ceremony resumes once they are walked, or ends on a further `later`, the next signal or settling set re-entering this gate.
+The session owns the deferral — the close holds until the findings are walked: the loop's check offers them again at a later break, and the ceremony resumes once they drain.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
