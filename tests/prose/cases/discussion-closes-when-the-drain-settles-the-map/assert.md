@@ -21,8 +21,8 @@ The prose should have taken this path:
    ask is a decision owed here, so no move to the other phase-side is
    offered. Its title names a decided subtopic, so the ground re-arms
    at the raise: the map's subtopics are read and
-   `failed-payment-retries` is set `exploring` before the breakdown —
-   which is presented in the walk's own voice, never the entry
+   `failed-payment-retries` is set `exploring` before the raise —
+   composed as an opener in the walk's own voice, never the entry
    verbatim, never from the title alone — and the map is no longer
    all decided
 6. the concern is discussed as real material and the user lands the
