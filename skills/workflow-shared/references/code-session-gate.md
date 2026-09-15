@@ -32,7 +32,7 @@ Emit both sections verbatim per their markers — the blocking fact, then the me
 
 **STOP.** Do not proceed — terminal condition.
 
-**If `proceed`:**
+**If `yes`:**
 
 The user owns the consequence; nothing further is said about it.
 

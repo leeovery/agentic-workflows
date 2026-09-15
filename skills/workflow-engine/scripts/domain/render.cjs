@@ -2165,9 +2165,10 @@ function reviewFindingsGate(cwd, { dotpath }) {
   return section('MENU: review findings gate', STOP_FOR_RESPONSE, menu(
     `The review left ${n} finding${n === 1 ? '' : 's'} still to walk.`,
     [
-      cmdOption('r', 'review', 'Work through them now'),
+      cmdOption('y', 'yes', 'Work through them now'),
       cmdOption('s', 'skip', 'Acknowledge and conclude the topic'),
     ],
+    { question: 'Walk them now?' },
   ));
 }
 
@@ -4121,7 +4122,7 @@ function codeGate(cwd, { dotpath }) {
         '**`◆ Proceed anyway?`**',
         '',
         cmdOption('b', 'back', 'Leave that session to it (recommended)'),
-        cmdOption('p', 'proceed', 'Enter anyway — two sessions on one code base'),
+        cmdOption('y', 'yes', 'Enter anyway — two sessions on one code base'),
       ]),
     ),
   ].join('\n');

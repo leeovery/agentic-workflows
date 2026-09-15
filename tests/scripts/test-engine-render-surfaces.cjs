@@ -3755,7 +3755,7 @@ describe('render code-gate', () => {
     assert.match(menu, /Only proceed if you know that session is no longer working/, menu);
     assert.match(menu, /presence clear ship implementation checkout-flow/, menu);
     assert.match(menu, /\*\*`◆ Proceed anyway\?`\*\*/, menu);
-    assert.ok(menu.indexOf('`b/back`') < menu.indexOf('`p/proceed`'), 'back leads');
+    assert.ok(menu.indexOf('`b/back`') < menu.indexOf('`y/yes`'), 'back leads');
     assert.match(menu, /`b\/back`\*\* +→ Leave that session to it \(recommended\)/, menu);
   });
 
@@ -4039,10 +4039,12 @@ describe('render review-findings-gate', () => {
     assert.strictEqual(out, [
       "=== MENU: review findings gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ The review left 2 findings still to walk.`**',
+      'The review left 2 findings still to walk.',
       '',
-      '**`r/review`** → Work through them now',
-      '**`s/skip`**   → Acknowledge and conclude the topic',
+      '**`◆ Walk them now?`**',
+      '',
+      '**`y/yes`**  → Work through them now',
+      '**`s/skip`** → Acknowledge and conclude the topic',
       '',
     ].join('\n'));
     assert.doesNotMatch(out, /final review/i);
@@ -4051,7 +4053,7 @@ describe('render review-findings-gate', () => {
   it('a lone finding takes the singular', () => {
     store('discussion', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
     assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
-      /`◆ The review left 1 finding still to walk\.`/);
+      /The review left 1 finding still to walk\.\n\n\*\*`◆ Walk them now\?`\*\*/);
   });
 
   it('a research address is refused whatever its store holds — the gate is the discussion close\'s', () => {
