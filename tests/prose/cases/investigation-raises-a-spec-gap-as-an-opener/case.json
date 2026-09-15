@@ -39,7 +39,6 @@
       "render phase-note crash-fix.investigation.crash-fix --verb Resuming",
       "topic queue crash-fix investigation crash-fix",
       "render resume-gate crash-fix.investigation.crash-fix --triage 1",
-      "topic queue crash-fix investigation crash-fix",
       "write:.workflows/.cache/crash-fix/investigation/crash-fix/triage-offer.json",
       "render triage-offer crash-fix.investigation.crash-fix"
     ],
