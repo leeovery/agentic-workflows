@@ -250,13 +250,13 @@ Run the wizard in your terminal:
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 
 It configures system defaults, initialises the project store, and
-runs the initial indexing pass. Say `d/done` here when it
+runs the initial indexing pass. Say `y/yes` here when it
 completes.
 ```
 
 **STOP.** Wait for user response.
 
-#### If `done`
+#### If `yes`
 
 Re-run the boot check:
 
