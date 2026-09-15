@@ -1647,6 +1647,16 @@ describe('render finding-batch', () => {
     assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
     assert.match(out, /one that should stay here/);
     assert.ok(out.includes(`${DOTS}\n**\`◆ Send it?\`**\n\n**\`y/yes\`**`), 'a label-less menu opens on its question');
+    const two = writePayload(dir, 'r2.json', {
+      lane: 'route',
+      items: [
+        { title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' },
+        { title: 'Retry budget belongs to the sync loop', target: 'storage-and-sync', detail: 'Their loop owns the budget.' },
+      ],
+    });
+    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
+    assert.ok(plural.includes(`${DOTS}\n**\`◆ Send them?\`**\n\n**\`y/yes\`**`), 'the plural asks for the set');
+    assert.match(plural, /\*\*`y\/yes`\*\* → Send all 2$/m);
   });
 
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {

@@ -876,6 +876,8 @@ describe('pipeline simulation', () => {
     assert.ok(baseline.committed, 'the baseline commit lands the spec');
     sim.run(['topic', 'start', wu, 'planning', wu]);
     sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
+    // Scoping's format step fetches the same offer planning does.
+    assert.match(sim.render(['plan-format-gate'], { expect: 'content' }), /Use the same format\?/);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', `spec_commit=${baseline.committed}`,
       'task_list_gate_mode=auto', 'author_gate_mode=auto',
