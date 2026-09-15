@@ -17,8 +17,10 @@ The prose should have taken this path:
    before any session output, and stops for the user
 4. the user opts in; the raise reads the queue file as the session's
    own brief; the ask is a decision this discussion owes, so no
-   requeue offer renders; the concern's title names ground not on the
-   map, so it is added and armed `exploring` before anything is said
+   requeue offer renders; the concern's title names no subtopic, but
+   its ask re-decides the cutover clause of the decided
+   `expansion-source`, so that ground re-arms `exploring` before
+   anything is said — no new subtopic is added
 5. the raise is composed as an opener from the entry and emitted in
    the same turn, and the turn ends awaiting the user, where the walk
    stops
@@ -76,6 +78,7 @@ Further claims:
 - the walk stops with the raise pending; the user never answers it
 
 EXPECTED WORLD — the fixture plus exactly one durable change: the
-manifest's map for synonym-handling holds `hand-list-cutover` at
-`exploring`, armed by the raise. Render payloads and per-turn
+manifest's map for synonym-handling holds `expansion-source` at
+`exploring` (it was `decided`), re-armed by the raise; no subtopic is
+added. Render payloads and per-turn
 heartbeats under `.workflows/.cache/` are machinery, not changes.

@@ -142,19 +142,19 @@ The ask is worked here after all. Continue with the raise below.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
 ```
 
-Route on the ground the concern reopens — the subtopic its title names (`{title:(kebabcase)}`), or, for a correction whose title names no subtopic, the subtopic whose recorded content it corrects — noting its prior state for the fold:
+Route on the ground the concern reopens — the subtopic its title names (`{title:(kebabcase)}`), or, when its title names no subtopic, the subtopic whose recorded content its ask corrects or re-decides; only a concern that touches nothing recorded is new ground. Note the prior state for the fold; `{subtopic}` is the routed ground's name:
 
 - Not on the map — new ground. Add it, then arm it:
 
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} exploring
+  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
   ```
 
 - `decided` or `deferred` — settled ground is reopening — or `pending` — open ground coming under discussion. Arm it:
 
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} exploring
+  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
   ```
 
 - `exploring` or `converging` — already live. Leave it.
@@ -202,7 +202,7 @@ Then set the map state — the fold corrects the record, it never advances the s
 - **The session's own open ground** (was `pending`, `exploring`, or `converging` before any raise of this concern): leave it where the arming put it — never `decided` from a fold, however settled the exchange felt. Deciding the session's ground is its own work after the queue empties.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} {state}
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
 ```
 
 → Proceed to **E. Absorb**.

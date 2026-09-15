@@ -16,8 +16,9 @@ import at a discounted weight with a decay window), a rejected
 parallel-merge alternative, a lookup-latency figure against the search
 budget, the origin session's own lean with its derivation, and the
 one ask it leaves synonym-handling. Triage reopened synonym-handling
-and installed the concern as one queue file whose title names ground
-not on the map; the delivery's own commit closed that session.
+and installed the concern as one queue file whose
+title names no subtopic but whose ask re-decides the decided
+expansion-source's cutover clause; the delivery's own commit closed that session.
 
 Hours have passed. The context was cleared — this session opens cold
 at the discussion entry skill with nothing but the three arguments

@@ -48,17 +48,14 @@
       "render resume-gate search-relevance.discussion.synonym-handling",
       "topic queue search-relevance discussion synonym-handling",
       "render triage-offer search-relevance.discussion.synonym-handling",
-      "discussion-map add search-relevance synonym-handling hand-list-cutover",
-      "discussion-map set search-relevance synonym-handling hand-list-cutover exploring"
+      "discussion-map set search-relevance synonym-handling expansion-source exploring"
     ],
     "calls_in_order": [
       "render entry-gate search-relevance.discussion.synonym-handling",
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
-      "topic queue search-relevance discussion synonym-handling",
       "render triage-offer search-relevance.discussion.synonym-handling",
-      "discussion-map add search-relevance synonym-handling hand-list-cutover",
-      "discussion-map set search-relevance synonym-handling hand-list-cutover exploring"
+      "discussion-map set search-relevance synonym-handling expansion-source exploring"
     ],
     "calls_exclude": [
       "render requeue-offer",
@@ -68,7 +65,8 @@
       "topic start search-relevance discussion synonym-handling",
       "topic reopen",
       "topic complete",
-      "hand-list-cutover decided",
+      "discussion-map add search-relevance synonym-handling",
+      "expansion-source decided",
       "agent dispatch",
       "--kind review",
       "--kind perspective",
