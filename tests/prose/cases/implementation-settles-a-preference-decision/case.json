@@ -56,6 +56,7 @@
       "task init pay pay",
       "manifest get pay work_type",
       "manifest get pay.implementation.pay staging",
+      "manifest get pay.review.pay staging",
       "task analysis-cycle pay pay",
       "impl(pay): analysis cycle 1 — findings",
       "impl(pay): analysis cycle 1 — synthesis",
@@ -70,7 +71,6 @@
       "staging.c1.tasks.2 approved",
       "manifest set pay.planning.pay task_map.pay-2-1",
       "manifest set pay.planning.pay task_map.pay-2-2",
-      "manifest push pay.implementation.pay machine_phases 2",
       "impl(pay): analysis cycle 1 — staged tasks",
       "impl(pay): add analysis cycle 1",
       "--plan pay"
@@ -89,7 +89,6 @@
       "staging.c1.tasks.2 approved",
       "write:.workflows/pay/planning/pay/tasks/pay-2-2.md",
       "manifest set pay.planning.pay task_map.pay-2-2",
-      "manifest push pay.implementation.pay machine_phases 2",
       "impl(pay): analysis cycle 1 — staged tasks",
       "--plan pay"
     ],

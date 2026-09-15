@@ -47,7 +47,7 @@ const PHASE_BOUNDED_GATES = /** @type {(keyof GateModes)[]} */ (
  * @property {string} task  the internal id
  * @property {'started'|'resumed'} mode  `resumed` when the task was already in flight with its fix-tracking file
  * @property {{task_gate_mode: string, fix_gate_mode: string}} gates
- * @property {boolean} do_banking  the task's plan phase is still taking BANK deposits
+ * @property {boolean} do_banking  the task's phase is still taking BANK deposits
  */
 
 /**
@@ -146,23 +146,19 @@ function phaseOfInternalId(internalId) {
 }
 
 /**
- * True while a plan phase is still taking BANK deposits: the work unit is
- * not a quick-fix (its plan never takes a boundary, so nothing would drain
- * a deposit), the phase is plan-authored (a machinery-created phase — an
- * analysis cycle's or a review remediation's — is recorded in
- * `machine_phases` by the flow that lands it), and the phase has neither
- * staged its boundary walk nor been consolidated. Derived from what the
- * manifest already holds — nothing stores it.
+ * True while a phase is still taking BANK deposits: the work unit is not a
+ * quick-fix (its plan never takes a boundary, so nothing would drain a
+ * deposit), and the phase has neither staged its boundary walk nor been
+ * consolidated. Derived from what the manifest already holds — nothing
+ * stores it.
  * @param {string|undefined} workType the manifest's top-level `work_type`
  * @param {Record<string, any>} item @param {number} phase
  * @returns {boolean}
  */
 function bankingOpen(workType, item, phase) {
-  const machine = Array.isArray(item.machine_phases) ? item.machine_phases : [];
   const consolidated = Array.isArray(item.consolidated_phases) ? item.consolidated_phases : [];
   const staging = item.staging && typeof item.staging === 'object' ? item.staging : {};
   return workType !== 'quick-fix'
-    && !machine.includes(phase)
     && !consolidated.includes(phase)
     && !(`p${phase}` in staging);
 }
@@ -172,8 +168,8 @@ function bankingOpen(workType, item, phase) {
  * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
  * only: the four gate modes back to `gated` — `analysis_cycle_total`,
  * `linters`, `project_skills`, `current_phase`, `current_task`,
- * `completed_tasks`, `completed_phases`, `consolidated_phases`,
- * `machine_phases`, and `bank` are never touched.
+ * `completed_tasks`, `completed_phases`, `consolidated_phases`, and `bank`
+ * are never touched.
  * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
  * file (a crash-resume mid-task): the counter and file are that task's
  * convergence history and stay in lockstep — zeroing one without the other
@@ -249,7 +245,7 @@ function initTasks(cwd, workUnit, topic) {
  * which happened: the task loop dispatches an executor for a `started` task
  * and routes a `resumed` one to its pending fix gate, where the recorded
  * findings are still unanswered. Both modes answer `do_banking` — whether
- * the task's plan phase is still taking BANK deposits.
+ * the task's phase is still taking BANK deposits.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic

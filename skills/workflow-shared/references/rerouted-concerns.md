@@ -4,7 +4,7 @@
 
 ---
 
-Surfaces the current topic's triage queue — concerns rerouted here from other topics, one engine-numbered file each, shape pinned in [triage-landing.md](triage-landing.md) — one at a time, through conversation. A concern leaves the queue only after it has been raised with its full context, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit — or moved to the topic's other phase-side when its ask turns out to be owed there. An empty queue is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its queue holds entries, so nothing is lost however freely the user moves.
+Surfaces the current topic's triage queue — concerns rerouted here from other topics, one engine-numbered file each, shape pinned in [triage-landing.md](triage-landing.md) — one at a time, through conversation. A concern leaves the queue only after it has been raised, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit — or moved to the topic's other phase-side when its ask turns out to be owed there. An empty queue is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its queue holds entries, so nothing is lost however freely the user moves.
 
 ## Parameters
 
@@ -116,9 +116,9 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 ## C. Raise One Concern
 
-Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool. The entry is your brief, never the user's display: it reaches the conversation only through your breakdown, and the raw entry is shown only when the user asks.
+Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool; `{origin}` is where its provenance line says the concern came from — the topic named there, or that topic's phase when the name is this topic's own. The entry is your brief, never the user's display: it reaches the conversation only through the raise you compose from it and the responses that follow, and the raw entry is shown only when the user asks.
 
-**If the entry's ask is owed the topic's other phase-side** — `phase` is `research` or `discussion`, and the ask calls for what the pair's other phase does: a decision owed, or a correction to material the other side's document records, while this session explores; an open question needing exploration while this session decides — offer the move before any breakdown, once per concern (a declined or refused offer never re-renders). Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json` with the Write tool — `{"file": "{NNN-slug}.md", "title": "…", "reason": "…"}`, the reason one sentence naming why the ask belongs the other side — then render:
+**If the entry's ask is owed the topic's other phase-side** — `phase` is `research` or `discussion`, and the ask calls for what the pair's other phase does: a decision owed, or a correction to material the other side's document records, while this session explores; an open question needing exploration while this session decides — offer the move before any raise, once per concern (a declined or refused offer never re-renders). Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json` with the Write tool — `{"file": "{NNN-slug}.md", "title": "…", "reason": "…"}`, the reason one sentence naming why the ask belongs the other side — then render:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render requeue-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json
@@ -136,7 +136,7 @@ Emit its `MENU: requeue offer` section verbatim as markdown (not a code block).
 
 The ask is worked here after all. Continue with the raise below.
 
-**If `phase` is `discussion`, arm the Discussion Map before presenting** — the map tells the truth while the concern is live, and routing a correction needs the body just read. Read the subtopic states:
+**If `phase` is `discussion`, arm the Discussion Map before raising** — the map tells the truth while the concern is live, and routing a correction needs the body just read. Read the subtopic states:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
@@ -159,7 +159,13 @@ Route on the ground the concern reopens — the subtopic its title names (`{titl
 
 - `exploring` or `converging` — already live. Leave it.
 
-Present the concern in your own voice — name its origin in a sentence, then break it down. The reopened ground may be days old and the reader cold — the entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Every substantive point in the entry surfaces before the concern folds — the user decides from the substance, never from the title. An entry carrying one ask surfaces whole. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: open with a one-line map of what the entry brings (titles only), then break down the first unresolved ask alone — on a fresh raise that is the first ask; on a re-raise of a half-walked entry, the first its earlier walk left open; each later ask waits for the one before it to resolve and gets its own full breakdown when its turn comes. Keep it simple and engineer-level, sized to the ask on the table, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone — for a walked entry, this ask alone: no other queued concern, open item, or finding rides along; a gap you spot while preparing the breakdown is your finding, not the entry's — it parks as a tangent (below), never joins the raise. The closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
+The raise covers this concern alone — for a walked entry, this ask alone: no other queued concern, open item, or finding rides along, and a gap you spot while preparing it is your finding, not the entry's — it parks as a tangent (below), never joins the raise. An entry carrying one ask is one raise. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: a one-line map of what the entry brings (titles only) sits above the raise, beside the bridge where one is owed, then the first unresolved ask is raised alone — on a fresh raise that is the first ask; on a re-raise of a half-walked entry, the first its earlier walk left open; each later ask waits for the one before it to resolve and gets its own raise when its turn comes.
+
+Compose the raise from the entry — or from the ask on the table — digested, never read out, with where it came from as the source:
+
+→ Load **[composing-a-raise.md](composing-a-raise.md)** with source = `reroute`, origin = `{origin}`.
+
+Raise it in the current turn, then stop: the raise proposes and never lands — nothing is documented until the user has replied. Their reply calibrates what comes next: the depth the raise held back — the entry's full case, its costs, what the origin weighed — enters as responses, each piece when the direction on the table calls for it, and the fold records the outcome. Vary the shape across a multi-concern queue — identical raises read as a template, not a colleague.
 
 **STOP.** Wait for user response.
 

@@ -35,6 +35,5 @@ The status block:
 ```
 STATUS: complete
 TASKS_CREATED: 1
-PHASES: 1
 SUMMARY: Created the approved consolidation task in phase 1.
 ```

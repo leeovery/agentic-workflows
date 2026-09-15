@@ -34,7 +34,7 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-discussion-process/references/background-agent-surfacing.md",
-    "skills/workflow-discussion-process/references/composing-a-raise.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
     "skills/workflow-shared/references/making-it-land.md",
     "skills/workflow-shared/references/natural-breaks.md",
     "skills/workflow-discussion-process/references/final-review.md",
@@ -65,7 +65,6 @@
       "topic complete search-relevance discussion relevance-measurement"
     ],
     "calls_exclude": [
-      "render concern",
       "topic reopen",
       "discovery-map add",
       "--kind perspective",

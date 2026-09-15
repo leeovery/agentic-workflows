@@ -366,10 +366,10 @@ describe('calls_in_order — presence is not sequence', () => {
     const rows = [
       bash(`${ENGINE} render proposed-task pay.implementation.pay --gate gated`),
       bash(`${ENGINE} manifest set pay.implementation.pay staging.c1.tasks.1 approved && ${ENGINE} manifest set pay.implementation.pay analysis_gate_mode auto`),
-      bash(`${ENGINE} manifest push pay.implementation.pay machine_phases 2`),
+      bash(`${ENGINE} manifest push pay.implementation.pay consolidated_phases 2`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['--gate gated', 'staging.c1.tasks.1 approved', 'analysis_gate_mode auto', 'machine_phases 2'],
+      calls_in_order: ['--gate gated', 'staging.c1.tasks.1 approved', 'analysis_gate_mode auto', 'consolidated_phases 2'],
     });
     assert.equal(result.ok, true, result.detail);
   });

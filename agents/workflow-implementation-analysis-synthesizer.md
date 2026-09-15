@@ -19,7 +19,7 @@ You receive via the orchestrator's prompt:
 2. **Topic name** — the implementation topic
 3. **Cycle number** — which analysis cycle this is
 4. **finding-floor.md path** — the floor every finding clears
-5. **Settled directions** — the manifest's `staging` JSON: every `p{M}` or `c{M}` row marked `approved` names a proposal in that pass's staging file (`consolidation-tasks-p{M}.md`, `analysis-tasks-c{M}.md`) whose `## Task {n}` title and Solution an earlier pass settled; absent when no pass has landed a task
+5. **Settled directions** — the implementation and review items' `staging` JSON: every implementation `p{M}` or `c{M}` row and every review `c{M}` row marked `approved` names a proposal in that pass's staging file (`consolidation-tasks-p{M}.md`, `analysis-tasks-c{M}.md`, `review-tasks-c{M}.md`) whose `## Task {n}` title and Solution an earlier pass settled; absent when no pass has landed a task
 
 ## Your Process
 

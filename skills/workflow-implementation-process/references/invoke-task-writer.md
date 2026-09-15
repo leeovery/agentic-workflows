@@ -34,7 +34,6 @@ Returns a brief status:
 ```
 STATUS: complete
 TASKS_CREATED: {N}
-PHASES: {comma-separated phase numbers}
 SUMMARY: {1 sentence}
 ```
 

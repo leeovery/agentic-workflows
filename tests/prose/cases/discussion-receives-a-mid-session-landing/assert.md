@@ -35,7 +35,7 @@ The prose should have taken this path:
    earlier later), and the user takes it
 7. the raise reads the queue file as the session's own brief, arms the
    map — the concern is new ground (`discussion-map add` then set
-   `exploring`) — and presents a breakdown — the entry never emitted
+   `exploring`) — and raises it as an opener — the entry never emitted
    verbatim — then the concern is discussed to a decision
 8. the fold writes the armed subtopic: a provenance-led Context, the
    decision documented, the map set `decided` — answering

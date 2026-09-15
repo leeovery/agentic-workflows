@@ -39,7 +39,8 @@ The prose should have taken this path:
    besides. Two return findings, so the all-clean arm never applies: the findings commit
    lands scoped to the implementation topic and the flow proceeds to
    the synthesis — the bank is never read
-9. the manifest's staging is read — absent, so the print is empty — and
+9. the implementation and review staging are read — both absent, so
+   the prints are empty — and
    the synthesizer is dispatched with work unit, topic, cycle number
    and the floor's path, no settled directions, and nothing else. The stub writes the report —
    its Spec Defects entry and the one comment correction collected

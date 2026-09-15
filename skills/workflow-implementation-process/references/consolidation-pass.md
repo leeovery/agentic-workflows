@@ -22,22 +22,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > Phase {N}'s tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way.
 ```
 
-Resume guards — read the durable state (both prints are empty when the field is absent), then check in order, first match wins:
+Resume guards — read the durable state (each print is empty when the field is absent; the review item's `staging` carries the review walk's approval rows, read here for **B**), then check in order, first match wins:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} staging
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidated_phases
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} staging
 ```
 
 #### If the work unit's `work_type` is `quick-fix` (read at loop entry)
 
 A quick-fix plan never grows — record the phase without a sweep.
-
-→ Proceed to **F. Record the Phase**.
-
-#### If the phase's label (the planning file's `Phase {N}:` heading) names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`)
-
-The boundary never applies to remediation phases — record the phase without a sweep.
 
 → Proceed to **F. Record the Phase**.
 
@@ -105,7 +100,7 @@ Read the findings file. The finder proposes; this stage disposes, with the sessi
 
    → Load **[finding-floor.md](finding-floor.md)**.
 
-   The prelude's `staging` read names every earlier walk (`p{M}`, `c{M}`); each row marked `approved` is a proposal in that pass's staging file (`consolidation-tasks-p{M}.md`, `analysis-tasks-c{M}.md`) whose title and Solution an earlier pass settled. Judge each finding's proposed shape against them: A proposal that reverses a settled direction is dropped unless the finding shows that direction wrong by measurement, the specification, or a project rule — and then the proposal names the ground. Reverses, not touches: extending, completing, or building on a direction is no reversal; a measured defect is always grounds; a reversal without grounds is dropped here, never raised to the user as a fork. Then drop every finding that names no failure it prevents. Then drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Then list the plan's open tasks with the format's **reading.md** and drop any finding whose ground a pending task already owns — that work is owed either way, so every proposal reaching the walk is one nothing upcoming covers.
+   The prelude's two `staging` reads name every earlier walk — the implementation item's `p{M}` and `c{M}` rows, the review item's `c{M}` rows; each row marked `approved` is a proposal in that pass's staging file (`consolidation-tasks-p{M}.md`, `analysis-tasks-c{M}.md`, `review-tasks-c{M}.md`) whose title and Solution an earlier pass settled. Judge each finding's proposed shape against them: A proposal that reverses a settled direction is dropped unless the finding shows that direction wrong by measurement, the specification, or a project rule — and then the proposal names the ground. Reverses, not touches: extending, completing, or building on a direction is no reversal; a measured defect is always grounds; a reversal without grounds is dropped here, never raised to the user as a fork. Then drop every finding that names no failure it prevents. Then drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Then list the plan's open tasks with the format's **reading.md** and drop any finding whose ground a pending task already owns — that work is owed either way, so every proposal reaching the walk is one nothing upcoming covers.
 2. **Settle the spec defects** — each `## Spec Defects` entry is classified before a proposal is written, so the tasks are authored against a correct specification.
 
    **If the findings file carries a `## Spec Defects` section** — once per entry:
@@ -320,7 +315,6 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 ```
 STATUS: complete
 TASKS_CREATED: {K}
-PHASES: {phase numbers}
 SUMMARY: {1 sentence}
 ```
 

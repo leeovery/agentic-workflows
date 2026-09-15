@@ -108,7 +108,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's plan phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 The `start` response's `mode` says whether this task is being taken up or resumed.
@@ -470,7 +470,6 @@ Include the user's feedback when re-invoking.
 - `continuing` — tasks remain open or in-progress in the current phase.
 - `completing` — none remain and the boundary is not owed. Any of:
   · the work type is `quick-fix` — its plan never grows;
-  · the phase's label (the planning file's `Phase {N}:` heading) starts with `Analysis (Cycle` or `Review Remediation`;
   · `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; absent is empty) and every `approved` row of `staging.p{N}` has its task in the plan — a missing one marks a partial task-author or task-writer run, which is `boundary`.
 - `boundary` — none remain and no `completing` condition holds: the consolidation pass is owed, or unfinished. Leave the phase open in the plan — **J. Consolidation Pass** completes it once the pass has landed.
 

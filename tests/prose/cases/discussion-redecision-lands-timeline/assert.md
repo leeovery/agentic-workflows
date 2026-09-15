@@ -16,11 +16,13 @@ The prose should have taken this path:
 4. the session loop's first triage check reads the queue and renders
    the one-entry agenda with the offer menu; on the user's go the
    concern's queue file is read as the session's own brief and
-   presented as a breakdown — the entry never emitted verbatim, and
-   never from the title alone. Because the concern's title names an
+   raised as an opener — the entry never emitted verbatim, and never
+   from the title alone. Because the concern's title names an
    existing subtopic in a settled state, the ground re-arms at the
    raise: `expansion-source` is set to `exploring` before the
-   discussion starts, and the map is no longer all-decided
+   discussion starts, and the map is no longer all-decided; the raise
+   puts what the settled call rested on beside what has moved and
+   says whether the call still holds
 5. the session discusses the concern as real material and the user
    lands the changed decision (batch aggregates, daily refresh). The
    outcome re-decides ground this document didn't introduce — the

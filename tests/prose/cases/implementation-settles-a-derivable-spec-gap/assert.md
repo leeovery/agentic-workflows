@@ -32,7 +32,8 @@ The prose should have taken this path:
    free-collaborators finding. Two return findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
    topic, and the bank is never read
-8. the manifest's staging is read — absent, so the print is empty — and
+8. the implementation and review staging are read — both absent, so
+   the prints are empty — and
    the synthesizer dispatches with work unit, topic, cycle number and
    the floor's path, no settled directions, and nothing else. The stub writes the report and the staging file
    and returns tasks_proposed with ONE task. The gate state initialises with exactly one pending

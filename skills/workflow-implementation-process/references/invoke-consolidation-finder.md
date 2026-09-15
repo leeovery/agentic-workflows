@@ -28,7 +28,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **Agent path**: `../../../agents/workflow-implementation-consolidation-finder.md`
 
-Dispatch a **fresh** agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built. Pass:
+Dispatch a **fresh** agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built.
+
+> **CRITICAL**: Pass **only** the nine inputs listed below — no reviewer observations, no findings held in conversation, no notes from earlier tasks. The bank is the only route by which a task-time finding reaches the sweep.
+
+Pass:
 
 1. **Phase files** — the file list from scope identification
 2. **Bank entries** — the full bank JSON (the finder confirms or drops each against the phase's final state)
