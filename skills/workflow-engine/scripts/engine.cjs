@@ -34,7 +34,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
-const { applySessionLabel, restoreSessionLabel, repairSessionLabels, recordLabelChoice } = require('./domain/session-label.cjs');
+const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -55,6 +55,15 @@ function die(msg) {
 /** One decision-ready JSON line on stdout. @param {object} obj */
 function respond(obj) {
   process.stdout.write(JSON.stringify({ ok: true, ...obj }) + '\n');
+}
+
+/**
+ * The same line on stderr — for a SessionStart hook target, whose stdout
+ * Claude Code injects into the conversation as context.
+ * @param {object} obj
+ */
+function respondOnStderr(obj) {
+  process.stderr.write(JSON.stringify({ ok: true, ...obj }) + '\n');
 }
 
 /**
@@ -165,6 +174,7 @@ Commands:
   session label-config <true|false>
   session repair
   session cleanup [session-id]
+  session resume [session-id]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -774,7 +784,7 @@ const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: compl
 const TOPIC_BEATS = ['start'];
 
 /**
- * A SessionEnd hook target's session id: the argument when given, else the
+ * A session hook target's session id: the argument when given, else the
  * hook's stdin JSON.
  * @param {string[]} rest @param {string} usage @returns {string|null}
  */
@@ -788,7 +798,7 @@ function hookSessionId(rest, usage) {
 }
 
 /**
- * The project root a SessionEnd hook acts on: the invocation cwd when it is
+ * The project root a session hook acts on: the invocation cwd when it is
  * a project root (has `.workflows`), else CLAUDE_PROJECT_DIR for a hook
  * fired from a drifted cwd.
  * @returns {string}
@@ -875,7 +885,12 @@ function runSession(argv) {
       respond(restoreSessionLabel(hookProjectDir(), hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
       return;
     }
-    throw new Error('Usage: engine session <label|label-config|repair|cleanup> …');
+    if (command === 'resume') {
+      // The SessionStart hook's target.
+      respondOnStderr(resumeSessionLabel(hookProjectDir(), hookSessionId(rest, 'Usage: engine session resume [session-id]')));
+      return;
+    }
+    throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
   } catch (err) {
     failJson(err);
   }

@@ -23,7 +23,7 @@ const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionEndHooks, SETTINGS_SPEC } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, SETTINGS_SPEC } = require('./session-label.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 
 /** The system config directory — `WORKFLOWS_CONFIG_DIR` overrides for tests. */
@@ -71,7 +71,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
- * @property {boolean} session_end_hooks_installed this boot wrote the SessionEnd hooks into `.claude/settings.json` — `presence cleanup` for every project, `session cleanup` while labels are on; false when the file already carried exactly those
+ * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
@@ -226,31 +226,32 @@ function boot(cwd) {
     }
   }
 
-  // The session-end hooks live in the project's settings, so every boot
-  // re-syncs them: `presence cleanup` for every project — a /clear'd
-  // session's heartbeats otherwise read held until its process exits — and
-  // `session cleanup` while labels are on. A checkout that predates the
-  // hooks, or lost them to a hand edit, gets them back here. The file is
-  // written either way, and the commit failing is a warning, never a block.
-  let sessionEndHooksInstalled = false;
+  // The session hooks live in the project's settings, so every boot
+  // re-syncs them: SessionEnd's `presence cleanup` for every project — a
+  // /clear'd session's heartbeats otherwise read held until its process
+  // exits — with `session cleanup` and SessionStart's `session resume`
+  // while labels are on. A checkout that predates the hooks, or lost them
+  // to a hand edit, gets them back here. The file is written either way,
+  // and the commit failing is a warning, never a block.
+  let sessionHooksInstalled = false;
   // The opt-in read and the sync share one hold: a `label-config` landing
   // between them would have this boot strip the hook it just installed.
   // The commit stays outside the lock.
-  const sync = withProjectLock(cwd, () => syncSessionEndHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }));
+  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }));
   if (sync.error) {
-    warnings.push(`session-end hooks not installed: ${sync.error}`);
+    warnings.push(`session hooks not installed: ${sync.error}`);
   } else if (sync.changed) {
-    sessionEndHooksInstalled = true;
+    sessionHooksInstalled = true;
     try {
-      commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install workflow session-end hooks');
+      commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks');
     } catch (err) {
-      warnings.push(`session-end hooks commit failed: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(`session hooks commit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_end_hooks_installed: sessionEndHooksInstalled, baseline };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, baseline };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

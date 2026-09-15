@@ -31,7 +31,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
-const { syncSessionEndHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -118,10 +118,10 @@ function recipeEnv() {
     // this env — without a pin, a recipe would render against whatever pane
     // happened to be open, and resizing would move the snapshots.
     WORKFLOWS_DISPLAY_WIDTH: '65',
-    // Boot installs the session-end hooks into `.claude/settings.json` — a
+    // Boot installs the session hooks into `.claude/settings.json` — a
     // file a snapshot holds as world state. The engine's test-only switch
     // keeps a recipe's boot out of it.
-    WORKFLOWS_SKIP_SESSION_END_HOOKS: '1',
+    WORKFLOWS_SKIP_SESSION_HOOKS: '1',
   };
   // Session labels read the real tmux identity — a recipe's engine calls
   // must never rename the terminal session the suite happens to run in.
@@ -323,7 +323,7 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
-// --- harness world stamping — label kill + session-end hook seed ---------
+// --- harness world stamping — label kill + session-hook seed ---------
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
 const SETTINGS = path.join('.claude', 'settings.json');
@@ -340,7 +340,7 @@ const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
  * (creating the manifest when the fixture has none) — the engine's sole
  * label opt-in, pinned off so a walk never renames the terminal the suite
  * runs in. Canonical manifest style, so mid-walk engine rewrites stay
- * byte-stable. Then seed the session-end hooks boot wants under that kill
+ * byte-stable. Then seed the session hooks boot wants under that kill
  * into `.claude/settings.json` (creating the file when the fixture has
  * none). Returns what was stamped beyond the label kill.
  * @param {string} dir
@@ -362,15 +362,15 @@ function stampHarnessState(dir) {
   if (baseline) manifest.baseline = { status: 'native' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-  // Boot syncs the session-end hooks into `.claude/settings.json` and
+  // Boot syncs the session hooks into `.claude/settings.json` and
   // commits the write — and a live walk's boot runs under the developer's
   // real environment, which no env switch reaches. Seeding exactly the set
   // boot wants under the label kill makes that sync a no-op: no write, no
   // commit, nothing in the delta. The engine's own sync does the seeding,
   // so the hooks are the ones boot recognises.
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
-  const sync = syncSessionEndHooks(dir, { session: false, presence: true });
-  if (sync.error) throw new Error(`cannot seed the session-end hooks: ${sync.error}`);
+  const sync = syncSessionHooks(dir, { session: false, presence: true });
+  if (sync.error) throw new Error(`cannot seed the session hooks: ${sync.error}`);
   return { baseline, settings_created: settingsCreated };
 }
 
@@ -388,7 +388,7 @@ function readStampMarker(dir) {
 /**
  * Reverse the stamp on a collected tree so deltas compare against
  * unstamped snapshots: the manifest's label kill and baseline stamp, then
- * the seeded session-end hooks.
+ * the seeded session hooks.
  * @param {Map<string, Buffer>} tree
  * @param {Stamped} stamped  what materialise recorded stamping
  */
@@ -442,8 +442,8 @@ function unstampSettings(tree, stamped) {
     const file = path.join(scratch, SETTINGS);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, buf);
-    const sync = syncSessionEndHooks(scratch, { session: false, presence: false });
-    if (sync.error) throw new Error('cannot strip the session-end hooks: ' + sync.error);
+    const sync = syncSessionHooks(scratch, { session: false, presence: false });
+    if (sync.error) throw new Error('cannot strip the session hooks: ' + sync.error);
     if (!sync.changed) return;
     const next = fs.readFileSync(file);
     if (stamped.settings_created && Object.keys(JSON.parse(next.toString('utf8'))).length === 0) tree.delete(SETTINGS);
@@ -528,7 +528,7 @@ function buildWorld(caseId) {
 
   // The walker's engine calls inherit the developer's real environment —
   // tmux identity included — so every world carries the project-level
-  // session-label kill switch and the session-end hooks boot would
+  // session-label kill switch and the session hooks boot would
   // otherwise install and commit. Stamped before the first commit (no
   // dirt for the walk to sweep up) and stripped back out by diffWorld, so
   // snapshots never see them. A fixture that layers the project manifest

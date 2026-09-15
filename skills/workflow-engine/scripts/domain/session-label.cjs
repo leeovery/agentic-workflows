@@ -9,7 +9,13 @@
 // roadmap` / `{original} · baseline`, and workflow-start puts the original
 // back through boot's `repair`. Leaving a place is never an event: the name
 // changes on arrival, and at session end, where `session cleanup` restores
-// it. The feature is a display courtesy, never state: for
+// it. A resumed session gets its label back: every landed label records
+// the session's position (`positions/{session_id}.json` beside the stash,
+// outliving the session — cleanup leaves it), and `session resume`, a
+// SessionStart hook fired on `claude --resume`, re-applies it; `repair`
+// drops the calling session's own position with its own label (the start
+// menu is no position) and prunes positions older than Claude Code's
+// session retention. The feature is a display courtesy, never state: for
 // the user who has not opted in, or outside tmux, or on any tmux error,
 // every path degrades to a no-op JSON response and the label never gates a
 // flow. (A bad argument from an opted-in call site still fails loudly —
@@ -20,14 +26,14 @@
 // (boot reports it via `labelConfigStatus`); a prose-test world stamps
 // `false` so a walk never labels the terminal the suite runs in.
 //
-// The restore runs from a SessionEnd hook in the project's committed
-// `.claude/settings.json` — a SessionEnd hook declared in skill frontmatter
-// never fires, so cleanup must be a settings-level hook. That hook carries
-// two commands: `session cleanup`, present while labels are on, and
-// `presence cleanup`, present in every workflow project regardless — the
-// heartbeat sweep is infrastructure, not a label preference. Recording the
-// choice syncs the hook (`recordLabelChoice`) and every boot re-syncs it
-// (`syncSessionEndHooks`).
+// The hooks live in the project's committed `.claude/settings.json`, where
+// the engine installs them (a SessionEnd hook declared in skill frontmatter
+// never fires). SessionEnd carries two commands: `session cleanup`,
+// present while labels are on, and `presence cleanup`, present in every
+// workflow project regardless — the heartbeat sweep is infrastructure, not
+// a label preference. SessionStart (matcher `resume`) carries `session
+// resume` while labels are on. Recording the choice syncs the hooks
+// (`recordLabelChoice`) and every boot re-syncs them (`syncSessionHooks`).
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
@@ -61,17 +67,18 @@ const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = req
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 
-/** The project's committed Claude Code settings — where the session-end hooks live. */
+/** The project's committed Claude Code settings — where the session hooks live. */
 const SETTINGS_SPEC = '.claude/settings.json';
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
-const SESSION_HOOK_COMMAND = `${HOOK_ENGINE} session cleanup`;
-const PRESENCE_HOOK_COMMAND = `${HOOK_ENGINE} presence cleanup`;
+const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
+const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
+const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
 // install prefix or carrying a timeout is recognised and never twinned; the
 // closing quote is part of the mark, so a re-quoted command is not.
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
-const HOOK_MARKS = [SESSION_HOOK_COMMAND, PRESENCE_HOOK_COMMAND].map(hookMark);
+const HOOK_MARKS = wantedByEvent({ session: true, presence: true }).flatMap((e) => e.commands.map(hookMark));
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
@@ -117,26 +124,67 @@ function ourMark(hook) {
   return HOOK_MARKS.find((m) => hook.command.includes(m)) || null;
 }
 
+/** The marks of ours a hook group carries. @param {unknown} group */
+function marksOf(group) {
+  return isObject(group) && Array.isArray(group.hooks) ? group.hooks.map(ourMark).filter(Boolean) : [];
+}
+
 /**
- * Ensure the SessionEnd hook in the project's `.claude/settings.json`
- * carries `session cleanup` iff `session` and `presence cleanup` iff
- * `presence`, every other key — permissions, other events, foreign
- * SessionEnd groups and their matchers — preserved. A file whose hooks of
- * ours are already exactly the wanted set is left alone, wherever and
- * however they sit (a recognised hook is never rewritten, never twinned,
- * never reordered); otherwise ours are stripped from every group — a group
- * emptied by that goes, one still holding foreign hooks stays — and the
- * wanted set lands as one group. A settings file that does not parse is
- * left untouched and reported rather than thrown: neither caller may fail
- * over hook plumbing it cannot read.
+ * What each hook event wants, by the opt-ins: SessionEnd restores the
+ * name and sweeps the heartbeats; SessionStart brings a resumed session's
+ * label back — its matcher has Claude Code fire it on `claude --resume`
+ * alone.
+ * @param {{session: boolean, presence: boolean}} want
+ * @returns {{event: string, matcher?: string, commands: string[]}[]}
+ */
+function wantedByEvent({ session, presence }) {
+  /** @param {(string|false)[]} candidates */
+  const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
+  return [
+    { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, presence && PRESENCE_CLEANUP_COMMAND]) },
+    { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
+  ];
+}
+
+/**
+ * One event's groups with ours reconciled to `commands`: null when the
+ * marks found already make up exactly the wanted set, wherever and however
+ * they sit (a recognised hook is never rewritten, never twinned, never
+ * reordered); otherwise ours are stripped from every group — a group
+ * emptied by that goes, one still holding foreign hooks keeps them and its
+ * matcher — and the wanted set lands as one group.
+ * @param {any[]} groups @param {string[]} commands @param {string} [matcher]
+ * @returns {any[]|null}
+ */
+function reconcileEventGroups(groups, commands, matcher) {
+  if (groups.flatMap(marksOf).sort().join('\n') === commands.map(hookMark).sort().join('\n')) return null;
+  const kept = groups.flatMap((g) => {
+    if (marksOf(g).length === 0) return [g];
+    const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
+    return foreign.length > 0 ? [{ ...g, hooks: foreign }] : [];
+  });
+  if (commands.length === 0) return kept;
+  const hooks = commands.map((command) => ({ type: 'command', command }));
+  return [...kept, matcher ? { matcher, hooks } : { hooks }];
+}
+
+/**
+ * Ensure the session hooks in the project's `.claude/settings.json` match
+ * the opt-ins: SessionEnd carries `session cleanup` iff `session` and
+ * `presence cleanup` iff `presence`, SessionStart carries `session resume`
+ * iff `session` — each event reconciled on its own, every other key
+ * (permissions, other events, foreign groups and their matchers)
+ * preserved, an event emptied by a removal gone. A settings file that does
+ * not parse is left untouched and reported rather than thrown: neither
+ * caller may fail over hook plumbing it cannot read.
  * @param {string} cwd @param {{session: boolean, presence: boolean}} want
  * @returns {{changed: boolean, error?: string}}
  */
-function syncSessionEndHooks(cwd, { session, presence }) {
-  // WORKFLOWS_SKIP_SESSION_END_HOOKS is the test harness's hermeticity
-  // switch — a walk's boot must never write the world's settings file. Real
-  // projects never set it: the hooks are infrastructure, not a setting.
-  if (process.env.WORKFLOWS_SKIP_SESSION_END_HOOKS) return { changed: false };
+function syncSessionHooks(cwd, want) {
+  // WORKFLOWS_SKIP_SESSION_HOOKS is the test harness's hermeticity switch —
+  // a walk's boot must never write the world's settings file. Real projects
+  // never set it: the hooks are infrastructure, not a setting.
+  if (process.env.WORKFLOWS_SKIP_SESSION_HOOKS) return { changed: false };
   const file = path.join(cwd, SETTINGS_SPEC);
   /** @type {Record<string, any>} */
   let settings = {};
@@ -150,23 +198,16 @@ function syncSessionEndHooks(cwd, { session, presence }) {
     }
   }
   const hooks = isObject(settings.hooks) ? settings.hooks : {};
-  /** @type {any[]} */
-  const groups = Array.isArray(hooks.SessionEnd) ? hooks.SessionEnd : [];
-  const marksOf = (/** @type {unknown} */ g) => (isObject(g) && Array.isArray(g.hooks) ? g.hooks.map(ourMark).filter(Boolean) : []);
-  const desired = [session && SESSION_HOOK_COMMAND, presence && PRESENCE_HOOK_COMMAND].filter(Boolean);
-  if (groups.flatMap(marksOf).sort().join('\n') === desired.map(hookMark).sort().join('\n')) return { changed: false };
-
-  const kept = groups.flatMap((g) => {
-    if (marksOf(g).length === 0) return [g];
-    const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
-    return foreign.length > 0 ? [{ ...g, hooks: foreign }] : [];
-  });
-  const nextGroups = desired.length > 0
-    ? [...kept, { hooks: desired.map((command) => ({ type: 'command', command })) }]
-    : kept;
   const nextHooks = { ...hooks };
-  if (nextGroups.length > 0) nextHooks.SessionEnd = nextGroups;
-  else delete nextHooks.SessionEnd;
+  let changed = false;
+  for (const { event, matcher, commands } of wantedByEvent(want)) {
+    const groups = reconcileEventGroups(Array.isArray(hooks[event]) ? hooks[event] : [], commands, matcher);
+    if (groups === null) continue;
+    changed = true;
+    if (groups.length > 0) nextHooks[event] = groups;
+    else delete nextHooks[event];
+  }
+  if (!changed) return { changed: false };
   const next = { ...settings };
   if (Object.keys(nextHooks).length > 0) next.hooks = nextHooks;
   else delete next.hooks;
@@ -176,7 +217,7 @@ function syncSessionEndHooks(cwd, { session, presence }) {
 }
 
 /**
- * workflow-start's one-time answer: record the opt-in, sync the session-end
+ * workflow-start's one-time answer: record the opt-in, sync the session
  * hooks to match (`presence cleanup` stays whatever the answer), and commit
  * the two together, confined. The choice is recorded either way: a settings
  * file the sync could not read, or a commit git refused, comes back as a
@@ -191,8 +232,8 @@ function recordLabelChoice(cwd, value) {
   const specs = [PROJECT_MANIFEST_SPEC];
   // Sequential with setLabelConfig's own hold, never nested: the lock is a
   // file lock, not reentrant.
-  const sync = withProjectLock(cwd, () => syncSessionEndHooks(cwd, { session: value, presence: true }));
-  if (sync.error) warnings.push(`session-end hooks not synced: ${sync.error}`);
+  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: value, presence: true }));
+  if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
   if (sync.changed) specs.push(SETTINGS_SPEC);
   commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
   return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
@@ -250,6 +291,87 @@ function stashDir(cwd) {
 function stashPath(cwd, socket, tmuxId) {
   const server = crypto.createHash('sha256').update(socket || '').digest('hex').slice(0, 8);
   return path.join(stashDir(cwd), `${server}-${tmuxId.replace(/[^A-Za-z0-9_-]/g, '')}.json`);
+}
+
+/** A record written whole through the kernel's atomic write, its directory made first. @param {string} file @param {object} record */
+function writeRecord(file, record) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, record);
+}
+
+/**
+ * Where a labelled session's working position outlives it, keyed by
+ * Claude session id — a subdirectory, so the stash readers that list the
+ * store root never see a position as a stash.
+ * @param {string} cwd
+ */
+function positionsDir(cwd) {
+  return path.join(stashDir(cwd), 'positions');
+}
+
+/** @param {string} cwd @param {string} sessionId */
+function positionPath(cwd, sessionId) {
+  return path.join(positionsDir(cwd), `${sessionId.replace(/[^A-Za-z0-9_-]/g, '')}.json`);
+}
+
+/**
+ * @typedef {object} LabelPosition
+ * @property {string} name     work unit, or a project identity
+ * @property {string} [phase]
+ * @property {string} [topic]
+ * @property {string} at       when the label landed — the prune's clock
+ */
+
+/**
+ * Record the calling session's position behind a landed label — what
+ * `session resume` re-applies. Nothing without a session id; a write that
+ * fails costs nothing, the next label writes again.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ */
+function recordPosition(cwd, name, phase, topic) {
+  const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+  if (!sessionId) return;
+  /** @type {LabelPosition} */
+  const position = { name, phase, topic, at: new Date().toISOString() };
+  try { writeRecord(positionPath(cwd, sessionId), position); } catch { /* a courtesy, never a failure */ }
+}
+
+/** @param {string} cwd @param {string} sessionId @returns {LabelPosition|null} */
+function readPosition(cwd, sessionId) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(positionPath(cwd, sessionId), 'utf8'));
+    if (isObject(parsed) && typeof parsed.name === 'string') return /** @type {LabelPosition} */ (parsed);
+  } catch { /* none recorded, or unreadable */ }
+  return null;
+}
+
+/** @param {string} cwd @param {string|null|undefined} sessionId */
+function dropPosition(cwd, sessionId) {
+  if (!sessionId) return;
+  try { fs.unlinkSync(positionPath(cwd, sessionId)); } catch { /* none recorded */ }
+}
+
+// Claude Code keeps a session's transcript for 30 days by default
+// (`cleanupPeriodDays`); a position older than that has nothing to resume.
+const POSITION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Drop every position past the retention window — and any whose time
+ * cannot be read, since age is the only way a position ever leaves.
+ * @param {string} cwd
+ */
+function prunePositions(cwd) {
+  const dir = positionsDir(cwd);
+  /** @type {string[]} */
+  let files = [];
+  try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch { return; }
+  const cutoff = Date.now() - POSITION_RETENTION_MS;
+  for (const f of files) {
+    const file = path.join(dir, f);
+    let at = NaN;
+    try { at = Date.parse(JSON.parse(fs.readFileSync(file, 'utf8')).at); } catch { /* unreadable */ }
+    if (!(at > cutoff)) { try { fs.unlinkSync(file); } catch { /* raced away */ } }
+  }
 }
 
 /**
@@ -397,14 +519,7 @@ function applySessionLabel(cwd, name, phase, topic) {
     pid,
     pid_start: pid ? processStartTime(pid) : null,
   };
-  try {
-    fs.mkdirSync(stashDir(cwd), { recursive: true });
-    const tmp = `${file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(record) + '\n');
-    fs.renameSync(tmp, file);
-  } catch {
-    return { labelled: false, reason: 'stash-error' };
-  }
+  try { writeRecord(file, record); } catch { return { labelled: false, reason: 'stash-error' }; }
   if (applied !== ctx.name) {
     try { tmux(['rename-session', '-t', ctx.id, applied], ctx.socket); }
     catch { return { labelled: false, reason: 'tmux-error' }; }
@@ -415,7 +530,32 @@ function applySessionLabel(cwd, name, phase, topic) {
   for (const f of visited) {
     if (f !== file) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
   }
+  recordPosition(cwd, name, phase, topic);
   return { labelled: true, name: applied };
+}
+
+/**
+ * Bring a resumed session's label back — `session resume`, the SessionStart
+ * hook's target on `claude --resume`. The position recorded behind the
+ * session's last label is re-applied through `applySessionLabel`, so the
+ * gates are `label`'s own (disabled, no tmux, a tmux error all no-op), the
+ * stash records the resuming process's identity, and a name already worn
+ * costs no rename. A position naming a work unit or phase that no longer
+ * exists is dropped: nothing to come back to. Never throws: a hook must
+ * exit clean.
+ * @param {string} cwd @param {string|null} sessionId
+ * @returns {{resumed: boolean}}
+ */
+function resumeSessionLabel(cwd, sessionId) {
+  if (!sessionId) return { resumed: false };
+  const position = readPosition(cwd, sessionId);
+  if (!position) return { resumed: false };
+  try {
+    return { resumed: applySessionLabel(cwd, position.name, position.phase, position.topic).labelled };
+  } catch {
+    dropPosition(cwd, sessionId);
+    return { resumed: false };
+  }
 }
 
 /**
@@ -501,16 +641,22 @@ function restoreSessionLabel(cwd, sessionId) {
  * (`ownsRow`: its session id, or its pid for a later conversation in the
  * same process) or its owner is gone — a session that never restored, a
  * restart that carried the label across — put the true original back,
- * then prune the spent and orphaned records. Gated exactly like `label`
- * (a disabled project must never touch the terminal), no-op outside tmux
- * or on any tmux error, and a peer's label whose owning process still runs
- * is live — left alone. Prune keeps every record a live session's name
- * still chains through, and touches nothing on an unreachable server: an
- * unverifiable name proves nothing.
+ * then prune the spent and orphaned records. The calling session's own
+ * position comes off with its own label — the start menu is no position —
+ * while a dead owner's stays: that session may yet be resumed. Gated
+ * exactly like `label` (a disabled project must never touch the terminal),
+ * no-op outside tmux or on any tmux error, and a peer's label whose owning
+ * process still runs is live — left alone. Prune keeps every record a live
+ * session's name still chains through, touches nothing on an unreachable
+ * server (an unverifiable name proves nothing). The position prune alone
+ * runs ahead of the gate, whatever the opt-in: it touches only this
+ * checkout's cache, and positions written while labels were on would
+ * otherwise outlive the opt-out forever.
  * @param {string} cwd
  * @returns {{repaired: boolean}}
  */
 function repairSessionLabels(cwd) {
+  prunePositions(cwd);
   if (resolveEnabled(cwd) !== true) return { repaired: false };
   /** @type {ReturnType<typeof tmuxContext>} */
   let ctx = null;
@@ -519,12 +665,14 @@ function repairSessionLabels(cwd) {
   let repaired = false;
   const records = listStashes(cwd, ctx.socket);
   const head = records.find((r) => r.applied === ctx.name);
-  if (head && (ownsRow(head) || ownerDead(head))) {
+  const own = head !== undefined && ownsRow(head);
+  if (head && (own || ownerDead(head))) {
     const { original, visited } = chainOriginal(records, ctx.name);
     try {
       tmux(['rename-session', '-t', ctx.id, original], ctx.socket);
       repaired = true;
       for (const f of visited) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
+      if (own) dropPosition(cwd, process.env.CLAUDE_CODE_SESSION_ID);
     } catch { /* tmux errored — the records keep the repair available */ }
   }
   /** @type {Map<string, {id: string, name: string}[]|null>} */
@@ -543,7 +691,7 @@ function repairSessionLabels(cwd) {
 }
 
 module.exports = {
-  applySessionLabel, restoreSessionLabel, repairSessionLabels,
-  resolveEnabled, labelConfigStatus, syncSessionEndHooks, recordLabelChoice,
+  applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
+  resolveEnabled, labelConfigStatus, syncSessionHooks, recordLabelChoice,
   SETTINGS_SPEC,
 };
