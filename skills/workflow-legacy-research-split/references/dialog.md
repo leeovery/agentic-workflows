@@ -395,7 +395,7 @@ User specifies `theme_name`. Confirm before destructive removal:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Removing "{theme_name}" will drop its drafted content. Has its content been reabsorbed into another theme, or are you intentionally discarding it?
+> Removing "{theme_name}" drops its drafted content — gone unless another theme has already reabsorbed it.
 ```
 
 Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim as markdown (not a code block):
