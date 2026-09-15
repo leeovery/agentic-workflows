@@ -17,11 +17,11 @@ The prose should have taken this path:
    1..3 order assigned over the three live topics in a single
    sequence call, and the scoped discovery re-run so the display sees
    the order
-6. the epic dashboard renders — the three-stage layout with the
-   discovery map — and the second scripted answer selects the
-   behavioural-ranking discussion entry; no soft gate fires (a
-   discussion entry carries none) and the route is invoked with epic,
-   the work unit, and the topic
+6. the epic dashboard renders — a stage divider only where work sits,
+   here the Discovery stage alone, with the discovery map — and the
+   second scripted answer selects the behavioural-ranking discussion
+   entry; no soft gate fires (a discussion entry carries none) and the
+   route is invoked with epic, the work unit, and the topic
 7. discussion entry asks the engine whether research is outstanding on
    the topic (it is not), validates a fresh phase — status reads empty
    — and
