@@ -89,15 +89,9 @@ function combinedInbox(scan, opts = {}) {
 function workingSetDetail(cwd, paths) {
   if (paths.length === 0) throw new Error('working set is empty — pass at least one inbox path');
   const live = combinedInbox(discoverInbox(cwd));
-  const byPath = new Map(live.map((item) => [item.path, item]));
 
   /** @type {PickupItem[]} */
-  const items = paths.map((given, i) => {
-    const parsed = parseInboxPath(given, { archived: false });
-    const found = byPath.get(parsed.given);
-    if (!found) throw new Error(`not in the live inbox: "${given}"`);
-    return { ...found, n: i + 1 };
-  });
+  const items = paths.map((given, i) => ({ ...storeItem(live, given, false), n: i + 1 }));
 
   const folders = new Set(items.map((item) => item.folder));
   const uniform = folders.size === 1;
@@ -114,18 +108,31 @@ function workingSetDetail(cwd, paths) {
 }
 
 /**
+ * One item of a store list by its given path — the one lookup both stores
+ * share. Loud on a path outside the store, or one nothing sits at.
+ * @param {PickupItem[]} list  the store's combined list
+ * @param {string} given  project-relative inbox path
+ * @param {boolean} archived
+ * @returns {PickupItem}
+ */
+function storeItem(list, given, archived) {
+  const parsed = parseInboxPath(given, { archived });
+  const found = list.find((item) => item.path === parsed.given);
+  if (!found) throw new Error(`not in the ${archived ? 'archived store' : 'live inbox'}: "${given}"`);
+  return found;
+}
+
+/**
  * One archived item by its store path — the selection the archived sub-view
- * holds while it acts on it. Loud on anything outside the archived store: a
- * live path, or one nothing sits at.
+ * holds while it acts on it. `n` is the item's place in the combined store
+ * list; the sub-view numbers group-major, so a surface showing a number
+ * renumbers over the view's order, never over this.
  * @param {string} cwd
  * @param {string} given  project-relative archived inbox path
  * @returns {PickupItem}
  */
 function archivedItem(cwd, given) {
-  const parsed = parseInboxPath(given, { archived: true });
-  const found = combinedInbox(discoverInbox(cwd).archived, { archived: true }).find((item) => item.path === parsed.given);
-  if (!found) throw new Error(`not in the archived store: "${given}"`);
-  return found;
+  return storeItem(combinedInbox(discoverInbox(cwd).archived, { archived: true }), given, true);
 }
 
 module.exports = { combinedInbox, workingSetDetail, archivedItem };
