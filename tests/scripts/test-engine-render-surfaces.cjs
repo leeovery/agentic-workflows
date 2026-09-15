@@ -4505,8 +4505,8 @@ describe('baseline surfaces', () => {
   it('the knowledge gate refuses a missing or unknown variant, a lone provider or model, and a configuration on any variant but reuse', () => {
     assert.throws(() => renderSurface(dir, 'knowledge-gate', {}), /--variant must be one of reuse, deviate, mode, retry, got ""/);
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'setup' }), /--variant must be one of reuse, deviate, mode, retry, got "setup"/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /--provider and --model travel together/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--provider and --model travel together/);
+    assert.match(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /Use the existing configuration \(openai\)/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--model names nothing without --provider/);
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider\/--model belong to the reuse variant — the mode variant names no configuration/);
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', model: 'x' }), /belong to the reuse variant — the retry variant/);
   });

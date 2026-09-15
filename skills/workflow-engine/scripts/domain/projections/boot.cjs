@@ -53,7 +53,7 @@ const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
     question: 'Use the existing configuration for this project?',
     options: [
-      cmdOption('y', 'yes', `Use the existing configuration (${provider ? `${provider} · ${model}` : 'keyword-only'})`),
+      cmdOption('y', 'yes', `Use the existing configuration (${provider ? [provider, model].filter(Boolean).join(' · ') : 'keyword-only'})`),
       cmdOption('d', 'different', 'Choose a different mode for this project'),
       cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead'),
     ],
@@ -87,8 +87,8 @@ const KNOWLEDGE_GATE_VARIANTS = Object.keys(KNOWLEDGE_GATES);
 
 /**
  * One of the knowledge gate's menus. `config` is the system configuration
- * the reuse variant offers — provider and model together, or neither for
- * keyword-only.
+ * the reuse variant offers — the provider, with its model when the
+ * configuration names one; neither for keyword-only.
  * @param {string} variant @param {{provider?: string, model?: string}} [config]
  * @returns {string}
  */

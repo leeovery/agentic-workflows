@@ -2730,7 +2730,8 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
-    sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], /travel together/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /belong to the reuse variant/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);

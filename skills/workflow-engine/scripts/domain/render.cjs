@@ -4912,8 +4912,9 @@ function baselineDocPickSurface(cwd, _args) {
 
 /**
  * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
- * the reuse variant alone — the system configuration its yes row names —
- * together, or neither for keyword-only.
+ * the reuse variant alone — the system configuration its yes row names. A
+ * provider stands without a model (the provider defaults it); a model
+ * without a provider names nothing.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function knowledgeGateSurface(_cwd, { variant, provider, model }) {
@@ -4923,8 +4924,8 @@ function knowledgeGateSurface(_cwd, { variant, provider, model }) {
   if (variant !== 'reuse' && (provider !== undefined || model !== undefined)) {
     throw new Error(`render knowledge-gate: --provider/--model belong to the reuse variant — the ${variant} variant names no configuration`);
   }
-  if (isFilled(provider) !== isFilled(model)) {
-    throw new Error('render knowledge-gate: --provider and --model travel together — both name the system configuration, or neither for keyword-only');
+  if (isFilled(model) && !isFilled(provider)) {
+    throw new Error('render knowledge-gate: --model names nothing without --provider — the provider is the configuration, the model rides with it');
   }
   return knowledgeGate(variant, { provider, model });
 }
