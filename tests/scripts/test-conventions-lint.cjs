@@ -680,7 +680,7 @@ const RATCHET_PINS = {
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 1,
   'skills/workflow-knowledge/references/knowledge-usage.md': 1,
   'skills/workflow-legacy-research-split/SKILL.md': 3,
-  'skills/workflow-legacy-research-split/references/dialog.md': 7,
+  'skills/workflow-legacy-research-split/references/dialog.md': 4,
   'skills/workflow-log-bug/SKILL.md': 1,
   'skills/workflow-log-idea/SKILL.md': 1,
   'skills/workflow-log-quickfix/SKILL.md': 1,
@@ -700,7 +700,6 @@ const RATCHET_PINS = {
   'skills/workflow-scoping-process/references/complexity-check.md': 2,
   'skills/workflow-discovery/references/first-phase-routing.md': 1,
   'skills/workflow-scoping-process/references/gather-context.md': 1,
-  'skills/workflow-scoping-process/references/select-format.md': 1,
   'skills/workflow-scoping-process/references/write-specification.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/compliance-check.md': 1,
@@ -716,9 +715,9 @@ const RATCHET_PINS = {
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
   'skills/workflow-start/references/absorb-into-epic.md': 1,
-  'skills/workflow-start/references/inbox-archived.md': 5,
+  'skills/workflow-start/references/inbox-archived.md': 3,
   'skills/workflow-start/references/inbox-working-set.md': 2,
-  'skills/workflow-start/references/knowledge-gate.md': 4,
+  'skills/workflow-start/references/knowledge-gate.md': 3,
   'skills/workflow-start/references/view-completed.md': 1,
   'skills/workflow-start/references/view-plan.md': 2,
 };
@@ -937,6 +936,59 @@ function checkNoFrontmatterSessionEndHooks(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 19 — a yes row asks a question. A menu block carrying a `y/yes` row
+// is a consent gate, and a consent gate asks on its diamond line: the block
+// holds a glyphed `**`◆ …`**` line and that line ends in `?`; an `n/no` row
+// answers a `y/yes` row, never a verb synonym — the shape the engine's menu
+// frame refuses (surfaces.cjs), held here for the prose-authored menus.
+// Anchored on the dot frame like checks 16/17 and closed by the fence or the
+// next frame, so a yes row outside a menu is never inspected.
+// ---------------------------------------------------------------------------
+
+const YES_ROW = /^\*\*`y\/yes`\*\*/;
+const NO_ROW = /^\*\*`n\/no`\*\*/;
+const GLYPHED_LINE = /^\*\*`◆ .*`\*\*$/;
+
+function checkYesAsksQuestion(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    let block = null;
+    const close = () => {
+      if (block && block.no && !block.yes) {
+        out.push({ file, line: block.no, message: 'an n/no row without a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym' });
+      }
+      if (block && block.yes) {
+        if (!block.glyph) {
+          out.push({ file, line: block.start, message: 'a y/yes row with no glyphed question — a consent gate asks on its diamond line (**`◆ …?`**)' });
+        } else if (!/\?`\*\*$/.test(block.glyph.text)) {
+          out.push({ file, line: block.glyph.line, message: `a y/yes row under a statement — the diamond line ends in "?" (found "${block.glyph.text}")` });
+        }
+      }
+      block = null;
+    };
+    lines.forEach((line, i) => {
+      const t = line.trim();
+      if (t === MENU_FRAME) {
+        close();
+        block = { start: i + 1, glyph: null, yes: false, no: 0 };
+        return;
+      }
+      if (!block) return;
+      if (/^\s*```/.test(line)) {
+        close();
+        return;
+      }
+      if (GLYPHED_LINE.test(t)) block.glyph = { line: i + 1, text: t };
+      if (YES_ROW.test(t)) block.yes = true;
+      if (NO_ROW.test(t) && !block.no) block.no = i + 1;
+    });
+    close();
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 
 const CHECKS = [
   ['1: phase-title chrome (drawn borders retired)', checkBorders],
@@ -957,6 +1009,7 @@ const CHECKS = [
   ['16: menu option alignment', checkMenuAlignment],
   ['17: conditional menu options', checkConditionalOptions],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
+  ['19: yes rows ask a question', checkYesAsksQuestion],
 ];
 
 function report(violations) {
@@ -1429,5 +1482,50 @@ test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declarati
     assert.strictEqual(v[0].file, sessionEnd);
     assert.strictEqual(v[0].line, 4);
     assert.match(v[0].message, /SessionEnd hook in skill frontmatter/);
+  });
+});
+
+test('check 19 (yes rows ask a question) — catches a statement or an unglyphed question over a y/yes row, permits glyphed questions and route menus', () => {
+  withTemp((dir) => {
+    const fence = (body) => `\`\`\`\n${MENU_FRAME}\n${body}\n\`\`\`\n`;
+    const glyphed = write(dir, 'skills/x/glyphed.md', fence('**`◆ Proceed?`**\n\n**`y/yes`**\n**`n/no`**'));
+    const split = write(dir, 'skills/x/split.md',
+      fence('Cancelling **Auth Flow** will mark it as cancelled.\n\n**`◆ Cancel it?`**\n\n**`y/yes`** → Confirm cancellation\n**`n/no`**  → Return to menu'));
+    assert.strictEqual(checkYesAsksQuestion([glyphed, split]).length, 0, 'a glyphed question — alone, or split beneath a statement — is clean');
+
+    const statement = write(dir, 'skills/x/statement.md', fence('**`◆ Cancel it.`**\n\n**`y/yes`**\n**`n/no`**'));
+    const v1 = checkYesAsksQuestion([statement]);
+    assert.strictEqual(v1.length, 1, 'a glyphed statement over a y/yes row is caught');
+    assert.strictEqual(v1[0].line, 3);
+    assert.match(v1[0].message, /found "\*\*`◆ Cancel it\.`\*\*"/);
+
+    // A question the label cannot glyph (markup, a placeholder) is no diamond
+    // line — the split is the fix.
+    const plain = write(dir, 'skills/x/plain.md',
+      fence('Project default format is **{format}**. Use the same format?\n\n**`y/yes`** → Use {format}\n**`n/no`**  → See all available formats'));
+    const v2 = checkYesAsksQuestion([plain]);
+    assert.strictEqual(v2.length, 1, 'an unglyphed question over a y/yes row is caught');
+    assert.strictEqual(v2[0].line, 2);
+    assert.match(v2[0].message, /no glyphed question/);
+
+    const labelless = write(dir, 'skills/x/labelless.md', fence('**`y/yes`** → Remove it\n**`n/no`**  → Back out'));
+    const v3 = checkYesAsksQuestion([labelless]);
+    assert.strictEqual(v3.length, 1, 'a y/yes row with no question is caught');
+    assert.strictEqual(v3[0].line, 2);
+    assert.match(v3[0].message, /no glyphed question/);
+
+    // A route menu answers no yes — its statement stands.
+    const route = write(dir, 'skills/x/route.md', fence('Where this belongs.\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
+    assert.strictEqual(checkYesAsksQuestion([route]).length, 0, 'a statement over a route menu is clean');
+    // An n/no row names its yes — a verb synonym beside it is caught.
+    const synonym = write(dir, 'skills/x/synonym.md', fence('**`◆ Proceed?`**\n\n**`p/proceed`** → Carry on\n**`n/no`**      → Stop here'));
+    const v4 = checkYesAsksQuestion([synonym]);
+    assert.strictEqual(v4.length, 1, 'an n/no row without a y/yes row is caught');
+    assert.strictEqual(v4[0].line, 6);
+    assert.match(v4[0].message, /an n\/no row without a y\/yes row/);
+
+    // Option grammar outside a menu is not a menu — no dot frame, no check.
+    const prose = write(dir, 'skills/x/prose.md', '**`y/yes`** → the affirmative key\n');
+    assert.strictEqual(checkYesAsksQuestion([prose]).length, 0, 'a y/yes row outside a menu is never inspected');
   });
 });

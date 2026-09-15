@@ -70,26 +70,22 @@ Hold these in working memory. Do NOT write any cache files yet.
 
 Display the candidate theme list. This is an early sanity gate — catch obvious over- or under-splitting BEFORE drafting any cache files.
 
-> *Output the next fenced block as a code block:*
+Write the candidate list to `.workflows/.cache/{work_unit}/legacy-split/{current_source}/candidates.json` with the Write tool — one entry per candidate, in order:
 
-```
-Candidate themes for {current_source}.md:
-
-@foreach(theme in candidates)
-{N}. {theme.kebab_name}
-   └─ {theme.summary}
-@endforeach
+```json
+{"source": "{current_source}", "themes": [{"kebab_name": "…", "summary": "…"}]}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the display and emit its `DISPLAY: legacy split candidates` section verbatim as markdown (not a code block):
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant candidates --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/candidates.json
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed with these themes?`**
 
-**`y/yes`**     → Proceed to draft cache files
-**`a/abandon`** → Skip this source file
-**Redirect**  → Adjust the theme list (rename, merge two, split one, add, remove)
+Fetch the gate and emit its `MENU: legacy split themes gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant themes
 ```
 
 **STOP.** Wait for user response.
@@ -178,32 +174,22 @@ The `description` field gives the discovery map context; the cache file gives th
 > Cache files drafted. They're first-class artifacts — you can `cat` or open them in your editor between renders, and your edits will land on the next display.
 ```
 
-For each theme in `plan.json`, read the cache file, count paragraphs (blank-line-separated blocks), and take the first ~60 chars of the first paragraph as `content_preview`.
+For each theme in `plan.json`, read the cache file, count paragraphs (blank-line-separated blocks), and take the first ~60 chars of the first paragraph as `content_preview`. Write the plan display payload to `.workflows/.cache/{work_unit}/legacy-split/{current_source}/plan-display.json` with the Write tool — one entry per theme, in `plan.json` order:
 
-> *Output the next fenced block as a code block:*
-
-```
-Plan for {current_source}.md:
-
-@foreach(theme in plan.themes)
-{N}. {theme.kebab_name}
-   ├─ Summary: {theme.summary}
-   ├─ Content: {paragraph_count} para(s) — "{content_preview}..."
-   └─ Cache: .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
-@endforeach
-
-Source file will be renamed to {current_source}-superseded-{datetime}.md.
+```json
+{"source": "{current_source}", "work_unit": "{work_unit}", "themes": [{"kebab_name": "…", "summary": "…", "paragraph_count": 3, "content_preview": "…"}]}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the display and emit its `DISPLAY: legacy split plan` section verbatim as a code block:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant plan --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/plan-display.json
 ```
-· · · · · · · · · · · ·
-**`◆ Apply this plan?`**
 
-**`y/yes`**     → Apply this plan
-**`a/abandon`** → Skip this source file
-**Edit**      → Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
+Fetch the gate and emit its `MENU: legacy split plan gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant plan
 ```
 
 **STOP.** Wait for user response.
@@ -258,14 +244,16 @@ Parse the JSON output.
 
 #### If `ok` is false
 
-> *Output the next fenced block as a code block:*
+Write the errors to `.workflows/.cache/{work_unit}/legacy-split/{current_source}/errors.json` with the Write tool — the `errors` array as validate.cjs returned it:
 
+```json
+{"source": "{current_source}", "errors": ["…"]}
 ```
-Validation failed for {current_source}:
 
-@foreach(err in errors)
-  • {err}
-@endforeach
+Fetch the display and emit its `DISPLAY: legacy split errors` section verbatim as a code block:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant errors --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/errors.json
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -405,15 +393,13 @@ User specifies `theme_name`. Confirm before destructive removal:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Removing "{theme_name}" will drop its drafted content. Has its content been reabsorbed into another theme, or are you intentionally discarding it?
+> Removing "{theme_name}" drops its drafted content — gone unless another theme has already reabsorbed it.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`y/yes`** → Remove the theme and drop its content
-**`n/no`**  → Back out
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove
 ```
 
 **STOP.** Wait for user response.

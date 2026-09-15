@@ -65,7 +65,7 @@ Apply the changes to the doc, restate the summary, then re-fetch and emit the ga
 
 **STOP.** Wait for user response.
 
-**If `approve`:**
+**If `yes`:**
 
 → Proceed to **C. Land**.
 

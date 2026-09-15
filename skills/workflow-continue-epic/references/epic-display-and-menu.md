@@ -97,7 +97,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 → Return to **A. State Display and Menu**.
 
-**If user chose `proceed`:**
+**If user chose `yes`:**
 
 Continue with the **Hard gate check** below.
 

@@ -18,7 +18,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 
 #### Otherwise
 
-The surface reads the default itself and names it in both the question and the accept row:
+The surface reads the default itself and names it in both the label and the accept row:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render plan-format-gate

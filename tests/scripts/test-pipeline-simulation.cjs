@@ -635,8 +635,9 @@ describe('pipeline simulation', () => {
       /Feature Completed/, 'pipeline completion renders the banner receipt');
     // A completed unit is the one state the corrigendum protocol edits — the
     // gate derives the spec path from the address it is given.
-    assert.match(sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' }),
-      new RegExp(`Apply the correction protocol to \\.workflows/${wu}/specification/${wu}/specification\\.md\\?`));
+    const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' });
+    assert.match(correctionScreen, new RegExp(`Correcting \\.workflows/${wu}/specification/${wu}/specification\\.md\\.`));
+    assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
 
   it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
@@ -875,6 +876,8 @@ describe('pipeline simulation', () => {
     assert.ok(baseline.committed, 'the baseline commit lands the spec');
     sim.run(['topic', 'start', wu, 'planning', wu]);
     sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
+    // Scoping's format step fetches the same offer planning does.
+    assert.match(sim.render(['plan-format-gate'], { expect: 'content' }), /Use the same format\?/);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', `spec_commit=${baseline.committed}`,
       'task_list_gate_mode=auto', 'author_gate_mode=auto',
@@ -2612,13 +2615,17 @@ describe('pipeline simulation', () => {
       }));
       return sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
     };
-    assert.match(screen(0, 6), /\(6 more after this\)/, 'screen one names the remainder');
+    const first = screen(0, 6);
+    assert.match(first, /`◆ Apply them\?`/, 'the screen asks its question');
+    assert.match(first, /\(6 more after this\)/, 'screen one names the remainder');
     let row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(0, 5).join(',')]);
     assert.strictEqual(row.remaining.length, 6, 'first screen drains five');
     assert.match(screen(5, 1), /\(1 more after this\)/, 'screen two names the remainder');
     row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(5, 10).join(',')]);
     assert.strictEqual(row.remaining.length, 1, 'second screen drains five more');
-    assert.match(screen(10, 0), /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
+    const singleton = screen(10, 0);
+    assert.match(singleton, /`◆ Apply it\?`/, 'a singleton asks in the singular');
+    assert.match(singleton, /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
     row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, 'F11']);
     assert.strictEqual(row.status, 'incorporated', 'the last screen incorporates the row');
 
@@ -2719,6 +2726,45 @@ describe('pipeline simulation', () => {
     // refuses over it, and the mid-flight surfaces read it as never started.
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /Use the existing configuration for this project\?[\s\S]*openai ·\s+text-embedding-3-small/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse'], { expect: 'content' }), /keyword-only/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
+    sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /belong to the reuse variant/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
+    sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
+    // The split's three displays over their payloads: the candidate list at
+    // the sanity gate, the drafted plan with its cache paths, the validator's
+    // refusals — each variant's fields validated, the file itself required.
+    const splitDisplay = (variant, payload) => sim.render(
+      ['legacy-split-display', '--variant', variant, '--file', sim.write(`.workflows/.cache/scratch/legacy-split-${variant}.json`, payload)],
+      { expect: 'content' },
+    );
+    assert.match(splitDisplay('candidates', { source: 'auth', themes: [{ kebab_name: 'auth', summary: 'Login and sessions' }] }),
+      /Candidate themes for auth\.md:[\s\S]*1\\\. auth[\s\S]*↳ Login and sessions/);
+    assert.match(splitDisplay('plan', { source: 'auth', work_unit: wu, themes: [{ kebab_name: 'auth', summary: 'Login and sessions', paragraph_count: 3, content_preview: 'The auth flow' }] }),
+      new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache: \\.workflows/\\.cache/${wu}/legacy-split/auth/auth\\.md[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
+    assert.match(splitDisplay('errors', { source: 'auth', errors: ["theme 'auth' has empty summary"] }),
+      /Validation failed for auth:[\s\S]*• theme 'auth' has empty summary/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
+    // The archived sub-view's gates resolve the selected item by its store
+    // path — the title on the label is the file's own; a missing path, a live
+    // path, and a path the store does not hold each refuse.
+    const archived = sim.write('.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    assert.match(sim.render(['archived-actions', '--path', archived], { expect: 'content' }), /Selected: \*\*Old Idea\*\* \(idea, archived\)[\s\S]*What would you like to do with it\?/);
+    assert.match(sim.render(['archived-delete-gate', '--path', archived], { expect: 'content' }), /Permanently deleting "Old Idea" removes the file from the repo and cannot be undone\.[\s\S]*Delete it\?/);
+    sim.refuses(['render', 'archived-actions'], /--path is required/);
+    sim.refuses(['render', 'archived-delete-gate', '--path', '.workflows/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
+    sim.refuses(['render', 'archived-actions', '--path', '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
     arrive(sim, 'baseline');
     sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);

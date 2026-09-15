@@ -70,7 +70,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-**If `proceed`:**
+**If `yes`:**
 
 → Proceed to **C. Traceability Review**.
 
@@ -156,7 +156,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-**If `reanalyse`:**
+**If `yes`:**
 
 → Return to **A. Cycle Initialization**.
 
@@ -182,7 +182,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-**If `reanalyse`:**
+**If `yes`:**
 
 → Return to **A. Cycle Initialization**.
 

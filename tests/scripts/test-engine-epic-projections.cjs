@@ -724,8 +724,8 @@ describe('epic projections: presence join', () => {
       '',
       '**`◆ Proceed anyway?`**',
       '',
-      '**`b/back`**    → Return to menu (recommended)',
-      '**`p/proceed`** → Proceed anyway',
+      '**`b/back`** → Return to menu (recommended)',
+      '**`y/yes`**  → Proceed anyway',
       '',
     ].join('\n'));
   });

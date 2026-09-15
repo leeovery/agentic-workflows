@@ -45,18 +45,10 @@ Store the selected item's `ITEMS` row — its type, slug, date, and path.
 
 ## B. Action Menu
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the menu over the selected item and emit its `MENU: archived actions` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-Selected: **{item.title}** ({item.type}, archived)
-
-**`◆ What would you like to do with it?`**
-
-**`v/view`**      → View full content
-**`u/unarchive`** → Restore to the inbox
-**`d/delete`**    → Permanently delete (removes the file from git)
-**`b/back`**      → Return to the archived list
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions --path {item.path}
 ```
 
 **STOP.** Wait for user response.
@@ -95,16 +87,10 @@ Restored "{item.title}" to the inbox.
 
 #### If user chose `d/delete`
 
-Deleting removes the file from the repo and cannot be undone — confirm first:
+Confirm before deleting — fetch the gate and emit its `MENU: archived delete gate` section verbatim as markdown (not a code block):
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Permanently delete "{item.title}"? This removes the file from the repo and cannot be undone.
-
-**`y/yes`** → Delete permanently
-**`n/no`**  → Return
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-gate --path {item.path}
 ```
 
 **STOP.** Wait for user response.

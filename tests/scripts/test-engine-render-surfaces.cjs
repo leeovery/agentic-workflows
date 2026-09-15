@@ -130,7 +130,7 @@ describe('the experiment surfaces', () => {
     const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' });
     assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Approve E1's design\?/);
-    const a = out.indexOf('**`a/approve`**');
+    const a = out.indexOf('**`y/yes`**');
     const b = out.indexOf('**`b/abandon`**');
     const amend = out.indexOf('**Amend**');
     assert.ok(a > -1 && b > a && amend > b, 'command options lead, the prompt option closes');
@@ -186,7 +186,7 @@ describe('the experiment surfaces', () => {
     assert.match(out, /The series still holds E2 multi-monitor, E3 focus-order\./,
       'the statement names the live ids — terminal rows and subs stay out');
     assert.match(out, /◆ Work the next experiment\?/);
-    assert.match(out, /\*\*`n\/next`\*\*\s+→ Work the next experiment/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Work the next experiment/);
     assert.match(out, /\*\*`m\/menu`\*\*\s+→ Back to the menu/);
   });
 
@@ -219,9 +219,9 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing', id: 'E1' });
     assert.match(out, /=== MENU: experiment spawn gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Work E1 now\?/);
-    const n = out.indexOf('**`n/now`**');
+    const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
-    assert.ok(n > -1 && l > n, 'now leads, later follows');
+    assert.ok(n > -1 && l > n, 'yes leads, later follows');
     assert.match(unwrap(out), /Pause this research here — the session ends and the menu takes over with E1 queued/);
     assert.match(unwrap(out), /Keep the conversation going — this research cannot conclude until E1's evidence lands/);
   });
@@ -242,7 +242,7 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
       /address must be <work_unit>\.<research\|discussion>\.<topic>/);
   });
 
-  it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the pause/keep menu', () => {
+  it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the yes/keep menu', () => {
     holderWith('discussion', ['E1', 'E2']);
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' });
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
@@ -287,7 +287,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /> Work the research first — cancelling it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /\*\*`p\/pause`\*\* → Pause this discussion here — the session ends and the menu takes over with the research queued/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here — the session ends and the menu takes over with the research queued/);
     assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
     assert.ok(!out.includes('experiment'), 'no experiment clause without an experiment wait');
   });
@@ -558,8 +558,46 @@ describe('surfaces primitives', () => {
 
   it('leaves a long or marked-up label as prose — the glyph span cannot nest markup', () => {
     const long = 'Whether the pipeline can expose **click windows** belongs to a different topic entirely';
-    const out = menu(long, ['**`y/yes`**']);
-    assert.strictEqual(out, [DOTS, long, '', '**`y/yes`**'].join('\n'));
+    const out = menu(long, ['**`y/yes`**'], { question: 'Move it there?' });
+    assert.strictEqual(out, [DOTS, long, '', '**`◆ Move it there?`**', '', '**`y/yes`**'].join('\n'));
+  });
+
+  it('refuses a y/yes row under a statement — a consent gate asks its question', () => {
+    const yes = ['**`y/yes`**', '**`n/no`**'];
+    assert.throws(() => menu('Proceed.', yes), /"Proceed\." is not one/);
+    assert.throws(() => menu('The tree is dirty.', yes, { question: 'Carry on.' }), /"Carry on\." is not one/);
+    assert.throws(() => menu('', ['**`y/yes`** → Apply it']), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses a y/yes row under a question the label cannot glyph — the split is the fix', () => {
+    const long = 'Does the pipeline exposing **click windows** belong to a different topic entirely?';
+    assert.throws(() => menu(long, ['**`y/yes`**']), /no `◆ …\?` line stands above the rows/);
+    assert.throws(() => menu('The tree is dirty.', ['**`y/yes`**'], { question: long }), /"Does the pipeline exposing .*" is not one/);
+  });
+
+  it('holds a projection-composed frame to the same rule — the check reads the composed lines', () => {
+    const rows = ['**`y/yes`** → Proceed anyway', '**`b/back`** → Return to menu'];
+    const lines = menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '', ...rows], { glyphLabel: false }).split('\n');
+    assert.deepStrictEqual(lines.slice(0, 5), [DOTS, 'Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '']);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway.`**', '', ...rows], { glyphLabel: false }), /"Proceed anyway\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', ...rows], { glyphLabel: false }), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses an n/no row without a y/yes row — a refusal answers yes, never a verb synonym', () => {
+    assert.throws(() => menu('Proceed?', ['**`p/proceed`** → Carry on', '**`n/no`** → Stop here']), /an n\/no row answers a y\/yes row/);
+  });
+
+  it('a y/yes row passes under a glyphable question — the label itself, or one split beneath a statement', () => {
+    assert.strictEqual(menu('Proceed?', ['**`y/yes`** → Carry on', '**`n/no`** → Stop here']).split('\n')[1], '**`◆ Proceed?`**');
+    assert.strictEqual(
+      menu('The tree is dirty.', ['**`y/yes`**', '**`n/no`**'], { question: 'Carry on?' }),
+      [DOTS, 'The tree is dirty.', '', '**`◆ Carry on?`**', '', '**`y/yes`**', '**`n/no`**'].join('\n'),
+    );
+  });
+
+  it('a statement label stands over a route menu — no y/yes row, no question owed', () => {
+    const out = menu('Where this belongs.', ['**`d/discussion`** → Discuss it', '**`r/research`** → Research it']);
+    assert.strictEqual(out.split('\n')[1], '**`◆ Where this belongs.`**');
   });
 
   it('menu appends an optional trailing prompt after a blank line', () => {
@@ -1181,11 +1219,11 @@ describe('render research-conclude-gate', () => {
       /render research-conclude-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
   });
 
-  it('renders conclude/keep without the flag — no dead-end row', () => {
+  it('renders yes/keep without the flag — no dead-end row', () => {
     const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout' });
     assert.match(out, /=== MENU: research conclude gate/);
-    assert.match(out, /\*\*`◆ This topic looks ready to conclude\.`\*\*/);
-    assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+    assert.match(out, /This topic looks ready to conclude\.\n\n\*\*`◆ Conclude it\?`\*\*/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Mark this topic as complete, ready for discussion/);
     assert.match(out, /\*\*`k\/keep`\*\*\s+→ Keep digging, there's more to understand/);
     assert.ok(!out.includes('dead end'), 'no dead-end row without the flag');
   });
@@ -1218,7 +1256,7 @@ describe('render research-conclude-gate', () => {
       assert.ok(out.indexOf('DISPLAY: research threads') < out.indexOf('=== MENU: research conclude gate'), 'display above the menu');
       assert.match(out, /Research Threads — Checkout \(2 threads — 1 open · 1 learned\)/);
       assert.match(out, /├─ ○ Can a guest check out at all\?\s+\[brief\]\n {2}└─ ● Does the cart survive a session\?\s+\[seed\]/);
-      assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+      assert.match(out, /\*\*`y\/yes`\*\*\s+→ Mark this topic as complete, ready for discussion/);
       assert.strictEqual(out.includes('dead end'), 'dead-end' in args, 'the dead-end row still follows the flag alone');
     }
   });
@@ -1509,6 +1547,8 @@ describe('render finding-batch', () => {
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
+      '**`◆ Apply them?`**',
+      '',
       '**`y/yes`** → Apply all 2, then move on',
       "**Ask**   → Tell me a number to expand, or one you don't think is",
       `${NB(8)}settled`,
@@ -1538,6 +1578,8 @@ describe('render finding-batch', () => {
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
+      '**`◆ Document them?`**',
+      '',
       '**`y/yes`**   → Document all 2 and move on',
       "**Discuss** → Say discuss and a number — I'll raise it after the rest",
       `${NB(10)}land`,
@@ -1555,24 +1597,22 @@ describe('render finding-batch', () => {
         { title: 'B', detail: 'b.' },
       ],
     });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two }),
-      /→ Document all 2 and move on \(7 more after this\)$/m,
-    );
+    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
+    assert.match(plural, /`◆ Document them\?`/);
+    assert.match(plural, /→ Document all 2 and move on \(7 more after this\)$/m);
     const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: one });
+    assert.match(out, /`◆ Document it\?`/);
     assert.match(out, /→ Document it and move on$/m);
     assert.match(out, /^This one has a single defensible answer/m);
     const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne }),
-      /→ Apply it, then move on$/m,
-    );
+    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne });
+    assert.match(applied, /`◆ Apply it\?`/);
+    assert.match(applied, /→ Apply it, then move on$/m);
     const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
-    assert.match(
-      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne }),
-      /→ Send it$/m,
-    );
+    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne });
+    assert.match(routed, /`◆ Send it\?`/);
+    assert.match(routed, /→ Send it$/m);
     const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
     assert.throws(
       () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: bad }),
@@ -1606,7 +1646,17 @@ describe('render finding-batch', () => {
     assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
     assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
     assert.match(out, /one that should stay here/);
-    assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
+    assert.ok(out.includes(`${DOTS}\n**\`◆ Send it?\`**\n\n**\`y/yes\`**`), 'a label-less menu opens on its question');
+    const two = writePayload(dir, 'r2.json', {
+      lane: 'route',
+      items: [
+        { title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' },
+        { title: 'Retry budget belongs to the sync loop', target: 'storage-and-sync', detail: 'Their loop owns the budget.' },
+      ],
+    });
+    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
+    assert.ok(plural.includes(`${DOTS}\n**\`◆ Send them?\`**\n\n**\`y/yes\`**`), 'the plural asks for the set');
+    assert.match(plural, /\*\*`y\/yes`\*\* → Send all 2$/m);
   });
 
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
@@ -1646,7 +1696,7 @@ describe('render triage surfaces', () => {
     assert.ok(two.includes('2 rerouted concerns from other topics wait'), two);
   });
 
-  it('triage-offer renders the agenda in queue order and the discuss/later menu', () => {
+  it('triage-offer renders the agenda in queue order and the yes/later menu', () => {
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
@@ -1664,7 +1714,7 @@ describe('render triage surfaces', () => {
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
-    assert.ok(/\*\*`d\/discuss`\*\* +→ Surface and discuss them one at a time/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Surface and discuss them one at a time/.test(out));
     assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
   });
 
@@ -1704,7 +1754,7 @@ describe('render triage surfaces', () => {
     assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
   });
 
-  it('requeue-offer renders the statement, the diamond question naming the other phase, and the move/discuss menu', () => {
+  it('requeue-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
     writeQueue('measurement', { '001-a-decision-owed.md': 'x' });
     const file = writePayload(dir, 'rq.json', {
       file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
@@ -1713,7 +1763,7 @@ describe('render triage surfaces', () => {
     assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown, then STOP for the user's response) ==="), out);
     assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
     assert.ok(out.includes('**`◆ Move it to research?`**'), out);
-    assert.ok(/\*\*`m\/move`\*\* +→ Move it to this topic's research queue/.test(out), out);
+    assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research queue/.test(out), out);
     assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
 
     const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
@@ -1767,7 +1817,7 @@ describe('render spec-review-gate', () => {
     const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'continue' });
     assert.ok(out.includes('=== MENU: spec review continue gate'));
     assert.ok(out.includes('**`◆ Continue with review?`**'));
-    assert.ok(/\*\*`p\/proceed`\*\* +→ Continue review/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Continue review/.test(out));
     assert.ok(/\*\*`s\/skip`\*\* +→ Skip review, proceed to completion/.test(out));
   });
 
@@ -1775,7 +1825,7 @@ describe('render spec-review-gate', () => {
     const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'reloop' });
     assert.ok(out.includes('=== MENU: spec review reloop gate'));
     assert.ok(out.includes('**`◆ Run another review cycle?`**'));
-    assert.ok(/\*\*`r\/reanalyse`\*\* +→ Run another review cycle \(all three phases\)/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Run another review cycle \(all three phases\)/.test(out));
     assert.ok(/\*\*`p\/proceed`\*\* +→ Proceed to completion/.test(out));
   });
 
@@ -3281,6 +3331,8 @@ describe('render author-task-gate', () => {
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
       '',
+      '**`◆ Write it to the plan?`**',
+      '',
       '**`y/yes`**                  → Write it to the plan',
       '**`a/auto`**                 → Approve this and all remaining tasks',
       `${NB(25)}automatically`,
@@ -3713,7 +3765,7 @@ describe('render code-gate', () => {
     assert.match(menu, /Only proceed if you know that session is no longer working/, menu);
     assert.match(menu, /presence clear ship implementation checkout-flow/, menu);
     assert.match(menu, /\*\*`◆ Proceed anyway\?`\*\*/, menu);
-    assert.ok(menu.indexOf('`b/back`') < menu.indexOf('`p/proceed`'), 'back leads');
+    assert.ok(menu.indexOf('`b/back`') < menu.indexOf('`y/yes`'), 'back leads');
     assert.match(menu, /`b\/back`\*\* +→ Leave that session to it \(recommended\)/, menu);
   });
 
@@ -3997,10 +4049,12 @@ describe('render review-findings-gate', () => {
     assert.strictEqual(out, [
       "=== MENU: review findings gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ The review left 2 findings still to walk.`**',
+      'The review left 2 findings still to walk.',
       '',
-      '**`r/review`** → Work through them now',
-      '**`s/skip`**   → Acknowledge and conclude the topic',
+      '**`◆ Walk them now?`**',
+      '',
+      '**`y/yes`**  → Work through them now',
+      '**`s/skip`** → Acknowledge and conclude the topic',
       '',
     ].join('\n'));
     assert.doesNotMatch(out, /final review/i);
@@ -4009,7 +4063,7 @@ describe('render review-findings-gate', () => {
   it('a lone finding takes the singular', () => {
     store('discussion', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
     assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
-      /`◆ The review left 1 finding still to walk\.`/);
+      /The review left 1 finding still to walk\.\n\n\*\*`◆ Walk them now\?`\*\*/);
   });
 
   it('a research address is refused whatever its store holds — the gate is the discussion close\'s', () => {
@@ -4059,7 +4113,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -4300,7 +4354,7 @@ describe('baseline surfaces', () => {
     assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
     assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
-    assert.match(out, /\*\*`c\/continue`\*\* → Interview the next area/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Interview the next area/);
     assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from workflow-start/);
   });
 
@@ -4346,7 +4400,7 @@ describe('baseline surfaces', () => {
     assert.match(out, /=== DISPLAY: baseline scope \(emit verbatim as markdown \(not a code block\)\) ===/);
     assert.match(out, /\*\*overview\*\* — What the product is\n\*\*dispatcher\*\* — The downstream push pipeline/);
     assert.match(out, /\*\*`◆ Assess these areas\?`\*\*/);
-    assert.match(out, /\*\*`a\/approve`\*\* → Lock the list and start the research/);
+    assert.match(out, /\*\*`y\/yes`\*\*\s+→ Lock the list and start the research/);
     assert.match(out, /\*\*`b\/back`\*\*\s+→ Leave without changing anything/);
     assert.match(out, /\*\*Adjust\*\*\s+→ Tell me what to add, drop, rename, or merge/);
   });
@@ -4404,7 +4458,7 @@ describe('baseline surfaces', () => {
     const migration = renderSurface(dir, 'migration-gate', {});
     assert.match(migration, /=== MENU: migration gate/);
     assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
-    assert.match(migration, /\*\*`c\/continue`\*\* → Proceed/);
+    assert.match(migration, /\*\*`y\/yes`\*\*\s+→ Proceed/);
     assert.match(unwrap(migration), /\*\*Ask\*\*\s+→ Ask questions about the changes/);
     const label = renderSurface(dir, 'label-gate', {});
     assert.match(label, /=== MENU: label gate/);
@@ -4413,8 +4467,62 @@ describe('baseline surfaces', () => {
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
   });
 
+  it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai', model: 'text-embedding-3-small' }), [
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Use the existing configuration for this project?`**',
+      '',
+      '**`y/yes`**       → Use the existing configuration (openai ·',
+      `${NB(14)}text-embedding-3-small)`,
+      '**`d/different`** → Choose a different mode for this project',
+      '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
+      '',
+    ].join('\n'));
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse' }), [
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Use the existing configuration for this project?`**',
+      '',
+      '**`y/yes`**       → Use the existing configuration (keyword-only)',
+      '**`d/different`** → Choose a different mode for this project',
+      '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
+      '',
+    ].join('\n'));
+
+    const deviate = renderSurface(dir, 'knowledge-gate', { variant: 'deviate' });
+    assert.match(deviate, /=== MENU: knowledge deviate gate/);
+    assert.match(deviate, /\*\*`◆ How should this project deviate\?`\*\*/);
+    assert.match(unwrap(deviate), /\*\*`k\/keyword`\*\*\s+→ Keyword-only for this project \(the system configuration stays untouched for every other project\)/);
+    assert.match(unwrap(deviate), /\*\*`t\/terminal`\*\* → Run the interactive wizard to change the system-wide configuration/);
+
+    const mode = renderSurface(dir, 'knowledge-gate', { variant: 'mode' });
+    assert.match(mode, /=== MENU: knowledge mode gate/);
+    assert.match(mode, /\*\*`◆ How should this project's knowledge base work\?`\*\*/);
+    assert.match(unwrap(mode), /\*\*`o\/openai`\*\*\s+→ OpenAI embeddings — full semantic search \(recommended; needs an API key\)/);
+    assert.match(unwrap(mode), /\*\*`c\/compatible`\*\* → A local or self-hosted OpenAI-compatible endpoint \(LM Studio, Ollama, vLLM\)/);
+    assert.match(unwrap(mode), /\*\*`k\/keyword`\*\*\s+→ Keyword-only search — the no-key backstop; upgrade anytime later/);
+    assert.match(unwrap(mode), /\*\*`t\/terminal`\*\*\s+→ Run the interactive wizard in your terminal instead/);
+
+    const retry = renderSurface(dir, 'knowledge-gate', { variant: 'retry' });
+    assert.match(retry, /=== MENU: knowledge retry gate/);
+    assert.match(retry, /\*\*`◆ Ready to retry\?`\*\*/);
+    assert.match(unwrap(retry), /\*\*`y\/yes`\*\*\s+→ The key is stored — re-run the setup/);
+    assert.match(unwrap(retry), /\*\*`k\/keyword`\*\* → Skip the key for now — use keyword-only search instead/);
+    assert.doesNotMatch(retry, /d\/done/);
+  });
+
+  it('the knowledge gate refuses a missing or unknown variant, a lone provider or model, and a configuration on any variant but reuse', () => {
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', {}), /--variant must be one of reuse, deviate, mode, retry, got ""/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'setup' }), /--variant must be one of reuse, deviate, mode, retry, got "setup"/);
+    assert.match(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /Use the existing configuration \(openai\)/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--model names nothing without --provider/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider\/--model belong to the reuse variant — the mode variant names no configuration/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', model: 'x' }), /belong to the reuse variant — the retry variant/);
+  });
+
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {
-    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`a\/approve`\*\* → Index and commit the doc/);
+    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`y\/yes`\*\*\s+→ Index and commit the doc/);
     writeBaseline({ status: 'in-progress', areas: { overview: 'researched' } });
     assert.throws(() => renderSurface(dir, 'baseline-manage-gate', {}), /not completed/);
     assert.throws(() => renderSurface(dir, 'baseline-doc-pick', {}), /not completed/);
@@ -4672,7 +4780,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
   it('roadmap-harvest-gate: the sort confirm', () => {
     const out = renderSurface(dir, 'roadmap-harvest-gate', {});
     assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
-    assert.match(out, /`◆ Confirm the sort, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Commit this sort to the roadmap\?`/);
     assert.match(out, /`y\/yes`.*Commit these items to the roadmap/);
     assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
     assert.match(out, /\*\*Adjust\*\*.*Tell me what to change \(move, split, merge, rename,/);
@@ -4680,7 +4788,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
 
   it('roadmap-parks-gate: the parks-only confirm in the park register', () => {
     const out = renderSurface(dir, 'roadmap-parks-gate', {});
-    assert.match(out, /`◆ Park these on the roadmap, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Park these on the roadmap\?`/);
     assert.match(out, /`y\/yes`.*Commit these items to the roadmap and conclude/);
     assert.match(out, /\*\*Adjust\*\*.*move between horizons/);
   });
@@ -4692,7 +4800,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
     assert.match(shape, /\*\*Adjust\*\*.*epic vs feature, the framing/);
     const conclude = renderSurface(dir, 'roadmap-conclude-gate', {});
     assert.match(conclude, /`◆ Pull a slice into delivery now\?`/);
-    assert.match(conclude, /`p\/pull`.*Pick the item\(s\) going into delivery/);
+    assert.match(conclude, /`y\/yes`.*Pick the item\(s\) going into delivery/);
     assert.match(conclude, /`s\/stop`.*Stop here — the roadmap keeps everything warm/);
   });
 });
@@ -4727,7 +4835,7 @@ describe('render — the adopted cross-flow static gates', () => {
 
   it('synthesis-gate: the epic topic sort confirm', () => {
     const out = renderSurface(dir, 'synthesis-gate', {});
-    assert.match(out, /`◆ Confirm to commit, or tell me what to adjust\.`/);
+    assert.match(out, /`◆ Commit these topics\?`/);
     assert.match(out, /`y\/yes`.*Commit these topics and conclude/);
     assert.match(out, /`e\/explore`.*Go back to exploration; not ready to commit yet/);
     assert.match(out, /\*\*Adjust\*\*.*split, merge, rename,/);
@@ -4738,6 +4846,130 @@ describe('render — the adopted cross-flow static gates', () => {
     assert.match(out, /`◆ How should I proceed\?`/);
     assert.match(out, /`r\/retry`.*I'll fix the issue; retry the query/);
     assert.match(out, /`s\/skip`.*Proceed without knowledge context for this phase/);
+  });
+
+  it('legacy-split-gate: three dialog gates keyed by what each asks; the remove confirm asks on its diamond line', () => {
+    assert.strictEqual(renderSurface(dir, 'legacy-split-gate', { variant: 'remove' }), [
+      "=== MENU: legacy split remove gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Remove the theme?`**',
+      '',
+      '**`y/yes`** → Remove the theme and drop its content',
+      '**`n/no`**  → Back out',
+      '',
+    ].join('\n'));
+
+    const themes = renderSurface(dir, 'legacy-split-gate', { variant: 'themes' });
+    assert.match(themes, /^=== MENU: legacy split themes gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(themes, /`◆ Proceed with these themes\?`/);
+    assert.match(themes, /\*\*`y\/yes`\*\*\s+→ Proceed to draft cache files/);
+    assert.match(themes, /\*\*`a\/abandon`\*\* → Skip this source file/);
+    assert.match(unwrap(themes), /\*\*Redirect\*\*\s+→ Adjust the theme list \(rename, merge two, split one, add, remove\)/);
+
+    const plan = renderSurface(dir, 'legacy-split-gate', { variant: 'plan' });
+    assert.match(plan, /=== MENU: legacy split plan gate/);
+    assert.match(plan, /`◆ Apply this plan\?`/);
+    assert.match(plan, /\*\*`y\/yes`\*\*\s+→ Apply this plan/);
+    assert.match(plan, /\*\*`a\/abandon`\*\* → Skip this source file/);
+    assert.match(unwrap(plan), /\*\*Edit\*\*\s+→ Modify cache files or plan\.json \(rename, merge, split, add, remove\)\. To rewrite a draft, edit the cache file directly between renders\./);
+
+    assert.throws(() => renderSurface(dir, 'legacy-split-gate', {}), /--variant must be one of themes, plan, remove, got ""/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-gate', { variant: 'apply' }), /--variant must be one of themes, plan, remove, got "apply"/);
+  });
+});
+
+describe('render legacy-split-display', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const themes = [
+    { kebab_name: 'auth', summary: 'Login, sessions, and token refresh' },
+    { kebab_name: 'caching', summary: 'Response caching and invalidation' },
+  ];
+
+  it('candidates: the theme list as a batch worklist — the name per row, its summary beneath', () => {
+    const file = writePayload(dir, 'candidates.json', { source: 'auth', themes });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file }), [
+      '=== DISPLAY: legacy split candidates (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      'Candidate themes for auth.md:',
+      '',
+      '1\\. auth',
+      `${NB(5)}↳ Login, sessions, and token refresh`,
+      '2\\. caching',
+      `${NB(5)}↳ Response caching and invalidation`,
+      '',
+    ].join('\n'));
+  });
+
+  it('plan: each theme as a numbered summary/content/cache tree, then the rename footer naming the stamp apply mints', () => {
+    const file = writePayload(dir, 'plan-display.json', { source: 'auth', work_unit: 'pay', themes: [
+      { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at login' },
+      { ...themes[1], paragraph_count: 2, content_preview: 'Responses are cached per route' },
+    ] });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'plan', file }), [
+      '=== DISPLAY: legacy split plan (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Plan for auth.md:',
+      '',
+      '1. auth',
+      '   ├─ Summary: Login, sessions, and token refresh',
+      '   ├─ Content: 4 para(s) — "The auth flow begins at login..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+      '',
+      '2. caching',
+      '   ├─ Summary: Response caching and invalidation',
+      '   ├─ Content: 2 para(s) — "Responses are cached per route..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/caching.md',
+      '',
+      'Source file will be renamed to auth-superseded-<datetime>.md.',
+      '',
+    ].join('\n'));
+  });
+
+  it('plan: a long preview wraps under its text column with the rail intact, and no row overflows the width', () => {
+    const file = writePayload(dir, 'plan-display.json', { source: 'auth', work_unit: 'pay', themes: [
+      { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at the login form and hands a session to' },
+    ] });
+    const out = renderSurface(dir, 'legacy-split-display', { variant: 'plan', file });
+    assert.ok(out.includes([
+      '   ├─ Content: 4 para(s) — "The auth flow begins at the login',
+      '   │  form and hands a session to..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+    ].join('\n')), out);
+    for (const line of out.split('\n').slice(1)) assert.ok(line.length <= 65, `overflowing row: ${line}`);
+  });
+
+  it('errors: the validator\'s lines as bullets under the source', () => {
+    const file = writePayload(dir, 'errors.json', { source: 'auth', errors: [
+      "theme 'auth' has empty summary",
+      "theme 'caching' has no cache file at caching.md",
+    ] });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'errors', file }), [
+      '=== DISPLAY: legacy split errors (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Validation failed for auth:',
+      '',
+      "  • theme 'auth' has empty summary",
+      "  • theme 'caching' has no cache file at caching.md",
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing or unknown variant, a missing or absent file, and a payload short of its variant\'s fields', () => {
+    const bad = (name, variant, obj) => () => renderSurface(dir, 'legacy-split-display', { variant, file: writePayload(dir, name, obj) });
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of candidates, plan, errors, got ""/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of candidates, plan, errors, got "themes"/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates' }), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file: 'nope.json' }), /payload file not found: nope\.json/);
+    assert.throws(bad('s.json', 'candidates', { themes }), /"source" must be a non-empty string/);
+    assert.throws(bad('e.json', 'candidates', { source: 'auth', themes: [] }), /"themes" must be a non-empty array of \{kebab_name, summary\}/);
+    assert.throws(bad('m.json', 'candidates', { source: 'auth', themes: [themes[0], { kebab_name: 'caching' }] }), /theme 2 is missing "summary"/);
+    assert.throws(bad('w.json', 'plan', { source: 'auth', themes }), /"work_unit" must be a non-empty string/);
+    assert.throws(bad('pe.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [] }), /"themes" must be a non-empty array of \{kebab_name, summary, content_preview, paragraph_count\}/);
+    assert.throws(bad('pp.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: 1 }] }), /theme 1 is missing "content_preview"/);
+    assert.throws(bad('pc.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: '3', content_preview: 'x' }] }), /theme 1 "paragraph_count" must be a non-negative integer/);
+    assert.throws(bad('pn.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: -1, content_preview: 'x' }] }), /theme 1 "paragraph_count" must be a non-negative integer/);
+    assert.throws(bad('ee.json', 'errors', { source: 'auth', errors: [] }), /"errors" must be a non-empty array of strings/);
+    assert.throws(bad('eb.json', 'errors', { source: 'auth', errors: ['ok', ''] }), /errors\[1\] must be a non-empty string/);
   });
 });
 
@@ -5370,7 +5602,9 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
       "=== MENU: plan format gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Project default format is **local-markdown**. Use the same format?',
+      'Project default format is **local-markdown**.',
+      '',
+      '**`◆ Use the same format?`**',
       '',
       '**`y/yes`** → Use local-markdown',
       '**`n/no`**  → See all available formats',
@@ -5382,13 +5616,13 @@ describe('render — the adopted phase gates', () => {
     const cont = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'continue' });
     assert.match(cont, /MENU: plan review continue gate/);
     assert.match(cont, /`◆ Continue with review\?`/);
-    assert.match(cont, /\*\*`p\/proceed`\*\* → Continue review/);
+    assert.match(cont, /\*\*`y\/yes`\*\*\s+→ Continue review/);
     assert.match(cont, /\*\*`s\/skip`\*\*\s+→ Skip review, proceed to completion/);
 
     const reloop = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'reloop' });
     assert.match(reloop, /MENU: plan review reloop gate/);
     assert.match(reloop, /`◆ Run another review round\?`/);
-    assert.match(unwrap(reloop), /\*\*`r\/reanalyse`\*\* → Run another round \(traceability \+ integrity\)/);
+    assert.match(unwrap(reloop), /\*\*`y\/yes`\*\*\s+→ Run another round \(traceability \+ integrity\)/);
     assert.match(reloop, /\*\*`p\/proceed`\*\*\s+→ Proceed to conclusion/);
 
     assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout' }),
@@ -5407,7 +5641,9 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(out, [
       "=== MENU: correction gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Apply the correction protocol to .workflows/done/specification/done/specification.md?',
+      'Correcting .workflows/done/specification/done/specification.md.',
+      '',
+      '**`◆ Apply the correction protocol?`**',
       '',
       '**`y/yes`**  → Edit in place + corrigendum + knowledge re-index',
       '**`v/view`** → Show the full correction list',

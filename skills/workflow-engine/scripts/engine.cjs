@@ -319,6 +319,8 @@ Commands:
   render absorb-name-gate  <feature> --into <epic>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
+  render archived-actions  --path <archived path>
+  render archived-delete-gate --path <archived path>
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
@@ -343,6 +345,9 @@ Commands:
   render baseline-offer-gate
   render migration-gate
   render label-gate
+  render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
+  render legacy-split-gate --variant themes|plan|remove
+  render legacy-split-display --variant candidates|plan|errors --file <payload.json>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

@@ -16,7 +16,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-approva
 
 **STOP.** Wait for user response.
 
-#### If `approve`
+#### If `yes`
 
 Record the freeze and commit — from here the design changes only by **[amendment-protocol.md](amendment-protocol.md)**:
 

@@ -104,7 +104,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
 
 **STOP.** Wait for user response.
 
-**If `continue`:**
+**If `yes`:**
 
 Commit the migration changes:
 

@@ -942,7 +942,7 @@ function epicInSessionGate(workUnit, entry) {
       '**`◆ Proceed anyway?`**',
       '',
       cmdOption('b', 'back', 'Return to menu (recommended)'),
-      cmdOption('p', 'proceed', 'Proceed anyway'),
+      cmdOption('y', 'yes', 'Proceed anyway'),
     ]),
   );
 }

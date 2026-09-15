@@ -32,7 +32,7 @@ The prose should have taken this path:
    material
 7. the user asks to wrap up. The concluding ceremony fetches the wait
    gate before anything is deferred; it comes back populated over E1
-   still open — the blocker naming E1, the guidance, and the pause/keep
+   still open — the blocker naming E1, the guidance, and the yes/keep
    menu — emitted verbatim, and the session stops. No separate read of
    the wait precedes the fetch: the gate is the one call, empty when
    nothing is owed. The defer gate never appears and

@@ -59,7 +59,7 @@ Nothing is persisted — the assessment stays available from the workflow-start 
 
 **STOP.** Do not proceed — terminal condition.
 
-**If `approve`:**
+**If `yes`:**
 
 → Proceed to **C. Persist**.
 

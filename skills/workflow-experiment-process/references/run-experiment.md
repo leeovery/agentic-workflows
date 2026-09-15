@@ -16,7 +16,7 @@ Take `{id}`'s `status` from the response, and note its live sub-experiments — 
 
 #### If the record is `approved`
 
-The go was given at the freeze — the approve option starts measurement, and a later sitting re-enters through the menu. Record that it begins:
+The go was given at the freeze — approving the design starts measurement, and a later sitting re-enters through the menu. Record that it begins:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}

@@ -38,7 +38,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 **STOP.** Wait for user response.
 
-**If `pause`:**
+**If `yes`:**
 
 Commit any uncommitted session work with the session's cadence commit:
 
@@ -76,7 +76,7 @@ The response carries the thread register as a DISPLAY section whenever the topic
 
 **STOP.** Wait for user response.
 
-#### If `conclude`
+#### If `yes`
 
 → Load **[conclude-research.md](conclude-research.md)** with closure = `discussion`.
 

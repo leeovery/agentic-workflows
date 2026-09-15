@@ -9,12 +9,12 @@ The prose should have taken this path:
    guidelines load; the session's first triage consult finds the
    resumed sitting with a non-empty queue and renders the offer
    before any session output: the one-concern agenda plus the
-   discuss/later menu
-3. the user says discuss; the raise reads the queue file as the
+   yes/later menu
+3. the user says yes; the raise reads the queue file as the
    session's own brief and judges its ask owed the other phase-side —
    an open empirical question in a deciding session — so before any
    raise or map arming it renders the engine's requeue offer: the
-   statement, the diamond question naming research, the move/discuss
+   statement, the diamond question naming research, the yes/discuss
    options
 4. the user takes the move; one `topic requeue` transaction renumbers
    the file into synonym-handling's research queue, creates the
@@ -35,7 +35,7 @@ The prose should have taken this path:
    back populated — the blocker naming research on Synonym Handling as
    parked and not yet started (the stub this session's own move
    created), the guidance naming the research as the first move and a
-   cancel as the release, and the pause/keep menu — emitted verbatim,
+   cancel as the release, and the yes/keep menu — emitted verbatim,
    and the session stops. The map gate never runs, the closing gates
    are never loaded, and no completion is attempted — the session
    never asks the engine to do what it would refuse

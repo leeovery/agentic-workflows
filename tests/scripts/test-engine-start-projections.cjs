@@ -463,6 +463,48 @@ describe('start projections: archived store', () => {
     assert.ok(v.display.endsWith('No archived items.\n'));
     assert.strictEqual(v.menu, '');
   });
+
+  it('the archived-actions and delete gates render over the selected item by its store path, and refuse a path the store does not hold', () => {
+    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--live-idea.md', '# Live Idea\n');
+    const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md';
+
+    assert.strictEqual(renderSurface(dir, 'archived-actions', { path: archived }), [
+      "=== MENU: archived actions (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Selected: **Old Idea** (idea, archived)',
+      '',
+      '**`◆ What would you like to do with it?`**',
+      '',
+      '**`v/view`**      → View full content',
+      '**`u/unarchive`** → Restore to the inbox',
+      '**`d/delete`**    → Permanently delete (removes the file from git)',
+      '**`b/back`**      → Return to the archived list',
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(renderSurface(dir, 'archived-delete-gate', { path: archived }), [
+      "=== MENU: archived delete gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Permanently deleting "Old Idea" removes the file from the repo and cannot be undone.',
+      '',
+      '**`◆ Delete it?`**',
+      '',
+      '**`y/yes`** → Delete permanently',
+      '**`n/no`**  → Return',
+      '',
+    ].join('\n'));
+
+    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md', '# A title with **bold** and a [link]\n');
+    const tricky = renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' });
+    assert.match(tricky, /Selected: \*\*A title with \\\*\\\*bold\\\*\\\* and a \\\[link\\\]\*\* \(bug, archived\)/, 'user-authored title markup is escaped');
+    assert.match(renderSurface(dir, 'archived-delete-gate', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' }), /deleting "A title with \\\*\\\*bold/);
+    assert.throws(() => renderSurface(dir, 'archived-actions', {}), /render archived-actions: --path is required — the selected archived item/);
+    assert.throws(() => renderSurface(dir, 'archived-delete-gate', {}), /render archived-delete-gate: --path is required/);
+    assert.throws(() => renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/ideas/2026-06-01--live-idea.md' }), /not an archived inbox path/);
+    assert.throws(() => renderSurface(dir, 'archived-delete-gate', { path: '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md' }), /not in the archived store: "\.workflows\/\.inbox\/\.archived\/ideas\/2026-05-02--ghost\.md"/);
+  });
 });
 
 describe('start projections: working set', () => {

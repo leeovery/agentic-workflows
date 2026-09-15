@@ -76,7 +76,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit
 
 **STOP.** Wait for user response.
 
-#### If `review`
+#### If `yes`
 
 Surface inline this turn — do not re-prompt, and do not re-enter the protocol at its **A**: this reference has already scanned, acknowledged, and announced the row. First read each finding's lane from the report and re-classify as **B. First Read** in the protocol prescribes — the report was written cold, and at conclusion the document has moved furthest from it. Then what the user sees is whichever lane comes first: a batch screen, or one raised finding. The protocol's parameters here are agent_type = `review`, work_unit = `{work_unit}`, phase = `{phase}`, topic = `{topic}`.
 

@@ -22,14 +22,15 @@ const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
+const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
+const { archivedItem } = require('./inbox-set.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
   baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
-const { migrationGate, labelGate } = require('./projections/boot.cjs');
+const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -504,12 +505,12 @@ function specReviewGate(cwd, { dotpath, variant }) {
   }
   if (variant === 'continue') {
     return section('MENU: spec review continue gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('y', 'yes', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }
   return section('MENU: spec review reloop gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('r', 'reanalyse', 'Run another review cycle (all three phases)'),
+    cmdOption('y', 'yes', 'Run another review cycle (all three phases)'),
     cmdOption('p', 'proceed', 'Proceed to completion'),
   ], { question: 'Run another review cycle?' }));
 }
@@ -1627,7 +1628,7 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
       cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
       promptOption('Tell me what to change', 'what to revise in this task'),
       promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
-    ]),
+    ], { question: 'Write it to the plan?' }),
   );
 }
 
@@ -2016,7 +2017,7 @@ function researchThreadsSurface(cwd, { dotpath }) {
 function researchConcludeGate(cwd, args) {
   const { topic, manifest } = resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
   const options = [
-    cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
+    cmdOption('y', 'yes', 'Mark this topic as complete, ready for discussion'),
   ];
   if (args['dead-end']) {
     options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
@@ -2025,7 +2026,7 @@ function researchConcludeGate(cwd, args) {
   const gate = section(
     'MENU: research conclude gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu('', options, { question: 'This topic looks ready to conclude.' }),
+    menu('This topic looks ready to conclude.', options, { question: 'Conclude it?' }),
   );
   const register = registerState(manifest, topic).total > 0
     ? researchThreadsSection(topic, manifest, 'emit verbatim as a code block')
@@ -2164,9 +2165,10 @@ function reviewFindingsGate(cwd, { dotpath }) {
   return section('MENU: review findings gate', STOP_FOR_RESPONSE, menu(
     `The review left ${n} finding${n === 1 ? '' : 's'} still to walk.`,
     [
-      cmdOption('r', 'review', 'Work through them now'),
+      cmdOption('y', 'yes', 'Work through them now'),
       cmdOption('s', 'skip', 'Acknowledge and conclude the topic'),
     ],
+    { question: 'Walk them now?' },
   ));
 }
 
@@ -3007,11 +3009,12 @@ function planFormatGate(cwd) {
     throw new Error('render plan-format-gate: no project default plan_format — the offer only renders over an existing default');
   }
   return section('MENU: plan format gate', STOP_FOR_RESPONSE, menu(
-    `Project default format is **${format}**. Use the same format?`,
+    `Project default format is **${format}**.`,
     [
       cmdOption('y', 'yes', `Use ${format}`),
       cmdOption('n', 'no', 'See all available formats'),
     ],
+    { question: 'Use the same format?' },
   ));
 }
 
@@ -3031,12 +3034,12 @@ function planReviewGate(cwd, { dotpath, variant }) {
   resolvePlanning(cwd, dotpath, 'plan-review-gate');
   if (variant === 'continue') {
     return section('MENU: plan review continue gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('y', 'yes', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }
   return section('MENU: plan review reloop gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('r', 'reanalyse', 'Run another round (traceability + integrity)'),
+    cmdOption('y', 'yes', 'Run another round (traceability + integrity)'),
     cmdOption('p', 'proceed', 'Proceed to conclusion'),
   ], { question: 'Run another review round?' }));
 }
@@ -3061,12 +3064,13 @@ function correctionGate(cwd, { dotpath }) {
   }
   const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
   return section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
-    `Apply the correction protocol to ${specPath}?`,
+    `Correcting ${specPath}.`,
     [
       cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
       cmdOption('v', 'view', 'Show the full correction list'),
       cmdOption('n', 'no', 'Leave the specification as-is'),
     ],
+    { question: 'Apply the correction protocol?' },
   ));
 }
 
@@ -3125,10 +3129,11 @@ const BATCH_MAX = 5;
 /** A confirm's remainder tail — how many of the lane wait beyond this screen. @param {number} more */
 const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
 
-/** @type {Record<string, {intro: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, fields: string[]}>} */
+/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
+    question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
     confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
     ask: "Tell me a number to expand, or one you don't think is settled",
     fields: ['title', 'detail'],
@@ -3137,6 +3142,7 @@ const BATCH_LANES = {
     intro: (n) => (n === 1
       ? "This one has a single defensible answer, settled by what's already decided or by first principles. I've made the call and named what determined it."
       : "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it."),
+    question: (n) => (n === 1 ? 'Document it?' : 'Document them?'),
     confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
     discuss: "Say discuss and a number — I'll raise it after the rest land",
     ask: 'Tell me a number to expand',
@@ -3146,6 +3152,7 @@ const BATCH_LANES = {
     intro: (n) => (n === 1
       ? "Not this topic's to answer. It goes to its owner's triage queue as a concern, carrying the context built here."
       : "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here."),
+    question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
     confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
     ask: 'Tell me a number to expand, or one that should stay here',
     fields: ['title', 'target', 'detail'],
@@ -3195,7 +3202,7 @@ function findingBatch(cwd, { dotpath, file }) {
         cmdOption('y', 'yes', lane.confirm(p.items.length, more)),
         ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
         promptOption('Ask', lane.ask),
-      ]),
+      ], { question: lane.question(p.items.length) }),
     ),
   ].join('\n');
 }
@@ -3397,7 +3404,7 @@ function triageQueue(cwd, workUnit, phase, topic) {
 // triage-offer — the offer gate over a non-empty queue: the agenda (count
 // and order from the live queue, per-entry lines from the caller's payload,
 // keyed by queue file so payload and queue stay in exact correspondence)
-// plus the discuss/later menu.
+// plus the yes/later menu.
 
 /**
  * @param {string} cwd
@@ -3441,7 +3448,7 @@ function triageOffer(cwd, { dotpath, file }) {
       'MENU: triage offer',
       "emit verbatim as markdown, then STOP for the user's response",
       menu('Work through them now?', [
-        cmdOption('d', 'discuss', 'Surface and discuss them one at a time'),
+        cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
         cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude"),
       ]),
     ),
@@ -3525,7 +3532,7 @@ function requeueOffer(cwd, { dotpath, file }) {
     'MENU: requeue offer',
     "emit verbatim as markdown, then STOP for the user's response",
     menu(`**${p.title}** — ${p.reason}`, [
-      cmdOption('m', 'move', `Move it to this topic's ${other} queue — raised when ${other} runs`),
+      cmdOption('y', 'yes', `Move it to this topic's ${other} queue — raised when ${other} runs`),
       cmdOption('d', 'discuss', 'Work it here now'),
     ], { question: `Move it to ${other}?` }),
   );
@@ -4115,7 +4122,7 @@ function codeGate(cwd, { dotpath }) {
         '**`◆ Proceed anyway?`**',
         '',
         cmdOption('b', 'back', 'Leave that session to it (recommended)'),
-        cmdOption('p', 'proceed', 'Enter anyway — two sessions on one code base'),
+        cmdOption('y', 'yes', 'Enter anyway — two sessions on one code base'),
       ]),
     ),
   ].join('\n');
@@ -4530,6 +4537,34 @@ function absorbConfirmGateSurface(cwd, args) {
   return absorbConfirmGate();
 }
 
+// ---------------------------------------------------------------------------
+// Archived-store gates — the sub-view's menus over one archived item,
+// resolved by its store path so the title on the label is the file's own.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd @param {{dotpath: string, path?: string}} args @param {string} surface
+ * @returns {import('./inbox-set.cjs').PickupItem}
+ */
+function resolveArchivedItem(cwd, { path: given }, surface) {
+  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — the selected archived item`);
+  try {
+    return archivedItem(cwd, /** @type {string} */ (given));
+  } catch (err) {
+    throw new Error(`render ${surface}: ${/** @type {Error} */ (err).message}`);
+  }
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function archivedActionsSurface(cwd, args) {
+  return archivedActions(resolveArchivedItem(cwd, args, 'archived-actions'));
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function archivedDeleteGateSurface(cwd, args) {
+  return archivedDeleteGate(resolveArchivedItem(cwd, args, 'archived-delete-gate'));
+}
+
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function revisitPhasesSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
@@ -4660,7 +4695,7 @@ function synthesisGateSurface(_cwd, _args) {
     cmdOption('y', 'yes', 'Commit these topics and conclude'),
     cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
     promptOption('Adjust', 'Tell me what to change (split, merge, rename, re-route, edit summary)'),
-  ], { question: 'Confirm to commit, or tell me what to adjust.' }));
+  ], { question: 'Commit these topics?' }));
 }
 
 /** The knowledge query-failure gate — retry or proceed without context. @param {string} _cwd @param {object} _args @returns {string} */
@@ -4669,6 +4704,120 @@ function queryFailureGateSurface(_cwd, _args) {
     cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
     cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
   ], { question: 'How should I proceed?' }));
+}
+
+// The legacy research split's dialog gates, keyed by what each asks: themes
+// = the candidate theme list's early sanity gate, plan = the drafted plan's
+// apply consent, remove = the destructive theme-removal confirm.
+/** @type {Record<string, {question: string, options: string[]}>} */
+const LEGACY_SPLIT_GATES = {
+  themes: {
+    question: 'Proceed with these themes?',
+    options: [
+      cmdOption('y', 'yes', 'Proceed to draft cache files'),
+      cmdOption('a', 'abandon', 'Skip this source file'),
+      promptOption('Redirect', 'Adjust the theme list (rename, merge two, split one, add, remove)'),
+    ],
+  },
+  plan: {
+    question: 'Apply this plan?',
+    options: [
+      cmdOption('y', 'yes', 'Apply this plan'),
+      cmdOption('a', 'abandon', 'Skip this source file'),
+      promptOption('Edit', 'Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.'),
+    ],
+  },
+  remove: {
+    question: 'Remove the theme?',
+    options: [
+      cmdOption('y', 'yes', 'Remove the theme and drop its content'),
+      cmdOption('n', 'no', 'Back out'),
+    ],
+  },
+};
+
+const LEGACY_SPLIT_GATE_VARIANTS = Object.keys(LEGACY_SPLIT_GATES);
+
+/** One of the legacy split dialog's gates. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
+function legacySplitGateSurface(_cwd, { variant }) {
+  if (variant === undefined || !LEGACY_SPLIT_GATE_VARIANTS.includes(variant)) {
+    throw new Error(`render legacy-split-gate: --variant must be one of ${LEGACY_SPLIT_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  const gate = LEGACY_SPLIT_GATES[variant];
+  return section(`MENU: legacy split ${variant} gate`, STOP_FOR_RESPONSE, menu('', gate.options, { question: gate.question }));
+}
+
+// The legacy research split's dialog displays, keyed by what each shows:
+// candidates = the theme list at the early sanity gate (a batch worklist,
+// summary beneath each name), plan = the drafted plan (each theme's summary,
+// drafted content, and cache path as a tree, then the rename apply makes —
+// its stamp is minted at apply, so the footer names the slot), errors =
+// validate.cjs's refusals as bullets. Names, summaries, counts, previews,
+// and the validator's lines are judgment content and ride the payload; the
+// cache layout is the engine's.
+/** @type {Record<string, string[]>} */
+const LEGACY_SPLIT_THEME_FIELDS = {
+  candidates: ['kebab_name', 'summary'],
+  plan: ['kebab_name', 'summary', 'content_preview'],
+};
+const LEGACY_SPLIT_DISPLAY_VARIANTS = [...Object.keys(LEGACY_SPLIT_THEME_FIELDS), 'errors'];
+
+/** One of the legacy split dialog's displays. @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function legacySplitDisplaySurface(cwd, { variant, file }) {
+  if (variant === undefined || !LEGACY_SPLIT_DISPLAY_VARIANTS.includes(variant)) {
+    throw new Error(`render legacy-split-display: --variant must be one of ${LEGACY_SPLIT_DISPLAY_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'legacy-split-display');
+  if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
+
+  if (variant === 'errors') {
+    if (!Array.isArray(p.errors) || p.errors.length === 0) {
+      throw new Error('render legacy-split-display: "errors" must be a non-empty array of strings');
+    }
+    p.errors.forEach((e, i) => {
+      if (!isFilled(e)) throw new Error(`render legacy-split-display: errors[${i}] must be a non-empty string`);
+    });
+    const body = [`Validation failed for ${p.source}:`, '', ...p.errors.flatMap((e) => bulletRow(e))];
+    return section('DISPLAY: legacy split errors', CONTINUE_INSTRUCTION, body.join('\n'));
+  }
+
+  const fields = LEGACY_SPLIT_THEME_FIELDS[variant];
+  if (variant === 'plan' && !isFilled(p.work_unit)) {
+    throw new Error('render legacy-split-display: "work_unit" must be a non-empty string');
+  }
+  if (!Array.isArray(p.themes) || p.themes.length === 0) {
+    throw new Error(`render legacy-split-display: "themes" must be a non-empty array of {${[...fields, ...(variant === 'plan' ? ['paragraph_count'] : [])].join(', ')}}`);
+  }
+  p.themes.forEach((t, i) => {
+    for (const field of fields) {
+      if (!isFilled(t[field])) throw new Error(`render legacy-split-display: theme ${i + 1} is missing "${field}"`);
+    }
+    if (variant === 'plan' && (!Number.isInteger(t.paragraph_count) || t.paragraph_count < 0)) {
+      throw new Error(`render legacy-split-display: theme ${i + 1} "paragraph_count" must be a non-negative integer`);
+    }
+  });
+
+  if (variant === 'candidates') {
+    const body = worklist({
+      intro: `Candidate themes for ${p.source}.md:`,
+      items: p.themes.map((t) => ({ title: t.kebab_name, note: t.summary })),
+    });
+    return section('DISPLAY: legacy split candidates', CONTINUE_MARKDOWN_INSTRUCTION, body);
+  }
+
+  const lines = [`Plan for ${p.source}.md:`, ''];
+  p.themes.forEach((t, i) => {
+    lines.push(`${i + 1}. ${t.kebab_name}`);
+    lines.push(treeList([
+      `Summary: ${t.summary}`,
+      `Content: ${t.paragraph_count} para(s) — "${t.content_preview}..."`,
+      `Cache: .workflows/.cache/${p.work_unit}/legacy-split/${p.source}/${t.kebab_name}.md`,
+    ], { indent: '   ' }));
+    lines.push('');
+  });
+  lines.push(`Source file will be renamed to ${p.source}-superseded-<datetime>.md.`);
+  return section('DISPLAY: legacy split plan', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -4834,6 +4983,26 @@ function baselineDocPickSurface(cwd, _args) {
   return baselineDocPick();
 }
 
+/**
+ * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
+ * the reuse variant alone — the system configuration its yes row names. A
+ * provider stands without a model (the provider defaults it); a model
+ * without a provider names nothing.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function knowledgeGateSurface(_cwd, { variant, provider, model }) {
+  if (variant === undefined || !KNOWLEDGE_GATE_VARIANTS.includes(variant)) {
+    throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (variant !== 'reuse' && (provider !== undefined || model !== undefined)) {
+    throw new Error(`render knowledge-gate: --provider/--model belong to the reuse variant — the ${variant} variant names no configuration`);
+  }
+  if (isFilled(model) && !isFilled(provider)) {
+    throw new Error('render knowledge-gate: --model names nothing without --provider — the provider is the configuration, the model rides with it');
+  }
+  return knowledgeGate(variant, { provider, model });
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -4927,6 +5096,8 @@ const SURFACES = {
   'absorb-name-gate': absorbNameGateSurface,
   'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
+  'archived-actions': archivedActionsSurface,
+  'archived-delete-gate': archivedDeleteGateSurface,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,
   'roadmap-add-gate': roadmapAddGateSurface,
@@ -4951,6 +5122,9 @@ const SURFACES = {
   'baseline-offer-gate': baselineOfferGateSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
+  'knowledge-gate': knowledgeGateSurface,
+  'legacy-split-gate': legacySplitGateSurface,
+  'legacy-split-display': legacySplitDisplaySurface,
 };
 
 /**

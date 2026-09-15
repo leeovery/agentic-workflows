@@ -47,7 +47,7 @@ function baselineAreaGate(d, area) {
   const body = menu(
     `**${titlecase(area)}** is documented. ${d.remaining} area(s) remain.`,
     [
-      cmdOption('c', 'continue', 'Interview the next area'),
+      cmdOption('y', 'yes', 'Interview the next area'),
       cmdOption('p', 'pause', 'Stop here — resume any time from workflow-start'),
     ],
     { question: 'Keep going?' },
@@ -101,7 +101,7 @@ function baselineReceipt(d) {
 
 /**
  * The scope confirmation — the proposed area list (judgment content, via
- * payload) above its approve/back/adjust gate.
+ * payload) above its yes/back/adjust gate.
  * @param {ScopePayload} payload
  * @returns {string}
  */
@@ -110,7 +110,7 @@ function baselineScopeGate(payload) {
   const body = menu(
     '',
     [
-      cmdOption('a', 'approve', 'Lock the list and start the research'),
+      cmdOption('y', 'yes', 'Lock the list and start the research'),
       cmdOption('b', 'back', 'Leave without changing anything'),
       promptOption('Adjust', 'Tell me what to add, drop, rename, or merge'),
     ],
@@ -161,7 +161,7 @@ function baselineDocGate() {
   const body = menu(
     '',
     [
-      cmdOption('a', 'approve', 'Index and commit the doc'),
+      cmdOption('y', 'yes', 'Index and commit the doc'),
       cmdOption('v', 'view', 'Read the full doc first'),
       promptOption('Adjust', 'Tell me what to change'),
     ],

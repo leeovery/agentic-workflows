@@ -6,7 +6,7 @@
 // the experiments a conversation spawned. The engine's completion refusal
 // is the backstop; this is its graceful face — the blocker names what is
 // owed, the guidance names the ways out, and the menu offers the pause the
-// spawn gate's `now` takes.
+// spawn gate's `yes` takes.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption } = require('./surfaces.cjs');
@@ -60,7 +60,7 @@ function waitGate(phase, topic, waits) {
     ),
     section('DISPLAY: wait guidance', 'emit verbatim as markdown', `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('p', 'pause', `Pause this ${phase} here — the session ends and the menu takes over with ${queued.join(' and ')} queued`),
+      cmdOption('y', 'yes', `Pause this ${phase} here — the session ends and the menu takes over with ${queued.join(' and ')} queued`),
       cmdOption('k', 'keep', `Keep the conversation going — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
     ], { question: 'Pause to the menu?' })),
   ].join('\n');
