@@ -16,7 +16,7 @@ The caller provides these via context before loading:
 
 ## A. Check
 
-List the topic's triage queue:
+List the topic's triage queue — a fresh read at every consult, never a count carried from resume detection or an earlier iteration; a peer session may have landed a concern since:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {phase} {topic}
@@ -84,7 +84,7 @@ Mid-thread — never interrupt. The next iteration's check reconsiders.
 
 ## B. Offer
 
-Read the first two lines only of each queue file — the `### {title}` heading and the `*From: {origin} · {from_phase} · {from_date}*` provenance line. Never a body here. Write the agenda payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/triage-offer.json` with the Write tool — one item per queue file, keyed by its basename:
+Read the first two lines only of each queue file — the `### {title}` heading and the `*From: {origin} · {from_phase} · {from_date}*` provenance line — with the Read tool's `limit` set to 2, never a whole-file read: a body read here is a body in context before the user has opted in. Write the agenda payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/triage-offer.json` with the Write tool — one item per queue file, keyed by its basename:
 
 ```json
 {"items": [{"file": "{NNN-slug}.md", "title": "…", "origin": "…", "from_phase": "…", "from_date": "…"}]}
