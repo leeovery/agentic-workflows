@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.54] - 2026-09-15
+
+🐛 Fixed
+- A discussion re-entered mid-session now always runs the full closing ceremony from the top — calls flush, wait gate, map gate — instead of possibly skipping steps on repeat entries.
+- Folded rerouted concerns now carry their full original text into the record instead of a paraphrase.
+- The announcement when a concern moves to another phase's queue now states every relevant fact (flags raised, research dependency) in one line, and confirms nothing about the concern is left behind in the current document.
+
 ## [0.7.53] - 2026-09-15
 
 🔧 Changed
