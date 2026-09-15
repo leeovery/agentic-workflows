@@ -81,6 +81,8 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.
 
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
 ---
 
 ## Step 5: Check Prerequisites
