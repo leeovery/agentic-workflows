@@ -938,13 +938,15 @@ function checkNoFrontmatterSessionEndHooks(files) {
 // ---------------------------------------------------------------------------
 // Check 19 — a yes row asks a question. A menu block carrying a `y/yes` row
 // is a consent gate, and a consent gate asks on its diamond line: the block
-// holds a glyphed `**`◆ …`**` line and that line ends in `?` — the shape the
-// engine's `menu()` refuses (surfaces.cjs), held here for the prose-authored
-// menus. Anchored on the dot frame like checks 16/17 and closed by the
-// fence or the next frame, so a yes row outside a menu is never inspected.
+// holds a glyphed `**`◆ …`**` line and that line ends in `?`; an `n/no` row
+// answers a `y/yes` row, never a verb synonym — the shape the engine's menu
+// frame refuses (surfaces.cjs), held here for the prose-authored menus.
+// Anchored on the dot frame like checks 16/17 and closed by the fence or the
+// next frame, so a yes row outside a menu is never inspected.
 // ---------------------------------------------------------------------------
 
 const YES_ROW = /^\*\*`y\/yes`\*\*/;
+const NO_ROW = /^\*\*`n\/no`\*\*/;
 const GLYPHED_LINE = /^\*\*`◆ .*`\*\*$/;
 
 function checkYesAsksQuestion(files) {
@@ -953,6 +955,9 @@ function checkYesAsksQuestion(files) {
     const lines = readLines(file);
     let block = null;
     const close = () => {
+      if (block && block.no && !block.yes) {
+        out.push({ file, line: block.no, message: 'an n/no row without a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym' });
+      }
       if (block && block.yes) {
         if (!block.glyph) {
           out.push({ file, line: block.start, message: 'a y/yes row with no glyphed question — a consent gate asks on its diamond line (**`◆ …?`**)' });
@@ -966,7 +971,7 @@ function checkYesAsksQuestion(files) {
       const t = line.trim();
       if (t === MENU_FRAME) {
         close();
-        block = { start: i + 1, glyph: null, yes: false };
+        block = { start: i + 1, glyph: null, yes: false, no: 0 };
         return;
       }
       if (!block) return;
@@ -976,6 +981,7 @@ function checkYesAsksQuestion(files) {
       }
       if (GLYPHED_LINE.test(t)) block.glyph = { line: i + 1, text: t };
       if (YES_ROW.test(t)) block.yes = true;
+      if (NO_ROW.test(t) && !block.no) block.no = i + 1;
     });
     close();
   }
@@ -1511,6 +1517,12 @@ test('check 19 (yes rows ask a question) — catches a statement or an unglyphed
     // A route menu answers no yes — its statement stands.
     const route = write(dir, 'skills/x/route.md', fence('Where this belongs.\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
     assert.strictEqual(checkYesAsksQuestion([route]).length, 0, 'a statement over a route menu is clean');
+    // An n/no row names its yes — a verb synonym beside it is caught.
+    const synonym = write(dir, 'skills/x/synonym.md', fence('**`◆ Proceed?`**\n\n**`p/proceed`** → Carry on\n**`n/no`**      → Stop here'));
+    const v4 = checkYesAsksQuestion([synonym]);
+    assert.strictEqual(v4.length, 1, 'an n/no row without a y/yes row is caught');
+    assert.strictEqual(v4[0].line, 6);
+    assert.match(v4[0].message, /an n\/no row without a y\/yes row/);
 
     // Option grammar outside a menu is not a menu — no dot frame, no check.
     const prose = write(dir, 'skills/x/prose.md', '**`y/yes`** → the affirmative key\n');
