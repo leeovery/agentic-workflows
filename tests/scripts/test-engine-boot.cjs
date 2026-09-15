@@ -29,14 +29,19 @@ function writeFile(dir, rel, content) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The session-end hooks boot keeps in every project's `.claude/settings.json`.
+// The session hooks boot keeps in every project's `.claude/settings.json`.
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
+const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
 /** Settings carrying `hooks` in boot's one SessionEnd group, beside `rest`. */
 function hooked(hooks, rest = {}) {
   return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] } }, null, 2) + '\n';
 }
+/** The settings a project reaches with labels on: both SessionEnd hooks, and the SessionStart resume hook. */
+const LABELS_ON = JSON.stringify({
+  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
+}, null, 2) + '\n';
 
 /**
  * A project fixture: a real git repo with a `.workflows/` tree, its
@@ -191,7 +196,7 @@ describe('engine boot', () => {
       warnings: [],
       tmux_labels: 'prompt',
       label_repaired: false,
-      session_end_hooks_installed: false,
+      session_hooks_installed: false,
       baseline: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
       // and the tree it arrived into holds no project file.
@@ -422,11 +427,11 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     // Boot commits exactly the two config paths the skill's .workflows-scoped
     // migration commit would otherwise leave dirty — then, the migration
-    // having rewritten settings.json without the session-end hooks, puts
+    // having rewritten settings.json without the session hooks, puts
     // them back in a commit of their own.
     const subjects = git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n');
-    assert.deepStrictEqual(subjects, ['chore: install workflow session-end hooks', 'chore: apply workflow migration config changes']);
-    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.deepStrictEqual(subjects, ['chore: install workflow session hooks', 'chore: apply workflow migration config changes']);
+    assert.strictEqual(res.session_hooks_installed, true);
     const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD~1']).trim().split('\n').sort();
     assert.deepStrictEqual(show, ['.claude/settings.json', '.gitignore']);
     // The .workflows changes stay uncommitted — the skill's reviewed commit owns them.
@@ -493,7 +498,7 @@ describe('engine boot', () => {
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
     // other one on the checkout. Its three commits — the migration config
-    // pass, the store commit, and the session-end hooks install — must take
+    // pass, the store commit, and the session hooks install — must take
     // their own paths and nothing else, staged peer content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
@@ -508,10 +513,10 @@ describe('engine boot', () => {
     });
 
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(res.session_hooks_installed, true);
     const shas = git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 3);
     assert.deepStrictEqual(shas.map((sha) => git(fix.project, ['log', '-1', '--pretty=%s', sha]).trim()), [
-      'chore: install workflow session-end hooks',
+      'chore: install workflow session hooks',
       'chore(knowledge): initialise store',
       'chore: apply workflow migration config changes',
     ]);
@@ -637,7 +642,7 @@ describe('engine boot system-config detection', () => {
   });
 });
 
-describe('engine boot session-end hooks', () => {
+describe('engine boot session hooks', () => {
   let fix;
   beforeEach(() => { fix = setupSkillsFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
@@ -666,9 +671,9 @@ describe('engine boot session-end hooks', () => {
   function bootWith({ tmux = false, skipHooks = false, env: extra = {} } = {}) {
     const env = { ...process.env, ...extra };
     delete env.TMUX;
-    delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
+    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
     if (tmux) env.TMUX = '/fake/sock,123,7';
-    if (skipHooks) env.WORKFLOWS_SKIP_SESSION_END_HOOKS = '1';
+    if (skipHooks) env.WORKFLOWS_SKIP_SESSION_HOOKS = '1';
     const out = execFileSync('node', [fix.engine, 'boot'], { cwd: fix.project, encoding: 'utf8', env });
     return JSON.parse(out.trim());
   }
@@ -711,42 +716,42 @@ describe('engine boot session-end hooks', () => {
   it('a project with no settings gets `presence cleanup` installed, committed confined — and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
-    assert.strictEqual(first.session_end_hooks_installed, true);
+    assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session-end hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
     const second = bootWith();
-    assert.strictEqual(second.session_end_hooks_installed, false);
+    assert.strictEqual(second.session_hooks_installed, false);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.workflows']).trim(), '', 'and no new dirt');
   });
 
-  it('labels on adds `session cleanup` beside `presence cleanup`, in one group', () => {
+  it('labels on adds `session cleanup` beside `presence cleanup`, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {
     recordChoice(true);
     const res = bootWith();
-    assert.strictEqual(res.session_end_hooks_installed, true);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([SESSION_HOOK, PRESENCE_HOOK]));
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), LABELS_ON);
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
-    assert.strictEqual(bootWith().session_end_hooks_installed, false);
+    assert.strictEqual(bootWith().session_hooks_installed, false);
   });
 
-  it('labels off wants `presence cleanup` alone — a `session cleanup` left behind comes back out', () => {
+  it('labels off wants `presence cleanup` alone — a `session cleanup` and a `session resume` left behind come back out', () => {
     recordChoice(false);
-    commitSettings(hooked([SESSION_HOOK, PRESENCE_HOOK]));
+    commitSettings(LABELS_ON);
     const res = bootWith();
-    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
   });
 
-  it('labels never asked wants `presence cleanup` alone too — a stale `session cleanup` comes back out', () => {
-    assert.strictEqual(bootWith().session_end_hooks_installed, false, 'the fixture already carries it');
+  it('labels never asked wants `presence cleanup` alone too — stale label hooks come back out', () => {
+    assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')), 'no choice recorded');
-    commitSettings(hooked([SESSION_HOOK, PRESENCE_HOOK]));
+    commitSettings(LABELS_ON);
     const res = bootWith();
-    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
   });
 
@@ -756,7 +761,7 @@ describe('engine boot session-end hooks', () => {
     fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
     const env = { ...process.env };
     delete env.TMUX;
-    delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
+    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
     const child = spawn('node', [fix.engine, 'boot'], { cwd: fix.project, env });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -770,25 +775,25 @@ describe('engine boot session-end hooks', () => {
     fs.unlinkSync(lock);
     assert.strictEqual(await exit, 0);
     const res = JSON.parse(stdout.trim());
-    assert.strictEqual(res.session_end_hooks_installed, true);
+    assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
   });
 
   it('installs into existing settings without disturbing them', () => {
     commitSettings(JSON.stringify({ permissions: { allow: ['Bash(ls)'] } }, null, 2) + '\n');
-    assert.strictEqual(bootWith().session_end_hooks_installed, true);
+    assert.strictEqual(bootWith().session_hooks_installed, true);
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] },
     });
   });
 
-  it('WORKFLOWS_SKIP_SESSION_END_HOOKS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
+  it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
-    assert.strictEqual(bootWith({ skipHooks: true }).session_end_hooks_installed, false);
+    assert.strictEqual(bootWith({ skipHooks: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     recordChoice(true);
-    assert.strictEqual(bootWith({ skipHooks: true }).session_end_hooks_installed, false);
+    assert.strictEqual(bootWith({ skipHooks: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
   });
@@ -798,9 +803,9 @@ describe('engine boot session-end hooks', () => {
     writeFile(fix.project, '.claude/settings.json', '{not json');
     const res = bootWith();
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.session_end_hooks_installed, false);
+    assert.strictEqual(res.session_hooks_installed, false);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /session-end hooks not installed: \.claude\/settings\.json is not valid JSON/);
+    assert.match(res.warnings[0], /session hooks not installed: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 });

@@ -221,7 +221,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const tree = new Map([[worlds.SETTINGS, Buffer.from('{not json')]]);
     assert.throws(
       () => worlds.unstampHarnessState(tree, { baseline: false, settings_created: true }),
-      /cannot strip the session-end hooks: .*not valid JSON/);
+      /cannot strip the session hooks: .*not valid JSON/);
   });
 
   it('a live boot — no skip switch, the walker\'s real environment — finds the hooks it wants and writes nothing', function () {
@@ -229,12 +229,12 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const dir = worlds.buildWorld(NATIVE_CASE);
     try {
       const env = worlds.recipeEnv();
-      delete env.WORKFLOWS_SKIP_SESSION_END_HOOKS;
+      delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
       const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
       const before = head();
       const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
       const boot = JSON.parse(out.trim());
-      assert.strictEqual(boot.session_end_hooks_installed, false, 'the seeded set is exactly what boot wants');
+      assert.strictEqual(boot.session_hooks_installed, false, 'the seeded set is exactly what boot wants');
       assert.deepStrictEqual(boot.warnings, []);
       assert.deepStrictEqual(statusLines(dir), [], 'nothing written');
       assert.strictEqual(head(), before, 'nothing committed');
@@ -245,7 +245,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
 
   it('the recipe env carries the engine\'s test-only hook switch, so a recipe\'s boot never writes a world\'s settings', () => {
     const env = worlds.recipeEnv();
-    assert.strictEqual(env.WORKFLOWS_SKIP_SESSION_END_HOOKS, '1');
+    assert.strictEqual(env.WORKFLOWS_SKIP_SESSION_HOOKS, '1');
     assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
     assert.ok(!('TMUX' in env), 'and no tmux identity');
   });

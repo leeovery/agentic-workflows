@@ -2,16 +2,18 @@
 
 //
 // Tests for tmux session labels: `session label` / `session label-config` /
-// `session repair` / `session cleanup`, the project-manifest opt-in and the
-// SessionEnd hook it syncs in the project's settings (`session cleanup`
-// while labels are on, `presence cleanup` regardless), the
+// `session repair` / `session cleanup` / `session resume`, the
+// project-manifest opt-in and the hooks it syncs in the project's settings
+// (SessionEnd: `session cleanup` while labels are on, `presence cleanup`
+// regardless; SessionStart: `session resume` while labels are on), the
 // per-checkout stash, the arrival forms (a work unit alone, the roadmap and
 // baseline identities), phase-hop recomposition, peer-checkout isolation,
 // user-rename adoption, id drift across a server restart (chain resolution,
 // drifted restore, boot repair, orphan pruning), owner identity, the
-// repair's own-label restore, restore ownership, and the SessionEnd stdin
-// contract. tmux itself is the shared PATH stub (`tmux-stub.cjs`)
-// modelling one session; the engine only ever sees the stub.
+// repair's own-label restore, restore ownership, the position record a
+// resume re-applies, and the hooks' stdin contract. tmux itself is the
+// shared PATH stub (`tmux-stub.cjs`) modelling one session; the engine only
+// ever sees the stub.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -21,7 +23,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { syncSessionEndHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { syncSessionHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
@@ -33,11 +35,19 @@ process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
+const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
-// The settings a project reaches with labels on, and with them off — one
-// group, ours alone.
-const BOTH_HOOKS = { hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }] } };
-const PRESENCE_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
+// The settings a project reaches with labels on — one group per event, ours
+// alone — and with them off.
+const LABELS_ON = {
+  hooks: {
+    SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }],
+    SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }],
+  },
+};
+const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
+// The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
+const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
 let dir; // temp project root — a git repo, since recording the opt-in commits
 let stubDir; // holds the tmux stub + state/log files
@@ -68,9 +78,10 @@ function teardown() {
  * Run the engine with a controlled environment: tmux stub on PATH, tmux
  * identity present unless `noTmux`. The suite's own pid plays the owning
  * Claude process (`claudePid: null` withholds identity — the record shape
- * a call with no CLAUDE_PID writes).
+ * a call with no CLAUDE_PID writes). `response: 'stderr'` reads the answer
+ * from stderr and holds stdout empty — the SessionStart hook's channel.
  */
-function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {} } = {}) {
+function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {}, response = 'stdout' } = {}) {
   const env = { ...process.env, ...extraEnv };
   delete env.TMUX;
   delete env.TMUX_PANE;
@@ -97,11 +108,25 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = proces
     return JSON.parse(r.stderr.trim());
   }
   assert.strictEqual(r.status, 0, r.stderr);
+  if (response === 'stderr') {
+    assert.strictEqual(r.stdout, '', 'a SessionStart hook target prints nothing on stdout — it would become conversation context');
+    return JSON.parse(r.stderr.trim());
+  }
   return JSON.parse(r.stdout.trim().split('\n')[0]);
+}
+
+/** `session resume …` — the SessionStart hook's target, answering on stderr. */
+function resume(args, opts = {}) {
+  return engine(['session', 'resume', ...args], { ...opts, response: 'stderr' });
 }
 
 function tmuxName() {
   return tmuxStubName(stubDir);
+}
+
+/** The number of renames the stub has been asked for. */
+function renameCount() {
+  return fs.readFileSync(path.join(stubDir, 'log'), 'utf8').split('\n').filter((l) => l.includes('rename-session')).length;
 }
 
 /** A rename made outside the engine — the user's own. */
@@ -138,6 +163,27 @@ function stashRecords() {
 function writeStash(basename, record) {
   fs.mkdirSync(stashStore(), { recursive: true });
   fs.writeFileSync(path.join(stashStore(), `${basename}.json`), JSON.stringify({ socket: '/fake/sock', ...record }) + '\n');
+}
+
+/** The position store — a subdirectory of the stash store, keyed by session id. */
+function positionsStore() {
+  return path.join(stashStore(), 'positions');
+}
+
+/** The position recorded for a session, or null when none is. */
+function position(sessionId) {
+  try { return JSON.parse(fs.readFileSync(path.join(positionsStore(), `${sessionId}.json`), 'utf8')); } catch { return null; }
+}
+
+/** Hand-write a position — the shapes the prune and the resume must handle. */
+function writePosition(sessionId, record) {
+  fs.mkdirSync(positionsStore(), { recursive: true });
+  fs.writeFileSync(path.join(positionsStore(), `${sessionId}.json`), typeof record === 'string' ? record : JSON.stringify(record) + '\n');
+}
+
+/** An ISO time `days` ago. */
+function daysAgo(days) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 /** The suite process's kernel start time — a live owner identity for hand-written records. */
@@ -400,6 +446,73 @@ describe('engine session label', () => {
   });
 });
 
+describe('engine session label — the position record', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('records the calling session\'s position behind a landed label, keyed by session id', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const pos = position('sess-1');
+    assert.deepStrictEqual({ ...pos, at: 'now' }, { name: 'pay', phase: 'discussion', topic: 'alpha', at: 'now' });
+    assert.ok(Date.now() - Date.parse(pos.at) < 60_000, 'stamped now, in ISO time');
+  });
+
+  it('a name-only label records the name alone', () => {
+    optIn();
+    engine(['session', 'label', 'roadmap']);
+    assert.deepStrictEqual(Object.keys(position('sess-1')), ['name', 'at']);
+    assert.strictEqual(position('sess-1').name, 'roadmap');
+  });
+
+  it('a re-label rewrites the one file — the latest position, never a history', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    engine(['session', 'label', 'pay', 'specification', 'alpha']);
+    assert.strictEqual(position('sess-1').phase, 'specification');
+    assert.deepStrictEqual(fs.readdirSync(positionsStore()), ['sess-1.json']);
+  });
+
+  it('a no-op label records nothing — disabled, outside tmux, a tmux error, a failed rename', () => {
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { fail: true });
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { failRename: true });
+    assert.ok(!fs.existsSync(positionsStore()), 'no position without a landed label');
+  });
+
+  it('a failed stash records nothing either', () => {
+    optIn();
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache'), '');
+    assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
+    assert.ok(!fs.existsSync(positionsStore()));
+  });
+
+  it('a position that cannot be written never fails the landed label — a courtesy, never a failure', () => {
+    optIn();
+    fs.mkdirSync(stashStore(), { recursive: true });
+    fs.writeFileSync(path.join(stashStore(), 'positions'), ''); // a file where the positions dir must go
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.strictEqual(res.labelled, true);
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+    assert.ok(stashFile(), 'the stash landed');
+  });
+
+  it('a hook-supplied session id never escapes the store — the file is named by its safe characters alone', () => {
+    optIn();
+    engine(['session', 'label', 'pay'], { sessionId: 'a/../../evil' });
+    assert.deepStrictEqual(fs.readdirSync(positionsStore()), ['aevil.json']);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows', '.cache', 'evil.json')));
+  });
+
+  it('a landed label with no session id records nothing — there is no id to resume under', () => {
+    optIn();
+    assert.strictEqual(engine(['session', 'label', 'pay'], { sessionId: null }).labelled, true);
+    assert.ok(!fs.existsSync(positionsStore()));
+  });
+});
+
 describe('engine session label — the manifest stamp', () => {
   beforeEach(setup);
   afterEach(teardown);
@@ -441,12 +554,12 @@ describe('engine session label-config', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('records the opt-in on the project manifest, installs both session-end hooks, and commits both files confined', () => {
+  it('records the opt-in on the project manifest, installs the session hooks, and commits both files confined', () => {
     fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } }, 'a missing manifest is created around the choice');
-    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.deepStrictEqual(settings(), LABELS_ON);
     assert.deepStrictEqual(head(), {
       subject: 'chore: record session-label choice',
       files: ['.claude/settings.json', '.workflows/manifest.json'],
@@ -470,7 +583,7 @@ describe('engine session label-config', () => {
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.strictEqual(projectManifest().defaults.tmux_labels, false);
-    assert.deepStrictEqual(settings(), PRESENCE_ONLY, 'the presence sweep is infrastructure, not a label preference');
+    assert.deepStrictEqual(settings(), LABELS_OFF, 'the presence sweep is infrastructure, not a label preference');
     assert.deepStrictEqual(head(), {
       subject: 'chore: record session-label choice',
       files: ['.claude/settings.json', '.workflows/manifest.json'],
@@ -480,7 +593,7 @@ describe('engine session label-config', () => {
   it('declining on a project the hooks never reached still installs `presence cleanup`', () => {
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
-    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+    assert.deepStrictEqual(settings(), LABELS_OFF);
     assert.deepStrictEqual(head().files, ['.claude/settings.json', '.workflows/manifest.json']);
   });
 
@@ -488,7 +601,7 @@ describe('engine session label-config', () => {
     engine(['session', 'label-config', 'true']);
     const before = git(['rev-parse', 'HEAD']);
     engine(['session', 'label-config', 'true']);
-    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.deepStrictEqual(settings(), LABELS_ON);
     assert.strictEqual(git(['rev-parse', 'HEAD']), before);
   });
 
@@ -506,7 +619,7 @@ describe('engine session label-config', () => {
     const res = engine(['session', 'label-config', 'true']);
     assert.strictEqual(res.tmux_labels, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /session-end hooks not synced: \.claude\/settings\.json is not valid JSON/);
+    assert.match(res.warnings[0], /session hooks not synced: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
     assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
   });
@@ -521,13 +634,13 @@ describe('engine session label-config', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^commit failed: /);
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
-    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+    assert.deepStrictEqual(settings(), LABELS_ON);
     assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'init', 'nothing landed');
     assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
   });
 
-  it('WORKFLOWS_SKIP_SESSION_END_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_END_HOOKS: '1' } });
+  it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_HOOKS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
@@ -535,7 +648,7 @@ describe('engine session label-config', () => {
   });
 });
 
-describe('syncSessionEndHooks', () => {
+describe('syncSessionHooks', () => {
   beforeEach(setup);
   afterEach(teardown);
 
@@ -543,42 +656,49 @@ describe('syncSessionEndHooks', () => {
   const PRESENCE = { session: false, presence: true };
   const NONE = { session: false, presence: false };
 
-  it('installs both into an absent settings file, as one group', () => {
-    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
-    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+  it('installs the labels-on set into an absent settings file — one group per event, the SessionStart group matched to resume', () => {
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), LABELS_ON);
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
   });
 
-  it('installs presence alone while labels are off', () => {
-    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
-    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
+  it('installs presence alone while labels are off — no SessionStart event at all', () => {
+    assert.deepStrictEqual(syncSessionHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), LABELS_OFF);
   });
 
-  it('installs beside everything already there — permissions, other events, other SessionEnd groups', () => {
+  it('installs beside everything already there — permissions, other events, foreign groups and their matchers on both events', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({
       permissions: { allow: ['Bash(ls)'] },
-      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }], SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] },
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+        SessionEnd: [{ matcher: 'clear', hooks: [theirs] }],
+        SessionStart: [{ matcher: 'startup', hooks: [theirs] }],
+      },
       showClearContextOnPlanAccept: true,
     });
-    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK] }],
+        SessionStart: [{ matcher: 'startup', hooks: [theirs] }, { matcher: 'resume', hooks: [RESUME_HOOK] }],
       },
       showClearContextOnPlanAccept: true,
     });
   });
 
   it('a second sync changes nothing — the hooks are recognised by their command, whatever surrounds them', () => {
-    syncSessionEndHooks(dir, BOTH);
-    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
+    syncSessionHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: false });
     assert.strictEqual(settings().hooks.SessionEnd.length, 1);
+    assert.strictEqual(settings().hooks.SessionStart.length, 1);
     // Hand-adjusted copies — a different path prefix, a timeout, ours split
-    // across groups, a foreign group added after ours — still make up the
-    // wanted set, so nothing is rewritten and nothing moves.
+    // across groups, a foreign group added after ours, a widened matcher —
+    // still make up the wanted set, so nothing is rewritten and nothing
+    // moves.
     writeSettings({
       hooks: {
         SessionEnd: [
@@ -586,43 +706,48 @@ describe('syncSessionEndHooks', () => {
           { hooks: [PRESENCE_HOOK] },
           { matcher: 'clear', hooks: [{ type: 'command', command: 'say goodbye' }] },
         ],
+        SessionStart: [
+          { matcher: 'startup|resume', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session resume' }] },
+        ],
       },
     });
     const text = fs.readFileSync(settingsPath(), 'utf8');
-    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: false });
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: false });
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), text, 'no reorder, no rewrite');
   });
 
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
     writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs' presence cleanup" }] }] } });
-    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(dir, PRESENCE), { changed: true });
     assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });
 
-  it('turning labels off takes `session cleanup` out and leaves `presence cleanup`; nothing wanted empties the file', () => {
-    syncSessionEndHooks(dir, BOTH);
-    assert.deepStrictEqual(syncSessionEndHooks(dir, PRESENCE), { changed: true });
-    assert.deepStrictEqual(settings(), PRESENCE_ONLY);
-    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+  it('turning labels off takes `session cleanup` and `session resume` out — the emptied SessionStart event with them — and leaves `presence cleanup`; nothing wanted empties the file', () => {
+    syncSessionHooks(dir, BOTH);
+    assert.deepStrictEqual(syncSessionHooks(dir, PRESENCE), { changed: true });
+    assert.deepStrictEqual(settings(), LABELS_OFF);
+    assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: true });
     assert.deepStrictEqual(settings(), {}, 'the hook, its group, the event, and the emptied hooks object all go');
-    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
+    assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: false });
   });
 
-  it('strips ours alone from a shared group and leaves sibling groups, events, and keys standing', () => {
+  it('strips ours alone from a shared group and leaves sibling groups, events, matchers, and keys standing — on both events', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ hooks: [theirs, SESSION_HOOK, PRESENCE_HOOK] }, { matcher: 'clear', hooks: [theirs] }],
+        SessionStart: [{ matcher: 'startup|resume', hooks: [theirs, RESUME_HOOK] }],
       },
     });
-    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: true });
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ hooks: [theirs] }, { matcher: 'clear', hooks: [theirs] }],
+        SessionStart: [{ matcher: 'startup|resume', hooks: [theirs] }],
       },
     });
   });
@@ -630,30 +755,48 @@ describe('syncSessionEndHooks', () => {
   it('a shared group keeps its matcher when ours come out of it', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({ hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs, SESSION_HOOK] }] } });
-    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: true });
     assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ matcher: 'clear', hooks: [theirs] }] } });
   });
 
-  it('collapses twins into the one wanted group', () => {
-    writeSettings({ hooks: { SessionEnd: [{ hooks: [SESSION_HOOK] }, { hooks: [SESSION_HOOK] }] } });
-    assert.deepStrictEqual(syncSessionEndHooks(dir, BOTH), { changed: true });
-    assert.deepStrictEqual(settings(), BOTH_HOOKS);
+  it('collapses twins into the one wanted group per event', () => {
+    writeSettings({
+      hooks: {
+        SessionEnd: [{ hooks: [SESSION_HOOK] }, { hooks: [SESSION_HOOK] }],
+        SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }, { matcher: 'resume', hooks: [RESUME_HOOK] }],
+      },
+    });
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), LABELS_ON);
+  });
+
+  it('reconciles the two events independently — a missing SessionStart group lands while a recognised SessionEnd group is left as it was', () => {
+    const hand = { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }, PRESENCE_HOOK] };
+    writeSettings({ hooks: { SessionEnd: [hand] } });
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
+  });
+
+  it('a hook of ours is ours under any event — a resume hook misplaced under SessionEnd moves to SessionStart', () => {
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK, RESUME_HOOK] }] } });
+    assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings(), LABELS_ON);
   });
 
   it('nothing to remove is nothing changed — an absent file stays absent', () => {
-    assert.deepStrictEqual(syncSessionEndHooks(dir, NONE), { changed: false });
+    assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: false });
     assert.ok(!fs.existsSync(settingsPath()));
   });
 
   it('a settings file that does not parse is left untouched and reported, never thrown', () => {
     writeSettings('{not json');
     for (const want of [BOTH, NONE]) {
-      const res = syncSessionEndHooks(dir, want);
+      const res = syncSessionHooks(dir, want);
       assert.strictEqual(res.changed, false);
       assert.match(res.error, /\.claude\/settings\.json is not valid JSON/);
     }
     writeSettings('[]');
-    assert.match(syncSessionEndHooks(dir, BOTH).error, /root is not an object/);
+    assert.match(syncSessionHooks(dir, BOTH).error, /root is not an object/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '[]');
   });
 });
@@ -678,6 +821,15 @@ describe('engine session cleanup', () => {
     assert.strictEqual(res.restored, true);
     assert.strictEqual(tmuxName(), 'proj-abc');
     assert.strictEqual(stashFile(), null);
+  });
+
+  it('restores the name and leaves the position — what the resume reads', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const before = position('sess-1');
+    assert.strictEqual(engine(['session', 'cleanup', 'sess-1']).restored, true);
+    assert.strictEqual(stashFile(), null);
+    assert.deepStrictEqual(position('sess-1'), before);
   });
 
   it('touches nothing without a session id — argument, stdin JSON, or otherwise', () => {
@@ -824,12 +976,16 @@ describe('engine session repair', () => {
     setTmuxName('proj-abc · pay · discussion · alpha');
   }
 
-  it('no-ops as disabled — a stranded label included', () => {
+  it('no-ops as disabled — a stranded label included; the position prune alone still runs', () => {
     strand();
+    writePosition('stale', { name: 'pay', at: daysAgo(31) });
+    writePosition('fresh', { name: 'pay', at: daysAgo(1) });
     const res = engine(['session', 'repair']);
     assert.deepStrictEqual(res, { ok: true, repaired: false });
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
-    assert.ok(stashFile(), 'nothing pruned either');
+    assert.ok(stashFile(), 'the stash is not pruned');
+    assert.strictEqual(position('stale'), null, 'a position past retention goes whatever the opt-in — it touches no terminal');
+    assert.ok(position('fresh'));
   });
 
   it('no-ops outside tmux', () => {
@@ -869,13 +1025,52 @@ describe('engine session repair', () => {
     assert.strictEqual(stashFile(), null);
   });
 
-  it('owns its label through the pid arm — a later conversation in the same process', () => {
+  it('drops the calling session\'s own position with its own label — the start menu is no position', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.ok(position('sess-1'));
+    assert.deepStrictEqual(engine(['session', 'repair']), { ok: true, repaired: true });
+    assert.strictEqual(position('sess-1'), null);
+  });
+
+  it('a dead-owner restore keeps the dead session\'s position — that session may yet be resumed', () => {
+    optIn();
+    strand();
+    writePosition('sess-old', { name: 'pay', phase: 'discussion', topic: 'alpha', at: daysAgo(1) });
+    assert.deepStrictEqual(engine(['session', 'repair']), { ok: true, repaired: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.ok(position('sess-old'), 'kept for the resume');
+  });
+
+  it('a failed rename keeps the position too — the label is still on', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(engine(['session', 'repair'], { failRename: true }), { ok: true, repaired: false });
+    assert.ok(position('sess-1'));
+  });
+
+  it('prunes positions older than 30 days — Claude Code\'s session retention — and any with no readable time; younger ones stay', () => {
+    optIn();
+    writePosition('stale', { name: 'pay', at: daysAgo(31) });
+    writePosition('fresh', { name: 'pay', at: daysAgo(29) });
+    writePosition('timeless', { name: 'pay' });
+    writePosition('broken', '{not json');
+    assert.deepStrictEqual(engine(['session', 'repair']), { ok: true, repaired: false });
+    assert.strictEqual(position('stale'), null);
+    assert.ok(position('fresh'));
+    assert.strictEqual(position('timeless'), null);
+    assert.ok(!fs.existsSync(path.join(positionsStore(), 'broken.json')));
+  });
+
+  it('owns its label through the pid arm — a later conversation in the same process, whose predecessor keeps its position', () => {
     optIn();
     engine(['session', 'label', 'pay']);
     const res = engine(['session', 'repair'], { sessionId: 'sess-2' });
     assert.deepStrictEqual(res, { ok: true, repaired: true });
     assert.strictEqual(tmuxName(), 'proj-abc');
     assert.strictEqual(stashFile(), null);
+    assert.ok(position('sess-1'), 'the position describes the conversation, and that conversation may yet be resumed');
+    assert.strictEqual(position('sess-2'), null);
   });
 
   it('leaves a live peer\'s label — another process, still running', () => {
@@ -920,5 +1115,116 @@ describe('engine session repair', () => {
     const res = engine(['session', 'repair'], { fail: true });
     assert.deepStrictEqual(res, { ok: true, repaired: false });
     assert.ok(stashFile(), 'the record keeps the repair available');
+  });
+});
+
+describe('engine session resume', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  /** A session that labelled, then ended: name restored, stash gone, position kept. */
+  function ended(args = ['pay', 'discussion', 'alpha']) {
+    optIn();
+    engine(['session', 'label', ...args]);
+    engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+    assert.ok(position('sess-1'));
+  }
+
+  it('brings the label back from the hook\'s stdin JSON, the stash owned by the resuming process — the SessionStart contract', () => {
+    ended();
+    const before = position('sess-1').at;
+    const res = resume([], { input: RESUME_STDIN('sess-1'), claudePid: process.ppid });
+    assert.deepStrictEqual(res, { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+    const stash = JSON.parse(fs.readFileSync(/** @type {string} */ (stashFile()), 'utf8'));
+    assert.strictEqual(stash.session_id, 'sess-1');
+    assert.strictEqual(stash.pid, process.ppid, 'the new process owns the label it wears');
+    assert.strictEqual(stash.pid_start, processStartTime(process.ppid));
+    assert.ok(Date.parse(position('sess-1').at) >= Date.parse(before), 'the position is recorded afresh');
+  });
+
+  it('takes the session id as an argument too — usable by hand', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+  });
+
+  it('a name-only position comes back as the arrival label', () => {
+    ended(['pay']);
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay');
+  });
+
+  it('over a live peer\'s label it is the last label — last label wins, as any label does', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { sessionId: 'sess-peer', claudePid: process.ppid });
+    writePosition('sess-1', { name: 'pay', phase: 'planning', topic: 'pay', at: daysAgo(1) });
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · planning');
+    assert.strictEqual(stashRecords().length, 1);
+    assert.strictEqual(stashRecords()[0].session_id, 'sess-1');
+  });
+
+  it('is idempotent when the name is already worn — no rename, one record', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const renames = renameCount();
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
+    assert.strictEqual(renameCount(), renames);
+    assert.strictEqual(stashRecords().length, 1);
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+  });
+
+  it('answers nothing without a position — a fresh id, or no id at all', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-fresh']), { ok: true, resumed: false });
+    for (const input of ['', '{}', 'not json']) {
+      assert.deepStrictEqual(resume([], { input }), { ok: true, resumed: false });
+    }
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.ok(position('sess-1'), 'untouched');
+  });
+
+  it('is gated like label — outside tmux and disabled both answer nothing and keep the position', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-1'], { noTmux: true }), { ok: true, resumed: false });
+    engine(['session', 'label-config', 'false']);
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.ok(position('sess-1'));
+  });
+
+  it('a tmux error answers nothing and keeps the position for the next resume', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-1'], { fail: true }), { ok: true, resumed: false });
+    assert.ok(position('sess-1'));
+  });
+
+  it('never throws on a work unit that no longer exists — the dead position is dropped', () => {
+    ended();
+    fs.rmSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
+    assert.strictEqual(position('sess-1'), null);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+  });
+
+  it('a phase the engine no longer knows is a dead position too', () => {
+    optIn();
+    writePosition('sess-1', { name: 'pay', phase: 'deploying', topic: 'alpha', at: daysAgo(1) });
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
+    assert.strictEqual(position('sess-1'), null);
+  });
+
+  it('a hook fired outside the project root finds the store through CLAUDE_PROJECT_DIR', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-1'], { cwd: stubDir, projectDir: dir }), { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+  });
+
+  it('refuses a second argument loudly — an authoring bug, never a silent no-op', () => {
+    const err = engine(['session', 'resume', 'a', 'b'], { expectFail: true });
+    assert.match(err.error, /Usage: engine session resume \[session-id\]/);
   });
 });
