@@ -4747,6 +4747,79 @@ function legacySplitGateSurface(_cwd, { variant }) {
   return section(`MENU: legacy split ${variant} gate`, STOP_FOR_RESPONSE, menu('', gate.options, { question: gate.question }));
 }
 
+// The legacy research split's dialog displays, keyed by what each shows:
+// candidates = the theme list at the early sanity gate (a batch worklist,
+// summary beneath each name), plan = the drafted plan (each theme's summary,
+// drafted content, and cache path as a tree, then the rename apply makes —
+// its stamp is minted at apply, so the footer names the slot), errors =
+// validate.cjs's refusals as bullets. Names, summaries, counts, previews,
+// and the validator's lines are judgment content and ride the payload; the
+// cache layout is the engine's.
+/** @type {Record<string, string[]>} */
+const LEGACY_SPLIT_THEME_FIELDS = {
+  candidates: ['kebab_name', 'summary'],
+  plan: ['kebab_name', 'summary', 'content_preview'],
+};
+const LEGACY_SPLIT_DISPLAY_VARIANTS = [...Object.keys(LEGACY_SPLIT_THEME_FIELDS), 'errors'];
+
+/** One of the legacy split dialog's displays. @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function legacySplitDisplaySurface(cwd, { variant, file }) {
+  if (variant === undefined || !LEGACY_SPLIT_DISPLAY_VARIANTS.includes(variant)) {
+    throw new Error(`render legacy-split-display: --variant must be one of ${LEGACY_SPLIT_DISPLAY_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'legacy-split-display');
+  if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
+
+  if (variant === 'errors') {
+    if (!Array.isArray(p.errors) || p.errors.length === 0) {
+      throw new Error('render legacy-split-display: "errors" must be a non-empty array of strings');
+    }
+    p.errors.forEach((e, i) => {
+      if (!isFilled(e)) throw new Error(`render legacy-split-display: errors[${i}] must be a non-empty string`);
+    });
+    const body = [`Validation failed for ${p.source}:`, '', ...p.errors.flatMap((e) => bulletRow(e))];
+    return section('DISPLAY: legacy split errors', CONTINUE_INSTRUCTION, body.join('\n'));
+  }
+
+  const fields = LEGACY_SPLIT_THEME_FIELDS[variant];
+  if (variant === 'plan' && !isFilled(p.work_unit)) {
+    throw new Error('render legacy-split-display: "work_unit" must be a non-empty string');
+  }
+  if (!Array.isArray(p.themes) || p.themes.length === 0) {
+    throw new Error(`render legacy-split-display: "themes" must be a non-empty array of {${[...fields, ...(variant === 'plan' ? ['paragraph_count'] : [])].join(', ')}}`);
+  }
+  p.themes.forEach((t, i) => {
+    for (const field of fields) {
+      if (!isFilled(t[field])) throw new Error(`render legacy-split-display: theme ${i + 1} is missing "${field}"`);
+    }
+    if (variant === 'plan' && (!Number.isInteger(t.paragraph_count) || t.paragraph_count < 0)) {
+      throw new Error(`render legacy-split-display: theme ${i + 1} "paragraph_count" must be a non-negative integer`);
+    }
+  });
+
+  if (variant === 'candidates') {
+    const body = worklist({
+      intro: `Candidate themes for ${p.source}.md:`,
+      items: p.themes.map((t) => ({ title: t.kebab_name, note: t.summary })),
+    });
+    return section('DISPLAY: legacy split candidates', CONTINUE_MARKDOWN_INSTRUCTION, body);
+  }
+
+  const lines = [`Plan for ${p.source}.md:`, ''];
+  p.themes.forEach((t, i) => {
+    lines.push(`${i + 1}. ${t.kebab_name}`);
+    lines.push(treeList([
+      `Summary: ${t.summary}`,
+      `Content: ${t.paragraph_count} para(s) — "${t.content_preview}..."`,
+      `Cache: .workflows/.cache/${p.work_unit}/legacy-split/${p.source}/${t.kebab_name}.md`,
+    ], { indent: '   ' }));
+    lines.push('');
+  });
+  lines.push(`Source file will be renamed to ${p.source}-superseded-<datetime>.md.`);
+  return section('DISPLAY: legacy split plan', CONTINUE_INSTRUCTION, lines.join('\n'));
+}
+
 // ---------------------------------------------------------------------------
 // The baseline surfaces — project-level, no address. Each handler resolves
 // the one BaselineState (domain/baseline.cjs), refuses states the calling
@@ -5051,6 +5124,7 @@ const SURFACES = {
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'legacy-split-gate': legacySplitGateSurface,
+  'legacy-split-display': legacySplitDisplaySurface,
 };
 
 /**

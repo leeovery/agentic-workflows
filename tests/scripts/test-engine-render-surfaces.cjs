@@ -4113,7 +4113,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -4875,6 +4875,101 @@ describe('render — the adopted cross-flow static gates', () => {
 
     assert.throws(() => renderSurface(dir, 'legacy-split-gate', {}), /--variant must be one of themes, plan, remove, got ""/);
     assert.throws(() => renderSurface(dir, 'legacy-split-gate', { variant: 'apply' }), /--variant must be one of themes, plan, remove, got "apply"/);
+  });
+});
+
+describe('render legacy-split-display', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const themes = [
+    { kebab_name: 'auth', summary: 'Login, sessions, and token refresh' },
+    { kebab_name: 'caching', summary: 'Response caching and invalidation' },
+  ];
+
+  it('candidates: the theme list as a batch worklist — the name per row, its summary beneath', () => {
+    const file = writePayload(dir, 'candidates.json', { source: 'auth', themes });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file }), [
+      '=== DISPLAY: legacy split candidates (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      'Candidate themes for auth.md:',
+      '',
+      '1\\. auth',
+      `${NB(5)}↳ Login, sessions, and token refresh`,
+      '2\\. caching',
+      `${NB(5)}↳ Response caching and invalidation`,
+      '',
+    ].join('\n'));
+  });
+
+  it('plan: each theme as a numbered summary/content/cache tree, then the rename footer naming the stamp apply mints', () => {
+    const file = writePayload(dir, 'plan-display.json', { source: 'auth', work_unit: 'pay', themes: [
+      { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at login' },
+      { ...themes[1], paragraph_count: 2, content_preview: 'Responses are cached per route' },
+    ] });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'plan', file }), [
+      '=== DISPLAY: legacy split plan (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Plan for auth.md:',
+      '',
+      '1. auth',
+      '   ├─ Summary: Login, sessions, and token refresh',
+      '   ├─ Content: 4 para(s) — "The auth flow begins at login..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+      '',
+      '2. caching',
+      '   ├─ Summary: Response caching and invalidation',
+      '   ├─ Content: 2 para(s) — "Responses are cached per route..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/caching.md',
+      '',
+      'Source file will be renamed to auth-superseded-<datetime>.md.',
+      '',
+    ].join('\n'));
+  });
+
+  it('plan: a long preview wraps under its text column with the rail intact, and no row overflows the width', () => {
+    const file = writePayload(dir, 'plan-display.json', { source: 'auth', work_unit: 'pay', themes: [
+      { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at the login form and hands a session to' },
+    ] });
+    const out = renderSurface(dir, 'legacy-split-display', { variant: 'plan', file });
+    assert.ok(out.includes([
+      '   ├─ Content: 4 para(s) — "The auth flow begins at the login',
+      '   │  form and hands a session to..."',
+      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+    ].join('\n')), out);
+    for (const line of out.split('\n').slice(1)) assert.ok(line.length <= 65, `overflowing row: ${line}`);
+  });
+
+  it('errors: the validator\'s lines as bullets under the source', () => {
+    const file = writePayload(dir, 'errors.json', { source: 'auth', errors: [
+      "theme 'auth' has empty summary",
+      "theme 'caching' has no cache file at caching.md",
+    ] });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'errors', file }), [
+      '=== DISPLAY: legacy split errors (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Validation failed for auth:',
+      '',
+      "  • theme 'auth' has empty summary",
+      "  • theme 'caching' has no cache file at caching.md",
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing or unknown variant, a missing or absent file, and a payload short of its variant\'s fields', () => {
+    const bad = (name, variant, obj) => () => renderSurface(dir, 'legacy-split-display', { variant, file: writePayload(dir, name, obj) });
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of candidates, plan, errors, got ""/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of candidates, plan, errors, got "themes"/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates' }), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file: 'nope.json' }), /payload file not found: nope\.json/);
+    assert.throws(bad('s.json', 'candidates', { themes }), /"source" must be a non-empty string/);
+    assert.throws(bad('e.json', 'candidates', { source: 'auth', themes: [] }), /"themes" must be a non-empty array of \{kebab_name, summary\}/);
+    assert.throws(bad('m.json', 'candidates', { source: 'auth', themes: [themes[0], { kebab_name: 'caching' }] }), /theme 2 is missing "summary"/);
+    assert.throws(bad('w.json', 'plan', { source: 'auth', themes }), /"work_unit" must be a non-empty string/);
+    assert.throws(bad('pe.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [] }), /"themes" must be a non-empty array of \{kebab_name, summary, content_preview, paragraph_count\}/);
+    assert.throws(bad('pp.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: 1 }] }), /theme 1 is missing "content_preview"/);
+    assert.throws(bad('pc.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: '3', content_preview: 'x' }] }), /theme 1 "paragraph_count" must be a non-negative integer/);
+    assert.throws(bad('pn.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: -1, content_preview: 'x' }] }), /theme 1 "paragraph_count" must be a non-negative integer/);
+    assert.throws(bad('ee.json', 'errors', { source: 'auth', errors: [] }), /"errors" must be a non-empty array of strings/);
+    assert.throws(bad('eb.json', 'errors', { source: 'auth', errors: ['ok', ''] }), /errors\[1\] must be a non-empty string/);
   });
 });
 

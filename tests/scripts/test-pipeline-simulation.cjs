@@ -2740,6 +2740,22 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
     sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
     sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
+    // The split's three displays over their payloads: the candidate list at
+    // the sanity gate, the drafted plan with its cache paths, the validator's
+    // refusals — each variant's fields validated, the file itself required.
+    const splitDisplay = (variant, payload) => sim.render(
+      ['legacy-split-display', '--variant', variant, '--file', sim.write(`.workflows/.cache/scratch/legacy-split-${variant}.json`, payload)],
+      { expect: 'content' },
+    );
+    assert.match(splitDisplay('candidates', { source: 'auth', themes: [{ kebab_name: 'auth', summary: 'Login and sessions' }] }),
+      /Candidate themes for auth\.md:[\s\S]*1\\\. auth[\s\S]*↳ Login and sessions/);
+    assert.match(splitDisplay('plan', { source: 'auth', work_unit: wu, themes: [{ kebab_name: 'auth', summary: 'Login and sessions', paragraph_count: 3, content_preview: 'The auth flow' }] }),
+      new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache: \\.workflows/\\.cache/${wu}/legacy-split/auth/auth\\.md[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
+    assert.match(splitDisplay('errors', { source: 'auth', errors: ["theme 'auth' has empty summary"] }),
+      /Validation failed for auth:[\s\S]*• theme 'auth' has empty summary/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.

@@ -347,6 +347,7 @@ Commands:
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
   render legacy-split-gate --variant themes|plan|remove
+  render legacy-split-display --variant candidates|plan|errors --file <payload.json>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
