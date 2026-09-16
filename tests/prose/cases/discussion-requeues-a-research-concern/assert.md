@@ -34,8 +34,9 @@ The prose should have taken this path:
    fetches the wait gate before anything is deferred; the gate comes
    back populated — the blocker naming research on Synonym Handling as
    parked and not yet started (the stub this session's own move
-   created), the guidance naming the research as the first move and a
-   cancel as the release, and the yes/keep menu — emitted verbatim,
+   created), the guidance naming the research as the first move and
+   concluding the research as the release, and the yes/keep menu —
+   emitted verbatim,
    and the session stops. The map gate never runs, the closing gates
    are never loaded, and no completion is attempted — the session
    never asks the engine to do what it would refuse

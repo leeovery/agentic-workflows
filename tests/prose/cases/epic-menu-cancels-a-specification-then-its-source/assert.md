@@ -8,7 +8,7 @@ The prose should have taken this path:
 2. the epic dashboard renders; the menu carries `a/cancel`
 3. choosing `a` fetches the cancel-menu sub-view: under `Topics`,
    Behavioural Ranking and Synonym Handling are shown keyless, each
-   `locked by specification "expansion" — cancel it first`, and
+   `locked by specification "Expansion" — cancel it first`, and
    Relevance Measurement is numbered; under `Specifications`,
    Expansion is numbered with its completed status; the flow never
    composes a lock reason or drops a locked row
