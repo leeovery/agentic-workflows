@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.55] - 2026-09-16
+
+✨ Added
+- Topic cancel is now unit-level per stage — cancelling a topic takes its research, discussion, and open experiments together, and a specification cancel takes it with its plan — instead of cancelling one phase item at a time.
+- A never-started topic can now be cancelled from the epic menu, closing the gap where it had no cancel row at all.
+- The cancel and reactivate menus now list every topic and specification, including locked ones, each showing why it can't be picked.
+- Reactivating a specification now checks that its source topics are still available, refusing with the reason when a source is cancelled or has been claimed by another specification.
+- A research or discussion conversation that pauses on an experiment or wait now hands off through the pipeline bridge into plan mode instead of telling the user to `/clear` and restart manually.
+
+🔧 Changed
+- The epic menu now shows a held discussion's row (struck through) beneath the research it's waiting on, instead of hiding it while a session has it open.
+- Wait-gate and experiment-spawn messaging now distinguishes pausing to the epic menu (epics) from pausing straight into the laboratory or next step (linear work types).
+- A research or discussion session now checks for and surfaces landed research/experiment evidence mid-session (not just at entry), and `topic complete` refuses to conclude while that evidence is unread.
+- `engine topic cancel`/`reactivate` no longer take a `--cascade` flag — cancelling a unit now handles everything under it (open experiments abandoned, proposed groupings discarded) in one transaction.
+- Removing a topic from the discovery map is now explicitly framed as being for mistakes/duplicates, with cancel as the way to record "not doing this."
+
+🐛 Fixed
+- The manifest field surface now refuses status writes and deletes on cancelled phase items, closing a path where a grouping analysis or reconcile could silently corrupt a cancelled item's stashed state.
+- A landing (triage) onto a cancelled or dead-ended topic is now refused instead of silently succeeding onto a closed row.
+- A migration (058) restores planning/implementation/review items that were left cancelled by the old per-phase cancel flow, since delivery items are never meant to be cancelled directly.
+
 ## [0.7.54] - 2026-09-15
 
 🐛 Fixed
