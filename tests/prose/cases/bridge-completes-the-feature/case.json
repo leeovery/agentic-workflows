@@ -78,8 +78,7 @@
       "workunit create",
       "knowledge.cjs index",
       "task start",
-      "render early-completion-gate",
-      "render revisit-gate",
+      "render next-phase-gate",
       "--skipped-review",
       "workunit cancel"
     ]

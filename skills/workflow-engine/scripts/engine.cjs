@@ -294,8 +294,7 @@ Commands:
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
-  render early-completion-gate <wu>
-  render revisit-gate      <wu> --prev <phase> --next <phase>
+  render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]

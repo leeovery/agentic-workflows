@@ -3537,56 +3537,53 @@ function phasePausedSurface(cwd, { dotpath, phase }) {
 }
 
 /**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function earlyCompletionGate(cwd, { dotpath }) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'early-completion-gate');
-  // A live reconcile flag makes the skip-review exit an informed choice: the
-  // gate names what completing now would carry unresolved.
-  const flagged = [];
-  for (const [phase, data] of Object.entries(manifest.phases || {})) {
-    for (const [name, item] of Object.entries((data && data.items) || {})) {
-      if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed !== undefined) {
-        flagged.push(`${phase}/${name} (${item.reconcile_needed})`);
-      }
-    }
-  }
-  const label = flagged.length > 0
-    ? `Implementation completed for "${titlecase(workUnit)}". ⚑ Input moved beneath ${flagged.join(', ')} — completing without review carries the pending reconcile unresolved.`
-    : `Implementation completed for "${titlecase(workUnit)}".`;
-  return section(
-    'MENU: early completion gate',
-    "emit verbatim as markdown, then STOP for the user's response",
-    menu(label, [
-      cmdOption('y', 'yes', 'Proceed to review'),
-      cmdOption('d', 'done', 'Complete without review'),
-    ], { question: 'Proceed to review?' }),
-  );
-}
-
-/**
+ * The one stop between a completed phase and the next: every way forward
+ * offered together — continue; complete without review, on the review hop
+ * alone; revisit an earlier phase, where one is completed.
  * @param {string} cwd
  * @param {{dotpath: string, prev?: string, next?: string}} args
- * @returns {string}
+ * @returns {string} one MENU section, or '' when continuing is the only way forward
  */
-function revisitGate(cwd, { dotpath, prev, next }) {
-  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'revisit-gate');
-  if (!isFilled(prev)) throw new Error('render revisit-gate: --prev is required');
-  if (!isFilled(next)) throw new Error('render revisit-gate: --next is required');
+function nextPhaseGate(cwd, { dotpath, prev, next }) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'next-phase-gate');
+  if (!isFilled(prev)) throw new Error('render next-phase-gate: --prev is required');
+  if (!isFilled(next)) throw new Error('render next-phase-gate: --next is required');
+  const type = manifest.work_type;
+  if (!WORK_UNIT_TYPES[type]) {
+    throw new Error(`render next-phase-gate: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the gate serves the linear work types`);
+  }
+  const skipReview = next === 'review';
+  const revisitable = revisitablePhases(type, { next_phase: next, completed_phases: completedPhases(workUnitTypeConfig(type), manifest) });
+  if (!skipReview && revisitable.length === 0) return '';
+
   // A derived phase's line matches phase-completed's: the session is
   // complete, never the phase — sibling records may still live.
-  const statement = DERIVED_PHASES.includes(prev)
+  let statement = DERIVED_PHASES.includes(prev)
     ? `${titlecase(prev)} session complete for "${titlecase(workUnit)}".`
     : `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
+  if (skipReview) {
+    // A live reconcile flag makes the skip-review exit an informed choice:
+    // the gate names what completing now would carry unresolved.
+    const flagged = [];
+    for (const [phase, data] of Object.entries(manifest.phases || {})) {
+      for (const [name, item] of Object.entries((data && data.items) || {})) {
+        if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed !== undefined) {
+          flagged.push(`${phase}/${name} (${item.reconcile_needed})`);
+        }
+      }
+    }
+    if (flagged.length > 0) {
+      statement += ` ⚑ Input moved beneath ${flagged.join(', ')} — completing without review carries the pending reconcile unresolved.`;
+    }
+  }
+
+  const options = [cmdOption('y', 'yes', `Proceed to ${next}`)];
+  if (skipReview) options.push(cmdOption('d', 'done', 'Complete without review'));
+  if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
   return section(
-    'MENU: revisit gate',
+    'MENU: next phase gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(statement, [
-      cmdOption('y', 'yes', `Proceed to ${next}`),
-      cmdOption('r', 'revisit', 'Revisit an earlier phase'),
-    ], { question: `Proceed to ${next}?` }),
+    menu(statement, options, { question: `Proceed to ${next}?` }),
   );
 }
 
@@ -4652,7 +4649,7 @@ function revisitPhasesSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
   const type = manifest.work_type;
   if (!WORK_UNIT_TYPES[type]) {
-    throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `a ${type}` : 'untyped'} — the revisit menu serves the linear work types`);
+    throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the revisit menu serves the linear work types`);
   }
   const cfg = workUnitTypeConfig(type);
   const { next_phase } = computeNextPhase(manifest);
@@ -5153,8 +5150,7 @@ const SURFACES = {
   'entry-gate': entryGate,
   'direct-entry-gate': directEntryGate,
   'code-gate': codeGate,
-  'early-completion-gate': earlyCompletionGate,
-  'revisit-gate': revisitGate,
+  'next-phase-gate': nextPhaseGate,
   'cancel-gate': cancelGate,
   'epic-all-done-gate': epicAllDoneGate,
   'epic-soft-gate': epicSoftGate,

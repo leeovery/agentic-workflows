@@ -3587,24 +3587,79 @@ describe('bridge continuation surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { work_type: 'feature' });
+    // A feature with everything before review completed — the
+    // implementation → review hop, every way forward on offer.
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { pay: { status: 'completed' } } },
+        specification: { items: { pay: { status: 'completed' } } },
+        planning: { items: { pay: { status: 'completed' } } },
+        implementation: { items: { pay: { status: 'completed' } } },
+      },
+    });
   });
   afterEach(() => teardown(dir));
 
-  it('gates render byte-stable menus', () => {
-    const early = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
-    assert.ok(early.includes('Implementation completed for "Pay".'));
-    assert.ok(/\*\*`d\/done`\*\* +→ Complete without review/.test(early));
+  it('next-phase-gate: the review hop offers proceed, complete without review, and revisit — byte-stable', () => {
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'review' }), [
+      "=== MENU: next phase gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Implementation completed for "Pay".',
+      '',
+      '**`◆ Proceed to review?`**',
+      '',
+      '**`y/yes`**     → Proceed to review',
+      '**`d/done`**    → Complete without review',
+      '**`r/revisit`** → Revisit an earlier phase',
+      '',
+    ].join('\n'));
+  });
 
-    const revisit = renderSurface(dir, 'revisit-gate', { dotpath: 'pay', prev: 'specification', next: 'planning' });
-    assert.ok(revisit.includes('Specification completed for "Pay".'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Proceed to planning/.test(revisit));
+  it('next-phase-gate: a non-review hop carries no d/done — proceed or revisit', () => {
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'specification', next: 'planning' });
+    assert.ok(out.includes('Specification completed for "Pay".'), out);
+    assert.match(out, /`◆ Proceed to planning\?`/);
+    assert.match(out, /\*\*`y\/yes`\*\* +→ Proceed to planning/);
+    assert.match(out, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.ok(!out.includes('d/done'), 'skip-review belongs to the review hop alone');
+  });
 
-    const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
-    assert.ok(allDone.includes('All topics have completed review for "Pay".'));
+  it('next-phase-gate: no r/revisit while no earlier phase is completed — the review hop still offers d/done', () => {
+    writeManifest(dir, 'fresh', {
+      work_type: 'feature',
+      phases: { implementation: { items: { fresh: { status: 'in-progress' } } } },
+    });
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fresh', prev: 'implementation', next: 'review' });
+    assert.match(out, /\*\*`y\/yes`\*\*  → Proceed to review/);
+    assert.match(out, /\*\*`d\/done`\*\* → Complete without review/);
+    assert.ok(!out.includes('r/revisit'), out);
+  });
 
-    const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'discussion' });
-    assert.ok(note.includes('Discussion completed for "Pay".'));
+  it('next-phase-gate: empty when continuing is the only way forward — nothing to skip, nothing to revisit', () => {
+    writeManifest(dir, 'lab', {
+      work_type: 'feature',
+      phases: { discussion: { items: { lab: { status: 'in-progress' } } } },
+    });
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'discussion' }), '');
+  });
+
+  it('next-phase-gate: the review hop names a live reconcile flag — skipping review is an informed choice', () => {
+    writeManifest(dir, 'moved', {
+      work_type: 'feature',
+      phases: {
+        specification: { items: { moved: { status: 'completed' } } },
+        implementation: { items: { moved: { status: 'completed' } } },
+        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
+      },
+    });
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'implementation', next: 'review' });
+    assert.ok(out.includes('Implementation completed for "Moved". ⚑ Input moved beneath review/moved (implementation) — completing without review carries the pending reconcile unresolved.'), out);
+    // The cue informs the skip — a hop with no d/done carries none, flag or not.
+    const planning = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'specification', next: 'planning' });
+    assert.ok(planning.includes('Specification completed for "Moved".') && !planning.includes('⚑'), planning);
+    // No flag, no cue.
+    assert.ok(!renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'review' }).includes('⚑'));
   });
 
   it('a derived phase says the session is complete, never the phase — sibling records may still live', () => {
@@ -3612,31 +3667,30 @@ describe('bridge continuation surfaces', () => {
     assert.ok(note.includes('Experiment session complete for "Pay".'), note);
     assert.ok(!note.includes('Experiment completed'), 'never claims the phase completed');
 
-    const revisit = renderSurface(dir, 'revisit-gate', { dotpath: 'pay', prev: 'experiment', next: 'discussion' });
-    assert.ok(revisit.includes('Experiment session complete for "Pay".'), revisit);
-    assert.ok(/\*\*`y\/yes`\*\* +→ Proceed to discussion/.test(revisit));
-  });
-
-  it('early-completion gate names a live reconcile flag — skipping review is an informed choice', () => {
-    writeManifest(dir, 'moved', {
+    writeManifest(dir, 'lab', {
       work_type: 'feature',
-      phases: {
-        implementation: { items: { moved: { status: 'completed' } } },
-        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
-      },
+      phases: { research: { items: { lab: { status: 'completed' } } } },
     });
-    const out = renderSurface(dir, 'early-completion-gate', { dotpath: 'moved' });
-    assert.ok(out.includes('⚑ Input moved beneath review/moved (implementation)'), out);
-    assert.ok(out.includes('carries the pending reconcile unresolved'), out);
-    // No flag, no cue.
-    const clean = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
-    assert.ok(!clean.includes('⚑'), clean);
+    const gate = renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'discussion' });
+    assert.ok(gate.includes('Experiment session complete for "Lab".'), gate);
+    assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to discussion/);
   });
 
-  it('work-unit addressing is loud on dotted paths, unknown units, and missing flags', () => {
+  it('gates render byte-stable menus', () => {
+    const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
+    assert.ok(allDone.includes('All topics have completed review for "Pay".'));
+
+    const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'discussion' });
+    assert.ok(note.includes('Discussion completed for "Pay".'));
+  });
+
+  it('work-unit addressing is loud on dotted paths, unknown units, missing flags, and an epic', () => {
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay.review.pay', phase: 'review' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'nope', phase: 'review' }), /work unit "nope" not found/);
-    assert.throws(() => renderSurface(dir, 'revisit-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'specification' }), /--next is required/);
+    writeManifest(dir, 'big', { work_type: 'epic' });
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'big', prev: 'implementation', next: 'review' }), /the gate serves the linear work types/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
   });
 });
@@ -3740,10 +3794,10 @@ describe('CLI boundary — engine render via subprocess', () => {
     const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'], tests: ['t'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
     assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
-    assert.ok(run(['revisit-gate', 'pay', '--prev', 'discussion', '--next', 'specification']).includes('Discussion completed for "Pay".'));
+    const gate = run(['next-phase-gate', 'pay', '--prev', 'implementation', '--next', 'review']);
+    assert.ok(gate.includes('Implementation completed for "Pay".') && gate.includes('Complete without review'), gate);
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['phase-paused', 'pay', '--phase', 'discussion']).includes('Discussion paused for "Pay".'));
-    assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
     assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('was consolidated into'),
       '--own must survive boolean-flag registration through argv');
@@ -4230,7 +4284,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 

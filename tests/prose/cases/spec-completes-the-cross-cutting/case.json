@@ -66,8 +66,7 @@
       "construction_gate_mode auto",
       "finding_gate_mode auto",
       "workunit create",
-      "render early-completion-gate",
-      "render revisit-gate",
+      "render next-phase-gate",
       "workunit promote",
       "topic start error-handling planning"
     ]

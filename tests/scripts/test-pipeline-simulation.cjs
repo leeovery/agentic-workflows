@@ -626,8 +626,12 @@ describe('pipeline simulation', () => {
 
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
-    sim.render(['early-completion-gate', wu], { expect: 'content' });
-    sim.render(['revisit-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
+    // The bridge's one stop before review: proceed, complete without
+    // review, or revisit — every earlier phase is completed, so all three.
+    const gate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
+    assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to review/);
+    assert.match(gate, /\*\*`d\/done`\*\* +→ Complete without review/);
+    assert.match(gate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     const done = sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(done.status, 'completed');
     assert.strictEqual(sim.manifest(wu).status, 'completed');
@@ -852,13 +856,14 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
 
-  it('feature: review skipped at the early-completion gate', () => {
+  it('feature: review skipped at the next-phase gate', () => {
     const wu = 'quick-ship';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ship it', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkDeliveryPhasesToImplementation(sim, wu, wu);
-    sim.render(['early-completion-gate', wu], { expect: 'content' });
+    assert.match(sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' }),
+      /Complete without review/, 'the review hop offers the skip');
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): complete feature pipeline (review skipped)`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
     assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline', '--skipped-review'], { expect: 'content' }),

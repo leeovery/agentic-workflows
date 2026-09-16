@@ -9,4 +9,4 @@ deferral.
 The walk that concludes this specification should reach the bridge
 with `planning` as the derived next phase and `discussion` and
 `specification` behind it as revisit candidates — the state where the
-revisit gate and the plan-mode handoff genuinely fire.
+next-phase gate and the plan-mode handoff genuinely fire.
