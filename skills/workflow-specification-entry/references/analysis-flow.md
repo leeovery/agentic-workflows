@@ -78,10 +78,11 @@ Group discussions into specifications where each grouping represents a **coheren
 
 **Preserve Anchored Names**
 
-**Anchors** are existing specification items whose status is anything other than `proposed` — `in-progress`, `completed`, `superseded`, or `promoted` — from the discovery `specifications` array. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated.
+**Anchors** are existing specification items whose status is `in-progress`, `completed`, `superseded`, or `promoted`. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated. A **cancelled** specification is neither: it anchors nothing and its sources are free to be regrouped, but its key stays reserved — it comes back only through the epic menu's reactivate.
 
 When forming groupings:
 - If a grouping contains a majority of the same discussions as an anchor's sources, you MUST reuse that anchor's topic name
+- If a grouping contains a majority of the same discussions as a cancelled specification's sources, name it afresh — never the cancelled key — and record the resemblance for **E**: `resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back`
 - Only create new names for genuinely new groupings with no overlap
 - If an anchor's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
@@ -126,7 +127,7 @@ Work through these steps in order:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.specification.*' status
    ```
-   Partition them into **anchors** (status ∉ `proposed`) and **existing-proposed** (status `proposed`). Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
+   Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`), **existing-proposed** (`proposed`), and **cancelled** — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
 
 2. **Map groupings to anchors.** For each freshly-formed grouping that substantially overlaps an anchor's sources (a majority of members shared), rename it in memory to the anchor's topic key. This splits the groupings into **maps-to-anchor** and **purely-proposed**.
 
@@ -140,11 +141,11 @@ Work through these steps in order:
 5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, collect a `delete` op removing the whole item:
    - `{work_unit}.specification` → delete `items.{name}`
 
-6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it. Surface it as a **naming conflict** to the user and drop or rename the colliding target. This protects the invariant — an anchor is never overwritten by a proposed item.
+6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it. Surface it as a **naming conflict** to the user and drop or rename the colliding target. This protects the invariant — an anchor is never overwritten by a proposed item. A target name equal to a cancelled specification's key is renamed — the key is reserved for that specification's reactivation, and the resemblance line from **C** is what the user sees.
 
 7. **Upsert proposed.** For each surviving target name, collect `set` ops — `status: proposed` plus one `sources.{discussion}.status: pending` per grouping member — and, for an existing-proposed item being regenerated, a `delete` op per source no longer in the grouping (pruning is allowed only on proposed items, never anchors). A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
 
-8. **Assign the build order.** The analysis just read every grouping holistically — the same read decides which topic to build first. Over the whole live set (every anchor whose status is not `cancelled`/`superseded`/`promoted`, plus every surviving target), assign contiguous integers `1..N` weighing what must physically exist before what: foundational scaffolding first, a topic whose deliverable other groupings assume ahead of the topics that assume it. Ignore the discovery map's `order` — it ranks what to explore, assigned before any discussion concluded. Collect one `set` field per topic — a bare number, never quoted:
+8. **Assign the build order.** The analysis just read every grouping holistically — the same read decides which topic to build first. Over the whole live set (every `in-progress` or `completed` anchor, plus every surviving target), assign contiguous integers `1..N` weighing what must physically exist before what: foundational scaffolding first, a topic whose deliverable other groupings assume ahead of the topics that assume it. Ignore the discovery map's `order` — it ranks what to explore, assigned before any discussion concluded. Collect one `set` field per topic — a bare number, never quoted:
    - `{work_unit}.specification.{name}` → `order: {N}` (fold into the topic's existing op where one is already collected; a topic with no op yet — an anchor whose sources are unchanged — gets its own `set` op)
 
    Check whether a completed specification has flagged the order stale (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`). When `true`, collect one more op — this reconcile is the sequencing, so the flag clears with it:
@@ -199,6 +200,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 ## Analysis Notes
 {Any additional context about the relationships discovered}
 {Note any naming conflicts with anchored specs here}
+{Note a grouping that resembles a cancelled specification here, with the route back}
 ```
 
 The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources. `**Tension**` lines follow the same shape — one per noted tension, omitted when a grouping carries none; the specification session reads them back at setup and raises each when the topic that touches it arrives.
@@ -214,5 +216,7 @@ Commit the whole reconcile as one commit:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
+
+When a grouping resembles a cancelled specification (**C**), tell the user in one line: it resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back.
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.

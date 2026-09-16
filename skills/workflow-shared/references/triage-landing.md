@@ -134,13 +134,13 @@ Reopen the topic — for `handled`:
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
 ```
 
-For `cancelled` (an engine transaction — it commits itself) — reactivate the phase item that is actually cancelled, never the map `routing` (the initial intent may name a phase, or be absent, while the cancelled work sits elsewhere). Read both phase item statuses (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{discussion|research}.{target} status`) and set `{cancelled_phase}` to the phase whose item is `cancelled` — when both are, `discussion` (the later phase):
+For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; every research and discussion item cancelled under its name returns with it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {cancelled_phase} {target}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}
 ```
 
-If the response is `ok: false`, surface the engine's error verbatim and re-fetch the gate above — the concern is still unlanded. Otherwise re-resolve against the fresh state:
+If the response is `ok: false`, surface the engine's error verbatim and re-fetch the gate above — the concern is still unlanded. Otherwise re-resolve against the fresh state — the response's `restored` names what came back:
 
 → Return to **A. Resolve the Target**.
 
