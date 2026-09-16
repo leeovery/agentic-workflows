@@ -604,6 +604,9 @@ describe('pipeline simulation', () => {
     const wu = 'pay';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
+    // Nothing completed and no review to skip: the bridge's gate renders
+    // empty and the continuation goes straight to plan mode.
+    sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
 
     // First phase: discussion (topic = work unit for single-topic types).
     // The entry fetches the research gate before any status read.
@@ -623,6 +626,11 @@ describe('pipeline simulation', () => {
     sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);
+    // A hop short of review carries no skip row — proceed or revisit.
+    const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
+    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
+    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.ok(!hop.includes('d/done'), hop);
 
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
@@ -893,6 +901,11 @@ describe('pipeline simulation', () => {
 
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
+    // The bugfix review hop offers all three rows — investigation, spec and
+    // planning sit behind it as revisit candidates.
+    const bfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
+    assert.match(bfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
+    assert.match(bfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
 
     // The investigation hop takes the same reverse join as a discussion's: a
     // gap routed back reopens the investigation, stales the spec row naming
@@ -979,6 +992,11 @@ describe('pipeline simulation', () => {
     // completion keeps the fused --phase-complete.
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', '~', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', wu]);
+    // Scoping is the quick-fix's one revisit candidate — the review hop
+    // still offers all three rows.
+    const qfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
+    assert.match(qfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
+    assert.match(qfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     sim.run(['topic', 'start', wu, 'review', wu]);
     sim.run(['topic', 'complete', wu, 'review', wu]);
 

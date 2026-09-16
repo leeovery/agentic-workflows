@@ -3676,7 +3676,7 @@ describe('bridge continuation surfaces', () => {
     assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to discussion/);
   });
 
-  it('gates render byte-stable menus', () => {
+  it('epic-all-done-gate and phase-completed carry their statements', () => {
     const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
     assert.ok(allDone.includes('All topics have completed review for "Pay".'));
 
@@ -3690,8 +3690,43 @@ describe('bridge continuation surfaces', () => {
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'specification' }), /--next is required/);
     writeManifest(dir, 'big', { work_type: 'epic' });
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'big', prev: 'implementation', next: 'review' }), /the gate serves the linear work types/);
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'big', prev: 'implementation', next: 'review' }), /"big" is typed "epic" — the gate serves the linear work types/);
+    assert.throws(() => renderSurface(dir, 'revisit-phases', { dotpath: 'big' }), /"big" is typed "epic" — the revisit menu serves the linear work types/);
+    writeManifest(dir, 'raw', { work_type: undefined });
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'raw', prev: 'implementation', next: 'review' }), /"raw" is untyped — the gate serves the linear work types/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
+  });
+
+  it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, done, or review on a type that has none', () => {
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'reveiw' }),
+      /unknown --next "reveiw" for a feature \(pipeline: research, experiment, discussion, specification, planning, implementation, review\)/);
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'review', next: 'done' }), /unknown --next "done" for a feature/);
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'banana', next: 'review' }), /unknown --prev "banana" for a feature/);
+    // Cross-cutting ends at specification: a review hop is a relay slip, and
+    // the skip-review row it would render has no arm in that continuation.
+    writeManifest(dir, 'xc', {
+      work_type: 'cross-cutting',
+      phases: { discussion: { items: { xc: { status: 'completed' } } } },
+    });
+    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'review' }),
+      /unknown --next "review" for a cross-cutting \(pipeline: research, experiment, discussion, specification\)/);
+    const hop = renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' });
+    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
+    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.ok(!hop.includes('d/done'), hop);
+  });
+
+  it('next-phase-gate: several live reconcile flags join into one cue', () => {
+    writeManifest(dir, 'moved2', {
+      work_type: 'feature',
+      phases: {
+        specification: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
+        implementation: { items: { moved2: { status: 'completed' } } },
+        review: { items: { moved2: { status: 'completed', reconcile_needed: 'implementation' } } },
+      },
+    });
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved2', prev: 'implementation', next: 'review' });
+    assert.ok(out.includes('⚑ Input moved beneath specification/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
   });
 });
 

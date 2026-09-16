@@ -33,9 +33,8 @@ The prose should have taken this path:
    one-command completion — status, timestamp, and commit together
 9. the completion banner is fetched via render workunit-receipt with
    the pipeline flag, its confirmation section is emitted verbatim,
-   and the walk
-   stops at the terminal condition — no next-phase gate, no plan
-   mode, no plan file
+   and the walk stops at the terminal condition — no next-phase gate,
+   no plan mode, no plan file
 
 Further claims:
 

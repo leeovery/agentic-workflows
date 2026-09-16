@@ -3552,8 +3552,14 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
   if (!WORK_UNIT_TYPES[type]) {
     throw new Error(`render next-phase-gate: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the gate serves the linear work types`);
   }
+  const cfg = workUnitTypeConfig(type);
+  for (const [flag, phase] of [['--prev', prev], ['--next', next]]) {
+    if (!cfg.pipeline.includes(phase)) {
+      throw new Error(`render next-phase-gate: unknown ${flag} "${phase}" for a ${type} (pipeline: ${cfg.pipeline.join(', ')})`);
+    }
+  }
   const skipReview = next === 'review';
-  const revisitable = revisitablePhases(type, { next_phase: next, completed_phases: completedPhases(workUnitTypeConfig(type), manifest) });
+  const revisitable = revisitablePhases(type, { next_phase: next, completed_phases: completedPhases(cfg, manifest) });
   if (!skipReview && revisitable.length === 0) return '';
 
   // A derived phase's line matches phase-completed's: the session is
