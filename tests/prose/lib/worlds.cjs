@@ -33,6 +33,14 @@ const { execFileSync, spawnSync } = require('child_process');
 const cases = require('./cases.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
+// Every tree this module removes goes through one call: concurrent suites
+// share a machine, and a directory another process is still walking answers
+// ENOTEMPTY to a bare rm — the retry is the difference between a flake and
+// a clean run.
+function removeTree(dir) {
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 const KNOWLEDGE = path.join(ROOT, 'skills/workflow-knowledge/scripts/knowledge.cjs');
@@ -151,7 +159,7 @@ function makeHarness(dir) {
       fs.writeFileSync(full, content);
     },
     remove(rel) {
-      fs.rmSync(path.join(dir, rel), { recursive: true, force: true });
+      removeTree(path.join(dir, rel));
     },
   };
 }
@@ -257,7 +265,7 @@ function writeSnapshot(caseId, which) {
   const scratch = runRecipe(caseId, STATE_OF[which]);
   try {
     const dir = snapshotDir(caseId, which);
-    fs.rmSync(dir, { recursive: true, force: true });
+    removeTree(dir);
     const files = collectTree(scratch);
     for (const [rel, buf] of files) {
       const dest = path.join(dir, rel);
@@ -267,7 +275,7 @@ function writeSnapshot(caseId, which) {
     fs.writeFileSync(path.join(dir, HASH_FILE), `${recipeHash(caseId)}\n`);
     return files.size;
   } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -293,7 +301,7 @@ function verifySnapshot(caseId, which) {
     for (const rel of snap.keys()) if (!built.has(rel)) missing.push(rel);
     return { missing, extra, changed };
   } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -313,7 +321,7 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
     });
     return `--- ${label}\n${(res.stdout || '').split('\n').slice(4).join('\n').trimEnd()}`;
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    removeTree(dir);
   }
 }
 
@@ -449,7 +457,7 @@ function unstampSettings(tree, stamped) {
     if (stamped.settings_created && Object.keys(JSON.parse(next.toString('utf8'))).length === 0) tree.delete(SETTINGS);
     else tree.set(SETTINGS, next);
   } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -586,7 +594,7 @@ function buildWorld(caseId) {
   const knowledge = path.join(dir, '.claude/skills/workflow-knowledge/scripts/knowledge.cjs');
   const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8', env });
   if (setup.status !== 0) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    removeTree(dir);
     throw new Error(`knowledge setup failed in world:\nstdout: ${setup.stdout}\nstderr: ${setup.stderr}`);
   }
   git('add', '-A');
@@ -616,7 +624,7 @@ function destroyWorld(dir) {
   if (!path.basename(dir).startsWith(WORLD_PREFIX)) {
     throw new Error(`refusing to remove non-world directory: ${dir}`);
   }
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  removeTree(dir);
 }
 
 // Worlds die with their logs — and a failed run's logs are exactly the
