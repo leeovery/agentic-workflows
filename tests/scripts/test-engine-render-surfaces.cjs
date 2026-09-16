@@ -5660,6 +5660,8 @@ describe('render — the adopted phase gates', () => {
       /phase must be one of discussion, investigation, implementation, planning, got "research"/);
     assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.ghost' }),
+      /no implementation item "ghost" — nothing to conclude/);
   });
 
   it('closing-gate: the discussion close\'s five consents, variant-keyed', () => {

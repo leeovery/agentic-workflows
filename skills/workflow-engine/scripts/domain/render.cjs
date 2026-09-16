@@ -2519,10 +2519,13 @@ const CONCLUDE_GATES = {
  * @returns {string}
  */
 function concludeGate(cwd, { dotpath }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'conclude-gate');
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'conclude-gate');
   const gate = CONCLUDE_GATES[phase];
   if (!gate) {
     throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
+  }
+  if (!itemOf(manifest, phase, topic)) {
+    throw new Error(`render conclude-gate: no ${phase} item "${topic}" — nothing to conclude`);
   }
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
 }
