@@ -171,7 +171,7 @@ Store the selected entry's `phase`, `topic`, and `route`.
 
 ## E. Cancel Topic
 
-Render the cancellable-topics list and pick menu — one row per unit, a topic (its research, discussion, and experiments together) or a specification (with its plan). Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock):
+Render the cancellable-topics list and pick menu — one row per unit, a topic (its research, discussion, and experiments together) or a specification (with its plan). Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
@@ -184,6 +184,12 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 #### If user chose `back`
 
 → Return to **A. State Display and Menu**.
+
+#### If the input matches no key
+
+A locked row's name is the usual case — the row carries its reason. Tell the user in one line: the reason from the row for a locked unit, or that the input matched no option; then re-present the sub-view.
+
+→ Return to **E. Cancel Topic**.
 
 #### If user chose a numbered topic
 
@@ -207,7 +213,15 @@ Run the cancel transaction — one command cancels the unit (a topic: the map ro
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response carries `discarded`, tell the user in one line which proposed grouping(s) went with the topic; when it carries `abandoned`, name the experiment records the cancel closed; when it carries `released_waits`, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
+**If the response is `ok: false`:**
+
+Surface the engine's error verbatim in one line — nothing was written.
+
+→ Return to **A. State Display and Menu**.
+
+**Otherwise:**
+
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]
@@ -219,7 +233,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {wor
 
 ## F. Reactivate Topic
 
-Render the cancelled-topics list and pick menu — one row per cancelled unit, each naming what a reactivate returns:
+Render the cancelled-topics list and pick menu — one row per cancelled unit, each naming what a reactivate returns. A specification whose sources are unavailable — a source topic cancelled, or a source another started specification has since taken — carries its reason and no key; when every row is locked the menu opens on a statement over `b/back` alone:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs reactivate-menu {work_unit}
@@ -233,15 +247,29 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 → Return to **A. State Display and Menu**.
 
+#### If the input matches no key
+
+A locked row's name is the usual case — the row carries its reason. Tell the user in one line: the reason from the row for a locked unit, or that the input matched no option; then re-present the sub-view.
+
+→ Return to **F. Reactivate Topic**.
+
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Run the reactivate transaction — one command restores the unit's stashed statuses and its execution order (the map's for a topic, the build order's for a specification; a number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), re-indexes each restored `completed` artifact into the knowledge base, and commits:
+Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Run the reactivate transaction — one command restores the unit's stashed statuses (an item cancelled with no stash returns to never started) and its execution order (the map's for a topic, the build order's for a specification; a number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), discards any proposed grouping over a specification's returning sources, re-indexes each restored `completed` artifact into the knowledge base, and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, which names the statuses the unit's items returned to — adding `--warn` when the response's `warnings` is non-empty:
+**If the response is `ok: false`:**
+
+Surface the engine's error verbatim in one line — nothing was written.
+
+→ Return to **A. State Display and Menu**.
+
+**Otherwise:**
+
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, which names the statuses the unit's items returned to — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status: for each `restored` row whose `status` is `null`, tell the user in one line that its phase returned to never started; when the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the reactivate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]

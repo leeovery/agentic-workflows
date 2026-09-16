@@ -56,6 +56,12 @@ Set verb = "Continuing".
 
 → Return to caller.
 
+#### If the status is `cancelled`
+
+The specification is cancelled — it returns through the epic menu's reactivate option, never through entry. Tell the user in one line.
+
+**STOP.** Do not proceed — terminal condition.
+
 #### If the status is `superseded` or `promoted`
 
 Render the terminal blocker — the engine derives which from the item's status — and emit the section verbatim per its marker:

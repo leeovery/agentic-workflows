@@ -78,7 +78,7 @@ Group discussions into specifications where each grouping represents a **coheren
 
 **Preserve Anchored Names**
 
-**Anchors** are existing specification items whose status is `in-progress`, `completed`, `superseded`, or `promoted`. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated. A **cancelled** specification is neither: it anchors nothing and its sources are free to be regrouped, but its key stays reserved — it comes back only through the epic menu's reactivate.
+**Anchors** are existing specification items whose status is `in-progress`, `completed`, `superseded`, or `promoted`. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated. A **cancelled** specification is neither: it anchors nothing and its sources are free to be regrouped, but its key stays reserved — it comes back only through the epic menu's reactivate. The cancelled set is the DATA section's `cancelled_specifications:` lines — one per cancelled specification, naming the sources it grouped — the one source **D** reads too.
 
 When forming groupings:
 - If a grouping contains a majority of the same discussions as an anchor's sources, you MUST reuse that anchor's topic name
@@ -127,7 +127,7 @@ Work through these steps in order:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.specification.*' status
    ```
-   Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`), **existing-proposed** (`proposed`), and **cancelled** — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
+   Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`) and **existing-proposed** (`proposed`). The **cancelled** set is the DATA section's `cancelled_specifications:` list — the one **C** read — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item and a `delete` of it), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
 
 2. **Map groupings to anchors.** For each freshly-formed grouping that substantially overlaps an anchor's sources (a majority of members shared), rename it in memory to the anchor's topic key. This splits the groupings into **maps-to-anchor** and **purely-proposed**.
 
