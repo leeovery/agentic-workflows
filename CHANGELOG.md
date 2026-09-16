@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.58] - 2026-09-16
+
+🐛 Fixed
+- Boot now commits a leftover migration-ledger update on its own — previously, a migration that ran but changed no document left the tracking file dirty with no commit to carry it, which could snowball into repeated "pending" states on every future boot.
+
 ## [0.7.57] - 2026-09-16
 
 🔧 Changed
