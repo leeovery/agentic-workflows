@@ -1978,6 +1978,40 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(!freed.stdout.includes('in session'), freed.stdout);
   });
 
+  it('a discussion held for its research keeps its struck row beneath the research row while a session sits in it, and its gate names the research', () => {
+    const fs = require('fs');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        research: { items: { auth: { status: 'in-progress' } } },
+        discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
+      },
+    });
+    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+    const past = new Date(Date.now() - 240 * 1000);
+    fs.utimesSync(p, past, past);
+
+    const res = run(['view', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes('  1  continue_research  auth  → /workflow-research-entry epic v1 auth  (recommended)'), res.stdout);
+    assert.ok(res.stdout.includes('  2  continue_discussion  auth  → /workflow-discussion-entry epic v1 auth  (in session: last active 4m ago)'), res.stdout);
+    assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
+    const gate = run(['in-session-gate', 'v1', '2']);
+    assert.strictEqual(gate.status, 0, gate.stderr);
+    assert.ok(gate.stdout.replace(/\n +/g, ' ').includes(
+      'Its entry is also held shut — research on "Auth" is outstanding — so proceeding meets that gate next.'), gate.stdout);
+
+    // The same heartbeat with a dead owner: the row goes, and the topic is
+    // its research row alone again.
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: 'Thu Jan  1 00:00:00 1970', session_id: 'peer' }) + '\n');
+    const freed = run(['view', 'v1']);
+    assert.ok(!freed.stdout.includes('continue_discussion'), freed.stdout);
+    assert.ok(freed.stdout.includes('  1  continue_research  auth'), freed.stdout);
+  });
+
   it('a code session anywhere in the project marks this epic\'s code entries', () => {
     const fs = require('fs');
     epicFixture();

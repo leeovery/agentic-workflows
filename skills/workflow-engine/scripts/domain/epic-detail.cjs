@@ -444,8 +444,9 @@ function epicDetail(cwd, manifest) {
 
   // Research feeds discussion: a discussion whose research is still
   // outstanding is held at entry until it lands — the menu carries no row
-  // for it (the research row is the way in); a map row carries the research
-  // it awaits, and without a map the display tree tags it blocked.
+  // for it (the research row is the way in) unless a live session holds it,
+  // when its continue row stands struck through; a map row carries the
+  // research it awaits, and without a map the display tree tags it blocked.
   for (const e of phases.discussion || []) {
     if (!TERMINAL_STATUSES.includes(e.status) && outstandingResearch(manifest, e.name)) e.blocked_by = ['research'];
   }
@@ -482,8 +483,9 @@ function epicDetail(cwd, manifest) {
     const open = srcs.map((src) => src.topic || src.name).filter((n) => n && discussionStatus.get(n) === 'in-progress');
     if (open.length > 0) specBlocked.push({ name: s.name, by: open });
   }
-  // The display tree shows the blocked state; the menu never offers a
-  // blocked item, so the entries carry the fact for the projections.
+  // The display tree shows the blocked state; the menu withholds a blocked
+  // item (a held one excepted), so the entries carry the fact for the
+  // projections.
   for (const e of phases.specification || []) {
     const b = specBlocked.find((x) => x.name === e.name);
     if (b) e.blocked_by = b.by;

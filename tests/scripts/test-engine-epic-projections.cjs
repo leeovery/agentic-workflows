@@ -1683,7 +1683,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     return qdir;
   };
   // A long cue wraps onto continuation lines indented past the ↳ — join them.
-  const cueOf = (d) => epicDashboard('v1', d).match(/( *)↳ [^\n]*(?:\n\1 +[^\n]*)*/)[0].trim().replace(/\n\s+/g, ' ');
+  const cueOf = (d, presence) => epicDashboard('v1', d, { presence }).match(/( *)↳ [^\n]*(?:\n\1 +[^\n]*)*/)[0].trim().replace(/\n\s+/g, ' ');
 
   it('a reopened discussion with concerns queued: its continue row and map row carry the cue', () => {
     queue('discussion', '001-escalation-path.md');
@@ -1725,5 +1725,121 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     const stub = billing(undefined, { status: 'triaged' });
     assert.strictEqual(stub.discovery_map[0].triage_parked, true);
     assert.strictEqual(epicMenu('v1', stub).keys[0].label, 'Start discussion for "Billing" — *triage waiting*');
+  });
+
+  // A blocked item carries no menu row — unless a live session holds it, when
+  // its continue row stands struck through: the menu never hides a session
+  // that is open, and the tree's `in session` cue has a row to agree with.
+  const peerIn = (phase, topic, age_seconds) => ({ phase, topic, age_seconds, held: true, session_id: 'peer' });
+  const numberedKeys = (keys) => keys.filter((k) => /^\d+$/.test(k.key));
+
+  it('a live session in the held discussion keeps its row — struck, after the research row, never recommended', () => {
+    // Research in flight with concerns queued, the discussion flagged by the
+    // hop and still open in another window.
+    queue('research', '001-cost-model.md', '002-roles.md');
+    const d = billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' });
+    const { keys, rendered } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
+    assert.deepStrictEqual(
+      numberedKeys(keys).map((k) => [k.key, k.action, k.topic, k.in_session === true, k.recommended === true]),
+      [
+        ['1', 'continue_research', 'billing', false, true],
+        ['2', 'continue_discussion', 'billing', true, false],
+      ],
+    );
+    assert.deepStrictEqual(keys[1].blocked_by, ['research'], 'the struck row carries what holds its entry shut');
+    assert.strictEqual(keys[1].route, '/workflow-discussion-entry epic v1 billing');
+    assert.strictEqual(keys[1].session_age, 240);
+    assert.strictEqual(rendered, [
+      '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
+      '**`1`**           → Continue "Billing" — *research* · triage waiting',
+      `${NB(14)}(recommended)`,
+      '**`2`**           → ~~Continue "Billing" — *discussion*~~ · in session (last',
+      `${NB(14)}active 4m ago)`,
+      '**`d/discuss`**   → Start a discussion on a new topic',
+      '**`r/research`**  → Start research on a new topic',
+      '**`i/discovery`** → Continue discovery',
+      '**`a/cancel`**    → Cancel a topic (phase work)',
+    ].join('\n'));
+    // The map row cues the same hold the struck row shows.
+    assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),
+      '↳ Discussing · awaiting research · triage waiting · input moved · in session (last active 4m ago)');
+  });
+
+  it('a blocked discussion nobody holds stays rowless — no presence, an empty scan, or a dead heartbeat alike', () => {
+    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
+    const dead = { ...peerIn('discussion', 'billing', 240), held: false };
+    for (const presence of [undefined, [], [dead]]) {
+      assert.deepStrictEqual(numberedKeys(epicMenu('v1', d, { presence }).keys).map((k) => k.action), ['continue_research'],
+        `presence ${JSON.stringify(presence)}`);
+    }
+  });
+
+  it('the in-session gate on a held blocked discussion names the outstanding research, byte-for-byte', () => {
+    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
+    const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
+    assert.strictEqual(epicInSessionGate('v1', keys.find((k) => k.in_session)), [
+      '=== MENU: in-session gate — 2 (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '"Billing" is open in another session — last active 4m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Its entry is also held shut — research on "Billing" is outstanding — so proceeding meets that gate next. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion billing`.',
+      '',
+      '**`◆ Proceed anyway?`**',
+      '',
+      '**`b/back`** → Return to menu (recommended)',
+      '**`y/yes`**  → Proceed anyway',
+      '',
+    ].join('\n'));
+  });
+
+  it('no map: a held blocked discussion keeps its continue row in pipeline position, struck, while the tree still tags it blocked', () => {
+    const manifest = {
+      work_type: 'epic',
+      phases: {
+        research: { items: { billing: { status: 'in-progress' } } },
+        discussion: { items: { billing: { status: 'in-progress' }, fees: { status: 'in-progress' } } },
+      },
+    };
+    const unheld = detailFor(dir, 'v1', manifest);
+    assert.deepStrictEqual(numberedKeys(epicMenu('v1', unheld).keys).map((k) => [k.action, k.topic]),
+      [['continue_research', 'billing'], ['continue_discussion', 'fees']], 'nobody holds it: rowless');
+    const held = detailFor(dir, 'v2', manifest);
+    const peer = peerIn('discussion', 'billing', 90);
+    const { keys } = epicMenu('v2', held, { presence: [peer] });
+    assert.deepStrictEqual(
+      numberedKeys(keys).map((k) => [k.key, k.action, k.topic, k.in_session === true]),
+      [['1', 'continue_research', 'billing', false], ['2', 'continue_discussion', 'billing', true], ['3', 'continue_discussion', 'fees', false]],
+    );
+    assert.deepStrictEqual(keys[1].blocked_by, ['research']);
+    assert.match(epicDashboard('v2', held, { presence: [peer] }), /Billing\s+\[in-progress · blocked\]/);
+    assert.ok(epicKey(held).includes('blocked (discussion)'));
+  });
+
+  it('the rule is the menu\'s, not the discussion\'s: a held specification whose source is back in-progress keeps its struck row, and the gate names the source', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { fees: { status: 'in-progress' } } },
+        specification: { items: { 'billing-grouping': { status: 'in-progress', order: 1, sources: [{ topic: 'fees', status: 'stale' }] } } },
+      },
+    });
+    assert.deepStrictEqual(d.phases.specification[0].blocked_by, ['fees']);
+    assert.ok(!epicMenu('v1', d).keys.some((k) => k.action === 'continue_specification'), 'nobody holds it: rowless');
+    const { keys } = epicMenu('v1', d, { presence: [peerIn('specification', 'billing-grouping', 60)] });
+    const spec = keys.find((k) => k.action === 'continue_specification');
+    assert.strictEqual(spec.in_session, true);
+    assert.deepStrictEqual(spec.blocked_by, ['fees']);
+    assert.notStrictEqual(spec.recommended, true);
+    assert.match(epicInSessionGate('v1', spec),
+      /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are back in-progress \(Fees\) — so proceeding meets that gate next\. Only proceed/);
+  });
+
+  it('an unblocked held row carries no entry-hold clause — the gate reads as before', () => {
+    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 120)] });
+    const entry = keys.find((k) => k.in_session);
+    assert.strictEqual(entry.blocked_by, undefined);
+    assert.doesNotMatch(epicInSessionGate('v1', entry), /held shut/);
   });
 });
