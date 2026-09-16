@@ -38,7 +38,7 @@
   "answers": [
     "y — skip project skills again",
     "y — skip linters again",
-    "before I mark it — which files did the capture webhook task touch?",
+    "before I mark it — what tests did the capture webhook task name?",
     "y — mark it completed",
     "y — proceed to review"
   ],
@@ -63,7 +63,6 @@
       "topic complete pay implementation pay",
       "impl(pay): complete implementation",
       "--topic implementation/pay",
-      "session label pay",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review"
     ],
@@ -78,6 +77,7 @@
       "render conclude-gate pay.implementation.pay",
       "topic complete pay implementation pay",
       "impl(pay): complete implementation",
+      "session label pay",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review"
@@ -104,8 +104,6 @@
       "workunit complete",
       "--skipped-review",
       "render revisit-phases",
-      "render early-completion-gate",
-      "render revisit-gate",
       "topic start pay review",
       "git add -A",
       "git add --all"

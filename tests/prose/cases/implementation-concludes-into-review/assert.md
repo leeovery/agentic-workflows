@@ -48,13 +48,14 @@ The prose should have taken this path:
    gate through the engine and emits its MENU section: the completion
    question, a `y/yes` row, and an **Ask** row — no `n/no` row anywhere
    on it — and STOPS. The third scripted answer is the question about
-   the capture webhook task's files
+   the tests the capture webhook task named
 10. the Ask arm: the question is answered from the record the session
-    already holds — the task file and the topic's commit history name
-    `src/webhooks/capture.js` and `tests/webhooks/capture.test.js`, and
-    the answer names exactly those two. Nothing is dispatched to answer
-    it, no engine transaction runs, the flow never returns to the task
-    loop, and no second analysis cycle is recorded. The conclude gate is
+    already holds — the task file's Tests line names
+    `marks the order paid on capture webhook`, with duplicates idempotent
+    and an unknown intent logged and ignored, and the answer says so.
+    Nothing is dispatched to answer it, no engine transaction runs, the
+    flow never returns to the task loop, and no second analysis cycle is
+    recorded. The conclude gate is
     then fetched again through the engine — a second fetch, the same
     address — its MENU section re-emitted, and the walk STOPS again. The
     fourth scripted answer marks it completed
@@ -73,9 +74,7 @@ The prose should have taken this path:
     implementation as the previous phase and review as the next: its
     menu carries all three rows — `y/yes` to proceed, `d/done` to skip
     the review, `r/revisit` for an earlier phase — and the walk STOPS
-    once. No early-completion gate and no revisit gate are rendered:
-    the same question is never asked twice. The fifth scripted answer
-    proceeds
+    once. The fifth scripted answer proceeds
 14. plan mode: the continuation resolves the plan template — the
     continue-the-pipeline line, never the revisiting line — and the
     resolved content lands as the world's plan-handoff artifact per the

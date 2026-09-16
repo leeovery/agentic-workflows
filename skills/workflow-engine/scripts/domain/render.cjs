@@ -2476,8 +2476,8 @@ function triageClosedTarget(cwd, { dotpath }) {
 
 // conclude-gate — the closing consent of the four phases whose conclusion is
 // a user's call. One surface, keyed by the address's own phase segment: the
-// shape is identical (a question, a yes, one arm beside it — a way back
-// where the phase can take more, an ask where it has hit its end and the
+// shape is identical (a question, a yes, one arm beside it — keep going
+// where the phase can take more, ask where it has hit its end and the
 // only way is forward), and only each phase's own wording differs, so it
 // lives in one table rather than four copies of the same frame. Research's
 // conclude gate is its own surface — it carries a conditional dead-end row

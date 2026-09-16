@@ -55,8 +55,7 @@ module.exports = {
     h.engine('task', 'start', m.WU, m.WU, `${m.WU}-1-1`);
     h.write('src/checkout/payment-intent.js', [
       '// Create a gateway payment intent when checkout begins. Card-only',
-      '// is enforced at creation; gateway rejection surfaces as a checkout',
-      '// error and a duplicate start reuses the existing intent.',
+      '// is enforced at creation.',
       'export function createPaymentIntent(order) {',
       "  return gateway.intents.create({ order: order.id, methods: ['card'] });",
       '}',
@@ -74,7 +73,6 @@ module.exports = {
     h.engine('task', 'start', m.WU, m.WU, `${m.WU}-1-2`);
     h.write('src/webhooks/capture.js', [
       '// Consume gateway capture webhooks and mark the order paid.',
-      '// Duplicate deliveries are idempotent.',
       'export function handleCaptureWebhook(event) {',
       '  return orders.markPaid(event.intentId);',
       '}',

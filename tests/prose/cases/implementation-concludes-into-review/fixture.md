@@ -17,9 +17,9 @@ earlier walk approved a proposal: phase 1's boundary landed no task.
 
 The specification is the mainline's, unperturbed: both modules sit
 where it expects them, so an analysis over this tree has nothing to
-report. The capture webhook task's record — its task file and its
-`impl(pay): Tpay-1-2` commit — names exactly `src/webhooks/capture.js`
-and `tests/webhooks/capture.test.js`.
+report. The capture webhook task's file names its tests:
+`marks the order paid on capture webhook` — duplicates are idempotent;
+an unknown intent is logged and ignored.
 
 As in the sibling loop cases, the previous pass also left:
 
