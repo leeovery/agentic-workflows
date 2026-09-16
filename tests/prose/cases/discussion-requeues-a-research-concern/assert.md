@@ -41,9 +41,12 @@ The prose should have taken this path:
    never asks the engine to do what it would refuse
 8. the user takes the pause; the cadence commit runs only over
    uncommitted session work — a clean tree makes it a no-op, not a
-   miss — the session says where the ball sits — the ceremony runs once the research has
-   landed, and the menu carries the way in — and stops at the terminal
-   condition
+   miss — the session says where the ball sits — the ceremony runs once
+   the research has landed — and hands off to the pipeline bridge as a
+   pause: the invocation carries the work unit, the phase discussion,
+   the literal `none` for the next phase, and `paused`. Nothing tells
+   the user to run /clear or /workflow-start, and no terminal stop
+   follows the signpost — the invocation is the exit
 
 Further claims:
 

@@ -64,15 +64,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-spawn-g
 
 #### If `yes`
 
-The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; say where the ball sits:
+The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; hand off to the pipeline bridge as a pause — its handoff is the laboratory's fresh context:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with {id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands. The laboratory starts in fresh context: run `/clear`, then `/workflow-start` — the menu carries the way into {id}.
+> Paused with {id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands.
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} {phase} none paused`.
 
 #### If `later`
 

@@ -72,7 +72,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 ## C. Check for Earlier Phases
 
-Read the discovery output's `revisitable_phases` — the completed phases the user could revisit.
+Read the discovery output's `revisitable_phases` — the completed phases the user could revisit. A paused phase revisits nothing — the pipeline continues at what it waits on.
+
+#### If `outcome` is `paused`
+
+→ Proceed to **F. Enter Plan Mode**.
 
 #### If `revisitable_phases` is `(none)`
 
@@ -127,7 +131,7 @@ Call the `EnterPlanMode` tool to enter plan mode. Then write the following conte
 ```
 # Continue Feature: {work_unit}
 
-@if(target_phase == next_phase) The previous phase has completed. Continue the pipeline. @else Revisiting an earlier phase. @endif
+@if(outcome == paused) The previous phase paused on a wait — the pipeline continues at what it waits on. @else @if(target_phase == next_phase) The previous phase has completed. Continue the pipeline. @else Revisiting an earlier phase. @endif @endif
 
 ## Next Step
 

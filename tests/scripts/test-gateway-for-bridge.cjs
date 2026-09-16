@@ -69,6 +69,39 @@ describe('workflow-bridge discovery', () => {
     assert.deepStrictEqual(r.reconcile_pending, ['review/moved (implementation)']);
   });
 
+  it('a discussion paused on its research routes the bridge to the research — parked or in flight', () => {
+    for (const status of ['triaged', 'in-progress']) {
+      createManifest(dir, 'ledger', {
+        work_type: 'feature',
+        phases: {
+          research: { items: { ledger: { status } } },
+          discussion: { items: { ledger: { status: 'in-progress' } } },
+        },
+      });
+      assert.strictEqual(discover(dir, 'ledger').next_phase, 'research', `research ${status}`);
+    }
+  });
+
+  it('a conversation paused on experiment evidence routes the bridge to the experiment — either spawn phase', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: {
+        research: { items: { pay: { status: 'completed' } } },
+        experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'window', status: 'conceived' } } } } },
+        discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      },
+    });
+    assert.strictEqual(discover(dir, 'pay').next_phase, 'experiment');
+    createManifest(dir, 'probe', {
+      work_type: 'cross-cutting',
+      phases: {
+        research: { items: { probe: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: { items: { probe: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+      },
+    });
+    assert.strictEqual(discover(dir, 'probe').next_phase, 'experiment');
+  });
+
   it('computes next_phase for epic same as other types', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

@@ -289,6 +289,7 @@ Commands:
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
   render phase-completed   <wu> --phase <phase> [--paths]
+  render phase-paused      <wu> --phase <research|discussion>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)

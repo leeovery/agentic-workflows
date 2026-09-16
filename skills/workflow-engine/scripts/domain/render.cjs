@@ -46,7 +46,7 @@ const { revisitablePhases, revisitPhasesSection } = require('./projections/worku
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
-const { waitGate, researchWaitState } = require('./projections/wait.cjs');
+const { waitGate, phasePaused, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const {
@@ -3513,6 +3513,29 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
+ * The bridge's paused banner — `phase-completed`'s sibling for a
+ * conversation leaving on a wait. Derived, never told: the phase's
+ * in-progress items holding waits, each named with what it awaits. A peer
+ * can land the wait between the gate and the bridge, so no holder left
+ * renders the bare line rather than refusing.
+ * @param {string} cwd
+ * @param {{dotpath: string, phase?: string}} args
+ * @returns {string}
+ */
+function phasePausedSurface(cwd, { dotpath, phase }) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
+  if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
+  if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
+    throw new Error(`render phase-paused: --phase must be <${EXPERIMENT_SPAWN_PHASES.join('|')}> — the conversations that pause on a wait; got "${phase}"`);
+  }
+  const holders = phaseItems(manifest, phase)
+    .filter((item) => item.status === 'in-progress')
+    .map((item) => ({ topic: item.name, waits: waits(manifest, phase, item.name) }))
+    .filter((holder) => holder.waits.length > 0);
+  return phasePaused(phase, workUnit, holders);
+}
+
+/**
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
@@ -5103,6 +5126,7 @@ const SURFACES = {
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
   'phase-completed': phaseCompleted,
+  'phase-paused': phasePausedSurface,
   'phase-note': phaseNote,
   'entry-gate': entryGate,
   'direct-entry-gate': directEntryGate,
