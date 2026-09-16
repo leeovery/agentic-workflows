@@ -695,7 +695,9 @@ function commandOptions(workUnit, detail, hasMap) {
   if (detail.completed.some((i) => i.blocked_by === undefined)) {
     opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
   }
-  if (detail.cancellable.some((u) => u.locked === undefined)) {
+  // Every unit shows, locked ones included: a user reaching for a cancel
+  // that is refused must see the row and its reason, never an absent option.
+  if (detail.cancellable.length > 0) {
     opts.push({ key: 'a', word: 'cancel', action: 'cancel_topic', topic: null, route: null, label: 'Cancel a topic' });
   }
   if (detail.cancelled.length > 0) {

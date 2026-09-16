@@ -448,6 +448,26 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(m.phases.specification.items['stale-group'], undefined);
   });
 
+  it('a cancelled item takes no status write — set, batch, and apply refuse it, nothing written', () => {
+    const m = readWorkUnit(dir, 'payments');
+    m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
+    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'proposed']).error, refusal);
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=proposed', 'sources.gamma.status=pending']).error, refusal);
+    assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
+      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.specification.dropped', fields: { status: 'proposed', 'sources.gamma.status': 'pending' } },
+    ])]).error, refusal);
+    const after = readWorkUnit(dir, 'payments');
+    assert.deepStrictEqual(after.phases.specification.items.dropped,
+      { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } }, 'the stash survives');
+    assert.strictEqual(after.phases.planning.items.portal.external_dependencies.billing.state, 'unresolved', 'the refused batch wrote nothing');
+    // Fields other than status stay writable — the item is inert, not sealed.
+    runJson(dir, ['set', 'payments.specification.dropped', 'sources.beta.status', 'pending']);
+    assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.dropped.sources.beta.status, 'pending');
+  });
+
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {
     const file = payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },

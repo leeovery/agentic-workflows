@@ -1059,7 +1059,7 @@ describe('epic projections: selection sub-views', () => {
     );
   });
 
-  it('a/cancel shows while any row is pickable and withdraws when every unit is locked; e/reactivate follows the cancelled units', () => {
+  it('a/cancel shows whenever a unit exists, locked ones included — the sub-view then lists the reasons over a menu of back alone; e/reactivate follows the cancelled units', () => {
     const options = (d) => epicMenu('v1', d).keys.filter((k) => ['cancel_topic', 'reactivate_topic'].includes(k.action)).map((k) => k.label);
     assert.deepStrictEqual(options(unitDetail()), ['Cancel a topic', 'Reactivate a cancelled topic']);
     const locked = detailFor(dir, 'v2', {
@@ -1070,7 +1070,9 @@ describe('epic projections: selection sub-views', () => {
         implementation: { items: { auth: { status: 'completed' } } },
       },
     });
-    assert.deepStrictEqual(options(locked), []);
+    // Omitting the option would hide the reasons with the rows — the
+    // failure this design starts from.
+    assert.deepStrictEqual(options(locked), ['Cancel a topic']);
     const view = epicCancelMenu(locked);
     assert.strictEqual(view.display, [
       'Topics',
@@ -1081,7 +1083,17 @@ describe('epic projections: selection sub-views', () => {
       '  └─ Auth [completed] · implementation started — fix forward',
       '',
     ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to cancel?`**',
+      '',
+      '**`b/back`** → Return to menu',
+    ].join('\n'));
     assert.deepStrictEqual(view.keys.map((k) => k.key), ['b'], 'locked rows take no key');
+    // Zero units keep the empty-state line; the option withdraws only then.
+    const bare = detailFor(dir, 'v3', { work_type: 'epic', phases: { planning: { items: { orphan: { status: 'completed' } } } } });
+    assert.deepStrictEqual(options(bare), []);
+    assert.strictEqual(epicCancelMenu(bare).display, 'No cancellable topics.\n');
   });
 
   it('cancel-menu: a triaged stub is cancellable with the topic, cued as parked', () => {
