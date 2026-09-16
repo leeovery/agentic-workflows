@@ -624,7 +624,7 @@ function rowStands(phase, item, held) {
 function heldDiscussionEntry(workUnit, detail, row, held) {
   const item = (detail.phases.discussion || []).find((i) => i.name === row.name);
   if (!item || item.status !== 'in-progress' || item.blocked_by === undefined) return null;
-  if (!rowStands('discussion', item, held)) return null;
+  if (heldRow(held, 'discussion', item.name) === undefined) return null;
   return { ...discoveryEntry(workUnit, row, 'continue_discussion'), blocked_by: item.blocked_by };
 }
 
@@ -1115,8 +1115,9 @@ function pipelineOrdered(items) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
-  // A held item is not actionable — no resume row; it returns once the hold
-  // releases, the way the main menu's continue rows do.
+  // A blocked item is not actionable — no resume row; it returns once its
+  // entry hold releases. No session sits in a completed item, so the main
+  // menu's held-row exception never applies here.
   const rows = pipelineOrdered(detail.completed.filter((item) => item.blocked_by === undefined)).map((item) => {
     const flagged = item.reconcile_needed !== undefined;
     return {
