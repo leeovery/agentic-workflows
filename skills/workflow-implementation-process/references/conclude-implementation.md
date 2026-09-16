@@ -12,9 +12,11 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If `no`
+#### If ask
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+Answer from the record the session already holds — the plan, the task results, the analysis reports, the code — then fetch the gate again and emit its MENU section as above.
+
+**STOP.** Wait for user response.
 
 #### If `yes`
 
