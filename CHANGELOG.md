@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.57] - 2026-09-16
+
+🔧 Changed
+
+- Review's out-of-scope findings are now decided before the review closes on every path, pass or fail, instead of only being offered as an option after a pass.
+- The review completion menu now names where finishing lands — back to the epic board, or the feature/bugfix/quick-fix finishing outright — instead of a generic "complete" label.
+
 ## [0.7.56] - 2026-09-16
 
 🔧 Changed
