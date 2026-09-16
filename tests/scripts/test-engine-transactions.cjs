@@ -2487,3 +2487,71 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'research', 'refund-policy']).status, 'completed');
   });
 });
+
+describe('engine topic complete — a landed upstream holds a conversation shut until the session reads it', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** Stamp fields onto one phase item of the fixture's payments epic. */
+  function withItem(phase, topic, fields) {
+    const m = epicManifest();
+    m.phases[phase].items[topic] = { ...(m.phases[phase].items[topic] || {}), ...fields };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    return m;
+  }
+
+  it('a discussion refuses over landed research it has not read — the flag names what landed and the way out', () => {
+    // refund-policy's research landed (completed) after flagging the live
+    // discussion: no wait remains, so only the unread flag holds the close.
+    const m = withItem('discussion', 'refund-policy', { reconcile_needed: 'research' });
+    m.phases.research.items['refund-policy'] = { status: 'completed' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
+    assert.strictEqual(err.error, 'discussion "refund-policy" carries reconcile_needed: research — the topic\'s research landed beneath this conversation; read what landed into the session and clear the flag before concluding');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress');
+  });
+
+  it('the wait outranks the flag while the research is still outstanding', () => {
+    const m = withItem('discussion', 'refund-policy', { reconcile_needed: 'research' });
+    m.phases.research.items['refund-policy'] = { status: 'in-progress' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
+      /^discussion "refund-policy" awaits research on the topic/);
+  });
+
+  it('a released evidence wait refuses the same way — discussion and research alike', () => {
+    withItem('discussion', 'refund-policy', { reconcile_needed: 'experiment' });
+    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
+      'discussion "refund-policy" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding');
+    withItem('research', 'auth-flow', { reconcile_needed: 'experiment' });
+    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).error,
+      'research "auth-flow" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding');
+  });
+
+  it('the session\'s read releases it: clearing the flag lets the conclusion pass', () => {
+    withItem('discussion', 'refund-policy', { reconcile_needed: 'experiment' });
+    engine(dir, ['manifest', 'delete', 'payments.discussion.refund-policy', 'reconcile_needed']);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
+  });
+
+  it('the brief flag and the roadmap flag are entry-time advisories — never a refusal', () => {
+    withItem('discussion', 'refund-policy', { reconcile_needed: true });
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].reconcile_needed, true, 'the flag stands for the entry advisory');
+    withItem('research', 'auth-flow', { reconcile_needed: 'roadmap' });
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).status, 'completed');
+  });
+
+  it('other phases\' flags are the entry skill\'s alone — a flagged specification or plan completes untouched', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'discussion', sources: { 'refund-policy': { status: 'incorporated' } } } } };
+    m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']).status, 'completed');
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
+    const after = readManifest(dir, 'payments');
+    assert.strictEqual(after.phases.specification.items['refund-policy'].reconcile_needed, 'discussion');
+    assert.strictEqual(after.phases.planning.items['refund-policy'].reconcile_needed, 'specification');
+  });
+});

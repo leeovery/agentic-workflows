@@ -1,0 +1,78 @@
+{
+  "origin": "a discussion already in session never learned that its research had landed: the reconcile flag was consumed at the phase entry alone, so a peer's re-landing mid-session left the flag on the item and the close ran over research the conversation never read — this walk holds that the session loop's own check meets the landed research at the next break, reads it in full, clears the flag, and puts what it re-examines to the user before the conversation moves on",
+  "entry": "workflow-discussion-entry",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "stubs": {
+    "research-peer-relanding": "once, immediately after the session loop's first triage-queue read (node .claude/skills/workflow-engine/scripts/engine.cjs topic queue search-relevance discussion behavioural-ranking) — before any further engine call and before the session's first turn to the user — acting as a peer research session, not as this session: run node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen search-relevance research behavioural-ranking, write the stub content over .workflows/search-relevance/research/behavioural-ranking.md, then run node .claude/skills/workflow-engine/scripts/engine.cjs topic complete search-relevance research behavioural-ranking and node .claude/skills/workflow-engine/scripts/engine.cjs commit search-relevance --topic research/behavioural-ranking --kb -m \"research(search-relevance/behavioural-ranking): fold the stability-line measurement\""
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate search-relevance.discussion.behavioural-ranking",
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "topic queue search-relevance discussion behavioural-ranking",
+      "topic reopen search-relevance research behavioural-ranking",
+      "topic complete search-relevance research behavioural-ranking",
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed"
+    ],
+    "calls_in_order": [
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "topic queue search-relevance discussion behavioural-ranking",
+      "topic reopen search-relevance research behavioural-ranking",
+      "topic complete search-relevance research behavioural-ranking",
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed"
+    ],
+    "calls_exclude": [
+      "render wait-gate",
+      "topic complete search-relevance discussion",
+      "topic reopen search-relevance discussion",
+      "topic start",
+      "topic triage",
+      "topic absorb",
+      "discussion-map add",
+      "discussion-map set",
+      "experiment create",
+      "experiment conclude",
+      "experiment abandon",
+      "render experiment-register",
+      "agent dispatch"
+    ]
+  }
+}

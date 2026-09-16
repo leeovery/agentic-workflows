@@ -26,6 +26,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 **If `count` is `0`:**
 
+Check for landed evidence next — follow **Landed Evidence** in **[session-loop.md](session-loop.md)**: a release between the rhythm's last check and this conclusion is read here, never concluded over (the engine refuses the completion while the flag stands).
+
+**If it read evidence in:**
+
+The conversation has the turn — the waiting point settles there, and the next done-signal re-enters here.
+
+→ Return to caller.
+
+**If nothing landed:**
+
 Check the topic's waits next — a wait still open means the conclusion cannot pass, and the engine would refuse the completion anyway. Fetch the gate (empty when nothing is owed):
 
 ```bash

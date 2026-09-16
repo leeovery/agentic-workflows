@@ -301,12 +301,16 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     const item = readManifest(dir, 'lab').phases.discussion.items.timing;
     assert.strictEqual(item.awaiting_experiments, undefined, 'the emptied lock is removed');
-    assert.strictEqual(item.reconcile_needed, 'experiment', 'the next entry surfaces the evidence');
+    assert.strictEqual(item.reconcile_needed, 'experiment', 'the next entry or check surfaces the evidence');
     // Research feeds discussion: timing's research is still in flight, so it
-    // lands first — then the released conversation can conclude.
+    // lands first — then the released conversation reads the evidence (the
+    // flag's clear is the read's), and only then can it conclude.
     engine(dir, ['topic', 'complete', 'lab', 'research', 'timing']);
+    assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']).error,
+      /carries reconcile_needed: experiment — an experiment wait released beneath this conversation/);
+    engine(dir, ['manifest', 'delete', 'lab.discussion.timing', 'reconcile_needed']);
     const done = engine(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']);
-    assert.strictEqual(done.status, 'completed', 'the released conversation can conclude');
+    assert.strictEqual(done.status, 'completed', 'the released conversation can conclude once the evidence is read');
   });
 
   it('a waiting conversation cannot conclude — research and discussion identically', () => {

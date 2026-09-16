@@ -307,11 +307,13 @@ function nextConcernNumber(dirAbs) {
  * a flag must land where an entry flow can clear it, and the series item
  * has none.
  * A `completed` item takes the flag (value = the upstream phase name,
- * consumed and cleared by the entry skills' reconcile advisory; an existing
- * flag is never clobbered) — and on the hop out of research so does an
+ * consumed and cleared by the reconcile advisory — at the entry skill, or
+ * inside a research/discussion session at its next check; an existing flag
+ * is never clobbered) — and on the hop out of research so does an
  * in-progress discussion: research feeds discussion, and a discussion in
  * flight is the one that could otherwise conclude over research still to
- * land (the wait derivation holds its conclusion shut; the flag says why).
+ * land (the wait derivation holds its conclusion shut while it is
+ * outstanding; once landed, the flag holds it until the session reads it).
  * Terminal items never take one. An `incorporated` source row on any non-terminal
  * spec item flips to `stale` regardless of the item's flag state — the
  * persistent record that the extraction predates the revision, cleared only
@@ -418,9 +420,11 @@ function abandonOpenRecords(item, reason, opts = {}) {
  * (conclude, abandon, the epic cancel), so a wait can never dangle. Removes
  * `ids` (or every id) from each holder's `awaiting_experiments`, deletes the
  * emptied field, and flags a non-terminal holder with `reconcile_needed:
- * "experiment"` (an existing flag never clobbered) so its next entry
- * surfaces the evidence — or the abandonment — before the waiting point
- * settles. Mutates the loaded manifest; the caller saves under its own lock.
+ * "experiment"` (an existing flag never clobbered) so its next entry — or
+ * its session's next check — surfaces the evidence, or the abandonment,
+ * before the waiting point settles; the holder's completion refuses over
+ * the unread flag. Mutates the loaded manifest; the caller saves under its
+ * own lock.
  * @param {object} manifest @param {string} topic
  * @param {{ids?: string[]}} [opts]  specific ids; omitted releases them all
  * @returns {WaitRelease[]}  the holders that released something; empty when nothing was waiting
@@ -842,6 +846,18 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
   return result;
 }
 
+// The reconcile values a conversation must read in session before it
+// concludes — its upstream landed beneath it: the topic's research landed
+// (`research`, set by the hop out of research), or an evidence wait
+// released (`experiment`, set by the release). The brief flag (`true`) and
+// the roadmap flag stay entry-time advisories, and every other phase's flag
+// is the entry skill's alone.
+/** @type {Record<string, string>} */
+const LANDED_UPSTREAM = {
+  research: 'the topic\'s research landed beneath this conversation',
+  experiment: 'an experiment wait released beneath this conversation — evidence, or an abandonment',
+};
+
 /**
  * The completion refusal's clauses — one per wait kind present, in the
  * derivation's order.
@@ -865,7 +881,9 @@ function waitClauses(blocking) {
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first; an item
  * holding a live wait — evidence it awaits, or a discussion's outstanding
- * research — refuses naming every wait. No git commit.
+ * research — refuses naming every wait; a research or discussion item
+ * carrying a landed-upstream flag (`reconcile_needed: research|experiment`)
+ * refuses until the session reads what landed and clears it. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -905,6 +923,13 @@ function completeTopic(cwd, workUnit, phase, topic) {
     const blocking = waits(manifest, phase, topic);
     if (blocking.length > 0) {
       throw new Error(`${phase} "${topic}" ${waitClauses(blocking).join('; and ')}`);
+    }
+    // A landed upstream the conversation has not read holds it shut too —
+    // the flag is cleared by the session's own read (the reconcile
+    // advisory), never by the completion.
+    const landed = EXPERIMENT_SPAWN_PHASES.includes(phase) ? LANDED_UPSTREAM[/** @type {string} */ (item.reconcile_needed)] : undefined;
+    if (landed) {
+      throw new Error(`${phase} "${topic}" carries reconcile_needed: ${item.reconcile_needed} — ${landed}; read what landed into the session and clear the flag before concluding`);
     }
     item.status = 'completed';
 
