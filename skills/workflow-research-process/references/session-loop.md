@@ -12,6 +12,8 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
    Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the dive check below waits for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
+   Then check for landed evidence: follow **Landed Evidence** below. Its landed branch ends the turn on what it read — the dive check below waits for a later iteration.
+
    Then, at a natural break — a thread's pause, a synthesis moment, the user's done-signal, or the first iteration of a resumed session — check for landed deep dives: follow **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)**. Skip only when no dive has been dispatched — the store decides, not the iteration count: a resumed session may hold dives from an earlier sitting. Mid-thread, defer — a landed report keeps.
 
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision — or a measurement thread on the register, a dive's Opened line — is the laboratory's cue: offer it through the session wrapper's **F. The Experiment Offer**.
@@ -74,3 +76,27 @@ Guidance on when to go deeper vs move on, when to challenge vs accept, when to s
 - **Challenge** when: something contradicts earlier statements, an assumption is unstated, a risk is being glossed over, the user seems too certain too quickly
 - **Synthesize** when: multiple threads are accumulating without connection, the conversation has been divergent for a while, you notice a pattern forming across different topics
 - **Bookmark for later** when: something interesting comes up but you're mid-thread on something else — add it to the register as a thread and return when the current thread concludes
+
+## Landed Evidence
+
+Entered from the rhythm's check and from **[topic-completion.md](topic-completion.md)** before its wait gate. Evidence this research awaited may have landed since the last check — the engine flags the item when a wait releases, and refuses the completion while the flag stands. Read it (empty when nothing moved):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} reconcile_needed
+```
+
+#### If output is `experiment`
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `research`.
+
+Put what the read weighs to the user now — each verdict as evidence, the waiting point it settles or reopens. The advisory's flag delete rides the next cadence commit.
+
+**STOP.** Wait for user response.
+
+→ Return to **The Conversation Rhythm**.
+
+#### Otherwise
+
+Nothing landed. No output.
+
+→ Return to caller.

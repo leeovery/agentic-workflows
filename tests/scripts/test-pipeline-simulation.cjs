@@ -702,6 +702,50 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
+  it('feature: research landing beneath a discussion in session is read before the close — the completion refuses over the unread flag', () => {
+    const wu = 'tally';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Tally feature', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'research', wu]);
+    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `research(${wu}): capture`, '--topic', `research/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'research', wu]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    // A peer's delivery lands research-side beneath the discussion in
+    // session: the completed research reopens and the discussion is flagged.
+    // While the research is outstanding the wait — not the flag — holds the
+    // close, and the session's own check stays silent.
+    const scratch = sim.write('.workflows/.cache/scratch/late-question.md',
+      '### Late question\n*From: tally · discussion · 2026-07-23*\n\nWhat does the tally round to?\n');
+    const landed = sim.run(['topic', 'triage', wu, 'research', wu,
+      '--concern', scratch, '--slug', 'late-question', '-m', `discussion(${wu}): requeue a research question`]);
+    assert.strictEqual(landed.reopened, true);
+    assert.strictEqual(landed.reconcile_flagged, true);
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'in-progress');
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /^discussion "tally" awaits research on the topic/);
+    // The peer drains the queue and concludes the research: the wait
+    // releases, and the unread flag is now what holds the close.
+    sim.run(['topic', 'absorb', wu, 'research', wu,
+      '--file', path.basename(landed.concern_path), '-m', `research(${wu}): absorb late-question`]);
+    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
+    sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'research', wu]);
+    sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
+    // The session's next check — the loop's break, or the close before its
+    // wait gate: the flag reads `research`, the research item `completed`, so
+    // the advisory reads the research file and clears the flag (prose-owned —
+    // simulated here); until it does, the completion refuses.
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'completed');
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu],
+      /^discussion "tally" carries reconcile_needed: research — the topic's research landed beneath this conversation; read what landed into the session and clear the flag before concluding$/);
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
+  });
+
   it('epic: research first — a parked stub is the topic\'s own row, no discussion is born over it, no dead end buries it, and a reopen flags the live discussion', () => {
     const wu = 'orbit';
     const log = sessionLog(sim, wu);
@@ -786,6 +830,10 @@ describe('pipeline simulation', () => {
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_discussion']);
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'alpha']).created, false);
+    // The session inside reads the landed research at its next check and
+    // clears the flag (prose-owned — simulated here); the completion
+    // refuses until it has.
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /carries reconcile_needed: research/);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
@@ -1425,7 +1473,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'research', 'beta']);
     sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
-    // The re-entry's reconcile clears the flag (prose-owned); the discussion concludes.
+    // The landed research is read — at re-entry, or at the session's next
+    // check — and the read clears the flag (prose-owned — simulated here);
+    // the completion refuses until it does, then the discussion concludes.
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'beta'], /carries reconcile_needed: research/);
     sim.run(['manifest', 'delete', `${wu}.discussion.beta`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
@@ -3462,7 +3513,11 @@ describe('pipeline simulation', () => {
     assert.strictEqual(timing.awaiting_experiments, undefined);
     assert.strictEqual(timing.reconcile_needed, 'experiment');
 
-    // The released conversation reconciles at re-entry and concludes.
+    // The released conversation reconciles — at re-entry, or at its next
+    // check in session — and concludes; the completion refuses until the
+    // evidence is read and the flag cleared (prose-owned — simulated here).
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'],
+      /^discussion "timing" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding$/);
     sim.run(['manifest', 'delete', `${wu}.discussion.timing`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete timing discussion`, '--topic', 'discussion/timing', '--kb']);
@@ -3510,6 +3565,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.research.items.layout.reconcile_needed, 'experiment', 'the release flagged the holder before it closed');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'layout']);
     assert.strictEqual(sim.manifest(wu).phases.research.items.layout.status, 'in-progress');
+    // An abandonment is a release too: the research reads it before it concludes.
+    sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /^research "layout" carries reconcile_needed: experiment/);
     sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'research', 'layout']);
     assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
@@ -3562,8 +3619,11 @@ describe('pipeline simulation', () => {
     sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
 
-    // The verdict lands the route back on the conversation.
+    // The verdict lands the route back on the conversation, which reads the
+    // evidence before it can conclude.
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, 'experiment');
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /carries reconcile_needed: experiment/);
     sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
 
     // A second spawn holds the conversation again; the record's abandon is

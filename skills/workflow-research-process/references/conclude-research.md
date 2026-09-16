@@ -35,11 +35,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
    **Otherwise:** nothing to write — every thread is learned, or the register is empty.
 
-2. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
+2. Check for landed evidence once more — follow **Landed Evidence** in **[session-loop.md](session-loop.md)**: a release since the completion's own check is read and put to the user, and its landed branch returns the conversation to the rhythm — the conclusion re-enters at the next done-signal; every other return continues here.
+3. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} research {topic}
    ```
-3. Final commit — the Open Threads write rides it:
+4. Final commit — the Open Threads write rides it:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} --kb -m "research({work_unit}): complete {topic} research"
    ```
@@ -50,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
    ```
 
-4. Sweep for leavings:
+5. Sweep for leavings:
 
    ```bash
    git status --porcelain -- .workflows/{work_unit}
@@ -60,11 +61,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
    **Otherwise:** nothing to sweep — continue.
 
-5. Closing recap:
+6. Closing recap:
 
    → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-6. Closure signpost:
+7. Closure signpost:
 
 **If `closure` is `discussion`:**
 
@@ -82,4 +83,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
-7. Invoke `/workflow-bridge {work_unit} research`.
+8. Invoke `/workflow-bridge {work_unit} research`.

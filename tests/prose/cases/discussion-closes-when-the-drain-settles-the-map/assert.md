@@ -72,7 +72,8 @@ Further claims:
   the map settling under the fold alone opened the ceremony
 - the closing gates rendered in the same turn as the absorb — no
   session-loop iteration, no natural-break check, no "anything else?"
-  sat between the clear line and the wait gate
+  sat between the clear line and the wait gate; the close's own
+  landed-input read (no flag) is the one engine call between them
 - the defer gate never renders and nothing is written `deferred`; no
   `(deferral)` commit exists
 - no review is dispatched at any point: while the concern was queued

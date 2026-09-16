@@ -67,7 +67,8 @@ Further claims:
   between the last finding's engagement and the resumed wait gate
 - the second entry into the close is the loop's own — no
   `discussion-map set` precedes it, the map never left fully decided,
-  and the wait gate renders a second time as the re-entry's first act
+  and the re-entry's first acts are the landed-input read (no flag)
+  and the wait gate rendering a second time
 - both findings are surfaced through the engine one at a time; no
   finding is skipped, no batch screen renders for an ask-laned
   finding, and the row is never incorporated by hand

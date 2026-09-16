@@ -20,7 +20,8 @@ The prose should have taken this path:
    commits action-scoped, and the dispatch check holds — the queue is
    not empty and the closing gates are next — so no review is
    dispatched
-5. the close opens in the same turn: the wait gate (empty), the map
+5. the close opens in the same turn: the landed-input read (no
+   flag), the wait gate (empty), the map
    read through the gateway, the settled line, and the closing gates —
    which meet the queued concern and, this entry being the map's
    settling rather than the user's signal, never render the triage
@@ -52,6 +53,7 @@ Further claims:
 - the user never signalled conclusion and was never asked to: no
   free-text question about concluding sits between the result-caching
   commit and the second offer, nor between the absorb and the wait gate
+  (the close's own landed-input read excepted)
 - no review is dispatched at any point of the walk — the queue held
   the first commit's check shut, the absorb arms nothing, and the walk
   stops before the final review step runs

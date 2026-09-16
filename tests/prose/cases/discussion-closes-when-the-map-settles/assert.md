@@ -57,7 +57,9 @@ Further claims:
   the settled map alone opened the ceremony
 - the closing gates rendered in the same turn as the deciding write's
   commit — no session-loop iteration, no natural-break check, no
-  "anything else?" sat between the commit and the wait gate
+  "anything else?" sat between the commit and the wait gate; the
+  close's own landed-input read (no flag) is the one engine call
+  between them
 - the defer gate never renders and nothing is written `deferred` —
   the map settled by decision, so `all_decided` was already true when
   the map gate read it; no `(deferral)` commit exists
