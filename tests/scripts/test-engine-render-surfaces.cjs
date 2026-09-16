@@ -340,7 +340,7 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
     assert.ok(n > -1 && l > n, 'yes leads, later follows');
-    assert.match(unwrap(out), /Pause this research here and return to the menu with E1 queued/);
+    assert.match(unwrap(out), /Pause this research here and return to the epic menu with E1 queued/);
     assert.ok(!out.includes('the session ends'), 'the pause returns through the bridge — the row never describes a session ending');
     assert.match(unwrap(out), /Keep the conversation going — this research cannot conclude until E1's evidence lands/);
   });
@@ -367,10 +367,10 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> The wait releases when each experiment ends\. The menu carries the way in\./);
+    assert.match(out, /> The wait releases when each experiment ends\. The epic menu carries the way in\./);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /Pause this discussion here and return to the menu with E1, E2 queued/);
+    assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1, E2 queued/);
     assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
   });
 
@@ -403,10 +403,10 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\)\n/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
+    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The epic menu carries the way in\.\n/);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and return to the menu with the research queued/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and return to the epic menu with the research queued/);
     assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
     assert.ok(!out.includes('experiment'), 'no experiment clause without an experiment wait');
   });
@@ -422,7 +422,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\) and experiment evidence \(E1, E2\)\n/);
     assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The menu carries the way in\.\n/);
-    assert.match(unwrap(out), /return to the menu with the research and E1, E2 queued/);
+    assert.match(unwrap(out), /return to the epic menu with the research and E1, E2 queued/);
     assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
   });
 
@@ -442,7 +442,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
       /no research item "billing" — nothing to hold shut/, 'an absent item is a misrouted address, never a clear conclusion');
   });
 
-  it('a feature\'s discussion waits on its research the same way — the guidance names no epic-only row', () => {
+  it('a feature\'s discussion waits on its research the same way — the pause names the work unit\'s next step, never a menu', () => {
     writeManifest(dir, 'feat', {
       work_type: 'feature',
       phases: {
@@ -452,8 +452,20 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'feat.discussion.feat' });
     assert.match(out, /awaits research on "Feat" \(parked — not yet started\)/);
-    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\./);
-    assert.ok(!out.includes('row'), 'no epic-only vocabulary on a linear unit');
+    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
+    assert.match(out, /◆ Pause here\?/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
+    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause lands in plan mode, never on a menu — no epic vocabulary');
+  });
+
+  it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
+    writeManifest(dir, 'feat', {
+      work_type: 'feature',
+      phases: { research: { items: { feat: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
+    });
+    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.research.feat', id: 'E1' });
+    assert.match(unwrap(out), /Pause this research here and open the laboratory for E1/);
+    assert.ok(!out.includes('menu'), 'no menu on a linear unit');
   });
 
   it('refuses a phase outside the conversation pair', () => {

@@ -16,7 +16,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase that just completed — `discovery` or any later phase. Held downstream as `{completed_phase}`.
+- `$1` — **completed_phase**: the phase handing off — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
 - `$2` — **next_phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` means the continuation computes the next phase from discovery output.
 - `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 

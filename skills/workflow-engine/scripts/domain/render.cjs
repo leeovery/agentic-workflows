@@ -2717,7 +2717,7 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
   if (!awaitedExperiments(manifest, phase, topic).includes(/** @type {string} */ (id))) {
     throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
   }
-  return experimentSpawnGate(phase, /** @type {string} */ (id));
+  return experimentSpawnGate(phase, /** @type {string} */ (id), manifest.work_type === 'epic');
 }
 
 /**
@@ -2735,7 +2735,7 @@ function waitGateSurface(cwd, { dotpath }) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
   const blocking = waits(manifest, phase, topic);
-  return blocking.length === 0 ? '' : waitGate(phase, topic, blocking);
+  return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The

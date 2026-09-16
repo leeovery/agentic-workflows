@@ -183,7 +183,7 @@ Commit any uncommitted session work with the session's cadence commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
 ```
 
-Then hand off to the pipeline bridge as a pause — research this discussion waits on is entered first, and the discussion's own door stays shut until it lands:
+Then hand off to the pipeline bridge as a pause — what this discussion waits on is entered first, and its own door stays shut until it lands:
 
 > *Output the next fenced block as markdown (not a code block):*
 

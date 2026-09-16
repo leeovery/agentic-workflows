@@ -50,9 +50,10 @@ function owedWaits(waits, researchSubject) {
  * @param {string} phase  the holding phase — `research` or `discussion`
  * @param {string} topic
  * @param {Wait[]} waits  non-empty — the derivation's order
+ * @param {boolean} epic  where the pause lands — the epic menu, or the linear unit's next step
  * @returns {string}
  */
-function waitGate(phase, topic, waits) {
+function waitGate(phase, topic, waits, epic) {
   const research = waits.find((w) => w.kind === 'research');
   const ids = experimentIds(waits);
   const guidance = [];
@@ -71,7 +72,7 @@ function waitGate(phase, topic, waits) {
   if (research) guidance.push(`Work the research first — concluding it releases its wait${ids.length > 0 ? '.' : `; this ${phase} can conclude once the research lands.`}`);
   if (ids.length > 0) guidance.push('The wait releases when each experiment ends.');
   if (research && ids.length > 0) guidance.push(`This ${phase} can conclude once the research and the evidence have landed.`);
-  guidance.push('The menu carries the way in.');
+  guidance.push(epic ? 'The epic menu carries the way in.' : 'The pause continues the work unit at what it waits on.');
   return [
     section(
       'DISPLAY: wait block',
@@ -80,9 +81,11 @@ function waitGate(phase, topic, waits) {
     ),
     section('DISPLAY: wait guidance', 'emit verbatim as markdown', `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', `Pause this ${phase} here and return to the menu with ${queued.join(' and ')} queued`),
+      cmdOption('y', 'yes', epic
+        ? `Pause this ${phase} here and return to the epic menu with ${queued.join(' and ')} queued`
+        : `Pause this ${phase} here and continue the work unit at ${queued.join(' and ')}`),
       cmdOption('k', 'keep', `Keep the conversation going — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
-    ], { question: 'Pause to the menu?' })),
+    ], { question: epic ? 'Pause to the menu?' : 'Pause here?' })),
   ].join('\n');
 }
 
