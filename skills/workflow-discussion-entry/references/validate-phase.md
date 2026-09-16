@@ -48,6 +48,6 @@ Set source="continue".
 
 #### Otherwise
 
-The discussion is cancelled — it returns through the epic menu's reactivate option, never through entry. Tell the user in one line.
+The discussion is cancelled — its topic returns through the epic menu's reactivate option, never through entry. Tell the user in one line.
 
 **STOP.** Do not proceed — terminal condition.
