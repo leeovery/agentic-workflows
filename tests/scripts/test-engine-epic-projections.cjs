@@ -984,7 +984,7 @@ describe('epic projections: selection sub-views', () => {
     const view = epicCancelMenu(unitDetail(), { presence });
     assert.strictEqual(view.display, [
       'Topics',
-      '  ├─ Auth [decided] · locked by specification "unified" — cancel',
+      '  ├─ Auth [decided] · locked by specification "Unified" — cancel',
       '     it first',
       '  ├─ 1. Billing [discussing · awaiting E1] · in session (last',
       '        active 30s ago)',
@@ -1029,12 +1029,12 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.display, [
       'Topics',
       '  ├─ 1. Gone [cancelled] — never started',
-      '  └─ 2. Legacy [cancelled] — research (was completed) ·',
-      '        discussion (was unknown)',
+      '  └─ 2. Legacy [cancelled] — research [was completed] ·',
+      '        discussion (never started)',
       '',
       'Specifications',
-      '  └─ 3. Parked [cancelled] — specification (was completed) ·',
-      '        planning (was in-progress)',
+      '  └─ 3. Parked [cancelled] — specification [was completed] ·',
+      '        planning [was in-progress]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -1042,10 +1042,10 @@ describe('epic projections: selection sub-views', () => {
       '**`◆ Which topic would you like to reactivate?`**',
       '',
       '**`1`**      → Reactivate "Gone" — *never started*',
-      '**`2`**      → Reactivate "Legacy" — *research (was completed) ·*',
-      `${NB(9)}*discussion (was unknown)*`,
-      '**`3`**      → Reactivate "Parked" — *specification (was completed) ·*',
-      `${NB(9)}*planning (was in-progress)*`,
+      '**`2`**      → Reactivate "Legacy" — *research [was completed] ·*',
+      `${NB(9)}*discussion (never started)*`,
+      '**`3`**      → Reactivate "Parked" — *specification [was completed] ·*',
+      `${NB(9)}*planning [was in-progress]*`,
       '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -1076,16 +1076,18 @@ describe('epic projections: selection sub-views', () => {
     const view = epicCancelMenu(locked);
     assert.strictEqual(view.display, [
       'Topics',
-      '  └─ Auth [decided] · locked by specification "auth" — cancel it',
+      '  └─ Auth [decided] · locked by specification "Auth" — cancel it',
       '     first',
       '',
       'Specifications',
       '  └─ Auth [completed] · implementation started — fix forward',
       '',
     ].join('\n'));
+    // Every row locked: a statement stands where the question would, over
+    // back alone — a question with nothing to pick would be a lie.
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Which topic would you like to cancel?`**',
+      'Nothing can be cancelled right now — each row names what holds it.',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1234,14 +1236,14 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.title, 'Cancelled Topics');
     assert.strictEqual(view.display, [
       'Topics',
-      '  └─ 1. Stale Topic [cancelled] — discussion (was in-progress)',
+      '  └─ 1. Stale Topic [cancelled] — discussion [was in-progress]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to reactivate?`**',
       '',
-      '**`1`**      → Reactivate "Stale Topic" — *discussion (was in-progress)*',
+      '**`1`**      → Reactivate "Stale Topic" — *discussion [was in-progress]*',
       '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -1253,7 +1255,7 @@ describe('epic projections: selection sub-views', () => {
     );
   });
 
-  it('reactivate-menu: a missing previous_status reads as unknown', () => {
+  it('reactivate-menu: a missing previous_status reads as never started — the item returns to never-attempted', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: { research: { items: { dropped: { status: 'cancelled' } } } },
@@ -1261,9 +1263,119 @@ describe('epic projections: selection sub-views', () => {
     const view = epicReactivateMenu(d);
     assert.strictEqual(view.display, [
       'Topics',
-      '  └─ 1. Dropped [cancelled] — research (was unknown)',
+      '  └─ 1. Dropped [cancelled] — research (never started)',
       '',
     ].join('\n'));
+  });
+
+  // The continuation lines of a wrapped tree row join back with one space.
+  const unwrapRows = (/** @type {string} */ display) => display.replace(/\n {5,}/g, ' ');
+
+  it('reactivate-menu: a specification whose sources are unavailable is keyless with its reason; the cue reads the laboratory with its topic and the plan with its specification', () => {
+    const d = detailFor(dir, 'v4', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { synonyms: { routing: 'discussion', source: 'discovery', cancelled: true }, notes: { routing: 'discussion', source: 'discovery' }, lab: { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { synonyms: { status: 'cancelled', previous_status: 'completed' }, notes: { status: 'completed' }, lab: { status: 'in-progress' } } },
+        experiment: { items: { lab: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
+        specification: { items: {
+          unified: { status: 'cancelled', previous_status: 'completed', sources: { synonyms: { status: 'incorporated' } } },
+          taken: { status: 'cancelled', previous_status: 'in-progress', sources: { notes: { status: 'incorporated' } } },
+          notes: { status: 'in-progress', sources: { notes: { status: 'incorporated' } } },
+          free: { status: 'cancelled', previous_status: 'completed', sources: {} },
+        } },
+        planning: { items: { free: { status: 'cancelled', previous_status: 'in-progress' } } },
+      },
+    });
+    const presence = [
+      { phase: 'experiment', topic: 'lab', age_seconds: 45, held: true, session_id: 's1' },
+      { phase: 'planning', topic: 'free', age_seconds: 7, held: true, session_id: 's2' },
+    ];
+    const view = epicReactivateMenu(d, { presence });
+    assert.strictEqual(unwrapRows(view.display), [
+      'Topics',
+      '  └─ 1. Synonyms [cancelled] — discussion [was completed]',
+      '',
+      'Specifications',
+      '  ├─ Unified [cancelled] — specification [was completed] · locked — its source "Synonyms" is cancelled; reactivate the topic first',
+      '  ├─ Taken [cancelled] — specification [was in-progress] · locked — the specification "Notes" now sources "Notes"; regroup at the specification entry',
+      '  └─ 2. Free [cancelled] — specification [was completed] · planning [was in-progress] · in session (last active 7s ago)',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(view.keys.map((k) => [k.key, k.topic, k.phase]), [['1', 'synonyms', 'discovery'], ['2', 'free', 'specification'], ['b', null, null]]);
+    assert.ok(unwrapRows(epicCancelMenu(d, { presence }).display).includes('Lab [discussing] · in session (last active 45s ago)'),
+      "the laboratory's hold cues its topic's cancel row");
+  });
+
+  it('reactivate-menu: every unit locked renders the statement over back alone; a plural lock lists every source', () => {
+    const d = detailFor(dir, 'v5', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { a: { routing: 'discussion', source: 'discovery', cancelled: true }, b: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+        discussion: { items: { a: { status: 'cancelled', previous_status: 'completed' }, b: { status: 'cancelled', previous_status: 'completed' } } },
+        specification: { items: { pair: { status: 'cancelled', previous_status: 'completed', sources: { a: { status: 'incorporated' }, b: { status: 'incorporated' } } } } },
+      },
+    });
+    // The two topics are free to return; lock them out of the fixture by
+    // reading the specification row alone.
+    d.cancelled = d.cancelled.filter((u) => u.stage === 'specification');
+    const view = epicReactivateMenu(d);
+    assert.strictEqual(unwrapRows(view.display), [
+      'Specifications',
+      '  └─ Pair [cancelled] — specification [was completed] · locked — its sources "A", "B" are cancelled; reactivate the topics first',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      'Nothing can be reactivated right now — each row names what holds it.',
+      '',
+      '**`b/back`** → Return to menu',
+    ].join('\n'));
+    assert.deepStrictEqual(view.keys.map((k) => k.key), ['b']);
+  });
+
+  it('cancel-menu: a superseded or status-less specification is never listed — only a started one', () => {
+    const d = detailFor(dir, 'v6', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: {
+          old: { status: 'superseded', superseded_by: 'live', sources: {} },
+          blank: { sources: {} },
+          live: { status: 'in-progress', sources: {} },
+          shipped: { status: 'promoted', sources: {} },
+        } },
+      },
+    });
+    assert.deepStrictEqual(d.cancellable.map((u) => [u.stage, u.name, u.state]), [['specification', 'live', 'in-progress']]);
+    assert.strictEqual(epicCancelMenu(d).display, 'Specifications\n  └─ 1. Live [in-progress]\n');
+  });
+
+  it('an off-map topic whose only item is superseded is no unit; beside a cancelled sibling it reads cancelled and offers its return', () => {
+    const d = detailFor(dir, 'v8', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { closed: { status: 'superseded', superseded_by: 'other' }, legacy: { status: 'superseded', superseded_by: 'other' } } },
+        discussion: { items: { legacy: { status: 'cancelled', previous_status: 'completed' } } },
+      },
+    });
+    assert.deepStrictEqual(d.cancellable.map((u) => u.name), [], 'nothing live under either name');
+    assert.deepStrictEqual(d.cancelled, [{ name: 'legacy', stage: 'discovery', restores: [{ phase: 'discussion', previous_status: 'completed' }] }]);
+    assert.strictEqual(epicReactivateMenu(d).display, 'Topics\n  └─ 1. Legacy [cancelled] — discussion [was completed]\n');
+  });
+
+  it('cancel-menu: specifications group in build order, whatever their insertion order', () => {
+    const d = detailFor(dir, 'v7', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: {
+          third: { status: 'completed', order: 3, sources: {} },
+          second: { status: 'in-progress', order: 2, sources: {} },
+          first: { status: 'completed', order: 1, sources: {} },
+          unordered: { status: 'in-progress', sources: {} },
+        } },
+      },
+    });
+    assert.deepStrictEqual(d.cancellable.map((u) => u.name), ['first', 'second', 'third', 'unordered']);
   });
 
   it('empty sub-view: the empty-state line stands in for the list, menu offers only back', () => {
@@ -1438,6 +1550,8 @@ describe('epic projections: the topic-grain experiment entry', () => {
     assert.ok(!done.completed.some((i) => i.phase === 'experiment'),
       'a completed series has nothing to resume — a new spawn reopens it');
 
+    // A series cancelled on its own predates the unit cancel — legacy state
+    // the derivation meets as found.
     const cancelled = labDetail({
       discussion: { items: { timing: { status: 'in-progress' } } },
       experiment: {
@@ -1449,8 +1563,9 @@ describe('epic projections: the topic-grain experiment entry', () => {
         },
       },
     });
-    assert.ok(!cancelled.cancelled.some((i) => i.phase === 'experiment'),
-      'a cancelled series has nothing to reactivate — its rows stand and the next spawn revives it');
+    assert.deepStrictEqual(cancelled.cancelled, [],
+      'a legacy cancelled series is no unit — the topic reads live, its rows stand, and the next spawn revives it');
+    assert.ok(cancelled.cancellable.some((u) => u.stage === 'discovery' && u.name === 'timing'), 'the topic itself stays cancellable');
   });
 
   it('an interrupted discovery session still outranks the laboratory — the map itself is mid-shape', () => {

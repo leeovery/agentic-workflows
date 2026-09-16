@@ -512,8 +512,26 @@ describe('epic topic cancel takes the series with its topic', () => {
     walkTo(dir, 'E1', 'running');
     engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']);
     const res = engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
-    assert.deepStrictEqual(res.abandoned, ['E1', 'E2', 'E1.1'], 'the family never outlives its parent — register order, the split allocated last');
+    assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1', 'E2'], 'the family never outlives its parent — register order, the split beneath its parent');
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments['E1.1'].reason, 'topic cancelled');
+  });
+
+  it('a legacy cancelled series is left as found — its rows untouched, nothing abandoned under the topic, the waits still released', () => {
+    const m = readManifest(dir, 'lab');
+    m.phases.experiment.items.timing.status = 'cancelled';
+    m.phases.experiment.items.timing.previous_status = 'in-progress';
+    writeManifest(dir, 'lab', m);
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
+    assert.deepStrictEqual(res.abandoned, []);
+    assert.deepStrictEqual(res.released_waits, [
+      { phase: 'research', released: ['E2'], remaining: [] },
+      { phase: 'discussion', released: ['E1'], remaining: [] },
+    ], 'the holders never dangle on a series nothing will close');
+    const series = readManifest(dir, 'lab').phases.experiment.items.timing;
+    assert.strictEqual(series.status, 'cancelled');
+    assert.strictEqual(series.previous_status, 'in-progress');
+    assert.strictEqual(series.experiments.E1.status, 'conceived');
+    assert.strictEqual(series.experiments.E2.status, 'conceived');
   });
 
   it('a record already terminal keeps its own reason — the register reads honestly post-cancel', () => {

@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadActiveManifests, listFiles, filesChecksum, fileExists } = engine.reads;
-const { phaseItems, phaseData } = engine.derivations;
+const { phaseItems, phaseData, sourceRows, specIsStarted, specGroupsSources } = engine.derivations;
 
 // Actionable-first ordering rank for the spec menu. Lower sorts earlier:
 // proposed → in-progress → completed-with-pending → concluded → other/promoted.
@@ -50,15 +50,15 @@ function discover(cwd, workUnit) {
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
 
-      // Check if this discussion has an individual spec via sources. Proposed
-      // groupings are not individual specs — ignore them so the single-discussion
-      // path and grouping "matching spec" logic stay correct. A cancelled or
-      // superseded specification holds nothing either: its sources are free to
-      // be regrouped, the same reading the specifications list below makes.
+      // An individual spec is a started specification sourcing the
+      // discussion — the one a unify incorporates. A proposed grouping is
+      // not one (so the single-discussion path and the grouping "matching
+      // spec" logic stay correct), and a cancelled or superseded
+      // specification holds nothing: its sources are free to be regrouped.
       let hasIndividualSpec = false;
       let specStatus = '';
       for (const si of specItemsList) {
-        if (si.status === 'proposed' || si.status === 'cancelled' || si.status === 'superseded') continue;
+        if (!specIsStarted(si)) continue;
         if (si.sources && si.sources[item.name]) {
           hasIndividualSpec = true;
           specStatus = si.status || '';
@@ -78,8 +78,11 @@ function discover(cwd, workUnit) {
   // Classify by status, not file presence. Materialized specs
   // (in-progress/completed/promoted) are file-backed and count toward spec_count.
   // Proposed groupings live only in the manifest — no file on disk — and count
-  // toward proposed_count. Both land in specifications[].
+  // toward proposed_count. Both land in specifications[]. A cancelled
+  // specification groups nothing and lands in cancelled_specifications[]
+  // instead — its key stays reserved, and its sources name what it grouped.
   const specifications = [];
+  const cancelledSpecifications = [];
   let specCount = 0;
   let proposedCount = 0;
 
@@ -88,8 +91,11 @@ function discover(cwd, workUnit) {
     const discItemsList = phaseItems(m, 'discussion');
 
     for (const item of specItemsList) {
+      if (item.status === 'cancelled') {
+        cancelledSpecifications.push({ name: item.name, work_unit: m.name, sources: sourceRows(item.sources).map(([name]) => name) });
+      }
+      if (!specGroupsSources(item)) continue;
       const status = item.status || 'in-progress';
-      if (status === 'superseded' || status === 'cancelled') continue;
 
       const isProposed = status === 'proposed';
       if (isProposed) {
@@ -191,6 +197,7 @@ function discover(cwd, workUnit) {
   return {
     discussions: discussions,
     specifications: specifications,
+    cancelled_specifications: cancelledSpecifications,
     cache: { entries: cacheEntries },
     current_state: {
       discussions_checksum: discussionsChecksum,
@@ -288,6 +295,11 @@ function viewData(result, detail, keys) {
     for (const c of (row && row.consult) || []) {
       lines.push(`    consult: ${c.name} (${c.status}${c.hint ? ` — ${c.hint}` : ''})`);
     }
+  }
+  lines.push('cancelled_specifications:');
+  if (result.cancelled_specifications.length === 0) lines.push('  (none)');
+  for (const s of result.cancelled_specifications) {
+    lines.push(`  ${s.name}: sources ${s.sources.join(', ') || '(none)'}`);
   }
   lines.push(`unassigned_discussions: ${detail.unassigned.join(', ') || '(none)'}`);
   lines.push(`in_progress_discussions: ${detail.in_progress_discussions.join(', ') || '(none)'}`);

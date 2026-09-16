@@ -149,9 +149,8 @@ function itemJoin(item) {
 }
 
 /**
- * Refuse a delivery-falsifying op on a pulled item — the cancel-cascade
- * mirror (design decision 25c). The error names the join and points at the
- * recovery path.
+ * Refuse a delivery-falsifying op on a pulled item — the cancel-revert hop's
+ * mirror. The error names the join and points at the recovery path.
  * @param {Record<string, any>} item @param {string} name @param {string} verbPhrase
  */
 function refuseJoined(item, name, verbPhrase) {

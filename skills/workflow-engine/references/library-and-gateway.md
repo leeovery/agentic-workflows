@@ -95,7 +95,7 @@ engine.project.epicKey(detail)                    // → Key block ('' when noth
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
 engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the stage units (Topics / Specifications); a locked unit renders keyless with its reason, a held one carries its in-session age
-engine.project.epicReactivateMenu(detail)         // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns
+engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a specification whose sources are unavailable renders keyless with its reason, a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
 engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
 engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (box + tier header + rows)
 engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)

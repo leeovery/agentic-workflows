@@ -2,8 +2,30 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover, format } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
+
+const GATEWAY = path.join(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
+
+// An epic with a cancelled specification over two sources, a legacy
+// array-form cancelled one, and a bare cancelled one — none of them groups.
+function cancelledSpecsManifest() {
+  return {
+    work_type: 'epic',
+    phases: {
+      discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+      specification: {
+        items: {
+          unified: { status: 'cancelled', previous_status: 'completed', sources: { auth: { status: 'incorporated' }, billing: { status: 'incorporated' } } },
+          legacy: { status: 'cancelled', sources: [{ name: 'billing', status: 'incorporated' }] },
+          bare: { status: 'cancelled' },
+        },
+      },
+    },
+  };
+}
 
 describe('workflow-specification-entry discovery', () => {
   let dir;
@@ -271,6 +293,56 @@ describe('workflow-specification-entry discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.discussions.find((d) => d.name === 'auth').has_individual_spec, false);
     assert.strictEqual(r.discussions.find((d) => d.name === 'billing').spec_status, 'in-progress', 'the superseding spec, not the superseded one');
+  });
+
+  it('a cancelled specification lands in cancelled_specifications with its sources — never in specifications, never an individual spec', () => {
+    createManifest(dir, 'pay', cancelledSpecsManifest());
+    const r = discover(dir);
+    assert.deepStrictEqual(r.cancelled_specifications, [
+      { name: 'unified', work_unit: 'pay', sources: ['auth', 'billing'] },
+      { name: 'legacy', work_unit: 'pay', sources: ['billing'] },
+      { name: 'bare', work_unit: 'pay', sources: [] },
+    ]);
+    assert.deepStrictEqual(r.specifications, []);
+    assert.deepStrictEqual(r.discussions.map((d) => d.has_individual_spec), [false, false]);
+  });
+
+  it('a promoted or status-less specification is no individual spec — only a started one is incorporated by a unify — yet both still group their sources', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: { items: {
+          auth: { status: 'promoted', sources: { auth: { status: 'incorporated' } } },
+          billing: { sources: { billing: { status: 'pending' } } },
+        } },
+      },
+    });
+    createFile(dir, '.workflows/pay/specification/auth/specification.md', '# Auth');
+    createFile(dir, '.workflows/pay/specification/billing/specification.md', '# Billing');
+    const r = discover(dir);
+    assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec]), [['auth', false], ['billing', false]]);
+    assert.deepStrictEqual(r.specifications.map((s) => s.name).sort(), ['auth', 'billing']);
+    assert.deepStrictEqual(r.cancelled_specifications, []);
+  });
+
+  it('the view DATA lists every cancelled specification with its sources, or (none)', () => {
+    createManifest(dir, 'pay', cancelledSpecsManifest());
+    const cancelled = spawnSync('node', [GATEWAY, 'view', 'pay'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(cancelled.status, 0, cancelled.stderr);
+    assert.ok(cancelled.stdout.includes([
+      'specifications:',
+      '  (none)',
+      'cancelled_specifications:',
+      '  unified: sources auth, billing',
+      '  legacy: sources billing',
+      '  bare: sources (none)',
+      'unassigned_discussions: auth, billing',
+    ].join('\n')), cancelled.stdout);
+    createManifest(dir, 'clean', { work_type: 'epic', phases: { discussion: { items: { clean: { status: 'completed' } } } } });
+    const none = spawnSync('node', [GATEWAY, 'view', 'clean'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(none.status, 0, none.stderr);
+    assert.ok(none.stdout.includes('cancelled_specifications:\n  (none)\nunassigned_discussions: clean'), none.stdout);
   });
 
   it('feature without spec shows has_individual_spec false', () => {

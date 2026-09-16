@@ -601,12 +601,13 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('refuses when per-phase items exist even though the lifecycle join derives fresh', () => {
-      // Superseded research beside a cancelled discussion falls through every
-      // lifecycle branch to `fresh` — but the per-phase items are on record
-      // and the map item is their historical anchor: never hard-deletable.
+      // Superseded research beside a parked discussion stub falls through
+      // every lifecycle branch to `fresh` — but the per-phase items are on
+      // record and the map item is their historical anchor: never
+      // hard-deletable.
       const m = readManifest(dir);
       m.phases.research.items['fresh-topic'] = { status: 'superseded' };
-      m.phases.discussion.items['fresh-topic'] = { status: 'cancelled' };
+      m.phases.discussion.items['fresh-topic'] = { status: 'triaged' };
       fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       const before = JSON.stringify(readManifest(dir));
 
@@ -615,6 +616,15 @@ describe('engine CLI: discovery-map operations', () => {
         assert.match(err.error, /per-phase work exists on record and it stays on the map as historical anchor/, args[0]);
       }
       assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
+    it('superseded research beside a cancelled discussion reads cancelled — the refusal points at the reactivate', () => {
+      const m = readManifest(dir);
+      m.phases.research.items['fresh-topic'] = { status: 'superseded' };
+      m.phases.discussion.items['fresh-topic'] = { status: 'cancelled', previous_status: 'completed' };
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      const err = runFail(dir, ['remove', 'payments', 'fresh-topic']);
+      assert.match(err.error, /"fresh-topic" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first/);
     });
 
     it('names superseded research honestly in the refusal — never as completed', () => {
@@ -658,7 +668,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('refuses a topic with a parked stub — a dead end never buries rerouted concerns', () => {
       const err = runFail(dir, ['handle', 'payments', 'triaged-topic']);
-      assert.match(err.error, /"triaged-topic" can't be closed as a dead end — rerouted concerns are parked in its research triage; drain them, or cancel the stub from the epic menu first/);
+      assert.match(err.error, /"triaged-topic" can't be closed as a dead end — rerouted concerns are parked in its research triage; start the topic to drain them, or cancel the topic from the epic menu instead/);
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['triaged-topic'], false);
     });
   });
@@ -677,10 +687,20 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('refuses any non-handled item', () => {
-      for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic', 'cancelled-topic']) {
+      for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic']) {
         const err = runFail(dir, ['unhandle', 'payments', topic]);
         assert.match(err.error, /isn't closed as a dead end, so there's nothing to reopen/, topic);
       }
+    });
+
+    it('refuses a cancelled item — a marker over the dead end included — toward the reactivate', () => {
+      assert.match(runFail(dir, ['unhandle', 'payments', 'cancelled-topic']).error,
+        /"cancelled-topic" can't be reopened — it's cancelled; reactivate it from the epic menu first/);
+      const m = readManifest(dir);
+      m.phases.discovery.items['handled-topic'].cancelled = true;
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      assert.match(runFail(dir, ['unhandle', 'payments', 'handled-topic']).error, /it's cancelled; reactivate it from the epic menu first/);
+      assert.strictEqual(readManifest(dir).phases.discovery.items['handled-topic'].handled, true, 'nothing written');
     });
   });
 

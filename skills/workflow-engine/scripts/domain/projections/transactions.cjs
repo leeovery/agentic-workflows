@@ -108,7 +108,7 @@ function topicReceipt(verb, topic, { warn = false, restored = [] } = {}) {
     ]);
   }
   const returned = restored.length > 0
-    ? ` Restored ${restored.map((r) => `${r.phase} (${r.status})`).join(' · ')}.`
+    ? ` Restored ${restored.map((r) => `${r.phase} [${r.status}]`).join(' · ')}.`
     : '';
   return joined([
     warn ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.') : null,

@@ -52,7 +52,7 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = req
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, sourcingSpecs, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
+  sourceRows, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2274,7 +2274,7 @@ function mapOpBody(op, p) {
     return [
       `Change routing of "${name}": ${from} → ${to}.`,
       '',
-      ...indentedBody(['Lifecycle: fresh — no phase work yet, so the routing hint is mutable.']),
+      ...indentedBody(['Lifecycle: fresh — no work has started, so the routing hint is mutable.']),
     ];
   }
   if (op === 'close') {
@@ -2336,7 +2336,8 @@ function assertMapOp(manifest, op, name) {
   }
   if (lifecycle !== 'fresh') {
     const verb = { remove: 'removed', rename: 'renamed', reroute: 're-routed' }[op];
-    throw new Error(`render map-op-gate: "${name}" can't be ${verb} — it's "${lifecycle}", not fresh`);
+    const recovery = lifecycle === 'cancelled' ? ' — reactivate it from the epic menu first' : '';
+    throw new Error(`render map-op-gate: "${name}" can't be ${verb} — it's "${lifecycle}", not fresh${recovery}`);
   }
 }
 
@@ -3615,26 +3616,42 @@ function discoveryCancelStatement(manifest, topic) {
     throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${locking.join(', ')}) — the menu never offers it`);
   }
   const name = titlecase(topic);
-  const live = liveUnitItems(manifest, 'discovery', topic);
-  if (live.length === 0) {
+  const plan = cancelPlan(manifest, 'discovery', topic);
+  if (plan.items.length === 0) {
+    if (!itemOf(manifest, 'discovery', topic)) {
+      throw new Error(`render cancel-gate: "${topic}" has nothing to cancel — no live item under its name and no map row, so the menu never offers it`);
+    }
     return `Cancelling **${name}** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.`;
   }
-  const parts = [`Cancelling **${name}** marks its ${listJoin(live.map(({ phase, item }) => `${phase} (${item.status})`))} cancelled — it can be reactivated later.`];
-  const series = itemOf(manifest, 'experiment', topic);
-  const open = Object.entries((series && series.experiments) || {})
-    .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status))
-    .map(([id]) => id)
-    .sort(compareExperimentIds);
-  if (open.length > 0) {
-    parts.push(`${open.length} open experiment${open.length === 1 ? '' : 's'} (${open.join(', ')}) end${open.length === 1 ? 's' : ''} abandoned on the register.`);
+  const parts = [`Cancelling **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} cancelled — it can be reactivated later.`];
+  const experiments = openExperiments(plan.records);
+  if (experiments.length > 0) {
+    const one = experiments.length === 1;
+    parts.push(`${experiments.length} open experiment${one ? '' : 's'} (${experiments.join(', ')}) end${one ? 's' : ''} abandoned on the register.`);
   }
-  const proposed = sourcingSpecs(manifest, topic)
-    .filter(([, spec]) => spec.status === 'proposed')
-    .map(([n]) => `**${titlecase(n)}**`);
+  const proposed = plan.discards.map((n) => `**${titlecase(n)}**`);
   if (proposed.length > 0) {
     parts.push(`The proposed grouping${proposed.length === 1 ? '' : 's'} ${listJoin(proposed)} ${proposed.length === 1 ? 'is' : 'are'} discarded — the next grouping analysis rebuilds from the new world.`);
   }
   return parts.join(' ');
+}
+
+/**
+ * The open records as the experiments the gate counts — a split is worked
+ * inside its parent, so `E2` with `E2.1` open is one experiment, named with
+ * its children (`E2, with E2.1` alone; `E1, E2 with E2.1` among others). A
+ * sub-record whose parent has closed stands as its own entry.
+ * @param {string[]} records  open ids in register order
+ * @returns {string[]}
+ */
+function openExperiments(records) {
+  const parents = records.filter(isParentExperimentId);
+  const orphans = records.filter((id) => !isParentExperimentId(id) && !parents.includes(id.split('.')[0]));
+  const families = [...parents, ...orphans]
+    .sort(compareExperimentIds)
+    .map((id) => ({ id, subs: records.filter((r) => r.startsWith(`${id}.`)) }));
+  const one = families.length === 1;
+  return families.map(({ id, subs }) => (subs.length === 0 ? id : `${id}${one ? ',' : ''} with ${subs.join(', ')}`));
 }
 
 /**
@@ -3657,12 +3674,16 @@ function specificationCancelStatement(manifest, spec) {
   if (deliveryStarted(manifest, spec)) {
     throw new Error(`render cancel-gate: "${spec}" is locked — implementation has started, so the menu never offers it`);
   }
-  const plan = liveUnitItems(manifest, 'specification', spec).some(({ phase }) => phase === 'planning');
+  const plan = cancelPlan(manifest, 'specification', spec);
+  if (plan.items.length === 0) {
+    throw new Error(`render cancel-gate: "${spec}" has nothing to cancel — it carries no status, so the menu never offers it`);
+  }
+  const withPlan = plan.items.some(({ phase }) => phase === 'planning');
   const sources = sourceRows(item.sources).map(([n]) => titlecase(n));
   const frees = sources.length > 0
     ? ` and frees its source discussion${sources.length === 1 ? '' : 's'} (${sources.join(', ')}) to be regrouped or cancelled`
     : '';
-  return `Cancelling **${titlecase(spec)}** marks the specification${plan ? ' and its plan' : ''} cancelled${frees}; it can be reactivated later.`;
+  return `Cancelling **${titlecase(spec)}** marks the specification${withPlan ? ' and its plan' : ''} cancelled${frees}; it can be reactivated later.`;
 }
 
 /**
@@ -3888,10 +3909,10 @@ function directEntryGate(cwd, { dotpath }) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
   const research = CLOSED_LIFECYCLES.includes(lifecycle) ? null : outstandingResearch(manifest, topic);
   const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
-  return blocker(
-    `"${titlecase(topic)}" is already on the map — ${stands}`,
-    `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`,
-  );
+  const guidance = lifecycle === 'cancelled'
+    ? 'Reactivate it from the epic menu (e/reactivate) — a cancelled topic carries no menu row.'
+    : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
+  return blocker(`"${titlecase(topic)}" is already on the map — ${stands}`, guidance);
 }
 
 /**
@@ -4442,10 +4463,11 @@ function topicReceiptSurface(cwd, args) {
   }
   const stage = /** @type {'discovery'|'specification'} */ (phase);
   const cancelled = unitCancelled(manifest, stage, topic);
-  if (verb === 'cancel' && !cancelled) {
-    throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
+  if (verb === 'cancel') {
+    if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
+    return topicReceipt(verb, topic, { warn });
   }
-  if (verb === 'reactivate' && cancelled) {
+  if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
   const restored = liveUnitItems(manifest, stage, topic).map(({ phase: p, item }) => ({ phase: p, status: item.status }));

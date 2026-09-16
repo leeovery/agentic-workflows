@@ -113,7 +113,7 @@ function format(result) {
 
 /**
  * The bridge's all-done derivation over one epic detail: review items exist
- * and every non-cancelled one is completed, nothing is in progress or awaiting
+ * and every non-terminal one is completed, nothing is in progress or awaiting
  * its next phase, no completed discussion is unaccounted, no item carries a
  * live reconcile flag (the epic mirror of the linear types' routing override
  * — the terminal gate is never offered past known-stale input), and the
@@ -128,9 +128,9 @@ function parkedConcerns(d) {
 
 function computeAllDone(d) {
   const review = (d.phases && d.phases.review) || [];
-  const nonCancelled = review.filter((i) => i.status !== 'cancelled');
-  return nonCancelled.length > 0
-    && nonCancelled.every((i) => i.status === 'completed')
+  const live = review.filter((i) => !TERMINAL_STATUSES.includes(i.status));
+  return live.length > 0
+    && live.every((i) => i.status === 'completed')
     && d.in_progress.length === 0
     && d.next_phase_ready.length === 0
     && d.unaccounted_discussions.length === 0
@@ -362,7 +362,7 @@ if (require.main === module) {
       : view(workUnit, newArrivalsJson)),
     'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
     'cancel-menu': subViewHandler('cancel-menu', (name, d, opts) => engine.project.epicCancelMenu(d, opts)),
-    'reactivate-menu': subViewHandler('reactivate-menu', (name, d) => engine.project.epicReactivateMenu(d)),
+    'reactivate-menu': subViewHandler('reactivate-menu', (name, d, opts) => engine.project.epicReactivateMenu(d, opts)),
     'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
       ? usageError('in-session-gate takes a work unit and a menu key')

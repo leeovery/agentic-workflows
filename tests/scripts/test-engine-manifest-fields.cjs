@@ -452,7 +452,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
     fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'proposed']).error, refusal);
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=proposed', 'sources.gamma.status=pending']).error, refusal);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
@@ -466,6 +466,31 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     // Fields other than status stay writable — the item is inert, not sealed.
     runJson(dir, ['set', 'payments.specification.dropped', 'sources.beta.status', 'pending']);
     assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.dropped.sources.beta.status, 'pending');
+  });
+
+  it('a cancelled item takes no delete either — the whole item, a field of it, and an apply delete op refuse, the manifest byte-unchanged', () => {
+    const m = readWorkUnit(dir, 'payments');
+    m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
+    m.phases.research = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
+    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(manifestPath, 'utf8');
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
+    assert.match(runFails(dir, ['delete', 'payments.specification', 'items.dropped']).error, refusal);
+    assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'previous_order']).error, refusal);
+    assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'sources.beta']).error, refusal);
+    // The address names the unit that frees the item — discovery for a
+    // research or discussion item.
+    assert.match(runFails(dir, ['delete', 'payments.research', 'items.shelved']).error,
+      /research item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
+    assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
+      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'delete', path: 'payments.specification', field: 'items.dropped' },
+    ])]).error, refusal);
+    assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
+    // A live item's fields still delete — the guard is the cancelled state, not the phase.
+    runJson(dir, ['delete', 'payments.specification.anchor', 'sources.alpha']);
+    assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.anchor.sources.alpha, undefined);
   });
 
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {

@@ -531,7 +531,11 @@ run_cli set cancelled-item.specification.dropped status cancelled >/dev/null 2>&
 assert_exit_code 1 "single set refused" set cancelled-item.specification.dropped status proposed
 assert_exit_code 1 "batch set refused" set cancelled-item.specification.dropped status=proposed order=1
 output=$(run_cli set cancelled-item.specification.dropped status proposed || true)
-assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate)' "refusal names the reactivate"
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "refusal names the reactivate by its unit"
+assert_exit_code 1 "field delete refused" delete cancelled-item.specification.dropped status
+assert_exit_code 1 "item delete refused" delete cancelled-item.specification items.dropped
+output=$(run_cli delete cancelled-item.specification items.dropped || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "delete refusal names the reactivate too"
 output=$(run_cli_stdout get cancelled-item.specification.dropped status)
 assert_equals "$output" "cancelled" "the item stays cancelled"
 

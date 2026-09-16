@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -139,6 +139,29 @@ function discoveryUnitExists(manifest, topic) {
 }
 
 /**
+ * Whether a specification has started — `in-progress` or `completed`. A
+ * started specification locks its source topics and lists as cancellable;
+ * a proposed grouping is a regenerable suggestion, a terminal one is
+ * closed, and a status-less item (an augment against a mistyped key
+ * creates one) is inert.
+ * @param {{status?: string}} item
+ */
+function specIsStarted(item) {
+  return item.status === 'in-progress' || item.status === 'completed';
+}
+
+/**
+ * Whether a specification still groups its sources — every status but
+ * `cancelled` and `superseded`. A promoted specification continues in its
+ * cross-cutting unit, so its sources stay grouped; a proposed grouping
+ * holds its sources until it is discarded.
+ * @param {{status?: string}} item
+ */
+function specGroupsSources(item) {
+  return item.status !== 'cancelled' && item.status !== 'superseded';
+}
+
+/**
  * The started specifications sourcing a topic's discussion — the ones that
  * lock its Discovery unit. A proposed grouping never locks: it is a
  * regenerable suggestion the analysis writes for every unaccounted
@@ -148,8 +171,120 @@ function discoveryUnitExists(manifest, topic) {
  */
 function lockingSpecs(manifest, topic) {
   return sourcingSpecs(manifest, topic)
-    .filter(([, item]) => item.status !== 'proposed')
+    .filter(([, item]) => specIsStarted(item))
     .map(([name]) => name);
+}
+
+/**
+ * A topic's experiment series unless a legacy per-series cancel closed it —
+ * a cancelled series is left as found, its rows all terminal by
+ * construction.
+ * @param {object} manifest @param {string} topic
+ * @returns {Record<string, any>|undefined}
+ */
+function liveSeries(manifest, topic) {
+  const series = itemOf(manifest, 'experiment', topic);
+  return series && series.status !== 'cancelled' ? series : undefined;
+}
+
+/**
+ * @typedef {object} CancelPlan
+ * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the cancel stashes
+ * @property {string[]} records   every open experiment record, top-level and sub, in register order
+ * @property {string[]} discards  the proposed groupings sourcing the discussion, deleted with it
+ */
+
+/**
+ * What a cancel takes — the one reading the transactions execute and the
+ * cancel gate renders. A Definition unit takes its items alone: its source
+ * discussions are untouched, and nothing on the register is its own.
+ * @param {object} manifest @param {keyof typeof UNIT_PHASES} stage @param {string} name
+ * @returns {CancelPlan}
+ */
+function cancelPlan(manifest, stage, name) {
+  const items = liveUnitItems(manifest, stage, name);
+  if (stage !== 'discovery') return { items, records: [], discards: [] };
+  const series = liveSeries(manifest, name);
+  const records = Object.entries((series && series.experiments) || {})
+    .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
+    .map(([id]) => id)
+    .sort(compareExperimentIds);
+  return { items, records, discards: proposedGroupings(manifest, name) };
+}
+
+/**
+ * The proposed groupings sourcing a discussion — regenerable suggestions
+ * the analysis writes for every unaccounted discussion, discarded whenever
+ * the discussion stops being one: with its topic's cancel, or with the
+ * reactivate of a specification that sources it.
+ * @param {object} manifest @param {string} discussion
+ * @returns {string[]}
+ */
+function proposedGroupings(manifest, discussion) {
+  return sourcingSpecs(manifest, discussion)
+    .filter(([, spec]) => spec.status === 'proposed')
+    .map(([name]) => name);
+}
+
+/**
+ * @typedef {{topic: string, reason: 'cancelled'} | {topic: string, reason: 'held', by: string}} ReactivateLock
+ */
+
+/**
+ * What holds a cancelled specification's reactivate shut: a source topic
+ * whose Discovery unit is cancelled (reactivate the topic first), or a
+ * source another started specification has since taken (regroup at the
+ * specification entry). One row per offending source, spec order for the
+ * holds — the refusal and the reactivate menu's locked rows read the same
+ * facts.
+ * @param {object} manifest @param {string} spec
+ * @returns {ReactivateLock[]}
+ */
+function specReactivateLocks(manifest, spec) {
+  const item = itemOf(manifest, 'specification', spec);
+  /** @type {ReactivateLock[]} */
+  const locks = [];
+  for (const [topic] of sourceRows(item && item.sources)) {
+    if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+      locks.push({ topic, reason: 'cancelled' });
+      continue;
+    }
+    for (const [other, holder] of sourcingSpecs(manifest, topic)) {
+      if (other !== spec && specIsStarted(holder)) locks.push({ topic, reason: 'held', by: other });
+    }
+  }
+  return locks;
+}
+
+/**
+ * A reactivate lock set as one sentence's two halves — what holds the
+ * specification and the way out — so the refusal and the menu row never
+ * drift. `nameOf` casts each name for its surface; `now` marks the hold as
+ * arisen since the cancel (`now sources`), the menu row's register.
+ * @param {ReactivateLock[]} locks
+ * @param {(name: string) => string} nameOf
+ * @param {{now?: boolean}} [opts]
+ * @returns {{holds: string, recovery: string}}
+ */
+function reactivateLockPhrases(locks, nameOf, { now = false } = {}) {
+  const quote = (/** @type {string} */ n) => `"${nameOf(n)}"`;
+  const unique = (/** @type {string[]} */ names) => [...new Set(names)].map(quote);
+  const cancelled = unique(locks.filter((l) => l.reason === 'cancelled').map((l) => l.topic));
+  const held = locks.filter((l) => l.reason === 'held');
+  const holds = [];
+  const recovery = [];
+  if (cancelled.length > 0) {
+    holds.push(cancelled.length === 1 ? `its source ${cancelled[0]} is cancelled` : `its sources ${cancelled.join(', ')} are cancelled`);
+    recovery.push(cancelled.length === 1 ? 'reactivate the topic first' : 'reactivate the topics first');
+  }
+  if (held.length > 0) {
+    const specs = unique(held.map((l) => /** @type {{by: string}} */ (l).by));
+    const topics = unique(held.map((l) => l.topic));
+    const verb = `${now ? 'now ' : ''}source${specs.length === 1 ? 's' : ''}`;
+    holds.push(`the specification${specs.length === 1 ? '' : 's'} ${specs.join(', ')} ${verb} ${topics.join(', ')}`);
+    recovery.push('regroup at the specification entry');
+  }
+  return { holds: holds.join(' and '), recovery: recovery.join(' and ') };
 }
 
 /**
@@ -615,18 +750,19 @@ function computeTopicLifecycle(manifest, topicName) {
   if (rs === 'in-progress') {
     return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
-  // Every attempted phase item is cancelled (and at least one was attempted):
+  // Every attempted phase item is terminal and at least one is cancelled:
   // the topic is cancelled-tier — the reading a manifest cancelled per phase
   // before the map carried its own marker still gets, and the only one a
   // topic with no map row has. A dual-attempt topic with one live item never
   // reaches here — the live path's branches above already rendered it. A
   // single-routed topic whose only item is cancelled must NOT fall through to
   // fresh: its phase item blocks `topic start` (the "fresh" next action would
-  // dead-end), and the recovery route is reactivate. A `triaged` sibling is
-  // not an attempt — it keeps the topic out of cancelled-tier via the every()
-  // check, falling through to fresh.
+  // dead-end), and the recovery route is reactivate; a terminal sibling
+  // (superseded research beside a cancelled discussion) never keeps a cancel
+  // from reading. A `triaged` sibling is not an attempt — it keeps the topic
+  // out of cancelled-tier via the every() check, falling through to fresh.
   const attempted = [rs, ds].filter((s) => s != null);
-  if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
+  if (attempted.includes('cancelled') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   // Superseded research with no discussion: the topic's research lineage is
@@ -845,7 +981,14 @@ module.exports = {
   unitItems,
   liveUnitItems,
   discoveryUnitExists,
+  specIsStarted,
+  specGroupsSources,
   lockingSpecs,
+  liveSeries,
+  cancelPlan,
+  proposedGroupings,
+  specReactivateLocks,
+  reactivateLockPhrases,
   deliveryStarted,
   awaitedExperiments,
   waits,

@@ -18,6 +18,7 @@ const {
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
+  specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
 describe('reads + derivations', () => {
@@ -996,6 +997,101 @@ describe('reads + derivations', () => {
     });
   });
 
+  describe('the cancel units', () => {
+    // A map with a live topic under a proposed grouping, a status-less and a
+    // promoted specification, a topic under a started specification, a
+    // legacy cancelled series, and two cancelled specifications over a
+    // cancelled and a held source.
+    function unitManifest() {
+      return {
+        name: 'pay',
+        work_type: 'epic',
+        phases: {
+          discovery: { items: { auth: { routing: 'research', source: 'discovery' }, gone: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+          research: { items: { auth: { status: 'completed' }, timing: { status: 'in-progress' } } },
+          discussion: { items: { auth: { status: 'in-progress' }, timing: { status: 'completed' }, gone: { status: 'completed' }, held: { status: 'completed' } } },
+          experiment: { items: {
+            auth: { status: 'in-progress', experiments: { E2: { status: 'running' }, E1: { status: 'concluded' }, 'E2.1': { status: 'conceived' } } },
+            timing: { status: 'cancelled', previous_status: 'in-progress', experiments: { E1: { status: 'running' } } },
+          } },
+          specification: { items: {
+            grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+            blank: { sources: { auth: { status: 'pending' } } },
+            done: { status: 'promoted', sources: { auth: { status: 'incorporated' } } },
+            unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' }, held: { status: 'pending' } } },
+            parked: { status: 'cancelled', previous_status: 'completed', sources: { gone: { status: 'incorporated' }, held: { status: 'incorporated' } } },
+            legacy: { status: 'cancelled', sources: [{ name: 'gone', status: 'incorporated' }] },
+          } },
+          planning: { items: { unified: { status: 'in-progress' } } },
+        },
+      };
+    }
+
+    it('specIsStarted: in-progress or completed — proposed, terminal, and status-less are not', () => {
+      assert.deepStrictEqual(
+        ['in-progress', 'completed', 'proposed', 'cancelled', 'superseded', 'promoted', undefined].map((status) => specIsStarted({ status })),
+        [true, true, false, false, false, false, false]);
+    });
+
+    it('specGroupsSources: everything but cancelled and superseded — a promoted specification still groups', () => {
+      assert.deepStrictEqual(
+        ['in-progress', 'completed', 'proposed', 'promoted', undefined, 'cancelled', 'superseded'].map((status) => specGroupsSources({ status })),
+        [true, true, true, true, true, false, false]);
+    });
+
+    it('lockingSpecs: only a started specification locks — a proposed grouping and a status-less item never do', () => {
+      const m = unitManifest();
+      assert.deepStrictEqual(lockingSpecs(m, 'auth'), []);
+      assert.deepStrictEqual(lockingSpecs(m, 'timing'), ['unified']);
+    });
+
+    it('cancelPlan over a discovery unit: the live items, every open record in register order, the proposed groupings', () => {
+      const plan = cancelPlan(unitManifest(), 'discovery', 'auth');
+      assert.deepStrictEqual(plan.items.map(({ phase, item }) => [phase, item.status]), [['research', 'completed'], ['discussion', 'in-progress']]);
+      assert.deepStrictEqual(plan.records, ['E2', 'E2.1']);
+      assert.deepStrictEqual(plan.discards, ['grp']);
+    });
+
+    it('cancelPlan leaves a legacy cancelled series as found, and a specification unit takes its items alone', () => {
+      const m = unitManifest();
+      assert.deepStrictEqual(cancelPlan(m, 'discovery', 'timing').records, []);
+      assert.strictEqual(liveSeries(m, 'timing'), undefined);
+      assert.ok(liveSeries(m, 'auth'));
+      const spec = cancelPlan(m, 'specification', 'unified');
+      assert.deepStrictEqual(spec.items.map(({ phase }) => phase), ['specification', 'planning']);
+      assert.deepStrictEqual([spec.records, spec.discards], [[], []]);
+      assert.deepStrictEqual(cancelPlan(m, 'specification', 'blank').items, [], 'a status-less specification has nothing to take');
+    });
+
+    it('proposedGroupings names the proposed specifications over a discussion — never a started or cancelled one', () => {
+      const m = unitManifest();
+      assert.deepStrictEqual(proposedGroupings(m, 'auth'), ['grp']);
+      assert.deepStrictEqual(proposedGroupings(m, 'gone'), []);
+    });
+
+    it('specReactivateLocks: a cancelled source topic, a source another started specification holds; a proposed grouping never holds; the legacy array form reads', () => {
+      const m = unitManifest();
+      assert.deepStrictEqual(specReactivateLocks(m, 'parked'), [{ topic: 'gone', reason: 'cancelled' }, { topic: 'held', reason: 'held', by: 'unified' }]);
+      assert.deepStrictEqual(specReactivateLocks(m, 'legacy'), [{ topic: 'gone', reason: 'cancelled' }]);
+      m.phases.specification.items.unified.status = 'proposed';
+      assert.deepStrictEqual(specReactivateLocks(m, 'parked'), [{ topic: 'gone', reason: 'cancelled' }]);
+    });
+
+    it('reactivateLockPhrases: singular, plural, and mixed — the names cast by the caller, the hold marked since the cancel on request', () => {
+      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'cancelled' }], (n) => n),
+        { holds: 'its source "a" is cancelled', recovery: 'reactivate the topic first' });
+      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'b', reason: 'held', by: 'x' }], (n) => n.toUpperCase(), { now: true }),
+        { holds: 'the specification "X" now sources "B"', recovery: 'regroup at the specification entry' });
+      assert.deepStrictEqual(reactivateLockPhrases([
+        { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'cancelled' },
+        { topic: 'c', reason: 'held', by: 'x' }, { topic: 'd', reason: 'held', by: 'y' },
+      ], (n) => n), {
+        holds: 'its sources "a", "b" are cancelled and the specifications "x", "y" source "c", "d"',
+        recovery: 'reactivate the topics first and regroup at the specification entry',
+      });
+    });
+  });
+
   describe('computeTopicLifecycle', () => {
     const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -1075,6 +1171,18 @@ describe('reads + derivations', () => {
       const m = loadWithPhases('auth', { discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
       assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: null, discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
+    });
+
+    it('a terminal sibling never keeps a cancel from reading — superseded research beside a cancelled discussion is cancelled', () => {
+      const m = loadWithPhases('auth', { research: 'superseded', discussion: 'cancelled' });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'superseded', discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
+    });
+
+    it('a triaged sibling is not an attempt — a cancelled item beside it falls through to fresh, the stub cued', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'triaged' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'fresh');
+      assert.strictEqual(r.triage_parked, true);
     });
 
     it('one cancelled beside a live sibling renders by the live path — the alternate stays open', () => {

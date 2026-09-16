@@ -12,7 +12,7 @@
 
 const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
-const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, UNIT_PHASES } = require('../derivations.cjs');
+const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
@@ -25,6 +25,7 @@ const { buildOrderLive } = require('../build-order.cjs');
 /** @typedef {import('../epic-detail.cjs').DepBlocking} DepBlocking */
 /** @typedef {import('../epic-detail.cjs').ItemRef} ItemRef */
 /** @typedef {import('../epic-detail.cjs').UnitStage} UnitStage */
+/** @typedef {import('../epic-detail.cjs').CancelledUnit} CancelledUnit */
 
 /**
  * @typedef {object} NewArrivals
@@ -267,7 +268,7 @@ function heldRow(held, phase, topic) {
  * one name can be held twice.
  * @param {PresenceRow[]|undefined} presence @param {string[]} phases @returns {Map<string, number>}
  */
-function heldAges(presence, phases) {
+function heldAgesIn(presence, phases) {
   /** @type {Map<string, number>} */
   const ages = new Map();
   for (const r of heldSessions(presence)) {
@@ -284,7 +285,7 @@ function heldAges(presence, phases) {
  * @param {PresenceRow[]|undefined} presence @returns {Map<string, number>}
  */
 function heldTopicAges(presence) {
-  return heldAges(presence, SOURCE_PHASES);
+  return heldAgesIn(presence, SOURCE_PHASES);
 }
 
 /** The in-session cue a held row carries after its state. @param {number|undefined} age */
@@ -1021,15 +1022,20 @@ function epicInSessionGate(workUnit, entry) {
  */
 
 /**
- * @typedef {object} SubViewRow
+ * @typedef {object} SubViewRowBase
  * @property {string} phase
  * @property {string} topic
  * @property {string} row     display line (unindented; the branch glyph and `{key}. ` are prefixed)
- * @property {string} label   pick-menu option label
  * @property {string|null} route
  * @property {string} [group]  the display heading the row sits under — the titlecased phase when absent
- * @property {string} [locked] why the row cannot be picked — rendered keyless with the reason, no menu option
  * @property {string} [dep]   unblock rows — the dependency topic to mark satisfied
+ */
+
+/**
+ * A pickable row carries its pick-menu label; a locked row carries the
+ * reason it cannot be picked instead — rendered keyless with the reason,
+ * no menu option.
+ * @typedef {SubViewRowBase & ({label: string, locked?: undefined} | {locked: string, label?: undefined})} SubViewRow
  */
 
 /** The back option every sub-view menu closes with. @returns {SubViewKey} */
@@ -1051,15 +1057,18 @@ function groupOf(row) {
  * drawn here — so the group header sits at column 0 with its rows hanging
  * two columns off it, the shape every engine list shares. Picker rows are
  * list rows: the `[tag]` rides inline rather than columnising, matching the
- * inbox pickup.
+ * inbox pickup. When rows exist but every one is locked, the menu opens on
+ * `allLocked` — a statement in the question's place, the rows carrying
+ * their reasons — over `b/back` alone.
  * @param {string} title     the view's chrome heading (TITLE section)
  * @param {string} empty     the display's stand-in when there are no rows
  * @param {string} question  the pick menu's first line
  * @param {string} action    the numbered entries' action key
  * @param {SubViewRow[]} rows  display order; grouped by contiguous `group` runs
+ * @param {{allLocked?: string}} [opts]
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
-function selectionSubView(title, empty, question, action, rows) {
+function selectionSubView(title, empty, question, action, rows, { allLocked } = {}) {
   /** @type {SubViewKey[]} */
   const keys = [];
   const displayLines = [];
@@ -1070,13 +1079,15 @@ function selectionSubView(title, empty, question, action, rows) {
       group = groupOf(r);
       displayLines.push(group);
     }
-    let text = `${r.row} · ${r.locked}`;
+    let text;
     let hang = 0;
     if (r.locked === undefined) {
       const key = String(keys.length + 1);
       keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.dep ? { dep: r.dep } : {}) });
       text = `${key}. ${r.row}`;
       hang = `${key}. `.length;
+    } else {
+      text = `${r.row} · ${r.locked}`;
     }
     const lastInGroup = i === rows.length - 1 || groupOf(rows[i + 1]) !== group;
     // Sub-views are plain list rows (CONVENTIONS: selection sub-views use
@@ -1086,9 +1097,10 @@ function selectionSubView(title, empty, question, action, rows) {
     displayLines.push(...wrapWithPrefix(text, { width: TREE_WIDTH, prefix: `  ${glyph} `, hang })
       .map((line, li) => (li === 0 ? line : line.replace(`  ${glyph} `, '     '))));
   });
+  const statement = rows.length > 0 && keys.length === 0 ? allLocked : undefined;
   keys.push(backKey());
 
-  const menuLines = [question, ''];
+  const menuLines = [statement ?? question, ''];
   for (const k of keys) {
     menuLines.push(cmdOption(k.key, k.word, k.label));
   }
@@ -1097,7 +1109,7 @@ function selectionSubView(title, empty, question, action, rows) {
     keys,
     title,
     display: (rows.length ? displayLines.join('\n') : empty) + '\n',
-    rendered: menuFrame(menuLines),
+    rendered: menuFrame(menuLines, { glyphLabel: statement === undefined }),
   };
 }
 
@@ -1137,6 +1149,29 @@ function epicCompletedMenu(workUnit, detail) {
 /** @type {Record<UnitStage, string>} */
 const UNIT_GROUP = { discovery: 'Topics', specification: 'Specifications' };
 
+// The phases whose holds cue a unit's row — the laboratory counted with its
+// topic, the plan with its specification.
+/** @type {Record<UnitStage, string[]>} */
+const UNIT_PRESENCE_PHASES = { discovery: ['research', 'discussion', 'experiment'], specification: ['specification', 'planning'] };
+
+/**
+ * One unit sub-view row: the title with its tag and tail, the in-session cue
+ * of a unit a live session holds, and either the pick label or the lock
+ * reason — a locked row takes no label.
+ * @param {{name: string, stage: UnitStage, locked?: string}} unit
+ * @param {{tag: string, tail?: string, verb: string, detail: string}} parts
+ * @param {PresenceRow[]|undefined} presence
+ * @returns {SubViewRow}
+ */
+function unitRow(unit, { tag, tail = '', verb, detail }, presence) {
+  const cue = inSessionCue(heldAgesIn(presence, UNIT_PRESENCE_PHASES[unit.stage]).get(unit.name));
+  const name = titlecase(unit.name);
+  const base = { phase: unit.stage, group: UNIT_GROUP[unit.stage], topic: unit.name, row: `${title({ label: name, tag })}${tail}${cue}`, route: null };
+  return unit.locked !== undefined
+    ? { ...base, locked: unit.locked }
+    : { ...base, label: `${verb} "${name}" — *${detail}*${cue}` };
+}
+
 /**
  * Section E — the Cancellable Topics list and pick menu: every unit, locked
  * ones shown keyless with their reason, a unit a live session holds carrying
@@ -1147,43 +1182,35 @@ const UNIT_GROUP = { discovery: 'Topics', specification: 'Specifications' };
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCancelMenu(detail, opts = {}) {
-  const rows = detail.cancellable.map((unit) => {
-    const cue = inSessionCue(heldAges(opts.presence, UNIT_PHASES[unit.stage]).get(unit.name));
-    return {
-      phase: unit.stage,
-      group: UNIT_GROUP[unit.stage],
-      topic: unit.name,
-      row: `${title({ label: titlecase(unit.name), tag: unit.state })}${cue}`,
-      label: `Cancel "${titlecase(unit.name)}" — *${unit.state}*${cue}`,
-      route: null,
-      ...(unit.locked !== undefined ? { locked: unit.locked } : {}),
-    };
-  });
-  return selectionSubView('Cancellable Topics', 'No cancellable topics.', 'Which topic would you like to cancel?', 'cancel', rows);
+  const rows = detail.cancellable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Cancel', detail: unit.state }, opts.presence));
+  return selectionSubView('Cancellable Topics', 'No cancellable topics.', 'Which topic would you like to cancel?', 'cancel', rows,
+    { allLocked: 'Nothing can be cancelled right now — each row names what holds it.' });
+}
+
+/** What a reactivate returns for a unit, in the row's words. @param {CancelledUnit} unit */
+function unitReturns(unit) {
+  if (unit.restores.length === 0) return 'never started';
+  return unit.restores
+    .map((r) => (r.previous_status === null ? `${r.phase} (never started)` : `${r.phase} [was ${r.previous_status}]`))
+    .join(' · ');
 }
 
 /**
  * Section F — the Cancelled Topics list and pick menu, each row naming what
- * a reactivate returns. No routes — the flow runs the reactivate
+ * a reactivate returns, a specification whose sources are unavailable shown
+ * keyless with its reason. No routes — the flow runs the reactivate
  * transaction.
  * @param {EpicDetail} detail
+ * @param {{presence?: PresenceRow[]}} [opts]
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
-function epicReactivateMenu(detail) {
+function epicReactivateMenu(detail, opts = {}) {
   const rows = detail.cancelled.map((unit) => {
-    const returns = unit.restores.length === 0
-      ? 'never started'
-      : unit.restores.map((r) => `${r.phase} (was ${r.previous_status || 'unknown'})`).join(' · ');
-    return {
-      phase: unit.stage,
-      group: UNIT_GROUP[unit.stage],
-      topic: unit.name,
-      row: `${title({ label: titlecase(unit.name), tag: 'cancelled' })} — ${returns}`,
-      label: `Reactivate "${titlecase(unit.name)}" — *${returns}*`,
-      route: null,
-    };
+    const returns = unitReturns(unit);
+    return unitRow(unit, { tag: 'cancelled', tail: ` — ${returns}`, verb: 'Reactivate', detail: returns }, opts.presence);
   });
-  return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows);
+  return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows,
+    { allLocked: 'Nothing can be reactivated right now — each row names what holds it.' });
 }
 
 /**
