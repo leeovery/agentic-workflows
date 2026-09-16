@@ -62,8 +62,7 @@ function discover(cwd, workUnit) {
 // The thin scoped dump: the fields the continuation references branch on —
 // the derived next phase, the completed set (in pipeline order), and the
 // revisit candidates (completed phases before next_phase, filtered to the
-// type's pipeline). When candidates exist, the labelled revisit-phase menu
-// follows the dump — emitted only at the gate its marker names.
+// type's pipeline).
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
 

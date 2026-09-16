@@ -50,11 +50,10 @@ The prose should have taken this path:
    and runs its discovery gateway, whose output derives next_phase as
    experiment: the discussion is in progress behind a live evidence
    wait, and the experiment slot holds the record it waits on
-10. the feature continuation's terminal check falls through, the
-    early-completion offer is skipped — experiment is not review — and
-    the pause skips the revisit offer outright, revisitable phases or
-    not: a paused phase revisits nothing. No revisit gate renders, no
-    completed banner renders
+10. the feature continuation's terminal check falls through and the
+    pause routes straight to plan mode, revisitable phases or not: a
+    paused phase revisits nothing and skips nothing. No next-phase gate
+    renders, no completed banner renders
 11. plan mode: the continuation resolves the plan template on the
     paused arm — the paused-on-a-wait line, never the completed line,
     never the revisiting line — and the resolved content lands as the

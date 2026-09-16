@@ -33,14 +33,13 @@ The prose should have taken this path:
    one-command completion — status, timestamp, and commit together
 9. the completion banner is fetched via render workunit-receipt with
    the pipeline flag, its confirmation section is emitted verbatim,
-   and the walk
-   stops at the terminal condition — no early-completion gate, no
-   revisit offer, no plan mode, no plan file
+   and the walk stops at the terminal condition — no next-phase gate,
+   no plan mode, no plan file
 
 Further claims:
 
-- the bridge never runs the early-completion or revisit renders — the
-  done arm precedes both
+- the bridge never renders the next-phase gate — the done arm
+  precedes it
 - no EnterPlanMode is attempted and no plan content is produced —
   the terminal arm ends the pipeline instead
 - the work unit's manifest ends with status completed and a

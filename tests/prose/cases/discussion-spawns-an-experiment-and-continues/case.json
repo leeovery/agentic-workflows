@@ -78,8 +78,7 @@
       "render closing-gate pay.discussion.pay",
       "manifest get pay.discussion.pay awaiting_experiments",
       "render phase-completed",
-      "render revisit-gate",
-      "render early-completion-gate",
+      "render next-phase-gate",
       "workunit complete",
       "topic start pay experiment"
     ]

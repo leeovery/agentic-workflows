@@ -15,12 +15,11 @@ The prose should have taken this path:
    — and runs its discovery gateway, whose output derives next_phase
    as planning with discussion and specification completed behind it
 5. the feature continuation's terminal check falls through — planning
-   is not done — and the early-completion offer is skipped — planning
-   is not review
-6. revisitable phases exist, so the revisit gate renders through the
-   engine with specification as the previous phase and planning as
-   the next; the described user declines the look back and continues
-   forward
+   is not done — and the next-phase gate renders through the engine
+   with specification as the previous phase and planning as the next:
+   proceed or revisit, with no skip-review row — planning is not
+   review
+6. the described user declines the look back and continues forward
 7. plan mode: the continuation resolves the plan template — the
    continue-the-pipeline line, never the revisiting line — and the
    resolved content lands as the world's plan-handoff artifact per

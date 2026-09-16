@@ -1,5 +1,5 @@
 {
-  "origin": "the bridge's plan-mode arms were unreachable until the plan-capture mechanism landed — this proves it: a specification concludes, the bridge derives planning, the revisit gate is offered and declined, and the resolved plan template lands as the world's plan-handoff artifact",
+  "origin": "the bridge's plan-mode arms were unreachable until the plan-capture mechanism landed — this proves it: a specification concludes, the bridge derives planning, the next-phase gate is offered and declined, and the resolved plan template lands as the world's plan-handoff artifact",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -44,7 +44,7 @@
       "spec(pay): conclude specification",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "render revisit-gate pay --prev specification --next planning"
+      "render next-phase-gate pay --prev specification --next planning"
     ],
     "calls_in_order": [
       "render entry-gate pay.specification.pay",
@@ -54,7 +54,7 @@
       "spec(pay): conclude specification",
       "session label pay",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "render revisit-gate pay --prev specification --next planning"
+      "render next-phase-gate pay --prev specification --next planning"
     ],
     "calls_exclude": [
       "topic reopen",
@@ -63,7 +63,7 @@
       "finding_gate_mode auto",
       "workunit create",
       "workunit complete",
-      "render early-completion-gate",
+      "--skipped-review",
       "topic start pay planning"
     ]
   }

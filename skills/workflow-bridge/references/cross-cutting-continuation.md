@@ -26,47 +26,45 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 **STOP.** Do not proceed — terminal condition.
 
+#### If `outcome` is `paused`
+
+A paused phase revisits nothing — the pipeline continues at what it waits on. Set `target_phase` = `next_phase`.
+
+→ Proceed to **D. Enter Plan Mode**.
+
 #### Otherwise
 
 Set `target_phase` = `next_phase`.
 
-→ Proceed to **B. Check for Earlier Phases**.
+→ Proceed to **B. Offer Next Phase**.
 
-## B. Check for Earlier Phases
+## B. Offer Next Phase
 
-Read the discovery output's `revisitable_phases` — the completed phases the user could revisit. A paused phase revisits nothing — the pipeline continues at what it waits on.
-
-#### If `outcome` is `paused`
-
-→ Proceed to **E. Enter Plan Mode**.
-
-#### If `revisitable_phases` is `(none)`
-
-→ Proceed to **E. Enter Plan Mode**.
-
-#### Otherwise
-
-→ Proceed to **C. Offer Revisit**.
-
-## C. Offer Revisit
-
-Render and emit the section verbatim:
+The engine derives the offer from manifest state — the revisit row where an earlier phase is completed. An empty response means continuing is the only way forward:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work_unit} --prev {previous_phase} --next {next_phase}
+node .claude/skills/workflow-engine/scripts/engine.cjs render next-phase-gate {work_unit} --prev {completed_phase} --next {next_phase}
 ```
+
+#### If the response is empty
+
+→ Proceed to **D. Enter Plan Mode**.
+
+#### If the response carried `MENU: next phase gate`
+
+Emit the section verbatim.
 
 **STOP.** Wait for user response.
 
-#### If user chose `y/yes`
+**If user chose `y/yes`:**
 
-→ Proceed to **E. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
-#### If user chose `r/revisit`
+**If user chose `r/revisit`:**
 
-→ Proceed to **D. Select Phase**.
+→ Proceed to **C. Select Phase**.
 
-## D. Select Phase
+## C. Select Phase
 
 Fetch and emit the `MENU: revisit phases` section (its numbering follows `revisitable_phases` order):
 
@@ -78,15 +76,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {wo
 
 #### If user chose `back`
 
-→ Return to **C. Offer Revisit**.
+→ Return to **B. Offer Next Phase**.
 
 #### If user chose a phase
 
 Set `target_phase` = the number's phase in `revisitable_phases`.
 
-→ Proceed to **E. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
-## E. Enter Plan Mode
+## D. Enter Plan Mode
 
 #### If `outcome` is `paused`
 
