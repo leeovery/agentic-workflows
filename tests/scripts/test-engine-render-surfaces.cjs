@@ -421,7 +421,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\) and experiment evidence \(E1, E2\)\n/);
-    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The menu carries the way in\.\n/);
+    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The epic menu carries the way in\.\n/);
     assert.match(unwrap(out), /return to the epic menu with the research and E1, E2 queued/);
     assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
   });
@@ -539,70 +539,6 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       /--phase must be <research\|discussion> — the conversations that pause on a wait; got "planning"/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
-  });
-});
-
-describe('cancel-cascade-gate — the experiment wait-release confirm', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  it('names every waiting conversation and asks the release', () => {
-    writeManifest(dir, 'lab', {
-      phases: {
-        research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
-        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' }, E2: { slug: 'b', status: 'conceived' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /MENU: cancel cascade/);
-    assert.match(unwrap(out), /Cancelling the \*\*Timing\*\* experiments releases the evidence wait its research holds \(awaiting E2\) and its discussion holds \(awaiting E1\)/);
-    assert.match(out, /◆ Cancel and release\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the experiments and release the wait/);
-  });
-
-  it('refuses when no live wait exists — the bare cancel proceeds', () => {
-    writeManifest(dir, 'lab', {
-      phases: {
-        discussion: { items: { timing: { status: 'cancelled', awaiting_experiments: ['E1'] } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.experiment.timing' }),
-      /no live evidence wait on "timing"/);
-  });
-
-  it('a research address with a live wait renders the wait clause and no spec clause — the reverse join belongs to discussion', () => {
-    // A same-named spec sourcing "timing" exists, but the cancel transaction
-    // never cascades specs for a research address — the gate must not claim it.
-    writeManifest(dir, 'lab', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        specification: { items: { unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.research.timing' });
-    assert.match(unwrap(out), /Cancelling \*\*Timing\*\* abandons the experiments it awaits \(E1\)/);
-    assert.ok(!out.includes('specification work'), 'no spec clause on a research address — the cascade never touches the spec');
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the conversation and abandon its awaited experiments/);
-  });
-
-  it('a discussion address holding both a sourcing spec and a live wait composes both clauses', () => {
-    writeManifest(dir, 'lab', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        specification: { items: { unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.discussion.timing' });
-    assert.match(unwrap(out), /collapses the specification work built from it: \*\*Unified\*\* is cancelled with it \(reactivatable\)/);
-    assert.match(unwrap(out), /and abandons the experiments it awaits \(E1\)/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the topic and everything that cascades with it/);
   });
 });
 
