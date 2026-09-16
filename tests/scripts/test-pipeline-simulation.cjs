@@ -549,8 +549,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // findings bank durably on the manifest, the report is produced from
   // the action list after the do-now apply, the outcome renders through
   // its surfaces — naming the criteria the review could not measure — and
-  // the pass completes the phase. The offer at a pass consumes the banked
-  // set and deletes the field.
+  // the pass completes the phase. The banked set is decided before the
+  // gate renders, and the decision deletes the field.
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   sim.render(['code-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   label(sim, wu, 'review', topic);
@@ -585,8 +585,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   });
   assert.match(sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' }),
     /Not measured: 2 criteria — named in the report\./, 'the presentation discloses what the review could not measure');
-  sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass', '--out-of-scope', '1'], { expect: 'content' });
+  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.${topic}`, 'out_of_scope']), 'true',
+    'the banked set is still waiting on the user when the presentation lands');
   sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
+  const gate = sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass'], { expect: 'content' });
+  assert.match(gate, /\*\*`c\/complete`\*\* → Complete the review and (return to the epic|finish the [a-z-]+)/,
+    'the completion names where completing lands for this work type');
+  assert.ok(!gate.includes('i/inbox'), 'the out-of-scope decision is never a gate option');
   sim.run(['topic', 'complete', wu, 'review', topic]);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }

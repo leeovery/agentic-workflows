@@ -34,16 +34,44 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentatio
 
 Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
 
-→ On return, proceed to **B. Review Gate**.
+→ On return, proceed to **B. Decide the Out-of-Scope Findings**.
 
 ---
 
-## B. Review Gate
+## B. Decide the Out-of-Scope Findings
 
-Render the gate — `--replan` with the count on a fail, `--out-of-scope` with the banked count on a pass:
+A pass closes the review, so findings banked outside this spec are decided here — before the gate, never as an option on it. A fail decides nothing: its findings carry to the next cycle.
+
+#### If the verdict is `fail`
+
+→ Proceed to **C. Review Gate**.
+
+#### Otherwise
+
+Read whether anything is banked:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-gate {work_unit}.review.{topic} --verdict {pass|fail} [--replan {N}] [--out-of-scope {N}]
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} out_of_scope
+```
+
+**If `true`:**
+
+Load **[decide-out-of-scope.md](decide-out-of-scope.md)** and follow its instructions as written.
+
+→ On return, proceed to **C. Review Gate**.
+
+**If `false`:**
+
+→ Proceed to **C. Review Gate**.
+
+---
+
+## C. Review Gate
+
+Render the gate — `--replan` with the count on a fail:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-gate {work_unit}.review.{topic} --verdict {pass|fail} [--replan {N}]
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -60,14 +88,8 @@ The failures become tasks and implementation reopens.
 
 → Return to caller.
 
-#### If `inbox`
-
-Load **[offer-out-of-scope.md](offer-out-of-scope.md)** and follow its instructions as written.
-
-On return: → Return to **B. Review Gate**.
-
 #### If ask
 
 Answer the question using the review file, the per-task reports, this cycle's change-set files, the specification, and the plan as context.
 
-→ Return to **B. Review Gate**.
+→ Return to **C. Review Gate**.

@@ -38,7 +38,7 @@ Group by route, omitting any with no actions:
 
 - `replan` → `### Needs planning` — **these are why the review failed**. Each carries what is wrong, the failure it causes, and how far the fix reaches; an action carrying `blocking` carries the marker `**blocking**` on its row.
 - `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed **as the record shows it** — the apply commit and its diff, never merely what a status claimed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state. An action carrying `blocking` carries the marker `**blocking** — corrected` on its row: the criterion was unmet or the behaviour broken, and it is delivered now.
-- `out-of-scope` → `### Out of scope` — held in the manifest for the user's call at a pass, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
+- `out-of-scope` → `### Out of scope` — held in the manifest for the user's call before the review closes, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
 
 Each item carries its summary, the failure it names, the files it touches, and its source ids so it traces back to the verifiers that raised it — a task's or a section's. An action spanning several files is one item — never split it per file.
 

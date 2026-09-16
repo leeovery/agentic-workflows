@@ -4,7 +4,7 @@
 
 ---
 
-After the review is presented, this loop closes the phase: a pass completes it, and a fail turns the replan findings into tasks and reopens implementation.
+After the review is presented, this loop closes the phase: a pass completes it, and a fail turns the replan findings into tasks and reopens implementation. Every arm that ends the review ends it through **[close-review.md](close-review.md)** — the one exit, so nothing the close owes can be missed.
 
 Stages A through G run sequentially. Always start at **A. Verdict Gate**.
 
@@ -32,21 +32,9 @@ Read `manifest get {work_unit}.review.{topic} staging` — `{N}` is the latest c
 
 #### If the verdict is `Pass`
 
-The user chose `c/complete` at the review gate. Mark the review completed — the engine sets the status:
+The user chose `c/complete` at the review gate.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
-```
-
-Commit the completion:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase" --topic review/{topic}
-```
-
-**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
-
-**STOP.** Do not proceed — terminal condition.
+→ Load **[close-review.md](close-review.md)** with completion_message = `review({work_unit}): complete review phase`, staging_commit = `none`.
 
 #### If the verdict is `Fail`
 
@@ -92,17 +80,7 @@ The session died between **F**'s plan write and **G**'s re-open (task ids land i
 
 #### If `STATUS` is `clean`
 
-No actionable tasks from synthesis. Mark the review completed:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
-```
-
-Commit the completion:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase" --topic review/{topic}
-```
+No actionable tasks from synthesis.
 
 > *Output the next fenced block as a code block:*
 
@@ -110,9 +88,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 No actionable tasks synthesized. Review complete.
 ```
 
-**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
-
-**STOP.** Do not proceed — terminal condition.
+→ Load **[close-review.md](close-review.md)** with completion_message = `review({work_unit}): complete review phase`, staging_commit = `none`.
 
 #### If `STATUS` is `tasks_proposed`
 
@@ -224,22 +200,9 @@ Revise the staged proposal in the staging file based on the user's feedback (con
 
 #### Otherwise
 
-Nothing is approved — the cycle's proposals were declined, or it staged none. Mark the review completed:
+Nothing is approved — the cycle's proposals were declined, or it staged none.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
-```
-
-Commit the cycle's staging material, then its decisions (the second scoped commit covers the manifest):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — staging" --topic implementation/{topic} --sweep
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — no tasks approved" --topic review/{topic}
-```
-
-**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
-
-**STOP.** Do not proceed — terminal condition.
+→ Load **[close-review.md](close-review.md)** with completion_message = `review({work_unit}): synthesis cycle {N} — no tasks approved`, staging_commit = `review({work_unit}): synthesis cycle {N} — staging`.
 
 ---
 

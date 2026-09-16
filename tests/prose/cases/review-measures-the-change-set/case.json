@@ -28,7 +28,8 @@
     "skills/workflow-review-process/references/present-review.md",
     "skills/workflow-shared/references/product-lens.md",
     "skills/workflow-shared/references/compliance-check.md",
-    "skills/workflow-review-process/references/review-actions-loop.md"
+    "skills/workflow-review-process/references/review-actions-loop.md",
+    "skills/workflow-review-process/references/close-review.md"
   ],
   "answers": [
     "c — complete the review"
@@ -59,6 +60,7 @@
       "render review-presentation pay.review.pay",
       "render review-gate pay.review.pay",
       "review(pay): complete review",
+      "manifest exists pay.review.pay out_of_scope",
       "topic complete pay review pay",
       "review(pay): complete review phase"
     ],
