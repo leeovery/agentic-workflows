@@ -42,6 +42,12 @@ A crash between the synthesizer's write and the init — initialise the cycle fr
 
 → Proceed to **E. Approval Overview**.
 
+#### If the previous cycle's findings are committed and each records no findings
+
+The cycle came back clean — the analysis has converged.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+
 #### If the previous cycle's findings are committed and its synthesis never ran
 
 → Proceed to **D. Dispatch Synthesis Agent** over the existing findings.
