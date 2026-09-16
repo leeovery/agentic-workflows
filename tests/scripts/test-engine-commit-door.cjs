@@ -844,7 +844,7 @@ describe('commit door: transaction tails commit their own scope', () => {
   it('a topic cancel commits the manifest write alone', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nlive session dirt\n');
 
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'topic-b']);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir), ['.workflows/payments/manifest.json'],
@@ -944,7 +944,7 @@ describe('commit door: transaction-tail degrade', () => {
 
     const res = engine(
       dir,
-      ['topic', 'cancel', 'payments', 'research', 'auth-flow'],
+      ['topic', 'cancel', 'payments', 'discovery', 'auth-flow'],
       { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' },
     );
 
@@ -952,8 +952,8 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(res.status, 'cancelled');
     assert.strictEqual(res.committed, null);
     assert.strictEqual(res.note,
-      'commit pending — state saved; retry with: engine commit payments --topic research/auth-flow --sweep -m "<message>"',
-      'the retry names the scope the cancel actually wrote, and never beats a topic the menu is not in');
+      'commit pending — state saved; retry with: engine commit payments --state -m "<message>"',
+      'the retry names the scope the cancel actually wrote — the manifest alone — and beats nothing');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), `warnings carry the git error: ${JSON.stringify(res.warnings)}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
@@ -997,12 +997,12 @@ describe('commit door: transaction-tail degrade', () => {
     writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
     commitAll(dir, 'a discovery session and two specs');
     const blocked = { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' };
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'topic-b']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
-    const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discussion', 'topic-b'], blocked);
-    assert.match(reactivated.note, /engine commit payments --topic discussion\/topic-b --sweep -m/,
-      'reactivate runs from the epic menu, like the cancel it undoes');
+    const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'topic-b'], blocked);
+    assert.match(reactivated.note, /engine commit payments --state -m/,
+      'reactivate runs from the epic menu, like the cancel it undoes — the manifest alone');
 
     const sequenced = engine(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2'], blocked);
     assert.match(sequenced.note, /engine commit payments --state -m/,

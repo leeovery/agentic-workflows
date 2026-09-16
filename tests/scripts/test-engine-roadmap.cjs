@@ -435,7 +435,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   }
 
   it('topic cancel reverts the bound item to waiting, staging the project manifest', () => {
-    const res = engineOk(['topic', 'cancel', 'mvp', 'discussion', 'ordering']);
+    const res = engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
     assert.deepStrictEqual(res.roadmap_reverted, ['ordering']);
     const items = readProject(dir).roadmap.items;
     assert.strictEqual('pulled_to' in items.ordering, false);
@@ -464,14 +464,18 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.strictEqual(state.totals.shipped, 2);
   });
 
-  it('a partial cancel keeps the join — the topic lives on in its other phase item', () => {
+  it('a never-started topic\'s cancel reverts the join too — the marker alone reads cancelled', () => {
     const p = path.join(dir, '.workflows', 'mvp', 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
-    manifest.phases.research = { items: { ordering: { status: 'in-progress' } } };
+    delete manifest.phases.discussion;
     fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
-    const res = engineOk(['topic', 'cancel', 'mvp', 'discussion', 'ordering']);
-    assert.strictEqual('roadmap_reverted' in res, false, 'live research keeps the topic alive — no revert');
-    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
+    const res = engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
+    assert.deepStrictEqual(res.cancelled, []);
+    assert.deepStrictEqual(res.roadmap_reverted, ['ordering']);
+    assert.strictEqual('pulled_to' in readProject(dir).roadmap.items.ordering, false);
+    // Reactivation never re-joins — the revert is one-way.
+    engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+    assert.strictEqual('pulled_to' in readProject(dir).roadmap.items.ordering, false);
   });
 });
 

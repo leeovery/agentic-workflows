@@ -524,6 +524,21 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: set refuses a status write onto a cancelled item — reactivate owns that path${NC}"
+setup_fixture
+create_wu cancelled-item epic "Cancelled"
+run_cli set cancelled-item.specification.dropped status cancelled >/dev/null 2>&1
+assert_exit_code 1 "single set refused" set cancelled-item.specification.dropped status proposed
+assert_exit_code 1 "batch set refused" set cancelled-item.specification.dropped status=proposed order=1
+output=$(run_cli set cancelled-item.specification.dropped status proposed || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate)' "refusal names the reactivate"
+output=$(run_cli_stdout get cancelled-item.specification.dropped status)
+assert_equals "$output" "cancelled" "the item stays cancelled"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
 create_wu valid-status feature "Valid"
@@ -1663,21 +1678,19 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: previous_status deleted on reactivation${NC}"
+echo -e "${YELLOW}Test: a cancelled item's status is the reactivate's to restore — the hand-write is refused${NC}"
 setup_fixture
 create_wu cancel-react epic "Cancel react"
 run_cli set cancel-react.discussion.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-react.discussion.my-topic previous_status in-progress >/dev/null 2>&1
 run_cli set cancel-react.discussion.my-topic status cancelled >/dev/null 2>&1
 
-# Reactivate: restore previous status and delete previous_status field
-run_cli set cancel-react.discussion.my-topic status in-progress >/dev/null 2>&1
-run_cli delete cancel-react.discussion.my-topic previous_status >/dev/null 2>&1
+assert_exit_code 1 "hand-written reactivation refused" set cancel-react.discussion.my-topic status in-progress
 status=$(run_cli_stdout get cancel-react.discussion.my-topic status)
-prev_exists=$(run_cli_stdout exists cancel-react.discussion.my-topic previous_status)
+prev=$(run_cli_stdout get cancel-react.discussion.my-topic previous_status)
 
-assert_equals "$status" "in-progress" "Status restored to in-progress"
-assert_equals "$prev_exists" "false" "previous_status deleted after reactivation"
+assert_equals "$status" "cancelled" "Status stays cancelled"
+assert_equals "$prev" "in-progress" "previous_status stays for the reactivate to restore"
 
 echo ""
 

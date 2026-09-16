@@ -481,6 +481,25 @@ function assertExperimentTargets(manifest, segments, value) {
   }
 }
 
+/**
+ * A cancelled phase item takes no status write — every transition already
+ * refuses one with "reactivate it instead", and the field surface must not
+ * be the permissive path around them: a grouping analysis re-run over a
+ * cancelled specification's freed sources can pick the cancelled item's
+ * key, and a `status: proposed` landing there would merge onto its stash.
+ * Read inside the lock, like the experiment targets.
+ * @param {any} manifest @param {string[]} segments
+ */
+function assertNotCancelled(manifest, segments) {
+  // phases.<phase>.items.<topic>.status
+  if (segments.length !== 5 || segments[0] !== 'phases' || segments[2] !== 'items' || segments[4] !== 'status') return;
+  const [, phase, , topic] = segments;
+  const item = getByPath(manifest, segments.slice(0, 4));
+  if (item && typeof item === 'object' && item.status === 'cancelled') {
+    fail(`${phase} item "${topic}" is cancelled — reactivate it instead (engine topic reactivate)`);
+  }
+}
+
 /** @param {*} value */
 function validateStoragePaths(value) {
   if (!Array.isArray(value) || value.some((p) => typeof p !== 'string')) {
@@ -985,6 +1004,7 @@ function cmdSet(cwd, args) {
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     for (const write of planned) {
       assertExperimentTargets(manifest, write.segments, write.value);
+      assertNotCancelled(manifest, write.segments);
     }
     for (const write of planned) {
       setByPath(manifest, write.segments, write.value);
@@ -1234,6 +1254,7 @@ function cmdApply(cwd, args) {
       if (op.kind !== 'set') continue;
       for (const write of /** @type {{segments: string[], value: unknown}[]} */ (op.writes)) {
         assertExperimentTargets(manifest, write.segments, write.value);
+        assertNotCancelled(manifest, write.segments);
       }
     }
     for (const op of planned) {

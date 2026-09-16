@@ -52,11 +52,13 @@ function discover(cwd, workUnit) {
 
       // Check if this discussion has an individual spec via sources. Proposed
       // groupings are not individual specs — ignore them so the single-discussion
-      // path and grouping "matching spec" logic stay correct.
+      // path and grouping "matching spec" logic stay correct. A cancelled or
+      // superseded specification holds nothing either: its sources are free to
+      // be regrouped, the same reading the specifications list below makes.
       let hasIndividualSpec = false;
       let specStatus = '';
       for (const si of specItemsList) {
-        if (si.status === 'proposed') continue;
+        if (si.status === 'proposed' || si.status === 'cancelled' || si.status === 'superseded') continue;
         if (si.sources && si.sources[item.name]) {
           hasIndividualSpec = true;
           specStatus = si.status || '';

@@ -48,7 +48,7 @@ function waitGate(phase, topic, waits) {
   }
   // Each kind names its own release; the conclusion clause is composed over
   // every wait present, never over one kind while another still holds.
-  if (research) guidance.push(`Work the research first — cancelling it releases its wait${ids.length > 0 ? '.' : `; this ${phase} can conclude once the research lands.`}`);
+  if (research) guidance.push(`Work the research first — concluding it releases its wait${ids.length > 0 ? '.' : `; this ${phase} can conclude once the research lands.`}`);
   if (ids.length > 0) guidance.push('The wait releases when each experiment ends.');
   if (research && ids.length > 0) guidance.push(`This ${phase} can conclude once the research and the evidence have landed.`);
   guidance.push('The menu carries the way in.');

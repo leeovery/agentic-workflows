@@ -419,7 +419,7 @@ describe('engine writes take the work-unit lock', () => {
     git(dir, ['add', '-A']);
     git(dir, ['commit', '-q', '-m', 'init']);
 
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.strictEqual(res.ok, true);
     assert.ok(res.committed, 'cancel commits');
     const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);

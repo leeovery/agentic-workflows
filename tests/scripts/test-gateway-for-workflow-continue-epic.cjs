@@ -1340,6 +1340,27 @@ describe('workflow-continue-epic discovery', () => {
       assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
     });
 
+    it('a cancelled or superseded specification groups nothing — its sources read unaccounted again', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' }, payments: { status: 'completed' }, roles: { status: 'completed' } } },
+          specification: {
+            items: {
+              auth: { status: 'cancelled', previous_status: 'completed', sources: { auth: { status: 'incorporated' } } },
+              old: { status: 'superseded', superseded_by: 'unified', sources: { payments: { status: 'incorporated' } } },
+              unified: { status: 'completed', sources: { payments: { status: 'incorporated' } } },
+              gone: { status: 'promoted', promoted_to: 'cc', sources: { roles: { status: 'incorporated' } } },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      // auth's only spec is cancelled → free to regroup; payments rides the
+      // superseding spec; roles went with its promoted spec.
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+    });
+
     it('does not mark an in-progress discussion sourced only by a proposed item as reopened', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -2043,6 +2064,27 @@ describe('workflow-continue-epic CLI dispatch', () => {
       assert.strictEqual(res.stdout, '', verb);
       assert.strictEqual(res.stderr, `gateway: ${verb} takes exactly one work unit\n` + USAGE, verb);
     }
+  });
+
+  it("cancel-menu carries a held unit's in-session age from the presence scan — never the caller's own hold", () => {
+    const fs = require('fs');
+    epicFixture();
+    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+    const past = new Date(Date.now() - 120 * 1000);
+    fs.utimesSync(p, past, past);
+
+    const res = run(['cancel-menu', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
+    assert.ok(/Cancel "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n\u00a0+/g, ' ')), res.stdout);
+    assert.ok(res.stdout.includes('  1  cancel  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+
+    const own = spawnSync('node', [GATEWAY, 'cancel-menu', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'peer' },
+    });
+    assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
   });
 
   it('each sub-view verb errors on excess positionals', () => {

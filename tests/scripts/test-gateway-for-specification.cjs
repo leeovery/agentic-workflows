@@ -254,6 +254,25 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.specifications.length, 0);
   });
 
+  it('a cancelled or superseded specification is no individual spec — its source is free to be regrouped', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: { status: 'cancelled', previous_status: 'completed', sources: { auth: { status: 'incorporated' } } },
+            old: { status: 'superseded', superseded_by: 'unified', sources: { billing: { status: 'incorporated' } } },
+            unified: { status: 'in-progress', sources: { billing: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.discussions.find((d) => d.name === 'auth').has_individual_spec, false);
+    assert.strictEqual(r.discussions.find((d) => d.name === 'billing').spec_status, 'in-progress', 'the superseding spec, not the superseded one');
+  });
+
   it('feature without spec shows has_individual_spec false', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
