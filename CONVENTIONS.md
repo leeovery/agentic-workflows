@@ -332,7 +332,7 @@ Rendered as markdown (not code blocks). An opening `· · · · · · · · · �
 
 ```
 · · · · · · · · · · · ·
-Cancelling **Auth Flow** in discussion will mark it as cancelled — it can be reactivated later.
+Cancelling **Data Export** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.
 
 **`◆ Cancel it?`**
 
