@@ -42,6 +42,7 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {boolean} [recommended]
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
+ * @property {string[]} [blocked_by]   what holds the entry's item shut at its entry skill — carried only by a held row, the one blocked row the menu offers; the in-session gate names it
  * @property {number} [session_age]    that session's last-active age in seconds
  * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
  * @property {boolean} [code_session]  the hold is the checkout's code slot — gated at the entry skill, never by this menu
@@ -253,6 +254,11 @@ function mapNodes(detail, heldAges) {
 /** Held rows from a presence scan — sessions whose owning process still runs. @param {PresenceRow[]|undefined} presence @returns {PresenceRow[]} */
 function heldSessions(presence) {
   return (presence || []).filter((r) => r.held);
+}
+
+/** The held row on one (phase, topic), or undefined. @param {PresenceRow[]} held @param {string} phase @param {string|null} topic */
+function heldRow(held, phase, topic) {
+  return held.find((r) => r.phase === phase && r.topic === topic);
 }
 
 /**
@@ -599,13 +605,33 @@ function experimentEntries(workUnit, detail) {
   return out;
 }
 
-/** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @returns {MenuKey[]} */
-function continueEntries(workUnit, detail, phase) {
+// A blocked item is not actionable — no menu row; the display tree carries
+// its blocked state. A live session's hold is the one exception: its row
+// stands, struck through, so the menu never hides a session that is open.
+/** @param {string} phase @param {PhaseEntry} item @param {PresenceRow[]} held */
+function rowStands(phase, item, held) {
+  return item.blocked_by === undefined || heldRow(held, phase, item.name) !== undefined;
+}
+
+/**
+ * The map's face of the held-row rule. A discussion held shut for its
+ * outstanding research has no row of its own — the research row is the way
+ * in — unless a live session sits in it, when its continue row follows the
+ * research row, struck through, and the menu agrees with the map row's
+ * `in session` cue.
+ * @param {string} workUnit @param {EpicDetail} detail @param {MapRow} row @param {PresenceRow[]} held @returns {MenuKey|null}
+ */
+function heldDiscussionEntry(workUnit, detail, row, held) {
+  const item = (detail.phases.discussion || []).find((i) => i.name === row.name);
+  if (!item || item.status !== 'in-progress' || item.blocked_by === undefined) return null;
+  if (heldRow(held, 'discussion', item.name) === undefined) return null;
+  return { ...discoveryEntry(workUnit, row, 'continue_discussion'), blocked_by: item.blocked_by };
+}
+
+/** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @param {PresenceRow[]} held @returns {MenuKey[]} */
+function continueEntries(workUnit, detail, phase, held) {
   return (detail.phases[phase] || [])
-    .filter((item) => item.status === 'in-progress')
-    // A blocked item is not actionable — no menu row; the display tree
-    // carries its blocked state.
-    .filter((item) => item.blocked_by === undefined)
+    .filter((item) => item.status === 'in-progress' && rowStands(phase, item, held))
     .map((item) => ({
       key: '',
       action: `continue_${phase}`,
@@ -613,6 +639,7 @@ function continueEntries(workUnit, detail, phase) {
       route: topicRoute(`continue_${phase}`, workUnit, item.name),
       label: continueLabel(phase, item),
       ...(item.reconcile_needed !== undefined ? { input_moved: true } : {}),
+      ...(item.blocked_by !== undefined ? { blocked_by: item.blocked_by } : {}),
     }));
 }
 
@@ -824,7 +851,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
 function markHeldEntries(numbered, held, codeHeld = []) {
   for (const e of numbered) {
     const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)];
-    const own = held.find((r) => r.phase === phase && r.topic === e.topic);
+    const own = heldRow(held, phase, e.topic);
     const foreign = own || !CODE_PHASES.includes(phase) ? undefined : codeHeld[0];
     const row = own || foreign;
     if (!row) continue;
@@ -850,6 +877,7 @@ function markHeldEntries(numbered, held, codeHeld = []) {
  */
 function epicMenu(workUnit, detail, opts = {}) {
   const hasMap = detail.discovery_map.length > 0;
+  const held = heldSessions(opts.presence);
 
   /** @type {MenuKey[]} */
   let numbered = [];
@@ -861,15 +889,18 @@ function epicMenu(workUnit, detail, opts = {}) {
   if (hasMap) {
     // Discovery topics — one entry per map row with a non-null next_action
     // (✓/⊙/⊘ rows have none), in map order; a decided row carries its
-    // research entry instead when research is outstanding beneath it.
+    // research entry instead when research is outstanding beneath it, and a
+    // held discussion its struck row beneath the research it awaits.
     for (const row of detail.discovery_map) {
       const research = researchEntry(workUnit, row);
       if (research) numbered.push(research);
       if (row.next_action) numbered.push(discoveryEntry(workUnit, row, row.next_action));
+      const heldDiscussion = heldDiscussionEntry(workUnit, detail, row, held);
+      if (heldDiscussion) numbered.push(heldDiscussion);
     }
     // Build-phase entries by pipeline position — continues, then gated starts.
     for (const phase of BUILD_PHASES) {
-      numbered.push(...continueEntries(workUnit, detail, phase));
+      numbered.push(...continueEntries(workUnit, detail, phase, held));
       numbered.push(...startEntries(workUnit, detail, phase));
     }
   } else {
@@ -878,7 +909,7 @@ function epicMenu(workUnit, detail, opts = {}) {
     // series, and a generic item row would double it.
     for (const phase of EPIC_PIPELINE) {
       if (DERIVED_PHASES.includes(phase)) continue;
-      numbered.push(...continueEntries(workUnit, detail, phase));
+      numbered.push(...continueEntries(workUnit, detail, phase, held));
     }
     // Next-phase-ready items — specification first, then planning,
     // implementation, review.
@@ -887,7 +918,7 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   }
 
-  markHeldEntries(numbered, heldSessions(opts.presence), opts.codeHeld || []);
+  markHeldEntries(numbered, held, opts.codeHeld || []);
 
   const options = commandOptions(workUnit, detail, hasMap);
 
@@ -925,15 +956,27 @@ function epicMenu(workUnit, detail, opts = {}) {
   return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }
 
+// A struck row is the one blocked row the menu offers, so its gate also
+// names what holds the entry shut — a yes here would otherwise meet the
+// entry skill's refusal blind.
+/** @param {string} phase @param {string} topic @param {string[]|undefined} by */
+function entryHoldClause(phase, topic, by) {
+  if (by === undefined) return '';
+  const what = phase === 'discussion'
+    ? `research on "${titlecase(topic)}" is outstanding`
+    : `its sources are back in-progress (${by.map(titlecase).join(', ')})`;
+  return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
+}
+
 /**
  * Labelled confirm-gate section for one menu entry a held session occupies —
  * served by the gateway's `in-session-gate` verb, fetched by the flow at the
  * gate that displays it. Never blocks: the machine can verify that a process
  * still runs, never that its session still matters, so the gate states the
- * fact, names the consequence and the release, and lets the user decide.
- * Document phases only — a code entry's hold is the checkout's one slot, and
- * the `code-gate` surface at the entry skill owns that conversation, so the
- * user meets one gate per attempt.
+ * fact, names the consequence (and the entry hold, on a blocked row) and the
+ * release, and lets the user decide. Document phases only — a code entry's
+ * hold is the checkout's one slot, and the `code-gate` surface at the entry
+ * skill owns that conversation, so the user meets one gate per attempt.
  * @param {string} workUnit  this epic — the holder of the topic this entry would open
  * @param {MenuKey} entry
  * @returns {string} one labelled MENU section
@@ -943,12 +986,13 @@ function epicInSessionGate(workUnit, entry) {
   const topic = entry.topic || '';
   const fact = `"${titlecase(topic)}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago.`;
   const consequence = `Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`;
+  const hold = entryHoldClause(phase, topic, entry.blocked_by);
   const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${workUnit} ${phase} ${topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
     "emit verbatim as markdown, then STOP for the user's response",
     menuFrame([
-      `${fact} ${consequence} Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with \`${release}\`.`,
+      `${fact} ${consequence}${hold} Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with \`${release}\`.`,
       '',
       '**`◆ Proceed anyway?`**',
       '',
@@ -1071,8 +1115,9 @@ function pipelineOrdered(items) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
-  // A held item is not actionable — no resume row; it returns once the hold
-  // releases, the way the main menu's continue rows do.
+  // A blocked item is not actionable — no resume row; it returns once its
+  // entry hold releases. No session sits in a completed item, so the main
+  // menu's held-row exception never applies here.
   const rows = pipelineOrdered(detail.completed.filter((item) => item.blocked_by === undefined)).map((item) => {
     const flagged = item.reconcile_needed !== undefined;
     return {

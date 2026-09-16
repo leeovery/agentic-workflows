@@ -749,6 +749,22 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'alpha']).created, false);
     assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /awaits research on "Alpha" \(in flight\)/);
+    // A peer still sitting in the held discussion keeps its row on the menu
+    // — struck, beneath the research row — over the scan the gateway hands
+    // the projection; the hold released, the topic is its research row alone.
+    const peerInAlpha = sim.session('peer-in-alpha', 1);
+    peerInAlpha.run(['presence', 'beat', wu, 'discussion', 'alpha']);
+    const heldScan = sim.run(['presence', 'scan', wu]).sessions;
+    assert.strictEqual(heldScan.find((r) => r.phase === 'discussion' && r.topic === 'alpha').held, true);
+    assert.deepStrictEqual(
+      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail, { presence: heldScan }).keys
+        .filter((k) => k.topic === 'alpha').map((k) => [k.action, k.in_session === true, k.blocked_by]),
+      [['continue_research', false, undefined], ['continue_discussion', true, ['research']]]);
+    peerInAlpha.run(['presence', 'clear', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(
+      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail, { presence: sim.run(['presence', 'scan', wu]).sessions }).keys
+        .filter((k) => k.topic === 'alpha').map((k) => k.action),
+      ['continue_research']);
     // A landing is the engine's own act — never held, whichever side it parks on.
     assert.strictEqual(sim.run(['topic', 'triage', wu, 'discussion', 'alpha']).status, 'in-progress');
     sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
