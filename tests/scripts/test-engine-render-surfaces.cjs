@@ -4679,7 +4679,7 @@ describe('render review-presentation', () => {
     assert.match(out, /↳ union\.go:190 — both rows render the badge/);
     assert.match(out, /↳ ten retired names pass green/);
     assert.match(out, /Corrected in this session: 180 applied · suite green · 2 reverted, still owed\./);
-    assert.match(out, /Outside this spec: 2 findings — carried to the next cycle\./);
+    assert.match(out, /Outside this spec: 2 findings — held until the review closes\./);
     assert.match(out, /Discarded: 45 — reasons in the report\./);
     const vi = out.indexOf('⚑ Failed');
     assert.ok(out.indexOf('■ Review') < vi && vi < out.indexOf('Needs planning'), 'verdict sits between the title and the list');
@@ -4717,14 +4717,14 @@ describe('render review-presentation', () => {
     assert.ok(!absent.includes('Not measured'), 'absent renders nothing');
   });
 
-  it('the out-of-scope line says what happens to the set: decided at a pass, carried at a fail', () => {
+  it('the out-of-scope line says what happens to the set: decided at a pass, held at a fail', () => {
     const pass = render({ topic: 'checkout', verdict: 'pass', out_of_scope: 1 });
     assert.match(pass, /Outside this spec: 1 finding — each decided below\./);
     const fail = render({
       topic: 'checkout', verdict: 'fail', out_of_scope: 3,
       replan: [{ summary: 'the guard scans comments only', fails: 'ten retired names pass green' }],
     });
-    assert.match(fail, /Outside this spec: 3 findings — carried to the next cycle\./);
+    assert.match(fail, /Outside this spec: 3 findings — held until the review closes\./);
   });
 
   it('the not-measured line closes the tail, after the held and discarded counts', () => {

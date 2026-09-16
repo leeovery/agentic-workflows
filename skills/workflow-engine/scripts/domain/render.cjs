@@ -1785,7 +1785,7 @@ function reviewPresentation(cwd, { dotpath, file }) {
   if (Number(p.out_of_scope) > 0) {
     const n = Number(p.out_of_scope);
     const outside = `Outside this spec: ${n} finding${n === 1 ? '' : 's'}`;
-    tail.push(p.verdict === 'pass' ? `${outside} — each decided below.` : `${outside} — carried to the next cycle.`);
+    tail.push(p.verdict === 'pass' ? `${outside} — each decided below.` : `${outside} — held until the review closes.`);
   }
   if (Number(p.discarded) > 0) {
     tail.push(`Discarded: ${p.discarded} — reasons in the report.`);

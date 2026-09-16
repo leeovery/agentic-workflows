@@ -85,7 +85,7 @@ No actionable tasks from synthesis.
 > *Output the next fenced block as a code block:*
 
 ```
-No actionable tasks synthesized. Review complete.
+No actionable tasks synthesized — closing the review.
 ```
 
 → Load **[close-review.md](close-review.md)** with completion_message = `review({work_unit}): complete review phase`, staging_commit = `none`.
