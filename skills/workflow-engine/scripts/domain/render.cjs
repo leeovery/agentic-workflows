@@ -1784,7 +1784,8 @@ function reviewPresentation(cwd, { dotpath, file }) {
   }
   if (Number(p.out_of_scope) > 0) {
     const n = Number(p.out_of_scope);
-    tail.push(`Outside this spec: ${n} finding${n === 1 ? '' : 's'} held for your call.`);
+    const outside = `Outside this spec: ${n} finding${n === 1 ? '' : 's'}`;
+    tail.push(p.verdict === 'pass' ? `${outside} — each decided below.` : `${outside} — held until the review closes.`);
   }
   if (Number(p.discarded) > 0) {
     tail.push(`Discarded: ${p.discarded} — reasons in the report.`);
@@ -1803,20 +1804,26 @@ function reviewPresentation(cwd, { dotpath, file }) {
   return sections.join('\n');
 }
 
-// review-gate — the review's closing menu. Membership follows the verdict
-// and what remains: a fail routes to planning and nothing else (out-of-scope
-// findings are future work, and future work is not offered while the review
-// is failing); a pass completes, with the out-of-scope decision offered only
-// when such findings exist. The option set varies at runtime, so the column
-// is computed for whichever set survives.
+// review-gate — the review's closing menu. Membership follows the verdict:
+// a fail routes to planning and nothing else; a pass completes, its label
+// naming where completing lands. Review is every pipeline's last phase, so
+// only an epic has anything to return to — every other type finishes there.
+
+/** Where completing the review lands, by work type. */
+const REVIEW_LANDINGS = {
+  epic: 'return to the epic',
+  feature: 'finish the feature',
+  bugfix: 'finish the bugfix',
+  'quick-fix': 'finish the quick-fix',
+};
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, verdict?: string, replan?: string, 'out-of-scope'?: string}} args
+ * @param {{dotpath: string, verdict?: string, replan?: string}} args
  * @returns {string}
  */
 function reviewGate(cwd, args) {
-  const { phase } = resolveAddress(cwd, args.dotpath, 'review-gate');
+  const { phase, manifest } = resolveAddress(cwd, args.dotpath, 'review-gate');
   if (phase !== 'review') {
     throw new Error(`render review-gate: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
   }
@@ -1830,11 +1837,8 @@ function reviewGate(cwd, args) {
     if (!Number.isInteger(n) || n < 1) throw new Error('render review-gate: a fail needs --replan <count>');
     options.push(cmdOption('p', 'plan', `Plan the ${n} failure${n === 1 ? '' : 's'} and reopen implementation`));
   } else {
-    options.push(cmdOption('c', 'complete', 'Complete the review phase and continue'));
-    const oos = Number(args['out-of-scope']) || 0;
-    if (oos > 0) {
-      options.push(cmdOption('i', 'inbox', `Decide the ${oos} finding${oos === 1 ? '' : 's'} outside this spec`));
-    }
+    const landing = REVIEW_LANDINGS[manifest.work_type] || 'finish the work';
+    options.push(cmdOption('c', 'complete', `Complete the review and ${landing}`));
   }
   options.push(promptOption('Ask', 'Ask me about any finding'));
   return section(

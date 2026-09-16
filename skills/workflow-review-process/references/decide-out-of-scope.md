@@ -1,12 +1,12 @@
-# Offer the Out-of-Scope Findings
+# Decide the Out-of-Scope Findings
 
-*Reference for **[present-review.md](present-review.md)** — loaded from the review gate's `i/inbox` branch, which only renders on a pass*
+*Reference for **[present-review.md](present-review.md)** and **[close-review.md](close-review.md)** — loaded before the review closes, whenever findings are banked outside this spec*
 
 ---
 
-An out-of-scope finding is a genuine improvement in territory this feature's work never touched — neighbouring features, other specs' documents, code the change-set only reads. It is **never filed automatically** — filing costs a whole pass through the pipeline, and whether that is worth spending is the user's call, not the review's. Offering it and being told no is a complete outcome.
+An out-of-scope finding is a genuine improvement in territory this feature's work never touched — neighbouring features, other specs' documents, code the change-set only reads. It is **never filed automatically** — filing costs a whole pass through the pipeline, and whether that is worth spending is the user's call, not the review's.
 
-The findings accumulate in the manifest across review cycles — a cycle that fails contributes its discoveries and moves on, and the whole set is decided once, here, when the review passes.
+The findings accumulate in the manifest across review cycles — a cycle that fails contributes its discoveries and moves on — and the whole set is decided once, here, before the review closes: each finding is filed or dropped, and a dropped one is gone, since nothing offers it again and nothing carries it forward.
 
 ## A. Re-Check the Accumulated Set
 
@@ -42,7 +42,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 ## B. Offer
 
-Present each surviving finding as markdown — its summary, its kind (a feature, a bug worth investigating, or a standalone quick-fix), the failure or gap it names, and what taking it up would cost (a full pass through the pipeline as its own piece of work). Then ask, conversationally, which to keep — the user may take all, some, or none, and may answer in prose.
+Present each surviving finding as markdown — its summary, its kind (a feature, a bug worth investigating, or a standalone quick-fix), the failure or gap it names, and what taking it up would cost (a full pass through the pipeline as its own piece of work). Then ask, conversationally, which to keep, stating that anything not kept is dropped for good — the review closes after this, and nothing carries the set forward. The user may take all, some, or none, and may answer in prose.
 
 **STOP.** Wait for user response.
 
@@ -60,12 +60,12 @@ Commit any filed items — the inbox has its own scope:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): file out-of-scope findings to inbox"
 ```
 
-Delete the field — offered and decided, whichever way each went:
+Delete the field — decided, whichever way each finding went:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
 ```
 
-State in one markdown sentence what was filed and what was declined.
+State in one markdown sentence what was filed and what was dropped.
 
 → Return to caller.

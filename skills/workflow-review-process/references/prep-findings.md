@@ -82,7 +82,7 @@ It resolves each finding — re-aiming at the code any comment remedy the assess
 
 Read `actions.json`. It is the input to the review document and to every step that follows.
 
-**Bank the out-of-scope findings.** They are decided only when the review passes, which may be cycles away, and the cache does not survive that long — the manifest does. Push each `out-of-scope` action (its id, summary, kind, fails, and files) onto the durable set:
+**Bank the out-of-scope findings.** They are decided when the review closes, which may be cycles away, and the cache does not survive that long — the manifest does. Push each `out-of-scope` action (its id, summary, kind, fails, and files) onto the durable set:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} out_of_scope '{action json}'

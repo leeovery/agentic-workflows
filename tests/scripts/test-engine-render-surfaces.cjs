@@ -4768,7 +4768,7 @@ describe('render review-presentation', () => {
     assert.match(out, /↳ union\.go:190 — both rows render the badge/);
     assert.match(out, /↳ ten retired names pass green/);
     assert.match(out, /Corrected in this session: 180 applied · suite green · 2 reverted, still owed\./);
-    assert.match(out, /Outside this spec: 2 findings held for your call\./);
+    assert.match(out, /Outside this spec: 2 findings — held until the review closes\./);
     assert.match(out, /Discarded: 45 — reasons in the report\./);
     const vi = out.indexOf('⚑ Failed');
     assert.ok(out.indexOf('■ Review') < vi && vi < out.indexOf('Needs planning'), 'verdict sits between the title and the list');
@@ -4804,6 +4804,16 @@ describe('render review-presentation', () => {
     assert.ok(!zero.includes('Not measured'), 'zero renders nothing');
     const absent = render({ topic: 'checkout', verdict: 'pass', discarded: 45 });
     assert.ok(!absent.includes('Not measured'), 'absent renders nothing');
+  });
+
+  it('the out-of-scope line says what happens to the set: decided at a pass, held at a fail', () => {
+    const pass = render({ topic: 'checkout', verdict: 'pass', out_of_scope: 1 });
+    assert.match(pass, /Outside this spec: 1 finding — each decided below\./);
+    const fail = render({
+      topic: 'checkout', verdict: 'fail', out_of_scope: 3,
+      replan: [{ summary: 'the guard scans comments only', fails: 'ten retired names pass green' }],
+    });
+    assert.match(fail, /Outside this spec: 3 findings — held until the review closes\./);
   });
 
   it('the not-measured line closes the tail, after the held and discarded counts', () => {
@@ -4863,16 +4873,34 @@ describe('render review-gate', () => {
     assert.match(out, /\*\*`p\/plan`\*\* → Plan the 9 failures and reopen implementation/);
     assert.match(out, /\*\*Ask\*\*/);
     assert.ok(!out.includes('c/complete'), 'a failing review cannot be completed');
-    assert.ok(!out.includes('i/inbox'), 'future work is not offered while the review is failing');
   });
 
-  it('a pass completes, offering the out-of-scope decision only when findings exist', () => {
-    const withOos = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass', 'out-of-scope': '2' });
-    assert.match(withOos, /\*\*`c\/complete`\*\* → Complete the review phase and continue/);
-    assert.match(withOos, /\*\*`i\/inbox`\*\*\s+→ Decide the 2 findings outside this spec/);
+  it('the completion names where it lands — an epic returns, every other type finishes', () => {
+    const landing = (workType) => {
+      writeManifest(dir, 'pay', { work_type: workType, phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+      return renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass' });
+    };
+    assert.match(landing('epic'), /\*\*`c\/complete`\*\* → Complete the review and return to the epic/);
+    assert.match(landing('feature'), /\*\*`c\/complete`\*\* → Complete the review and finish the feature/);
+    assert.match(landing('bugfix'), /\*\*`c\/complete`\*\* → Complete the review and finish the bugfix/);
+    assert.match(landing('quick-fix'), /\*\*`c\/complete`\*\* → Complete the review and finish the quick-fix/);
+  });
+
+  it('an unknown or absent work type still names a landing', () => {
+    writeManifest(dir, 'pay', { work_type: 'rebuild', phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+    assert.match(renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass' }),
+      /\*\*`c\/complete`\*\* → Complete the review and finish the work/);
+    writeManifest(dir, 'pay', { work_type: undefined, phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+    assert.match(renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass' }),
+      /\*\*`c\/complete`\*\* → Complete the review and finish the work/);
+  });
+
+  it('the banked set is decided before the gate, so the gate never offers it', () => {
     const clean = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass' });
-    assert.ok(!clean.includes('i/inbox'), 'no offer when nothing is out of scope');
+    assert.ok(!clean.includes('i/inbox'), 'the out-of-scope decision is not a gate option');
     assert.ok(!clean.includes('p/plan'));
+    const flagged = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass', 'out-of-scope': '2' });
+    assert.strictEqual(flagged, clean, 'the surface no longer reads --out-of-scope');
   });
 
   it('refuses a fail with no replan count, a bad verdict, and a bad address', () => {

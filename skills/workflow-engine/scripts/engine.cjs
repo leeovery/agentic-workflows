@@ -235,7 +235,7 @@ Commands:
   render finding-announce <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
-  render review-gate      <wu.review.topic> --verdict pass|fail [--replan N] [--out-of-scope N]
+  render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
   render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
   render carry-note-gate  <wu.research.topic> --file <payload.json>
