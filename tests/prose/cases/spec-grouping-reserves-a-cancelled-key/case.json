@@ -1,0 +1,41 @@
+{
+  "origin": "topic-cancel review — the grouping analysis's resemblance rule read a cancelled-specification list the spec-entry gateway never carried, so a grouping over a cancelled specification's freed sources could never be told apart from a fresh one; nothing walked the analysis naming such a grouping afresh, saying it resembles the cancelled specification, and leaving the reserved key untouched",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-entry/references/check-prerequisites.md",
+    "skills/workflow-specification-entry/references/route-scenario.md",
+    "skills/workflow-specification-entry/references/analysis-flow.md",
+    "skills/workflow-specification-entry/references/display-groupings.md",
+    "skills/workflow-specification-entry/references/display-analyze.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
+      "presence scan search-relevance",
+      "manifest apply search-relevance"
+    ],
+    "calls_exclude": [
+      "manifest set search-relevance.specification.expansion",
+      "items.expansion",
+      "topic reactivate",
+      "topic cancel",
+      "topic start",
+      "topic complete",
+      "build-order sequence",
+      "discovery-map sequence"
+    ]
+  },
+  "conduct": "The user wants the grouping analysis run and is hands-off about it: to any proceed-style confirmation they answer yes; to the pre-analysis question asking for context on how the discussions relate they answer that the two are halves of one feature and belong together; once the groupings menu is presented they stop engaging."
+}

@@ -102,9 +102,13 @@ One engine transaction owns the whole delivery: `topic triage` handles the item 
    node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {landing_phase} {target} --concern .workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): reroute concern to {target}"
    ```
 
-**If the response is `ok: false`:**
+**If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
 
-Surface the engine's error verbatim — it names the recovery path (e.g. a cancelled item routes through `topic reactivate`). Nothing has been written; set `result = cancelled`.
+→ Return to **A. Resolve the Target**.
+
+**If the response is `ok: false` for any other reason:**
+
+Surface the engine's error verbatim — it names the recovery path. Nothing has been written; set `result = cancelled`.
 
 → Return to caller.
 
