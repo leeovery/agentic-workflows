@@ -58,6 +58,16 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 const PENDING_VERIFY = 'pending-verify.json';
 
+// Marker preceding the one-line JSON report of what the run recorded:
+// `{"ran": <migrations executed>, "tracking": "<cwd-relative ledger path>"}`.
+// Distinct from the stop gate, which counts files: a migration that ran and
+// found nothing to do still recorded its ID, so the ledger is dirty on a run
+// that updated nothing. The path travels with the count because migration 011
+// relocates the ledger — the runner is the only party that knows where it
+// ended up, and a caller cleaning up after an earlier run needs that path on a
+// run of its own that recorded nothing. Boot extracts and strips it.
+const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
+
 /** @param {string} cwd @param {string} trackingRel */
 function pendingVerifyPath(cwd, trackingRel) {
   return path.join(path.dirname(path.resolve(cwd, trackingRel)), PENDING_VERIFY);
@@ -328,6 +338,9 @@ function main() {
     process.stdout.write(JSON.stringify(addenda) + '\n');
     try { fs.unlinkSync(pendingFile); } catch { /* already gone */ }
   }
+
+  process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
+  process.stdout.write(JSON.stringify({ ran: migrationsRun, tracking: trackingRel }) + '\n');
 }
 
 try {
