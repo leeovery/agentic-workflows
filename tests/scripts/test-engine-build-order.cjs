@@ -356,14 +356,17 @@ describe('spec-side order stash on cancel / restore on reactivate', () => {
     assert.strictEqual(items.auth.order, 1, 'restored over the terminal squatter');
   });
 
-  it('a discussion cancel cascading into a spec stashes the spec order too', () => {
-    // auth spec is in-progress and sources the auth discussion — cascade path.
-    const res = engine(dir, ['topic', 'cancel', 'portal', 'discussion', 'auth', '--cascade']);
-    assert.strictEqual(res.ok, true);
+  it('a started spec locks its source topic; the spec cancel stashes the order and frees the topic', () => {
+    // auth spec is in-progress and sources the auth discussion.
+    assert.match(engineFails(dir, ['topic', 'cancel', 'portal', 'discovery', 'auth']).error,
+      /refused while the specification "auth" sources its discussion — cancel the specification first/);
+    const res = engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
+    assert.deepStrictEqual(res.cancelled, [{ phase: 'specification', previous_status: 'in-progress' }]);
     const auth = readManifest(dir, 'portal').phases.specification.items.auth;
     assert.strictEqual(auth.status, 'cancelled');
     assert.strictEqual(auth.order, undefined);
     assert.strictEqual(auth.previous_order, 1);
+    assert.strictEqual(engine(dir, ['topic', 'cancel', 'portal', 'discovery', 'auth']).status, 'cancelled', 'the source is free once the spec is gone');
   });
 });
 

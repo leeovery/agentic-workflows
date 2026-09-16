@@ -204,10 +204,15 @@ describe('engine experiment create — the spawn', () => {
       /--problem is refused with --parent — a split carries no spawn-side problem statement/);
   });
 
-  it('a spawn onto a cancelled item revives the series — the next experiment, never a reopen of a closed row', () => {
+  it('a spawn onto a legacy cancelled series revives it — the next experiment, never a reopen of a closed row', () => {
     spawn(dir, 'discussion', 'first');
     engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
-    engine(dir, ['topic', 'cancel', 'lab', 'experiment', 'timing']);
+    // A series cancelled on its own predates the topic-level cancel; the
+    // rows it left behind are all terminal by construction.
+    const m = readManifest(dir, 'lab');
+    m.phases.experiment.items.timing.status = 'cancelled';
+    m.phases.experiment.items.timing.previous_status = 'completed';
+    writeManifest(dir, 'lab', m);
     const revived = spawn(dir, 'discussion', 'successor');
     assert.strictEqual(revived.id, 'E2');
     const item = readManifest(dir, 'lab').phases.experiment.items.timing;
@@ -449,7 +454,7 @@ describe('the experiment item is derived bookkeeping — no hand lifecycle', () 
 
 });
 
-describe('epic topic cancel on the experiments — the wait-release edge', () => {
+describe('epic topic cancel takes the series with its topic', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
@@ -459,107 +464,79 @@ describe('epic topic cancel on the experiments — the wait-release edge', () =>
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the bare cancel refuses naming every waiting conversation; --cascade releases in one transaction', () => {
-    assert.match(engineFails(dir, ['topic', 'cancel', 'lab', 'experiment', 'timing']).error,
-      /its research awaits E2; its discussion awaits E1/);
+  it('no phase-level cancel: the series, the research, and the discussion each refuse with the stage rule, writing nothing', () => {
+    for (const phase of ['experiment', 'research', 'discussion']) {
+      assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'lab', phase, 'timing']).error,
+        'cancel is topic-level per stage — discovery (the map row with its research, discussion, and experiments) or specification (with its planning)', phase);
+    }
     const before = readManifest(dir, 'lab');
     assert.deepStrictEqual(before.phases.discussion.items.timing.awaiting_experiments, ['E1'], 'refusal writes nothing');
+    assert.deepStrictEqual(before.phases.research.items.timing.awaiting_experiments, ['E2']);
     assert.strictEqual(before.phases.experiment.items.timing.status, 'in-progress');
+  });
 
-    const res = engine(dir, ['topic', 'cancel', 'lab', 'experiment', 'timing', '--cascade']);
+  it("the topic's cancel releases every wait first, abandons every open record, and settles the series", () => {
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
     assert.strictEqual(res.status, 'cancelled');
     assert.deepStrictEqual(res.released_waits, [
       { phase: 'research', released: ['E2'], remaining: [] },
       { phase: 'discussion', released: ['E1'], remaining: [] },
     ]);
     assert.deepStrictEqual(res.abandoned, ['E1', 'E2'], 'every open record ends abandoned — no zombie survives the cancel');
+    assert.deepStrictEqual(res.cancelled, [
+      { phase: 'research', previous_status: 'in-progress' },
+      { phase: 'discussion', previous_status: 'in-progress' },
+    ]);
     const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.status, 'cancelled');
-    assert.strictEqual(after.phases.experiment.items.timing.previous_status, 'in-progress');
+    const series = after.phases.experiment.items.timing;
+    assert.strictEqual(series.status, 'completed', 'every record terminal — the series settles, never a cancel');
+    assert.strictEqual(series.previous_status, undefined);
     for (const id of ['E1', 'E2']) {
-      assert.strictEqual(after.phases.experiment.items.timing.experiments[id].status, 'abandoned');
-      assert.strictEqual(after.phases.experiment.items.timing.experiments[id].reason, 'series cancelled');
+      assert.strictEqual(series.experiments[id].status, 'abandoned');
+      assert.strictEqual(series.experiments[id].reason, 'topic cancelled');
     }
-    assert.strictEqual(after.phases.discussion.items.timing.awaiting_experiments, undefined);
-    assert.strictEqual(after.phases.research.items.timing.reconcile_needed, 'experiment');
-    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment');
+    for (const phase of ['research', 'discussion']) {
+      const item = after.phases[phase].items.timing;
+      assert.strictEqual(item.status, 'cancelled');
+      assert.strictEqual(item.awaiting_experiments, undefined);
+      assert.strictEqual(item.reconcile_needed, 'experiment', `the release flagged the ${phase} while it was still live`);
+    }
+    assert.deepStrictEqual(after.phases.discovery.items.timing, { routing: 'discussion', summary: 'Timing behaviour', cancelled: true, previous_order: 1 });
   });
 
-  it('an unawaited cancel proceeds bare and abandons what still lives; reactivate refuses — a spawn revives', () => {
-    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
-    // E2's waits released by hand so the bare cancel is legal with a live record.
-    engine(dir, ['manifest', 'delete', 'lab.research.timing', 'awaiting_experiments']);
-    walkTo(dir, 'E2', 'running');
-    const res = engine(dir, ['topic', 'cancel', 'lab', 'experiment', 'timing']);
-    assert.strictEqual(res.status, 'cancelled');
-    assert.strictEqual(res.released_waits, undefined);
-    assert.deepStrictEqual(res.abandoned, ['E2'], 'the bare cancel closes the running record too');
-    assert.deepStrictEqual(res.warnings, [], 'no knowledge sync for a non-indexed phase — nothing to warn about');
-    const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.status, 'abandoned');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.reason, 'series cancelled');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments.E1.reason, 'moot',
-      'a record already terminal keeps its own reason — the register reads honestly post-cancel');
-    const map = after.phases.discovery.items.timing;
-    assert.strictEqual(map.order, 1, 'the map order belongs to the conversations, not the laboratory');
-
-    // The series is never reactivated — its rows stand; the next spawn revives it.
-    assert.match(engineFails(dir, ['topic', 'reactivate', 'lab', 'experiment', 'timing']).error,
-      /never reactivated — "timing"'s rows stand on the register, and a new spawn/);
-    const revived = spawn(dir, 'discussion', 'successor');
-    assert.strictEqual(revived.id, 'E3', 'the revival allocates the next id, never reusing a closed row');
-    const revivedItem = readManifest(dir, 'lab').phases.experiment.items.timing;
-    assert.strictEqual(revivedItem.status, 'in-progress');
-    assert.strictEqual(revivedItem.previous_status, undefined, 'the revival clears the cancel stash');
-  });
-
-  it('cancelling one spawning conversation takes only its own records — the sibling\'s experiments run on', () => {
-    // Bare refuses naming this item's own waits — the conversation is those
-    // records' only consumer, and only those.
-    assert.match(engineFails(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing']).error,
-      /strands its evidence waits \(E1\) — the conversation is those experiments' only consumer/);
-
-    walkTo(dir, 'E2', 'running');
-    const res = engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
-    assert.strictEqual(res.status, 'cancelled');
-    assert.deepStrictEqual(res.abandoned, ['E1'], 'exactly the cancelled holder\'s records end abandoned');
-    assert.deepStrictEqual(res.released_waits, [
-      { phase: 'discussion', released: ['E1'], remaining: [] },
-    ], 'only the cancelled holder\'s waits close');
-    const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.status, 'in-progress',
-      'the item is not cancelled — the sibling\'s live record keeps it open');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments.E1.reason, 'spawning conversation cancelled');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.status, 'running',
-      'the sibling conversation\'s experiment is untouched');
-    assert.strictEqual(after.phases.discussion.items.timing.status, 'cancelled');
-    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment',
-      'the cancelled holder keeps the release flag inertly — terminal items never cue it; reactivation restores it live');
-    assert.deepStrictEqual(after.phases.research.items.timing.awaiting_experiments, ['E2'],
-      'the sibling holder\'s wait stands');
-    assert.strictEqual(after.phases.research.items.timing.reconcile_needed, undefined,
-      'nothing released beneath the sibling — it is not flagged');
-  });
-
-  it('the item settles completed when a cascade abandons its only live records', () => {
-    engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
-    const res = engine(dir, ['topic', 'cancel', 'lab', 'research', 'timing', '--cascade']);
-    assert.deepStrictEqual(res.abandoned, ['E2']);
-    const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.status, 'completed',
-      'every record terminal — the derived status settles, never a cancel');
-    assert.strictEqual(after.phases.experiment.items.timing.previous_status, undefined);
-  });
-
-  it('a cascade abandons the cancelled holder\'s live sub-experiments with their parent', () => {
+  it('a live sub-experiment is abandoned with its parent', () => {
     walkTo(dir, 'E1', 'running');
     engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']);
-    const res = engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
-    assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'the family never outlives its parent');
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
+    assert.deepStrictEqual(res.abandoned, ['E1', 'E2', 'E1.1'], 'the family never outlives its parent — register order, the split allocated last');
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments['E1.1'].reason, 'topic cancelled');
+  });
+
+  it('a record already terminal keeps its own reason — the register reads honestly post-cancel', () => {
+    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
+    assert.deepStrictEqual(res.abandoned, ['E2']);
+    assert.deepStrictEqual(res.released_waits, [{ phase: 'research', released: ['E2'], remaining: [] }],
+      'E1 released its wait when it was abandoned — only E2 was still held');
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.reason, 'moot');
+  });
+
+  it('the reactivate restores both conversations with their flags live; the series is never reactivated on its own, and the next spawn revives it', () => {
+    engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'lab', 'experiment', 'timing']).error,
+      /^reactivate is topic-level per stage — discovery/);
+    const res = engine(dir, ['topic', 'reactivate', 'lab', 'discovery', 'timing']);
+    assert.deepStrictEqual(res.restored, [
+      { phase: 'research', status: 'in-progress' },
+      { phase: 'discussion', status: 'in-progress' },
+    ]);
     const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.experiments['E1.1'].reason, 'spawning conversation cancelled');
-    assert.strictEqual(after.phases.experiment.items.timing.status, 'in-progress',
-      'the sibling\'s conceived record still holds the item open');
+    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment',
+      'the restored holder carries the advisory live — the abandonment surfaces at its next entry');
+    assert.strictEqual(after.phases.experiment.items.timing.status, 'completed', 'the series stays where the cancel left it');
+    const revived = spawn(dir, 'discussion', 'successor');
+    assert.strictEqual(revived.id, 'E3', 'the revival allocates the next id, never reusing a closed row');
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.status, 'in-progress');
   });
 
   it('the derived item status refuses the hand-write the verbs make unnecessary', () => {

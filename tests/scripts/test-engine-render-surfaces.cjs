@@ -45,24 +45,142 @@ describe('cancel-gate', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
 
-  it('renders the bare cancel confirm with the statement/question split', () => {
+  it('a never-started topic: only the map row is marked', () => {
     writeManifest(dir, 'pay', {
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
     });
-    const out = renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discussion.auth' });
+    const out = renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.data-export' });
     assert.match(out, /MENU: cancel gate/);
-    assert.match(out, /Cancelling \*\*Auth\*\* in discussion will mark it as cancelled — it can be reactivated later\./);
+    assert.match(unwrap(out), /Cancelling \*\*Data Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
     assert.match(out, /◆ Cancel it\?/);
     assert.match(out, /\*\*`y\/yes`\*\* → Confirm cancellation/);
+    assert.match(out, /\*\*`n\/no`\*\*  → Return to menu/);
   });
 
-  it('an experiment address states the terminal truth — the series never reactivates', () => {
+  it('a started topic: the items by phase, the open records that end abandoned, the proposed groupings discarded', () => {
     writeManifest(dir, 'pay', {
-      phases: { experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } } },
+      phases: {
+        discovery: { items: { auth: { routing: 'research', source: 'discovery' } } },
+        research: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
+        experiment: { items: { auth: { status: 'in-progress', experiments: {
+          E1: { slug: 'a', status: 'concluded', verdict: 'held' },
+          E2: { slug: 'b', status: 'running' },
+          'E2.1': { slug: 'c', status: 'conceived' },
+        } } } },
+        specification: { items: {
+          grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+          other: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+          dead: { status: 'cancelled', sources: { auth: { status: 'pending' } } },
+        } },
+      },
     });
-    const out = renderSurface(dir, 'cancel-gate', { dotpath: 'pay.experiment.auth' });
-    assert.match(unwrap(out), /Cancelling \*\*Auth\*\* in experiment will mark it as cancelled — open records end abandoned with their reason on the register, the series never reactivates, and a new spawn starts the next experiment\./);
-    assert.doesNotMatch(out, /reactivated later/);
+    const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \(completed\) and discussion \(in-progress\) cancelled — it can be reactivated later\. 2 open experiments \(E2, E2\.1\) end abandoned on the register\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\./);
+    assert.ok(!out.includes('Dead'), 'a cancelled specification is neither a lock nor a discard');
+  });
+
+  it('a single item, a single open record: singular wording, no discard clause', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { auth: { status: 'triaged' } } },
+        experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
+      },
+    });
+    const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \(triaged\) cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
+    assert.ok(!out.includes('discarded'), out);
+  });
+
+  it('a specification: the plan and the source discussions it frees', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, roles: { status: 'completed' } } },
+        specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' }, roles: { status: 'pending' } } } } },
+        planning: { items: { unified: { status: 'in-progress' } } },
+      },
+    });
+    const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.unified' }));
+    assert.match(out, /Cancelling \*\*Unified\*\* marks the specification and its plan cancelled and frees its source discussions \(Auth, Roles\) to be regrouped or cancelled; it can be reactivated later\./);
+  });
+
+  it('a specification with no plan and no sources names neither', () => {
+    writeManifest(dir, 'pay', {
+      phases: { specification: { items: { unified: { status: 'completed' } } } },
+    });
+    const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.unified' }));
+    assert.match(out, /Cancelling \*\*Unified\*\* marks the specification cancelled; it can be reactivated later\./);
+  });
+
+  it('refuses what the menu never offers — locked, cancelled, proposed — and a non-unit address', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: {
+          unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } },
+          grp: { status: 'proposed', sources: {} },
+          shipped: { status: 'completed', sources: {} },
+          done: { status: 'promoted', sources: {} },
+        } },
+        implementation: { items: { shipped: { status: 'in-progress' } } },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }),
+      /"auth" is locked by the specification sourcing its discussion \(unified\) — the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.gone' }),
+      /"gone" is already cancelled — the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.ghost' }),
+      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.shipped' }),
+      /"shipped" is locked — implementation has started, so the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.grp' }),
+      /"grp" is a proposed grouping — not started, so the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.done' }),
+      /"done" is promoted — the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.ghost' }),
+      /no specification item "ghost"/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discussion.auth' }),
+      /address must be <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "discussion"/);
+  });
+});
+
+describe('topic-receipt — the unit addresses', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  it('cancel and reactivate read the unit; a never-started topic restores nothing', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true }, back: { routing: 'discussion', source: 'discovery' } } },
+        research: { items: { back: { status: 'completed' } } },
+        discussion: { items: { back: { status: 'in-progress' } } },
+        specification: { items: { spec: { status: 'cancelled', previous_status: 'completed' }, live: { status: 'completed' } } },
+        planning: { items: { live: { status: 'in-progress' } } },
+      },
+    });
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.gone', verb: 'cancel' }), /Cancelled "Gone"\.\n/);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'reactivate' }),
+      /Reactivated "Back"\. Restored research \(completed\) · discussion \(in-progress\)\.\n/);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'cancel', warn: '1' }),
+      /⚑ Knowledge removal warning[\s\S]*Cancelled "Spec"\.\n/);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.live', verb: 'reactivate' }),
+      /Reactivated "Live"\. Restored specification \(completed\) · planning \(in-progress\)\.\n/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'cancel' }), /"back" is not cancelled — the cancel has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'reactivate' }), /"spec" is still cancelled — the reactivate has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'reactivate' }),
+      /--verb reactivate addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.ghost', verb: 'cancel' }), /no specification item "ghost"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, cancel, or reactivate/);
+  });
+
+  it('complete keeps its phase-item address', () => {
+    writeManifest(dir, 'pay', { phases: { research: { items: { back: { status: 'completed' } } } } });
+    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'complete' }), '');
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'complete', warn: '1' }), /Knowledge indexing warning/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.ghost', verb: 'complete' }), /no research item "ghost"/);
   });
 });
 
@@ -284,7 +402,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\)\n/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> Work the research first — cancelling it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
+    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here — the session ends and the menu takes over with the research queued/);
@@ -302,7 +420,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\) and experiment evidence \(E1, E2\)\n/);
-    assert.match(out, /> Work the research first — cancelling it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The menu carries the way in\.\n/);
+    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The menu carries the way in\.\n/);
     assert.match(unwrap(out), /the menu takes over with the research and E1, E2 queued/);
     assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
   });
@@ -333,7 +451,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'feat.discussion.feat' });
     assert.match(out, /awaits research on "Feat" \(parked — not yet started\)/);
-    assert.match(out, /Work the research first — cancelling it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\./);
+    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\./);
     assert.ok(!out.includes('row'), 'no epic-only vocabulary on a linear unit');
   });
 
@@ -341,70 +459,6 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress' });
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.billing' }),
       /address must be <work_unit>\.<research\|discussion>\.<topic>/);
-  });
-});
-
-describe('cancel-cascade-gate — the experiment wait-release confirm', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  it('names every waiting conversation and asks the release', () => {
-    writeManifest(dir, 'lab', {
-      phases: {
-        research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
-        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' }, E2: { slug: 'b', status: 'conceived' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /MENU: cancel cascade/);
-    assert.match(unwrap(out), /Cancelling the \*\*Timing\*\* experiments releases the evidence wait its research holds \(awaiting E2\) and its discussion holds \(awaiting E1\)/);
-    assert.match(out, /◆ Cancel and release\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the experiments and release the wait/);
-  });
-
-  it('refuses when no live wait exists — the bare cancel proceeds', () => {
-    writeManifest(dir, 'lab', {
-      phases: {
-        discussion: { items: { timing: { status: 'cancelled', awaiting_experiments: ['E1'] } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.experiment.timing' }),
-      /no live evidence wait on "timing"/);
-  });
-
-  it('a research address with a live wait renders the wait clause and no spec clause — the reverse join belongs to discussion', () => {
-    // A same-named spec sourcing "timing" exists, but the cancel transaction
-    // never cascades specs for a research address — the gate must not claim it.
-    writeManifest(dir, 'lab', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        specification: { items: { unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.research.timing' });
-    assert.match(unwrap(out), /Cancelling \*\*Timing\*\* abandons the experiments it awaits \(E1\)/);
-    assert.ok(!out.includes('specification work'), 'no spec clause on a research address — the cascade never touches the spec');
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the conversation and abandon its awaited experiments/);
-  });
-
-  it('a discussion address holding both a sourcing spec and a live wait composes both clauses', () => {
-    writeManifest(dir, 'lab', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        specification: { items: { unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } } } },
-        experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
-      },
-    });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'lab.discussion.timing' });
-    assert.match(unwrap(out), /collapses the specification work built from it: \*\*Unified\*\* is cancelled with it \(reactivatable\)/);
-    assert.match(unwrap(out), /and abandons the experiments it awaits \(E1\)/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Cancel the topic and everything that cascades with it/);
   });
 });
 
@@ -3081,50 +3135,6 @@ describe('render proposed-task', () => {
     assert.ok(unwrap(held).includes('"synonym-handling" is open in another session — last active 3h ago — so the fix belongs there; this topic waits for it.'), held);
   });
 
-  it('cancel-cascade-gate derives the collapse set — started cancelled, proposed discarded; refuses when nothing sources the topic', () => {
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
-      discussion: { items: { beta: { status: 'completed' } } },
-      specification: { items: {
-        unified: { status: 'in-progress', sources: { beta: { status: 'incorporated' } } },
-        grp: { status: 'proposed', sources: { beta: { status: 'pending' } } },
-        dead: { status: 'cancelled', sources: { beta: { status: 'pending' } } },
-      } },
-    } });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' });
-    assert.ok(out.includes('MENU: cancel cascade'), out);
-    assert.ok(out.includes('**Unified** is cancelled with it (reactivatable)'), out);
-    assert.ok(out.includes('the proposed grouping **Grp** is discarded'), out);
-    assert.ok(!out.includes('Dead'), 'terminal specs never enter the collapse set');
-    assert.ok(out.includes('**`◆ Cancel them together?`**'), out);
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { beta: { status: 'completed' } } } } });
-    assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' }), /nothing cascades from "beta" \(discussion\)/);
-  });
-
-  it('cancel-cascade-gate at a spawner address joins every awaited id into the wait clause', () => {
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
-      research: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
-      experiment: { items: { beta: { status: 'in-progress', experiments: {
-        E1: { slug: 'x', status: 'running' }, E2: { slug: 'y', status: 'conceived' },
-      } } } },
-    } });
-    const waitsOnly = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.research.beta' });
-    assert.ok(unwrap(waitsOnly).includes('Cancelling **Beta** abandons the experiments it awaits (E1, E2)'), waitsOnly);
-    assert.ok(unwrap(waitsOnly).includes('Cancel the conversation and abandon its awaited experiments'), waitsOnly);
-    assert.ok(!waitsOnly.includes('untouched'), 'no sibling holder — none is named');
-  });
-
-  it('cancel-cascade-gate at a spawner address names a sibling holder as untouched', () => {
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
-      research: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-      discussion: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
-      experiment: { items: { beta: { status: 'in-progress', experiments: {
-        E1: { slug: 'x', status: 'running' }, E2: { slug: 'y', status: 'conceived' },
-      } } } },
-    } });
-    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.research.beta' });
-    assert.ok(unwrap(out).includes('abandons the experiments it awaits (E1) — this conversation is their only consumer; the discussion conversation and its experiments are untouched'), out);
-  });
-
   it('the incoherence stops announce over their own lane\'s auto — and stay silent over the other lane\'s', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
       status: 'in-progress', finding_gate_mode: 'auto', construction_gate_mode: 'gated',
@@ -4113,7 +4123,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5112,7 +5122,7 @@ describe('render map-op-gate', () => {
       },
     });
     assert.throws(() => render('close', { name: 'auth-flow' }, 'c1.json'),
-      /"auth-flow" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first/);
+      /"auth-flow" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first/);
     assert.match(render('edit-summary', { items: [{ name: 'auth-flow', summary: 'Still editable' }] }, 'c2.json'),
       /Updating 1 summary\(ies\):/);
   });
@@ -5255,9 +5265,9 @@ describe('render triage-closed-target', () => {
   it('a cancelled target flips both words the lifecycle owns', () => {
     const out = renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
     assert.match(out, /"legacy-bits" is cancelled, so it won't pick up rerouted concerns\./);
-    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there — its/);
-    assert.match(out, /phase work returns to its previous status and\n/);
-    assert.match(out, /counts as open again/);
+    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there — the/);
+    assert.match(out, /topic returns to its previous state and counts as\n/);
+    assert.match(out, /open again/);
   });
 
   it('refuses a live target, an unknown name, and a non-discovery address', () => {
@@ -5743,7 +5753,7 @@ describe('render direct-entry-gate', () => {
       assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.dead` }),
         /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*its row for the topic names the next step\./);
       assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.gone` }),
-        /it has phase work in cancelled state and stays on the map as historical record/);
+        /it is cancelled and stays on the map as record/);
     }
   });
 

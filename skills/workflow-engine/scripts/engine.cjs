@@ -178,8 +178,8 @@ Commands:
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
-  topic cancel <work-unit> <phase> <topic> [--cascade]
-  topic reactivate <work-unit> <phase> <topic>
+  topic cancel <work-unit> <discovery|specification> <topic>
+  topic reactivate <work-unit> <discovery|specification> <topic>
   experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
@@ -283,7 +283,6 @@ Commands:
   render analysis-proceed-gate <wu>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
-  render cancel-cascade-gate <wu.phase.topic>
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
   render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
@@ -296,7 +295,7 @@ Commands:
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
-  render cancel-gate <wu.phase.topic>
+  render cancel-gate <wu.discovery|specification.topic>
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>
@@ -308,7 +307,7 @@ Commands:
   render spec-corrections  --count <N>
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
-  render topic-receipt     <wu.phase.topic> --verb complete|cancel|reactivate [--warn]
+  render topic-receipt     <wu.phase.topic> --verb complete [--warn] | <wu.discovery|specification.topic> --verb cancel|reactivate [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--warn]
   render absorb-continuation <epic> --feature <name>
@@ -765,10 +764,11 @@ function runDiscoverySession(argv) {
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
 // index on complete, remove on supersede; reopen syncs nothing —
 // warn-don't-block) with no git commit — the calling session's commit
-// cadence picks the change up. cancel/reactivate are
-// one transaction per call: manifest write, knowledge-base sync
-// (warn-don't-block), scoped git commit. The JSON response reports what
-// happened — no follow-up read needed.
+// cadence picks the change up. cancel/reactivate act on a stage's unit —
+// `discovery` (the map row with its research, discussion, and experiments)
+// or `specification` (with its planning) — one transaction per call:
+// manifest write, knowledge-base sync (warn-don't-block), scoped git commit.
+// The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
 // topic: `start` (opening it), `absorb` (folding a concern into its own
@@ -787,6 +787,9 @@ const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: compl
 // The self-referential verbs among those dispatched through TOPIC_COMMANDS;
 // `queue` and `absorb` beat at their own branches.
 const TOPIC_BEATS = ['start'];
+
+// The verbs whose phase argument names a stage's unit, not a phase item.
+const UNIT_VERBS = ['cancel', 'reactivate'];
 
 /**
  * A session hook target's session id: the argument when given, else the
@@ -1004,22 +1007,14 @@ function runTopic(argv) {
       respond(triageTopic(process.cwd(), workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
       return;
     }
-    if (command === 'cancel') {
-      const { flags, positional } = parseArgs(rest, ['cascade']);
-      const [workUnit, phase, topic] = positional;
-      if (!workUnit || !phase || !topic || positional.length !== 3) {
-        throw new Error('Usage: engine topic cancel <work-unit> <phase> <topic> [--cascade]');
-      }
-      respond(cancelTopic(process.cwd(), workUnit, phase, topic, { cascade: flags.has('cascade') }));
-      return;
-    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
       throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|queue|absorb|requeue> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
-    if (!workUnit || !phase || !topic) {
-      throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
+    if (!workUnit || !phase || !topic || rest.length !== 3) {
+      const phaseArg = UNIT_VERBS.includes(command) ? '<discovery|specification>' : '<phase>';
+      throw new Error(`Usage: engine topic ${command} <work-unit> ${phaseArg} <topic>`);
     }
     const result = fn(process.cwd(), workUnit, phase, topic);
     if (TOPIC_BEATS.includes(command)) beatQuietly(process.cwd(), workUnit, phase, topic);

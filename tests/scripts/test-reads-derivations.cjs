@@ -16,7 +16,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
-  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
+  awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1047,7 +1047,19 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, discussion_state: 'completed', triage_parked: false, reconcile_pending: false });
     });
 
-    it('returns cancelled only when BOTH research and discussion items are cancelled', () => {
+    it('the map marker reads cancelled first — over live items, and over a dead-ended row', () => {
+      createManifest(dir, 'alpha', { phases: {
+        discovery: { items: { auth: { routing: 'research', source: 'discovery', cancelled: true }, dead: { routing: 'research', source: 'discovery', handled: true, cancelled: true }, fresh: { routing: 'research', source: 'discovery' } } },
+        research: { items: { auth: { status: 'completed' }, dead: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      } });
+      const m = loadManifest(dir, 'alpha');
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'completed', discussion_state: 'in-progress', triage_parked: false, reconcile_pending: false });
+      assert.strictEqual(computeTopicLifecycle(m, 'dead').lifecycle, 'cancelled', 'the cancel outranks the dead end');
+      assert.strictEqual(computeTopicLifecycle(m, 'fresh').lifecycle, 'fresh', 'no marker, no cancel');
+    });
+
+    it('the legacy every-item reading stays: cancelled when BOTH research and discussion items are cancelled', () => {
       const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
       assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled', discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
@@ -1437,17 +1449,10 @@ describe('reads + derivations', () => {
       },
     });
 
-    it('awaitedExperiments reads one item\'s lock; experimentWaits joins the live holders', () => {
+    it('awaitedExperiments reads one item\'s lock', () => {
       const m = waiting('discussion');
       assert.deepStrictEqual(awaitedExperiments(m, 'discussion', 'pay'), ['E1']);
       assert.deepStrictEqual(awaitedExperiments(m, 'research', 'pay'), []);
-      assert.deepStrictEqual(experimentWaits(m, 'pay'), [{ phase: 'discussion', ids: ['E1'] }]);
-    });
-
-    it('experimentWaits drops a terminal holder — its wait is inert', () => {
-      const m = waiting('research');
-      m.phases.research.items.pay.status = 'cancelled';
-      assert.deepStrictEqual(experimentWaits(m, 'pay'), []);
     });
 
     it('a linear type\'s waiting conversation routes to the experiment — research and discussion alike', () => {

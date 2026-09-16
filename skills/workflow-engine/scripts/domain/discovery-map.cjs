@@ -116,7 +116,9 @@ function assertFresh(manifest, name, verbPhrase) {
   }
   const recovery = lifecycle === 'handled'
     ? 'reopen it to make it actionable again'
-    : 'cancel from the epic menu instead';
+    : lifecycle === 'cancelled'
+      ? 'reactivate it from the epic menu first'
+      : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
 }
 
@@ -532,7 +534,7 @@ function handleItem(cwd, workUnit, name) {
       throw new Error(`"${name}" can't be closed as a dead end — it's already closed`);
     }
     if (lifecycle === 'cancelled') {
-      throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
+      throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
     }
     const parked = ['research', 'discussion']
       .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'triaged'));

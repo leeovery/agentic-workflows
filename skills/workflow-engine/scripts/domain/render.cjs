@@ -47,12 +47,15 @@ const { experimentRegister, experimentApprovalGate, experimentPick, experimentNe
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
 const { waitGate, researchWaitState } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES } = require('./derivations.cjs');
+const {
+  phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
+  outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
+  sourceRows, sourcingSpecs, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
+} = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
-const { sourceRows } = require('./transitions.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -1408,85 +1411,6 @@ function incoherenceGate(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
-// cancel-cascade-gate — the collapse confirm `topic cancel`'s refusal routes
-// to, per consumer (mirroring the transaction's own cascade set): a
-// discussion or investigation a live specification sources takes the spec
-// collapse (started specs cancel with the topic, reactivatable; proposed
-// groupings are discarded); a research or discussion holding a live
-// evidence wait takes the record-scoped abandonment (exactly its own
-// awaited records); a derived-phase address renders the softer wait-release
-// confirm. No payload — every clause is manifest state. Always gated.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function cancelCascadeGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
-  // A derived-phase address renders the softer wait-release confirm —
-  // nothing collapses: each waiting conversation's evidence wait releases
-  // and its waiting point reverts to open.
-  if (DERIVED_PHASES.includes(phase)) {
-    const holders = experimentWaits(manifest, topic);
-    if (holders.length === 0) {
-      throw new Error(`render cancel-cascade-gate: no live evidence wait on "${topic}"'s experiments — the bare cancel proceeds`);
-    }
-    const held = holders.map((h) => `its ${h.phase} holds (awaiting ${h.ids.join(', ')})`).join(' and ');
-    return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
-      `Cancelling the **${titlecase(topic)}** experiments releases the evidence wait ${held}: each waiting point reverts to open, and the release is surfaced at that conversation's next entry.`,
-      [
-        cmdOption('y', 'yes', 'Cancel the experiments and release the wait'),
-        cmdOption('n', 'no', 'Return to menu'),
-      ],
-      { question: 'Cancel and release?' },
-    ));
-  }
-  const specParts = [];
-  // The transaction only cascades specs for discussion and investigation —
-  // the two phases specs source. A same-named research address must never
-  // borrow the discussion's reverse join.
-  if (phase === 'discussion' || phase === 'investigation') {
-    const specItems = ((manifest.phases || {}).specification || {}).items || {};
-    const collapses = Object.entries(specItems).filter(([, s]) =>
-      s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
-      && sourceRows(s.sources).some(([n]) => n === topic));
-    const started = collapses.filter(([, s]) => s.status !== 'proposed').map(([n]) => titlecase(n));
-    const proposed = collapses.filter(([, s]) => s.status === 'proposed').map(([n]) => titlecase(n));
-    if (started.length > 0) specParts.push(`**${started.join('**, **')}** is cancelled with it (reactivatable)`);
-    if (proposed.length > 0) specParts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
-  }
-  // A spawn-phase holder's own live waits — the cascade abandons exactly
-  // those records and closes this conversation's waiting points; a sibling
-  // holder is named untouched only when one exists.
-  const awaiting = EXPERIMENT_SPAWN_PHASES.includes(phase) ? awaitedExperiments(manifest, phase, topic) : [];
-  const parts = [];
-  if (specParts.length > 0) parts.push(`collapses the specification work built from it: ${specParts.join('; ')}`);
-  if (awaiting.length > 0) {
-    const sibling = experimentWaits(manifest, topic).find((h) => h.phase !== phase);
-    parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer${sibling ? `; the ${sibling.phase} conversation and its experiments are untouched` : ''}`);
-  }
-  if (parts.length === 0) {
-    throw new Error(`render cancel-cascade-gate: nothing cascades from "${topic}" (${phase}) — the bare cancel proceeds`);
-  }
-  const statement = `Cancelling **${titlecase(topic)}** ${parts.join('; and ')}.`;
-  const yesLabel = specParts.length > 0 && awaiting.length > 0
-    ? 'Cancel the topic and everything that cascades with it'
-    : specParts.length > 0
-      ? 'Cancel the topic and the specification work it sources'
-      : 'Cancel the conversation and abandon its awaited experiments';
-  return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
-    statement,
-    [
-      cmdOption('y', 'yes', yesLabel),
-      cmdOption('n', 'no', 'Return to menu'),
-    ],
-    { question: 'Cancel them together?' },
-  ));
-}
-
-// ---------------------------------------------------------------------------
 // resurface-gate — spec construction's Context Resurfacing gate: a diff over
 // already-approved specification content plus its approval menu. Always
 // gated — it changes blessed content, so construction auto never applies.
@@ -2400,7 +2324,7 @@ function assertMapOp(manifest, op, name) {
       throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's already closed`);
     }
     if (lifecycle === 'cancelled') {
-      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
+      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
     }
     return;
   }
@@ -2532,7 +2456,7 @@ function triageClosedTarget(cwd, { dotpath }) {
   // concern, it puts the topic back in front of every convergence read.
   const reopen = lifecycle === 'handled'
     ? 'Reopen it and land the concern there — it returns to its name-matched lifecycle and counts as open again'
-    : 'Reactivate it and land the concern there — its phase work returns to its previous status and counts as open again';
+    : 'Reactivate it and land the concern there — the topic returns to its previous state and counts as open again';
   return section('MENU: closed target gate', STOP_FOR_RESPONSE, menuFrame([
     `"${topic}" is ${closed}, so it won't pick up rerouted concerns.`,
     '',
@@ -3642,23 +3566,103 @@ function revisitGate(cwd, { dotpath, prev, next }) {
   );
 }
 
+/** `a`, `a and b`, `a, b, and c`. @param {string[]} parts */
+function listJoin(parts) {
+  if (parts.length <= 1) return parts.join('');
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
 /**
- * The epic menu's bare topic-cancel confirm — the statement stays context,
- * the short question takes the glyph. The cascade case (a live spec sources
- * the topic) renders through cancel-cascade-gate instead.
+ * The cancel gate's statement over a Discovery unit — exactly what the
+ * cancel takes: the map row alone for a never-started topic; otherwise the
+ * items by phase, the open experiment records that end abandoned, and any
+ * proposed grouping discarded.
+ * @param {object} manifest @param {string} topic
+ */
+function discoveryCancelStatement(manifest, topic) {
+  if (!discoveryUnitExists(manifest, topic)) {
+    throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+  }
+  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+    throw new Error(`render cancel-gate: "${topic}" is already cancelled — the menu never offers it`);
+  }
+  const locking = lockingSpecs(manifest, topic);
+  if (locking.length > 0) {
+    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${locking.join(', ')}) — the menu never offers it`);
+  }
+  const name = titlecase(topic);
+  const live = liveUnitItems(manifest, 'discovery', topic);
+  if (live.length === 0) {
+    return `Cancelling **${name}** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.`;
+  }
+  const parts = [`Cancelling **${name}** marks its ${listJoin(live.map(({ phase, item }) => `${phase} (${item.status})`))} cancelled — it can be reactivated later.`];
+  const series = itemOf(manifest, 'experiment', topic);
+  const open = Object.entries((series && series.experiments) || {})
+    .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status))
+    .map(([id]) => id)
+    .sort(compareExperimentIds);
+  if (open.length > 0) {
+    parts.push(`${open.length} open experiment${open.length === 1 ? '' : 's'} (${open.join(', ')}) end${open.length === 1 ? 's' : ''} abandoned on the register.`);
+  }
+  const proposed = sourcingSpecs(manifest, topic)
+    .filter(([, spec]) => spec.status === 'proposed')
+    .map(([n]) => `**${titlecase(n)}**`);
+  if (proposed.length > 0) {
+    parts.push(`The proposed grouping${proposed.length === 1 ? '' : 's'} ${listJoin(proposed)} ${proposed.length === 1 ? 'is' : 'are'} discarded — the next grouping analysis rebuilds from the new world.`);
+  }
+  return parts.join(' ');
+}
+
+/**
+ * The cancel gate's statement over a Definition unit — the specification
+ * and its plan, and the source discussions the cancel frees.
+ * @param {object} manifest @param {string} spec
+ */
+function specificationCancelStatement(manifest, spec) {
+  const item = itemOf(manifest, 'specification', spec);
+  if (!item) throw new Error(`render cancel-gate: no specification item "${spec}"`);
+  if (item.status === 'proposed') {
+    throw new Error(`render cancel-gate: "${spec}" is a proposed grouping — not started, so the menu never offers it`);
+  }
+  if (item.status === 'cancelled') {
+    throw new Error(`render cancel-gate: "${spec}" is already cancelled — the menu never offers it`);
+  }
+  if (TERMINAL_STATUSES.includes(item.status)) {
+    throw new Error(`render cancel-gate: "${spec}" is ${item.status} — the menu never offers it`);
+  }
+  if (deliveryStarted(manifest, spec)) {
+    throw new Error(`render cancel-gate: "${spec}" is locked — implementation has started, so the menu never offers it`);
+  }
+  const plan = liveUnitItems(manifest, 'specification', spec).some(({ phase }) => phase === 'planning');
+  const sources = sourceRows(item.sources).map(([n]) => titlecase(n));
+  const frees = sources.length > 0
+    ? ` and frees its source discussion${sources.length === 1 ? '' : 's'} (${sources.join(', ')}) to be regrouped or cancelled`
+    : '';
+  return `Cancelling **${titlecase(spec)}** marks the specification${plan ? ' and its plan' : ''} cancelled${frees}; it can be reactivated later.`;
+}
+
+/**
+ * The epic menu's cancel confirm over one unit — `<wu>.discovery.<topic>`
+ * or `<wu>.specification.<spec>`. The statement names exactly what the
+ * cancel takes and stays context; the short question takes the glyph. A
+ * locked or already-cancelled unit refuses: the menu never offers it.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function cancelGate(cwd, { dotpath }) {
-  const { phase, topic } = resolveAddress(cwd, dotpath, 'cancel-gate');
-  const consequence = DERIVED_PHASES.includes(phase)
-    ? 'open records end abandoned with their reason on the register, the series never reactivates, and a new spawn starts the next experiment'
-    : 'it can be reactivated later';
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-gate');
+  if (!(phase in UNIT_PHASES)) {
+    throw new Error(`render cancel-gate: address must be <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
+  }
+  const statement = phase === 'discovery'
+    ? discoveryCancelStatement(manifest, topic)
+    : specificationCancelStatement(manifest, topic);
   return section(
     'MENU: cancel gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Cancelling **${titlecase(topic)}** in ${phase} will mark it as cancelled — ${consequence}.`, [
+    menu(statement, [
       cmdOption('y', 'yes', 'Confirm cancellation'),
       cmdOption('n', 'no', 'Return to menu'),
     ], { question: 'Cancel it?' }),
@@ -4371,25 +4375,58 @@ function workunitReceiptSurface(cwd, args) {
   });
 }
 
-/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string} */
+/**
+ * Whether a cancel unit reads cancelled: the map lifecycle for a Discovery
+ * unit, the specification's own status for a Definition unit. Loud when the
+ * unit does not exist.
+ * @param {object} manifest @param {'discovery'|'specification'} stage @param {string} name
+ */
+function unitCancelled(manifest, stage, name) {
+  if (stage === 'discovery') {
+    if (!discoveryUnitExists(manifest, name)) {
+      throw new Error(`render topic-receipt: no topic "${name}" — nothing on the map and no research or discussion item of that name`);
+    }
+    return computeTopicLifecycle(manifest, name).lifecycle === 'cancelled';
+  }
+  const item = itemOf(manifest, 'specification', name);
+  if (!item) throw new Error(`render topic-receipt: no specification item "${name}"`);
+  return item.status === 'cancelled';
+}
+
+/**
+ * The topic receipts. `complete` addresses the phase item; `cancel` and
+ * `reactivate` address the unit — `<wu>.discovery.<topic>` or
+ * `<wu>.specification.<spec>` — and read its state after the verb ran.
+ * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string}
+ */
 function topicReceiptSurface(cwd, args) {
   const { phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
   const verb = args.verb;
-  if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate') {
+  const warn = args.warn === '1';
+  if (verb === 'complete') {
+    const item = itemOf(manifest, phase, topic);
+    if (!item) throw new Error(`render topic-receipt: no ${phase} item "${topic}"`);
+    if (item.status !== 'completed') {
+      throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "completed" — the complete has not run`);
+    }
+    return topicReceipt(verb, topic, { warn });
+  }
+  if (verb !== 'cancel' && verb !== 'reactivate') {
     throw new Error(`render topic-receipt: --verb must be complete, cancel, or reactivate, got "${verb}"`);
   }
-  const item = itemOf(manifest, phase, topic);
-  if (!item) throw new Error(`render topic-receipt: no ${phase} item "${topic}"`);
-  if (verb === 'complete' && item.status !== 'completed') {
-    throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "completed" — the complete has not run`);
+  if (!(phase in UNIT_PHASES)) {
+    throw new Error(`render topic-receipt: --verb ${verb} addresses a unit — <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
   }
-  if (verb === 'cancel' && item.status !== 'cancelled') {
-    throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "cancelled" — the cancel has not run`);
+  const stage = /** @type {'discovery'|'specification'} */ (phase);
+  const cancelled = unitCancelled(manifest, stage, topic);
+  if (verb === 'cancel' && !cancelled) {
+    throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
   }
-  if (verb === 'reactivate' && item.status === 'cancelled') {
-    throw new Error(`render topic-receipt: "${topic}" is still "cancelled" — the reactivate has not run`);
+  if (verb === 'reactivate' && cancelled) {
+    throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
-  return topicReceipt(verb, topic, phase, item.status, { warn: args.warn === '1' });
+  const restored = liveUnitItems(manifest, stage, topic).map(({ phase: p, item }) => ({ phase: p, status: item.status }));
+  return topicReceipt(verb, topic, { warn, restored });
 }
 
 /**
@@ -5060,7 +5097,6 @@ const SURFACES = {
   'analysis-proceed-gate': analysisProceedGate,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
-  'cancel-cascade-gate': cancelCascadeGate,
   'resurface-gate': resurfaceGate,
   'construction-gate': constructionGate,
   'tasks-overview': tasksOverview,

@@ -302,9 +302,13 @@ function inSessionGate(workUnit, key) {
   return engine.project.epicInSessionGate(e.name, entry);
 }
 
+/** @typedef {(name: string, detail: object, opts: {presence: object[]}) => {keys: object[], title: string, display: string, rendered: string}} SubViewProjection */
+
 // One selection sub-view (sections D–G): the keys table as DATA, the view's
-// heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU.
-/** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], title: string, display: string, rendered: string}} projection */
+// heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU. The
+// presence scan rides along as the view's does — a held unit's row carries
+// its in-session age, a cue and never a lock.
+/** @param {string} workUnit @param {SubViewProjection} projection */
 function subView(workUnit, projection) {
   const result = discover(process.cwd(), workUnit);
   const e = result.epics[0];
@@ -312,7 +316,9 @@ function subView(workUnit, projection) {
     return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' })
       + engine.project.selectionNotFound('epic', workUnit || '(missing)');
   }
-  const view = projection(e.name, e.detail);
+  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+    .filter((r) => !engine.presence.ownsRow(r));
+  const view = projection(e.name, e.detail, { presence });
 
   const dataLines = [`work_unit: ${e.name}`];
   dataLines.push('ACTIONS (key  action  topic  phase  → route):');
@@ -339,7 +345,7 @@ function usageError(message) {
   return ''; // unreachable; keeps the handler's return type uniform
 }
 
-/** @param {string} verb @param {(name: string, detail: object) => {keys: object[], display: string, rendered: string}} projection */
+/** @param {string} verb @param {SubViewProjection} projection */
 function subViewHandler(verb, projection) {
   return (/** @type {string} */ workUnit, /** @type {string[]} */ ...rest) => (!workUnit || rest.length > 0
     ? usageError(`${verb} takes exactly one work unit`)
@@ -355,7 +361,7 @@ if (require.main === module) {
       ? usageError('view takes a work unit and an optional new-arrivals JSON')
       : view(workUnit, newArrivalsJson)),
     'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
-    'cancel-menu': subViewHandler('cancel-menu', (name, d) => engine.project.epicCancelMenu(d)),
+    'cancel-menu': subViewHandler('cancel-menu', (name, d, opts) => engine.project.epicCancelMenu(d, opts)),
     'reactivate-menu': subViewHandler('reactivate-menu', (name, d) => engine.project.epicReactivateMenu(d)),
     'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0

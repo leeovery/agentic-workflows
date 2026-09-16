@@ -11,8 +11,9 @@
 // re-completion re-indexes over the same identity). No git commit — the
 // calling session's commit cadence picks the manifest change up
 // (supersession is batch-oriented: spec completion supersedes several
-// sources, then commits once). cancel/reactivate are the epic transactions:
-// manifest write, knowledge-base sync, scoped git commit.
+// sources, then commits once). cancel/reactivate are the epic transactions,
+// topic-level over one unit per stage: manifest write, knowledge-base sync,
+// scoped git commit.
 //
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
@@ -27,17 +28,14 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { phaseItems, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
+const {
+  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
+  OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
+  awaitedExperiments, waits, settleItemStatus,
+  sourceRows, sourceRow, sourcingSpecs, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
+} = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
-
-// The discovery map's lifecycle is computed from research and discussion
-// items alone (`computeTopicLifecycle`), so only those phases can move a map
-// row in or out of the live set — and only they may touch its execution
-// order. Spec topic names collide with map topic names by construction (an
-// independent discussion becomes a grouping of one), so an ungated write
-// here strips a still-live topic's position.
-const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -72,18 +70,41 @@ function assertNotDerived(phase, message) {
 }
 
 /**
- * @typedef {object} TopicTransitionResult
- * @property {string} topic
+ * @typedef {object} CancelledItem
  * @property {string} phase
- * @property {string} status     the topic's status after the transition
+ * @property {string} previous_status  the status the item held before the cancel
+ */
+
+/**
+ * @typedef {object} TopicCancelResult
+ * @property {string} topic
+ * @property {'discovery'|'specification'} phase  the unit's stage
+ * @property {'cancelled'} status
+ * @property {CancelledItem[]} cancelled  the phase items the cancel took
+ * @property {string[]} [discarded] discovery unit: proposed groupings deleted with their source
+ * @property {string[]} [abandoned] discovery unit: the open records closed as abandoned, reason recorded on each row
+ * @property {WaitRelease[]} [released_waits] discovery unit: the evidence waits the topic's conversations held
+ * @property {string[]} [roadmap_reverted] discovery unit: roadmap items handed back to waiting by the cancel-revert hop
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
- * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
- * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
- * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
- * @property {WaitRelease[]} [released_waits] the evidence waits a cancel released — every holder's for an experiment cancel, the cancelled holder's own for a spawner cascade (cancel --cascade)
- * @property {string[]} [abandoned] the open records a cancel closed as abandoned, reason recorded on each row
+ */
+
+/**
+ * @typedef {object} RestoredItem
+ * @property {string} phase
+ * @property {string} status  the status the item returned to
+ */
+
+/**
+ * @typedef {object} TopicReactivateResult
+ * @property {string} topic
+ * @property {'discovery'|'specification'} phase  the unit's stage
+ * @property {'reactivated'} status
+ * @property {RestoredItem[]} restored  the phase items the reactivate restored — empty for a never-started topic
+ * @property {string|null} committed  short commit sha, or null when nothing was staged
+ * @property {string} [note]     set when committed is null
+ * @property {string[]} warnings non-blocking failures (knowledge-base sync)
  */
 
 /**
@@ -265,32 +286,6 @@ function nextConcernNumber(dirAbs) {
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
   return max + 1;
-}
-
-/**
- * A spec item's `sources` as `[name, row]` entries — the one decoder of the
- * map form and the legacy array form. Rows that aren't objects are dropped.
- * @param {object|Array<{name?: string, status?: string}>|undefined} sources
- * @returns {[string, {status?: string}][]}
- */
-function sourceRows(sources) {
-  if (!sources || typeof sources !== 'object') return [];
-  const entries = Array.isArray(sources)
-    ? sources.map((r) => /** @type {[string, unknown]} */ ([r && typeof r === 'object' ? r.name || '' : '', r]))
-    : Object.entries(sources);
-  return /** @type {[string, {status?: string}][]} */ (entries.filter(([, r]) => r && typeof r === 'object'));
-}
-
-/**
- * The `topic`-named row of a spec item's `sources`, object or legacy array
- * form, or undefined.
- * @param {object|Array<{name?: string}>|undefined} sources
- * @param {string} topic
- * @returns {{status?: string}|undefined}
- */
-function sourceRow(sources, topic) {
-  const entry = sourceRows(sources).find(([name]) => name === topic);
-  return entry ? entry[1] : undefined;
 }
 
 /**
@@ -856,7 +851,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
 function waitClauses(blocking) {
   const clauses = [];
   if (blocking.some((w) => w.kind === 'research')) {
-    clauses.push('awaits research on the topic — conclude once it lands, or cancel the research to release the wait');
+    clauses.push('awaits research on the topic — conclude the research to release the wait');
   }
   const ids = blocking.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
   if (ids.length > 0) {
@@ -1106,162 +1101,242 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
   return { topic, phase, status: 'superseded', superseded_by: by, warnings };
 }
 
+// ---------------------------------------------------------------------------
+// cancel / reactivate — topic-level, one unit per stage. The Discovery unit
+// is the map row with everything under its name: research, discussion, and
+// the experiment series. The Definition unit is the specification with its
+// plan. A later stage locks the earlier — a started specification holds its
+// source topics, code under a specification's name holds the specification
+// — and a cancel never rolls through a stage boundary: the refusal names
+// what to cancel first. Delivery never cancels; the work-unit cancel
+// abandons the epic.
+// ---------------------------------------------------------------------------
+
+const UNIT_STAGES = Object.keys(UNIT_PHASES);
+
 /**
- * Cancel an epic topic: stash the current status into `previous_status`, set
- * `status: cancelled`, drop the topic's discovery-map `order`, remove its
- * knowledge-base chunks (warn-don't-block), commit the manifest write.
- *
- * Cancelling a discussion a live specification sources collapses that spec:
- * the bare cancel refuses, naming the affected spec item(s); `cascade: true`
- * cancels the discussion and those spec items in one transaction.
- *
- * Cancelling a topic's experiments while a spawning conversation awaits
- * their evidence releases the wait — softer than the spec cascade, nothing
- * collapses: the bare cancel refuses naming the waiting item(s); `cascade:
- * true` cancels the experiments and releases the waits in one transaction
- * (each waiting point reverts to open, the release surfaced at that
- * conversation's next entry).
- *
- * Cancelling a research or discussion holding live evidence waits is the
- * mirror, scoped to the cancelled item's own `awaiting_experiments`: the
- * bare cancel refuses naming those ids; `cascade: true` abandons exactly
- * those records and closes this conversation's waits — the experiment item
- * is never cancelled (its derived status settles over what remains), and a
- * sibling conversation's experiments are untouched.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} phase
- * @param {string} topic
- * @param {{cascade?: boolean}} [opts]
- * @returns {TopicTransitionResult}
+ * The stage a unit verb's phase argument names, or a loud refusal — there is
+ * no phase-level cancel.
+ * @param {'cancel'|'reactivate'} verb @param {string} phase
+ * @returns {'discovery'|'specification'}
  */
-function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
-  /** @type {string[]} */
-  const cascaded = [];
-  /** @type {string[]} */
-  const discarded = [];
-  /** @type {WaitRelease[]} */
-  let releasedWaits = [];
-  /** @type {string[]} */
-  let abandoned = [];
-  withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const item = phaseItem(manifest, phase, topic);
-    if (item.status === 'cancelled') {
-      throw new Error(`${phase} item "${topic}" is already cancelled`);
-    }
+function assertUnitStage(verb, phase) {
+  if (!UNIT_STAGES.includes(phase)) {
+    throw new Error(`${verb} is topic-level per stage — discovery (the map row with its research, discussion, and experiments) or specification (with its planning)`);
+  }
+  return /** @type {'discovery'|'specification'} */ (phase);
+}
 
-    if (phase === 'experiment') {
-      const holders = experimentWaits(manifest, topic);
-      if (holders.length > 0 && !opts.cascade) {
-        const held = holders.map((h) => `its ${h.phase} awaits ${h.ids.join(', ')}`).join('; ');
-        throw new Error(`cancelling the "${topic}" experiments releases the evidence wait — ${held} — confirm the release (--cascade cancels the experiments and releases the waits; each waiting point reverts to open)`);
-      }
-      // The register stays honest: every open record ends abandoned with the
-      // cancellation as its reason, so no zombie survives under the
-      // cancelled item and a later spawn revives a fully terminal series.
-      abandoned = abandonOpenRecords(/** @type {{experiments?: Record<string, {status?: string, reason?: string}>}} */ (item), 'series cancelled');
-      releasedWaits = releaseExperimentWaits(manifest, topic);
-    }
+/**
+ * Stash a live `order` for the reactivate round-trip — the map's execution
+ * order and the build order alike leave the live set with their item and
+ * come back with it, so a cancel/reactivate never forces a re-sequence.
+ * @param {{order?: number|null, previous_order?: number}} item
+ */
+function stashOrder(item) {
+  if (item.order == null) return;
+  item.previous_order = item.order;
+  delete item.order;
+}
 
-    // The one-consumer principle is per-record: cancelling the conversation
-    // orphans only the experiments IT spawned. Bare refuses naming its own
-    // waits; the cascade abandons exactly those records and closes this
-    // conversation's waiting points — a sibling conversation's experiments
-    // are untouched, and the item's derived status settles over what
-    // remains.
-    if (EXPERIMENT_SPAWN_PHASES.includes(phase)) {
-      const awaiting = awaitedExperiments(manifest, phase, topic);
-      if (awaiting.length > 0) {
-        if (!opts.cascade) {
-          throw new Error(`cancelling ${phase} "${topic}" strands its evidence waits (${awaiting.join(', ')}) — the conversation is those experiments' only consumer; confirm the cascade (--cascade abandons exactly those records and closes this conversation's waits; a sibling conversation's experiments are untouched)`);
-        }
-        const expItems = (manifest.phases && manifest.phases.experiment && manifest.phases.experiment.items) || {};
-        const expItem = expItems[topic];
-        if (expItem && typeof expItem === 'object' && expItem.status !== 'cancelled') {
-          abandoned = abandonOpenRecords(expItem, 'spawning conversation cancelled', { ids: awaiting });
-          settleItemStatus(expItem);
-        }
-        // Each id is held by exactly one conversation (the spawn locks the
-        // spawning item alone), so releasing this item's own ids can touch
-        // no sibling holder. The release's flag stays: the cancelled holder
-        // carries it inertly (terminal items keep flags, never cued), and
-        // reactivation restores it live — the reopened conversation's next
-        // entry then surfaces its abandoned records.
-        releasedWaits = releaseExperimentWaits(manifest, topic, { ids: awaiting });
-      }
-    }
+/**
+ * Return a stashed `order` unless a live sibling took the number meanwhile
+ * — the live set renumbers contiguously while an item is out, so a blind
+ * restore can seat two topics on one number. The stash drops either way; a
+ * taken number leaves the item unordered and the sequencing flag flips.
+ * @param {{order?: number|null, previous_order?: number}} item
+ * @param {(order: number) => boolean} taken  whether a live sibling holds the number
+ */
+function restoreOrder(item, taken) {
+  if (!('previous_order' in item)) return;
+  if (item.previous_order != null && !taken(item.previous_order)) item.order = item.previous_order;
+  delete item.previous_order;
+}
 
-    if (phase === 'discussion' || phase === 'investigation') {
-      const specItems = (manifest.phases && manifest.phases.specification && manifest.phases.specification.items) || {};
-      const sourcing = Object.entries(specItems).filter(([, s]) =>
-        s && typeof s === 'object' && !TERMINAL_STATUSES.includes(s.status) && s.status !== 'cancelled'
-        && sourceRow(s.sources, topic) !== undefined);
-      if (sourcing.length > 0 && !opts.cascade) {
-        throw new Error(`cancelling ${phase} "${topic}" collapses the specification(s) sourcing it: ${sourcing.map(([n]) => n).join(', ')} — confirm the cascade (--cascade cancels them together)`);
-      }
-      const specItemsMap = (manifest.phases && manifest.phases.specification && manifest.phases.specification.items) || {};
-      for (const [name, spec] of sourcing) {
-        if (spec.status === 'proposed') {
-          // A proposed grouping is a regenerable suggestion — discard it
-          // outright; a cancelled stub would collide with the next
-          // analysis's anchoring.
-          delete specItemsMap[name];
-          discarded.push(name);
-          continue;
-        }
-        spec.previous_status = spec.status;
-        spec.status = 'cancelled';
-        if ('order' in spec) {
-          spec.previous_order = spec.order;
-          delete spec.order;
-        }
-        cascaded.push(name);
-      }
-    }
+/**
+ * Whether a live map row other than `except` holds execution order `n`.
+ * Closed rows (cancelled, dead-ended) carry no order and never block.
+ * @param {object} manifest @param {string} except @param {number} n
+ */
+function liveMapRowHolds(manifest, except, n) {
+  return phaseItems(manifest, 'discovery').some((row) => row.name !== except && row.order === n
+    && !CLOSED_LIFECYCLES.includes(computeTopicLifecycle(manifest, row.name).lifecycle));
+}
 
+/**
+ * Whether a live specification other than `except` holds build order `n`.
+ * Terminal siblings keep inert numbers (supersede and promote never stash)
+ * and never block.
+ * @param {object} manifest @param {string} except @param {number} n
+ */
+function liveSpecHolds(manifest, except, n) {
+  return phaseItems(manifest, 'specification').some((item) => item.name !== except && item.order === n
+    && !TERMINAL_STATUSES.includes(item.status || ''));
+}
+
+/**
+ * Mark a unit's non-terminal items cancelled, stashing each status. Items
+ * with no status were never attempted and are left alone — a cancel with
+ * nothing to restore would strand them behind `topic start`'s refusal.
+ * @param {{phase: string, item: Record<string, any>}[]} items
+ * @returns {CancelledItem[]}
+ */
+function cancelItems(items) {
+  /** @type {CancelledItem[]} */
+  const cancelled = [];
+  for (const { phase, item } of items) {
+    if (typeof item.status !== 'string' || TERMINAL_STATUSES.includes(item.status)) continue;
     item.previous_status = item.status;
     item.status = 'cancelled';
+    cancelled.push({ phase, previous_status: item.previous_status });
+  }
+  return cancelled;
+}
 
-    // The build order lives on specification items the way the map's order
-    // lives on discovery items — a cancelled spec leaves the live set, so
-    // its number is stashed for the reactivate round-trip, never dropped.
-    if (phase === 'specification' && 'order' in item) {
-      item.previous_order = item.order;
-      delete item.order;
-    }
+/**
+ * Restore a unit's cancelled items from their stashes. An item cancelled
+ * with nothing stashed stays as it is.
+ * @param {{phase: string, item: Record<string, any>}[]} items
+ * @returns {RestoredItem[]}
+ */
+function restoreItems(items) {
+  /** @type {RestoredItem[]} */
+  const restored = [];
+  for (const { phase, item } of items) {
+    if (item.status !== 'cancelled' || !item.previous_status) continue;
+    assertLegalWrite(phase, item.previous_status);
+    item.status = item.previous_status;
+    delete item.previous_status;
+    restored.push({ phase, status: item.status });
+  }
+  return restored;
+}
 
-    if (MAP_LIFECYCLE_PHASES.includes(phase)) {
-      const discovery = manifest.phases && manifest.phases.discovery;
-      const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-      if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) {
-        // Stash rather than drop — reactivate restores the execution position,
-        // so a cancel/reactivate round-trip never forces a re-sequence.
-        mapItem.previous_order = mapItem.order;
-        delete mapItem.order;
-      }
-    }
+/** @param {object} manifest @param {string} topic */
+function assertDiscoveryUnit(manifest, topic) {
+  if (!discoveryUnitExists(manifest, topic)) {
+    throw new Error(`no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+  }
+}
 
+/**
+ * The Discovery unit's cancel. Waits release first, so the evidence flag
+ * lands on the holders while they are still non-terminal and rides inertly
+ * until a reactivate brings it back live; the map row's marker is what the
+ * lifecycle reads, so a never-started topic needs nothing else.
+ * Mutates the loaded manifest.
+ * @param {object} manifest @param {string} topic
+ * @returns {Pick<TopicCancelResult, 'cancelled'|'discarded'|'abandoned'|'released_waits'>}
+ */
+function cancelDiscoveryUnit(manifest, topic) {
+  assertDiscoveryUnit(manifest, topic);
+  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+    throw new Error(`"${topic}" is already cancelled`);
+  }
+  const locking = lockingSpecs(manifest, topic);
+  if (locking.length > 0) {
+    const named = locking.map((n) => `"${n}"`);
+    const clause = named.length === 1
+      ? `the specification ${named[0]} sources its discussion — cancel the specification first`
+      : `the specifications ${named.join(', ')} source its discussion — cancel them first`;
+    throw new Error(`cancelling "${topic}" is refused while ${clause}`);
+  }
+
+  const released_waits = releaseExperimentWaits(manifest, topic);
+  const series = itemOf(manifest, 'experiment', topic);
+  /** @type {string[]} */
+  let abandoned = [];
+  if (series && series.status !== 'cancelled') {
+    abandoned = abandonOpenRecords(series, 'topic cancelled');
+    settleItemStatus(series);
+  }
+
+  const cancelled = cancelItems(unitItems(manifest, 'discovery', topic));
+
+  // A proposed grouping is a regenerable suggestion — discard it outright;
+  // a cancelled stub would collide with the next analysis's anchoring.
+  const specItems = manifest.phases.specification ? manifest.phases.specification.items : undefined;
+  const discarded = sourcingSpecs(manifest, topic)
+    .filter(([, spec]) => spec.status === 'proposed')
+    .map(([name]) => name);
+  for (const name of discarded) delete specItems[name];
+
+  const mapItem = itemOf(manifest, 'discovery', topic);
+  if (mapItem) {
+    mapItem.cancelled = true;
+    stashOrder(mapItem);
+  }
+  return { cancelled, discarded, abandoned, released_waits };
+}
+
+/**
+ * The Definition unit's cancel: the specification and its same-named plan.
+ * Source discussions are untouched — they read as unaccounted again, free
+ * for the next grouping analysis or for a cancel of their own.
+ * Mutates the loaded manifest.
+ * @param {object} manifest @param {string} spec
+ * @returns {Pick<TopicCancelResult, 'cancelled'>}
+ */
+function cancelSpecificationUnit(manifest, spec) {
+  const item = phaseItem(manifest, 'specification', spec);
+  if (item.status === 'proposed') {
+    throw new Error('a proposed grouping is not started — cancel its source topic to discard it, or let the grouping walk regroup');
+  }
+  if (item.status === 'cancelled') {
+    throw new Error(`"${spec}" is already cancelled`);
+  }
+  if (TERMINAL_STATUSES.includes(item.status || '')) {
+    throw new Error(`"${spec}" is ${item.status} — a terminal specification has nothing to cancel`);
+  }
+  if (deliveryStarted(manifest, spec)) {
+    throw new Error(`"${spec}" is locked — implementation has started; code in the tree is fixed forward, and the work-unit cancel abandons the epic`);
+  }
+  const cancelled = cancelItems(unitItems(manifest, 'specification', spec));
+  stashOrder(item);
+  return { cancelled };
+}
+
+/**
+ * Cancel a topic — the Discovery unit (`discovery`) or the Definition unit
+ * (`specification`) under the name — in one locked write, then remove the
+ * cancelled artifacts' knowledge-base chunks (warn-don't-block), run the
+ * roadmap's cancel-revert hop for a Discovery unit, and commit the manifest
+ * write. Any other phase is refused: there is no phase-level cancel.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase  `discovery` | `specification`
+ * @param {string} topic
+ * @returns {TopicCancelResult}
+ */
+function cancelTopic(cwd, workUnit, phase, topic) {
+  const stage = assertUnitStage('cancel', phase);
+  const taken = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const outcome = stage === 'discovery'
+      ? cancelDiscoveryUnit(manifest, topic)
+      : cancelSpecificationUnit(manifest, topic);
     saveWorkUnitManifest(cwd, workUnit, manifest);
+    return outcome;
   });
 
   /** @type {string[]} */
   const warnings = [];
   // Only the indexed phases have chunks to remove — the artifact table is
   // the one home for which those are.
-  if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)]) {
-    knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
-  }
-  for (const name of cascaded) {
-    knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', name], 'knowledge remove', warnings);
+  for (const { phase: p } of taken.cancelled) {
+    if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (p)]) {
+      knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', p, '--topic', topic], 'knowledge remove', warnings);
+    }
   }
 
   // The cancel-revert hop: a topic whose cancellation leaves its map
   // lifecycle cancelled hands any roadmap item joined to it back to
   // waiting (sources/origin intact) — the un-pull path. The project
   // manifest rides this transaction's commit when a revert landed.
-  const lifecycleAfter = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle;
-  const reverted = lifecycleAfter === 'cancelled' ? revertJoins(cwd, workUnit, { topic }) : [];
+  const reverted = stage === 'discovery'
+    && computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle === 'cancelled'
+    ? revertJoins(cwd, workUnit, { topic })
+    : [];
 
   // A cancel writes the work-unit manifest (and the project manifest when a
   // roadmap join reverted) and nothing else on disk — it runs from the epic
@@ -1269,94 +1344,102 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   const cancelSpec = reverted.length > 0
     ? [`.workflows/${workUnit}/manifest.json`, '.workflows/manifest.json']
     : `.workflows/${workUnit}/manifest.json`;
-  const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
-  /** @type {TopicTransitionResult} */
-  const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
-  if (cascaded.length > 0) result.cascaded = cascaded;
-  if (discarded.length > 0) result.discarded = discarded;
-  if (reverted.length > 0) result.roadmap_reverted = reverted;
-  if (releasedWaits.length > 0) result.released_waits = releasedWaits;
-  if (abandoned.length > 0) result.abandoned = abandoned;
-  // `--sweep`, because the cancel runs from the epic menu: the session doing
-  // it is not the session in the topic. A revert widened the commit past the
-  // topic scope, so that retry stays generic.
-  noteCommitOutcome(result, outcome, reverted.length > 0 ? undefined : `${workUnit} --topic ${phase}/${topic} --sweep`);
+  const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
+  /** @type {TopicCancelResult} */
+  const result = { topic, phase: stage, status: 'cancelled', ...taken, committed: outcome.committed, warnings };
+  if (stage === 'discovery') result.roadmap_reverted = reverted;
+  // A cancel writes the manifest alone, so the unit's state scope is its
+  // retry — a scope that beats nothing, as the epic menu never does. A revert
+  // widened the commit past the unit, so that retry stays generic.
+  noteCommitOutcome(result, outcome, reverted.length > 0 ? undefined : `${workUnit} --state`);
   return result;
 }
 
 /**
- * Reactivate a cancelled epic topic: restore `previous_status` to `status`,
- * delete the stash, re-index the artifact when the restored status is
- * `completed` in an indexed phase (warn-don't-block), commit the manifest
- * write.
+ * The Discovery unit's reactivate: clear the marker, restore every item
+ * carrying a stash, and return the map order unless a live row took the
+ * number. Mutates the loaded manifest.
+ * @param {object} manifest @param {string} topic
+ * @returns {RestoredItem[]}
+ */
+function reactivateDiscoveryUnit(manifest, topic) {
+  assertDiscoveryUnit(manifest, topic);
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle !== 'cancelled') {
+    throw new Error(`"${topic}" is not cancelled (lifecycle: ${lifecycle})`);
+  }
+  const restored = restoreItems(unitItems(manifest, 'discovery', topic));
+  const mapItem = itemOf(manifest, 'discovery', topic);
+  if (mapItem) {
+    delete mapItem.cancelled;
+    restoreOrder(mapItem, (n) => liveMapRowHolds(manifest, topic, n));
+  }
+  // A unit that still reads cancelled after the restore — its cancelled
+  // items carry no stash — would round-trip through the reactivate menu
+  // forever; refuse instead, and nothing is saved.
+  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+    throw new Error(`"${topic}" stays cancelled — its cancelled items carry no previous_status to restore`);
+  }
+  return restored;
+}
+
+/**
+ * The Definition unit's reactivate: the specification and its same-named
+ * cancelled plan, the build order returned unless a live topic took the
+ * number. Mutates the loaded manifest.
+ * @param {object} manifest @param {string} spec
+ * @returns {RestoredItem[]}
+ */
+function reactivateSpecificationUnit(manifest, spec) {
+  const item = phaseItem(manifest, 'specification', spec);
+  if (item.status !== 'cancelled') {
+    throw new Error(`specification "${spec}" is not cancelled (status: ${item.status ?? 'none'})`);
+  }
+  if (!item.previous_status) {
+    throw new Error(`specification "${spec}" has no previous_status to restore`);
+  }
+  const restored = restoreItems(unitItems(manifest, 'specification', spec));
+  restoreOrder(item, (n) => liveSpecHolds(manifest, spec, n));
+  return restored;
+}
+
+/**
+ * Reactivate a cancelled topic — the unit the cancel took — in one locked
+ * write, re-index each restored `completed` artifact (warn-don't-block),
+ * and commit the manifest write. No roadmap re-join: the revert is one-way.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {string} phase
+ * @param {string} phase  `discovery` | `specification`
  * @param {string} topic
- * @returns {TopicTransitionResult}
+ * @returns {TopicReactivateResult}
  */
 function reactivateTopic(cwd, workUnit, phase, topic) {
-  // Post-cancel every record is terminal by construction, so the next spawn
-  // from the conversation is what revives the item.
-  assertNotDerived(phase, `the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series; a concluded conversation is reopened first (topic reopen)`);
+  const stage = assertUnitStage('reactivate', phase);
   const restored = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const item = phaseItem(manifest, phase, topic);
-    if (item.status !== 'cancelled') {
-      throw new Error(`${phase} item "${topic}" is not cancelled (status: ${item.status ?? 'none'})`);
-    }
-    const previous = item.previous_status;
-    if (!previous) {
-      throw new Error(`${phase} item "${topic}" has no previous_status to restore`);
-    }
-    assertLegalWrite(phase, previous);
-    item.status = previous;
-    delete item.previous_status;
-
-    if (phase === 'specification' && 'previous_order' in item) {
-      // Restore only when the stashed number is still free — the live set
-      // renumbers contiguously while an item is cancelled, so a blind
-      // restore can seat two topics on one number (the collision the map's
-      // reactivate can still produce). A taken number drops the stash and
-      // leaves the item unordered; `build_order_needs_sequencing` flips and
-      // the next sequencing pass seats it wholesale.
-      // Terminal siblings keep inert numbers (supersede and promote never
-      // stash) — only a LIVE holder of the number blocks the restore.
-      const specItems = (manifest.phases.specification && manifest.phases.specification.items) || {};
-      const taken = Object.entries(specItems).some(([name, other]) =>
-        name !== topic && other && typeof other === 'object'
-        && !TERMINAL_STATUSES.includes(other.status || '')
-        && other.order === item.previous_order);
-      if (!taken) item.order = item.previous_order;
-      delete item.previous_order;
-    }
-
-    if (MAP_LIFECYCLE_PHASES.includes(phase)) {
-      const discovery = manifest.phases && manifest.phases.discovery;
-      const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-      if (mapItem && typeof mapItem === 'object' && 'previous_order' in mapItem) {
-        mapItem.order = mapItem.previous_order;
-        delete mapItem.previous_order;
-      }
-    }
-
+    const items = stage === 'discovery'
+      ? reactivateDiscoveryUnit(manifest, topic)
+      : reactivateSpecificationUnit(manifest, topic);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return previous;
+    return items;
   });
 
   /** @type {string[]} */
   const warnings = [];
-  const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
-  if (restored === 'completed' && artifact) {
-    knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
+  for (const { phase: p, status } of restored) {
+    const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (p)];
+    if (status === 'completed' && artifact) {
+      knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
+    }
   }
 
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);
-  /** @type {TopicTransitionResult} */
-  const result = { topic, phase, status: restored, committed: outcome.committed, warnings };
-  // From the epic menu, like the cancel it undoes — the retry beats nothing.
-  noteCommitOutcome(result, outcome, `${workUnit} --topic ${phase}/${topic} --sweep`);
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
+  /** @type {TopicReactivateResult} */
+  const result = { topic, phase: stage, status: 'reactivated', restored, committed: outcome.committed, warnings };
+  // From the epic menu, like the cancel it undoes — the manifest alone, a
+  // retry that beats nothing.
+  noteCommitOutcome(result, outcome, `${workUnit} --state`);
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, flagDownstream, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, sourceRow, flagDownstream, releaseExperimentWaits, assertLegalTopicName };

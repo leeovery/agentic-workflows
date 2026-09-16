@@ -8,6 +8,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
 // Hermetic git: no user/system config leaks into fixtures or the engine's
 // spawned git subprocesses.
@@ -105,61 +106,242 @@ function setupEpicFixture() {
   return dir;
 }
 
-describe('engine topic cancel', () => {
+// An epic whose map carries every unit shape the cancel meets: a never-
+// started topic, a started one with a live evidence wait and a proposed
+// grouping over its discussion, a parked stub, a topic a started spec
+// sources, and a Definition unit with a plan beneath it.
+function unitManifest() {
+  return {
+    name: 'payments',
+    work_type: 'epic',
+    status: 'in-progress',
+    phases: {
+      discovery: {
+        items: {
+          'data-export': { routing: 'discussion', source: 'discovery', order: 1 },
+          'auth-flow': { routing: 'research', source: 'discovery', order: 2 },
+          'fee-model': { routing: 'discussion', source: 'discovery', order: 3 },
+          'session-model': { routing: 'discussion', source: 'discovery', order: 4 },
+        },
+      },
+      research: { items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'triaged' } } },
+      discussion: {
+        items: {
+          'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1'] },
+          'fee-model': { status: 'completed' },
+          'session-model': { status: 'completed' },
+        },
+      },
+      experiment: {
+        items: {
+          'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' }, 'E1.1': { slug: 'part', status: 'conceived' } } },
+        },
+      },
+      specification: {
+        items: {
+          grouping: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } },
+          'session-model': { status: 'in-progress', order: 1, sources: { 'session-model': { status: 'incorporated' } } },
+          'fee-model': { status: 'completed', order: 2, sources: { 'fee-model': { status: 'incorporated' } } },
+        },
+      },
+      planning: { items: { 'session-model': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } },
+      implementation: { items: { 'fee-model': { status: 'in-progress' } } },
+    },
+  };
+}
+
+function setupUnitFixture() {
+  const dir = setupGitFixture();
+  writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
+  commitAll(dir, 'init');
+  return dir;
+}
+
+describe('engine topic cancel — the discovery unit', () => {
   let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
+  beforeEach(() => { dir = setupUnitFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('stashes status, cancels, stashes the discovery order, commits — KB failure is a warning', () => {
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+  it('a never-started topic takes the map marker alone, its order stashed, and commits', () => {
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
+    assert.deepStrictEqual(res, {
+      ok: true, topic: 'data-export', phase: 'discovery', status: 'cancelled',
+      cancelled: [], discarded: [], abandoned: [], released_waits: [],
+      committed: shortHead(dir), warnings: [], roadmap_reverted: [],
+    });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
+      { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 1 });
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel data-export (discovery)');
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'cancel']),
+      /DISPLAY: confirmation[\s\S]*Cancelled "Data Export"\.\n/);
+  });
 
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.topic, 'auth-flow');
-    assert.strictEqual(res.phase, 'research');
-    assert.strictEqual(res.status, 'cancelled');
-    assert.strictEqual(res.committed, shortHead(dir));
-    // No KB configured in the fixture — warn-don't-block: the cancel still
-    // landed and the failure is reported, not thrown.
-    assert.strictEqual(res.warnings.length, 1);
+  it('a started topic takes every conversation, releasing the waits before the holders close, abandoning the records, discarding the proposed grouping', () => {
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    assert.deepStrictEqual(res.cancelled, [
+      { phase: 'research', previous_status: 'completed' },
+      { phase: 'discussion', previous_status: 'in-progress' },
+    ]);
+    assert.deepStrictEqual(res.discarded, ['grouping']);
+    assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'every open record ends abandoned, the split with its parent');
+    assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    // No KB configured in the fixture — warn-don't-block, one warning per
+    // indexed item the cancel took.
+    assert.strictEqual(res.warnings.length, 2);
     assert.match(res.warnings[0], /knowledge remove failed/);
 
     const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.research.items['auth-flow'], {
-      status: 'cancelled',
-      previous_status: 'in-progress',
-    });
-    // `order` stashed as previous_order — reactivate restores it, so a
-    // cancel/reactivate round-trip never forces a re-sequence.
-    assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], {
-      routing: 'discussion',
-      source: 'discovery',
-      previous_order: 2,
-    });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (research)');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    assert.match(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'cancel', '--warn']),
-      /⚑ Knowledge removal warning[\s\S]*Cancelled "Auth Flow" in research\./);
+    assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'cancelled', previous_status: 'completed' });
+    // The release landed while the holder was still live: the flag rides the
+    // cancelled item inertly and comes back live with the reactivate.
+    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'],
+      { status: 'cancelled', previous_status: 'in-progress', reconcile_needed: 'experiment' });
+    const series = m.phases.experiment.items['auth-flow'];
+    assert.strictEqual(series.status, 'completed', 'every record terminal — the series settles, never a cancel');
+    assert.strictEqual(series.experiments.E1.reason, 'topic cancelled');
+    assert.strictEqual(series.experiments['E1.1'].reason, 'topic cancelled');
+    assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is gone, not cancelled');
+    assert.deepStrictEqual(m.phases.discovery.items['auth-flow'],
+      { routing: 'research', source: 'discovery', cancelled: true, previous_order: 2 });
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (discovery)');
+    assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel', '--warn']),
+      /⚑ Knowledge removal warning[\s\S]*Cancelled "Auth Flow"\./);
   });
 
-  it('rejects cancelling an already-cancelled topic', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
-    const err = engineFails(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
-    assert.match(err.error, /already cancelled/);
+  it('a parked stub is taken with the topic — triaged stashed like any status', () => {
+    // fee-model's specification is implementation-locked in the fixture; with
+    // no code under it, the specification cancels and frees the topic.
+    const m = unitManifest();
+    delete m.phases.implementation;
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
+    assert.deepStrictEqual(res.cancelled, [
+      { phase: 'research', previous_status: 'triaged' },
+      { phase: 'discussion', previous_status: 'completed' },
+    ]);
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['fee-model'], { status: 'cancelled', previous_status: 'triaged' });
   });
 
-  it('rejects unknown work unit, phase, and topic — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'planning', 'auth-flow']).error, /no planning items/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'research', 'ghost']).error, /no research item "ghost"/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments']).error, /Usage: engine topic cancel/);
+  it('a started specification locks its source topic; cancelling the specification frees it', () => {
+    const err = engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
+    assert.strictEqual(err.error, 'cancelling "session-model" is refused while the specification "session-model" sources its discussion — cancel the specification first');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'completed', 'the refusal writes nothing');
+
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
+    assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'completed' }]);
+    assert.deepStrictEqual(res.discarded, [], 'a cancelled specification is not a proposal — nothing to discard');
+  });
+
+  it('two started specifications sourcing the discussion are both named', () => {
+    const m = unitManifest();
+    m.phases.specification.items.other = { status: 'in-progress', sources: { 'session-model': { status: 'pending' } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).error,
+      /refused while the specifications "session-model", "other" source its discussion — cancel them first/);
+  });
+
+  it('a legacy topic with no map row cancels through its items and reads cancelled', () => {
+    const m = unitManifest();
+    m.phases.research.items.legacy = { status: 'completed' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']);
+    assert.deepStrictEqual(res.cancelled, [{ phase: 'research', previous_status: 'completed' }]);
+    assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'cancelled');
+  });
+
+  it('refuses an already-cancelled unit, an unknown topic, and every non-unit phase', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']).error, /"data-export" is already cancelled/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'ghost']).error,
+      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'discovery', 'data-export']).error, /manifest not found/);
+    for (const phase of ['research', 'discussion', 'experiment', 'planning', 'nonsense']) {
+      assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', phase, 'auth-flow']).error,
+        'cancel is topic-level per stage — discovery (the map row with its research, discussion, and experiments) or specification (with its planning)', phase);
+    }
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments']).error, /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow', '--cascade']).error,
+      /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/, 'the retired flag is a usage error');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'].status, 'in-progress', 'no refusal wrote anything');
+  });
+
+  it('the cancel gate states exactly what the cancel takes, and refuses what the menu never offers', () => {
+    assert.match(render(dir, ['cancel-gate', 'payments.discovery.data-export']),
+      /Cancelling \*\*Data Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
+    const started = render(dir, ['cancel-gate', 'payments.discovery.auth-flow']).replace(/\n +/g, ' ');
+    assert.match(started, /Cancelling \*\*Auth Flow\*\* marks its research \(completed\) and discussion \(in-progress\) cancelled — it can be reactivated later\. 2 open experiments \(E1, E1\.1\) end abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
+    assert.match(started, /◆ Cancel it\?/);
+    assert.match(started, /\*\*`y\/yes`\*\* → Confirm cancellation/);
+    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.session-model']).error,
+      /"session-model" is locked by the specification sourcing its discussion \(session-model\) — the menu never offers it/);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
+    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.data-export']).error, /already cancelled — the menu never offers it/);
+    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.research.auth-flow']).error,
+      /address must be <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
+  });
+});
+
+describe('engine topic cancel — the specification unit', () => {
+  let dir;
+  beforeEach(() => { dir = setupUnitFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('takes the specification and its plan, stashing statuses and the build order, and leaves the sources alone', () => {
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
+    assert.deepStrictEqual(res, {
+      ok: true, topic: 'session-model', phase: 'specification', status: 'cancelled',
+      cancelled: [
+        { phase: 'specification', previous_status: 'in-progress' },
+        { phase: 'planning', previous_status: 'in-progress' },
+      ],
+      committed: shortHead(dir), warnings: [res.warnings[0]],
+    });
+    assert.match(res.warnings[0], /knowledge remove failed/);
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.specification.items['session-model'],
+      { status: 'cancelled', previous_status: 'in-progress', previous_order: 1, sources: { 'session-model': { status: 'incorporated' } } });
+    assert.deepStrictEqual(m.phases.planning.items['session-model'], { status: 'cancelled', previous_status: 'in-progress' });
+    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'the source discussion is untouched');
+    assert.strictEqual(m.phases.discovery.items['session-model'].order, 4, 'the map order belongs to the topic, not the specification');
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel session-model (specification)');
+    assert.match(render(dir, ['topic-receipt', 'payments.specification.session-model', '--verb', 'cancel', '--warn']),
+      /⚑ Knowledge removal warning[\s\S]*Cancelled "Session Model"\./);
+  });
+
+  it('the cancel gate names the plan and the source discussions the cancel frees', () => {
+    const out = render(dir, ['cancel-gate', 'payments.specification.session-model']).replace(/\n +/g, ' ');
+    assert.match(out, /Cancelling \*\*Session Model\*\* marks the specification and its plan cancelled and frees its source discussion \(Session Model\) to be regrouped or cancelled; it can be reactivated later\./);
+  });
+
+  it('refuses a proposed grouping, a locked specification, and an already-cancelled one', () => {
+    assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'grouping']).error,
+      'a proposed grouping is not started — cancel its source topic to discard it, or let the grouping walk regroup');
+    assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).error,
+      '"fee-model" is locked — implementation has started; code in the tree is fixed forward, and the work-unit cancel abandons the epic');
+    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.specification.fee-model']).error, /is locked — implementation has started/);
+    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.specification.grouping']).error, /is a proposed grouping/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'ghost']).error, /no specification item "ghost"/);
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).error, /"session-model" is already cancelled/);
+  });
+
+  it('a review item locks the specification too, and a legacy cancelled implementation item still does', () => {
+    const m = unitManifest();
+    m.phases.review = { items: { 'session-model': { status: 'completed' } } };
+    m.phases.implementation.items['fee-model'].status = 'cancelled';
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).error, /is locked — implementation has started/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).error, /is locked — implementation has started/);
   });
 });
 
 // A spec topic's name collides with a discovery-map topic's name by
 // construction — an independent discussion becomes a grouping of one. The
-// map's lifecycle is computed from research and discussion items alone, so a
-// build-phase cancel must leave the map's execution order untouched.
+// map's order belongs to the Discovery unit, so a Definition-unit cancel
+// must leave it untouched.
 function collidingManifest() {
   return {
     name: 'payments',
@@ -182,7 +364,7 @@ function collidingManifest() {
   };
 }
 
-describe('build-phase cancel leaves the discovery order alone', () => {
+describe('a specification cancel leaves the discovery order alone', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
@@ -200,9 +382,6 @@ describe('build-phase cancel leaves the discovery order alone', () => {
   });
 
   it('reactivating a specification does not overwrite a re-sequenced map order', () => {
-    // Pre-fix this stashed order 1, the map re-sequenced auth-flow to 2 on the
-    // next entry, and reactivate restored the stale 1 — colliding with
-    // fee-model. The gate makes the whole round-trip inert.
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
     engine(dir, ['discovery-map', 'sequence', 'payments', 'auth-flow=2', 'fee-model=1']);
     engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'auth-flow']);
@@ -213,64 +392,138 @@ describe('build-phase cancel leaves the discovery order alone', () => {
     assert.strictEqual(items['auth-flow'].previous_order, undefined);
   });
 
-  it('still stashes and restores for a discussion cancel', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'fee-model']);
+  it('a topic cancel stashes the map order and its reactivate restores it', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
     assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['fee-model'].previous_order, 2);
 
-    engine(dir, ['topic', 'reactivate', 'payments', 'discussion', 'fee-model']);
+    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
     const back = readManifest(dir, 'payments').phases.discovery.items['fee-model'];
     assert.strictEqual(back.order, 2);
     assert.strictEqual(back.previous_order, undefined);
+    assert.strictEqual(back.cancelled, undefined, 'the marker is gone');
+  });
+
+  it('a taken map number is not restored — the stash drops and the row reads unordered', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
+    engine(dir, ['discovery-map', 'sequence', 'payments', 'auth-flow=2']);
+    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
+
+    const items = readManifest(dir, 'payments').phases.discovery.items;
+    assert.strictEqual(items['fee-model'].order, undefined, 'stale number not restored over auth-flow');
+    assert.strictEqual(items['fee-model'].previous_order, undefined, 'stash dropped');
+    assert.strictEqual(items['auth-flow'].order, 2, 'no collision');
+  });
+
+  it('a closed row squatting on the number does not veto the restore', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
+    engine(dir, ['discovery-map', 'handle', 'payments', 'auth-flow']);
+    const m = readManifest(dir, 'payments');
+    m.phases.discovery.items['auth-flow'].order = 2;
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    commitAll(dir, 'squat');
+
+    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['fee-model'].order, 2, 'restored over the dead-ended squatter');
   });
 });
 
 describe('engine topic reactivate', () => {
   let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
+  beforeEach(() => { dir = setupUnitFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('round-trips a cancel: status restored, previous_status removed, order restored, commit recorded', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'research', 'auth-flow']);
-    const mapItem = readManifest(dir, 'payments').phases.discovery.items['auth-flow'];
-    assert.strictEqual(mapItem.order, 2, 'execution position restored');
-    assert.strictEqual(mapItem.previous_order, undefined, 'stash cleared');
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.committed, shortHead(dir));
-    // Restored to a non-completed status — no KB index attempted, no warnings.
-    assert.deepStrictEqual(res.warnings, []);
-
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'in-progress' });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate auth-flow (research)');
+  it('a never-started topic returns with nothing to restore — the marker cleared, the order back', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'data-export']);
+    assert.deepStrictEqual(res, {
+      ok: true, topic: 'data-export', phase: 'discovery', status: 'reactivated', restored: [],
+      committed: shortHead(dir), warnings: [],
+    });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
+      { routing: 'discussion', source: 'discovery', order: 1 });
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate data-export (discovery)');
+    assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'reactivate']),
+      /Reactivated "Data Export"\.\n/);
   });
 
-  it('re-indexes a completed topic in an indexed phase — KB failure is a warning', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'session-model']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discussion', 'session-model']);
-
-    assert.strictEqual(res.status, 'completed');
+  it('a started topic restores every item, re-indexes the completed artifacts, and carries the release flag back live', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']);
+    assert.deepStrictEqual(res.restored, [
+      { phase: 'research', status: 'completed' },
+      { phase: 'discussion', status: 'in-progress' },
+    ]);
+    assert.strictEqual(res.status, 'reactivated');
+    // The completed research is re-indexed (no KB — a warning); the
+    // in-progress discussion is not.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate session-model (discussion)');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    assert.match(render(dir, ['topic-receipt', 'payments.discussion.session-model', '--verb', 'reactivate', '--warn']),
-      /⚑ Knowledge indexing warning[\s\S]*Reactivated "Session Model" in discussion\. Status restored to completed\./);
+
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'completed' });
+    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'in-progress', reconcile_needed: 'experiment' });
+    assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { routing: 'research', source: 'discovery', order: 2 });
+    assert.strictEqual(m.phases.experiment.items['auth-flow'].experiments.E1.status, 'abandoned', 'the abandoned records stand on the register');
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate auth-flow (discovery)');
+    assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate', '--warn']),
+      /⚑ Knowledge indexing warning[\s\S]*Reactivated "Auth Flow"\. Restored research \(completed\) · discussion \(in-progress\)\./);
   });
 
-  it('rejects reactivating a non-cancelled topic', () => {
-    const err = engineFails(dir, ['topic', 'reactivate', 'payments', 'research', 'auth-flow']);
-    assert.match(err.error, /not cancelled \(status: in-progress\)/);
+  it('a specification returns with its plan and its build order', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']);
+    assert.deepStrictEqual(res.restored, [
+      { phase: 'specification', status: 'in-progress' },
+      { phase: 'planning', status: 'in-progress' },
+    ]);
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.specification.items['session-model'],
+      { status: 'in-progress', order: 1, sources: { 'session-model': { status: 'incorporated' } } });
+    assert.deepStrictEqual(m.phases.planning.items['session-model'], { status: 'in-progress' });
+    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate session-model (specification)');
+    assert.match(render(dir, ['topic-receipt', 'payments.specification.session-model', '--verb', 'reactivate']),
+      /Reactivated "Session Model"\. Restored specification \(in-progress\) · planning \(in-progress\)\./);
   });
 
-  it('rejects a cancelled topic with no previous_status', () => {
-    const m = epicManifest();
-    m.phases.research.items['auth-flow'] = { status: 'cancelled' };
+  it('a legacy topic cancelled per phase reactivates every item carrying a stash', () => {
+    const m = unitManifest();
+    m.phases.research.items.legacy = { status: 'cancelled', previous_status: 'completed' };
+    m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'in-progress' };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const err = engineFails(dir, ['topic', 'reactivate', 'payments', 'research', 'auth-flow']);
-    assert.match(err.error, /no previous_status/);
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
+    assert.deepStrictEqual(res.restored, [
+      { phase: 'research', status: 'completed' },
+      { phase: 'discussion', status: 'in-progress' },
+    ]);
+  });
+
+  it('refuses a unit that is not cancelled, one that would stay cancelled, an unknown topic, and every non-unit phase', () => {
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']).error, /"auth-flow" is not cancelled \(lifecycle: discussing\)/);
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error, /not cancelled \(status: in-progress\)/);
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'ghost']).error, /no topic "ghost"/);
+    const m = unitManifest();
+    m.phases.research.items.stuck = { status: 'cancelled' };
+    m.phases.specification.items.stuck = { status: 'cancelled' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'stuck']).error,
+      /"stuck" stays cancelled — its cancelled items carry no previous_status to restore/);
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'stuck']).error, /no previous_status to restore/);
+    for (const phase of ['research', 'discussion', 'experiment', 'planning']) {
+      assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', phase, 'auth-flow']).error,
+        /^reactivate is topic-level per stage — discovery/, phase);
+    }
+    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow', 'extra']).error,
+      /Usage: engine topic reactivate <work-unit> <discovery\|specification> <topic>/);
+  });
+
+  it('the receipts refuse a state the verb has not produced', () => {
+    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel']).error,
+      /"auth-flow" is not cancelled — the cancel has not run/);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']).error,
+      /"auth-flow" is still cancelled — the reactivate has not run/);
+    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.research.auth-flow', '--verb', 'cancel']).error,
+      /--verb cancel addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
   });
 });
 
@@ -321,7 +574,7 @@ describe('engine topic start', () => {
   });
 
   it('rejects starting a cancelled item — reactivate owns that path', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     const err = engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']);
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
@@ -451,7 +704,7 @@ describe('engine topic triage', () => {
   });
 
   it('delivery form: a terminal target refuses before the concern is consumed', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'refund-policy']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy',
       '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
@@ -588,7 +841,7 @@ describe('engine topic triage', () => {
   });
 
   it('refuses cancelled and superseded items with the start messages', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
 
     engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
@@ -741,7 +994,7 @@ describe('engine topic requeue', () => {
 
   it('a terminal destination refuses before the file moves', () => {
     land('research', 'session-model', 'a-decision-owed');
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'session-model']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
 
     assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'session-model',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /is cancelled — reactivate it instead/);
@@ -783,14 +1036,14 @@ describe('triaged guards across the other verbs', () => {
     assert.match(err.error, /is not completed \(status: triaged\) — only a completed item can be reopened/);
   });
 
-  it('cancel stashes triaged as previous_status; reactivate restores it', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'parked-topic']);
+  it('a topic cancel stashes triaged as previous_status; reactivate restores it', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'parked-topic']);
     const cancelled = readManifest(dir, 'payments').phases.research.items['parked-topic'];
     assert.strictEqual(cancelled.status, 'cancelled');
     assert.strictEqual(cancelled.previous_status, 'triaged');
 
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'research', 'parked-topic']);
-    assert.strictEqual(res.status, 'triaged');
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'parked-topic']);
+    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'triaged' }]);
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'], { status: 'triaged' });
   });
 });
@@ -882,7 +1135,7 @@ describe('engine topic complete', () => {
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'ghost']).error, /no research item "ghost"/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']).error, /no investigation items/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
   });
@@ -1124,7 +1377,7 @@ describe('engine topic reopen', () => {
   });
 
   it('refuses a cancelled item — reactivate owns that path', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'session-model']);
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
@@ -1942,7 +2195,7 @@ describe('knowledge store rides along on every engine commit', () => {
   });
 
   it('a transaction commit sweeps the store dirt its KB sync produced', () => {
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.strictEqual(res.committed, shortHead(dir));
     assert.deepStrictEqual(committedFiles(), [
       '.workflows/.knowledge/store.msp',
@@ -1964,13 +2217,13 @@ describe('knowledge store rides along on every engine commit', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start/complete/reopen/cancel all refuse', () => {
+  it('discovery is not a lifecycle phase — start/triage/complete/reopen refuse it; cancel addresses the unit', () => {
     const dir = setupGitFixture();
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
-    for (const verb of ['start', 'triage', 'complete', 'reopen', 'cancel']) {
+    for (const verb of ['start', 'triage', 'complete', 'reopen']) {
       assert.match(
         engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
         /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
@@ -2003,8 +2256,8 @@ describe('engine usage banner', () => {
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
-      'topic cancel <work-unit> <phase> <topic> [--cascade]',
-      'topic reactivate <work-unit> <phase> <topic>',
+      'topic cancel <work-unit> <discovery|specification> <topic>',
+      'topic reactivate <work-unit> <discovery|specification> <topic>',
       'experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)',
       'experiment advance <work-unit> <topic> <id>',
       'experiment approve <work-unit> <topic> <id>',
@@ -2179,7 +2432,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   });
 
   it('the terminal-status refusals keep their own words ahead of the map', () => {
-    engine(dir, ['topic', 'cancel', 'mapped', 'research', 'zeta']);
+    engine(dir, ['topic', 'cancel', 'mapped', 'discovery', 'zeta']);
     assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'zeta']).error, /is cancelled — reactivate it instead/);
     assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'delta']).error, /already completed — reopen it instead/);
   });
@@ -2201,7 +2454,7 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
   it('a discussion refuses over in-progress research, naming the ways out', () => {
     withResearch('in-progress');
     const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
-    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude once it lands, or cancel the research to release the wait');
+    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude the research to release the wait');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress');
   });
 
@@ -2214,7 +2467,7 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
   it('both kinds present — both named, research first', () => {
     withResearch('in-progress', { awaiting_experiments: ['E1'] });
     const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
-    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude once it lands, or cancel the research to release the wait; and awaits experiment evidence (E1) — the wait releases when the experiment concludes or is abandoned');
+    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude the research to release the wait; and awaits experiment evidence (E1) — the wait releases when the experiment concludes or is abandoned');
   });
 
   it('the experiment-only wording stands', () => {
@@ -2226,12 +2479,6 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
   it('the research landing releases the wait', () => {
     withResearch('in-progress');
     engine(dir, ['topic', 'complete', 'payments', 'research', 'refund-policy']);
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
-  });
-
-  it('cancelling the research releases the wait', () => {
-    withResearch('triaged');
-    engine(dir, ['topic', 'cancel', 'payments', 'research', 'refund-policy']);
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
   });
 

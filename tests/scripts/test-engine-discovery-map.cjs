@@ -568,7 +568,7 @@ describe('engine CLI: discovery-map operations', () => {
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
       // One phrase for handled, whatever the topic's research state.
       'handled-topic': /it is closed as a dead end and stays on the map as record.*reopen it to make it actionable again/,
-      'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
+      'cancelled-topic': /it is cancelled and stays on the map as record.*reactivate it from the epic menu first/,
       // triaged-topic derives fresh, but its parked stub is real content —
       // the refusal names the triage, not the historical anchor.
       'triaged-topic': /rerouted concerns are parked in its triage; start the topic to drain them, or cancel from the epic menu/,
@@ -651,9 +651,9 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(err.error, /"handled-topic" can't be closed as a dead end — it's already closed/);
     });
 
-    it('refuses a cancelled item, pointing at phase-work reactivation', () => {
+    it('refuses a cancelled item, pointing at its reactivation', () => {
       const err = runFail(dir, ['handle', 'payments', 'cancelled-topic']);
-      assert.match(err.error, /it's cancelled; reactivate the phase work from the epic menu first/);
+      assert.match(err.error, /it's cancelled; reactivate it from the epic menu first/);
     });
 
     it('refuses a topic with a parked stub — a dead end never buries rerouted concerns', () => {

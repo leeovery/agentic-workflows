@@ -53,6 +53,117 @@ function itemOf(manifest, phase, topic) {
 }
 
 /**
+ * A spec item's `sources` as `[name, row]` entries — the one decoder of the
+ * map form and the legacy array form. Rows that aren't objects are dropped.
+ * @param {object|Array<{name?: string, status?: string}>|undefined} sources
+ * @returns {[string, {status?: string}][]}
+ */
+function sourceRows(sources) {
+  if (!sources || typeof sources !== 'object') return [];
+  const entries = Array.isArray(sources)
+    ? sources.map((r) => /** @type {[string, unknown]} */ ([r && typeof r === 'object' ? r.name || '' : '', r]))
+    : Object.entries(sources);
+  return /** @type {[string, {status?: string}][]} */ (entries.filter(([, r]) => r && typeof r === 'object'));
+}
+
+/**
+ * The `topic`-named row of a spec item's `sources`, object or legacy array
+ * form, or undefined.
+ * @param {object|Array<{name?: string}>|undefined} sources
+ * @param {string} topic
+ * @returns {{status?: string}|undefined}
+ */
+function sourceRow(sources, topic) {
+  const entry = sourceRows(sources).find(([name]) => name === topic);
+  return entry ? entry[1] : undefined;
+}
+
+/**
+ * The non-terminal specification items whose `sources` name `discussion`,
+ * as `[name, item]` entries — proposed groupings included; callers filter
+ * on status.
+ * @param {object} manifest @param {string} discussion
+ * @returns {[string, Record<string, any>][]}
+ */
+function sourcingSpecs(manifest, discussion) {
+  return Object.entries(phaseData(manifest, 'specification').items || {})
+    .filter(([, item]) => item && typeof item === 'object'
+      && !TERMINAL_STATUSES.includes(item.status)
+      && sourceRow(item.sources, discussion) !== undefined);
+}
+
+// The units cancel and reactivate act on — one per stage, keyed by the name
+// the user sees. The Discovery unit is the map row with every conversation
+// under its name (its experiment series rides along through its records,
+// never a status); the Definition unit is the specification with its
+// same-named plan. Delivery never cancels: an implementation or review item
+// under a specification's name locks it.
+const UNIT_PHASES = {
+  discovery: ['research', 'discussion'],
+  specification: ['specification', 'planning'],
+};
+const DELIVERY_PHASES = ['implementation', 'review'];
+
+/**
+ * The phase items a unit carries, in unit-phase order — only those that
+ * exist.
+ * @param {object} manifest @param {keyof typeof UNIT_PHASES} stage @param {string} name
+ * @returns {{phase: string, item: Record<string, any>}[]}
+ */
+function unitItems(manifest, stage, name) {
+  return UNIT_PHASES[stage].flatMap((phase) => {
+    const item = itemOf(manifest, phase, name);
+    return item ? [{ phase, item }] : [];
+  });
+}
+
+/**
+ * A unit's phase items a cancel would take — those carrying a live status.
+ * An item with no status was never attempted; a terminal one is already
+ * closed.
+ * @param {object} manifest @param {keyof typeof UNIT_PHASES} stage @param {string} name
+ * @returns {{phase: string, item: Record<string, any>}[]}
+ */
+function liveUnitItems(manifest, stage, name) {
+  return unitItems(manifest, stage, name)
+    .filter(({ item }) => typeof item.status === 'string' && !TERMINAL_STATUSES.includes(item.status));
+}
+
+/**
+ * Whether a Discovery unit exists under the name — a map row, or a research
+ * or discussion item for a legacy topic the map never carried.
+ * @param {object} manifest @param {string} topic
+ */
+function discoveryUnitExists(manifest, topic) {
+  return itemOf(manifest, 'discovery', topic) !== undefined || unitItems(manifest, 'discovery', topic).length > 0;
+}
+
+/**
+ * The started specifications sourcing a topic's discussion — the ones that
+ * lock its Discovery unit. A proposed grouping never locks: it is a
+ * regenerable suggestion the analysis writes for every unaccounted
+ * discussion, discarded with its source.
+ * @param {object} manifest @param {string} topic
+ * @returns {string[]}
+ */
+function lockingSpecs(manifest, topic) {
+  return sourcingSpecs(manifest, topic)
+    .filter(([, item]) => item.status !== 'proposed')
+    .map(([name]) => name);
+}
+
+/**
+ * Whether code work has started under a specification's name — an
+ * implementation or review item exists, any status. A legacy cancelled one
+ * counts: code may have landed before the cancel.
+ * @param {object} manifest @param {string} spec
+ * @returns {boolean}
+ */
+function deliveryStarted(manifest, spec) {
+  return DELIVERY_PHASES.some((phase) => itemOf(manifest, phase, spec) !== undefined);
+}
+
+/**
  * One item's live evidence-wait ids (`awaiting_experiments` — the
  * engine-owned lock a spawn places on the spawning phase's own item) — empty
  * when the item or the field is absent.
@@ -128,24 +239,6 @@ function topicWaits(manifest, topic) {
     const item = itemOf(manifest, phase, topic);
     return item && item.status === 'in-progress' ? waits(manifest, phase, topic) : [];
   });
-}
-
-/**
- * The topic's live evidence waits across both spawn phases — every id a
- * non-terminal research or discussion item is blocked on. A terminal
- * holder's wait is inert and never counted.
- * @param {object} manifest @param {string} topic
- * @returns {{phase: string, ids: string[]}[]}  holders with waits, spawn-phase order
- */
-function experimentWaits(manifest, topic) {
-  const holders = [];
-  for (const phase of EXPERIMENT_SPAWN_PHASES) {
-    const item = itemOf(manifest, phase, topic);
-    if (!item || TERMINAL_STATUSES.includes(item.status)) continue;
-    const ids = awaitedExperiments(manifest, phase, topic);
-    if (ids.length > 0) holders.push({ phase, ids });
-  }
-  return holders;
 }
 
 /**
@@ -493,9 +586,13 @@ function computeTopicLifecycle(manifest, topicName) {
     && !TERMINAL_STATUSES.includes(/** @type {string} */ (it.status));
   const reconcile_pending = flagLive(research) || flagLive(discussion);
 
-  // Stored marker wins over name-matching: a dead-ended topic is terminal,
-  // with no next action. Read only the item's own field — never inspect
-  // siblings or provenance.
+  // Stored markers win over name-matching, the cancel ahead of the dead end:
+  // a cancelled topic is off the board whatever its items say, a dead-ended
+  // one is terminal with no next action. Read only the item's own fields —
+  // never inspect siblings or provenance.
+  if (discovery && discovery.cancelled === true) {
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
+  }
   if (discovery && discovery.handled === true) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
@@ -519,14 +616,15 @@ function computeTopicLifecycle(manifest, topicName) {
     return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   // Every attempted phase item is cancelled (and at least one was attempted):
-  // the topic is cancelled-tier. A dual-attempt topic with one live item never
-  // reaches here — the live path's branches above already rendered it — so
-  // cancelling one of two still leaves the alternate open. A single-routed
-  // topic whose only item is cancelled must NOT fall through to fresh: its
-  // phase item blocks `topic start` (the "fresh" next action would dead-end),
-  // and the recovery route is reactivate. A `triaged` sibling is not an
-  // attempt — it keeps the topic out of cancelled-tier via the every() check,
-  // falling through to fresh.
+  // the topic is cancelled-tier — the reading a manifest cancelled per phase
+  // before the map carried its own marker still gets, and the only one a
+  // topic with no map row has. A dual-attempt topic with one live item never
+  // reaches here — the live path's branches above already rendered it. A
+  // single-routed topic whose only item is cancelled must NOT fall through to
+  // fresh: its phase item blocks `topic start` (the "fresh" next action would
+  // dead-end), and the recovery route is reactivate. A `triaged` sibling is
+  // not an attempt — it keeps the topic out of cancelled-tier via the every()
+  // check, falling through to fresh.
   const attempted = [rs, ds].filter((s) => s != null);
   if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
@@ -561,7 +659,7 @@ function lifecyclePhrase(lifecycle, researchState, routing) {
         : 'research has completed and discussion is queued';
     case 'decided': return 'discussion has concluded';
     case 'handled': return 'it is closed as a dead end and stays on the map as record';
-    default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
+    default: return 'it is cancelled and stays on the map as record'; // cancelled
   }
 }
 
@@ -740,8 +838,16 @@ module.exports = {
   phaseData,
   phaseItems,
   phaseStatus,
+  sourceRows,
+  sourceRow,
+  sourcingSpecs,
+  UNIT_PHASES,
+  unitItems,
+  liveUnitItems,
+  discoveryUnitExists,
+  lockingSpecs,
+  deliveryStarted,
   awaitedExperiments,
-  experimentWaits,
   waits,
   topicWaits,
   OUTSTANDING_RESEARCH_STATUSES,

@@ -94,8 +94,8 @@ engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard displ
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
-engine.project.epicCancelMenu(detail)             // → { keys, title, display, rendered } — Cancellable Topics pick menu
-engine.project.epicReactivateMenu(detail)         // → { keys, title, display, rendered } — Cancelled Topics reactivate menu
+engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the stage units (Topics / Specifications); a locked unit renders keyless with its reason, a held one carries its in-session age
+engine.project.epicReactivateMenu(detail)         // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns
 engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
 engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (box + tier header + rows)
 engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)

@@ -86,13 +86,15 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
 /**
  * topic complete / cancel / reactivate receipts. `complete` carries no
  * confirmation line — the calling flow owns its own conclusion display; it
- * renders the indexing advisory alone, empty without `--warn`.
+ * renders the indexing advisory alone, empty without `--warn`. `cancel` and
+ * `reactivate` confirm the unit by name, the reactivate naming the statuses
+ * its items returned to (none for a never-started topic).
  * @param {'complete'|'cancel'|'reactivate'} verb
- * @param {string} topic @param {string} phase @param {string|undefined} status
- * @param {{warn?: boolean}} [opts]
+ * @param {string} topic
+ * @param {{warn?: boolean, restored?: {phase: string, status: string}[]}} [opts]
  * @returns {string}
  */
-function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
+function topicReceipt(verb, topic, { warn = false, restored = [] } = {}) {
   const name = titlecase(topic);
   if (verb === 'complete') {
     return warn
@@ -102,12 +104,15 @@ function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. You can run knowledge remove manually later.') : null,
-      confirmation(`Cancelled "${name}" in ${phase}.`),
+      confirmation(`Cancelled "${name}".`),
     ]);
   }
+  const returned = restored.length > 0
+    ? ` Restored ${restored.map((r) => `${r.phase} (${r.status})`).join(' · ')}.`
+    : '';
   return joined([
     warn ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.') : null,
-    confirmation(`Reactivated "${name}" in ${phase}. Status restored to ${status}.`),
+    confirmation(`Reactivated "${name}".${returned}`),
   ]);
 }
 
