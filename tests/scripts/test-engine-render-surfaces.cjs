@@ -5627,14 +5627,32 @@ describe('render — the adopted phase gates', () => {
     assert.match(investigation, /\*\*`y\/yes`\*\*\s+→ Conclude investigation/);
     assert.match(investigation, /\*\*Keep going\*\* → Tell me what else to explore/);
 
+    // Implementation and planning have hit their end — the arm beside yes is
+    // an ask, never a way back.
     const implementation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.checkout' });
-    assert.match(implementation, /`◆ Ready to mark implementation as completed\?`/);
-    assert.match(implementation, /\*\*`y\/yes`\*\* → Mark as completed/);
-    assert.match(implementation, /\*\*`n\/no`\*\*\s+→ Go back and make changes/);
+    assert.strictEqual(implementation, [
+      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Ready to mark implementation as completed?`**',
+      '',
+      '**`y/yes`** → Mark as completed',
+      "**Ask**   → Ask questions about the implementation (doesn't mark it",
+      `${NB(8)}complete)`,
+      '',
+    ].join('\n'));
+    assert.doesNotMatch(implementation, /`n\/no`/);
 
     const planning = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning.checkout' });
-    assert.match(planning, /`◆ Ready to conclude\?`/);
-    assert.match(planning, /\*\*`y\/yes`\*\* → Conclude plan and mark as completed/);
+    assert.strictEqual(planning, [
+      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Ready to conclude?`**',
+      '',
+      '**`y/yes`** → Conclude plan and mark as completed',
+      "**Ask**   → Ask questions about the plan (doesn't mark it complete)",
+      '',
+    ].join('\n'));
+    assert.doesNotMatch(planning, /`n\/no`/);
   });
 
   it('conclude-gate: refuses a phase that concludes some other way', () => {
@@ -5642,6 +5660,8 @@ describe('render — the adopted phase gates', () => {
       /phase must be one of discussion, investigation, implementation, planning, got "research"/);
     assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.ghost' }),
+      /no implementation item "ghost" — nothing to conclude/);
   });
 
   it('closing-gate: the discussion close\'s five consents, variant-keyed', () => {

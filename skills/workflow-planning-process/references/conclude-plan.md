@@ -6,6 +6,8 @@
 
 > **CHECKPOINT**: Do not conclude if any designed task internal IDs are missing from `task_map` in the manifest. All tasks must be authored before concluding.
 
+## A. Conclude Gate
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.planning.{topic}
 ```
@@ -14,11 +16,17 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If `no`
+#### If ask
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+Answer from the record the session already holds — the plan and the specification.
+
+→ Return to **A. Conclude Gate**.
 
 #### If `yes`
+
+→ Proceed to **B. Complete and Continue**.
+
+## B. Complete and Continue
 
 1. **Re-baseline `spec_commit`** — the plan now reflects the specification as of this point; stamp the baseline spec-change detection will diff against on any later resume:
    ```bash

@@ -2476,10 +2476,12 @@ function triageClosedTarget(cwd, { dotpath }) {
 
 // conclude-gate — the closing consent of the four phases whose conclusion is
 // a user's call. One surface, keyed by the address's own phase segment: the
-// shape is identical (a question, a yes, a way back), and only the wording
-// each phase has always used differs, so it lives in one table rather than
-// four copies of the same frame. Research's conclude gate is its own surface
-// — it carries a conditional dead-end row no other phase has.
+// shape is identical (a question, a yes, one arm beside it — keep going
+// where the phase can take more, ask where it has hit its end and the
+// only way is forward), and only each phase's own wording differs, so it
+// lives in one table rather than four copies of the same frame. Research's
+// conclude gate is its own surface — it carries a conditional dead-end row
+// no other phase has.
 const CONCLUDE_GATES = {
   discussion: {
     question: 'Conclude this discussion and mark as completed?',
@@ -2499,14 +2501,14 @@ const CONCLUDE_GATES = {
     question: 'Ready to mark implementation as completed?',
     options: () => [
       cmdOption('y', 'yes', 'Mark as completed'),
-      cmdOption('n', 'no', 'Go back and make changes'),
+      promptOption('Ask', "Ask questions about the implementation (doesn't mark it complete)"),
     ],
   },
   planning: {
     question: 'Ready to conclude?',
     options: () => [
       cmdOption('y', 'yes', 'Conclude plan and mark as completed'),
-      cmdOption('n', 'no', 'Go back and make changes'),
+      promptOption('Ask', "Ask questions about the plan (doesn't mark it complete)"),
     ],
   },
 };
@@ -2517,10 +2519,13 @@ const CONCLUDE_GATES = {
  * @returns {string}
  */
 function concludeGate(cwd, { dotpath }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'conclude-gate');
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'conclude-gate');
   const gate = CONCLUDE_GATES[phase];
   if (!gate) {
     throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
+  }
+  if (!itemOf(manifest, phase, topic)) {
+    throw new Error(`render conclude-gate: no ${phase} item "${topic}" — nothing to conclude`);
   }
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
 }

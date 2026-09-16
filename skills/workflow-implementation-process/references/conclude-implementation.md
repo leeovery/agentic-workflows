@@ -4,6 +4,8 @@
 
 ---
 
+## A. Conclude Gate
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.implementation.{topic}
 ```
@@ -12,11 +14,17 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If `no`
+#### If ask
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+Answer from the record the session already holds — the plan, the task results, the analysis reports, the code.
+
+→ Return to **A. Conclude Gate**.
 
 #### If `yes`
+
+→ Proceed to **B. Complete and Continue**.
+
+## B. Complete and Continue
 
 **If the manifest still holds a `bank`** (`manifest exists {work_unit}.implementation.{topic} bank` — a boundary pass interrupted before it emptied it): delete it — the bank never crosses the conclude:
 
