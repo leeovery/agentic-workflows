@@ -19,9 +19,10 @@ The prose should have taken this path:
 4. the user signals they are done. The in-flight check reads the store
    and finds nothing running, so the walk enters topic completion with
    no wait-or-proceed gate
-5. topic completion re-reads the triage queue — still empty — fetches
-   the wait gate and gets nothing back (no experiment wait, nothing
-   owed — no gate emitted, nothing blocks), and runs the closing checks
+5. topic completion re-reads the triage queue — still empty — reads
+   the research item's reconcile flag (none), fetches the wait gate
+   and gets nothing back (no experiment wait, nothing owed — no gate
+   emitted, nothing blocks), and runs the closing checks
    in order: document review reconciles the session against the file
    and finds it already says what the session said; the compliance
    check passes silently. No review is dispatched — research has none

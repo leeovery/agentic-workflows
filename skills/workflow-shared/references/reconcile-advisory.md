@@ -1,6 +1,6 @@
 # Reconcile Advisory
 
-*Shared reference. Loaded by the phase entry skills, and by the research and discussion session loops at their landed-input check.*
+*Shared reference. Loaded by the phase entry skills, and by the research and discussion sessions at their landed-input checks.*
 
 ---
 
@@ -48,17 +48,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-**If `in-progress` or `triaged` (a peer session parked research on this topic since this entry's door opened):**
+**If `in-progress` or `triaged` (a peer session parked research on this topic since this work last read it):**
 
 Leave the flag in place — the entry or session check that finds the research landed clears it — and say so:
 
 > *Output the next fenced block as a code block:*
 
 ```
-  ⚑ Research on this topic moved again since this entry opened —
-    a peer session parked it. Decisions here may rest on ground it
-    re-examines, and this work cannot conclude until it lands.
-    Nothing has been overwritten.
+  ⚑ Research on this topic moved again since this work last read
+    it — a peer session parked it. Decisions here may rest on
+    ground it re-examines, and this work cannot conclude until it
+    lands. Nothing has been overwritten.
 ```
 
 → Return to caller.

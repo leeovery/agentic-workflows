@@ -18,8 +18,9 @@ The prose should have taken this path:
    rerouted-concerns protocols loaded, nothing run at load
 4. the loop's first iteration checks what landed: the triage queue
    reads empty — resume detection's read moments earlier may stand for
-   it — and the dive check finds nothing to fold — no dive was ever
-   dispatched, and the store says so
+   it — the landed-evidence read finds no reconcile flag on the
+   research item, and the dive check finds nothing to fold — no dive
+   was ever dispatched, and the store says so
 5. the conversation bends the register as the user brings what they
    know, each move recorded through the engine as it happens and the
    file carrying the substance behind it:

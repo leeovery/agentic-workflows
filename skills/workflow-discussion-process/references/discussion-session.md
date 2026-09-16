@@ -373,17 +373,21 @@ Research still outstanding is the wait gate's business at the close — the flag
 
 → Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
-Put what the read re-examines to the user now — the decisions it bears on, what it now owes — and nothing on the map moves until they answer. The advisory's flag delete rides the next cadence commit.
+**If the advisory read the research in:** put what it re-examines to the user now — the decisions it bears on, what it now owes — and nothing on the map moves until they answer. The advisory's flag delete rides the next cadence commit.
 
 **STOP.** Wait for user response.
 
 → Return to **B. Session Loop**.
 
+**If the advisory left the flag in place** (a peer parked the research again between the two reads): research still outstanding is the wait gate's business at the close.
+
+→ Return to caller.
+
 **Otherwise (`cancelled`, `superseded`, or no research item — the lineage closed with nothing landed):**
 
 → Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
-Its closed-lineage line clears the flag; nothing landed to put to the user, and the delete rides the next cadence commit.
+Its closed-lineage callout is the whole of what reaches the user, and its flag delete rides the next cadence commit.
 
 → Return to caller.
 

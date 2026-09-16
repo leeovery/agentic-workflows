@@ -21,9 +21,10 @@ The prose should have taken this path:
    as material for the discussion, never decided here — and the waiting
    note is answered beneath it — a dated entry carrying the number,
    the waiting line kept as the record of the wait
-5. the user wraps; the triage queue reads empty and the wait-gate
-   fetch comes back empty — the release already happened, so no gate
-   is emitted and nothing blocks
+5. the user wraps; the triage queue reads empty, the landed-evidence
+   read finds no flag (the entry's advisory already cleared it), and
+   the wait-gate fetch comes back empty — the release already
+   happened, so no gate is emitted and nothing blocks
 6. the closing checks run: document review reconciles the file against
    the session; the compliance check passes. No review is dispatched —
    research has none

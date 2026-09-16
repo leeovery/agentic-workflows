@@ -110,7 +110,7 @@ function assertNotDerived(phase, message) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, reconcile_needed?: string, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, reconcile_needed?: string|boolean, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -927,7 +927,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
     // A landed upstream the conversation has not read holds it shut too —
     // the flag is cleared by the session's own read (the reconcile
     // advisory), never by the completion.
-    const landed = EXPERIMENT_SPAWN_PHASES.includes(phase) ? LANDED_UPSTREAM[/** @type {string} */ (item.reconcile_needed)] : undefined;
+    const landed = EXPERIMENT_SPAWN_PHASES.includes(phase) && typeof item.reconcile_needed === 'string'
+      ? LANDED_UPSTREAM[item.reconcile_needed]
+      : undefined;
     if (landed) {
       throw new Error(`${phase} "${topic}" carries reconcile_needed: ${item.reconcile_needed} — ${landed}; read what landed into the session and clear the flag before concluding`);
     }

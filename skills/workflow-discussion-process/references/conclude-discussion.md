@@ -33,11 +33,12 @@ Emit the call's MENU section verbatim per its marker.
 #### If `yes`
 
 1. Ensure the Summary section is populated — Key Insights, Open Threads, Current State (substance only — never readiness declarations, decided counts, or review-cycle tallies)
-2. Mark the discussion completed — the engine sets the status and indexes the artifact into the knowledge base:
+2. Check for landed input once more — follow **L. Landed Input** in **[discussion-session.md](discussion-session.md)**: a landing since the close's own check is read and put to the user, and its landed branches return the conversation to the session loop — the conclusion re-enters at the next signal; every other return continues here.
+3. Mark the discussion completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}
    ```
-3. Final commit:
+4. Final commit:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} --kb -m "discussion({work_unit}): complete {topic} discussion"
    ```
@@ -48,7 +49,7 @@ Emit the call's MENU section verbatim per its marker.
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discussion.{topic} --verb complete --warn
    ```
 
-4. Sweep for leavings:
+5. Sweep for leavings:
 
    ```bash
    git status --porcelain -- .workflows/{work_unit}
@@ -58,11 +59,11 @@ Emit the call's MENU section verbatim per its marker.
 
    **Otherwise:** nothing to sweep — continue.
 
-5. Closing recap:
+6. Closing recap:
 
    → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-6. Hand off to the pipeline bridge:
+7. Hand off to the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

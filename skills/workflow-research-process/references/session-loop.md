@@ -93,7 +93,7 @@ Put what the read weighs to the user now — each verdict as evidence, the waiti
 
 **STOP.** Wait for user response.
 
-→ Return to caller.
+→ Return to **The Conversation Rhythm**.
 
 #### Otherwise
 
