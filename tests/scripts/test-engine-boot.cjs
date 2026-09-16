@@ -284,10 +284,12 @@ describe('engine boot', () => {
     writeFile(project, 'src/lib.js', 'export const x = 2;\n');
     commit('more code', '2025-06-15');
 
-    // Nothing under `.workflows/` committed yet — the install's first boot:
-    // the whole history predates the workflows, and the tree is HEAD's.
+    // Nothing under `.workflows/` committed yet — the install's first boot,
+    // migrations updating files, so the review gate owns the commit and boot
+    // leaves the tree alone: the whole history predates the workflows, and
+    // the tree is HEAD's.
     writeFile(project, '.workflows/.state/migrations', '');
-    let res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    let res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update' });
     assert.strictEqual(res.baseline, 'none');
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
@@ -381,9 +383,9 @@ describe('engine boot', () => {
     const empty = path.join(fix.root, 'empty');
     fs.mkdirSync(empty, { recursive: true });
     git(empty, ['init', '-q', '-b', 'main']);
-    writeFile(empty, '.workflows/.state/migrations', '');
-    // The hooks already there, uncommitted: boot's own install would
-    // otherwise make the root commit — the history this test needs absent.
+    // The hooks already there, uncommitted, and no tracking ledger on disk:
+    // boot's hook install and its ledger sweep would each otherwise make the
+    // root commit — the history this test needs absent.
     writeFile(empty, '.claude/settings.json', hooked([PRESENCE_HOOK]));
     const res = runEngine(fix.engine, empty, ['boot'], { STUB_CHECK: 'ready' });
     assert.strictEqual(res.baseline, 'none');
@@ -489,6 +491,25 @@ describe('engine boot', () => {
       ['.workflows/.state/migrations']
     );
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']).trim(), '', 'nothing left dirty');
+  });
+
+  it('a ledger an earlier boot left dirty is committed by the next one, which ran nothing at all', () => {
+    // The state this bug leaves behind: a previous boot recorded an ID and
+    // never committed it. Those migrations are recorded now, so nothing runs
+    // — and the line still has to go.
+    writeFile(fix.project, '.workflows/.state/migrations', '045\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
+    writeFile(fix.project, '.workflows/.state/migrations', '045\n046\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot']);
+
+    assert.strictEqual(res.migrations.ran, 0, 'nothing ran this boot');
+    assert.strictEqual(res.migrations.changed, false);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(res.migrations_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']).trim(), '');
   });
 
   it('a run that changed documents leaves the ledger to the reviewed commit — boot never commits it twice', () => {
@@ -977,18 +998,21 @@ describe('engine boot (real scripts)', () => {
     const second = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
-    // Everything is recorded: nothing ran, so there is no ledger line to commit.
+    // Everything is recorded, so nothing ran — and the ledger the first boot
+    // left for a review gate that the user never reached is swept up here.
     assert.strictEqual(second.migrations.ran, 0);
-    assert.strictEqual(second.migrations_committed, null);
+    assert.strictEqual(second.migrations_committed, git(project, ['rev-parse', '--short', 'HEAD~1']).trim());
+    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s', 'HEAD~1']).trim(), 'chore: record workflow migrations');
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.compacted, true);
     assert.strictEqual(second.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
 
-    // Third boot: nothing new to commit.
+    // Third boot: nothing new to commit, the ledger included.
     const third = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');
     assert.strictEqual(third.kb_committed, null);
+    assert.strictEqual(third.migrations_committed, null);
   });
 });
 

@@ -9,12 +9,13 @@
 // error — migrations must never half-run silently. A run that recorded
 // migrations without changing a document leaves the tracking ledger as the
 // only dirt, and no reviewed commit follows a report of no changes, so boot
-// commits that line itself. The knowledge base is a derived index: a failing
-// `check` reports "not-ready" (the caller's gate — boot never initialises
-// anything itself; a not-ready response additionally carries the system-config
-// report so the gate can offer setup without extra probes). A failing
-// `compact` is a warning, never a block. Store dirt found when ready is
-// committed (the post-setup first boot, compact churn, or leftovers).
+// commits that line itself — this run's, or one an earlier boot stranded. The
+// knowledge base is a derived index: a failing `check` reports "not-ready"
+// (the caller's gate — boot never initialises anything itself; a not-ready
+// response additionally carries the system-config report so the gate can offer
+// setup without extra probes). A failing `compact` is a warning, never a
+// block. Store dirt found when ready is committed (the post-setup first boot,
+// compact churn, or leftovers).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -51,10 +52,12 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 
 // Marker preceding migrate.cjs's one-line JSON report of the run —
 // `{ran, tracking}`: the migrations executed, and the tracking ledger they
-// recorded into (the runner resolves that path itself — migration 011 moves
-// it). Counting runs is not counting files: a migration that ran and found
-// nothing to do still recorded its ID, so `ran > 0` with the stop gate absent
-// is exactly the case where the ledger is the only thing dirty.
+// recorded into. Counting runs is not counting files — a migration that ran
+// and found nothing to do still recorded its ID — so the stop gate cannot
+// speak for the ledger. The path is what the commit needs, and it rides every
+// completed run, a run that recorded nothing included: the runner resolves it
+// itself (migration 011 moves it), and dirt from an earlier boot must be
+// committable by a boot that ran no migrations at all.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /**
@@ -78,7 +81,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} compacted
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
- * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only on the run-but-unchanged path, where no reviewed commit follows
+ * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit, ledger commit, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
@@ -243,16 +246,18 @@ function boot(cwd) {
     }
   }
 
-  // Migrations that ran while changing no document still wrote the ledger,
+  // A migration that ran while changing no document still wrote the ledger,
   // and that write has no other path to a commit: with nothing to review the
   // calling skill says "up to date" and never reaches its `commit
-  // --workflows`, leaving the line dirty under a boot that reported nothing.
-  // So boot lands it here, and only here — when the review gate does fire,
-  // its own commit carries the ledger in with the diff the user approved.
+  // --workflows`. So boot leaves the ledger clean whenever no reviewed commit
+  // will carry it — dirt this run recorded, and dirt an earlier boot left
+  // behind the same way, which is the state every install that met this bug
+  // is sitting in. When the review gate does fire, its own commit takes the
+  // ledger in with the diff the user approved and boot stays out of the way.
   // The migrations are already applied, so a commit failure is a warning.
   /** @type {string|null} */
   let migrationsCommitted = null;
-  if (ran > 0 && !migrations.changed && tracking) {
+  if (!migrations.changed && tracking) {
     try {
       if (git(cwd, ['status', '--porcelain', '--', tracking]).trim() !== '') {
         migrationsCommitted = commitPathspecScoped(cwd, [tracking], 'chore: record workflow migrations');

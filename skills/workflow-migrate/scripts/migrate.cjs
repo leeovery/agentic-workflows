@@ -64,7 +64,8 @@ const PENDING_VERIFY = 'pending-verify.json';
 // found nothing to do still recorded its ID, so the ledger is dirty on a run
 // that updated nothing. The path travels with the count because migration 011
 // relocates the ledger — the runner is the only party that knows where it
-// ended up. Boot extracts and strips it.
+// ended up, and a caller cleaning up after an earlier run needs that path on a
+// run of its own that recorded nothing. Boot extracts and strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /** @param {string} cwd @param {string} trackingRel */
