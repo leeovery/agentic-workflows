@@ -66,6 +66,13 @@ function trackingLog(project) {
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
+/** The run report the orchestrator ends a completed run with, or null. */
+function runReport(stdout) {
+  const lines = stdout.split('\n');
+  const idx = lines.findIndex((l) => l.trim() === '---MIGRATIONS_RUN---');
+  return idx === -1 ? null : JSON.parse(lines[idx + 1]);
+}
+
 // A .sh migration that appends its id to order.log and reports an update.
 const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
@@ -155,6 +162,54 @@ describe('migrate.cjs — synthetic fleet', () => {
       ['001', '002', '003', '010'],
       'all four IDs recorded'
     );
+  });
+
+  it('reports the migrations it ran and the ledger it recorded them in — a run that changed no file included', () => {
+    // 002 runs and reports nothing changed: it still recorded, and the report
+    // counts runs, not files — the case the stop gate cannot speak for.
+    const { migrate } = synthFleet({
+      '001-a.cjs': cjsMig('001'),
+      '002-b.cjs':
+        `'use strict';\nmodule.exports = { id: '002', description: 'synthetic 002', run({ reportSkip }) { reportSkip(); } };\n`,
+    });
+    const project = freshProject();
+
+    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(first.status, 0, first.stderr);
+    assert.deepStrictEqual(runReport(first.stdout), { ran: 2, tracking: '.workflows/.state/migrations' });
+
+    // Fully recorded: nothing ran, and the report says so.
+    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(second.status, 0, second.stderr);
+    assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
+    assert.deepStrictEqual(runReport(second.stdout), { ran: 0, tracking: '.workflows/.state/migrations' });
+  });
+
+  it('reports the ledger where it ended up, not where it was found — a legacy log is stabilised first', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
+    const project = tmp('mig-orch-legacy-');
+    fs.mkdirSync(path.join(project, 'docs/workflow/.cache'), { recursive: true });
+    fs.writeFileSync(path.join(project, 'docs/workflow/.cache/migrations.log'), '');
+
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(runReport(res.stdout), { ran: 1, tracking: 'docs/workflow/.state/migrations' });
+    assert.strictEqual(fs.readFileSync(path.join(project, 'docs/workflow/.state/migrations'), 'utf8'), '001\n');
+  });
+
+  it('an aborted run reports nothing — there is no completed run to account for', () => {
+    const { migrate } = synthFleet({
+      '001-a.cjs': cjsMig('001'),
+      '002-boom.cjs':
+        `'use strict';\nmodule.exports = { id: '002', description: 'boom', run() { throw new Error('boom'); } };\n`,
+    });
+    const project = freshProject();
+
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.notStrictEqual(res.status, 0);
+    assert.strictEqual(runReport(res.stdout), null);
   });
 
   it('collects verify addenda from executed .cjs migrations — skip paths included, never on re-run', () => {

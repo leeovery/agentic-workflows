@@ -181,7 +181,7 @@ Migrations keep workflow files in sync with current system design (run via `engi
 **How it works:**
 - `skills/workflow-migrate/scripts/migrate.cjs` (Node) runs every script in `skills/workflow-migrate/scripts/migrations/` — both the frozen `*.sh` fleet and modern `*.cjs` migrations — in one strict numeric-prefix ordering
 - Each migration is idempotent — safe to run multiple times
-- Progress tracked in `.workflows/.state/migrations`: numeric-only IDs, one per line, extension-independent. An ID is recorded only after its migration completes; any failure aborts the whole run without recording (boot treats a non-zero exit as fatal — migrations must never half-run silently)
+- Progress tracked in `.workflows/.state/migrations`: numeric-only IDs, one per line, extension-independent. An ID is recorded only after its migration completes; any failure aborts the whole run without recording (boot treats a non-zero exit as fatal — migrations must never half-run silently). A run that records IDs while changing no document leaves that ledger line as the only dirt, which boot commits itself (`chore: record workflow migrations`); when documents did change, the ledger rides the skill's reviewed migration commit
 
 **Two migration formats:**
 - **`*.sh` — the frozen fleet (001–046).** Shipped and already run by real installs; treat as immutable. Edit only to harden a failure path, **never** to change semantics — fix forward with a new numbered `.cjs` migration instead. The orchestrator sources each in a spawned bash with `report_update`/`report_skip` helpers, `PROJECT_DIR` pinned to `.`, cwd = project root, under `set -eo pipefail` (`return 0` semantics preserved).

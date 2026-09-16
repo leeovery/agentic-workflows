@@ -69,6 +69,7 @@ const STUB_MIGRATE = `#!/usr/bin/env node
 'use strict';
 const fs = require('fs');
 const mode = process.env.STUB_MIGRATE_MODE || '';
+let ran = 1;
 if (mode === 'update') {
   fs.mkdirSync('.workflows/.state', { recursive: true });
   fs.mkdirSync('.workflows/payments', { recursive: true });
@@ -95,12 +96,28 @@ if (mode === 'update') {
     '---STOP_GATE: FILES_UPDATED---\\n' +
     'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
   );
+} else if (mode === 'record-only') {
+  // A migration that ran and found nothing to do: the ledger gains its line,
+  // no document changes, no stop gate.
+  fs.mkdirSync('.workflows/.state', { recursive: true });
+  fs.appendFileSync('.workflows/.state/migrations', '047\\n');
+  process.stdout.write('[SKIP] No changes needed\\n');
 } else if (mode === 'fail') {
   process.stdout.write('partial output before the failure\\n');
   process.stderr.write('boom: migration 099 exploded\\n');
   process.exit(1);
 } else {
+  ran = 0;
   process.stdout.write('[SKIP] No changes needed\\n');
+}
+// The run report every completed run ends with — STUB_MIGRATE_REPORT
+// substitutes the payload line, STUB_MIGRATE_NO_REPORT plays a runner from
+// before the marker existed.
+if (!process.env.STUB_MIGRATE_NO_REPORT) {
+  process.stdout.write('---MIGRATIONS_RUN---\\n');
+  process.stdout.write(
+    (process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran, tracking: '.workflows/.state/migrations' })) + '\\n'
+  );
 }
 `;
 
@@ -189,10 +206,11 @@ describe('engine boot', () => {
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
-      migrations: { changed: false, output: '[SKIP] No changes needed', verify: [] },
+      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [] },
       knowledge: 'ready',
       compacted: true,
       kb_committed: null,
+      migrations_committed: null,
       warnings: [],
       tmux_labels: 'prompt',
       label_repaired: false,
@@ -455,6 +473,111 @@ describe('engine boot', () => {
     assert.match(status, /\.claude\/settings\.json/);
     assert.match(status, /\.gitignore/);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'config baseline');
+  });
+
+  it('a migration that ran while changing nothing still recorded it — boot commits the ledger line no review gate would sweep', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.migrations.changed, false);
+    assert.strictEqual(res.migrations.ran, 1);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(res.migrations_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.deepStrictEqual(
+      git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
+      ['.workflows/.state/migrations']
+    );
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']).trim(), '', 'nothing left dirty');
+  });
+
+  it('a run that changed documents leaves the ledger to the reviewed commit — boot never commits it twice', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
+
+    assert.strictEqual(res.migrations.changed, true);
+    assert.strictEqual(res.migrations.ran, 1);
+    assert.strictEqual(res.migrations_committed, null);
+    // The ledger line waits with the rest of the diff for the skill's
+    // `commit --workflows`, which the review gate runs on the user's yes.
+    assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows/.state/migrations']), /migrations/);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+
+  it('a ledger with nothing to commit — already clean, or ignored by the project — is null and silent', () => {
+    // Clean: the run recorded nothing new (a re-append restoring what HEAD
+    // already holds), so the tracked ledger matches HEAD.
+    writeFile(fix.project, '.workflows/.state/migrations', '045\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
+
+    const clean = runEngine(fix.engine, fix.project, ['boot'], {
+      STUB_MIGRATE_REPORT: '{"ran": 2, "tracking": ".workflows/.state/migrations"}',
+    });
+    assert.strictEqual(clean.migrations.ran, 2);
+    assert.strictEqual(clean.migrations_committed, null);
+    assert.deepStrictEqual(clean.warnings, []);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger baseline');
+
+    // Ignored: `git add` would refuse the path outright, so it is never reached.
+    git(fix.project, ['rm', '-q', '--', '.workflows/.state/migrations']);
+    writeFile(fix.project, '.gitignore', '.workflows/.state/\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'ignore the ledger']);
+
+    const ignored = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+    assert.strictEqual(ignored.ok, true);
+    assert.strictEqual(ignored.migrations_committed, null);
+    assert.deepStrictEqual(ignored.warnings, []);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ignore the ledger');
+  });
+
+  it('a failing ledger commit is a warning, never a block — the ledger is already right on disk', () => {
+    const hook = path.join(fix.project, '.git/hooks/pre-commit');
+    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(hook, 0o755);
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.migrations.ran, 1);
+    assert.strictEqual(res.migrations_committed, null);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /migration ledger commit failed/);
+    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.state/migrations')), 'the recorded run survives');
+  });
+
+  it('a run report boot cannot read degrades to a warning — ran 0, no commit, plumbing still stripped', () => {
+    for (const payload of ['not json at all', '{"ran": "two", "tracking": ".workflows/.state/migrations"}', '{"ran": 1, "tracking": "/etc/passwd"}']) {
+      const res = runEngine(fix.engine, fix.project, ['boot'], {
+        STUB_MIGRATE_MODE: 'record-only',
+        STUB_MIGRATE_REPORT: payload,
+      });
+
+      assert.strictEqual(res.ok, true, payload);
+      assert.strictEqual(res.migrations_committed, null, payload);
+      assert.strictEqual(res.warnings.length, 1, `${payload}: ${JSON.stringify(res.warnings)}`);
+      assert.match(res.warnings[0], /^migration run report unreadable: /);
+      assert.strictEqual(res.migrations.output, '[SKIP] No changes needed', payload);
+      assert.ok(!res.migrations.output.includes('MIGRATIONS_RUN'), payload);
+    }
+    // A sound `ran` beside an implausible path keeps the count and drops the commit.
+    const res = runEngine(fix.engine, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'record-only',
+      STUB_MIGRATE_REPORT: '{"ran": 1, "tracking": "../elsewhere/migrations"}',
+    });
+    assert.strictEqual(res.migrations.ran, 1);
+    assert.strictEqual(res.migrations_committed, null);
+  });
+
+  it('a runner that reports nothing reads as no migrations run', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'record-only',
+      STUB_MIGRATE_NO_REPORT: '1',
+    });
+
+    assert.strictEqual(res.migrations.ran, 0);
+    assert.strictEqual(res.migrations_committed, null);
+    assert.deepStrictEqual(res.warnings, []);
   });
 
   it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
@@ -826,9 +949,12 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(typeof first.migrations.output, 'string');
     // No work-unit artifacts in the fixture — no migration hands over checks.
     assert.deepStrictEqual(first.migrations.verify, []);
-    // The trimmed report never leaks the prose stop-gate lines or addenda plumbing.
+    // The trimmed report never leaks the prose stop-gate lines or the machine blocks.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
+    assert.ok(!first.migrations.output.includes('MIGRATIONS_RUN'));
+    // The whole fleet ran against the fresh fixture.
+    assert.ok(first.migrations.ran > 0, `migrations ran: ${first.migrations.ran}`);
     // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.compacted, false);
@@ -851,6 +977,9 @@ describe('engine boot (real scripts)', () => {
     const second = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
+    // Everything is recorded: nothing ran, so there is no ledger line to commit.
+    assert.strictEqual(second.migrations.ran, 0);
+    assert.strictEqual(second.migrations_committed, null);
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.compacted, true);
     assert.strictEqual(second.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
