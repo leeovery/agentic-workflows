@@ -90,7 +90,7 @@ function mapItem(manifest, name) {
 /**
  * Gate a destructive op (remove/rename/reroute) on the fresh lifecycle. The
  * derived lifecycle alone is not enough: status combinations outside the
- * lifecycle join (e.g. superseded research beside a cancelled discussion)
+ * lifecycle join (superseded research beside a parked discussion stub)
  * derive `fresh`, yet the per-phase items are on record and the map item is
  * their historical anchor — so ANY per-phase item for the topic refuses too.
  * The error names the blocker and points at the recovery path.
@@ -539,7 +539,7 @@ function handleItem(cwd, workUnit, name) {
     const parked = ['research', 'discussion']
       .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'triaged'));
     if (parked.length > 0) {
-      throw new Error(`"${name}" can't be closed as a dead end — rerouted concerns are parked in its ${parked.join(' and ')} triage; drain them, or cancel the stub from the epic menu first`);
+      throw new Error(`"${name}" can't be closed as a dead end — rerouted concerns are parked in its ${parked.join(' and ')} triage; start the topic to drain them, or cancel the topic from the epic menu instead`);
     }
     item.handled = true;
 
@@ -550,8 +550,9 @@ function handleItem(cwd, workUnit, name) {
 
 /**
  * Clear the `handled` marker — the topic returns to its name-matched
- * lifecycle and counts against convergence again. Allowed only when handled.
- * No git commit.
+ * lifecycle and counts against convergence again. Allowed only when handled;
+ * a cancel marker over the dead end reads cancelled and is the reactivate's
+ * to clear. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
@@ -562,6 +563,9 @@ function unhandleItem(cwd, workUnit, name) {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
+    if (lifecycle === 'cancelled') {
+      throw new Error(`"${name}" can't be reopened — it's cancelled; reactivate it from the epic menu first`);
+    }
     if (lifecycle !== 'handled') {
       throw new Error(`"${name}" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen`);
     }

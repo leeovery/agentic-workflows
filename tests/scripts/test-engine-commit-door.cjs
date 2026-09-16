@@ -952,8 +952,8 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(res.status, 'cancelled');
     assert.strictEqual(res.committed, null);
     assert.strictEqual(res.note,
-      'commit pending — state saved; retry with: engine commit payments --state -m "<message>"',
-      'the retry names the scope the cancel actually wrote — the manifest alone — and beats nothing');
+      'commit pending — state saved; retry with engine commit',
+      'the cancel wrote the manifest alone — narrower than the work unit\'s state scope, so the retry stays generic');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), `warnings carry the git error: ${JSON.stringify(res.warnings)}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
@@ -1001,8 +1001,8 @@ describe('commit door: transaction-tail degrade', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
     const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'topic-b'], blocked);
-    assert.match(reactivated.note, /engine commit payments --state -m/,
-      'reactivate runs from the epic menu, like the cancel it undoes — the manifest alone');
+    assert.strictEqual(reactivated.note, 'commit pending — state saved; retry with engine commit',
+      'reactivate wrote the manifest alone, like the cancel it undoes — narrower than the state scope, so its retry stays generic');
 
     const sequenced = engine(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2'], blocked);
     assert.match(sequenced.note, /engine commit payments --state -m/,

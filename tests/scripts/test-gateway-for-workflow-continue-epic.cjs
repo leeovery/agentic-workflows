@@ -2121,6 +2121,27 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
   });
 
+  it("reactivate-menu carries a held unit's in-session age from the presence scan — the laboratory's hold counted with its topic", () => {
+    const fs = require('fs');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+        discussion: { items: { auth: { status: 'cancelled', previous_status: 'in-progress' } } },
+      },
+    });
+    const p = path.join(dir, '.workflows/.cache/v1/experiment/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+    const past = new Date(Date.now() - 120 * 1000);
+    fs.utimesSync(p, past, past);
+
+    const res = run(['reactivate-menu', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.match(res.stdout.replace(/\n {8}/g, ' '), /1\. Auth \[cancelled\] — discussion \[was in-progress\] · in session \(last active 2m ago\)/, res.stdout);
+    assert.ok(res.stdout.includes('  1  reactivate  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+  });
+
   it('each sub-view verb errors on excess positionals', () => {
     epicFixture();
     for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {

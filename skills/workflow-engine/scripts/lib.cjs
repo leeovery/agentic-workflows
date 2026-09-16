@@ -80,6 +80,9 @@ module.exports = {
     compareMapRows: derivations.compareMapRows,
     computeNeedsSequencing: derivations.computeNeedsSequencing,
     buildDiscoveryMap: derivations.buildDiscoveryMap,
+    sourceRows: derivations.sourceRows,
+    specIsStarted: derivations.specIsStarted,
+    specGroupsSources: derivations.specGroupsSources,
   },
   discussionMap: {
     addSubtopic: discussionMap.addSubtopic,

@@ -76,8 +76,34 @@ describe('cancel-gate', () => {
       },
     });
     const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
-    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \(completed\) and discussion \(in-progress\) cancelled — it can be reactivated later\. 2 open experiments \(E2, E2\.1\) end abandoned on the register\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\./);
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[completed\] and discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E2, with E2\.1\) ends abandoned on the register\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\./);
     assert.ok(!out.includes('Dead'), 'a cancelled specification is neither a lock nor a discard');
+  });
+
+  it('experiments count top-level — a split is named with its parent, and a sub-record whose parent closed stands alone', () => {
+    const series = (experiments) => writeManifest(dir, 'pay', {
+      phases: {
+        discussion: { items: { auth: { status: 'in-progress' } } },
+        experiment: { items: { auth: { status: 'in-progress', experiments } } },
+      },
+    });
+    series({ E1: { slug: 'a', status: 'running' }, E2: { slug: 'b', status: 'running' }, 'E2.1': { slug: 'c', status: 'conceived' }, 'E2.2': { slug: 'd', status: 'designed' } });
+    assert.match(unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' })), /2 open experiments \(E1, E2 with E2\.1, E2\.2\) end abandoned on the register\./);
+    series({ E1: { slug: 'a', status: 'concluded', verdict: 'held' }, 'E1.1': { slug: 'c', status: 'running' } });
+    assert.match(unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' })), /1 open experiment \(E1\.1\) ends abandoned on the register\./);
+  });
+
+  it('refuses a unit with nothing to cancel — an off-map topic whose only item is superseded, a specification carrying no status', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { legacy: { status: 'superseded', superseded_by: 'other' } } },
+        specification: { items: { blank: { sources: {} } } },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.legacy' }),
+      /"legacy" has nothing to cancel — no live item under its name and no map row, so the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.blank' }),
+      /"blank" has nothing to cancel — it carries no status, so the menu never offers it/);
   });
 
   it('a single item, a single open record: singular wording, no discard clause', () => {
@@ -88,7 +114,7 @@ describe('cancel-gate', () => {
       },
     });
     const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
-    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \(triaged\) cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[triaged\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
     assert.ok(!out.includes('discarded'), out);
   });
 
@@ -162,11 +188,11 @@ describe('topic-receipt — the unit addresses', () => {
     });
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.gone', verb: 'cancel' }), /Cancelled "Gone"\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'reactivate' }),
-      /Reactivated "Back"\. Restored research \(completed\) · discussion \(in-progress\)\.\n/);
+      /Reactivated "Back"\. Restored research \[completed\] · discussion \[in-progress\]\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'cancel', warn: '1' }),
       /⚑ Knowledge removal warning[\s\S]*Cancelled "Spec"\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.live', verb: 'reactivate' }),
-      /Reactivated "Live"\. Restored specification \(completed\) · planning \(in-progress\)\.\n/);
+      /Reactivated "Live"\. Restored specification \[completed\] · planning \[in-progress\]\.\n/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'cancel' }), /"back" is not cancelled — the cancel has not run/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'reactivate' }), /"spec" is still cancelled — the reactivate has not run/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'reactivate' }),
@@ -5076,6 +5102,7 @@ describe('render map-op-gate', () => {
             'legacy-bits': { routing: 'research', source: 'discovery' },
             'dead-end': { routing: 'research', source: 'discovery', handled: true },
             'in-flight': { routing: 'discussion', source: 'discovery' },
+            gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           },
         },
         discussion: { items: { 'in-flight': { status: 'in-progress' } } },
@@ -5140,6 +5167,7 @@ describe('render map-op-gate', () => {
 
     const reroute = render('reroute', { name: 'auth-flow', from: 'research', to: 'discussion' });
     assert.match(reroute, /Change routing of "auth-flow": research → discussion\./);
+    assert.match(reroute.replace(/\n {2}/g, ' '), /Lifecycle: fresh — no work has started, so the routing hint is mutable\./);
     assert.match(reroute, /`◆ Confirm routing change\?`/);
 
     const close = render('close', { name: 'auth-flow' });
@@ -5193,6 +5221,18 @@ describe('render map-op-gate', () => {
       /"dead-end" can't be closed as a dead end — it's already closed/);
     assert.throws(() => render('reopen', { name: 'auth-flow' }, 'r5.json'),
       /"auth-flow" can't be reopened — it's "fresh", not closed as a dead end/);
+  });
+
+  it('a cancelled row names its way back — the reactivate — on every op it refuses', () => {
+    assert.throws(() => render('remove', { name: 'gone' }, 'c1.json'),
+      /"gone" can't be removed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
+    assert.throws(() => render('rename', { name: 'gone', new_name: 'x' }, 'c2.json'),
+      /"gone" can't be renamed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
+    assert.throws(() => render('reroute', { name: 'gone', from: 'discussion', to: 'research' }, 'c3.json'),
+      /"gone" can't be re-routed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
+    assert.throws(() => render('close', { name: 'gone' }, 'c4.json'),
+      /"gone" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first/);
+    assert.throws(() => render('remove', { name: 'in-flight' }, 'c5.json'), /not fresh$/, 'a live row carries no reactivate clause');
   });
 
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {
@@ -5778,6 +5818,7 @@ describe('render direct-entry-gate', () => {
             beta: { routing: 'discussion', source: 'discovery' },
             gamma: { routing: 'discussion', source: 'discovery' },
             delta: { routing: 'research', source: 'discovery' },
+            sigma: { routing: 'discussion', source: 'discovery', cancelled: true },
           },
         },
         research: { items: { gamma: { status: 'triaged' }, delta: { status: 'in-progress' } } },
@@ -5804,6 +5845,15 @@ describe('render direct-entry-gate', () => {
     assert.match(parked, /Return to the epic menu — its research row is the way in\./);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.delta' }), /research is in flight on it[\s\S]*its research row is the way in/);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /research is parked on it \(triage waiting\)[\s\S]*its research row is the way in/);
+  });
+
+  it('a marker-only cancelled row points at the reactivate — it carries no menu row to return to', () => {
+    for (const phase of ['discussion', 'research']) {
+      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.sigma` });
+      assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/, phase);
+      assert.match(out, /DISPLAY: blocker guidance[\s\S]*Reactivate it from the epic menu \(e\/reactivate\) — a cancelled topic carries no menu row\./, phase);
+      assert.ok(!out.includes('Return to the epic menu'), phase);
+    }
   });
 
   it('a fresh discussion-routed topic with a parked stub names the research first at either door', () => {

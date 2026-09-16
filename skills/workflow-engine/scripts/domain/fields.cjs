@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
 const { INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { UNIT_PHASES } = require('./derivations.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -482,22 +483,56 @@ function assertExperimentTargets(manifest, segments, value) {
 }
 
 /**
+ * The cancelled phase item a dot-path lands on or inside —
+ * `phases.<phase>.items.<topic>[.<field>…]` — or null.
+ * @param {any} manifest @param {string[]} segments
+ * @returns {{phase: string, topic: string}|null}
+ */
+function cancelledItemAt(manifest, segments) {
+  if (segments.length < 4 || segments[0] !== 'phases' || segments[2] !== 'items') return null;
+  const [, phase, , topic] = segments;
+  const item = getByPath(manifest, segments.slice(0, 4));
+  return item && typeof item === 'object' && item.status === 'cancelled' ? { phase, topic } : null;
+}
+
+/**
+ * The refusal every write onto a cancelled item makes, naming the reactivate
+ * by the unit that frees it — `discovery` for a research or discussion item,
+ * `specification` for a specification or plan; a phase outside the two
+ * stages names the verb alone.
+ * @param {string} workUnit @param {{phase: string, topic: string}} target
+ */
+function refuseCancelled(workUnit, { phase, topic }) {
+  const stage = Object.keys(UNIT_PHASES).find((s) => UNIT_PHASES[/** @type {keyof typeof UNIT_PHASES} */ (s)].includes(phase));
+  const verb = stage ? `engine topic reactivate ${workUnit} ${stage} ${topic}` : 'engine topic reactivate';
+  fail(`${phase} item "${topic}" is cancelled — reactivate it instead (${verb})`);
+}
+
+/**
  * A cancelled phase item takes no status write — every transition already
  * refuses one with "reactivate it instead", and the field surface must not
  * be the permissive path around them: a grouping analysis re-run over a
  * cancelled specification's freed sources can pick the cancelled item's
  * key, and a `status: proposed` landing there would merge onto its stash.
  * Read inside the lock, like the experiment targets.
- * @param {any} manifest @param {string[]} segments
+ * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
-function assertNotCancelled(manifest, segments) {
+function assertNotCancelled(manifest, segments, workUnit) {
   // phases.<phase>.items.<topic>.status
-  if (segments.length !== 5 || segments[0] !== 'phases' || segments[2] !== 'items' || segments[4] !== 'status') return;
-  const [, phase, , topic] = segments;
-  const item = getByPath(manifest, segments.slice(0, 4));
-  if (item && typeof item === 'object' && item.status === 'cancelled') {
-    fail(`${phase} item "${topic}" is cancelled — reactivate it instead (engine topic reactivate)`);
-  }
+  if (segments.length !== 5 || segments[4] !== 'status') return;
+  const target = cancelledItemAt(manifest, segments);
+  if (target) refuseCancelled(workUnit, target);
+}
+
+/**
+ * A cancelled phase item takes no delete either — the whole item or any
+ * field of it: a reconcile's `delete items.{name}` over a cancelled
+ * specification would erase the stash with the item.
+ * @param {any} manifest @param {string[]} segments @param {string} workUnit
+ */
+function assertNotCancelledDelete(manifest, segments, workUnit) {
+  const target = cancelledItemAt(manifest, segments);
+  if (target) refuseCancelled(workUnit, target);
 }
 
 /** @param {*} value */
@@ -1004,7 +1039,7 @@ function cmdSet(cwd, args) {
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     for (const write of planned) {
       assertExperimentTargets(manifest, write.segments, write.value);
-      assertNotCancelled(manifest, write.segments);
+      assertNotCancelled(manifest, write.segments, workUnit);
     }
     for (const write of planned) {
       setByPath(manifest, write.segments, write.value);
@@ -1171,6 +1206,7 @@ function cmdDelete(cwd, args) {
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
+    assertNotCancelledDelete(manifest, segments, workUnit);
     if (!deleteByPath(manifest, segments)) {
       fail(`Path "${segments.join('.')}" not found in "${workUnit}"`);
     }
@@ -1251,10 +1287,13 @@ function cmdApply(cwd, args) {
 
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     for (const op of planned) {
-      if (op.kind !== 'set') continue;
+      if (op.kind !== 'set') {
+        assertNotCancelledDelete(manifest, /** @type {string[]} */ (op.segments), workUnit);
+        continue;
+      }
       for (const write of /** @type {{segments: string[], value: unknown}[]} */ (op.writes)) {
         assertExperimentTargets(manifest, write.segments, write.value);
-        assertNotCancelled(manifest, write.segments);
+        assertNotCancelled(manifest, write.segments, workUnit);
       }
     }
     for (const op of planned) {

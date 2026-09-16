@@ -296,7 +296,7 @@ Commands:
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
-  render cancel-gate <wu.discovery|specification.topic>
+  render cancel-gate       <wu.discovery|specification.name>
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>
@@ -308,7 +308,8 @@ Commands:
   render spec-corrections  --count <N>
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
-  render topic-receipt     <wu.phase.topic> --verb complete [--warn] | <wu.discovery|specification.topic> --verb cancel|reactivate [--warn]
+  render topic-receipt     <wu.phase.topic> --verb complete [--warn]
+  render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--warn]
   render absorb-continuation <epic> --feature <name>

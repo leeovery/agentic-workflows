@@ -22,11 +22,15 @@ const {
   UNIT_PHASES,
   unitItems,
   liveUnitItems,
+  specIsStarted,
+  specGroupsSources,
   lockingSpecs,
+  specReactivateLocks,
+  reactivateLockPhrases,
   deliveryStarted,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
-const { discoveryLifecycleLabel } = require('./conventions.cjs');
+const { discoveryLifecycleLabel, titlecase } = require('./conventions.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -98,6 +102,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} name
  * @property {UnitStage} stage
  * @property {RestoreRef[]} restores  what a reactivate returns — empty for a never-started topic
+ * @property {string} [locked] why the unit cannot be reactivated — a source topic cancelled, or a
+ *                             source another started specification has taken
  */
 
 /**
@@ -233,10 +239,18 @@ function unitRestores(manifest, stage, name) {
 function discoveryLockReason(manifest, topic) {
   const specs = lockingSpecs(manifest, topic);
   if (specs.length === 0) return undefined;
-  const named = specs.map((n) => `"${n}"`).join(', ');
+  const named = specs.map((n) => `"${titlecase(n)}"`).join(', ');
   return specs.length === 1
     ? `locked by specification ${named} — cancel it first`
     : `locked by specifications ${named} — cancel them first`;
+}
+
+/** The menu's lock reason for a cancelled specification, or undefined when it can return. @param {object} manifest @param {string} spec */
+function specificationLockReason(manifest, spec) {
+  const locks = specReactivateLocks(manifest, spec);
+  if (locks.length === 0) return undefined;
+  const { holds, recovery } = reactivateLockPhrases(locks, titlecase, { now: true });
+  return `locked — ${holds}; ${recovery}`;
 }
 
 /**
@@ -286,7 +300,7 @@ function cancellableUnits(manifest, discoveryMap, specItems) {
     units.push({ name, stage: 'discovery', state: topicState(manifest, name, row), ...(locked ? { locked } : {}) });
   }
   for (const s of specItems) {
-    if (s.status === 'proposed' || TERMINAL_STATUSES.includes(s.status || '')) continue;
+    if (!specIsStarted(s)) continue;
     const locked = deliveryStarted(manifest, s.name) ? 'implementation started — fix forward' : undefined;
     units.push({ name: s.name, stage: 'specification', state: s.status, ...(locked ? { locked } : {}) });
   }
@@ -296,7 +310,8 @@ function cancellableUnits(manifest, discoveryMap, specItems) {
 /**
  * The cancelled units — every Discovery unit reading cancelled (its marker,
  * or the legacy every-item reading), then every cancelled specification —
- * each carrying what a reactivate returns.
+ * each carrying what a reactivate returns, a specification whose sources
+ * are unavailable carrying its lock reason.
  * @param {object} manifest @param {MapRow[]} discoveryMap @param {Record<string, any>[]} specItems  build-ordered
  * @returns {CancelledUnit[]}
  */
@@ -310,7 +325,8 @@ function cancelledUnits(manifest, discoveryMap, specItems) {
   }
   for (const s of specItems) {
     if (s.status !== 'cancelled') continue;
-    units.push({ name: s.name, stage: 'specification', restores: unitRestores(manifest, 'specification', s.name) });
+    const locked = specificationLockReason(manifest, s.name);
+    units.push({ name: s.name, stage: 'specification', restores: unitRestores(manifest, 'specification', s.name), ...(locked ? { locked } : {}) });
   }
   return units;
 }
@@ -381,12 +397,12 @@ function epicDetail(cwd, manifest) {
           ? item.sources
           : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
         entry.sources = sourcesArr;
-        // groupedDiscussions tracks every live spec item's sources (proposed
-        // included) — a discussion in any such item is "grouped", which is
-        // what unaccounted_discussions measures. A cancelled or superseded
-        // specification groups nothing: its sources are free for the next
-        // grouping analysis, the same reading the spec-entry gateway makes.
-        if (item.status !== 'cancelled' && item.status !== 'superseded') {
+        // groupedDiscussions tracks every grouping spec item's sources
+        // (proposed included) — a discussion in any such item is "grouped",
+        // which is what unaccounted_discussions measures; a cancelled or
+        // superseded specification groups nothing, the same reading the
+        // spec-entry gateway makes.
+        if (specGroupsSources(item)) {
           for (const src of sourcesArr) {
             groupedDiscussions.add(src.topic || src.name);
           }
