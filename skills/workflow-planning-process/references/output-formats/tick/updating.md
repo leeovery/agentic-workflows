@@ -21,7 +21,7 @@ Tick uses dedicated commands for each status transition:
 To update a task's properties:
 
 - **Title**: `tick update <tick-id> --title "New title"`
-- **Description**: `tick update <tick-id> --description "New description"`
+- **Description**: `tick update <tick-id> --description "New description"` (replaces the whole field — an amendment reads the current value first with `tick show <tick-id> --json`, per [reading.md](reading.md), and passes the merged text)
 - **Priority**: `tick update <tick-id> --priority 1`
 - **Parent**: `tick update <tick-id> --parent <tick-id>` (pass empty string to clear)
 - **Type**: `tick update <tick-id> --type feature` (clear with `--clear-type`)

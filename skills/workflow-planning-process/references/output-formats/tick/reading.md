@@ -55,6 +55,10 @@ tick show <tick-id>
 
 Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, and full description.
 
+**Reading a value programmatically**: `tick show <tick-id> --json` returns the record with `description` as a verbatim JSON string. The default output indents the description body two columns — not reversible when the content is itself indented or fenced — so `--json` is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)).
+
+Never read or write `.tick/tasks.jsonl` directly — the CLI is the only interface to the store.
+
 ## Next Available Task
 
 To find the next task to implement:
