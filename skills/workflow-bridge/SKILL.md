@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Ba
 
 Enter plan mode with deterministic continuation instructions.
 
-This skill is invoked when a phase concludes — to create a plan-mode handoff that survives context compaction. For most phases it derives the next phase from state; for the discovery handoff the destination is supplied, because discovery is the first phase and the next phase isn't in state yet, so there's nothing to derive.
+This skill is invoked when a phase concludes — or pauses on a wait — to create a plan-mode handoff that survives context compaction. For most phases it derives the next phase from state; for the discovery handoff the destination is supplied, because discovery is the first phase and the next phase isn't in state yet, so there's nothing to derive.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -16,8 +16,9 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase that just completed — `discovery` or any later phase. Held downstream as `{completed_phase}`.
+- `$1` — **completed_phase**: the phase handing off — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
 - `$2` — **next_phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` means the continuation computes the next phase from discovery output.
+- `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 
 ---
 

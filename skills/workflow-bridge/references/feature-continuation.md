@@ -72,7 +72,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 ## C. Check for Earlier Phases
 
-Read the discovery output's `revisitable_phases` — the completed phases the user could revisit.
+Read the discovery output's `revisitable_phases` — the completed phases the user could revisit. A paused phase revisits nothing — the pipeline continues at what it waits on.
+
+#### If `outcome` is `paused`
+
+→ Proceed to **F. Enter Plan Mode**.
 
 #### If `revisitable_phases` is `(none)`
 
@@ -121,6 +125,31 @@ Set `target_phase` = the number's phase in `revisitable_phases`.
 → Proceed to **F. Enter Plan Mode**.
 
 ## F. Enter Plan Mode
+
+#### If `outcome` is `paused`
+
+Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file — resolve the placeholders, then output the result **verbatim: it is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
+
+```
+# Continue Feature: {work_unit}
+
+The previous phase paused on a wait — the pipeline continues at what it waits on.
+
+## Next Step
+
+Invoke `/workflow-{target_phase}-entry feature {work_unit}`
+
+Arguments: work_type = feature, work_unit = {work_unit} (topic inferred from work_unit)
+The skill will skip discovery and proceed directly to validation.
+
+## How to proceed
+
+**To the human**: approve with **"Clear context and continue"** — this project's setup keeps that plan-mode option enabled. A fresh context will follow the Next Step above.
+```
+
+Call the `ExitPlanMode` tool to present the plan to the user for approval.
+
+#### Otherwise
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file — resolve the conditionals and placeholders, then output the result **verbatim: it is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
 

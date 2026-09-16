@@ -123,11 +123,14 @@ function experimentNextGate(live) {
  * comes first.
  * @param {string} phase the spawning phase — `research` or `discussion`
  * @param {string} id
+ * @param {boolean} epic  where the pause lands — the epic menu, or straight into the laboratory
  * @returns {string}
  */
-function experimentSpawnGate(phase, id) {
+function experimentSpawnGate(phase, id, epic) {
   return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', `Pause this ${phase} here — the session ends and the menu takes over with ${id} queued`),
+    cmdOption('y', 'yes', epic
+      ? `Pause this ${phase} here and return to the epic menu with ${id} queued`
+      : `Pause this ${phase} here and open the laboratory for ${id}`),
     cmdOption('l', 'later', `Keep the conversation going — this ${phase} cannot conclude until ${id}'s evidence lands`),
   ], { question: `Work ${id} now?` }));
 }

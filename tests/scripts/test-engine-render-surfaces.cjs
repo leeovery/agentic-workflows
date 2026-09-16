@@ -340,7 +340,8 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
     assert.ok(n > -1 && l > n, 'yes leads, later follows');
-    assert.match(unwrap(out), /Pause this research here — the session ends and the menu takes over with E1 queued/);
+    assert.match(unwrap(out), /Pause this research here and return to the epic menu with E1 queued/);
+    assert.ok(!out.includes('the session ends'), 'the pause returns through the bridge — the row never describes a session ending');
     assert.match(unwrap(out), /Keep the conversation going — this research cannot conclude until E1's evidence lands/);
   });
 
@@ -366,10 +367,10 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> The wait releases when each experiment ends\. The menu carries the way in\./);
+    assert.match(out, /> The wait releases when each experiment ends\. The epic menu carries the way in\./);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /Pause this discussion here — the session ends and the menu takes over with E1, E2 queued/);
+    assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1, E2 queued/);
     assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
   });
 
@@ -402,10 +403,10 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\)\n/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\.\n/);
+    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The epic menu carries the way in\.\n/);
     assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here — the session ends and the menu takes over with the research queued/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and return to the epic menu with the research queued/);
     assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
     assert.ok(!out.includes('experiment'), 'no experiment clause without an experiment wait');
   });
@@ -420,8 +421,8 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\) and experiment evidence \(E1, E2\)\n/);
-    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The menu carries the way in\.\n/);
-    assert.match(unwrap(out), /the menu takes over with the research and E1, E2 queued/);
+    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The epic menu carries the way in\.\n/);
+    assert.match(unwrap(out), /return to the epic menu with the research and E1, E2 queued/);
     assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
   });
 
@@ -441,7 +442,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
       /no research item "billing" — nothing to hold shut/, 'an absent item is a misrouted address, never a clear conclusion');
   });
 
-  it('a feature\'s discussion waits on its research the same way — the guidance names no epic-only row', () => {
+  it('a feature\'s discussion waits on its research the same way — the pause names the work unit\'s next step, never a menu', () => {
     writeManifest(dir, 'feat', {
       work_type: 'feature',
       phases: {
@@ -451,14 +452,93 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'feat.discussion.feat' });
     assert.match(out, /awaits research on "Feat" \(parked — not yet started\)/);
-    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The menu carries the way in\./);
-    assert.ok(!out.includes('row'), 'no epic-only vocabulary on a linear unit');
+    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
+    assert.match(out, /◆ Pause here\?/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
+    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause lands in plan mode, never on a menu — no epic vocabulary');
+  });
+
+  it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
+    writeManifest(dir, 'feat', {
+      work_type: 'feature',
+      phases: { research: { items: { feat: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
+    });
+    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.research.feat', id: 'E1' });
+    assert.match(unwrap(out), /Pause this research here and open the laboratory for E1/);
+    assert.ok(!out.includes('menu'), 'no menu on a linear unit');
   });
 
   it('refuses a phase outside the conversation pair', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress' });
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.billing' }),
       /address must be <work_unit>\.<research\|discussion>\.<topic>/);
+  });
+});
+
+describe('phase-paused — the bridge banner for a conversation leaving on a wait', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  const HEADER = '=== DISPLAY: phase paused (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===';
+
+  it('a linear unit names what its one conversation awaits, the topic name dropped — the unit is the topic', () => {
+    writeManifest(dir, 'ledger', {
+      work_type: 'feature',
+      phases: {
+        research: { items: { ledger: { status: 'triaged' } } },
+        discussion: { items: { ledger: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'ledger', phase: 'discussion' }),
+      `${HEADER}\nDiscussion paused for "Ledger" — awaiting research on the topic (parked — not yet started).\n`);
+  });
+
+  it('an epic names each paused conversation with its waits — research first, then the evidence', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { billing: { status: 'in-progress' }, auth: { status: 'completed' } } },
+        discussion: {
+          items: {
+            billing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] },
+            auth: { status: 'in-progress', awaiting_experiments: ['E1'] },
+            done: { status: 'completed', awaiting_experiments: ['E9'] },
+          },
+        },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'discussion' }),
+      `${HEADER}\nDiscussion paused for "Pay" — "Billing" awaits research on the topic (in flight) and experiment evidence (E1, E2); "Auth" awaits experiment evidence (E1).\n`,
+      'only in-progress holders are paused conversations — a completed item\'s stale field is never a wait');
+  });
+
+  it('the research phase pauses on evidence alone — the spawn\'s pause', () => {
+    writeManifest(dir, 'lab', {
+      phases: { research: { items: { layout: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
+    });
+    assert.match(renderSurface(dir, 'phase-paused', { dotpath: 'lab', phase: 'research' }),
+      /^.*\nResearch paused for "Lab" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
+  });
+
+  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the bridge', () => {
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: {
+        research: { items: { pay: { status: 'completed' } } },
+        discussion: { items: { pay: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'discussion' }),
+      `${HEADER}\nDiscussion paused for "Pay".\n`);
+  });
+
+  it('is loud on a missing phase, a phase outside the conversation pair, a dotted address, and an unknown unit', () => {
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'planning' }),
+      /--phase must be <research\|discussion> — the conversations that pause on a wait; got "planning"/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
   });
 });
 
@@ -3636,6 +3716,7 @@ describe('CLI boundary — engine render via subprocess', () => {
     assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
     assert.ok(run(['revisit-gate', 'pay', '--prev', 'discussion', '--next', 'specification']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
+    assert.ok(run(['phase-paused', 'pay', '--phase', 'discussion']).includes('Discussion paused for "Pay".'));
     assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
     assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('was consolidated into'),
@@ -4123,7 +4204,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 

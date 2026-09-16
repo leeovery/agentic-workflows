@@ -24,7 +24,7 @@ Hold the output as **the most recent discovery output** — sections B–E read 
 
 A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the most recent discovery output, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated — section F reads it to render the callout above the discovery map.
+On return, `new_arrivals` is populated — section G reads it to render the callout above the discovery map.
 
 → Proceed to **C. Sequence Map**.
 
@@ -108,13 +108,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 **If user chose `n/no`:**
 
-→ Proceed to **F. Display and Menu**.
+→ Proceed to **F. Phase Banner**.
 
 #### Otherwise
 
-→ Proceed to **F. Display and Menu**.
+→ Proceed to **F. Phase Banner**.
 
-## F. Display and Menu
+## F. Phase Banner
+
+#### If `outcome` is `paused`
+
+The phase left on a wait — the banner names what its conversation awaits, never a completion. Render and emit the section verbatim:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-paused {work_unit} --phase {completed_phase}
+```
+
+→ Proceed to **G. Display and Menu**.
+
+#### Otherwise
 
 Render and emit the section verbatim:
 
@@ -122,17 +134,21 @@ Render and emit the section verbatim:
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {work_unit} --phase {completed_phase}
 ```
 
+→ Proceed to **G. Display and Menu**.
+
+## G. Display and Menu
+
 → Load **[epic-display-and-menu.md](../../workflow-continue-epic/references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when section B did not load the orchestrator).
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
-→ On return, proceed to **G. Enter Plan Mode**.
+→ On return, proceed to **H. Enter Plan Mode**.
 
 ---
 
-## G. Enter Plan Mode
+## H. Enter Plan Mode
 
-Section F returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. Continue discovery → `/workflow-discovery epic {work_unit}` — the only selection that doesn't route to an entry skill; every other route comes from the stored `route` verbatim.
+Section G returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. Continue discovery → `/workflow-discovery epic {work_unit}` — the only selection that doesn't route to an entry skill; every other route comes from the stored `route` verbatim.
 
 Skills receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional).
 

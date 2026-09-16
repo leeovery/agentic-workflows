@@ -660,9 +660,16 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
       /awaits research on "Ledger" \(parked — not yet started\)/);
+    // The wait gate's yes hands the session to the bridge as a pause: its
+    // banner names what the unit's one conversation awaits — the linear
+    // clause drops the topic name — and the continuation routes to the research.
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
+      /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(parked — not yet started\)\.\n$/);
     sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
+      /awaiting research on the topic \(in flight\)\./);
     // The single-topic register keys on the work unit's own name; an open
     // thread is a fine way to conclude — the gate shows it and asks the same.
     sim.run(['research-threads', 'add', wu, wu, 'balance-rounding', '--question', 'Where does the ledger round a balance?', '--origin', 'seed']);
@@ -671,9 +678,12 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['research-conclude-gate', `${wu}.research.${wu}`], { expect: 'content' }),
       /Research Threads — Ledger \(1 thread\)\n {2}└─ ○ Where does the ledger round a balance\?\s+\[seed\]\n=== MENU: research conclude gate/);
     sim.run(['topic', 'complete', wu, 'research', wu]);
-    // Landed: the gates release and the discussion resumes.
+    // Landed: the gates release and the discussion resumes. A pause banner
+    // rendered over a wait a peer has since landed says only the bare truth.
     sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
+      /\nDiscussion paused for "Ledger"\.\n$/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
@@ -1390,6 +1400,9 @@ describe('pipeline simulation', () => {
       /awaits research on the topic — conclude the research to release the wait/);
     const waitGate = sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'content' });
     assert.match(waitGate, /Conclusion blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
+    // The pause's bridge banner names the epic's paused conversation by topic.
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
+      /"Beta" awaits research on the topic \(parked — not yet started\)\./);
     const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .filter((k) => k.topic === 'beta').map((k) => k.action);
     assert.deepStrictEqual(betaRows, ['start_research'], 'the research row is the topic\'s own');
@@ -3399,6 +3412,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
       /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
     sim.refuses(['render', 'wait-gate', `${wu}.discussion.layout`], /no discussion item "layout" — nothing to hold shut/);
+    // A yes at either pause hands the session to the bridge, whose banner
+    // names the phase's waiting conversation — each spawn phase its own; a
+    // phase outside the conversation pair never pauses on a wait.
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
+      /\nDiscussion paused for ".*" — "Timing" awaits experiment evidence \(E1\)\.\n$/);
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'research'], { expect: 'content' }),
+      /\nResearch paused for ".*" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
+    sim.refuses(['render', 'phase-paused', wu, '--phase', 'experiment'], /--phase must be <research\|discussion>/);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
