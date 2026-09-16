@@ -1020,6 +1020,24 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
+  it('cross-cutting: the discussion→specification hop offers proceed or revisit, never the skip', () => {
+    const wu = 'error-shape';
+    sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
+    label(sim, wu, 'discussion', wu);
+    sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    // The pipeline ends at specification, so review is never this type's
+    // next phase — the gate refuses the hop rather than offering a skip.
+    const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
+    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
+    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.ok(!hop.includes('d/done'), hop);
+    sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
+  });
+
   it('epic: map lifecycle, per-topic phases, grouping supersession, cancel/reactivate', () => {
     const wu = 'overhaul';
     const log = sessionLog(sim, wu);
