@@ -1760,7 +1760,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
-      '**`a/cancel`**    → Cancel a topic (phase work)',
+      '**`a/cancel`**    → Cancel a topic',
     ].join('\n'));
     // The map row cues the same hold the struck row shows.
     assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),
