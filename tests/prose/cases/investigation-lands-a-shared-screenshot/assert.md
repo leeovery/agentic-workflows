@@ -16,13 +16,15 @@ The prose should have taken this path:
    no offer to land it. The file lands at `imports/checkout-500.png`, the
    extension kept and nothing normalised to `.md`, and the session runs no
    commit of its own for it: the verb committed itself
-5. the screenshot is read as an image and what it shows is treated as
-   symptom evidence — the blank page and the console line are written into
-   the investigation file in its own terms
-6. the file carries the file itself by reference: an inline link on the
-   relative path `../imports/checkout-500.png`, its text saying what the
-   screenshot shows, under the symptoms' references. The link target is the
-   relative path, never an absolute one and never the original `notes/` path
+5. the landed file is read where it landed — a read of
+   `.workflows/crash-fix/imports/checkout-500.png`, not of the `notes/`
+   original — and the user's account of what it shows is treated as symptom
+   evidence, written into the investigation file in its own terms
+6. the file carries the screenshot by reference: an inline link on the
+   relative path `../imports/checkout-500.png`, its text naming what the
+   user says the screenshot shows, under the symptoms' references. The link
+   target is the relative path, never an absolute one and never the
+   original `notes/` path
 7. what the user says is written into the investigation file as it is
    gathered, and committed
 8. the questioning ends and the prose turns to the knowledge base, which is

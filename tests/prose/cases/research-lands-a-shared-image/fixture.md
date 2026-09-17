@@ -7,9 +7,9 @@ deep dive has ever run on the topic, the store is empty, and the triage
 queue is empty.
 
 A screenshot the user took of a rival's checkout sits in the project at
-`notes/rival-checkout-permissions.png`, where they saved it. Nothing has
-ever been imported into this work unit — `imports/` does not exist and
-the manifest carries no import entries.
+`notes/Rival Checkout Permissions.PNG`, where they saved it — spaces and
+capitals and all. Nothing has ever been imported into this work unit —
+`imports/` does not exist and the manifest carries no import entries.
 
 The context was cleared at the pause — this session opens cold at the
 research entry with its two arguments and what is on disk.

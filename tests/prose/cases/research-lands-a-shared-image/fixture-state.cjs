@@ -10,7 +10,10 @@
 const m = require('../../mainlines/feature.cjs');
 
 const WU = m.WU;
-const SHOT = 'notes/rival-checkout-permissions.png';
+// Saved the way a screenshot arrives: spaces in the name, capitals in the
+// extension. Unquoted it splits into a positional per word, and the landed
+// name is the engine's, not the one the user typed.
+const SHOT = 'notes/Rival Checkout Permissions.PNG';
 
 // A real 16×16 PNG. The file type is the point: it keeps its extension, it
 // is tracked on the manifest and never embedded, and nothing about it

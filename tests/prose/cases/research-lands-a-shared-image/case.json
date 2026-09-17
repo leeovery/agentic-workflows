@@ -30,7 +30,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user runs the shop and is picking the payments research back up with one thing to bring: a screenshot they took of a rival's checkout, saved in the project at notes/rival-checkout-permissions.png. They give that path and say what it shows — the step where the rival asks the shopper for permission to keep the card for future orders: the permission is a tick-box already ticked, the small print sits under it in grey, and the only button on the screen is 'Pay now'. They answer what they can from the picture itself — the wording, where it sits in the flow, what a shopper would actually notice — and say plainly when something is not visible in it; they invent nothing beyond what they photographed, and they have no other files to share. They are not interested in sending anyone off to look into anything: whatever is worth knowing they would rather cover in the conversation. After that exchange they say they have to stop for the day — the research is not finished, and they will pick it up next time.",
+  "conduct": "The user runs the shop and is picking the payments research back up with one thing to bring: a screenshot they took of a rival's checkout, saved in the project at \"notes/Rival Checkout Permissions.PNG\". They give that path exactly as it is written and say what it shows — the step where the rival asks the shopper for permission to keep the card for future orders: the permission is a tick-box already ticked, the small print sits under it in grey, and the only button on the screen is 'Pay now'. They answer what they can from the picture itself — the wording, where it sits in the flow, what a shopper would actually notice — and say plainly when something is not visible in it; they invent nothing beyond what they photographed, and they have no other files to share. They are not interested in sending anyone off to look into anything: whatever is worth knowing they would rather cover in the conversation. After that exchange they say they have to stop for the day — the research is not finished, and they will pick it up next time.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
@@ -49,8 +49,8 @@
     "calls_exclude": [
       "--from discovery",
       "knowledge.cjs index",
-      "cp notes/rival-checkout-permissions.png",
-      "mv notes/rival-checkout-permissions.png",
+      "cp notes/Rival Checkout Permissions.PNG",
+      "mv notes/Rival Checkout Permissions.PNG",
       "research/assets",
       "topic complete",
       "topic triage",

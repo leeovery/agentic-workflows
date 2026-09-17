@@ -15,24 +15,27 @@ The prose should have taken this path:
    empty, the landed-evidence read finds no reconcile flag, and the dive
    check finds nothing to fold — no dive was ever dispatched
 5. **the path the user offers lands before anything is written.** One
-   call — `workunit import pay notes/rival-checkout-permissions.png
-   --from research/pay` — the origin naming the phase and topic this
-   session is sitting in. Nothing is asked first: no gate, no confirmation,
-   no offer to land it. The response reports the landing at
-   `imports/rival-checkout-permissions.png` — the extension kept, nothing
-   normalised to `.md` — and the session runs no commit of its own for it:
-   the verb committed itself
-6. the landed screenshot is read as an image and worked into the
-   conversation as material, not as an attachment: the exchange is about
-   what the rival's permission step does to a shopper, and the user is
-   pushed on what the picture does and does not settle
+   call — `workunit import pay 'notes/Rival Checkout Permissions.PNG'
+   --from research/pay` — the path quoted so its spaces stay one argument,
+   the origin naming the phase and topic this session is sitting in.
+   Nothing is asked first: no gate, no confirmation, no offer to land it.
+   The response reports the landing at
+   `imports/rival-checkout-permissions.png` — the stem lowercased and
+   hyphenated, the extension kept and lowercased, nothing normalised to
+   `.md` — and the session runs no commit of its own for it: the verb
+   committed itself
+6. the landed file is read where it landed — a read of
+   `.workflows/pay/imports/rival-checkout-permissions.png`, not of the
+   `notes/` original — and what the user says the screenshot shows is
+   worked into the conversation as material for the open thread, not
+   acknowledged as an attachment and set aside
 7. the research file's next write carries the file by reference — an
-   inline link on the relative path `../imports/rival-checkout-permissions.png`,
-   its text saying what the screenshot shows, with the prose around it
-   recording what the exchange made of it. The picture's content is
-   described in the file's own terms and never transcribed into it, and
-   the link target is the relative path, never an absolute one and never
-   the original `notes/` path
+   inline link on the relative path
+   `../imports/rival-checkout-permissions.png`, the landed name and not
+   the one the user typed, its text saying what the screenshot shows, with
+   the prose around it recording what the exchange made of it. The link
+   target is the relative path, never an absolute one and never the
+   original `notes/` path
 8. the write commits on the session's own cadence —
    `commit pay --topic research/pay` with a research subject — and that is
    the only commit the session runs
