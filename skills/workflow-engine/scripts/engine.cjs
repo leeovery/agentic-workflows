@@ -225,7 +225,7 @@ Commands:
   agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
-  commit <work-unit> -m <message> [--plan <topic> | --discovery | --topic <phase>/<topic> [--kb] [--sweep]]
+  commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --topic <phase>/<topic> [--kb] [--sweep]]
   commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
   commit --inbox -m <message>
   commit --roadmap -m <message>
@@ -1469,7 +1469,8 @@ function runBoot() {
 // commit — the scoped commit helper. Every form computes a pathspec and
 // commits confined to it: the work unit (`.workflows/{wu}`), the inbox, the
 // roadmap, the whole `.workflows` tree, one topic's artifacts (`--topic`),
-// the discovery session's paths (`--discovery`), a plan's declared storage
+// the discovery session's paths (`--discovery`), the imports home and the
+// manifest that records its entries (`--imports`), a plan's declared storage
 // (`--plan`), or declared code paths (`--paths`). The knowledge store rides
 // the work-unit forms whenever it exists (domain/commit.cjs). A clean scope
 // is fine: {committed: null}.
@@ -1598,7 +1599,7 @@ function commitCodePaths(cwd, paths, message, target) {
   respond(result);
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --state | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
 
 /** @param {string[]} argv */
 function runCommit(argv) {
@@ -1615,6 +1616,7 @@ function runCommit(argv) {
     let inbox = false;
     let workflows = false;
     let roadmapScope = false;
+    let importsScope = false;
     let kb = false;
     let sweep = false;
     for (let i = 0; i < argv.length; i++) {
@@ -1629,6 +1631,7 @@ function runCommit(argv) {
       else if (a === '--kb') kb = true;
       else if (a === '--sweep') sweep = true;
       else if (a === '--discovery') discovery = true;
+      else if (a === '--imports') importsScope = true;
       else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
@@ -1646,7 +1649,7 @@ function runCommit(argv) {
       const parts = (forTopicSpec || '').split('/');
       if (!message || files.length === 0 || forSpec.length !== 2 || !forWorkUnit || parts.length !== 2
           || !CODE_PHASES.includes(parts[0]) || !parts[1] || plan !== null || topicSpec !== null
-          || discovery || stateScope || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
+          || discovery || importsScope || stateScope || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] });
@@ -1657,7 +1660,7 @@ function runCommit(argv) {
     // unit's own analysis dir, or the global one.
     const globalState = stateScope && workUnit === null;
     const scopeCount = [inbox, workflows, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
-    const workUnitFlags = [plan !== null, topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
+    const workUnitFlags = [plan !== null, topicSpec !== null, discovery, importsScope, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || forSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
         topicSpec === '' || topicSpec === undefined ||
@@ -1758,6 +1761,14 @@ function runCommit(argv) {
         if (committed === null) respond({ committed: null, note: 'nothing to commit' });
         else respond({ committed });
         return;
+      }
+      if (importsScope) {
+        // --imports: the retry the import landing's pending note prescribes —
+        // the unit's one imports home and the manifest its entries live on,
+        // the same scope the landing's own tail took, so a peer session's
+        // dirt elsewhere in the unit never rides. No presence beat: running
+        // an owed commit is not a session's work on a topic.
+        scope = [`.workflows/${wu}/imports`, `.workflows/${wu}/manifest.json`];
       }
       if (discovery) {
         // --discovery: the discovery session's cadence commit. Discovery runs
