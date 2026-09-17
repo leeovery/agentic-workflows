@@ -126,7 +126,7 @@ One engine transaction moves the discussion (and any research, experiment series
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `renamed_imports` (the imports a name collision renamed, empty when none did), `routing`, `committed`, and `warnings`.
 
 #### If the command failed
 
@@ -150,10 +150,10 @@ The command succeeded.
 
 ## F. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the documents it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--warn]
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]
 ```
 
 Fetch the continuation and emit its MENU section verbatim per its marker:

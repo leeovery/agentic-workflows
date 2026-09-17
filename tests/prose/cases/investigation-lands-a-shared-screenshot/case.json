@@ -1,0 +1,46 @@
+{
+  "origin": "the symptom interview asks for screenshots and logs and had nowhere to put the answer — a path offered there was read where it sat, never landed, and nothing carried it to the spec or the implementer",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-investigation-process/references/initialize-investigation.md",
+    "skills/workflow-investigation-process/references/template.md",
+    "skills/workflow-investigation-process/references/symptom-gathering.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md"
+  ],
+  "conduct": "The user is relaying this bug rather than living it. Two customers hit it last week and they reproduced it once on staging with a digital-only basket; beyond that they are working from the report. They answer concretely about what they have actually seen, and say plainly when they do not know — they have no error-tracking link, no logs to hand, and nothing better than \"sometime last week\" for when it started. One thing they do have: a screenshot of the failed page, saved in the project at notes/checkout-500.png — the blank page with the browser console open behind it and one red line in the console naming the payment step. They give that path when the questioning reaches what references they have, and they have nothing else to share. They do not volunteer detail past the question asked, and they do not speculate about the cause; that is what they think the investigation is for.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "topic start crash-fix investigation crash-fix",
+      "workunit import crash-fix",
+      "--from investigation/crash-fix"
+    ],
+    "calls_in_order": [
+      "topic start crash-fix investigation crash-fix",
+      "workunit import crash-fix"
+    ],
+    "calls_exclude": [
+      "--from discovery",
+      "knowledge.cjs index",
+      "cp notes/checkout-500.png",
+      "mv notes/checkout-500.png",
+      "investigation/assets",
+      "topic complete",
+      "topic reopen"
+    ]
+  }
+}

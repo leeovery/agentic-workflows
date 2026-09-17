@@ -28,7 +28,7 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 
 ## B. Promote
 
-One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/`, marks the epic's spec item `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
+One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/`, copies the imports the moved documents link and the moved sources attached into the new unit's `imports/`, marks the epic's spec item `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"
@@ -38,10 +38,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_un
 
 ## C. Display
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary — adding `--warn` when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--imports` carries `{N}`, the length of the response's `imports` (omit the flag when the list is empty), and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit} [--warn]
+node .claude/skills/workflow-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit} [--imports {N}] [--warn]
 ```
 
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):

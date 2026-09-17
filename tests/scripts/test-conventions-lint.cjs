@@ -661,7 +661,6 @@ function checkInertLoadChrome(files) {
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
   'skills/workflow-continue-epic/references/summary-backfill.md': 2,
-  'skills/workflow-discovery/references/confirm-trigger.md': 1,
   'skills/workflow-discovery/references/continuity-load.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 2,
   'skills/workflow-discovery/references/name-resolution.md': 2,

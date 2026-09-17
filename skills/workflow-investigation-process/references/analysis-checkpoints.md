@@ -50,6 +50,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {
 
 **If the user adjusts:** incorporate, record, commit, and continue the analysis on the adjusted direction.
 
+## Files the User Shares
+
+Any depth. A path the user offers — a screenshot of the failure, a log, an exported trace — lands before the trace moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. What the file shows enters the ledger and the trace lines like any other evidence.
+
 ## Asking the User
 
 Any depth. When blocked on something only the user knows — reproduction fails, expected behaviour is ambiguous, environment context is missing — ask directly rather than guessing or working around the gap:

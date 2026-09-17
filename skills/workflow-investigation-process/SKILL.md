@@ -124,6 +124,8 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 3: Symptom Gathering
 
+Load **[landing-shared-files.md](../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` — a protocol, not a step: a path the user offers in this step enters its **A. Land It**; nothing runs at load time.
+
 #### If `resumed` is `true`
 
 An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
@@ -202,7 +204,7 @@ Load **[investigation-plan.md](references/investigation-plan.md)** and follow it
 > Tracing the bug through the codebase — following code paths, checking state, and narrowing down the root cause.
 ```
 
-Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques and **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol — both govern this step.
+Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques, **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol, and **[landing-shared-files.md](../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` for the files the user shares — all three govern this step.
 
 Trace the bug through the code along the agreed plan. Document findings in the investigation file as you analyze, keep the hypothesis ledger current, and commit after each significant finding.
 

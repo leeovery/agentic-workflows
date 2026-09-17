@@ -30,7 +30,7 @@ No inbox seed. The opener invites the user to describe the work.
 
 ## B. Render the Opener
 
-Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land in `imports/`. (Inbox seeds are landed separately, in `seeds/`.)
+Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, screenshots, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land in `imports/`. (Inbox seeds are landed separately, in `seeds/`.)
 
 Render the opener matching what the caller told us.
 
@@ -45,7 +45,7 @@ I've read your {bug | idea | quick-fix — pluralised with a count when several,
 
 {one-line sketch — a single combined picture across the item(s)}
 
-{Targeted opening question that pulls on the shape.} If you have any related files or notes, share the path(s) and I'll read them too.
+{Targeted opening question that pulls on the shape.} If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.
 ```
 
 **STOP.** Wait for user response.
@@ -57,7 +57,7 @@ I've read your {bug | idea | quick-fix — pluralised with a count when several,
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about the epic. I'll ask open questions to pull on it before we synthesise topics. If you have notes or research files, share the path(s) and I'll read them in.
+Tell me about the epic. I'll ask open questions to pull on it before we synthesise topics. If you have notes, screenshots, or research files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -69,7 +69,7 @@ Tell me about the epic. I'll ask open questions to pull on it before we synthesi
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about the feature. If you have notes or files for it, share the path(s) and I'll read them in.
+Tell me about the feature. If you have notes, screenshots, or files for it, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -81,7 +81,7 @@ Tell me about the feature. If you have notes or files for it, share the path(s) 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-What's broken? If you have logs, error reports, or related files, share the path(s) and I'll read them in.
+What's broken? If you have logs, screenshots, error reports, or related files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -119,7 +119,7 @@ No pre-seed (`s/start`). Open fully and fold the "we'll figure out the shape tog
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me what's on your mind. Describe it the way it sits in your head — I'll ask open questions and we'll figure out the shape together. If you have notes or files, share the path(s) and I'll read them in.
+Tell me what's on your mind. Describe it the way it sits in your head — I'll ask open questions and we'll figure out the shape together. If you have notes, screenshots, or files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.

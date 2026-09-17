@@ -91,11 +91,23 @@ Read the positional argument:
 
 The shaping conversation before this point was ephemeral — persist it now:
 
-1. **Land any imports held from shaping.** If the user shared file paths during the shaping conversation (`import_paths`), land them (one path per argument; on `ok: false` with `missing_imports`, re-prompt for corrected paths and re-run):
+1. **Land any imports held from shaping.** If the user shared file paths during the shaping conversation (`import_paths`), land them all in one call. Single-quote every path — a screenshot's filename carries spaces and capitals, and unquoted each word becomes its own positional — write a `~` path out in full, since the quotes stop the shell expanding it, and write a single quote inside a path as `'\''`:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs roadmap import {path} {path}
+   node .claude/skills/workflow-engine/scripts/engine.cjs roadmap import '{path}' ['{path}' …]
    ```
+
+   **If the response is `ok: false` with `missing_imports`:** nothing landed — one bad path refuses the whole batch. Write the payload to `.workflows/.cache/roadmap/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt and emit its DISPLAY and MENU sections verbatim per their markers:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/roadmap/import-reprompt.json
+   ```
+
+   **STOP.** Wait for user response.
+
+   **If the answer names a path:** replace the refused entries and run the landing again over the corrected paths together with the ones the refusal did not name — none of the batch is on disk.
+
+   **If the answer is `skip`:** the refused paths land nothing. Run the landing again over the paths the refusal did not name, or carry on to the session when it named them all.
 
 2. **Open the session.** Read the state first:
 

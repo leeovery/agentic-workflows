@@ -21,7 +21,7 @@ Date: {YYYY-MM-DD}
 
 ## Imports (as of session)
 
-- imports/{filename}.md
+- imports/{filename}
 - ...
 
 ## Map State at Start
