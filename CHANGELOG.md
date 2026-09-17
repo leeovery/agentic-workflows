@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.60] - 2026-09-17
+
+🔧 Changed
+
+- Comment discipline now targets zero comments by default — each one must earn its place against that bar, and doc comments are skipped when the exported symbol's signature already says enough.
+- Comments may no longer restate what the code does or carry reasoning the spec or plan already holds — only the conclusion, never the argument.
+
 ## [0.7.59] - 2026-09-17
 
 🔧 Changed
