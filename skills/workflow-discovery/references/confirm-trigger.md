@@ -20,7 +20,7 @@ This work unit is brand new, so there are no prior sessions: `session_number` = 
 
 Write the log content to the staging path `.workflows/.cache/{work_unit}/discovery/session-001.md`, following [template.md](template.md): populate the header, **Description (as of session)** (the shaped `description`), **Seed** (one line per `inbox_seeds` entry as `seeds/{filename} ({source})` with `source` = `inbox:{idea|bug|quickfix}` from the item's inbox folder — or `(none)`), **Imports** (one line per `import_paths` entry as `imports/{filename}` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
 
-For each listed `{filename}`, derive the landed name the way the engine will: split the source basename at its last dot, lowercase the stem and collapse whitespace/punctuation runs to `-`; a markdown-ish extension (`.md`, `.markdown`, `.txt`, `.text`) or none lands `.md`, any other extension is kept, lowercased (an inbox basename just collapses its `--` separator).
+For each listed `{filename}`, derive the landed name the way the engine will: split the source basename at its last dot, lowercase the stem and collapse whitespace/punctuation runs to `-`; a markdown-ish extension (`.md`, `.markdown`, `.txt`, `.text`) or none lands `.md`, any other extension is kept, lowercased (an inbox basename just collapses its `--` separator). A source whose basename leads with a dot lands nothing whatever follows the dot — it comes back under `skipped_imports`, so it gets no line.
 
 This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and not KB-indexed at creation; for epics, `engine discovery-session close` indexes it under the `discovery` phase at session close.
 
@@ -31,27 +31,20 @@ This session log is the durable carrier: for single-phase types it (plus the man
 One engine transaction persists everything: the manifest (create-if-absent — an existing work unit is reused, never overwritten), imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import {path} --seed {path}
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import '{path}' --seed {path}
 ```
 
-Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
+Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. A shared path is single-quoted — an image's filename carries spaces, and unquoted each word becomes its own positional — and a `~` path is written out in full, since the quotes stop the shell expanding it. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
 
 #### If the response is `ok: false` with `missing_imports`
 
-One or more import paths don't exist — nothing was created. Report them and re-prompt:
+One or more import paths don't exist — nothing was created. Write the payload to `.workflows/.cache/{work_unit}/discovery/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/discovery/import-reprompt.json
 ```
-> One or more paths could not be found:
->   • {missing_path_1}
->   • {missing_path_2}
 
-· · · · · · · · · · · ·
-**`◆ Provide the corrected file path(s):`**
-
-**Provide file paths** → one or more, space or newline separated
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

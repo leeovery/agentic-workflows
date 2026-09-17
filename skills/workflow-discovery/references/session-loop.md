@@ -96,7 +96,7 @@ What's on your mind for this map?
 
 #### If `discovery_map` is empty and seeds or imports exist
 
-Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
+Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. A markdown import is read as prose and an image with vision; anything else is named to the user rather than opened. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -150,7 +150,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
      ```
 
      A refusal naming a previously dismissed topic needs the user's deliberate re-add — confirm it, then re-run with `--force-dismissed`.
-   - **Shared files** — paths offered in conversation land as imports with `discovery` as their origin: → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discovery` and enter its **A. Land It**. Record each landing under **Edits** (`Imported: imports/{filename}`).
+   - **Shared files** — paths offered in conversation land as imports with `discovery` as their origin: → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discovery` and enter its **A. Land It**. Record each landing under **Edits** (`Imported: {filename}` — the lazy-creation rule applies when no log exists yet, [template.md](template.md)).
    - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `gateway.cjs map-view {work_unit}` and emit its TITLE section (markdown) then its `=== DISPLAY` section verbatim as a code block. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).

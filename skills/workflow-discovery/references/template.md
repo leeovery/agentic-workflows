@@ -34,7 +34,7 @@ session worked from.}
 {The seed (promoted inbox item) the work unit originated from, or
 `(none)`.}
 
-- seeds/{filename}.md ({source})
+- seeds/{filename} ({source})
 
 ## Imports
 
@@ -68,6 +68,7 @@ existing map. Format:}
 - Changed routing: {name} → {new routing} — {short reason}
 - Closed as dead end: {name} — {short reason}
 - Reopened: {name} — {short reason}
+- Imported: {filename}
 
 ## Topics Identified
 
