@@ -20,7 +20,7 @@ This work unit is brand new, so there are no prior sessions: `session_number` = 
 
 Write the log content to the staging path `.workflows/.cache/{work_unit}/discovery/session-001.md`, following [template.md](template.md): populate the header, **Description (as of session)** (the shaped `description`), **Seed** (one line per `inbox_seeds` entry as `seeds/{filename} ({source})` with `source` = `inbox:{idea|bug|quickfix}` from the item's inbox folder — or `(none)`), **Imports** (one line per `import_paths` entry as `imports/{filename}` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
 
-For each listed `{filename}`, derive the landed name the way the engine will: the source basename lowercased, whitespace/punctuation runs collapsed to `-`, `.md` ensured (an inbox basename just collapses its `--` separator).
+For each listed `{filename}`, derive the landed name the way the engine will: split the source basename at its last dot, lowercase the stem and collapse whitespace/punctuation runs to `-`; a markdown-ish extension (`.md`, `.markdown`, `.txt`, `.text`) or none lands `.md`, any other extension is kept, lowercased (an inbox basename just collapses its `--` separator).
 
 This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and not KB-indexed at creation; for epics, `engine discovery-session close` indexes it under the `discovery` phase at session close.
 
@@ -28,7 +28,7 @@ This session log is the durable carrier: for single-phase types it (plus the man
 
 ## C. Create the Work Unit
 
-One engine transaction persists everything: the manifest (create-if-absent — an existing work unit is reused, never overwritten), imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked and knowledge-base-indexed), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit:
+One engine transaction persists everything: the manifest (create-if-absent — an existing work unit is reused, never overwritten), imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import {path} --seed {path}

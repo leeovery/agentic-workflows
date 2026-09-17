@@ -38,7 +38,7 @@ session worked from.}
 
 ## Imports
 
-- imports/{filename}.md
+- imports/{filename}
 - ...
 
 ## Map State at Start

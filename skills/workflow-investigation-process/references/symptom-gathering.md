@@ -101,6 +101,10 @@ Questions to ask when gathering bug symptoms.
 
 ## Reference Gathering
 
+A path the user offers in answer to any of these — a log, an export, a screenshot — lands as an import rather than being read where it sits:
+
+→ Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` and enter its **A. Land It**.
+
 ### Do you have error logs?
 
 - Application logs

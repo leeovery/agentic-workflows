@@ -150,6 +150,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
      ```
 
      A refusal naming a previously dismissed topic needs the user's deliberate re-add — confirm it, then re-run with `--force-dismissed`.
+   - **Shared files** — paths offered in conversation land as imports, taken by this session: → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discovery` and enter its **A. Land It**. Record each landing under **Edits** (`Imported: imports/{filename}`).
    - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `gateway.cjs map-view {work_unit}` and emit its TITLE section (markdown) then its `=== DISPLAY` section verbatim as a code block. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
