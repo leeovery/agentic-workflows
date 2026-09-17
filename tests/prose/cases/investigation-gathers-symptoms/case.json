@@ -17,6 +17,7 @@
     "skills/workflow-investigation-process/references/symptom-gathering.md",
     "skills/workflow-shared/references/seed-context.md",
     "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md"
   ],
   "conduct": "The user is relaying this bug rather than living it. Two customers hit it last week and they reproduced it once on staging with a digital-only basket; beyond that they are working from the report. They answer concretely about what they have actually seen, and say plainly when they do not know — they have no error-tracking link, no logs to hand, and nothing better than \"sometime last week\" for when it started. They do not volunteer detail past the question asked, and they do not speculate about the cause; that is what they think the investigation is for.",
