@@ -81,6 +81,7 @@ CHALLENGED:
 
 - `withdrawn` removes the finding; `stands` keeps it, with the reason the argument does not hold
 - A finding withdrawn as real but beyond this task's scope returns under a BANK section (the standard report's shape) — deposited on arrival like any review's
+- Material that rode the dispatch beyond its enumerated items returns under a NOTES section (the standard report's shape), named by the charter's rule 10
 - Unchallenged ISSUES carry forward untouched — the confirmation never re-sweeps the task
 - VERDICT is recomputed from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives
 

@@ -34,9 +34,9 @@ A deferral is a phase-level fact. When a task defers work to another phase, the 
 
 ---
 
-## Tasks That Edit Historical Artifacts
+## Historical Artifacts Are Not Task Content
 
-A task whose edits land on another work unit's specification under `.workflows/` corrects a historical artifact. Fold the completed-unit protocol from **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** into the task itself — in-place edit, corrigenda entry, knowledge re-index, scoped commit — as **Do** steps and **Acceptance Criteria**. The re-index is part of the task, never an afterthought. No task edits any other phase artifact of another work unit — non-spec artifacts are superseded by current work, never corrected.
+No task edits another work unit's artifact under `.workflows/` — the executor writes code and tests alone. A completed unit's specification the planned work shows wrong is noted in the task's Context, never folded into the task: the session corrects it through **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** — in-place edit, corrigenda entry, knowledge re-index, scoped commit, behind its gate. Non-spec artifacts of another work unit are superseded by current work, never corrected.
 
 ---
 
@@ -45,6 +45,8 @@ A task whose edits land on another work unit's specification under `.workflows/`
 **Do** steps direct code and tests, never commentary. Rationale, sequencing notes, and spec citations belong in the task's Problem/Context fields and the plan itself — never directed into source comments ("state in-source that…", "record why in a comment…"). A comment dictated by a task becomes an acceptance criterion the reviewer must police, and its claims go stale as later tasks land.
 
 A task may require a comment only where the code cannot express a constraint — a warning against a tempting wrong simplification, a non-obvious invariant — directed in one line ("comment that the discard must come last") with the wording left to the executor. Never direct comments that reference other tasks, phases, spec sections, or what tests cover.
+
+Acceptance criteria and tests bind the same way as **Do** steps. No criterion asks for reasoning, a rejected alternative, or a design argument to be recorded anywhere — a comment, a docstring, the specification, any document. The reasoning already lives in the specification and the plan; a criterion that asks for it again only relocates it into source, where the one-line comment allowance cannot hold it.
 
 ---
 

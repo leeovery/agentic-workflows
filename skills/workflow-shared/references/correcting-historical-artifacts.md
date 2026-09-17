@@ -44,7 +44,7 @@ Cancellation removed the unit's chunks from the knowledge base, and reactivation
 
 #### If `completed`
 
-Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Present a large correction set as its shape — what moved, which sections, counts — with the full list available on request. Skip the confirmation only when executing an already-approved plan task that names these steps.
+Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Present a large correction set as its shape — what moved, which sections, counts — with the full list available on request.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render correction-gate {owning_work_unit}.specification.{topic}
