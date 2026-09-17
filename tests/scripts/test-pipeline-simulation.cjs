@@ -2599,8 +2599,9 @@ describe('pipeline simulation', () => {
       ['imports/dockset-05-2.png', `research/${topic}`],
       ['imports/onboarding.md', `research/${topic}`],
     ]);
+    const renamedArg = absorbed.renamed_imports.map((r) => `${r.from}:${r.to}`).join(',');
     assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'research,imports',
-      '--renamed', 'dockset-05.png:dockset-05-2.png'], { expect: 'content' }),
+      '--renamed', renamedArg], { expect: 'content' }),
     /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
 
     // The spec links the material it rests on; promotion carries that import

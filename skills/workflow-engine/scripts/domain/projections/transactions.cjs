@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow, indentedBody } = require('./surfaces.cjs');
 
 /**
  * The ⚑ advisory block: label line and reassurance tail. The instruction
@@ -172,7 +172,7 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
   if (moved.includes('seeds')) lines.push('  • Seed: moved');
   if (moved.includes('imports')) lines.push('  • Imports: moved');
   for (const rename of renamed) {
-    lines.push(`  • Renamed: ${rename.from} → ${rename.to} (links rewritten)`);
+    lines.push(...bulletRow(`Renamed: ${rename.from} → ${rename.to} (links rewritten)`));
   }
   lines.push('  • Feature: removed');
   return joined([
@@ -211,19 +211,23 @@ function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false, imports = 0
 /**
  * The import re-prompt — what a landing's `missing_imports` refusal asks for.
  * Every lander validates its whole batch before copying anything, so the
- * paths named here are the only ones the caller has to replace; the ask is
- * free text because the answer is a filesystem path, not a choice.
+ * paths named here are the only ones the caller has to replace.
  * @param {string[]} missing the refused source paths
  * @returns {string}
  */
 function importReprompt(missing) {
-  const quoted = ['One or more paths could not be found:', ...missing.flatMap((p) => bulletRow(p))]
-    .map((line) => `> ${line}`);
+  const body = [
+    ...indentedBody(['One or more paths could not be landed — nothing at the path, a folder rather than a file, or unreadable:'], { indent: '' }),
+    '',
+    ...missing.flatMap((p) => bulletRow(p)),
+  ];
   return [
-    section('DISPLAY: missing imports', 'emit verbatim as markdown', quoted.join('\n')),
+    section('DISPLAY: missing imports', CONTINUE_INSTRUCTION, body.join('\n')),
     section('MENU: import reprompt', "emit verbatim as markdown, then STOP for the user's response",
-      menu('', [promptOption('Provide file paths', 'one or more, space or newline separated')],
-        { question: 'Provide the corrected file path(s):' })),
+      menu('', [
+        cmdOption('s', 'skip', 'Land nothing for these paths'),
+        promptOption('Provide file paths', 'one or more, space or newline separated'),
+      ], { question: 'How would you like to proceed?' })),
   ].join('\n');
 }
 

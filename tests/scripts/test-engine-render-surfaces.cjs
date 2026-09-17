@@ -5117,27 +5117,46 @@ describe('render import-reprompt', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
-  it('quotes the refused paths and asks for the corrected ones in free text', () => {
+  it('names the refused paths in the fence, and offers the correction or the skip', () => {
     const file = writePayload(dir, 'reprompt.json', { missing: ['shots/dockset 05.JPEG', 'notes/ghost.md'] });
     assert.strictEqual(renderSurface(dir, 'import-reprompt', { file }), [
-      '=== DISPLAY: missing imports (emit verbatim as markdown) ===',
-      '> One or more paths could not be found:',
-      '>   • shots/dockset 05.JPEG',
-      '>   • notes/ghost.md',
+      '=== DISPLAY: missing imports (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'One or more paths could not be landed — nothing at the path, a',
+      'folder rather than a file, or unreadable:',
+      '',
+      '  • shots/dockset 05.JPEG',
+      '  • notes/ghost.md',
       '',
       "=== MENU: import reprompt (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ Provide the corrected file path(s):`**',
+      '**`◆ How would you like to proceed?`**',
       '',
+      '**`s/skip`**             → Land nothing for these paths',
       '**Provide file paths** → one or more, space or newline separated',
       '',
     ].join('\n'));
   });
 
+  it('wraps a long path inside the fence, under the bullet text column', () => {
+    const file = writePayload(dir, 'long.json', {
+      missing: ['design/Dockset onboarding screenshots/05 permissions ask — final.png'],
+    });
+    const out = renderSurface(dir, 'import-reprompt', { file });
+    assert.ok(out.includes([
+      '  • design/Dockset onboarding screenshots/05 permissions ask —',
+      '    final.png',
+    ].join('\n')), out);
+    // The fence does not re-flow, so every line the engine puts in it is
+    // already inside the display width.
+    for (const line of out.slice(out.indexOf('\n') + 1, out.indexOf('=== MENU')).split('\n')) {
+      assert.ok(line.length <= 65, `overflows the fence: ${line}`);
+    }
+  });
+
   it('takes no address — the work unit a refused landing was aimed at may not exist yet', () => {
     const file = writePayload(dir, 'one.json', { missing: ['notes/ghost.md'] });
     assert.ok(renderSurface(dir, 'import-reprompt', { file, dotpath: 'no-such-unit.research.nope' })
-      .includes('>   • notes/ghost.md'));
+      .includes('  • notes/ghost.md'));
   });
 
   it('refuses an absent file and a payload short of its one field', () => {

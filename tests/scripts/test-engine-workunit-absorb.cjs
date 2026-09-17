@@ -622,11 +622,18 @@ describe('engine workunit absorb — imports follow the material', () => {
       'index .workflows/payments/imports/brief.md',
       'index .workflows/payments/seeds/seed.md',
     ]);
-    const receipt = execFileSync('node',
+    const render = (renamed) => execFileSync('node',
       [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth',
-        '--moved', 'research,seeds,imports', '--renamed', 'notes.md:notes-2.md'],
+        '--moved', 'research,seeds,imports', '--renamed', renamed],
       { cwd: fix.project, encoding: 'utf8' });
-    assert.match(receipt, /• Imports: moved\n {2}• Renamed: notes\.md → notes-2\.md \(links rewritten\)/);
+    assert.match(render('notes.md:notes-2.md'),
+      /• Imports: moved\n {2}• Renamed: notes\.md → notes-2\.md \(links rewritten\)/);
+    // A screenshot's own name is longer than the pane: the row wraps under
+    // its text column rather than running off it.
+    assert.ok(render('dockset-onboarding-permissions-ask.png:dockset-onboarding-permissions-ask-2.png').includes([
+      '  • Renamed: dockset-onboarding-permissions-ask.png →',
+      '    dockset-onboarding-permissions-ask-2.png (links rewritten)',
+    ].join('\n')));
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--renamed', 'notes.md']).error,
       /--renamed entries are <from>:<to> pairs/);
   });
