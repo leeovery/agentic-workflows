@@ -10,12 +10,13 @@ The prose should have taken this path:
    already said
 4. **the path the user offers lands as an import.** When the questioning
    reaches what references they have and the user names the screenshot, one
-   call lands it — `workunit import crash-fix notes/checkout-500.png --from
-   investigation/crash-fix` — the origin naming the phase and topic this
-   session is sitting in. Nothing is asked first: no gate, no confirmation,
-   no offer to land it. The file lands at `imports/checkout-500.png`, the
-   extension kept and nothing normalised to `.md`, and the session runs no
-   commit of its own for it: the verb committed itself
+   call lands it — `workunit import crash-fix 'notes/checkout-500.png'
+   --from investigation/crash-fix` — the origin naming the phase and topic
+   this session is sitting in. Nothing is asked first: no gate, no
+   confirmation, no offer to land it. The file lands at
+   `imports/checkout-500.png`, the extension kept and nothing normalised
+   to `.md`, and the session runs no commit of its own for it: the verb
+   committed itself
 5. the landed file is read where it landed — a read of
    `.workflows/crash-fix/imports/checkout-500.png`, not of the `notes/`
    original — and the user's account of what it shows is treated as symptom
