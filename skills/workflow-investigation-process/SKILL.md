@@ -124,6 +124,8 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 3: Symptom Gathering
 
+Load **[landing-shared-files.md](../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` — a protocol, not a step: a path the user offers in this step enters its **A. Land It**; nothing runs at load time.
+
 #### If `resumed` is `true`
 
 An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
