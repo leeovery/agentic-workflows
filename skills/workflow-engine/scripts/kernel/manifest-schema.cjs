@@ -119,12 +119,41 @@ const VALID_THREAD_STATUSES = ['open', 'digging', 'learned', 'parked'];
 const THREAD_FIXED_ORIGINS = ['seed', 'brief', 'user', 'conversation'];
 const DEEP_DIVE_ID_PATTERN = /^deep-dive-\d{3,}(-[a-z0-9]+(-[a-z0-9]+)*)?$/;
 
+/**
+ * A plain name: any name the discovery map accepts — no slashes, no dots,
+ * one line with no surrounding whitespace, since these names render as tags.
+ * @param {string} name
+ */
+function isPlainName(name) {
+  return name !== '' && name.trim() === name && !/[\x00-\x1f\x7f\\/.]/.test(name);
+}
+
 /** @param {string} origin */
 function isThreadOrigin(origin) {
   if (typeof origin !== 'string') return false;
   if (THREAD_FIXED_ORIGINS.includes(origin)) return true;
   if (origin.startsWith('deep-dive-')) return DEEP_DIVE_ID_PATTERN.test(origin);
-  return origin !== '' && origin.trim() === origin && !/[\x00-\x1f\x7f\\/.]/.test(origin);
+  return isPlainName(origin);
+}
+
+// Where an import came from — required on every `imports[]` entry, since a
+// field whose absence carries meaning is a field nobody can validate
+// (migration 059 backfilled the fleet). The fixed origins are the two places
+// that belong to no phase session: `discovery` (the opener or a discovery
+// session) and `roadmap` (the project-level product layer). Everything else
+// is `{phase}/{topic}` — the session that landed the file — and only the
+// phases whose sessions read shared material carry that door.
+const IMPORT_FIXED_ORIGINS = ['discovery', 'roadmap'];
+const IMPORT_PHASES = ['research', 'discussion', 'investigation'];
+
+/** @param {string} origin */
+function isImportOrigin(origin) {
+  if (typeof origin !== 'string') return false;
+  if (IMPORT_FIXED_ORIGINS.includes(origin)) return true;
+  const slash = origin.indexOf('/');
+  if (slash === -1) return false;
+  const topic = origin.slice(slash + 1);
+  return IMPORT_PHASES.includes(origin.slice(0, slash)) && !topic.startsWith('-') && isPlainName(topic);
 }
 
 // The two conversation phases — the ones whose sessions spawn experiments
@@ -186,6 +215,9 @@ module.exports = {
   KEBAB_SLUG_PATTERN,
   VALID_THREAD_STATUSES,
   isThreadOrigin,
+  IMPORT_FIXED_ORIGINS,
+  IMPORT_PHASES,
+  isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   GATE_FIELDS,

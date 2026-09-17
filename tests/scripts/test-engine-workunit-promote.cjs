@@ -195,6 +195,7 @@ describe('engine workunit promote — happy path', () => {
         { name: 'ttl-policy', path: 'discussion/ttl-policy.md' },
       ],
       specification: { path: 'specification/caching/specification.md' },
+      imports: [],
       status: 'promoted',
       promoted_to: 'caching',
       committed: shortHead(fix),
@@ -441,6 +442,96 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     assert.match(engineFails(fix, ['workunit', 'promote', 'payments', '--to', 'caching', '--description', 'd']).error, /Usage: engine workunit promote/);
     assert.match(engineFails(fix, ['workunit', 'promote', 'payments', 'caching-strategy', 'extra', '--to', 'caching', '--description', 'd']).error, /Usage: engine workunit promote/);
     assert.match(engineFails(fix, ['workunit', 'promote']).error, /Usage: engine workunit promote/);
+  });
+});
+
+describe('engine workunit promote — the import carry', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  /**
+   * An epic whose imports span the four cases: linked by the spec, linked by
+   * a moved discussion, attached to a moved source and linked by nothing, and
+   * an unmoved topic's own.
+   */
+  function setupCarrying({ ghost = false } = {}) {
+    const epic = epicManifest();
+    epic.imports = [
+      { path: 'imports/spec-linked.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' },
+      { path: 'imports/diagram.png', imported_at: '2026-06-02T09:00:00Z', origin: 'discussion/cache-invalidation' },
+      { path: 'imports/attached.md', imported_at: '2026-06-03T09:00:00Z', origin: 'discussion/ttl-policy' },
+      { path: 'imports/fee-only.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discussion/fee-model' },
+    ];
+    if (ghost) epic.imports.push({ path: 'imports/ghost.md', imported_at: '2026-06-05T09:00:00Z', origin: 'discussion/ttl-policy' });
+    fix = setupFixture({ epic });
+    writeFile(fix.project, '.workflows/payments/imports/spec-linked.md', '# Spec material\n');
+    writeFile(fix.project, '.workflows/payments/imports/diagram.png', 'png bytes\n');
+    writeFile(fix.project, '.workflows/payments/imports/attached.md', '# Attached\n');
+    writeFile(fix.project, '.workflows/payments/imports/fee-only.md', '# Fees\n');
+    writeFile(fix.project, '.workflows/payments/specification/caching-strategy/specification.md',
+      '# Caching Spec\n\n![the sketch](../../imports/spec-linked.md)\n');
+    writeFile(fix.project, '.workflows/payments/discussion/cache-invalidation.md',
+      '# Cache Invalidation\n\n![the diagram](../imports/diagram.png)\n');
+    writeFile(fix.project, '.workflows/payments/discussion/fee-model.md',
+      '# Fee Model\n\n![fees](../imports/fee-only.md)\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'imports']);
+  }
+
+  it('copies what the moved documents link and what a moved source attached — and nothing else', () => {
+    setupCarrying();
+    const res = engine(fix, PROMOTE);
+
+    assert.deepStrictEqual(res.imports, [
+      { path: 'imports/spec-linked.md', origin: 'discovery' },
+      { path: 'imports/diagram.png', origin: 'discussion/cache-invalidation' },
+      { path: 'imports/attached.md', origin: 'discussion/ttl-policy' },
+    ]);
+    // Entries ride unchanged onto the cc manifest — origin included.
+    assert.deepStrictEqual(readManifest(fix, 'caching').imports, [
+      { path: 'imports/spec-linked.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' },
+      { path: 'imports/diagram.png', imported_at: '2026-06-02T09:00:00Z', origin: 'discussion/cache-invalidation' },
+      { path: 'imports/attached.md', imported_at: '2026-06-03T09:00:00Z', origin: 'discussion/ttl-policy' },
+    ]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/imports/diagram.png'), 'utf8'), 'png bytes\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports/fee-only.md')),
+      "an unmoved topic's import stays behind");
+
+    // A copy, never a move: the epic keeps every file and every entry.
+    assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), [
+      'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md', 'imports/fee-only.md',
+    ]);
+    for (const name of ['spec-linked.md', 'diagram.png', 'attached.md', 'fee-only.md']) {
+      assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/imports', name)), `epic lost ${name}`);
+    }
+
+    // The markdown copies are indexed at the cc identity; the binary is not.
+    const indexed = knowledgeCalls(fix).filter((c) => c.includes('/imports/'));
+    assert.deepStrictEqual(indexed, [
+      'index .workflows/caching/imports/spec-linked.md',
+      'index .workflows/caching/imports/attached.md',
+    ]);
+    // The copies ride the transaction's own commit.
+    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/caching/imports/diagram.png'), 'the carried binary is staged');
+  });
+
+  it('an entry whose file is gone is named in warnings, never fatal', () => {
+    setupCarrying({ ghost: true });
+    const res = engine(fix, PROMOTE);
+
+    assert.strictEqual(res.warnings[0], 'import carry skipped: imports/ghost.md is tracked on "payments" but missing on disk');
+    assert.deepStrictEqual(res.imports.map((i) => i.path), [
+      'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md',
+    ]);
+    assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
+  });
+
+  it('a promotion carrying nothing writes no imports key', () => {
+    fix = setupFixture();
+    engine(fix, PROMOTE);
+    assert.strictEqual('imports' in readManifest(fix, 'caching'), false);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports')));
   });
 });
 

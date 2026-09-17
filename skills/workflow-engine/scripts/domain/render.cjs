@@ -4517,7 +4517,7 @@ function absorbSummarySurface(cwd, args) {
   });
 }
 
-/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, warn?: string}} args @returns {string} */
+/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
   if (manifest.work_type !== 'epic') {
@@ -4543,7 +4543,14 @@ function absorbReceiptSurface(cwd, args) {
       throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
     }
   }
-  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments });
+  const renamed = (args.renamed || '').split(',').map((s) => s.trim()).filter(Boolean).map((pair) => {
+    const [from, to, ...extra] = pair.split(':');
+    if (!from || !to || extra.length > 0) {
+      throw new Error(`render absorb-receipt: --renamed entries are <from>:<to> pairs, got "${pair}"`);
+    }
+    return { from, to };
+  });
+  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments, renamed });
 }
 
 /** @param {string} cwd @param {{dotpath: string, feature?: string}} args @returns {string} */

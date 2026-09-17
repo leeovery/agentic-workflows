@@ -155,7 +155,7 @@ describe('engine workunit create — happy path', () => {
       work_unit: 'payments',
       work_type: 'epic',
       created: true,
-      imports: [{ path: 'imports/my-design-doc.txt.md' }],
+      imports: [{ path: 'imports/my-design-doc.md' }],
       seeds: [{ path: 'seeds/2026-06-01-smart-retry.md', source: 'inbox:idea' }],
       skipped_imports: [],
       session_log: '.workflows/payments/discovery/sessions/session-001.md',
@@ -172,9 +172,10 @@ describe('engine workunit create — happy path', () => {
     // Epic gets the active-session marker.
     assert.deepStrictEqual(m.phases, { discovery: { active_session: '001' } });
     assert.strictEqual(m.imports.length, 1);
-    assert.strictEqual(m.imports[0].path, 'imports/my-design-doc.txt.md');
+    assert.strictEqual(m.imports[0].path, 'imports/my-design-doc.md');
     assert.match(m.imports[0].imported_at, ISO_SECONDS);
-    assert.deepStrictEqual(Object.keys(m.imports[0]), ['path', 'imported_at']);
+    assert.deepStrictEqual(Object.keys(m.imports[0]), ['path', 'imported_at', 'origin']);
+    assert.strictEqual(m.imports[0].origin, 'discovery', "the opener is discovery's own door");
     assert.strictEqual(m.seeds.length, 1);
     assert.deepStrictEqual(Object.keys(m.seeds[0]), ['path', 'source', 'seeded_at']);
     assert.strictEqual(m.seeds[0].path, 'seeds/2026-06-01-smart-retry.md');
@@ -191,14 +192,14 @@ describe('engine workunit create — happy path', () => {
       SESSION_LOG);
 
     // Import copied (source untouched), seed moved out of the inbox.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/my-design-doc.txt.md'), 'utf8'), 'design notes\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/my-design-doc.md'), 'utf8'), 'design notes\n');
     assert.ok(fs.existsSync(path.join(fix.project, 'notes/My Design DOC.txt')));
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/seeds/2026-06-01-smart-retry.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
 
     // Both landed files were KB-indexed.
     assert.deepStrictEqual(knowledgeCalls(fix), [
-      'index .workflows/payments/imports/my-design-doc.txt.md',
+      'index .workflows/payments/imports/my-design-doc.md',
       'index .workflows/payments/seeds/2026-06-01-smart-retry.md',
     ]);
 
@@ -321,7 +322,7 @@ describe('engine workunit create — import filename normalisation', () => {
     return engine(fix, args);
   }
 
-  it('lowercases, collapses punctuation and whitespace runs, forces .md', () => {
+  it('lowercases the stem, collapses punctuation and whitespace runs, and markdown-ish sources land .md', () => {
     writeFile(fix.project, 'notes/My Design DOC.txt', 'a\n');
     writeFile(fix.project, 'notes/UPPER.MD', 'b\n');
     writeFile(fix.project, 'notes/plain', 'c\n');
@@ -334,10 +335,10 @@ describe('engine workunit create — import filename normalisation', () => {
     ]);
 
     assert.deepStrictEqual(res.imports, [
-      { path: 'imports/my-design-doc.txt.md' },
+      { path: 'imports/my-design-doc.md' },
       { path: 'imports/upper.md' },
       { path: 'imports/plain.md' },
-      { path: 'imports/weird-name-.md' },
+      { path: 'imports/weird-name.md' },
     ]);
     assert.deepStrictEqual(res.skipped_imports, []);
     for (const { path: rel } of res.imports) {
@@ -368,6 +369,42 @@ describe('engine workunit create — import filename normalisation', () => {
       { path: 'imports/a-b-3.md' },
     ]);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/a-b-3.md'), 'utf8'), 'two\n');
+  });
+
+  it('keeps a non-markdown extension, lowercased — and never indexes it', () => {
+    writeFile(fix.project, 'notes/Screenshot One.JPEG', 'jpeg bytes\n');
+    writeFile(fix.project, 'notes/DIAGRAM.PNG', 'png bytes\n');
+    writeFile(fix.project, 'notes/design.txt', 'plain text\n');
+    const res = landImports(['notes/Screenshot One.JPEG', 'notes/DIAGRAM.PNG', 'notes/design.txt']);
+
+    assert.deepStrictEqual(res.imports, [
+      { path: 'imports/screenshot-one.jpeg' },
+      { path: 'imports/diagram.png' },
+      { path: 'imports/design.md' },
+    ]);
+    // Only the markdown-ish landing is knowledge-base material.
+    assert.deepStrictEqual(knowledgeCalls(fix), ['index .workflows/payments/imports/design.md']);
+    const entries = readManifest(fix, 'payments').imports;
+    assert.deepStrictEqual(entries.map((e) => e.origin), ['discovery', 'discovery', 'discovery']);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/screenshot-one.jpeg'), 'utf8'), 'jpeg bytes\n');
+  });
+
+  it('lands every source 0644, whatever the source carried', () => {
+    writeFile(fix.project, 'notes/locked.png', 'png bytes\n');
+    fs.chmodSync(path.join(fix.project, 'notes/locked.png'), 0o600);
+    landImports(['notes/locked.png']);
+
+    const mode = fs.statSync(path.join(fix.project, '.workflows/payments/imports/locked.png')).mode & 0o777;
+    assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
+  });
+
+  it('suffixes the stem, never the extension', () => {
+    writeFile(fix.project, 'notes/shot.png', 'one\n');
+    writeFile(fix.project, 'notes/SHOT.png', 'two\n');
+    const res = landImports(['notes/shot.png', 'notes/SHOT.png']);
+
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/shot.png' }, { path: 'imports/shot-2.png' }]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/shot-2.png'), 'utf8'), 'two\n');
   });
 
   it('suffixes directory collisions — a re-import lands beside the first, never over it', () => {
@@ -507,7 +544,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'create']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
+    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
   });
 
   it('omitting the session log without --no-session-log refuses — log-less creation must be explicit', () => {

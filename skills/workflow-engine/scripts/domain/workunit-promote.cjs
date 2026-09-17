@@ -31,7 +31,12 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
+const { copyImports, isIndexableImport } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
+
+// A link target inside a moved document: `imports/{name}`, the name running
+// to the first character no filename carries.
+const IMPORT_LINK_PATTERN = /imports\/([A-Za-z0-9._-]+)/g;
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -41,12 +46,76 @@ const { todayStamp } = require('./dates.cjs');
  * @property {string} cc_status   always `completed` — the cc pipeline is terminal after spec
  * @property {{name: string, path: string}[]} discussions  moved source discussions (cc-relative paths)
  * @property {{path: string}} specification  the moved spec (cc-relative path)
+ * @property {{path: string, origin: string}[]} imports  imports copied into the cc unit (entries unchanged)
  * @property {string} status      the epic spec item's status after the transition — always `promoted`
  * @property {string} promoted_to the cc work unit recorded on the epic spec item
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]      set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base sync)
  */
+
+/** Every file under `dir`, absolute paths, recursively. @param {string} dir @returns {string[]} */
+function listFiles(dir) {
+  /** @type {string[]} */
+  const files = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...listFiles(full));
+    else files.push(full);
+  }
+  return files;
+}
+
+/**
+ * The imports the promoted material carries: every entry a moved document
+ * links (`imports/{name}` in the specification or a moved source discussion)
+ * and every entry a moved source attached (`origin: "discussion/{source}"`).
+ * Copies, never moves — another topic of the epic may link the same file — so
+ * an entry whose file is gone is reported, never fatal. Planned before
+ * anything moves, off the documents at their epic paths.
+ * @param {string} cwd @param {string} workUnit @param {string} specDir  project-relative
+ * @param {string[]} sources  the moved source discussions
+ * @param {unknown[]} entries  the epic's `imports[]`
+ * @returns {{carried: {entry: Record<string, any>, basename: string}[], missing: string[]}}
+ */
+function planImportCarry(cwd, workUnit, specDir, sources, entries) {
+  const documents = [
+    ...listFiles(path.join(cwd, specDir)),
+    ...sources.map((name) => path.join(cwd, '.workflows', workUnit, 'discussion', `${name}.md`)),
+  ];
+  /** @type {Set<string>} */
+  const linked = new Set();
+  for (const file of documents) {
+    /** @type {string} */
+    let text;
+    try {
+      text = fs.readFileSync(file, 'utf8');
+    } catch {
+      continue; // unreadable material links nothing
+    }
+    for (const match of text.matchAll(IMPORT_LINK_PATTERN)) linked.add(match[1]);
+  }
+  const attached = new Set(sources.map((name) => `discussion/${name}`));
+
+  /** @type {{entry: Record<string, any>, basename: string}[]} */
+  const carried = [];
+  /** @type {string[]} */
+  const missing = [];
+  for (const raw of entries) {
+    if (!raw || typeof raw !== 'object') continue;
+    const entry = /** @type {Record<string, any>} */ (raw);
+    if (typeof entry.path !== 'string' || !entry.path.startsWith('imports/')) continue;
+    const basename = entry.path.slice('imports/'.length);
+    if (basename === '' || basename.includes('/')) continue;
+    if (!linked.has(basename) && !attached.has(entry.origin)) continue;
+    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, entry.path))) {
+      missing.push(entry.path);
+      continue;
+    }
+    carried.push({ entry, basename });
+  }
+  return { carried, missing };
+}
 
 /**
  * Promote a completed epic specification to its own cross-cutting work unit
@@ -55,7 +124,9 @@ const { todayStamp } = require('./dates.cjs');
  * (`source_work_unit`/`source_topic`), move the spec directory to
  * `specification/{to}/`, move each spec source that is a discussion file into
  * the cc unit's `discussion/` (registered `completed` — sources of a
- * completed spec were incorporated), mark the epic's spec item
+ * completed spec were incorporated), copy in every import the moved
+ * documents link or a moved source attached (entries unchanged, the epic
+ * keeping its own), mark the epic's spec item
  * `status: promoted` + `promoted_to`, sync the knowledge base (moved
  * artifacts indexed at their cc identities, the epic's old chunks removed —
  * warn-don't-block), and land ONE commit staging the epic, the cc unit, and
@@ -70,7 +141,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   // -- validate everything before any mutation --------------------------------
   assertLegalWorkUnitName(to);
 
-  const discussionMoves = withWorkUnitLock(cwd, workUnit, () => {
+  const { discussionMoves, importCarry, missingImports } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.work_type !== 'epic') {
       throw new Error(`work unit "${workUnit}" is not an epic (work_type: ${manifest.work_type ?? 'none'}) — only epic specifications promote to cross-cutting`);
@@ -131,6 +202,11 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       }
     }
 
+    // The import carry, planned off the documents at their epic paths before
+    // any of them move.
+    const { carried, missing } = planImportCarry(cwd, workUnit, specSrc, plan,
+      Array.isArray(manifest.imports) ? manifest.imports : []);
+
     // -- mutate: files out of the epic, then the epic manifest -----------------
     fs.mkdirSync(path.join(cwd, '.workflows', to, 'specification'), { recursive: true });
     fs.renameSync(path.join(cwd, specSrc), path.join(cwd, '.workflows', to, 'specification', to));
@@ -141,10 +217,15 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
         path.join(cwd, '.workflows', to, 'discussion', `${name}.md`));
     }
 
+    // Copied, not moved: the epic keeps the file and its entry, since
+    // another topic may link the same material.
+    copyImports(cwd, path.join(cwd, '.workflows', to, 'imports'),
+      carried.map((c) => ({ src: `.workflows/${workUnit}/${c.entry.path}`, dest: c.basename })));
+
     item.status = 'promoted';
     item.promoted_to = to;
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return plan;
+    return { discussionMoves: plan, importCarry: carried, missingImports: missing };
   });
 
   // The cc manifest — the canonical work-unit document, already completed
@@ -162,6 +243,9 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       completed_at: stamped,
       source_work_unit: workUnit,
       source_topic: topic,
+      // The carried entries ride unchanged — origin included: where the
+      // material came from does not change by being promoted.
+      ...(importCarry.length > 0 ? { imports: importCarry.map((c) => c.entry) } : {}),
       phases: {},
     };
     if (discussionMoves.length > 0) {
@@ -186,9 +270,15 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   // chunks.
   /** @type {string[]} */
   const warnings = [];
+  for (const rel of missingImports) {
+    warnings.push(`import carry skipped: ${rel} is tracked on "${workUnit}" but missing on disk`);
+  }
   for (const name of discussionMoves) {
     knowledge(cwd, ['index', INDEXED_ARTIFACTS.discussion(to, name)], `knowledge index (discussion/${name})`, warnings);
     knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'discussion', '--topic', name], `knowledge remove (discussion/${name})`, warnings);
+  }
+  for (const carried of importCarry.filter((c) => isIndexableImport(c.basename))) {
+    knowledge(cwd, ['index', `.workflows/${to}/imports/${carried.basename}`], `knowledge index (imports/${carried.basename})`, warnings);
   }
   knowledge(cwd, ['index', INDEXED_ARTIFACTS.specification(to, to)], `knowledge index (specification/${to})`, warnings);
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', topic], `knowledge remove (specification/${topic})`, warnings);
@@ -206,6 +296,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     cc_status: 'completed',
     discussions: discussionMoves.map((name) => ({ name, path: `discussion/${name}.md` })),
     specification: { path: `specification/${to}/specification.md` },
+    imports: importCarry.map((c) => ({ path: c.entry.path, origin: c.entry.origin })),
     status: 'promoted',
     promoted_to: to,
     committed: outcome.committed,

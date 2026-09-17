@@ -46,7 +46,7 @@ function featureManifest(overrides = {}) {
     status: 'in-progress',
     created: '2026-06-01',
     description: 'auth flow work',
-    imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' }],
+    imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }],
     phases: {
       research: { items: { 'auth-flow': { status: 'completed' } } },
@@ -62,7 +62,7 @@ function epicManifest(overrides = {}) {
     name: 'payments',
     work_type: 'epic',
     status: 'in-progress',
-    imports: [{ path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z' }],
+    imports: [{ path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' }],
     phases: {
       discovery: {
         items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
@@ -220,6 +220,7 @@ describe('engine workunit absorb — happy path', () => {
         { from: 'auth-flow', topic: 'auth', status: 'completed' },
       ],
       imports: [{ path: 'imports/notes-2.md' }],
+      renamed_imports: [{ from: 'notes.md', to: 'notes-2.md' }],
       seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea' }],
       routing: 'research',
       committed: shortHead(fix),
@@ -264,8 +265,8 @@ describe('engine workunit absorb — happy path', () => {
       auth: { status: 'completed' },
     });
     assert.deepStrictEqual(m.imports, [
-      { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z' },
-      { path: 'imports/notes-2.md', imported_at: '2026-06-01T09:00:00Z' },
+      { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' },
+      { path: 'imports/notes-2.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' },
     ]);
     assert.deepStrictEqual(m.seeds, [
       { path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' },
@@ -536,6 +537,111 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(res.warnings[4], /knowledge index \(seeds\/seed\.md\) failed/);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
+  });
+});
+
+describe('engine workunit absorb — imports follow the material', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  /** The feature's imports: a linked markdown one that collides, a binary, an uncollided one. */
+  function importingFeature() {
+    const feature = featureManifest();
+    feature.imports = [
+      { path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/auth-flow' },
+      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'research/auth-flow' },
+      { path: 'imports/brief.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discovery' },
+    ];
+    return feature;
+  }
+
+  function setupImporting() {
+    fix = setupFixture({ feature: importingFeature() });
+    writeFile(fix.project, '.workflows/auth-flow/imports/screen.png', 'png bytes\n');
+    writeFile(fix.project, '.workflows/auth-flow/imports/brief.md', '# Brief\n');
+    writeFile(fix.project, '.workflows/auth-flow/discussion/auth-flow.md',
+      '# Discussion\n\nSee ![the ask](../imports/notes.md) and ![the screen](../imports/screen.png).\nAlso ../imports/brief.md.\n');
+    writeFile(fix.project, '.workflows/auth-flow/research/auth-flow.md',
+      '# Research\n\n![the ask](../imports/notes.md)\n');
+    // The epic's own document links its own same-named file — untouched.
+    writeFile(fix.project, '.workflows/payments/research/exploration.md',
+      '# Epic exploration\n\n![epic notes](../imports/notes.md)\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'importing feature']);
+  }
+
+  it('re-aims a feature-session origin at the topic and leaves every other origin alone', () => {
+    setupImporting();
+    engine(fix, ABSORB);
+
+    assert.deepStrictEqual(readManifest(fix, 'payments').imports, [
+      { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' },
+      { path: 'imports/notes-2.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/auth' },
+      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'research/auth' },
+      { path: 'imports/brief.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discovery' },
+    ]);
+  });
+
+  it('rewrites the links its own rename broke, in the documents it moved and nowhere else', () => {
+    setupImporting();
+    const res = engine(fix, ABSORB);
+    assert.deepStrictEqual(res.renamed_imports, [{ from: 'notes.md', to: 'notes-2.md' }]);
+
+    const read = (rel) => fs.readFileSync(path.join(fix.project, rel), 'utf8');
+    // The renamed import's link follows it; the unrenamed ones are untouched.
+    assert.match(read('.workflows/payments/discussion/auth.md'), /!\[the ask\]\(\.\.\/imports\/notes-2\.md\)/);
+    assert.match(read('.workflows/payments/discussion/auth.md'), /!\[the screen\]\(\.\.\/imports\/screen\.png\)/);
+    assert.match(read('.workflows/payments/discussion/auth.md'), /Also \.\.\/imports\/brief\.md\./);
+    assert.match(read('.workflows/payments/research/auth.md'), /!\[the ask\]\(\.\.\/imports\/notes-2\.md\)/);
+    // The epic's own document names the epic's own notes.md — never rewritten.
+    assert.match(read('.workflows/payments/research/exploration.md'), /!\[epic notes\]\(\.\.\/imports\/notes\.md\)/);
+  });
+
+  it('a link already naming the landed file is left as it is — the substitution is exact', () => {
+    setupImporting();
+    writeFile(fix.project, '.workflows/auth-flow/discussion/auth-flow.md',
+      '# Discussion\n\n../imports/notes.md and ../imports/notes-2.md and ../imports/notes.md.png\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'mixed links']);
+    engine(fix, ABSORB);
+
+    assert.strictEqual(
+      fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'),
+      '# Discussion\n\n../imports/notes-2.md and ../imports/notes-2.md and ../imports/notes.md.png\n');
+  });
+
+  it('indexes the markdown moves alone, and the receipt names the renames', () => {
+    setupImporting();
+    engine(fix, ABSORB);
+
+    assert.deepStrictEqual(knowledgeCalls(fix), [
+      'remove --work-unit auth-flow',
+      'index .workflows/payments/discussion/auth.md',
+      'index .workflows/payments/research/auth.md',
+      'index .workflows/payments/imports/notes-2.md',
+      'index .workflows/payments/imports/brief.md',
+      'index .workflows/payments/seeds/seed.md',
+    ]);
+    const receipt = execFileSync('node',
+      [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth',
+        '--moved', 'research,seeds,imports', '--renamed', 'notes.md:notes-2.md'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(receipt, /• Imports: moved\n {2}• Renamed: notes\.md → notes-2\.md \(links rewritten\)/);
+    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--renamed', 'notes.md']).error,
+      /--renamed entries are <from>:<to> pairs/);
+  });
+
+  it('reports no renames when nothing collided', () => {
+    const feature = featureManifest();
+    feature.imports = [{ path: 'imports/unique.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }];
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/imports/unique.md', '# Unique\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'unique import']);
+
+    const res = engine(fix, ABSORB);
+    assert.deepStrictEqual(res.renamed_imports, []);
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/unique.md' }]);
   });
 });
 

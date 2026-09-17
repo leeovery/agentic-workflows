@@ -31,6 +31,14 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
+const {
+  normaliseBasename,
+  dedupe,
+  planImports,
+  copyImports,
+  importEntry,
+  isIndexableImport,
+} = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
 const {
   VALID_WORK_TYPES,
@@ -73,46 +81,6 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {string} [note]  set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
  */
-
-/**
- * Normalise a source basename into a landing filename: lowercase; runs of
- * whitespace and non-alphanumerics (other than `.` and `-`) to `-`; repeats
- * collapsed; leading/trailing `-` trimmed; `.md` ensured. Returns null when
- * the result is a dotfile (`.`, `..`, leading `.`) — the caller decides
- * whether that skips the file or falls back to a safe name.
- * @param {string} basename
- * @returns {string|null}
- */
-function normaliseBasename(basename) {
-  let name = basename
-    .toLowerCase()
-    .replace(/[^a-z0-9.-]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '');
-  if (!name.endsWith('.md')) name += '.md';
-  if (name === '.' || name === '..' || name.startsWith('.')) return null;
-  return name;
-}
-
-/**
- * A collision-free destination name: suffix the stem with `-2`, `-3`, … until
- * unique against both the destination directory and the batch so far. The
- * batch check keeps a source path given twice from silently overwriting.
- * @param {string} name normalised filename ending in `.md`
- * @param {string} destDir absolute destination directory
- * @param {Set<string>} taken names already chosen in this batch
- * @returns {string}
- */
-function dedupe(name, destDir, taken) {
-  /** @param {string} n */
-  const clashes = (n) => taken.has(n) || fs.existsSync(path.join(destDir, n));
-  if (!clashes(name)) return name;
-  const stem = name.slice(0, -'.md'.length);
-  for (let i = 2; ; i++) {
-    const candidate = `${stem}-${i}.md`;
-    if (!clashes(candidate)) return candidate;
-  }
-}
 
 /**
  * Push onto a top-level manifest array field, creating it when absent — loud
@@ -206,21 +174,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
     // Destination names, deduped against each directory and within the batch.
     const importsDir = path.join(wuDir, 'imports');
-    /** @type {string[]} */
-    const skipped = [];
-    /** @type {{src: string, dest: string}[]} */
-    const importPlan = [];
-    const takenImports = new Set();
-    for (const src of imports) {
-      const name = normaliseBasename(path.basename(src));
-      if (name === null) {
-        skipped.push(src);
-        continue;
-      }
-      const dest = dedupe(name, importsDir, takenImports);
-      takenImports.add(dest);
-      importPlan.push({ src, dest });
-    }
+    const { planned: importPlan, skipped } = planImports(imports, importsDir);
 
     const seedsDir = path.join(wuDir, 'seeds');
     /** @type {{item: import('./inbox.cjs').InboxItem, dest: string}[]} */
@@ -233,10 +187,10 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       seedPlan.push({ item, dest });
     }
 
-    if (importPlan.length > 0) fs.mkdirSync(importsDir, { recursive: true });
+    copyImports(cwd, importsDir, importPlan);
+    // The opener is discovery's own door — every file it lands says so.
     for (const move of importPlan) {
-      fs.copyFileSync(path.resolve(cwd, move.src), path.join(importsDir, move.dest));
-      pushEntry(manifest, 'imports', { path: `imports/${move.dest}`, imported_at: isoNow() });
+      pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
     }
 
     if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
@@ -276,7 +230,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
   /** @type {string[]} */
   const warnings = [];
-  for (const move of importMoves) {
+  for (const move of importMoves.filter((m) => isIndexableImport(m.dest))) {
     knowledge(cwd, ['index', `.workflows/${workUnit}/imports/${move.dest}`], `knowledge index (imports/${move.dest})`, warnings);
   }
   for (const move of seedMoves) {
@@ -309,4 +263,4 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit, dedupe, normaliseBasename, assertLegalWorkUnitName };
+module.exports = { createWorkUnit, assertLegalWorkUnitName };

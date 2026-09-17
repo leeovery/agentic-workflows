@@ -36,6 +36,7 @@ const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
+const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
@@ -133,6 +134,7 @@ Commands:
   manifest resolve <work-unit>.<phase>[.<topic>]
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
+  workunit import <work-unit> <path> [<path> …] --from <origin>
   workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
@@ -310,7 +312,7 @@ Commands:
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
   render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
-  render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--warn]
+  render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--warn]
   render pivot-continuation <wu>
@@ -407,6 +409,9 @@ function runManifest(argv) {
 // promote moves a completed epic specification (and its source discussions)
 // to a new, already-completed cross-cutting work unit — same shape: validated
 // completely before anything moves, one multi-pathspec commit at the end.
+// import is create's landing after the opener: files into the same
+// `imports/` home, stamped with the origin that took them, one confined
+// commit — and a beat on that origin's topic when a phase session landed it.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -429,6 +434,19 @@ function runWorkunit(argv) {
         imports: lists.import || [],
         seeds: lists.seed || [],
       }));
+    } else if (command === 'import') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, ...paths] = positional;
+      if (!workUnit || paths.length === 0 || !opts.from) {
+        throw new Error('Usage: engine workunit import <work-unit> <path> [<path> …] --from <origin>');
+      }
+      const landed = importWorkUnitFiles(process.cwd(), workUnit, paths, { origin: opts.from });
+      // A phase session's landing is its own topic's work — the beat is the
+      // same act as claiming the slot. A bare `discovery` origin names no
+      // topic and beats nothing (discovery is serialised by its marker).
+      const [phase, topic] = opts.from.split('/');
+      if (topic) beatQuietly(process.cwd(), workUnit, phase, topic);
+      respond(landed);
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
@@ -464,7 +482,7 @@ function runWorkunit(argv) {
       }
       respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|promote> …');
+      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
   } catch (err) {
     failJson(err);

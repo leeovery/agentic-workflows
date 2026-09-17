@@ -150,12 +150,14 @@ function absorbSummary(feature, epic, topic, facts) {
 
 /**
  * workunit absorb — the post-absorption summary. `experiments` is the moved
- * series' top-level record count — 0 when the feature had no series.
+ * series' top-level record count — 0 when the feature had no series;
+ * `renamed` names the imports a filename collision renamed, whose links the
+ * transaction rewrote in the documents it moved.
  * @param {string} epic @param {string} topic @param {string[]} moved
- * @param {{warn?: boolean, experiments?: number}} [opts]
+ * @param {{warn?: boolean, experiments?: number, renamed?: {from: string, to: string}[]}} [opts]
  * @returns {string}
  */
-function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0 } = {}) {
+function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, renamed = [] } = {}) {
   // Heading and sentence at column 0; only the fact list is indented, and it
   // earns that by hanging off the sentence above it.
   const lines = [
@@ -169,6 +171,9 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0 } = {
   if (experiments > 0) lines.push(`  • Experiments: ${experiments} moved`);
   if (moved.includes('seeds')) lines.push('  • Seed: moved');
   if (moved.includes('imports')) lines.push('  • Imports: moved');
+  for (const rename of renamed) {
+    lines.push(`  • Renamed: ${rename.from} → ${rename.to} (links rewritten)`);
+  }
   lines.push('  • Feature: removed');
   return joined([
     warn ? warningBlock('Knowledge sync warning', 'The feature is absorbed. Indexing can be retried later.') : null,

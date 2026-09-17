@@ -244,11 +244,11 @@ function deriveItemState(cwd, item) {
  * order within a horizon; items naming an unknown horizon trail last so a
  * hand-edited manifest still renders). Session material rides along:
  * `active_session` (the marker, or null), `session_logs` (number + path,
- * ascending, from disk), `next_session_number`, and the `imports` entries —
- * a session can exist before any item does (the genesis conversation), so
- * these are read even when the node itself is absent.
+ * ascending, from disk), `next_session_number`, and the `imports` entries
+ * with their origins — a session can exist before any item does (the genesis
+ * conversation), so these are read even when the node itself is absent.
  * @param {string} cwd
- * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string}[]}}
+ * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string, origin: string}[]}}
  */
 function roadmapState(cwd) {
   const sessionsDir = path.join(cwd, '.workflows', '.roadmap', 'sessions');
@@ -276,7 +276,7 @@ function roadmapState(cwd) {
     totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
     active_session: /** @type {string|null} */ (null),
     ...sessionBase,
-    imports: /** @type {{path: string}[]} */ ([]),
+    imports: /** @type {{path: string, origin: string}[]} */ ([]),
   };
   /** @type {Record<string, any>} */
   let manifest = {};
@@ -291,7 +291,9 @@ function roadmapState(cwd) {
     ? roadmap.active_session
     : null;
   const importEntries = Array.isArray(roadmap.imports)
-    ? roadmap.imports.filter((/** @type {*} */ e) => e && typeof e.path === 'string').map((/** @type {*} */ e) => ({ path: e.path }))
+    ? roadmap.imports
+      .filter((/** @type {*} */ e) => e && typeof e.path === 'string')
+      .map((/** @type {*} */ e) => ({ path: e.path, origin: typeof e.origin === 'string' ? e.origin : '' }))
     : [];
   const horizons = Array.isArray(roadmap.horizons) ? roadmap.horizons.filter((/** @type {*} */ h) => typeof h === 'string') : [];
   const itemsObj = roadmap.items && typeof roadmap.items === 'object' && !Array.isArray(roadmap.items) ? roadmap.items : {};
