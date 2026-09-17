@@ -78,7 +78,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **A map operation on an existing item or horizon** — *"move X to v2"*, *"rename X"*, *"merge those horizons"*. Run the matching engine verb (`roadmap move|rename|edit|remove`, `roadmap horizon …` — each validates and self-commits; a refusal on a pulled item is the authority split speaking: relay it, offer the epic-side path). Record the op under **Edits**. An add aimed at a horizon with any member in delivery takes the routed confirm first (guidelines **C**).
    - **A direct add** — a placed capability named mid-conversation with no more shaping owed: `roadmap add {name} --horizon {h} --summary "{one-liner}" --source .roadmap/sessions/session-{session_number}.md` (origin defaults to `harvest`; the same guidelines-**C** confirm applies when the horizon has a member in delivery). Most material waits for the harvest instead — add directly only when the user places it themselves.
    - **Grooming an inbox idea on** — archive first so the pointer is durable, then add with the archived path as the source: `engine inbox archive {path}`, then `roadmap add {name} --horizon {h} --summary "{one-liner}" --origin inbox:{slug} --source .inbox/.archived/ideas/{file}`.
-   - **Shared files** — paths offered in conversation land via `engine roadmap import '{path}' …` (each path single-quoted — a shared filename carries spaces; self-commits; on `missing_imports`, re-prompt); read them for the conversation and record under **Edits**.
+   - **Shared files** — paths offered in conversation land via `engine roadmap import '{path}' …`, all of them in one call (each path single-quoted — a shared filename carries spaces and capitals; a `~` path written out in full, since the quotes stop the shell expanding it; a single quote inside a path written `'\''`; self-commits). A refusal carrying `missing_imports` is met by **A refused landing** below. Read what landed for the conversation and record it under **Edits**.
    - **A request to see the map** — *"show roadmap"*. Re-run `gateway.cjs view` and emit its TITLE and DISPLAY sections per their markers (skip the menu — the conversation is live). No STOP; render and continue.
    - **A KB query for prior context** — when a thread would benefit from what shipped work recorded, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
    - **A harvest pull** — *"lay it out"*, *"that covers it"*, *"let's sort it"*, *"done"*. Route to **C. Harvest**.
@@ -89,6 +89,18 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "roadmap: exploration notes — session-{session_number}"
    ```
+
+**A refused landing** — `roadmap import` answering `ok: false` with `missing_imports` landed nothing at all: one bad path refuses the whole batch. Write the payload to `.workflows/.cache/roadmap/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt and emit its DISPLAY and MENU sections verbatim per their markers:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/roadmap/import-reprompt.json
+```
+
+**STOP.** Wait for user response.
+
+**If the answer names a path:** land the corrected paths together with the ones the refusal did not name, then carry on in **B**.
+
+**If the answer is `skip`:** the refused paths land nothing — land what the refusal did not name, if anything, then carry on in **B**.
 
 → Proceed to **C. Harvest** when the user pulls (recognised in step 2); otherwise loop within **B**.
 

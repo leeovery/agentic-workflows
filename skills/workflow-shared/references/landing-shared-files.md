@@ -35,7 +35,7 @@ Nothing lands. Carry on with what vision read.
 
 #### Otherwise
 
-Land every path offered in one call. Single-quote every path — an image's filename carries spaces and capitals, and unquoted each word becomes its own positional — and write a `~` path out in full, since the quotes stop the shell expanding it:
+Land every path offered in one call. Single-quote every path — an image's filename carries spaces and capitals, and unquoted each word becomes its own positional — write a `~` path out in full, since the quotes stop the shell expanding it, and write a single quote inside a path as `'\''`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit import {work_unit} '{path}' ['{path}' …] --from {origin}
@@ -45,21 +45,43 @@ The verb copies, records, indexes what the store can read, and commits itself.
 
 **If the response is `ok: false` with `missing_imports`:**
 
-Nothing landed. Name the paths that do not exist and ask for the corrected one(s).
+Nothing landed — one bad path refuses the whole batch. Write the payload to the session's cache with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order); the cache path is `.workflows/.cache/{work_unit}/{origin}/import-reprompt.json`, `origin` being the directory shape already (`{phase}/{topic}`, or `discovery` for the bare origin). Then render the re-prompt:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/{origin}/import-reprompt.json
+```
+
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
+**If the answer names a path:**
+
+Replace the refused entries with the corrected value(s), and land them together with the paths the refusal did not name — none of the batch is on disk.
+
 → Return to **A. Land It**.
+
+**If the answer is `skip` and the refusal named every path offered:**
+
+Nothing lands.
+
+→ Return to caller.
+
+**If the answer is `skip` and other paths were offered:**
+
+The refused paths land nothing; the rest of the batch still has to.
+
+→ Return to **A. Land It** over the paths the refusal did not name.
 
 **If the response is `ok: false` for any other reason:**
 
-Surface the engine's error verbatim — it names the recovery path. Nothing landed, and nothing is linked.
+Surface the engine's error verbatim. Nothing landed, and nothing is linked.
 
 → Return to caller.
 
 **Otherwise:**
 
-`skipped_imports` names any source whose filename normalised away to nothing — say which, so the user knows it never landed.
+`skipped_imports` names any source the filename rule dropped — a basename leading with a dot, whatever follows it, or a stem that normalises away to nothing — and `warnings` carries knowledge-base indexing failures; mention either to the user in passing, neither blocks. A response with `committed: null` carries a `note` naming the retry: run it before the session's next write, so the landing is not left for another commit to sweep.
 
 → Proceed to **B. Read and Link**.
 
@@ -73,8 +95,8 @@ The document carries it at its next write: an inline link by relative path under
 ![The competitor's permissions screen, third onboarding step](../imports/competitor-permissions.png)
 ```
 
-`../imports/{name}` from a phase document at `{phase}/{topic}.md`; `../../imports/{name}` from a specification or from a discovery session log at `discovery/sessions/`, where the link sits in the exploration that discusses the file — the caller's **Edits** line records the landing, not the link. The prose around the link is the searchable record and the link is what a later reader opens — the file's content is never transcribed into the document.
+`../imports/{name}` from a phase document at `{phase}/{topic}.md`; `../../imports/{name}` from a discovery session log at `discovery/sessions/`, where the link sits in the exploration that discusses the file — the caller's **Edits** line records the landing, not the link. The prose around the link is the searchable record and the link is what a later reader opens — the file's content is never transcribed into the document.
 
-The landing adds no commit of its own to the phase's cadence: the import already committed itself.
+Once landed and committed — the response's `committed` names the sha — the landing adds no commit of its own to the phase's cadence.
 
 → Return to caller.
