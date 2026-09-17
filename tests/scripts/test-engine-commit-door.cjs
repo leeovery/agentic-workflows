@@ -328,6 +328,33 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   });
 });
 
+describe('engine commit --imports: the landing\'s retry scope', () => {
+  let dir;
+  beforeEach(() => { dir = setupTwoTopicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('commits the imports home and the manifest — never a live peer\'s topic', () => {
+    writeFile(dir, '.workflows/payments/imports/dockset-05.jpeg', 'jpeg bytes\n');
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.workflows/payments/research/auth-flow.md', '# Auth Flow\npeer session dirt\n');
+
+    const res = engine(dir, ['commit', 'payments', '--imports', '-m', 'workflow(payments): import 1 file(s) for research/auth-flow']);
+
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    const files = headFiles(dir);
+    assert.ok(files.includes('.workflows/payments/imports/dockset-05.jpeg'), 'the landed file committed');
+    assert.ok(files.includes('.workflows/payments/manifest.json'), 'the manifest its entry lives on committed');
+    assert.ok(!files.includes('.workflows/payments/research/auth-flow.md'), 'the peer session\'s topic is not swept');
+    assert.deepStrictEqual(statusLines(dir), ['?? .workflows/payments/research/'], 'peer dirt untouched');
+  });
+
+  it('refuses --imports beside another scope flag, and with no work unit', () => {
+    assert.match(engineFails(dir, ['commit', 'payments', '--imports', '-m', 'x', '--discovery']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--imports', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--imports', '-m', 'x']).error, /Usage/);
+  });
+});
+
 describe('engine commit --state: the analysis scopes', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });

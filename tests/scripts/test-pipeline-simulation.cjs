@@ -91,9 +91,7 @@ function auditState(dir, label) {
 
   // Project manifest parses.
   const projPath = path.join(dir, '.workflows', 'manifest.json');
-  if (fs.existsSync(projPath)) {
-    JSON.parse(fs.readFileSync(projPath, 'utf8'));
-  }
+  const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
 
   // The roadmap always derives — every item's state lands in vocabulary
   // (lifecycle by join: never stored, so it must always be computable).
@@ -102,6 +100,22 @@ function auditState(dir, label) {
     assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
       ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
   }
+
+  // Every import entry, wherever it lives, keeps the one shape the schema
+  // requires: a flat landing under the owner's `imports/`, and an origin that
+  // names a real door.
+  /** @param {unknown[]|undefined} entries @param {string} owner */
+  const auditImports = (entries, owner) => {
+    for (const entry of entries || []) {
+      assert.ok(entry && typeof entry === 'object', ctx(`${owner}: an imports[] entry is not an object`));
+      const e = /** @type {Record<string, unknown>} */ (entry);
+      assert.ok(typeof e.path === 'string' && /^imports\/[^/]+$/.test(e.path),
+        ctx(`${owner}: import path ${JSON.stringify(e.path)} is not imports/{name}`));
+      assert.ok(typeof e.origin === 'string' && schema.isImportOrigin(e.origin),
+        ctx(`${owner}: import ${e.path} carries origin ${JSON.stringify(e.origin)}, outside the vocabulary`));
+    }
+  };
+  if (project) auditImports(project.roadmap && project.roadmap.imports, 'roadmap');
 
   for (const wu of listWorkUnits(dir)) {
     const raw = fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8');
@@ -117,6 +131,8 @@ function auditState(dir, label) {
       ctx(`${wu}: work_type "${manifest.work_type}" not in schema`));
     assert.ok(schema.VALID_WORK_UNIT_STATUSES.includes(manifest.status),
       ctx(`${wu}: status "${manifest.status}" not in schema`));
+
+    auditImports(manifest.imports, wu);
 
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {
@@ -2267,7 +2283,7 @@ describe('pipeline simulation', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.active_session, null);
     assert.strictEqual(state.next_session_number, 2);
-    assert.deepStrictEqual(state.imports, [{ path: 'imports/app-idea.md' }]);
+    assert.deepStrictEqual(state.imports, [{ path: 'imports/app-idea.md', origin: 'roadmap' }]);
 
     // The pull is the commitment point: the join flips the derived state,
     // and the remainder is named at the moment of choice.
@@ -2532,6 +2548,81 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'start', wu, 'specification', 'logging'], /promoted/);
     sim.refuses(['topic', 'complete', wu, 'specification', 'logging'], /promoted/);
     sim.refuses(['topic', 'supersede', wu, 'specification', 'logging', '--by', 'other'], /promoted|not found/);
+  });
+
+  it('reference imports: a research session lands files, absorb re-homes them over a collision, promote carries the linked one', () => {
+    const feat = 'ledger';
+    sim.run(['workunit', 'create', feat, 'feature', '--description', 'Ledger', '--session-log-file', sessionLog(sim, feat)]);
+
+    // The research session lands what the user shared mid-session — a binary
+    // and a markdown source — stamped with its own origin, and links them.
+    label(sim, feat, 'research', feat);
+    sim.run(['topic', 'start', feat, 'research', feat]);
+    sim.write('shared/Dockset 05.PNG', 'png bytes\n');
+    sim.write('shared/Onboarding.txt', 'the walkthrough\n');
+    const landed = sim.run(['workunit', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt', '--from', `research/${feat}`]);
+    assert.deepStrictEqual(landed.imports, [
+      { path: 'imports/dockset-05.png', origin: `research/${feat}` },
+      { path: 'imports/onboarding.md', origin: `research/${feat}` },
+    ]);
+    sim.write(`.workflows/${feat}/research/${feat}.md`,
+      `# Research — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
+    sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
+    sim.run(['topic', 'complete', feat, 'research', feat]);
+    sim.run(['commit', feat, '-m', `research(${feat}): complete`, '--topic', `research/${feat}`, '--kb']);
+
+    label(sim, feat, 'discussion', feat);
+    sim.run(['topic', 'start', feat, 'discussion', feat]);
+    sim.write(`.workflows/${feat}/discussion/${feat}.md`,
+      `# Discussion — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
+    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
+    sim.run(['topic', 'complete', feat, 'discussion', feat]);
+
+    // The epic already holds a file of the same name from its own opener.
+    const epic = 'platform';
+    sim.run(['workunit', 'create', epic, 'epic', '--description', 'Platform', '--session-log-file', sessionLog(sim, epic)]);
+    sim.run(['discovery-session', 'close', epic, '-m', `discovery(${epic}): shape`]);
+    sim.write('shared/dockset-05.png', "the epic's own shot\n");
+    sim.run(['workunit', 'import', epic, 'shared/dockset-05.png', '--from', 'discovery']);
+
+    // Absorb re-homes the material: the collision suffixes, the links the
+    // rename broke are rewritten in the documents absorb moved, and the
+    // feature-session origins follow the topic.
+    const topic = 'ledger-work';
+    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic]);
+    assert.deepStrictEqual(absorbed.renamed_imports, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
+    const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
+    assert.match(read(`.workflows/${epic}/discussion/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
+    assert.match(read(`.workflows/${epic}/research/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
+    assert.deepStrictEqual(sim.manifest(epic).imports.map((e) => [e.path, e.origin]), [
+      ['imports/dockset-05.png', 'discovery'],
+      ['imports/dockset-05-2.png', `research/${topic}`],
+      ['imports/onboarding.md', `research/${topic}`],
+    ]);
+    const renamedArg = absorbed.renamed_imports.map((r) => `${r.from}:${r.to}`).join(',');
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'research,imports',
+      '--renamed', renamedArg], { expect: 'content' }),
+    /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
+
+    // The spec links the material it rests on; promotion carries that import
+    // into the cross-cutting unit and leaves the rest of the epic's behind.
+    label(sim, epic, 'specification', topic);
+    sim.run(['topic', 'start', epic, 'specification', topic]);
+    sim.run(['manifest', 'set', `${epic}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
+    sim.write(`.workflows/${epic}/specification/${topic}/specification.md`,
+      `# Spec — ${topic}\n\n![the fifth onboarding screen](../../imports/dockset-05-2.png)\n`);
+    sim.run(['commit', epic, '-m', `spec(${epic}): construct`, '--topic', `specification/${topic}`]);
+    sim.run(['topic', 'complete', epic, 'specification', topic]);
+
+    const promoted = sim.run(['workunit', 'promote', epic, topic, '--to', 'onboarding-cc', '--description', 'Onboarding, project-wide']);
+    assert.deepStrictEqual(promoted.imports, [
+      { path: 'imports/dockset-05-2.png', origin: `research/${topic}` },
+    ]);
+    assert.deepStrictEqual(sim.manifest('onboarding-cc').imports.map((e) => e.path), ['imports/dockset-05-2.png']);
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows/onboarding-cc/imports/dockset-05-2.png')));
+    // A copy, not a move — the epic keeps every file and entry it had.
+    assert.strictEqual(sim.manifest(epic).imports.length, 3);
+    assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/${epic}/imports/dockset-05-2.png`)));
   });
 
   it('implementation loop: fix cycles, analysis cycles, and gate-mode bookkeeping survive resume', () => {

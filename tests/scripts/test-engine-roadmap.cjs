@@ -577,26 +577,59 @@ describe('engine CLI: roadmap sessions and imports', () => {
     assert.strictEqual(again.session, '002');
   });
 
-  it('import lands files with create discipline: normalise, dedupe, track, one commit', () => {
+  it('import lands files with the shared discipline: normalise, dedupe, stamp the origin, one commit', () => {
     fs.writeFileSync(path.join(dir, 'My App Idea.md'), '# The idea\n');
     fs.writeFileSync(path.join(dir, 'my-app-idea.md'), '# A colliding name\n');
     const res = runOk(dir, ['import', 'My App Idea.md', 'my-app-idea.md']);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/my-app-idea.md' }, { path: 'imports/my-app-idea-2.md' }]);
+    assert.deepStrictEqual(res.imports, [
+      { path: 'imports/my-app-idea.md', origin: 'roadmap' },
+      { path: 'imports/my-app-idea-2.md', origin: 'roadmap' },
+    ]);
     assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea.md')));
     assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea-2.md')));
     const entries = readProject(dir).roadmap.imports;
     assert.strictEqual(entries.length, 2);
     assert.strictEqual(entries[0].path, 'imports/my-app-idea.md');
     assert.ok(entries[0].imported_at, 'entries carry a timestamp');
+    assert.deepStrictEqual(entries.map((e) => e.origin), ['roadmap', 'roadmap'],
+      'the product altitude is its own origin');
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: import 2 files');
     const state = runOk(dir, ['state']);
-    assert.deepStrictEqual(state.imports, [{ path: 'imports/my-app-idea.md' }, { path: 'imports/my-app-idea-2.md' }]);
+    assert.deepStrictEqual(state.imports, [
+      { path: 'imports/my-app-idea.md', origin: 'roadmap' },
+      { path: 'imports/my-app-idea-2.md', origin: 'roadmap' },
+    ]);
+  });
+
+  it('a binary lands tracked and unindexed, its extension kept and lowercased', () => {
+    fs.writeFileSync(path.join(dir, 'Board Sketch.PNG'), 'png bytes\n');
+    fs.writeFileSync(path.join(dir, 'notes.md'), '# notes\n');
+    const res = runOk(dir, ['import', 'Board Sketch.PNG', 'notes.md']);
+    assert.deepStrictEqual(res.imports, [
+      { path: 'imports/board-sketch.png', origin: 'roadmap' },
+      { path: 'imports/notes.md', origin: 'roadmap' },
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')));
+    const mode = fs.statSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
+    assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
+    // No index was spawned for the binary: the real bundle refuses a `.png`
+    // by name, and the refusal would come back as a warning.
+    assert.strictEqual('warnings' in res, false, JSON.stringify(res));
   });
 
   it('import fails whole with missing_imports so the flow can re-prompt', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     const res = runFail(dir, ['import', 'real.md', 'ghost.md']);
     assert.deepStrictEqual(res.missing_imports, ['ghost.md']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
+  });
+
+  it('a directory among the paths refuses before any copy — no half-landed batch', () => {
+    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
+    fs.mkdirSync(path.join(dir, 'album'), { recursive: true });
+    const res = runFail(dir, ['import', 'real.md', 'album']);
+    assert.match(res.error, /import path\(s\) not found, not a file, or unreadable: album/);
+    assert.deepStrictEqual(res.missing_imports, ['album']);
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
   });
 
@@ -837,7 +870,7 @@ describe('engine CLI: import edge discipline and the store-dirt ride', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     fs.writeFileSync(path.join(dir, '.hidden'), 'x');
     const res = runOk(dir, ['import', 'real.md', '.hidden']);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/real.md' }]);
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/real.md', origin: 'roadmap' }]);
     assert.deepStrictEqual(res.skipped_imports, ['.hidden']);
 
     const fail = runFail(dir, ['import', '.hidden']);
