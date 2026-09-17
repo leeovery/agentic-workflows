@@ -66,6 +66,7 @@ function buildFixture(root) {
       { path: 'imports/oauth-notes.md' },         // duplicate topic → deduped
       { path: 'imports/bad/nested.md' },          // subdirectory → excluded
       { path: 'imports/.hidden.md' },             // dotfile → excluded
+      { path: 'imports/dockset-05.jpeg', origin: 'research/ledger' }, // binary → tracked, never indexed
     ],
     seeds: [
       { path: 'seeds/original-idea.md', source: 'inbox:idea' },
@@ -80,6 +81,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
+  writeFile(path.join(wf, 'payments', 'imports', 'dockset-05.jpeg'), 'binary-ish\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
@@ -145,6 +147,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, '.roadmap', 'sessions', 'notes.txt'), 'not a session\n');
   writeFile(path.join(wf, '.roadmap', 'imports', 'app-idea.md'), '# the Claude-app bridge doc\n');
   writeFile(path.join(wf, '.roadmap', 'imports', 'dotted.name.md'), '# dotted → excluded\n');
+  writeFile(path.join(wf, '.roadmap', 'imports', 'diagram.png'), 'binary-ish\n');
 
   writeJson(path.join(wf, 'manifest.json'), proj);
 }
@@ -214,6 +217,12 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.ok(!files.includes('.workflows/payments/.state/research-analysis.md'));
   });
 
+  it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {
+    const files = normalise(discoverArtifacts()).map((it) => it.file);
+    assert.ok(!files.includes('.workflows/payments/imports/dockset-05.jpeg'));
+    assert.ok(!files.includes('.workflows/.roadmap/imports/diagram.png'));
+  });
+
   it('accepts a pre-fetched manifest list and yields the identical set', () => {
     // cmdStatus passes the shared `manifest list` payload in; the result must
     // match the self-fetching path exactly.
@@ -273,5 +282,39 @@ describe('deriveIdentity: the roadmap carve-out', () => {
   it('never captures a lookalike directory — .roadmapX is an ordinary bad path', () => {
     assert.throws(() => deriveIdentity('.workflows/.roadmapX/sessions/session-001.md'),
       (err) => err instanceof UserError && !/roadmap path structure/.test(err.message));
+  });
+});
+
+describe('deriveIdentity: non-markdown imports', () => {
+  const { deriveIdentity, UserError } = require('../../src/knowledge/index');
+
+  const POLICY = /imports are tracked on the manifest; only markdown imports are indexed/;
+  const refusedBy = (pattern) => (err) => err instanceof UserError && pattern.test(err.message);
+
+  it('refuses a binary import by name, with the policy as the reason', () => {
+    for (const p of ['.workflows/payments/imports/diagram.png', '.workflows/.roadmap/imports/diagram.png']) {
+      assert.throws(() => deriveIdentity(p), refusedBy(POLICY));
+      assert.throws(() => deriveIdentity(p), refusedBy(new RegExp(p.replace(/[.]/g, '\\.'))));
+    }
+  });
+
+  it('leaves a structurally wrong path on the structure message', () => {
+    const cases = [
+      ['.workflows/payments/imports/sub/diagram.png', /Unexpected imports path structure/],
+      ['.workflows/payments/imports/.hidden.png', /Unexpected imports path structure/],
+      ['.workflows/.roadmap/imports/sub/diagram.png', /Unexpected roadmap path structure/],
+      ['.workflows/.roadmap/imports/.hidden.png', /Unexpected roadmap path structure/],
+    ];
+    for (const [p, structure] of cases) {
+      assert.throws(() => deriveIdentity(p), refusedBy(structure));
+      assert.throws(() => deriveIdentity(p), (err) => !POLICY.test(err.message));
+    }
+  });
+
+  it('derives a markdown import at its flat identity and refuses a dotted stem', () => {
+    assert.deepStrictEqual(deriveIdentity('.workflows/payments/imports/oauth-notes.md'),
+      { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes' });
+    assert.throws(() => deriveIdentity('.workflows/payments/imports/dotted.name.md'),
+      refusedBy(/Invalid topic name/));
   });
 });

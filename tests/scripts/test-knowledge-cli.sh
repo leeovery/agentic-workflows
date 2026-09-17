@@ -173,6 +173,14 @@ records without downtime.
 MD
 }
 
+# Create a non-markdown import — reference material tracked on the manifest,
+# never indexed. Takes the full filename, extension and all.
+create_binary_import_file() {
+  local wu="$1" filename="$2"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/imports"
+  printf '\211PNG\r\n\032\n' > "$TEST_ROOT/.workflows/$wu/imports/$filename"
+}
+
 # Create a seed artifact file (the work unit's origin — a promoted inbox item).
 create_seed_file() {
   local wu="$1" filename="$2"
@@ -2081,6 +2089,26 @@ output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
 assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
+# --- Test 84b: A non-markdown import is refused by name, not queued ---
+echo "Test 84b: Index refuses a non-markdown import"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+create_binary_import_file "seeded-wu" "diagram.png"
+# Index the markdown import first so metadata (and its pending queue) exists.
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb index .workflows/seeded-wu/imports/diagram.png 2>&1) || exit_code=$?
+assert_eq "refuses a non-markdown import" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "names the policy as the reason" "true" \
+  "$(echo "$output" | grep -q 'only markdown imports are indexed' && echo true || echo false)"
+assert_eq "names the file refused" "true" \
+  "$(echo "$output" | grep -qF 'imports/diagram.png' && echo true || echo false)"
+pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
+assert_eq "refusal never enters the pending queue" "[]" "$pending"
+teardown_project
+
 # --- Test 85: Query an indexed imports file shows imports provenance ---
 echo "Test 85: Query an imports file shows [imports | wu/topic]"
 setup_project
@@ -2115,7 +2143,7 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_stub_config
 create_import_file "seeded-wu" "seed-conversation"
-# Track the import on the manifest the way import-files.md does.
+# Track the import on the manifest the way the landers do.
 node "$ENGINE_JS" manifest push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 # Bulk index (no args) — should find the import via discoverArtifacts.
 output=$(run_kb index 2>&1)
@@ -2172,6 +2200,23 @@ assert_eq "skips dotfile entry" "true" \
   "$(echo "$output" | grep -q 'imports/.dotfile.md' && echo false || echo true)"
 assert_eq "skips subdirectory entry" "true" \
   "$(echo "$output" | grep -q 'imports/sub/nested.md' && echo false || echo true)"
+teardown_project
+
+# --- Test 87e: Bulk index skips a non-markdown imports[] entry ---
+echo "Test 87e: Bulk index skips non-markdown imports"
+setup_project
+create_work_unit "mixed-imports-wu" "epic" "Mixed imports"
+write_stub_config
+create_import_file "mixed-imports-wu" "seed-conversation"
+create_binary_import_file "mixed-imports-wu" "diagram.png"
+# Both tracked on the manifest; only the markdown one is an index candidate.
+node "$ENGINE_JS" manifest push mixed-imports-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z","origin":"discovery"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push mixed-imports-wu imports '{"path":"imports/diagram.png","imported_at":"2026-05-10T10:01:00Z","origin":"research/onboarding"}' >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "indexes the markdown import" "true" \
+  "$(echo "$output" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
+assert_eq "skips the non-markdown import" "true" \
+  "$(echo "$output" | grep -qF 'imports/diagram.png' && echo false || echo true)"
 teardown_project
 
 # --- Test 87c: Bulk index dedupes duplicate imports[] entries ---
