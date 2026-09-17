@@ -14,7 +14,6 @@
 // index (warn-don't-block); the confined commit comes last.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const path = require('path');
 const {
   loadWorkUnitManifest,
@@ -23,7 +22,14 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
-const { planImports, copyImports, importEntry, isIndexableImport } = require('./import-landing.cjs');
+const {
+  planImports,
+  copyImports,
+  importEntry,
+  isIndexableImport,
+  importArtifact,
+  unlandableSources,
+} = require('./import-landing.cjs');
 const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -39,9 +45,10 @@ const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs
 /**
  * Land user-shared files in a work unit's `imports/`, stamped with the origin
  * of the place that took them. Refuses a work unit that is missing or not
- * in-progress, an origin outside the vocabulary, any missing source path (the
- * whole call, nothing copied), and a call whose every source is dropped by
- * filename normalisation — "imported" must mean something landed. In one lock
+ * in-progress, an origin outside the vocabulary or naming a phase item the
+ * work unit does not have, any source that is not an existing regular file
+ * (the whole call, nothing copied), and a call whose every source is dropped
+ * by filename normalisation — "imported" must mean something landed. In one lock
  * hold: plan and dedupe against the directory and the batch, copy, record.
  * After it: index each markdown landing (warn-don't-block) and commit the
  * imports directory and the manifest, confined.
@@ -61,10 +68,10 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   if (!isImportOrigin(origin) || origin === 'roadmap') {
     throw new Error(`"${origin}" is not a work-unit import origin — discovery, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')} (roadmap is the product layer's own — engine roadmap import)`);
   }
-  const missing = paths.filter((p) => !fs.existsSync(path.resolve(cwd, p)));
+  const missing = unlandableSources(cwd, paths);
   if (missing.length > 0) {
     const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found: ${missing.join(', ')}`)
+      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
     );
     err.payload = { missing_imports: missing };
     throw err;
@@ -82,6 +89,16 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
     }
     if (manifest.imports !== undefined && !Array.isArray(manifest.imports)) {
       throw new Error(`"${workUnit}" imports is malformed — expected an array`);
+    }
+    // The origin must name a session that exists. A mistyped topic would
+    // record a provenance nothing can resolve and mint a presence hold no
+    // session owns and nothing clears.
+    const [phase, topic] = origin.split('/');
+    if (topic !== undefined) {
+      const item = manifest.phases?.[phase]?.items?.[topic];
+      if (!item || typeof item !== 'object') {
+        throw new Error(`no ${phase} item "${topic}" in "${workUnit}" — check the --from origin`);
+      }
     }
 
     const { planned, skipped: dropped } = planImports(paths, importsDir);
@@ -101,7 +118,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   /** @type {string[]} */
   const warnings = [];
   for (const move of moves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', `.workflows/${workUnit}/imports/${move.dest}`], `knowledge index (imports/${move.dest})`, warnings);
+    knowledge(cwd, ['index', importArtifact(workUnit, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
   }
 
   const outcome = commitTailWithKb(
@@ -118,7 +135,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
     committed: outcome.committed,
   };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, workUnit);
+  noteCommitOutcome(result, outcome);
   return result;
 }
 

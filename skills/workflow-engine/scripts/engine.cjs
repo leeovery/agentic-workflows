@@ -443,9 +443,16 @@ function runWorkunit(argv) {
       const landed = importWorkUnitFiles(process.cwd(), workUnit, paths, { origin: opts.from });
       // A phase session's landing is its own topic's work — the beat is the
       // same act as claiming the slot. A bare `discovery` origin names no
-      // topic and beats nothing (discovery is serialised by its marker).
+      // topic and beats nothing (discovery is serialised by its marker), and
+      // a terminal item is finished: material filed against a closed topic is
+      // not a session sitting in one.
       const [phase, topic] = opts.from.split('/');
-      if (topic) beatQuietly(process.cwd(), workUnit, phase, topic);
+      if (topic) {
+        const status = topicStatus(process.cwd(), workUnit, phase, topic);
+        if (status !== null && !TERMINAL_TOPIC_STATUSES.includes(status)) {
+          beatQuietly(process.cwd(), workUnit, phase, topic);
+        }
+      }
       respond(landed);
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
