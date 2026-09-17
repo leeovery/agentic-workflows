@@ -91,9 +91,7 @@ function auditState(dir, label) {
 
   // Project manifest parses.
   const projPath = path.join(dir, '.workflows', 'manifest.json');
-  if (fs.existsSync(projPath)) {
-    JSON.parse(fs.readFileSync(projPath, 'utf8'));
-  }
+  const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
 
   // The roadmap always derives — every item's state lands in vocabulary
   // (lifecycle by join: never stored, so it must always be computable).
@@ -102,6 +100,22 @@ function auditState(dir, label) {
     assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
       ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
   }
+
+  // Every import entry, wherever it lives, keeps the one shape the schema
+  // requires: a flat landing under the owner's `imports/`, and an origin that
+  // names a real door.
+  /** @param {unknown[]|undefined} entries @param {string} owner */
+  const auditImports = (entries, owner) => {
+    for (const entry of entries || []) {
+      assert.ok(entry && typeof entry === 'object', ctx(`${owner}: an imports[] entry is not an object`));
+      const e = /** @type {Record<string, unknown>} */ (entry);
+      assert.ok(typeof e.path === 'string' && /^imports\/[^/]+$/.test(e.path),
+        ctx(`${owner}: import path ${JSON.stringify(e.path)} is not imports/{name}`));
+      assert.ok(typeof e.origin === 'string' && schema.isImportOrigin(e.origin),
+        ctx(`${owner}: import ${e.path} carries origin ${JSON.stringify(e.origin)}, outside the vocabulary`));
+    }
+  };
+  if (project) auditImports(project.roadmap && project.roadmap.imports, 'roadmap');
 
   for (const wu of listWorkUnits(dir)) {
     const raw = fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8');
@@ -117,6 +131,8 @@ function auditState(dir, label) {
       ctx(`${wu}: work_type "${manifest.work_type}" not in schema`));
     assert.ok(schema.VALID_WORK_UNIT_STATUSES.includes(manifest.status),
       ctx(`${wu}: status "${manifest.status}" not in schema`));
+
+    auditImports(manifest.imports, wu);
 
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {

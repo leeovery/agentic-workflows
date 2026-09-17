@@ -21,7 +21,7 @@ const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
 const { archivedItem } = require('./inbox-set.cjs');
 const {
@@ -4565,7 +4565,7 @@ function absorbContinuationSurface(cwd, args) {
   return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
 }
 
-/** @param {string} cwd @param {{dotpath: string, to?: string, warn?: string}} args @returns {string} */
+/** @param {string} cwd @param {{dotpath: string, to?: string, imports?: string, warn?: string}} args @returns {string} */
 function promoteReceiptSurface(cwd, args) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'promote-receipt');
   if (phase !== 'specification') {
@@ -4576,7 +4576,31 @@ function promoteReceiptSurface(cwd, args) {
   if (!item || item.status !== 'promoted') {
     throw new Error(`render promote-receipt: "${topic}" is not "promoted" — the promotion has not run`);
   }
-  return promoteReceipt(workUnit, topic, args.to, { warn: args.warn === '1' });
+  let imports = 0;
+  if (args.imports !== undefined) {
+    imports = Number(args.imports);
+    if (!Number.isInteger(imports) || imports < 0) {
+      throw new Error(`render promote-receipt: --imports must be a carried import count, got "${args.imports}"`);
+    }
+  }
+  return promoteReceipt(workUnit, topic, args.to, { warn: args.warn === '1', imports });
+}
+
+// import-reprompt — the re-prompt after a landing refused on `missing_imports`.
+// No address: the refusal names paths, and the work unit it was aimed at may
+// not exist yet (the work-type commit's own landing refuses before creation).
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function importRepromptSurface(cwd, { file }) {
+  if (!file) throw new Error('render import-reprompt: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'import-reprompt');
+  if (!Array.isArray(p.missing) || p.missing.length === 0) {
+    throw new Error('render import-reprompt: "missing" must be a non-empty array of the refused paths');
+  }
+  p.missing.forEach((/** @type {unknown} */ m, /** @type {number} */ i) => {
+    if (!isFilled(m)) throw new Error(`render import-reprompt: missing[${i}] must be a non-empty string`);
+  });
+  return importReprompt(p.missing);
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
@@ -5190,6 +5214,7 @@ const SURFACES = {
   'absorb-receipt': absorbReceiptSurface,
   'absorb-continuation': absorbContinuationSurface,
   'promote-receipt': promoteReceiptSurface,
+  'import-reprompt': importRepromptSurface,
   'pivot-continuation': pivotContinuation,
   'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,

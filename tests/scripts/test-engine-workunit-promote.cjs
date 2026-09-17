@@ -463,13 +463,17 @@ describe('engine workunit promote — the import carry', () => {
       { path: 'imports/fee-only.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discussion/fee-model' },
     ];
     if (ghost) epic.imports.push({ path: 'imports/ghost.md', imported_at: '2026-06-05T09:00:00Z', origin: 'discussion/ttl-policy' });
+    epic.imports.push({ path: 'imports/other.png', imported_at: '2026-06-06T09:00:00Z', origin: 'discovery' });
     fix = setupFixture({ epic });
     writeFile(fix.project, '.workflows/payments/imports/spec-linked.md', '# Spec material\n');
     writeFile(fix.project, '.workflows/payments/imports/diagram.png', 'png bytes\n');
     writeFile(fix.project, '.workflows/payments/imports/attached.md', '# Attached\n');
     writeFile(fix.project, '.workflows/payments/imports/fee-only.md', '# Fees\n');
+    writeFile(fix.project, '.workflows/payments/imports/other.png', 'other bytes\n');
+    // The prose mention is a path in the product's own tree, not a link out
+    // of this document — the carry must read the relative hop, not the word.
     writeFile(fix.project, '.workflows/payments/specification/caching-strategy/specification.md',
-      '# Caching Spec\n\n![the sketch](../../imports/spec-linked.md)\n');
+      '# Caching Spec\n\n![the sketch](../../imports/spec-linked.md)\n\nThe loader reads src/imports/other.png at boot.\n');
     writeFile(fix.project, '.workflows/payments/discussion/cache-invalidation.md',
       '# Cache Invalidation\n\n![the diagram](../imports/diagram.png)\n');
     writeFile(fix.project, '.workflows/payments/discussion/fee-model.md',
@@ -496,12 +500,14 @@ describe('engine workunit promote — the import carry', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/imports/diagram.png'), 'utf8'), 'png bytes\n');
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports/fee-only.md')),
       "an unmoved topic's import stays behind");
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports/other.png')),
+      'a prose mention of src/imports/other.png is not a link out of the document');
 
     // A copy, never a move: the epic keeps every file and every entry.
     assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), [
-      'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md', 'imports/fee-only.md',
+      'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md', 'imports/fee-only.md', 'imports/other.png',
     ]);
-    for (const name of ['spec-linked.md', 'diagram.png', 'attached.md', 'fee-only.md']) {
+    for (const name of ['spec-linked.md', 'diagram.png', 'attached.md', 'fee-only.md', 'other.png']) {
       assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/imports', name)), `epic lost ${name}`);
     }
 
@@ -525,6 +531,22 @@ describe('engine workunit promote — the import carry', () => {
       'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md',
     ]);
     assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
+  });
+
+  it('the receipt names the carried count beside its sibling facts, and omits the row without one', () => {
+    setupCarrying();
+    engine(fix, PROMOTE);
+    const receipt = (args) => execFileSync('node',
+      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', ...args],
+      { cwd: fix.project, encoding: 'utf8' });
+
+    assert.ok(receipt(['--imports', '3']).includes([
+      '  • Specification: moved',
+      '  • Imports: 3 copied',
+      '  • Epic status: promoted',
+    ].join('\n')));
+    assert.ok(receipt(['--imports', '0']).includes('  • Specification: moved\n  • Epic status: promoted'));
+    assert.ok(receipt([]).includes('  • Specification: moved\n  • Epic status: promoted'));
   });
 
   it('a promotion carrying nothing writes no imports key', () => {

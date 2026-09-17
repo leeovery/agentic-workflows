@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow } = require('./surfaces.cjs');
 
 /**
  * The ⚑ advisory block: label line and reassurance tail. The instruction
@@ -184,10 +184,10 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
 /**
  * workunit promote — the promotion summary.
  * @param {string} workUnit @param {string} topic @param {string} ccWorkUnit
- * @param {{warn?: boolean}} [opts]
+ * @param {{warn?: boolean, imports?: number}} [opts]
  * @returns {string}
  */
-function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false } = {}) {
+function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false, imports = 0 } = {}) {
   // Same shape as its sibling above: column-0 sentence, bulleted facts.
   const lines = [
     'Promoted to Cross-Cutting',
@@ -198,12 +198,33 @@ function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false } = {}) {
     `  • Source: ${workUnit}`,
     '  • Discussion files: moved',
     '  • Specification: moved',
+    // Copied, not moved — the epic keeps its own, so the row says so.
+    ...(imports > 0 ? [`  • Imports: ${imports} copied`] : []),
     '  • Epic status: promoted',
   ];
   return joined([
     warn ? warningBlock('Knowledge warning', 'The promotion is committed. The knowledge base will catch up on the next sync.') : null,
     confirmation(lines.join('\n')),
   ]);
+}
+
+/**
+ * The import re-prompt — what a landing's `missing_imports` refusal asks for.
+ * Every lander validates its whole batch before copying anything, so the
+ * paths named here are the only ones the caller has to replace; the ask is
+ * free text because the answer is a filesystem path, not a choice.
+ * @param {string[]} missing the refused source paths
+ * @returns {string}
+ */
+function importReprompt(missing) {
+  const quoted = ['One or more paths could not be found:', ...missing.flatMap((p) => bulletRow(p))]
+    .map((line) => `> ${line}`);
+  return [
+    section('DISPLAY: missing imports', 'emit verbatim as markdown', quoted.join('\n')),
+    section('MENU: import reprompt', "emit verbatim as markdown, then STOP for the user's response",
+      menu('', [promptOption('Provide file paths', 'one or more, space or newline separated')],
+        { question: 'Provide the corrected file path(s):' })),
+  ].join('\n');
 }
 
 /**
@@ -252,4 +273,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };

@@ -314,7 +314,8 @@ Commands:
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
-  render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--warn]
+  render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--imports <N>] [--warn]
+  render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
   render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
