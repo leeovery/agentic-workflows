@@ -46,6 +46,8 @@ The dispatch includes these file paths:
 
 A fresh dispatch starts with no memory — this payload is everything the executor sees.
 
+Context the task needs that its content lacks is landed on the task first — [ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C, marked as an addition from the orchestrator — and a specification the work has shown wrong is corrected through [correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md). Nothing rides beside the enumerated items, on a fresh dispatch or a continuation's send: the executor proceeds on them alone and reports anything else.
+
 → Proceed to **Expected Result**.
 
 #### If an executor already ran for the current task (fix round, retry, or gate comment)
@@ -56,7 +58,7 @@ Continue that same executor — it already holds the task, the codebase context 
 - **Task-gate comment (from G)**: the user's feedback
 - **Retry (from C)**: the user's comments
 
-Any round may also carry an **ad hoc addition** ([ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C) — the user's instruction, marked as an addition from the user, included with the round's material.
+Any round may also carry an **ad hoc addition** ([ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C) — the user's instruction or the orchestrator's own, marked with its origin, included with the round's material.
 
 If the send fails — the recorded id no longer resolves, or a context refresh dropped it — dispatch a fresh executor with items 1–7 above plus the round's material as items 8 (**User-approved review notes**: verbatim or as modified by the user) and 9 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
 

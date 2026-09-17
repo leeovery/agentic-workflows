@@ -4,7 +4,7 @@
 
 ---
 
-Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work**.
+Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work** — except the orchestrator's own addition to the task in flight, which enters at **C. Deliver to the Executor**.
 
 The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending when the conversation interrupted, re-present it — engine-rendered menus re-fetch from their surface, prose menus re-emit from their authoring file.
 
@@ -54,10 +54,12 @@ Pick by first match:
 
 No plan write — the instruction becomes part of the current task's scope, for the executor and the reviewer alike:
 
-1. **Append the instruction to the task's normalised content in session** — every later use of that content carries it: a fresh executor dispatch (item 5 of the payload), and the reviewer's task-content input.
-2. **Deliver it to the executor** with the next send, per **[invoke-executor.md](invoke-executor.md)**: as round material on a continuation (SendMessage to the recorded agent id), or riding the normalised content on a fresh dispatch. Mark it as an addition from the user.
+1. **Append the instruction to the task's normalised content in session** — every later use of that content carries it: a fresh executor dispatch (item 6 of the payload), and the reviewer's task-content input.
+2. **Deliver it to the executor** with the next send, per **[invoke-executor.md](invoke-executor.md)**: as round material on a continuation (SendMessage to the recorded agent id), or riding the normalised content on a fresh dispatch. Mark it with its origin — an addition from the user, or from the orchestrator.
 
-#### If the task completed approved before any send carried the instruction
+**The orchestrator's own addition enters here directly** — context the task in flight needs that its content lacks, landed by steps 1–2 with the orchestrator as origin, no gate. It always targets the task being dispatched, never a pending one.
+
+#### If the task completed approved before any send carried the user's instruction
 
 The work was never absorbed — treat it as unlanded.
 

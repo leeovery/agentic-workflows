@@ -59,7 +59,7 @@ Load the chosen format's **[authoring.md](../../workflow-planning-process/refere
 
 **Do not include acceptance criteria.** Mechanical changes are verified by test baselines and completeness checks, not acceptance criteria.
 
-**If a task edits another work unit's completed specification** (under `.workflows/{other work unit}/specification/`): fold the protocol from **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** into its Implementation Steps and Verification — in-place edit, corrigenda entry, knowledge re-index, scoped commit. No task edits another work unit's other phase artifacts.
+**No task edits another work unit's artifact under `.workflows/`** — the executor writes code and tests alone. A completed unit's specification the fix shows wrong is corrected here, through **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)**, never folded into a task; another unit's non-spec artifacts are superseded by current work, never corrected.
 
 ## C. Register Plan in Manifest
 
