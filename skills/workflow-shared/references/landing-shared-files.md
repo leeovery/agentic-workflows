@@ -4,7 +4,7 @@
 
 ---
 
-A file the user shares is an import, whenever it arrives: one home, `.workflows/{work_unit}/imports/`, for every phase and every file type. A markdown-ish source lands as `{stem}.md` and reaches the knowledge base; anything else — an image, a pdf — keeps its extension and is tracked on the manifest alone. Land it, read it, link it, carry on: no gate, and nothing is written into the document until the next write the conversation earns.
+A file the user shares is an import, whenever it arrives: one home, `.workflows/{work_unit}/imports/`, for every phase and every file type. A markdown-ish source (`.md`, `.markdown`, `.txt`, `.text`, or no extension) lands as `{stem}.md` and reaches the knowledge base; anything else — an image, a pdf — keeps its extension, lowercased, and is tracked on the manifest alone. Land it, read it, link it, carry on — no gate anywhere in it.
 
 ## Parameters
 
@@ -15,15 +15,15 @@ The caller provides these via context before loading:
 
 ## A. Land It
 
-The user's message offers a path — a document or an image, one or several, dropped in from the desktop or named in prose. Land every path offered in one call:
+The user's message offers a path — a document or an image, one or several, dropped in from the desktop or named in prose. A pasted image is the exception: bytes in the message with no file behind it, and nothing can land it — vision reads the picture and cannot write it back out. Ask in one line for the file saved somewhere, and land that path instead.
+
+Land every path offered in one call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit import {work_unit} {path} [{path} …] --from {origin}
 ```
 
 The verb copies, records, indexes what the store can read, and commits itself.
-
-A pasted image is bytes in the message with no file behind it, and nothing can land it — vision reads the picture and cannot write it back out. Ask in one line for the file saved somewhere, and land that path.
 
 #### If the response is `ok: false` with `missing_imports`
 
