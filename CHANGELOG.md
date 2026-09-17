@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.61] - 2026-09-17
+
+✨ Added
+- Share a file with a research, discussion, or investigation session at any point, not just at discovery's opener — screenshots, logs, exports, and documents now land as imports mid-conversation and link into the document.
+- Non-markdown imports (screenshots, PDFs, etc.) are now supported — they land in `imports/` and are tracked, even though they aren't searchable in the knowledge base.
+
+🔧 Changed
+- Every import now records where it came from (discovery, research, discussion, or investigation), so its origin is always known.
+- Absorbing a feature into an epic now renames colliding import files instead of failing, and fixes up the links to them in the moved documents.
+- Promoting a specification to a cross-cutting work unit now carries along any imported files it references, instead of leaving them behind.
+- A failed file import now shows a clearer re-prompt with the option to skip the missing paths and continue.
+
+🐛 Fixed
+- Importing a `.txt` file no longer produces a broken `file.txt.md` name that failed to index — plain-text and markdown-like files now land and index correctly.
+
 ## [0.7.60] - 2026-09-17
 
 🔧 Changed
