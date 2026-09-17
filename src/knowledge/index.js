@@ -323,6 +323,25 @@ function rejectDottedSegment(kind, name) {
   }
 }
 
+// Non-markdown imports are reference material tracked on the manifest — the
+// store embeds markdown alone, so they are never index candidates.
+function isIndexableImportPath(name) {
+  return name.endsWith('.md');
+}
+
+// A flat import file carrying any other extension. Refused by name, with the
+// policy as the reason; a subdirectory or a dotfile is still a bad shape.
+function isNonMarkdownImport(name) {
+  return !isIndexableImportPath(name) && /^[^./][^/]*\.[^/.]+$/.test(name);
+}
+
+function nonMarkdownImportError(filePath) {
+  return new UserError(
+    `Refusing to index ${filePath} — imports are tracked on the manifest; ` +
+      'only markdown imports are indexed.'
+  );
+}
+
 function deriveIdentity(filePath) {
   // Normalise to forward slashes for pattern matching.
   const norm = filePath.replace(/\\/g, '/');
@@ -370,6 +389,10 @@ function deriveIdentity(filePath) {
       }
       rejectDottedSegment('topic', topic);
       return { workUnit: ROADMAP_IDENTITY, phase: 'imports', topic };
+    }
+    const otherImport = /^imports\/(.+)$/.exec(rest);
+    if (otherImport && isNonMarkdownImport(otherImport[1])) {
+      throw nonMarkdownImportError(filePath);
     }
     throw new UserError(
       `Unexpected roadmap path structure: ${rest}\n` +
@@ -452,6 +475,9 @@ function deriveIdentity(filePath) {
     // the filename; discussion/investigation the topic — same shape either way).
     const flatMatch = /^([^/]+)\.md$/.exec(rest);
     if (!flatMatch) {
+      if (phase === 'imports' && isNonMarkdownImport(rest)) {
+        throw nonMarkdownImportError(filePath);
+      }
       throw new UserError(
         `Unexpected ${phase} path structure: ${rest}\n` +
           `Expected: .workflows/{work_unit}/${phase}/{topic}.md`
@@ -946,13 +972,14 @@ const ARTIFACT_PATHS = {
 
 /**
  * Collect a work unit's flat-file entries for a top-level array field (imports
- * or seeds). Both fields share the same on-disk shape ("{field}/{basename}.md",
+ * or seeds). Both fields share the same on-disk shape ("{field}/{basename}",
  * no subdirectories or escapes) and the same dedupe-by-topic-identity rule, so
- * one helper walks either. Returns an array of { file, workUnit, phase, topic }.
+ * one helper walks either. Only the markdown entries are index candidates.
+ * Returns an array of { file, workUnit, phase, topic }.
  *
- * Path validation mirrors deriveIdentity: import-files.md / the seed lander only
- * ever write "{field}/<basename>.md" to the manifest, so a different shape means
- * manual tampering or an unrecognised flow — refuse it either way so a manifest-
+ * Path validation mirrors deriveIdentity: the landers only ever write
+ * "{field}/<basename>" to the manifest, so a different shape means manual
+ * tampering or an unrecognised flow — refuse it either way so a manifest-
  * injection vector can't poison the store.
  * @param {object} wu  the work-unit manifest @param {string} wuName @param {string} field
  */
@@ -960,14 +987,15 @@ function collectFlatEntries(wu, wuName, field) {
   const out = [];
   const entries = wu[field];
   if (!Array.isArray(entries)) return out;
-  const shape = new RegExp(`^${field}/([^/]+\\.md)$`);
+  const shape = new RegExp(`^${field}/([^/]+)$`);
   const seen = new Set();
   for (const entry of entries) {
     if (!entry || typeof entry.path !== 'string') continue;
     const rel = entry.path;
-    // Must be exactly {field}/{filename}.md — no subdirectories, no escapes.
+    // Must be exactly {field}/{filename} — no subdirectories, no escapes — and
+    // markdown: any other import is manifest-tracked reference material.
     const m = shape.exec(rel);
-    if (!m) continue;
+    if (!m || !isIndexableImportPath(m[1])) continue;
     const filename = m[1];
     if (filename.includes('..') || filename.startsWith('.')) continue;
     const base = filename.slice(0, -3); // strip .md
@@ -1038,7 +1066,11 @@ function discoverArtifacts(workUnits) {
   const roadmapImportsDir = path.posix.join('.workflows', '.roadmap', 'imports');
   let roadmapImports = [];
   try {
-    roadmapImports = fs.readdirSync(resolveArtifactPath(roadmapImportsDir)).filter((f) => /^[^./]+\.md$/.test(f));
+    // Markdown alone is an index candidate; any other import is manifest-
+    // tracked reference material. The stem carries no dot (deriveIdentity).
+    roadmapImports = fs
+      .readdirSync(resolveArtifactPath(roadmapImportsDir))
+      .filter((f) => isIndexableImportPath(f) && /^[^./]+$/.test(f.slice(0, -3)));
   } catch (_) {
     roadmapImports = [];
   }
