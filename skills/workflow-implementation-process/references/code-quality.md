@@ -38,21 +38,27 @@ Prefer concrete types over language-level escape hatches that bypass the type sy
 
 ## Comments
 
-Code shows what; a comment earns its place only by carrying what the code cannot. Before writing one, try to make it unnecessary — rename, extract, simplify — and comment what survives. No comment is checked by any compiler or test: every claim one makes is a maintenance liability, so spend them sparingly and keep each claim small.
+The right number of comment lines is zero. Every line above zero earns its place against that bar, and a comment that earns it is as right as none. Code shows what; a comment carries only what the code cannot. Before writing one, make it unnecessary — rename, extract, simplify — and comment what survives.
 
-**A comment is warranted for:**
-- **Why** — rationale, a rejected alternative, a constraint imposed from elsewhere
-- **Warnings** — deliberate-looking-wrong code that must not be "simplified", surprising behaviour, consequences ("not thread-safe", "order matters: the read precedes the discard"). Name the trap in a line or two
-- **Opaque what** — a regex, bit trick, or dense algorithm that stays opaque after refactoring
-- **Public/exported API doc comments** per the language's own conventions — what it does, inputs, outputs, error behaviour; never internal algorithm
+A comment is bound to the code beside it and checked by no compiler or test. Code moves; the comment stays and turns false. Comment volume only grows as a project matures. Every stale or wrong comment is a finding the task reviewer or the review phase raises, and a loop the phase runs again to fix it — tokens, money, and time spent on text that did no work. Never writing the comment is the one fix that costs nothing.
+
+Keep each one as short as it can be, written to outlive an edit: a comment that still holds when the code beside it changes, or that plainly goes with the line it names, is written right. A comment that restates the code is bound to it and stale on the first edit.
+
+**A comment is warranted for** — each one an instance of the test above, never a licence beside it:
+- **Opaque what** — behaviour not immediately obvious from the code and still opaque after refactoring: a regex, a bit trick, a dense algorithm, a pattern that is hard to follow
+- **Deliberate-looking-wrong** — a mechanism that looks like a mistake, or like the obvious simplification, and is kept on purpose; surprising behaviour, consequences ("not thread-safe", "order matters: the read precedes the discard"). Name the trap in a line
+- **Why** — a non-obvious reason the code is this way: a constraint imposed from elsewhere, an ordering the next line relies on. Stated as a fact, never as the reasoning that reached it
+- **API doc** — on an exported symbol, per the language's own conventions, for what the signature cannot say: units, error behaviour, a contract the types do not encode. Being exported warrants nothing on its own; a symbol its signature already explains gets no doc
 
 **Never in a comment:**
+- What the code does — the code says it. Restated adjacent code, changelog narration, attribution, commented-out code
+- Reasoning, history, or anything the specification or plan holds. State the conclusion the code needs ("sorted before dedup — dedup keys on adjacency"), never the argument that reached it; a wrong specification or plan is corrected there, through the corrigendum path — a comment is never the patch
 - Links, URLs, issue ids, or any workflow vocabulary — task ids, phase numbers, spec-section citations. The comment must hold true for a reader with no knowledge of the process that produced the code, long after its artifacts are archived
 - Claims about tests — what a test pins, catches, or proves. A renamed test or moved assertion turns the claim into a confident lie
 - Cardinality claims — "the single caller", "the only site that…", "nothing consumes this yet". Falsified by ordinary additive change far from the comment
 - Worked examples and hand-traced values. An example worth keeping is a test, where it executes
-- The design argument. State the conclusion the code needs ("sorted before dedup — dedup keys on adjacency"), not the debate; the reasoning lives in the project's design artifacts
-- Restated adjacent code, changelog narration, attribution, commented-out code
+
+A comment count or share is never a target and never a win. A file whose comments are a visible fraction of its lines has failed the test somewhere; the remedy is deleting the comments that fail it, not reducing a number.
 
 When a change makes a nearby comment false, fix it in the same edit — and prefer deleting the claim to re-arguing it.
 

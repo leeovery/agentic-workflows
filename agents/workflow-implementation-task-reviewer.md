@@ -86,7 +86,7 @@ Is this a sound design decision? Will it compose well with future tasks?
 
 ## Comment Corrections
 
-Check every comment the diff introduced or touched against the code and against code-quality.md's comment discipline: claims the code falsifies, stale references, or content the discipline forbids (workflow vocabulary, claims about tests, cardinality claims, restated design argument).
+Check every comment the diff introduced or touched against the code and against code-quality.md's comment discipline: claims the code falsifies, stale references, or content the discipline forbids (what the code does, reasoning the specification or plan holds, workflow vocabulary, claims about tests, cardinality claims).
 
 **Classify findings by their remedy, not their subject.** A finding whose entire remedy is comment text — no executable code, no test, no assertion changes — is a comment correction, never an ISSUE: report it under COMMENT_CORRECTIONS with verbatim OLD text and the replacement, and the orchestrator applies it without a fix round. A false comment whose remedy is a code change (the code violates the invariant the comment documents) is an ISSUE like any other.
 
