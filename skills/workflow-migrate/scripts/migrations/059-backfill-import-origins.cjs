@@ -53,7 +53,6 @@ function rewriteManifest(manifestPath, backfill) {
 module.exports = {
   id: '059',
   description: 'backfill import origins — discovery for work-unit imports, roadmap for the product layer',
-  info: 'Every imports[] entry now records an origin. This migration stamps "discovery" on each work-unit imports[] entry that carries none (the opener was the only door before the field existed) and "roadmap" on each of the project manifest\'s roadmap.imports[] entries; entries already carrying an origin are untouched.',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     let entries;

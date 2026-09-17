@@ -67,7 +67,7 @@ describe('migration 059: backfill import origins', () => {
   it('describes itself as a mechanical backfill with no verify addendum', () => {
     assert.strictEqual(MIGRATION.id, '059');
     assert.strictEqual(MIGRATION.description, 'backfill import origins — discovery for work-unit imports, roadmap for the product layer');
-    assert.match(MIGRATION.info, /origin/);
+    assert.strictEqual(MIGRATION.info, undefined);
     writeUnit('pay', legacyUnit());
     assert.strictEqual(run(), undefined);
   });
