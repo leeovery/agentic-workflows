@@ -271,9 +271,17 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     for (const origin of ['planning/ledger', 'research', 'research/led.ger', 'research/a/b', 'research/', '']) {
       assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', origin]).error,
-        /is not an import origin|Usage: engine workunit import/, `origin "${origin}" was not refused`);
+        /is not a work-unit import origin|Usage: engine workunit import/, `origin "${origin}" was not refused`);
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+  });
+
+  it("refuses roadmap — the product layer's origin is not a work unit's", () => {
+    writeFile(fix.project, 'notes/good.md', 'fine\n');
+    assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', 'roadmap']).error,
+      /is not a work-unit import origin .*roadmap is the product layer's own — engine roadmap import/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
   });
 
   it('refuses missing arguments with usage', () => {

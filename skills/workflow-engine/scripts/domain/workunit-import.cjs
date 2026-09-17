@@ -24,7 +24,7 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { planImports, copyImports, importEntry, isIndexableImport } = require('./import-landing.cjs');
-const { IMPORT_FIXED_ORIGINS, IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
+const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
 
 /**
  * @typedef {object} WorkUnitImportResult
@@ -48,7 +48,7 @@ const { IMPORT_FIXED_ORIGINS, IMPORT_PHASES, isImportOrigin } = require('../kern
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string[]} paths source paths to copy in
- * @param {{origin: string}} opts  `discovery` | `roadmap` | `{phase}/{topic}`
+ * @param {{origin: string}} opts  `discovery` | `{phase}/{topic}`
  * @returns {WorkUnitImportResult}
  */
 function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
@@ -56,8 +56,10 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('import: at least one path is required');
   }
-  if (!isImportOrigin(origin)) {
-    throw new Error(`"${origin}" is not an import origin — ${IMPORT_FIXED_ORIGINS.join(', ')}, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')}`);
+  // The schema's vocabulary covers every entry anywhere; a work unit's own is
+  // narrower — `roadmap` belongs to the product layer, which has its own verb.
+  if (!isImportOrigin(origin) || origin === 'roadmap') {
+    throw new Error(`"${origin}" is not a work-unit import origin — discovery, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')} (roadmap is the product layer's own — engine roadmap import)`);
   }
   const missing = paths.filter((p) => !fs.existsSync(path.resolve(cwd, p)));
   if (missing.length > 0) {
