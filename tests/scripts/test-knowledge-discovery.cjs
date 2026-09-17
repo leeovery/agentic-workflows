@@ -311,7 +311,7 @@ describe('deriveIdentity: non-markdown imports', () => {
     }
   });
 
-  it('leaves a markdown import deriving as before', () => {
+  it('derives a markdown import at its flat identity and refuses a dotted stem', () => {
     assert.deepStrictEqual(deriveIdentity('.workflows/payments/imports/oauth-notes.md'),
       { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes' });
     assert.throws(() => deriveIdentity('.workflows/payments/imports/dotted.name.md'),

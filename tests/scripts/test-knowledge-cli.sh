@@ -2143,7 +2143,7 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_stub_config
 create_import_file "seeded-wu" "seed-conversation"
-# Track the import on the manifest the way import-files.md does.
+# Track the import on the manifest the way the landers do.
 node "$ENGINE_JS" manifest push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 # Bulk index (no args) — should find the import via discoverArtifacts.
 output=$(run_kb index 2>&1)
