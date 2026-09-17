@@ -612,12 +612,24 @@ describe('engine CLI: roadmap sessions and imports', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')));
     const mode = fs.statSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
     assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
+    // No index was spawned for the binary: the real bundle refuses a `.png`
+    // by name, and the refusal would come back as a warning.
+    assert.strictEqual('warnings' in res, false, JSON.stringify(res));
   });
 
   it('import fails whole with missing_imports so the flow can re-prompt', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     const res = runFail(dir, ['import', 'real.md', 'ghost.md']);
     assert.deepStrictEqual(res.missing_imports, ['ghost.md']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
+  });
+
+  it('a directory among the paths refuses before any copy — no half-landed batch', () => {
+    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
+    fs.mkdirSync(path.join(dir, 'album'), { recursive: true });
+    const res = runFail(dir, ['import', 'real.md', 'album']);
+    assert.match(res.error, /import path\(s\) not found or not a file: album/);
+    assert.deepStrictEqual(res.missing_imports, ['album']);
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
   });
 

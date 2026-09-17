@@ -631,6 +631,46 @@ describe('engine workunit absorb — imports follow the material', () => {
       /--renamed entries are <from>:<to> pairs/);
   });
 
+  it('renames two colliding imports in one pass — neither lands on the other\'s new name', () => {
+    const feature = featureManifest();
+    feature.imports = [
+      { path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' },
+      { path: 'imports/notes-2.md', imported_at: '2026-06-02T09:00:00Z', origin: 'discovery' },
+    ];
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/imports/notes-2.md', '# Second notes\n');
+    writeFile(fix.project, '.workflows/auth-flow/discussion/auth-flow.md',
+      '# Discussion\n\n![first](../imports/notes.md) and ![second](../imports/notes-2.md)\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'colliding imports']);
+
+    const res = engine(fix, ABSORB);
+    assert.deepStrictEqual(res.renamed_imports, [
+      { from: 'notes.md', to: 'notes-2.md' },
+      { from: 'notes-2.md', to: 'notes-2-2.md' },
+    ]);
+    // One pass over both renames: a sequential rewrite would carry the first
+    // link onto the second's new name.
+    assert.strictEqual(
+      fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'),
+      '# Discussion\n\n![first](../imports/notes-2.md) and ![second](../imports/notes-2-2.md)\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/notes-2.md'), 'utf8'), '# Notes\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/notes-2-2.md'), 'utf8'), '# Second notes\n');
+  });
+
+  it("a prose mention of the product's own src/imports path is not a link — never rewritten", () => {
+    setupImporting();
+    writeFile(fix.project, '.workflows/auth-flow/discussion/auth-flow.md',
+      '# Discussion\n\n![the ask](../imports/notes.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'prose mention']);
+    engine(fix, ABSORB);
+
+    assert.strictEqual(
+      fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'),
+      '# Discussion\n\n![the ask](../imports/notes-2.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
+  });
+
   it('reports no renames when nothing collided', () => {
     const feature = featureManifest();
     feature.imports = [{ path: 'imports/unique.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }];
@@ -708,6 +748,9 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     git(fix.project, ['commit', '-q', '-m', 'orphan']);
 
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'bad.name'], /not a legal topic name/);
+    // The schema's plain-name rule, not a dot/slash spelling: the topic is
+    // substituted into every re-aimed import origin.
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth '], /not a legal topic name/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'fee-model'], /already on payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea'], /was dismissed from payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model'], /discussion topic "session-model" already exists/);

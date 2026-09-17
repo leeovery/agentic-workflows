@@ -136,13 +136,12 @@ function isThreadOrigin(origin) {
   return isPlainName(origin);
 }
 
-// Where an import came from — required on every `imports[]` entry, since a
-// field whose absence carries meaning is a field nobody can validate
-// (migration 059 backfilled the fleet). The fixed origins are the two places
-// that belong to no phase session: `discovery` (the opener or a discovery
-// session) and `roadmap` (the project-level product layer). Everything else
-// is `{phase}/{topic}` — the session that landed the file — and only the
-// phases whose sessions read shared material carry that door.
+// Where an import came from — required on every `imports[]` entry. The fixed
+// origins are the two places that belong to no phase session: `discovery`
+// (the opener or a discovery session) and `roadmap` (the project-level
+// product layer). Everything else is `{phase}/{topic}` — the session that
+// landed the file — and only the phases whose sessions read shared material
+// carry that door.
 const IMPORT_FIXED_ORIGINS = ['discovery', 'roadmap'];
 const IMPORT_PHASES = ['research', 'discussion', 'investigation'];
 
@@ -213,9 +212,9 @@ module.exports = {
   isParentExperimentId,
   compareExperimentIds,
   KEBAB_SLUG_PATTERN,
+  isPlainName,
   VALID_THREAD_STATUSES,
   isThreadOrigin,
-  IMPORT_FIXED_ORIGINS,
   IMPORT_PHASES,
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,

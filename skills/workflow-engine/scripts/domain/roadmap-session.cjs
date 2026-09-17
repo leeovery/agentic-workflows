@@ -34,7 +34,7 @@ const {
 const { commitTailPathspec, noteCommitOutcome, KB_DIR, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-const { planImports, copyImports, importEntry, isIndexableImport } = require('./import-landing.cjs');
+const { planImports, copyImports, importEntry, isIndexableImport, unlandableSources } = require('./import-landing.cjs');
 const { ensureRoadmap } = require('./roadmap.cjs');
 
 const ROADMAP_DIR = '.workflows/.roadmap';
@@ -160,10 +160,10 @@ function importRoadmapFiles(cwd, paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('import: at least one path is required');
   }
-  const missing = paths.filter((p) => !fs.existsSync(path.resolve(cwd, p)));
+  const missing = unlandableSources(cwd, paths);
   if (missing.length > 0) {
     const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found: ${missing.join(', ')}`)
+      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
     );
     err.payload = { missing_imports: missing };
     throw err;

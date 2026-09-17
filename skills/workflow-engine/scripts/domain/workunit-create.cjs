@@ -38,6 +38,8 @@ const {
   copyImports,
   importEntry,
   isIndexableImport,
+  importArtifact,
+  unlandableSources,
 } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
 const {
@@ -129,10 +131,10 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     }
   }
 
-  const missing = imports.filter((p) => !fs.existsSync(path.resolve(cwd, p)));
+  const missing = unlandableSources(cwd, imports);
   if (missing.length > 0) {
     const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found: ${missing.join(', ')}`)
+      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
     );
     err.payload = { missing_imports: missing };
     throw err;
@@ -231,7 +233,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   /** @type {string[]} */
   const warnings = [];
   for (const move of importMoves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', `.workflows/${workUnit}/imports/${move.dest}`], `knowledge index (imports/${move.dest})`, warnings);
+    knowledge(cwd, ['index', importArtifact(workUnit, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
   }
   for (const move of seedMoves) {
     knowledge(cwd, ['index', `.workflows/${workUnit}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);

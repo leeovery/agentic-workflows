@@ -21,8 +21,8 @@ const { isoNow } = require('./dates.cjs');
 const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'txt', 'text'];
 
 /**
- * Split a filename at its last dot. A dotfile (`.env`) yields an empty stem,
- * which never lands; a name with no dot yields an empty extension.
+ * Split a filename at its last dot. A name with no dot yields an empty
+ * extension.
  * @param {string} basename
  * @returns {{stem: string, ext: string}}
  */
@@ -37,18 +37,65 @@ function splitName(basename) {
  * Normalise a source basename into a landing filename: the stem lowercased
  * with runs of non-alphanumerics collapsed to `-` and trimmed; a markdown-ish
  * extension (or none) yielding `.md`, any other kept and lowercased. Returns
- * null when the stem normalises away (a dotfile, a name of punctuation) —
+ * null for a dotfile and for a name that normalises away (all punctuation) —
  * the caller decides whether that skips the file or falls back to a safe
  * name.
  * @param {string} basename
  * @returns {string|null}
  */
 function normaliseBasename(basename) {
+  // A leading dot marks tooling state — an editor's config, a credentials
+  // file, a lockfile — never material a person means to share, whatever
+  // follows the dot.
+  if (basename.startsWith('.')) return null;
   const { stem, ext } = splitName(basename);
   const slug = stem.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   if (slug === '') return null;
   const extension = ext.toLowerCase().replace(/[^a-z0-9]/g, '');
   return `${slug}.${extension === '' || MARKDOWN_EXTENSIONS.includes(extension) ? 'md' : extension}`;
+}
+
+// The grammar a document writes an import link in: the relative hop out of
+// the document's own directory (`../imports/{name}` from a phase file,
+// `../../imports/{name}` from a specification) and the basename. Anchoring on
+// the hops is what keeps a project path that merely ends in `imports/` — a
+// source tree's own `src/imports/foo` — out of the match.
+const IMPORT_LINK_HOPS = '(?:\\.\\./)+';
+const IMPORT_NAME_CHARS = '[A-Za-z0-9._-]';
+
+/**
+ * The regex over a document's import links: group 1 is the relative hops,
+ * group 2 the linked basename. Given names it matches those alone — a rename
+ * substitutes only what it broke, and the right-hand bound stops a name from
+ * matching the head of a longer one; given none it captures every link.
+ * @param {string[]} [names] basenames to bound the match to
+ * @returns {RegExp}
+ */
+function importLinkPattern(names) {
+  const body = names === undefined
+    ? `${IMPORT_NAME_CHARS}+`
+    : names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return new RegExp(`(${IMPORT_LINK_HOPS})imports/(${body})(?!${IMPORT_NAME_CHARS})`, 'g');
+}
+
+/**
+ * The sources a landing cannot take: a path with nothing behind it, and one
+ * that resolves to something other than a regular file. A directory passes an
+ * existence check and then throws mid-copy, inside the lock, with the files
+ * before it already on disk and unrecorded — so the whole batch is refused
+ * here, before anything is copied.
+ * @param {string} cwd project root
+ * @param {string[]} paths source paths
+ * @returns {string[]} the offending paths, in the order given
+ */
+function unlandableSources(cwd, paths) {
+  return paths.filter((p) => {
+    try {
+      return !fs.statSync(path.resolve(cwd, p)).isFile();
+    } catch {
+      return true;
+    }
+  });
 }
 
 /**
@@ -141,6 +188,18 @@ function isIndexableImport(dest) {
   return dest.endsWith('.md');
 }
 
+/**
+ * A landed work-unit import's project-relative path — what the knowledge base
+ * is handed and what the manifest entry's `path` hangs off. The roadmap's
+ * imports live at the product altitude and have a root of their own.
+ * @param {string} workUnit
+ * @param {string} dest landing filename
+ * @returns {string}
+ */
+function importArtifact(workUnit, dest) {
+  return `.workflows/${workUnit}/imports/${dest}`;
+}
+
 module.exports = {
   normaliseBasename,
   dedupe,
@@ -148,5 +207,7 @@ module.exports = {
   copyImports,
   importEntry,
   isIndexableImport,
-  MARKDOWN_EXTENSIONS,
+  importArtifact,
+  importLinkPattern,
+  unlandableSources,
 };

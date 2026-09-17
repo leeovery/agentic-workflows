@@ -31,12 +31,8 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
-const { copyImports, isIndexableImport } = require('./import-landing.cjs');
+const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
-
-// A link target inside a moved document: `imports/{name}`, the name running
-// to the first character no filename carries.
-const IMPORT_LINK_PATTERN = /imports\/([A-Za-z0-9._-]+)/g;
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -46,7 +42,7 @@ const IMPORT_LINK_PATTERN = /imports\/([A-Za-z0-9._-]+)/g;
  * @property {string} cc_status   always `completed` — the cc pipeline is terminal after spec
  * @property {{name: string, path: string}[]} discussions  moved source discussions (cc-relative paths)
  * @property {{path: string}} specification  the moved spec (cc-relative path)
- * @property {{path: string, origin: string}[]} imports  imports copied into the cc unit (entries unchanged)
+ * @property {{path: string, origin?: string}[]} imports  imports copied into the cc unit (entries unchanged)
  * @property {string} status      the epic spec item's status after the transition — always `promoted`
  * @property {string} promoted_to the cc work unit recorded on the epic spec item
  * @property {string|null} committed  short commit sha, or null when nothing was staged
@@ -55,16 +51,21 @@ const IMPORT_LINK_PATTERN = /imports\/([A-Za-z0-9._-]+)/g;
  */
 
 /** Every file under `dir`, absolute paths, recursively. @param {string} dir @returns {string[]} */
-function listFiles(dir) {
+function listFilesRecursive(dir) {
   /** @type {string[]} */
   const files = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...listFiles(full));
+    if (entry.isDirectory()) files.push(...listFilesRecursive(full));
     else files.push(full);
   }
   return files;
 }
+
+/**
+ * @typedef {{path: string, imported_at?: string, origin?: string}} ImportEntry
+ *   a manifest `imports[]` entry; a legacy entry may carry no origin
+ */
 
 /**
  * The imports the promoted material carries: every entry a moved document
@@ -76,11 +77,11 @@ function listFiles(dir) {
  * @param {string} cwd @param {string} workUnit @param {string} specDir  project-relative
  * @param {string[]} sources  the moved source discussions
  * @param {unknown[]} entries  the epic's `imports[]`
- * @returns {{carried: {entry: Record<string, any>, basename: string}[], missing: string[]}}
+ * @returns {{carried: {entry: ImportEntry, basename: string}[], missing: string[]}}
  */
 function planImportCarry(cwd, workUnit, specDir, sources, entries) {
   const documents = [
-    ...listFiles(path.join(cwd, specDir)),
+    ...listFilesRecursive(path.join(cwd, specDir)),
     ...sources.map((name) => path.join(cwd, '.workflows', workUnit, 'discussion', `${name}.md`)),
   ];
   /** @type {Set<string>} */
@@ -93,21 +94,21 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
     } catch {
       continue; // unreadable material links nothing
     }
-    for (const match of text.matchAll(IMPORT_LINK_PATTERN)) linked.add(match[1]);
+    for (const match of text.matchAll(importLinkPattern())) linked.add(match[2]);
   }
   const attached = new Set(sources.map((name) => `discussion/${name}`));
 
-  /** @type {{entry: Record<string, any>, basename: string}[]} */
+  /** @type {{entry: ImportEntry, basename: string}[]} */
   const carried = [];
   /** @type {string[]} */
   const missing = [];
   for (const raw of entries) {
     if (!raw || typeof raw !== 'object') continue;
-    const entry = /** @type {Record<string, any>} */ (raw);
+    const entry = /** @type {ImportEntry} */ (raw);
     if (typeof entry.path !== 'string' || !entry.path.startsWith('imports/')) continue;
     const basename = entry.path.slice('imports/'.length);
     if (basename === '' || basename.includes('/')) continue;
-    if (!linked.has(basename) && !attached.has(entry.origin)) continue;
+    if (!linked.has(basename) && !(entry.origin !== undefined && attached.has(entry.origin))) continue;
     if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, entry.path))) {
       missing.push(entry.path);
       continue;
@@ -278,7 +279,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'discussion', '--topic', name], `knowledge remove (discussion/${name})`, warnings);
   }
   for (const carried of importCarry.filter((c) => isIndexableImport(c.basename))) {
-    knowledge(cwd, ['index', `.workflows/${to}/imports/${carried.basename}`], `knowledge index (imports/${carried.basename})`, warnings);
+    knowledge(cwd, ['index', importArtifact(to, carried.basename)], `knowledge index (imports/${carried.basename})`, warnings);
   }
   knowledge(cwd, ['index', INDEXED_ARTIFACTS.specification(to, to)], `knowledge index (specification/${to})`, warnings);
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', topic], `knowledge remove (specification/${topic})`, warnings);

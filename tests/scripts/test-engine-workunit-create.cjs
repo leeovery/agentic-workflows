@@ -485,6 +485,21 @@ describe('engine workunit create — missing imports fail fast', () => {
     assert.strictEqual(commitCount(fix), '1');
     assert.deepStrictEqual(knowledgeCalls(fix), []);
   });
+
+  it('a directory among the imports refuses before any copy — no half-landed batch', () => {
+    writeFile(fix.project, 'notes/good.md', 'fine\n');
+    fs.mkdirSync(path.join(fix.project, 'notes/album'), { recursive: true });
+    const err = engineFails(fix, createArgs('payments', 'epic', [
+      '--import', 'notes/good.md',
+      '--import', 'notes/album',
+    ]));
+
+    assert.match(err.error, /import path\(s\) not found or not a file: notes\/album/);
+    assert.deepStrictEqual(err.missing_imports, ['notes/album']);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
+    assert.strictEqual(commitCount(fix), '1');
+    assert.deepStrictEqual(knowledgeCalls(fix), []);
+  });
 });
 
 describe('engine workunit create — knowledge base is warn-don\'t-block', () => {

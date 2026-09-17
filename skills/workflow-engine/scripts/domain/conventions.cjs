@@ -79,9 +79,9 @@ function derivedFrom(text) {
   return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
 }
 
-// The `MATERIAL` block — what a work unit carries in from before its
-// pipeline: the inbox seed it was spawned from, and any imported reference
-// files. Annotations, so they take the quiet `·` marker; under a header, so
+// The `MATERIAL` block — what a work unit carries alongside its own work:
+// the inbox seed it was spawned from, and any imported reference files.
+// Annotations, so they take the quiet `·` marker; under a header, so
 // they hang off something rather than opening a display at an indent.
 // Empty string when the unit carries neither.
 /** @param {{seeds: number, imports: number}} counts @returns {string} */

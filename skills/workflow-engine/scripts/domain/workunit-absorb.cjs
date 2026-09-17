@@ -16,9 +16,8 @@
 // multi-manifest transaction cannot deadlock); the feature manifest is only
 // read, and its directory is deleted, so it takes no lock.
 //
-// The import link rewrite is the one content substitution in the domain ring:
-// the engine rewrites only a path its own rename broke, in a document its own
-// move relocated, and nothing else.
+// The import link rewrite: the engine rewrites only a path its own rename
+// broke, in a document its own move relocated.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -35,8 +34,8 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { dedupe, isIndexableImport } = require('./import-landing.cjs');
-const { IMPORT_PHASES } = require('../kernel/manifest-schema.cjs');
+const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
+const { IMPORT_PHASES, isPlainName } = require('../kernel/manifest-schema.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { reaimJoins } = require('./roadmap.cjs');
 
@@ -133,11 +132,10 @@ function reaimImportOrigin(origin, feature, topic) {
  */
 function rewriteImportLinks(file, renames) {
   if (renames.length === 0 || !fs.existsSync(file)) return;
-  const escaped = renames.map((r) => r.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const pattern = new RegExp(`imports/(${escaped.join('|')})(?![A-Za-z0-9._-])`, 'g');
+  const pattern = importLinkPattern(renames.map((r) => r.from));
   const byName = new Map(renames.map((r) => [r.from, r.to]));
   const before = fs.readFileSync(file, 'utf8');
-  const after = before.replace(pattern, (_match, name) => `imports/${byName.get(name)}`);
+  const after = before.replace(pattern, (_match, hops, name) => `${hops}imports/${byName.get(name)}`);
   if (after !== before) fs.writeFileSync(file, after);
 }
 
@@ -145,7 +143,7 @@ function rewriteImportLinks(file, renames) {
  * Absorb a feature into an in-progress epic as `topic`: move the discussion
  * (and any research, experiment series, imports, and seeds) into the epic —
  * manifest entries carry their original timestamps, imports/seeds filename
- * collisions suffix like create does (an import the dedupe renamed has its
+ * collisions suffix on the shared landing discipline (an import the dedupe renamed has its
  * links rewritten in the moved documents, and a feature-session import origin
  * is re-aimed at the topic), the research lands at the topic name
  * (a collision refuses like the discussion's), the experiment item and its
@@ -179,9 +177,11 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (epicManifest.status !== 'in-progress') {
       throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
     }
-    // Same structural rule every topic name lives under.
-    if (!topic || /[./]/.test(topic)) {
-      throw new Error(`"${topic}" is not a legal topic name — dots and slashes break manifest addressing`);
+    // The schema's own predicate, not a looser local spelling: the topic is
+    // substituted into every re-aimed import origin, which is validated
+    // against `isImportOrigin` at every later write.
+    if (!isPlainName(topic)) {
+      throw new Error(`"${topic}" is not a legal topic name — dots, slashes, and surrounding whitespace break manifest addressing`);
     }
 
     // The feature must have a discussion (item + file) and no spec-or-beyond
@@ -356,8 +356,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (!Array.isArray(epicManifest.imports)) epicManifest.imports = [];
       /** @type {Record<string, any>} */
       const entry = { ...move.entry, path: `imports/${move.dest}` };
-      // A legacy entry carrying no origin keeps none — migration 059 is the
-      // backfill, not this transaction.
       if (typeof entry.origin === 'string') entry.origin = reaimImportOrigin(entry.origin, feature, topic);
       epicManifest.imports.push(entry);
     }
@@ -416,7 +414,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     }
   }
   for (const move of importMoves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', `.workflows/${into}/imports/${move.dest}`], `knowledge index (imports/${move.dest})`, warnings);
+    knowledge(cwd, ['index', importArtifact(into, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
   }
   for (const move of seedMoves) {
     knowledge(cwd, ['index', `.workflows/${into}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
