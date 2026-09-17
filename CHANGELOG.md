@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.59] - 2026-09-17
+
+🔧 Changed
+
+- Implementation tasks no longer edit `.workflows/` artifacts — the executor writes code and tests only, and a wrong specification is corrected through the dedicated correction flow instead.
+- The orchestrator can now land its own context onto an in-flight task, not just user-supplied additions, with dispatches clearly marking whether an addition came from the user or the orchestrator.
+- Agent dispatches are now strictly bounded to their enumerated inputs — executors and reviewers ignore any extra notes riding alongside and report what arrived instead.
+- Task acceptance criteria and tests can no longer require reasoning, rejected alternatives, or design arguments to be recorded in code or comments.
+- Correcting a completed specification from another work unit no longer skips its confirmation step when executed as part of an approved plan task.
+
 ## [0.7.58] - 2026-09-16
 
 🐛 Fixed
