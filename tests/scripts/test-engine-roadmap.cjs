@@ -628,7 +628,7 @@ describe('engine CLI: roadmap sessions and imports', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     fs.mkdirSync(path.join(dir, 'album'), { recursive: true });
     const res = runFail(dir, ['import', 'real.md', 'album']);
-    assert.match(res.error, /import path\(s\) not found or not a file: album/);
+    assert.match(res.error, /import path\(s\) not found, not a file, or unreadable: album/);
     assert.deepStrictEqual(res.missing_imports, ['album']);
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
   });

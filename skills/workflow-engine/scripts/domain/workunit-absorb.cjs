@@ -177,11 +177,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (epicManifest.status !== 'in-progress') {
       throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
     }
-    // The schema's own predicate, not a looser local spelling: the topic is
-    // substituted into every re-aimed import origin, so it is held here to
-    // the same plain-name rule `isImportOrigin` applies to the topic half of
-    // a `{phase}/{topic}` origin. Only the import verb validates an origin it
-    // is given; nothing downstream re-checks what absorb writes.
+    // The topic is substituted into every re-aimed import origin.
     if (!isPlainName(topic)) {
       throw new Error(`"${topic}" is not a legal topic name — dots, slashes, and surrounding whitespace break manifest addressing`);
     }

@@ -18,7 +18,7 @@
 // message.
 //
 // import lands user-shared reference files at the product altitude — the
-// project-level imports home (design/product-roadmap.md, decision 26): the
+// project-level imports home: the
 // shared landing discipline, `roadmap.imports[]` entries stamped
 // `origin: "roadmap"`, KB indexing for markdown alone, one self commit.
 // The log content is model-authored — the engine never writes prose.
@@ -34,7 +34,7 @@ const {
 const { commitTailPathspec, noteCommitOutcome, KB_DIR, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-const { planImports, copyImports, importEntry, isIndexableImport, unlandableSources } = require('./import-landing.cjs');
+const { planImports, copyImports, importEntry, isIndexableImport, assertLandableSources } = require('./import-landing.cjs');
 const { ensureRoadmap } = require('./roadmap.cjs');
 
 const ROADMAP_DIR = '.workflows/.roadmap';
@@ -160,14 +160,7 @@ function importRoadmapFiles(cwd, paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('import: at least one path is required');
   }
-  const missing = unlandableSources(cwd, paths);
-  if (missing.length > 0) {
-    const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
-    );
-    err.payload = { missing_imports: missing };
-    throw err;
-  }
+  assertLandableSources(cwd, paths);
 
   // Plan, copy, and record inside one lock hold, manifest shape validated
   // before any file lands — a refusal leaves no orphan copies, and two

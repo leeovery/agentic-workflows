@@ -1,14 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the landing discipline every import lander shares — the
-// work-type commit (`workunit create`), the mid-session verb (`workunit
-// import`), and the roadmap's project-level import. One planner, one copy,
-// one entry shape, so a shared file lands the same way whatever door it came
-// through, and absorb dedupes moved files against the same rule.
-//
-// The name helpers are the same discipline: create's seeds take them too,
-// their inbox files landing under the normalisation imports live by.
+// Domain ring: the landing discipline every import lander shares — one
+// planner, one copy, one entry shape, so a shared file lands the same way
+// whatever door it came through.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -79,23 +74,30 @@ function importLinkPattern(names) {
 }
 
 /**
- * The sources a landing cannot take: a path with nothing behind it, and one
- * that resolves to something other than a regular file. A directory passes an
- * existence check and then throws mid-copy, inside the lock, with the files
- * before it already on disk and unrecorded — so the whole batch is refused
- * here, before anything is copied.
+ * Refuse the whole batch unless every source is an existing regular file. A
+ * directory passes an existence check and then throws mid-copy, inside the
+ * lock, with the files before it already on disk and unrecorded — so the
+ * refusal comes here, before anything is copied. The offending paths ride
+ * the error as `payload.missing_imports`, which is what the caller re-prompts
+ * over.
  * @param {string} cwd project root
  * @param {string[]} paths source paths
- * @returns {string[]} the offending paths, in the order given
+ * @throws {Error & {payload: {missing_imports: string[]}}}
  */
-function unlandableSources(cwd, paths) {
-  return paths.filter((p) => {
+function assertLandableSources(cwd, paths) {
+  const missing = paths.filter((p) => {
     try {
       return !fs.statSync(path.resolve(cwd, p)).isFile();
     } catch {
       return true;
     }
   });
+  if (missing.length === 0) return;
+  const err = /** @type {Error & {payload: {missing_imports: string[]}}} */ (
+    new Error(`import path(s) not found, not a file, or unreadable: ${missing.join(', ')}`)
+  );
+  err.payload = { missing_imports: missing };
+  throw err;
 }
 
 /**
@@ -168,11 +170,17 @@ function copyImports(cwd, destDir, planned) {
 }
 
 /**
+ * @typedef {{path: string, imported_at?: string, origin?: string}} ImportEntry
+ *   a manifest `imports[]` entry as read back: the field surface can write one
+ *   without an origin
+ */
+
+/**
  * The manifest entry one landing records — `origin` is required, so every
  * lander names where its file came from.
  * @param {string} dest landing filename
  * @param {string} origin `discovery` | `roadmap` | `{phase}/{topic}`
- * @returns {{path: string, imported_at: string, origin: string}}
+ * @returns {ImportEntry}
  */
 function importEntry(dest, origin) {
   return { path: `imports/${dest}`, imported_at: isoNow(), origin };
@@ -209,5 +217,5 @@ module.exports = {
   isIndexableImport,
   importArtifact,
   importLinkPattern,
-  unlandableSources,
+  assertLandableSources,
 };

@@ -61,6 +61,14 @@ function featureIn(phase, status = 'in-progress') {
   return featureManifest({ phases: { [phase]: { items: { ledger: { status } } } } });
 }
 
+/** An epic sitting in `phase` under a topic of its own, never the unit's name. */
+function epicIn(phase, topic = 'onboarding') {
+  return featureManifest({
+    work_type: 'epic',
+    phases: { [phase]: { items: { [topic]: { status: 'in-progress' } } } },
+  });
+}
+
 function setupFixture({ feature = featureManifest() } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-import-'));
   const skills = path.join(root, 'skills');
@@ -76,7 +84,7 @@ function setupFixture({ feature = featureManifest() } = {}) {
   // The cache is session machinery — never staged (migration 049's gitignore).
   writeFile(project, '.workflows/.gitignore', '.cache/\n.manifest.json.*.tmp\n');
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
-    work_units: { ledger: { work_type: 'feature' } },
+    work_units: { [feature.name]: { work_type: feature.work_type } },
   }, null, 2) + '\n');
   writeFile(project, `.workflows/${feature.name}/manifest.json`, JSON.stringify(feature, null, 2) + '\n');
   git(project, ['add', '-A']);
@@ -165,6 +173,17 @@ describe('engine workunit import — happy path', () => {
     assert.deepStrictEqual(knowledgeCalls(fix), ['index .workflows/ledger/imports/onboarding-notes.md']);
 
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 2 file(s) for research/ledger');
+  });
+
+  it('lands an absolute source from outside the project', () => {
+    const outside = path.join(fix.root, 'downloads/Field Notes.PNG');
+    fs.mkdirSync(path.dirname(outside), { recursive: true });
+    fs.writeFileSync(outside, 'png bytes\n');
+    const res = engine(fix, ['workunit', 'import', 'ledger', outside, ...FROM_RESEARCH]);
+
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/field-notes.png', origin: 'research/ledger' }]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/ledger/imports/field-notes.png'), 'utf8'), 'png bytes\n');
+    assert.ok(fs.existsSync(outside), 'the source outside the project is copied, never moved');
   });
 
   it('lands every copy 0644, whatever the source carried', () => {
@@ -275,7 +294,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     fs.mkdirSync(path.join(fix.project, 'shots/album'), { recursive: true });
     const err = engineFails(fix, ['workunit', 'import', 'ledger', 'shots/one.png', 'shots/album', ...FROM_RESEARCH]);
 
-    assert.match(err.error, /import path\(s\) not found or not a file: shots\/album/);
+    assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: shots\/album/);
     assert.deepStrictEqual(err.missing_imports, ['shots/album']);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')),
       'the file named before the directory never landed');
@@ -293,6 +312,11 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.cache/ledger')),
       'a mistyped topic mints no hold');
+
+    // A leading dash is a legal topic name (absorb can write one), so the
+    // vocabulary passes it and the item check is what refuses it.
+    assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', 'research/-leading']).error,
+      /^no research item "-leading" in "ledger" — check the --from origin$/);
   });
 
   it('refuses an unknown work unit', () => {
@@ -311,10 +335,13 @@ describe('engine workunit import — refusals leave nothing behind', () => {
 
   it('refuses an origin outside the vocabulary', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
-    for (const origin of ['planning/ledger', 'research', 'research/led.ger', 'research/a/b', 'research/', 'research/-leading', '']) {
+    for (const origin of ['planning/ledger', 'research', 'research/led.ger', 'research/a/b', 'research/']) {
       assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', origin]).error,
-        /is not a work-unit import origin|Usage: engine workunit import/, `origin "${origin}" was not refused`);
+        /is not a work-unit import origin/, `origin "${origin}" was not refused`);
     }
+    // An empty `--from` never reaches the vocabulary: the dispatch has no origin.
+    assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', '']).error,
+      /Usage: engine workunit import/);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
   });
 
@@ -372,35 +399,41 @@ describe('engine workunit import — the derived tail', () => {
       'discovery names no topic — nothing to beat');
   });
 
-  it('every phase the vocabulary carries lands and beats its own topic', () => {
+  it('every phase the vocabulary carries lands and beats the origin topic, never the work unit', () => {
     for (const phase of ['research', 'discussion', 'investigation']) {
       fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-      fix = setupFixture({ feature: featureIn(phase) });
+      fix = setupFixture({ feature: epicIn(phase) });
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
-      const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', '--from', `${phase}/ledger`]);
+      const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', '--from', `${phase}/onboarding`]);
 
-      assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: `${phase}/ledger` }]);
+      assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: `${phase}/onboarding` }]);
       assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(),
-        `workflow(ledger): import 1 file(s) for ${phase}/ledger`);
-      assert.ok(fs.existsSync(path.join(fix.project, `.workflows/.cache/ledger/${phase}/ledger/presence`)),
-        `${phase} did not beat its own topic`);
+        `workflow(ledger): import 1 file(s) for ${phase}/onboarding`);
+      assert.ok(fs.existsSync(path.join(fix.project, `.workflows/.cache/ledger/${phase}/onboarding/presence`)),
+        `${phase} did not beat the origin's topic`);
+      assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, `.workflows/.cache/ledger/${phase}`)), ['onboarding'],
+        `${phase} beat a row of the work unit's name`);
     }
   });
 
-  it('a terminal item takes the landing and keeps the slot open — filing is not sitting in a topic', () => {
+  it('a terminal item takes the landing and leaves the row exactly as it found it', () => {
     for (const status of ['completed', 'cancelled', 'superseded', 'promoted']) {
       fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       fix = setupFixture({ feature: featureIn('research', status) });
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
+      // A row left by the session that closed the topic: the landing neither
+      // beats it nor clears it.
+      const row = path.join(fix.project, '.workflows/.cache/ledger/research/ledger/presence');
+      writeFile(fix.project, '.workflows/.cache/ledger/research/ledger/presence', 'stale-row\n');
+      const before = fs.readFileSync(row, 'utf8');
       const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
 
       assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: 'research/ledger' }]);
-      assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.cache/ledger')),
-        `a ${status} item was beaten`);
+      assert.strictEqual(fs.readFileSync(row, 'utf8'), before, `a ${status} item's row was rewritten`);
     }
   });
 
-  it('a blocked commit saves the state and degrades to the generic retry note', () => {
+  it('a blocked commit saves the state and names the imports scope in its retry', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
     fs.writeFileSync(path.join(fix.project, '.git', 'index.lock'), '');
     const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH],
@@ -408,9 +441,7 @@ describe('engine workunit import — the derived tail', () => {
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.committed, null);
-    // The tail is narrower than the work unit, so it prescribes no scope: the
-    // named scope would be `engine commit {wu}`, a sweep of a peer's dirt.
-    assert.strictEqual(res.note, 'commit pending — state saved; retry with engine commit');
+    assert.strictEqual(res.note, 'commit pending — state saved; retry with: engine commit ledger --imports -m "<message>"');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), JSON.stringify(res.warnings));
     assert.strictEqual(readManifest(fix, 'ledger').imports.length, 1, 'the manifest write is the source of truth');
   });

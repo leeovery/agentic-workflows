@@ -494,7 +494,7 @@ describe('engine workunit create — missing imports fail fast', () => {
       '--import', 'notes/album',
     ]));
 
-    assert.match(err.error, /import path\(s\) not found or not a file: notes\/album/);
+    assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: notes\/album/);
     assert.deepStrictEqual(err.missing_imports, ['notes/album']);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
     assert.strictEqual(commitCount(fix), '1');

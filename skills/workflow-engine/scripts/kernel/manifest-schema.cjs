@@ -152,7 +152,7 @@ function isImportOrigin(origin) {
   const slash = origin.indexOf('/');
   if (slash === -1) return false;
   const topic = origin.slice(slash + 1);
-  return IMPORT_PHASES.includes(origin.slice(0, slash)) && !topic.startsWith('-') && isPlainName(topic);
+  return IMPORT_PHASES.includes(origin.slice(0, slash)) && isPlainName(topic);
 }
 
 // The two conversation phases — the ones whose sessions spawn experiments

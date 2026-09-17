@@ -63,11 +63,6 @@ function listFilesRecursive(dir) {
 }
 
 /**
- * @typedef {{path: string, imported_at?: string, origin?: string}} ImportEntry
- *   a manifest `imports[]` entry; a legacy entry may carry no origin
- */
-
-/**
  * The imports the promoted material carries: every entry a moved document
  * links (`imports/{name}` in the specification or a moved source discussion)
  * and every entry a moved source attached (`origin: "discussion/{source}"`).
@@ -77,7 +72,7 @@ function listFilesRecursive(dir) {
  * @param {string} cwd @param {string} workUnit @param {string} specDir  project-relative
  * @param {string[]} sources  the moved source discussions
  * @param {unknown[]} entries  the epic's `imports[]`
- * @returns {{carried: {entry: ImportEntry, basename: string}[], missing: string[]}}
+ * @returns {{carried: {entry: import('./import-landing.cjs').ImportEntry, basename: string}[], missing: string[]}}
  */
 function planImportCarry(cwd, workUnit, specDir, sources, entries) {
   const documents = [
@@ -98,13 +93,13 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
   }
   const attached = new Set(sources.map((name) => `discussion/${name}`));
 
-  /** @type {{entry: ImportEntry, basename: string}[]} */
+  /** @type {{entry: import('./import-landing.cjs').ImportEntry, basename: string}[]} */
   const carried = [];
   /** @type {string[]} */
   const missing = [];
   for (const raw of entries) {
     if (!raw || typeof raw !== 'object') continue;
-    const entry = /** @type {ImportEntry} */ (raw);
+    const entry = /** @type {import('./import-landing.cjs').ImportEntry} */ (raw);
     if (typeof entry.path !== 'string' || !entry.path.startsWith('imports/')) continue;
     const basename = entry.path.slice('imports/'.length);
     if (basename === '' || basename.includes('/')) continue;

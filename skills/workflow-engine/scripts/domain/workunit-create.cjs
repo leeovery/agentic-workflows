@@ -39,7 +39,7 @@ const {
   importEntry,
   isIndexableImport,
   importArtifact,
-  unlandableSources,
+  assertLandableSources,
 } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
 const {
@@ -131,14 +131,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     }
   }
 
-  const missing = unlandableSources(cwd, imports);
-  if (missing.length > 0) {
-    const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
-    );
-    err.payload = { missing_imports: missing };
-    throw err;
-  }
+  assertLandableSources(cwd, imports);
 
   // Layout-validated live inbox paths; the folder carries the provenance tag.
   const seedItems = seeds.map((p) => {

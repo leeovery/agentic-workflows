@@ -547,6 +547,13 @@ describe('engine workunit promote — the import carry', () => {
     ].join('\n')));
     assert.ok(receipt(['--imports', '0']).includes('  • Specification: moved\n  • Epic status: promoted'));
     assert.ok(receipt([]).includes('  • Specification: moved\n  • Epic status: promoted'));
+
+    const bad = spawnSync('node',
+      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', '--imports', 'abc'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.strictEqual(bad.status, 1);
+    assert.strictEqual(JSON.parse(bad.stderr).error,
+      'render promote-receipt: --imports must be a carried import count, got "abc"');
   });
 
   it('a promotion carrying nothing writes no imports key', () => {

@@ -3,15 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the mid-session import — a file the user shares after the
 // opener, landing in the work unit's one imports home with the origin of the
-// session that took it. The roadmap's shape with the origin added: validate,
-// copy, record, index what embeds, one confined commit. No gate — the
-// session lands the file, links it, and carries on.
-//
-// Validation is complete before any mutation: a missing path fails the whole
-// call with `missing_imports` riding on the error so the calling flow can
-// re-prompt and re-run — nothing is on disk until every input is legal. The
-// manifest write is the source of truth; the knowledge base is a derived
-// index (warn-don't-block); the confined commit comes last.
+// session that took it.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -28,8 +20,9 @@ const {
   importEntry,
   isIndexableImport,
   importArtifact,
-  unlandableSources,
+  assertLandableSources,
 } = require('./import-landing.cjs');
+const { itemOf } = require('./derivations.cjs');
 const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -68,14 +61,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   if (!isImportOrigin(origin) || origin === 'roadmap') {
     throw new Error(`"${origin}" is not a work-unit import origin — discovery, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')} (roadmap is the product layer's own — engine roadmap import)`);
   }
-  const missing = unlandableSources(cwd, paths);
-  if (missing.length > 0) {
-    const err = /** @type {Error & {payload: Record<string, unknown>}} */ (
-      new Error(`import path(s) not found or not a file: ${missing.join(', ')}`)
-    );
-    err.payload = { missing_imports: missing };
-    throw err;
-  }
+  assertLandableSources(cwd, paths);
 
   // Plan, copy, and record inside one lock hold — a refusal leaves no orphan
   // copies, and two sessions importing the same basename cannot dedupe
@@ -94,11 +80,8 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
     // record a provenance nothing can resolve and mint a presence hold no
     // session owns and nothing clears.
     const [phase, topic] = origin.split('/');
-    if (topic !== undefined) {
-      const item = manifest.phases?.[phase]?.items?.[topic];
-      if (!item || typeof item !== 'object') {
-        throw new Error(`no ${phase} item "${topic}" in "${workUnit}" — check the --from origin`);
-      }
+    if (topic !== undefined && itemOf(manifest, phase, topic) === undefined) {
+      throw new Error(`no ${phase} item "${topic}" in "${workUnit}" — check the --from origin`);
     }
 
     const { planned, skipped: dropped } = planImports(paths, importsDir);
@@ -135,7 +118,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
     committed: outcome.committed,
   };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
+  noteCommitOutcome(result, outcome, `${workUnit} --imports`);
   return result;
 }
 
