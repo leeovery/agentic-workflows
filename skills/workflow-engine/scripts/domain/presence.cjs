@@ -22,15 +22,16 @@
 // it from a verb acting on another topic manufactures a false hold. Read
 // verbs are reachable for any topic, so they take `refreshQuietly` instead:
 // re-stamp a heartbeat this session already owns, never create one, never
-// overwrite a peer's. The exit sweep is `cleanupPresence`, run from a
-// settings-level SessionEnd hook the engine installs in the project's
-// `.claude/settings.json` (a SessionEnd hook declared in skill frontmatter
-// never fires): it drops every row the ending session owns, by session id,
-// on the exits that keep the process alive (`/clear`, `/logout`) — rows that
-// would otherwise read held until the process exits. A dead process's row
-// reads unheld through the pid check regardless, and a later conversation
-// in the same process owns its predecessor's row (`ownsRow`'s pid arm),
-// never gating against it.
+// overwrite a peer's; a verb that closes a topic it may or may not be
+// sitting in takes `clearOwnQuietly`, the same ownership guard over the
+// clear. The exit sweep is `cleanupPresence`, run from a settings-level
+// SessionEnd hook the engine installs in the project's `.claude/settings.json`
+// (a SessionEnd hook declared in skill frontmatter never fires): it drops
+// every row the ending session owns, by session id, on the exits that keep
+// the process alive (`/clear`, `/logout`) — rows that would otherwise read
+// held until the process exits. A dead process's row reads unheld through
+// the pid check regardless, and a later conversation in the same process
+// owns its predecessor's row (`ownsRow`'s pid arm), never gating against it.
 //
 // Every phase a session sits in carries presence except discovery:
 // `discovery-session open` already refuses a second session per epic
@@ -173,6 +174,21 @@ function refreshQuietly(cwd, workUnit, phase, topic) {
 function clearQuietly(cwd, workUnit, phase, topic) {
   try {
     if (!PHASES.includes(phase)) return;
+    clearPresence(cwd, workUnit, phase, topic);
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/**
+ * `clearQuietly` under `refreshQuietly`'s ownership guard: drop a heartbeat
+ * this session owns, never a peer's — the verb that closes a topic is not
+ * always sitting in it. Same silence as `beatQuietly`.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function clearOwnQuietly(cwd, workUnit, phase, topic) {
+  try {
+    if (!PHASES.includes(phase)) return;
+    const record = readRecord(presencePath(cwd, workUnit, phase, topic));
+    if (!record || !ownsRow(record)) return;
     clearPresence(cwd, workUnit, phase, topic);
   } catch { /* liveness is advisory — never fail a verb over it */ }
 }
@@ -399,7 +415,7 @@ function deferralSection(scan) {
 }
 
 module.exports = {
-  beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
+  beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, heldDocument, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
 };
