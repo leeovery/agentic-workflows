@@ -249,7 +249,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_un
 
 #### If the response's `threshold_reached` is `true`
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`, render_when = `always`.
 
 Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
 

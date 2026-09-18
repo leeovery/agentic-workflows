@@ -22,7 +22,7 @@ Check if the tracking file exists at the expected path.
 
 #### If tracking file exists
 
-Read the tracking file and count pending findings.
+Read the tracking file's `## Findings` section and count the pending findings there. `## Observations` is never read, walked, or counted.
 
 → Proceed to **A. Summary**.
 
@@ -51,15 +51,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it. A finding whose Move reads `decide` is held for the batch at **C** — passed over here, never disposed twice.
 
-**If no unresolved finding remains** — every row already settled, whether this sitting or an earlier one:
+**If no finding remains to dispose** — every row settled, whether this sitting or an earlier one, or held for the decide batch:
 
-→ Proceed to **C. After All Findings Processed**.
+→ Proceed to **C. The Decide Batch**.
 
-Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route` — a point the sources are silent on that a measurement or a sibling artifact pins is this move too (an Unsourced decision: the derivation belongs in the owning document, never the spec alone); exactly one defensible answer the sources or the specification's own decisions yield → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
+Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route` — a point the sources are silent on that a measurement or a sibling artifact pins is this move too (an Unsourced decision: the derivation belongs in the owning document, never the spec alone); a source document states the answer, or the record uniquely determines it — arithmetic over recorded numbers, a decided event whose consequence follows with no alternative → `settled`, the derivation carried as the Proposal's reasoning; a product-level fork more than one answer fits → `decide`, the call made, what leaned named, and the alternatives that also fit named beside it; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
-Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved, and the source document the finding names, read where the row's excerpt does not settle the point. Reclassification runs in both directions, always on a derivation written down; a finding this sitting's gate exchange revised is presented as it stands — the exchange was its disposal. A `settled` finding whose stated derivation no longer holds, or whose call you cannot yourself stand behind, is a `choice` and takes the bar like any other. A `choice` stands only when every prong holds:
+Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved, and the source document the finding names, read where the row's excerpt does not settle the point. Reclassification runs in both directions, always on a derivation written down; a finding this sitting's gate exchange revised is presented as it stands — the exchange was its disposal.
+
+A `settled` finding holds only where the record determines the answer. Where more than one answer is consistent with the record — the derivation an analogy to a neighbouring rule, a precedent, the treatment a sibling case already takes, or first principles — nobody has decided: the move becomes `decide` where the fork is product-level, and the finding is declined where the fork is the builder's — a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served. A `settled` call this session cannot itself stand behind at all is a `choice` and takes the bar like any other. A `choice` stands only when every prong holds:
 
 - **Product level** — the fork is what the product's user gets or how it behaves, never how the tree achieves it.
 - **Irreducible** — no source, specification decision, measurement, sibling artifact, precedent, or constraint breaks the tie.
@@ -72,11 +74,17 @@ Three rules govern the evidence:
 - A fork with one live side — a side no informed user would choose — is settled.
 - A choice that names no search is not a verdict: run the search yourself.
 
-A fork that clears every prong stands as a `choice` — the specification never invents product intent. Below the bar the move is rewritten: `settled` where the sources, the specification's own decisions, or a defensible derivation — precedent, constraints, the feature's stated premise — yield exactly one answer (a point a source delegated to the specification included; a preference or a mechanism settled on what leans); `route` where the sources are silent and a measurement or a sibling artifact pins the answer. Where nothing leans and the specification has no rule to state — a preference no side of which costs the user, or a mechanism that is the builder's — the finding is declined: Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
+A fork that clears every prong stands as a `choice` — the specification never invents product intent. Below the bar the move is rewritten: `decide` where the fork is product-level, more than one answer fits the record, and this session can make the call and name what leaned; `settled` where the record determines exactly one answer (a point a source delegated to the specification included); `route` where the sources are silent and a measurement or a sibling artifact pins the answer. Where the fork is the builder's — a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or a preference no side of which costs the user — the finding is declined: Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
 
-Where the disposal moved anything — the move, the derivation, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten, the Proposal written with the derivation naming what decided it, the Options removed, Proposed Text — and Current where existing content changes — supplied as the format requires. To `choice`: Move rewritten, the Proposal and Proposed Text replaced with Options, the search named. To `route`: Move rewritten, Proposal, Options, and Proposed Text removed.
+Where the disposal moved anything — the move, the derivation, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten, the Proposal written with the derivation naming what decided it, the Options removed, Proposed Text — and Current where existing content changes — supplied as the format requires. To `decide`: Move rewritten, the Proposal written with the call, what leaned, and the alternatives that also fit the record, the Options removed, Proposed Text — and Current where existing content changes — supplied as the format requires. To `choice`: Move rewritten, the Proposal and Proposed Text replaced with Options, the search named. To `route`: Move rewritten, Proposal, Options, and Proposed Text removed.
 
 **If the disposal declined the finding:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If the finding's Move is `decide`:**
+
+The disposal is recorded and the finding is held — nothing is presented for it here; **C** takes it with the rest of the lane.
 
 → Return to **B. Process One Item at a Time**.
 
@@ -108,13 +116,13 @@ Then update the tracking file — Resolution `Routed`, a note naming what landed
 
 **If all findings are processed:**
 
-→ Proceed to **C. After All Findings Processed**.
+→ Proceed to **C. The Decide Batch**.
 
 ### Present Finding
 
 An applied finding moves the ground a later finding stands on. Re-derive **both sides** of a later finding's diff from the live document — what lands is the finding's change applied to the document as it stands, never the tracking file's stale copy, which would silently revert the earlier landing.
 
-Before presenting, check the finding's proposed content against the one-home rule (**[specification-format.md](specification-format.md)**): where it restates a fact that already has a home in the specification, revise it to reference the home and update the tracking file. The same bar governs anything adjusted here: additive for missing ground, removal or in-place correction for wrong ground — never a correction note beside the old text, never a mention of review, cycles, or process. The document reads as authored fresh and correct.
+Before presenting, check the finding's proposed content against the one-home rule (**[specification-format.md](specification-format.md)**): revise a proposed restatement only where the copies would encode a rule whose divergence would be silent and change what gets built — restated context that reads well stands. Where the revision is owed, make it and update the tracking file. The same bar governs anything adjusted here: additive for missing ground, removal or in-place correction for wrong ground — never a correction note beside the old text, never a mention of review, cycles, or process. The document reads as authored fresh and correct.
 
 Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
@@ -151,7 +159,7 @@ The response carries the finding presentation plus the surface for its move and 
 
 **If all findings are processed:**
 
-→ Proceed to **C. After All Findings Processed**.
+→ Proceed to **C. The Decide Batch**.
 
 #### If the response carried `MENU: finding gate` or `MENU: finding choice`
 
@@ -187,7 +195,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause
 
 **If all findings are processed:**
 
-→ Proceed to **C. After All Findings Processed**.
+→ Proceed to **C. The Decide Batch**.
 
 #### If comment (the choice menu's prompt option)
 
@@ -223,7 +231,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — applied.
 
 **If all findings are processed:**
 
-→ Proceed to **C. After All Findings Processed**.
+→ Proceed to **C. The Decide Batch**.
 
 #### If `auto`
 
@@ -231,13 +239,79 @@ Finding {N} of {total}: {brief_title:(titlecase)} — applied.
 2. Update the tracking file: set resolution to "Approved"
 3. Update `finding_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto`)
 4. Commit
-5. Process each remaining finding from **B** — the mode change removes the approval stops for settled calls, never the per-finding pass: `route` findings still route, a finding **B** declines renders nothing, a `choice` that stands at **B**'s dispose still stops, and every finding **B** presents is still rendered
+5. Process each remaining finding from **B** — the mode change removes the approval stops for settled calls, never the per-finding pass: `route` findings still route, a finding **B** declines renders nothing, a `decide` is still held for the batch at **C**, which stops under `auto` too, a `choice` that stands at **B**'s dispose still stops, and every finding **B** presents is still rendered
 
 → Return to **B. Process One Item at a Time**.
 
 ---
 
-## C. After All Findings Processed
+## C. The Decide Batch
+
+Every finding **B** held — each one whose Move reads `decide` — lands together with the rest, in screens of at most five. Each is a product-level call this session made where more than one answer fit the record: the screen is a scan and a veto, never a deliberation.
+
+#### If every finding is resolved
+
+→ Proceed to **D. After All Findings Processed**.
+
+#### If a finding is unresolved and none carries the `decide` move
+
+The batch sent one back to the walk.
+
+→ Return to **B. Process One Item at a Time**.
+
+#### Otherwise
+
+Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json` with the Write tool — `{"lane": "decide", "items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per pending `decide` finding up to five, `remaining` counting the lane's findings beyond this screen: `title` is the finding's brief title, `detail` one or two sentences carrying the call and what leaned.
+
+Read the gate mode where it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`). **This stop overrides `auto`** — where the mode holds `auto`, open with the announcement verbatim, as a line above the batch — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you.
+
+Render, then emit the returned DISPLAY and MENU sections verbatim at their marked instructions:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Land the screen's findings one at a time, in the order they read. Each call is a decision its source document never made, so it lands there first — for a point the sources never decided, `doc` is whichever of this specification's **own sources** should own the missing decision:
+
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **C. Landing a Resolution** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, resolution = `{the call, carrying what leaned and the alternatives that also fit}`.
+
+On return, apply the finding's Proposed Text to the specification exactly as staged, re-derived against the live document as **Present Finding** prescribes. Set Resolution `Routed` with Notes naming the document the decision landed in and the specification content re-aligned to it, then commit the specification and the tracking file:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the call settled}" --topic specification/{topic}
+```
+
+A document another session holds takes the reference's own held-doc branch — the resolution queues, the specification's copy stays untouched, and the Notes name the queue; follow where it returns.
+
+When the screen has landed, confirm in one line — `All {N} documented.`
+
+→ Return to **C. The Decide Batch**.
+
+**If discuss with a number:**
+
+Work that finding through in conversation.
+
+- **The exchange settles it**: land it as the `yes` branch lands one — the source document, the specification, Resolution `Routed`, the commit.
+- **The exchange shows the pick is the reader's**: rewrite the Move to `choice` in the tracking file with its Options and the search named, and leave it — the walk raises it once the lane empties.
+- **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed.
+
+The finding has left the lane whichever way it went, and the batch re-renders without it.
+
+→ Return to **C. The Decide Batch**.
+
+**If ask (a number):**
+
+Expand that finding in prose — its Problem, its Proposal, and its Proposed Text. Expanding is not objecting; the screen stands.
+
+→ Return to **C. The Decide Batch**.
+
+---
+
+## D. After All Findings Processed
 
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.

@@ -14,6 +14,7 @@ The caller provides these via context before loading:
 - `work_unit` — the work unit name
 - `topic` — the topic name
 - `internal_id` — (fix loop only) the task's internal ID
+- `render_when` — `always` | `churning`. `always` shows the diagnostic whatever the trend; `churning` shows it only where the trend classifies as churning, and otherwise hands the caller the classification alone
 
 ## Threshold Check
 
@@ -125,6 +126,14 @@ Compute:
 ---
 
 ## C. Display Diagnostic
+
+#### If `render_when` is `churning` and `trend` is not `churning`
+
+Write nothing and render nothing — `trend` is in context for the caller's branch.
+
+→ Return to caller.
+
+#### Otherwise
 
 Open with one markdown sentence above the block — what the cycles show, in plain terms: what is resolving and what keeps coming back.
 

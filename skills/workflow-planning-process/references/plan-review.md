@@ -60,7 +60,7 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 #### If `review_cycle` > 3 and `finding_gate_mode` is `gated` (or not set)
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant continue
@@ -140,7 +140,7 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 #### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` >= 5
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -166,7 +166,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If findings were surfaced and `finding_gate_mode` is `gated`
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
