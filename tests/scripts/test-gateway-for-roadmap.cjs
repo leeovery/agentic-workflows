@@ -61,6 +61,8 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /=== TITLE[\s\S]*Roadmap/);
     assert.match(res.stdout, /=== DISPLAY[\s\S]*◐ Ordering/);
     assert.match(res.stdout, /=== MENU[\s\S]*Resume the open product session/);
+    // The way out of the roadmap is the surface it was entered from.
+    assert.match(res.stdout, /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
   });
 
   it('drops the pull row with nothing waiting; converse reads as open with no session', () => {

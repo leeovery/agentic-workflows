@@ -248,7 +248,7 @@ A recorded status — render nothing.
 
 !`node .claude/skills/workflow-start/scripts/gateway.cjs`
 
-If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run — and on a return to this step the output above is stale. In either case, execute the script before continuing:
 
 ```bash
 node .claude/skills/workflow-start/scripts/gateway.cjs
@@ -276,6 +276,10 @@ Display and routing derive from the `view` snapshot in **active-work.md** — th
 
 Load **[empty-state.md](references/empty-state.md)** and follow its instructions as written.
 
+→ On return, return to **Step 1**.
+
 #### Otherwise
 
 Load **[active-work.md](references/active-work.md)** and follow its instructions as written.
+
+→ On return, proceed as the reference directed.

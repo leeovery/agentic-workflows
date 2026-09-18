@@ -20,6 +20,12 @@ The output arrives in demarcated sections: read `=== DATA` to reason from (the `
 
 #### If `back`
 
+**If `$0` is `pull`:**
+
+→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+
+**Otherwise:**
+
 → Return to **[the skill](../SKILL.md)** for **Step 3**.
 
 #### Otherwise

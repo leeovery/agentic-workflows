@@ -40,7 +40,6 @@ const {
   roadmapHarvestGate,
   roadmapParksGate,
   roadmapShapeGate,
-  roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
@@ -4776,11 +4775,6 @@ function roadmapShapeGateSurface(_cwd, _args) {
   return section('MENU: roadmap shape gate', STOP_FOR_RESPONSE, roadmapShapeGate());
 }
 
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function roadmapConcludeGateSurface(_cwd, _args) {
-  return section('MENU: roadmap conclude gate', STOP_FOR_RESPONSE, roadmapConcludeGate());
-}
-
 // The cross-flow static gates — adopted engine-side as their files were
 // touched (menus are engine-rendered, static sets included). Wording is
 // the gates' own; each is fetched at the exact point it displays.
@@ -5230,7 +5224,6 @@ const SURFACES = {
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
   'roadmap-shape-gate': roadmapShapeGateSurface,
-  'roadmap-conclude-gate': roadmapConcludeGateSurface,
   'name-gate': nameGateSurface,
   'shape-gate': shapeGateSurface,
   'synthesis-gate': synthesisGateSurface,

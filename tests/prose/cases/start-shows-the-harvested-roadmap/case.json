@@ -1,5 +1,5 @@
 {
-  "origin": "the harvested-no-work start state had no coverage — a roadmap with zero work units must never render an empty screen, and its row must land in the roadmap's home and leave cleanly",
+  "origin": "the harvested-no-work start state had no coverage — a roadmap with zero work units must never render an empty screen, its row must land in the roadmap's home, and the home's back must put the user back on the start menu rather than ending the session",
   "entry": "workflow-start",
   "world": "claims",
   "files": [
@@ -11,24 +11,28 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/start-menu.md",
     "skills/workflow-roadmap/SKILL.md",
     "skills/workflow-roadmap/references/roadmap-guidelines.md",
     "skills/workflow-discovery/references/discovery-guidelines.md"
   ],
   "answers": [
     "r — open the roadmap",
-    "b — leave the roadmap as it is"
+    "b — return to the start menu"
   ],
   "invariants": {
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "workflow-roadmap/scripts/gateway.cjs view"
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "engine.cjs session repair"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "workflow-roadmap/scripts/gateway.cjs view"
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "engine.cjs session repair",
+      "workflow-start/scripts/gateway.cjs view"
     ],
     "calls_exclude": [
       "workunit create",

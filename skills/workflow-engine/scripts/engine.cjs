@@ -331,7 +331,6 @@ Commands:
   render roadmap-harvest-gate
   render roadmap-parks-gate
   render roadmap-shape-gate
-  render roadmap-conclude-gate
   render name-gate [--variant collision]
   render shape-gate
   render synthesis-gate

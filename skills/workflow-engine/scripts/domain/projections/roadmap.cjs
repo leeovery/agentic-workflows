@@ -261,7 +261,7 @@ function roadmapHomeMenu(state) {
   if (state.totals.waiting > 0) {
     keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Pull waiting item(s) into delivery (${state.totals.waiting} waiting)` });
   }
-  keys.push({ key: 'b', word: 'back', action: 'back', label: 'Leave the roadmap as it is' });
+  keys.push({ key: 'b', word: 'back', action: 'back', label: 'Return to the start menu' });
 
   const options = keys.map((k) => cmdOption(k.key, k.word ?? null, k.label));
   options.push(promptOption('Ask', 'Ask about the roadmap'));
@@ -298,14 +298,6 @@ function roadmapShapeGate() {
   ], { question: 'Shape it this way?' });
 }
 
-/** Conclude's stop-or-pull offer. */
-function roadmapConcludeGate() {
-  return menu('', [
-    cmdOption('y', 'yes', 'Pick the item(s) going into delivery'),
-    cmdOption('s', 'stop', 'Stop here — the roadmap keeps everything warm'),
-  ], { question: 'Pull a slice into delivery now?' });
-}
-
 /** The view's chrome heading — project-level, no unit. */
 function roadmapTitle() { return 'Roadmap'; }
 
@@ -318,6 +310,5 @@ module.exports = {
   roadmapHarvestGate,
   roadmapParksGate,
   roadmapShapeGate,
-  roadmapConcludeGate,
   roadmapHomeMenu,
 };
