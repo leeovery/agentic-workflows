@@ -54,7 +54,7 @@ describe('cancel-gate', () => {
     assert.match(unwrap(out), /Cancelling \*\*Data Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
     assert.match(out, /◆ Cancel it\?/);
     assert.match(out, /\*\*`y\/yes`\*\* → Confirm cancellation/);
-    assert.match(out, /\*\*`n\/no`\*\*  → Return to menu/);
+    assert.match(out, /\*\*`n\/no`\*\*  → Keep it/);
   });
 
   it('a started topic: the items by phase, the open records that end abandoned, the proposed groupings discarded', () => {

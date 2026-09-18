@@ -38,6 +38,7 @@ const {
 const { buildOrderLive } = require('./build-order.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
@@ -1341,9 +1342,10 @@ function cancelSpecificationUnit(manifest, spec) {
 /**
  * Cancel a topic — the Discovery unit (`discovery`) or the Definition unit
  * (`specification`) under the name — in one locked write, then remove the
- * cancelled artifacts' knowledge-base chunks (warn-don't-block), run the
- * roadmap's cancel-revert hop for a Discovery unit, and commit the manifest
- * write. Any other phase is refused: there is no phase-level cancel.
+ * cancelled artifacts' knowledge-base chunks (warn-don't-block), release the
+ * calling session's own heartbeat on each item taken, run the roadmap's
+ * cancel-revert hop for a Discovery unit, and commit the manifest write.
+ * Any other phase is refused: there is no phase-level cancel.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery` | `specification`
@@ -1370,6 +1372,8 @@ function cancelTopic(cwd, workUnit, phase, topic) {
       knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', p, '--topic', topic], 'knowledge remove', warnings);
     }
   }
+
+  for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
 
   // The cancel-revert hop: a topic whose cancellation leaves its map
   // lifecycle cancelled hands any roadmap item joined to it back to

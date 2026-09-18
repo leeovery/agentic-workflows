@@ -387,6 +387,19 @@ function sessionLog(sim, wu, n = 1) {
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
 }
 
+/** An epic whose map carries the named topics, each routed to discussion. */
+function mappedEpic(sim, wu, names) {
+  sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
+  sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+    names.map((name) => ({ name, routing: 'discussion', summary: name })))]);
+  sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+}
+
+/** One presence row from a scan, or undefined. */
+function presenceRow(scan, phase, topic) {
+  return scan.sessions.find((r) => r.phase === phase && r.topic === topic);
+}
+
 // Shared phase walk used by the linear pipelines: specification → planning →
 // implementation (→ review), with the bookkeeping each phase records.
 // Every place labels itself on arrival: a navigation skill, the bridge, the
@@ -2145,6 +2158,72 @@ describe('pipeline simulation', () => {
       sim.refuses(['topic', 'reactivate', wu, phase, 'billing'], /^reactivate is topic-level per stage — discovery/);
     }
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export', '--cascade'], /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
+  });
+
+  it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
+    const wu = 'cutsown';
+    mappedEpic(sim, wu, ['alpha']);
+    const peer = sim.session('peer-session', 1);
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+    // A discussion cannot be born beneath live research: start it first, park
+    // the research under it, and let the peer lift the stub.
+    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
+    peer.run(['topic', 'start', wu, 'research', 'alpha']);
+
+    const before = sim.run(['presence', 'scan', wu]);
+    assert.strictEqual(presenceRow(before, 'discussion', 'alpha').held, true);
+    assert.strictEqual(presenceRow(before, 'research', 'alpha').held, true);
+
+    const taken = sim.run(['topic', 'cancel', wu, 'discovery', 'alpha']);
+    assert.deepStrictEqual(taken.cancelled, [
+      { phase: 'research', previous_status: 'in-progress' },
+      { phase: 'discussion', previous_status: 'in-progress' },
+    ]);
+    const after = sim.run(['presence', 'scan', wu]);
+    assert.strictEqual(presenceRow(after, 'discussion', 'alpha'), undefined, 'the caller\'s own hold is released with the item');
+    const peerRow = presenceRow(after, 'research', 'alpha');
+    assert.strictEqual(peerRow.held, true, 'the peer is still in its topic — a cancel never evicts another session');
+    assert.strictEqual(peerRow.session_id, peer.id);
+  });
+
+  it('a specification cancel releases the calling session\'s specification and planning holds', () => {
+    const wu = 'cutsplan';
+    mappedEpic(sim, wu, ['gamma']);
+    sim.run(['topic', 'start', wu, 'specification', 'gamma']);
+    sim.run(['topic', 'start', wu, 'planning', 'gamma']);
+    assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'planning', 'gamma').held, true);
+
+    const taken = sim.run(['topic', 'cancel', wu, 'specification', 'gamma']);
+    assert.deepStrictEqual(taken.cancelled, [
+      { phase: 'specification', previous_status: 'in-progress' },
+      { phase: 'planning', previous_status: 'in-progress' },
+    ]);
+    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, [],
+      'both units of the Definition stage release together');
+  });
+
+  it('a cancel from the epic menu — a session owning nothing on the unit — touches no row', () => {
+    const wu = 'cutsmenu';
+    mappedEpic(sim, wu, ['delta']);
+    const peer = sim.session('peer-session', 1);
+    peer.run(['topic', 'start', wu, 'discussion', 'delta']);
+
+    sim.run(['topic', 'cancel', wu, 'discovery', 'delta']);
+    const row = presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', 'delta');
+    assert.strictEqual(row.held, true, 'the menu session owns nothing here, so it releases nothing');
+    assert.strictEqual(row.session_id, peer.id);
+  });
+
+  it('a reactivate releases nothing — the session sitting in the restored topic keeps its hold', () => {
+    const wu = 'cutsback';
+    mappedEpic(sim, wu, ['epsilon']);
+    sim.run(['topic', 'start', wu, 'discussion', 'epsilon']);
+    sim.run(['topic', 'cancel', wu, 'discovery', 'epsilon']);
+    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, []);
+
+    sim.run(['presence', 'beat', wu, 'discussion', 'epsilon']);
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'epsilon']);
+    assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', 'epsilon').held, true);
   });
 
   it('backwards: reopen a completed discussion, re-complete, and the map keeps deriving', () => {
