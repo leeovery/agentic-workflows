@@ -71,6 +71,14 @@ Follow every step in sequence. No steps are optional.
 
 ---
 
+## Cancelling the Topic
+
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `planning`, from any point in the phase.
+
+→ On return, resume the interrupted flow — never fall through to Step 0.
+
+---
+
 ## Step 0: Resume Detection
 
 Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:

@@ -126,6 +126,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-paused {work
 
 → Proceed to **G. Display and Menu**.
 
+#### If `outcome` is `cancelled`
+
+The topic was cancelled inside its session, which rendered the receipt — no banner.
+
+→ Proceed to **G. Display and Menu**.
+
 #### Otherwise
 
 Render and emit the section verbatim:

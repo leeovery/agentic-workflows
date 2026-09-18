@@ -20,7 +20,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
    A question neither of you can answer from the room, worth more than a lookup, is the deep dive's cue — offer it through **A. Offer** in **[deep-dive-agent.md](deep-dive-agent.md)**. A thread the user is carrying out to the conclusion is not reached, it is handed on: no offer rides a done-signal.
 
-   A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**.
+   A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. A topic the user calls off is not a thread to park — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
 
 3. **Engage** — Don't just collect the answer. React to it. Challenge assumptions. Explore implications. Follow promising tangents. Connect what the user just said to something from earlier. This is where your value as a research partner lives — you're thinking alongside, not just recording.
 

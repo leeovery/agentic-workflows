@@ -1,0 +1,74 @@
+{
+  "origin": "research mid-flight had no way to stop: conclude covers research that ran its course (the dead end included), park covers a thread, and cancel lived on the epic menu alone — so a user who calls the whole topic off two turns into a session left the agent with nowhere to go. This walk pins the in-session cancel from a research session and separates it from the dead end it is nearest to: the unit resolved from the session's own phase, the engine's gate, one transaction addressed to the stage, and the bridge carrying the cancelled outcome to the epic menu",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-shared/references/cancelling-the-topic.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/epic-continuation.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user opened this research to find out what could replace the hand-maintained synonym list, and comes back having had the decision taken out of their hands: the platform team has committed to a managed search product for next year that owns query expansion outright, so whatever this research concluded would be built by nobody. They engage honestly for a turn or two first — they answer what is asked about the open questions rather than dodging them — and then say plainly that they are not doing this topic. Not park the questions for later, not write up what they have and close it off: they are not going to do it, now or in another shape, and it should come off the board. Pressed on whether the sizing or the shapes are worth keeping, they are firm rather than hesitant — nothing in the file survives a decision made above it, and leaving it standing would only send the next reader down a path that has been closed. If asked again what they want done with it they say the same thing in plainer words and nothing more. On rendered gates they are agreeable: asked to confirm, they confirm. They introduce no new material, never ask for a deep dive, and never ask what comes next.",
+  "invariants": {
+    "calls_include": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "render resume-gate search-relevance.research.synonym-handling",
+      "manifest get search-relevance work_type",
+      "render cancel-gate search-relevance.discovery.synonym-handling",
+      "agent scan search-relevance research synonym-handling",
+      "topic cancel search-relevance discovery synonym-handling",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_in_order": [
+      "render resume-gate search-relevance.research.synonym-handling",
+      "render cancel-gate search-relevance.discovery.synonym-handling",
+      "agent scan search-relevance research synonym-handling",
+      "topic cancel search-relevance discovery synonym-handling",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "render research-conclude-gate",
+      "--dead-end",
+      "discovery-map handle",
+      "discovery-map remove",
+      "topic complete",
+      "workunit cancel",
+      "none paused",
+      "topic cancel search-relevance research",
+      "topic cancel search-relevance discussion",
+      "render phase-completed",
+      "render phase-paused",
+      "agent dispatch",
+      "--kind deep-dive"
+    ]
+  }
+}

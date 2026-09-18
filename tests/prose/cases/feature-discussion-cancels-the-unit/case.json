@@ -1,0 +1,66 @@
+{
+  "origin": "a linear work type's topic is its work unit, so a user calling the work off mid-session is asking for the whole unit — but the only cancel a linear unit had lived on the start menu's manage view, which a session inside the phase cannot reach without abandoning what it is doing. This walk pins the in-session path for a feature: the work type read, the unit resolved as the work unit itself, one work-unit cancel, the engine's receipt, and a terminal stop with no gate, no per-topic cancel, and no bridge",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/off-topic-non-epic.md",
+    "skills/workflow-shared/references/cancelling-the-topic.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user came back to settle what the shopper sees when a card is declined, and opens instead with the news that killed the feature: the company has signed with a payments provider whose hosted checkout replaces the whole flow, so nothing shaped here will be built. They engage honestly for a turn or two — they answer what is asked about the open thread rather than dodging it — and then say plainly that this work is not happening. Not paused, not reduced in scope, not finished off for the record: the feature is off, and the whole thing should go with it rather than sit on the board looking live. Pressed on whether any of it is worth keeping, they are firm rather than hesitant — what was decided was decided about a checkout that will not exist, and the provider's own flow answers every question this discussion was opened to answer. If asked again what they want done with it they say the same thing in plainer words and nothing more. They introduce no new material, never ask to wrap up or conclude, and never ask what comes next.",
+  "invariants": {
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "manifest get pay work_type",
+      "workunit cancel pay",
+      "render workunit-receipt pay --verb cancel"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.discussion.pay",
+      "manifest get pay work_type",
+      "workunit cancel pay",
+      "render workunit-receipt pay --verb cancel"
+    ],
+    "calls_exclude": [
+      "render cancel-gate",
+      "topic cancel",
+      "topic complete",
+      "topic reopen",
+      "discovery-map",
+      "workflow-bridge/scripts/gateway.cjs",
+      "workflow-continue-feature/scripts/gateway.cjs",
+      "render phase-completed",
+      "render phase-paused",
+      "agent dispatch",
+      "workunit reactivate"
+    ]
+  }
+}
