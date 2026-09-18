@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.64] - 2026-09-18
+
+✨ Added
+- Cancel a topic from inside its own working session — every phase (research, discussion, investigation, specification, planning, implementation, review) offers cancellation without leaving for the epic menu; delivery phases direct you to the work-unit cancel instead.
+
+🔧 Changed
+- A topic cancel now releases the cancelling session's own presence heartbeat on each item it took, so it no longer reads as held after cancellation.
+- Cancel gate's "no" option now reads "Keep it" instead of "Return to menu".
+
 ## [0.7.63] - 2026-09-18
 
 ✨ Added
