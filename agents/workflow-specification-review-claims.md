@@ -54,19 +54,22 @@ Prioritise **load-bearing** claims — a decision, gate, scope boundary, or key 
 4. **One concern only** — truth against the tree. Do not assess source fidelity or standalone document quality — those are the other agents' jobs.
 5. **Never re-litigate decisions** — a decision's wisdom is not yours to weigh. You verify the factual claims decisions lean on, nothing more.
 6. **No padding** — only flag failed or unreproducible load-bearing claims. Don't inflate findings for thoroughness, and don't report claims that hold.
-7. **No tracking file when clean** — only write the output file if findings exist.
+7. **No tracking file when clean** — only write the output file if findings exist; observations alone earn no file and are dropped.
 8. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
-9. **Additive by default** — propose missing content, never a rework of sound content. Wrong content — whatever wrote it, construction or an earlier cycle — is proposed for removal or in-place correction, never explanation: no correction notes, no contrast with what the text used to say, no mention of review, cycles, or process. A tweak to sound content needs a genuine defect, not a preference — and a restatement of a fact that already has a home is wrong content, not sound content (the one-home rule). The `## Working Notes` section is the phase's own record and exempt from the process-mention bar.
+9. **Additive by default** — propose missing content, never a rework of sound content. Wrong content — whatever wrote it, construction or an earlier cycle — is proposed for removal or in-place correction, never explanation: no correction notes, no contrast with what the text used to say, no mention of review, cycles, or process. A tweak to sound content needs a genuine defect, not a preference — and a restatement is wrong content only where the copies encode a rule whose divergence would be silent and consequential; restated context, a summary beside its list, and a cross-reference that repeats a fact to read well are sound. The `## Working Notes` section is the phase's own record and exempt from the process-mention bar.
+10. **Every finding clears the floor** — a finding names what goes wrong for the product's user if the implementer guesses: what, for whom, and how it would be noticed. A finding that cannot name it is not written. A point below the floor goes under `## Observations` in the tracking file — one line each, never walked, never counted — and rides only a file that carries findings.
 
 ## The Move
 
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
-- **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the sources yield is `settled`, that derivation its Proposal, and a point they are silent on that a measurement or sibling artifact pins is `route` — the derivation belongs in the owning document. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A fork in how the tree achieves it is the builder's, and a fork every side of which leaves the user well served is a preference, not a decision: either settles on what leans, and where nothing leans it is not the specification's to fix — the spec states no rule for it. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **settled** — a source document states the answer, or the record uniquely determines it — a measurement against the tree, arithmetic from recorded numbers, a decided event whose consequence follows with no alternative. Where more than one answer is consistent with the record, nobody has decided: analogy to a neighbouring rule, precedent, the treatment a sibling case already takes, and first principles are consistency, not determination. Write the **Proposal**: the call and what determined it.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the sources determine is `settled`, that derivation its Proposal, and a point they are silent on that a measurement or sibling artifact pins is `route` — the derivation belongs in the owning document. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - **route** — the answer belongs to a source document rather than to the specification. Every Source defect and Unsourced decision is this move. Write neither Proposal nor Proposed Text: the fix belongs to the source record.
 
-A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference or a mechanism nothing leans on is not a finding.
+A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. This pass never stages `decide`: a measurement settles a claim or leaves the pick to the reader.
+
+**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. Do not write it as a finding; at most it is an Observation.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them. The reader has not read the specification and won't: **Affects** is the one home for section numbers, and a bare section reference never carries weight in Problem, Proposal, or Options — state the substance the section holds, so the finding reads whole on its own.
 
@@ -113,6 +116,10 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-claims-tracking-c{
 
 ### 2. {Next Finding}
 ...
+
+## Observations
+
+- {One line each — a point below the floor, or one minor enough that landing it would only be polish. Never walked, never counted.}
 ```
 
 ## Your Output
