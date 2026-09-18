@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.62] - 2026-09-18
+
+🔧 Changed
+
+- Roadmap and baseline "back" now return to the start menu itself instead of just leaving things unchanged with a message to re-run `/workflow-start`.
+- Concluding a roadmap session drops the stop-or-pull prompt and goes straight back to the roadmap home, since the map keeps everything either way.
+
 ## [0.7.61] - 2026-09-17
 
 ✨ Added
