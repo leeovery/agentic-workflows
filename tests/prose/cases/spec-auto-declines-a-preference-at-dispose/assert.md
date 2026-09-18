@@ -35,9 +35,9 @@ Expected path:
    source, specification decision, measurement, sibling artifact,
    precedent, or constraint prefers one order, and the premise that a
    customer is never charged a number they did not see governs the
-   charge, not the wording of a credit. With nothing leaning there is
-   no rule for the specification to state, so the finding is
-   **declined**: the tracking row's Resolution set to `Declined`, the
+   charge, not the wording of a credit. A preference no side of which
+   costs the user is the builder's, so the specification states no
+   rule for it and the finding is **declined**: the tracking row's Resolution set to `Declined`, the
    reason in Notes, the Move left as `choice` with its Options intact,
    the decline announced in one line, and the tracking file committed.
    **Nothing renders for it** — no `render finding`, no choice menu,

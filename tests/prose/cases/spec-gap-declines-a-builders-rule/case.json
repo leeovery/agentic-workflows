@@ -1,0 +1,75 @@
+{
+  "origin": "A third of what spec review added under Opus 5 was the planner's honest calls made a phase early and written as if decided — how a repeated name resolves, which of two equivalent fields goes out first, a zero byte against a newline. None of them wrong, none of them anybody's decision. The record bar names that class the builder's and takes it out of the finding vocabulary: a point whose whole substance is a mechanism, a boundary or a byte is declined at dispose with its reason, the Move left as staged, and never rendered. The arm needs its own walk because it is the one path where a finding leaves without reaching the user — the perimeter never walks prose, and an invariant can pin what ran but never that a third render did not — so the case holds the builder's detail beside a call the record determines riding auto and a genuine choice that still stops, and the asserter counts the renders. It also pins the door the sibling decide case opens: a declined finding never reappears as a batch item.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — how long an order waits for capture confirmation — they see that the delivery schedule they already agreed settles it, and they choose auto, because they do not want to be stopped again for things the record has already decided. They know the discussion cold and treat what it determines as decided, not theirs to re-litigate. If asked which way round the audit line writes the intent id and the amount, they say it makes no difference to them, nobody outside the team ever reads that line, and they ask why they are being stopped over it. Whether a refund can be for part of an order is different and they treat it differently: nothing decided it, and both ways cost a customer something real. Asked, they reject the recommendation — making somebody send back a whole order to get anything back is how you lose them — and pick refunds down to a single line item instead. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or input review agent via the Task tool (any cycle), and when it dispatches the gap analysis agent for review cycle 2 or later — each returns the content below and writes no file",
+    "spec-gap-builders-detail-and-open-choice": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "render finding pay.specification.pay",
+      "finding_gate_mode auto",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "manifest set pay.specification.pay review_cycle 2",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "render finding-batch",
+      "render spec-review-gate",
+      "render incoherence-gate",
+      "presence scan",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "topic reopen",
+      "topic triage",
+      "sources stale",
+      "workunit create"
+    ],
+    "calls_in_order": [
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render finding pay.specification.pay",
+      "finding_gate_mode auto",
+      "render finding pay.specification.pay",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "manifest set pay.specification.pay review_cycle 2",
+      "topic complete pay specification pay"
+    ]
+  }
+}
