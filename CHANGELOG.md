@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.63] - 2026-09-18
+
+✨ Added
+- Specification review gains a fourth finding lane, `decide` — product-level calls the record leaves open are made by the reviewer and presented as a batch you scan and veto, landing first in the source document and then the spec.
+- Review and convergence surfaces now recognize a "churning" spec review (findings replaced at the same rate each cycle) and stop under auto mode to ask you, instead of grinding to the five-cycle cap.
+- Specification review findings must now clear a floor — each must name what goes wrong for the product's user if the implementer guesses — with sub-floor points logged as unwalked "Observations" instead of raised as findings.
+- Gap analysis now carries settled directions across cycles — a finding that only refines or repeats an already-landed rule from an earlier cycle is dropped, curbing self-feeding review growth.
+
+🔧 Changed
+- "Settled" now means the record actually determined the answer (a source states it, or it's uniquely derivable) rather than merely being consistent with precedent or analogy — tightening what specification review can auto-apply.
+- Duplication and content-restatement findings only fire where diverging copies would silently change what gets built, not whenever the same fact is stated twice.
+- Gap analysis targets 90–95% specification coverage rather than exhaustiveness, treating mechanism-level "builder's calls" as the planner's job rather than a spec gap.
+- The convergence diagnostic's wording now frames unchecked review growth as "the review deciding for the user" rather than a vaguer self-feeding warning.
+
 ## [0.7.62] - 2026-09-18
 
 🔧 Changed
