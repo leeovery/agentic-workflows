@@ -113,7 +113,7 @@ Compute:
 - `recurring_count` — findings persisting across cycles
 - `new_count` — findings appearing for the first time in the latest cycle
 - `stream_counts` — (multi-stream loop types only: `spec-review`, `planning-review`) latest-cycle finding counts per tracking stream, rendered `{label} {count}` and ` · `-joined in stream order
-- `review_growth` — (`spec-review` only, when the baseline exists) `live_words` minus `review_baseline_words`, sign and all: the net text review has added. Growth from source material being pulled in is the loop working; growth while findings churn is the loop reviewing its own writing — the trend beside it says which
+- `review_growth` — (`spec-review` only, when the baseline exists) `live_words` minus `review_baseline_words`, sign and all: the net text review has added. Growth is the loop working only where each addition traces to a source; growth from rules the review wrote itself is the review deciding for the user — the trend beside it says which
 - `trend` (first match wins):
   - **churning** — recurring_count is 0 or near 0 while resolved_count and new_count are both above 0 and roughly equal (every cycle's findings are new — the edits themselves are generating them)
   - **converging** — resolved_count > new_count (progress is being made)

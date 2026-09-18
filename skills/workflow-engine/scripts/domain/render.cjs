@@ -527,7 +527,7 @@ function specReviewGate(cwd, { dotpath, variant }) {
 
 const CONVERGENCE_LOOPS = { fix: 'Fix Loop', analysis: 'Analysis', 'planning-review': 'Plan Review', 'spec-review': 'Spec Review' };
 const CONVERGENCE_TRENDS = {
-  churning: 'Findings resolve but are replaced at the same rate — the edits are likely generating new findings. Consider consolidating duplicated statements rather than running another cycle.',
+  churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
   converging: 'Continuing is likely to resolve remaining items.',
   stable: 'Same issues are cycling. Consider manual intervention on the recurring items.',
   diverging: 'Fixes are introducing new issues. Consider reviewing the approach.',
@@ -615,10 +615,10 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
 
   const flags = [callout(CONVERGENCE_TRENDS[p.trend])];
   if (p.loop_type === 'spec-review' && p.trend === 'churning' && growth > 0) {
-    flags.push(callout('The cycles are adding words while findings churn — later reviews are reviewing earlier reviews\' writing, a shape the review rules forbid: findings add missing source content or remove wrong content, never rework sound ground. Check the recent additions against the sources before running another cycle.'));
+    flags.push(callout('The cycles are adding words while findings churn — the review is writing rules the record never decided. A finding adds what a source states or removes what is wrong; anything else is a decision nobody made. Check the additions against the sources before running another cycle.'));
   }
   if (hasGrowth && growth > p.review_baseline_words / 4) {
-    flags.push(callout(`Review has added ${growth} words to a ${p.review_baseline_words}-word construction. Growth that traces to source material is the loop working; check that these additions do — additions from nowhere mean the loop is feeding on itself.`));
+    flags.push(callout(`Review has added ${growth} words to a ${p.review_baseline_words}-word construction. Growth is the loop working only where each addition traces to a source; growth from review-authored rules is the review deciding for the user.`));
   }
   parts.push(flags.join('\n'));
 

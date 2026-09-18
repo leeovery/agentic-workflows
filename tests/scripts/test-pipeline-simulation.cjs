@@ -1771,8 +1771,10 @@ describe('pipeline simulation', () => {
       stream_counts: [{ label: 'claims', count: 0 }, { label: 'input review', count: 1 }, { label: 'gap analysis', count: 0 }],
       review_baseline_words: 6835, live_words: 13637,
     }));
-    assert.match(sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/convergence.json'], { expect: 'content' }),
-      /\(\+6802 net across review\)/);
+    const diagnostic = sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/convergence.json'], { expect: 'content' });
+    assert.match(diagnostic, /\(\+6802 net across review\)/);
+    assert.match(diagnostic.replace(/\n\s+/g, ' '), /growth from review-authored rules is the review deciding for the user/,
+      'the growth flag names review-authored growth');
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);
