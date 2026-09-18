@@ -86,7 +86,7 @@ Read tracking files for all available cycles:
 .workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c{1..N}.md
 ```
 
-For each cycle, extract:
+For each cycle, read the `## Findings` section only — `## Observations` is never counted — and extract:
 - Each finding's title
 - Which stream it came from (claims, input review, or gap analysis — by tracking file)
 - Affects field (which specification section)

@@ -51,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it. A finding whose Move reads `decide` is held for the batch at **C** — passed over here, never disposed twice.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it. A `decide` row — staged by the reviewer or rewritten here — takes the bar like any other; one that survives the dispose is held for the batch at **C** and passed over here after that.
 
 **If no finding remains to dispose** — every row settled, whether this sitting or an earlier one, or held for the decide batch:
 
@@ -71,7 +71,7 @@ A `settled` finding holds only where the record determines the answer. Where mor
 Three rules govern the evidence:
 
 - The staged `(recommended)` marker is the reviewer's argument, never a ground.
-- A fork with one live side — a side no informed user would choose — is settled.
+- A fork with one live side — a side no informed user would choose — is never the reader's: `settled` where the record determines the live side, `decide` otherwise.
 - A choice that names no search is not a verdict: run the search yourself.
 
 A fork that clears every prong stands as a `choice` — the specification never invents product intent. Below the bar the move is rewritten: `decide` where the fork is product-level, more than one answer fits the record, and this session can make the call and name what leaned; `settled` where the record determines exactly one answer (a point a source delegated to the specification included); `route` where the sources are silent and a measurement or a sibling artifact pins the answer. Where the fork is the builder's — a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or a preference no side of which costs the user — the finding is declined: Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
@@ -253,17 +253,11 @@ Every finding **B** held — each one whose Move reads `decide` — lands togeth
 
 → Proceed to **D. After All Findings Processed**.
 
-#### If a finding is unresolved and none carries the `decide` move
-
-The batch sent one back to the walk.
-
-→ Return to **B. Process One Item at a Time**.
-
 #### Otherwise
 
 Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json` with the Write tool — `{"lane": "decide", "items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per pending `decide` finding up to five, `remaining` counting the lane's findings beyond this screen: `title` is the finding's brief title, `detail` one or two sentences carrying the call and what leaned.
 
-Read the gate mode where it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`). **This stop overrides `auto`** — where the mode holds `auto`, open with the announcement verbatim, as a line above the batch — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you.
+**This stop overrides `auto`** — the surface reads the gate mode and opens its menu on the engine's announcement where the mode holds `auto`.
 
 Render, then emit the returned DISPLAY and MENU sections verbatim at their marked instructions:
 
@@ -279,13 +273,17 @@ Land the screen's findings one at a time, in the order they read. Each call is a
 
 → Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **C. Landing a Resolution** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, resolution = `{the call, carrying what leaned and the alternatives that also fit}`.
 
-On return, apply the finding's Proposed Text to the specification exactly as staged, re-derived against the live document as **Present Finding** prescribes. Set Resolution `Routed` with Notes naming the document the decision landed in and the specification content re-aligned to it, then commit the specification and the tracking file:
+On return, land by what the reference did:
+
+- **The decision landed** — apply the finding's Proposed Text to the specification exactly as staged, re-derived against the live document as **Present Finding** prescribes; Resolution `Routed` with Notes naming the document the decision landed in and the specification content re-aligned to it.
+- **The resolution was queued** to a session holding the document — the specification's copy stays untouched; Resolution `Routed` with Notes naming the queue. The decision reaches the specification when the source re-concludes and this specification reconciles.
+- **The landing returned `cancelled`** — the owning topic is closed and nothing landed; the finding stays with this session and is worked as **discuss** works one, below.
+
+Commit the specification and the tracking file:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the call settled}" --topic specification/{topic}
 ```
-
-A document another session holds takes the reference's own held-doc branch — the resolution queues, the specification's copy stays untouched, and the Notes name the queue; follow where it returns.
 
 When the screen has landed, confirm in one line — `All {N} documented.`
 
@@ -293,15 +291,11 @@ When the screen has landed, confirm in one line — `All {N} documented.`
 
 **If discuss with a number:**
 
-Work that finding through in conversation.
+Land every other finding on the screen as `yes` does, then raise the named one in conversation.
 
-- **The exchange settles it**: land it as the `yes` branch lands one — the source document, the specification, Resolution `Routed`, the commit.
-- **The exchange shows the pick is the reader's**: rewrite the Move to `choice` in the tracking file with its Options and the search named, and leave it — the walk raises it once the lane empties.
-- **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed.
-
-The finding has left the lane whichever way it went, and the batch re-renders without it.
-
-→ Return to **C. The Decide Batch**.
+- **The exchange settles it**: land it as the `yes` branch lands one — the source document, the specification, Resolution `Routed`, the commit. → Return to **C. The Decide Batch**.
+- **The exchange shows the pick is the reader's**: rewrite the Move to `choice` in the tracking file with its Options — the call as one, the alternatives it named as the others — and the search named; its stop holds, and the pick lands as the numbered-pick branch lands one. → Proceed to **Present Finding**.
+- **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **C. The Decide Batch**.
 
 **If ask (a number):**
 

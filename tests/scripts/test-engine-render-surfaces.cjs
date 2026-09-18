@@ -1716,6 +1716,15 @@ describe('render finding-batch', () => {
     ].join('\n'));
   });
 
+  it('opens on the auto-override line over a specification lane holding auto, and never over a discussion address', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'auto.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
+    const spec = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file });
+    assert.match(spec, /\*\*Auto is on — stopping anyway:\*\* this is one of the calls auto never makes for you\.\n\n\*\*`◆ Document it\?`\*\*/);
+    const disc = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+    assert.ok(!disc.includes('Auto is on'), 'a discussion item carries no finding_gate_mode');
+  });
+
   it('renders the decide lane — call intro, y/Discuss/Ask menu', () => {
     const file = writePayload(dir, 'd.json', {
       lane: 'decide',
@@ -1727,7 +1736,7 @@ describe('render finding-batch', () => {
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
       '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
-      "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it.",
+      "Each of these is a call I've made, with what it rests on named beside it.",
       '',
       '1\\. The drain signal carries intent',
       `${NB(5)}↳ All three exit routes sent one signal; determined by the`,
@@ -1764,7 +1773,7 @@ describe('render finding-batch', () => {
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: one });
     assert.match(out, /`◆ Document it\?`/);
     assert.match(out, /→ Document it and move on$/m);
-    assert.match(out, /^This one has a single defensible answer/m);
+    assert.match(out, /^This one is a call I've made/m);
     const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
     const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne });
     assert.match(applied, /`◆ Apply it\?`/);
@@ -2822,6 +2831,7 @@ describe('render finding', () => {
       [{ ...base, move: 'route' }, /a "route" finding goes to resolve-source-incoherence and never renders at the gate/],
       [{ ...base }, /"move" must be one of settled\/choice/],
       [{ ...base, move: 'apply' }, /"move" must be one of settled\/choice/],
+      [{ ...base, move: 'decide' }, /a "decide" finding is held for the veto batch and renders through finding-batch/],
       [{ ...settled, category: 'source-defect' }, /"source-defect" findings route via resolve-source-incoherence and never render at the gate/],
       [{ ...settled, category: 'unsourced-decision' }, /"unsourced-decision" findings route via resolve-source-incoherence/],
       [{ ...settled, category: 'severity' }, /unknown category "severity"/],
