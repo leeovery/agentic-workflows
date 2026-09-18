@@ -43,7 +43,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**.
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. A topic the user calls off is none of these — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
