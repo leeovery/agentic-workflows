@@ -3703,10 +3703,11 @@ function specificationCancelStatement(manifest, spec) {
 }
 
 /**
- * The epic menu's cancel confirm over one unit — `<wu>.discovery.<topic>`
- * or `<wu>.specification.<spec>`. The statement names exactly what the
- * cancel takes and stays context; the short question takes the glyph. A
- * locked or already-cancelled unit refuses: the menu never offers it.
+ * The cancel confirm over one unit — `<wu>.discovery.<topic>` or
+ * `<wu>.specification.<spec>` — fetched by the epic menu and by a session
+ * cancelling its own topic. The statement names exactly what the cancel
+ * takes and stays context; the short question takes the glyph. A locked or
+ * already-cancelled unit refuses: the menu never offers it.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
@@ -3724,7 +3725,7 @@ function cancelGate(cwd, { dotpath }) {
     "emit verbatim as markdown, then STOP for the user's response",
     menu(statement, [
       cmdOption('y', 'yes', 'Confirm cancellation'),
-      cmdOption('n', 'no', 'Return to menu'),
+      cmdOption('n', 'no', 'Keep it'),
     ], { question: 'Cancel it?' }),
   );
 }
