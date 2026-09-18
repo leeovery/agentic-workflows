@@ -78,7 +78,7 @@ A `decide` is presented in a batch: a screen of at most five, each row the call 
 
 **Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. It is not written as a finding; at most it is an Observation.
 
-`## Observations` holds what is below the finding floor — a point that names no failure for the product's user, and anything minor enough that landing it would only be polish. One line each, at the end of the tracking file. Observations are never walked, never counted, and never re-raised by a later cycle.
+`## Observations` holds what is below the finding floor — a point that names no failure for the product's user, and anything minor enough that landing it would only be polish. One line each, at the end of the tracking file. Observations are never walked, never counted, and never re-raised by a later gap-analysis pass; they ride only a file that carries findings.
 
 The reviewer proposes the move; the orchestrator disposes it against the live session before the finding renders, in both directions, on a derivation written into the finding — a `settled` call the record does not determine becomes a `decide`, and one the session cannot itself stand behind becomes a `choice` and takes the bar; a `choice` below the bar becomes `decide`, `settled`, or `route`, or is declined outright — Resolution `Declined`, the Move left as staged — its derivation recorded (**[process-review-findings.md](process-review-findings.md)**). A choice that names no search is re-derived from scratch.
 
@@ -95,10 +95,11 @@ Two categories always take the `route` move, and their findings are never applie
 4. Work through items one at a time:
    - A `route` finding routes per **[process-review-findings.md](process-review-findings.md)** — Resolution `Routed`, never presented at the gate
    - A finding the dispose declines — Resolution `Declined` with its reason, never presented at the gate
+   - A `decide` finding is held for the batch at **C** of **[process-review-findings.md](process-review-findings.md)** — never presented one at a time
    - Every other item: present it by its move, discuss and refine, get approval, log to specification
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
 
-**Why tracking files**: If context refreshes mid-review, you can read the tracking file and continue where you left off. The tracking file shows which items are resolved and which remain. This is especially important when reviews surface 10-20 items that need individual discussion.
+**Why tracking files**: If context refreshes mid-review, you can read the tracking file and continue where you left off. The tracking file shows which items are resolved and which remain.
 
 → Return to caller.
