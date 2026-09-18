@@ -29,8 +29,9 @@ Expected path:
    bar: the discussion ties the total's re-quote to exactly one event
    — the customer editing the cart by hand from the payment step — and
    a re-render with no hand edit is not that event, so the record
-   yields exactly one answer: the quoted total holds across every
-   re-render until the customer edits the cart. The session does the
+   determines the answer — a decided event whose consequence follows
+   with no alternative: the quoted total holds across every re-render
+   until the customer edits the cart. The session does the
    search the agent never named and finds the discussion's own
    principle (a customer is never charged a number they did not see)
    confirms it. It rewrites the tracking row: Move `settled`, a
