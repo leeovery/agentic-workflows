@@ -63,7 +63,7 @@ When uncertain whether the user approved, ask: "Ready to log it, or do you want 
 
 ## What You Do
 
-1. **Extract exhaustively**: For each topic, re-scan ALL source materials. When working with multiple sources, search each one — information about a single topic may be scattered across documents. Search for keywords and related terms. Collect everything before synthesizing. Include only what we're building (not discarded alternatives).
+1. **Extract exhaustively**: For each topic, re-scan ALL source materials. When working with multiple sources, search each one — information about a single topic may be scattered across documents. Search for keywords and related terms. Collect everything the sources decided before synthesizing — what the product does and the decisions behind it; the how they left open is the planner's. Include only what we're building (not discarded alternatives).
 2. **Filter**: Reference material may contain hallucinations, inaccuracies, or outdated concepts. Validate before including.
 3. **Enrich**: Reference material may have gaps. Fill them through discussion.
 4. **Present**: Synthesize and present content to the user in the format it would appear in the specification.
