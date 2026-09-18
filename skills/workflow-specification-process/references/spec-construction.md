@@ -85,7 +85,7 @@ Already-`addressed` references are skipped on later topic cycles.
 
 ## B. Synthesize and Present
 
-Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a fact already stated in the specification is referenced at its home, never restated. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
+Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a rule already stated in the specification is referenced at its home rather than restated where the copies could drift apart unnoticed; restated context that reads well stands. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
 
 Source disagreement or a measured mismatch first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
 
