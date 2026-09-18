@@ -527,7 +527,7 @@ function specReviewGate(cwd, { dotpath, variant }) {
 
 const CONVERGENCE_LOOPS = { fix: 'Fix Loop', analysis: 'Analysis', 'planning-review': 'Plan Review', 'spec-review': 'Spec Review' };
 const CONVERGENCE_TRENDS = {
-  churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
+  churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings. Read what the last cycle added before running another.',
   converging: 'Continuing is likely to resolve remaining items.',
   stable: 'Same issues are cycling. Consider manual intervention on the recurring items.',
   diverging: 'Fixes are introducing new issues. Consider reviewing the approach.',
