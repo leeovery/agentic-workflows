@@ -4,7 +4,7 @@
 
 ---
 
-Close the session, then offer the pull. Stopping here is first-class — a harvested roadmap with zero work units is a complete outcome, banked and resumable from the workflow-start menu.
+Close the session and return to the home. Stopping here is first-class — a harvested roadmap with zero work units is a complete outcome, banked and resumable from the workflow-start menu.
 
 ## A. Close the Session
 
@@ -18,7 +18,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
 
 Nothing to close.
 
-→ Proceed to **B. Stop or Pull**.
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.
 
 #### Otherwise
 
@@ -34,44 +34,10 @@ If the response carries `warnings`, fetch the advisory and emit its section verb
 node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-session-receipt --warn
 ```
 
-→ Proceed to **B. Stop or Pull**.
-
-## B. Stop or Pull
-
-Branch on the state read in **A**:
-
-#### If `totals.waiting` is `0`
-
-Nothing is pullable.
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Session closed and saved. The roadmap is on the workflow-start menu whenever you want back in.
+> Session closed and saved — everything stays on the map.
 ```
 
-**STOP.** Do not proceed — terminal condition.
-
-#### Otherwise
-
-Fetch the gate and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-conclude-gate
-```
-
-**STOP.** Wait for user response.
-
-#### If `yes`
-
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
-
-#### If `stop`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Session closed and saved. Pull a slice any time from the workflow-start menu's roadmap row.
-```
-
-**STOP.** Do not proceed — terminal condition.
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.

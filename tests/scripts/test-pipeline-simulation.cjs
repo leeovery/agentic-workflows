@@ -2360,12 +2360,17 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
     assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
     assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
-    assert.match(sim.render(['roadmap-conclude-gate'], { expect: 'content' }), /MENU: roadmap conclude gate/);
     assert.match(sim.render(['name-gate'], { expect: 'content' }), /MENU: name gate/);
     assert.match(sim.render(['name-gate', '--variant', 'collision'], { expect: 'content' }), /Choose a different name/);
     assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
     assert.match(sim.render(['query-failure-gate'], { expect: 'content' }), /MENU: query failure gate/);
+
+    // The home's `b/back`: the label goes back first, then the start menu is
+    // re-rendered over the state the roadmap was entered from.
+    assert.strictEqual(sim.run(['session', 'repair']).repaired, false,
+      'session repair is a no-op in the sim');
+    assert.match(GATEWAYS.start.format(GATEWAYS.start.discover(sim.dir)), /has_any_work: true/);
 
     // Shipping the unit flips the derived state to shipped — nothing stored.
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);

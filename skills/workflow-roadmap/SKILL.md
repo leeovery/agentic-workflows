@@ -1,7 +1,7 @@
 ---
 name: workflow-roadmap
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log)
+allowed-tools: Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log)
 ---
 
 # Product Roadmap
@@ -17,7 +17,7 @@ The roadmap is project-level and outside the pipeline — no work unit, no phase
 Three invocation modes, dispatched at Step 1:
 
 - **genesis** — from discovery's shaping gate: the conversation is live and just read as product-altitude. Persist the shaping so far, continue the conversation at this altitude.
-- **open** — from the `r/roadmap` start-menu row: show the map, then converse, pull, or leave.
+- **open** — from the `r/roadmap` start-menu row: show the map, then converse, pull, or return to the start menu.
 - **pull** — from a recognition offer: the user accepted pulling an existing waiting item, straight to the pull ceremony.
 
 **Stay in your lane**: shape the product and its staging — what exists, what's next, what waits. Capability-grain only: an item is whatever you'd move around a roadmap as one thing. Topic shaping, mechanism, and design decisions belong to the work units the pull creates; a pulled item's substance belongs to its epic. Right of a pull the work unit is authoritative — the map edits waiting items freely and only watches joined ones.
@@ -158,13 +158,9 @@ Set `session_number` from the DATA's `active_session` when one is open (the loop
 
 #### If `action` is `back`
 
-> *Output the next fenced block as markdown (not a code block):*
+Load **[start-menu.md](../workflow-start/references/start-menu.md)** and follow its instructions as written.
 
-```
-> Leaving the roadmap as it is — run /workflow-start whenever you want back in.
-```
-
-**STOP.** Do not proceed — terminal condition.
+→ On return, proceed as the reference directed.
 
 #### If the user asks a question
 

@@ -30,10 +30,9 @@
   "answers": [
     "s — start something new",
     "y — that's the right read, lay it out as a roadmap",
-    "y — commit these items to the roadmap",
-    "s — stop here"
+    "y — commit these items to the roadmap"
   ],
-  "conduct": "The user has a new business idea: Orderflow, a white-label ordering platform small restaurants can run under their own name. They describe it the way it sits in their head — customers ordering from a menu on their phones, operators keeping that menu current, orders landing in the kitchen — and their ambition is staged from the first breath: for launch they only need those basics working end to end; loyalty and repeat-customer rewards come once real restaurants are on it; reselling the platform white-label to agencies is the long game they do not want to over-think yet. They answer questions concretely and place things on the timeline in their own words — 'that is a launch thing', 'that can wait until we have revenue'. Once the conversation has walked the whole shape and nothing new is coming up, they say it feels laid out and ask to sort it. Presented with a proposal, they accept it when it reflects what was discussed and correct it when it does not. When offered a pull into delivery, they stop — they want to sleep on it.",
+  "conduct": "The user has a new business idea: Orderflow, a white-label ordering platform small restaurants can run under their own name. They describe it the way it sits in their head — customers ordering from a menu on their phones, operators keeping that menu current, orders landing in the kitchen — and their ambition is staged from the first breath: for launch they only need those basics working end to end; loyalty and repeat-customer rewards come once real restaurants are on it; reselling the platform white-label to agencies is the long game they do not want to over-think yet. They answer questions concretely and place things on the timeline in their own words — 'that is a launch thing', 'that can wait until we have revenue'. Once the conversation has walked the whole shape and nothing new is coming up, they say it feels laid out and ask to sort it. Presented with a proposal, they accept it when it reflects what was discussed and correct it when it does not. Once the session closes and the roadmap home comes back up, they stop — they want to sleep on it.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
@@ -51,7 +50,8 @@
       "roadmap session open",
       "workflow-roadmap/scripts/gateway.cjs proposal --file",
       "roadmap add-batch",
-      "roadmap session close"
+      "roadmap session close",
+      "workflow-roadmap/scripts/gateway.cjs view"
     ],
     "calls_exclude": [
       "workunit create",

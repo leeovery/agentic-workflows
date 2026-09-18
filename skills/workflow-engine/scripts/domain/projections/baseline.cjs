@@ -180,7 +180,7 @@ function baselineManageGate() {
     [
       cmdOption('e', 'expand', 'Add a new area, or deepen an existing one'),
       cmdOption('v', 'view', 'Read an area doc'),
-      cmdOption('b', 'back', 'Leave the baseline as it is'),
+      cmdOption('b', 'back', 'Return to the start menu'),
     ],
     { question: 'What would you like to do?' },
   );

@@ -16,13 +16,16 @@ The prose should have taken this path:
    the user's own language, renders the proposal over the (empty)
    roadmap, and persists the confirmed set in one batch
 6. document review reconciles the log, the session closes (marker
-   cleared, log indexed), and the stop-or-pull gate is answered with
-   stop — a complete outcome, nothing owed
+   cleared, log indexed) over one closing line, and the flow lands back
+   on the roadmap home — the sorted map with its converse/pull/back
+   menu, where the walk ends — a complete outcome, nothing owed
 
 Further claims:
 
-- no work unit is ever created, named, or offered for creation before
-  the stop — the whole walk commits the user to building nothing
+- no work unit is ever created, named, or offered for creation — the
+  whole walk commits the user to building nothing, and the pull is
+  never put to them as a question at the close: it is the home's own
+  row, there whenever they want it
 - the horizons come from the conversation (launch-now wording and
   later staging), not from a fixed vocabulary imposed on it
 

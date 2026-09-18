@@ -6,13 +6,17 @@ The prose should have taken this path:
 2. the roadmap row lands in the roadmap's home: the map is rendered
    from its snapshot (horizons, items, waiting states) with the
    converse/pull menu beneath — pull offered, since waiting items exist
-3. the user leaves via `b/back` and the flow ends at a terminal
-   condition — no session opened, nothing pulled, nothing edited
+3. `b/back` puts the original session label back and re-renders the
+   start menu in place — the same harvested-no-work overview and its
+   `r/roadmap` row, the flow stopped there for the user — with no
+   session opened, nothing pulled, nothing edited
 
 Further claims:
 
 - at no point does any surface describe the project as having no work
   to show — the roadmap is the work, banked
+- the back neither ends the session nor tells the user to run
+  /workflow-start — the start menu is rendered from inside the roadmap
 - every display is emitted from an engine snapshot; nothing is redrawn
   by hand
 

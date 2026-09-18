@@ -55,9 +55,9 @@ Nothing is persisted.
 
 **If `back` and the assessment is fresh:**
 
-Nothing is persisted — the assessment stays available from the workflow-start manage menu whenever you want it.
+Nothing is persisted.
 
-**STOP.** Do not proceed — terminal condition.
+→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
 
 **If `yes`:**
 

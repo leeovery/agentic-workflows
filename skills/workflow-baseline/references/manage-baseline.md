@@ -52,10 +52,4 @@ Render the chosen `.workflows/.baseline/{area}.md` verbatim as markdown.
 
 #### If `back`
 
-> *Output the next fenced block as a code block:*
-
-```
-Baseline unchanged. Run /workflow-start to pick up other work.
-```
-
-**STOP.** Do not proceed — terminal condition.
+→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
