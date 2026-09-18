@@ -2007,6 +2007,7 @@ describe('render convergence-diagnostic', () => {
     stream_counts: [{ label: 'claims', count: 0 }, { label: 'input review', count: 1 }, { label: 'gap analysis', count: 1 }],
     review_baseline_words: 6835, live_words: 13637,
   };
+  const flagText = (s) => s.slice(s.indexOf('⚑')).replace(/\n\s+/g, ' ').trim();
   beforeEach(() => {
     dir = setup();
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
@@ -2027,18 +2028,27 @@ describe('render convergence-diagnostic', () => {
     assert.ok(out.includes('    • Guard scope drifts per section (cycles 3, 4, 5)\n      · Each fix re-words the guard where it lands instead of at\n        its home.'), 'the hypothesis is a sub-detail under the bullet text, wrapped under its own marker');
     assert.ok(out.includes('  ⚑ Continuing is likely to resolve remaining items.'));
     assert.ok(out.includes('⚑ Review has added 6802 words'), 'the >25% growth note fires');
-    assert.ok(!out.includes('reviewing earlier reviews'), 'the churn warning stays quiet on a converging trend');
+    assert.match(flagText(out), /growth from review-authored rules is the review deciding for the user\./, 'the growth note names review-authored growth');
+    assert.ok(!flagText(out).includes('writing rules the record never decided'), 'the churn warning stays quiet on a converging trend');
   });
 
   it('churning with growth fires both spec flags; negative growth renders signed and quiets the note', () => {
     const churn = writePayload(dir, 'c2.json', { ...base, trend: 'churning' });
     let out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: churn });
-    assert.ok(out.includes('reviewing earlier reviews'), 'the churn-growth warning fires');
+    assert.match(flagText(out), /the review is writing rules the record never decided/, 'the churn-growth warning fires');
+    assert.match(flagText(out), /anything else is a decision nobody made/, 'the warning names the bar a finding clears');
     assert.ok(out.includes('⚑ Review has added 6802 words'));
     const shrink = writePayload(dir, 'c3.json', { ...base, live_words: 6500 });
     out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: shrink });
     assert.ok(out.includes('(-335 net across review)'), 'shrink renders a signed value, never +-');
     assert.ok(!out.includes('Review has added'), 'no growth note on a shrinking document');
+  });
+
+  it('the churn trend is loop-neutral — a fix loop carries the same sentence, alone', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'ch.json', { loop_type: 'fix', latest_cycle: 2, trend: 'churning', resolved: [{ title: 'Off-by-one', last_seen_cycle: 1 }], recurring: [], new: [{ title: 'Missing guard' }] });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
+    assert.strictEqual(flagText(out), '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings. Read what the last cycle added before running another.');
   });
 
   it('single-stream loops skip streams and growth; a fix-loop shape renders lean', () => {
