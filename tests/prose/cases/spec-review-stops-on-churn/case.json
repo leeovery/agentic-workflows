@@ -1,5 +1,5 @@
 {
-  "origin": "Against an Opus 5 gap pass no spec review has converged: the exit condition was all three passes returning clean, which a generator that finds a fresh batch every cycle never reaches, so `auto` ran to the cycle-5 cap with one line of output per cycle and the convergence diagnostic — which already computed the churning trend and the growth figure — rendered only at the cap, after the churn had run its course. The churn exit moves that reading to where it can still change something: from cycle 2 onward a churning verdict ends auto's licence, the diagnostic renders, and the re-loop gate asks. This walks it with the shape the diagnosis measured — every cycle's findings resolve and a fresh pair replaces them, nothing recurring — and pins that no third cycle starts on the session's own authority.",
+  "origin": "Against an Opus 5 gap pass no spec review has converged: the exit condition was all three passes returning clean, which a generator that finds a fresh batch every cycle never reaches, so `auto` ran to the cycle-5 cap with one line of output per cycle and the convergence diagnostic — which already computed the churning trend and the growth figure — rendered only at the cap, after the churn had run its course. The churn exit moves that reading to where it can still change something: from cycle 2 onward a churning verdict ends auto's licence, the diagnostic renders, and the re-loop gate asks. This walks it with the shape the diagnosis measured — every cycle's findings resolve and a fresh pair replaces them, nothing recurring — and pins that no third cycle starts on the session's own authority. The cycle-2 dispatch carrying the cycle-1 tracking file as settled directions is a claim only the walker's account can evidence: the recorder keeps a Task dispatch's name and nothing of its prompt.",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -51,6 +51,7 @@
       "finding_gate_mode auto",
       "manifest set pay.specification.pay review_cycle 2",
       "tracking.review-gap-analysis-tracking-c2 in-progress",
+      "manifest get pay.specification.pay review_baseline_words",
       "render convergence-diagnostic pay.specification.pay",
       "render spec-review-gate pay.specification.pay --variant reloop",
       "tracking.review-gap-analysis-tracking-c2 complete",

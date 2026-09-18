@@ -52,8 +52,8 @@ Expected path:
    A payload of one item — the call and what leaned — is written to
    the topic's cache and rendered through the engine's finding-batch
    surface at the specification's address, lane `decide`; the mode
-   holds `auto`, so the screen opens on the auto-override line above
-   the batch. **This stop overrides auto** — it is one of the calls
+   holds `auto`, so its menu opens on the engine's auto-override line.
+   **This stop overrides auto** — it is one of the calls
    auto never makes
 9. the user answers yes, and the call lands in the owning document
    first. Presence is checked and no session holds the discussion, so
