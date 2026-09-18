@@ -8,7 +8,7 @@ Three-phase review of the specification. Phase 1 (Claims Verification) measures 
 
 **CRITICAL**: Phases are strictly sequential — never dispatch two agents in parallel. Claims run first because a false claim carried faithfully from a source reads to fidelity review as a perfect match — its routing must land before Phase 2 compares; Phase 2 findings are applied before Phase 3 reviews the updated document.
 
-**Why this matters**: The specification is the golden document. Plans are built from it, and those plans inform implementation. If a detail isn't in the specification, it won't make it to the plan, and therefore won't be built. Worse, the implementation agent may hallucinate to fill gaps, potentially getting it wrong. The goal is a specification robust enough that an agent or human could pick it up, create plans, break it into tasks, and write the code.
+**Why this matters**: The specification is the golden document — the record of what was decided, from which the plan and then the code are built. A decision it drops never reaches the plan; a rule it adds that nobody made is a decision the record never took. The review holds both lines: every decision the sources made is on the page, and nothing on the page decides what they left open — that remainder is the planner's.
 
 → Load **[review-tracking-format.md](review-tracking-format.md)** — internalize the tracking file format for all three phases.
 
@@ -64,15 +64,15 @@ Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-e
 
 #### If `review_cycle` > 3 and `finding_gate_mode` is `auto`
 
-Auto mode is active — pass through to review. Section F's safety cap (cycle 5) handles escalation.
+Auto mode is active — pass through to review. Section F stops the loop on a churning verdict from cycle 2; the cycle-5 cap is its backstop.
 
 → Proceed to **C. Phase 1 — Claims Verification**.
 
 #### If `review_cycle` > 3 and `finding_gate_mode` is `gated` (or not set)
 
-**Do NOT skip review autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running review until no issues are found. Present the choice and let the user decide.
+**Do NOT skip review autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running review until no product-level gap remains. Present the choice and let the user decide.
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 Fetch the gate and emit its section verbatim at its marked instruction:
 
@@ -164,6 +164,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 ## E. Phase 3 — Gap Analysis
 
+List the earlier cycles' gap-analysis tracking files beside the specification — every `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c{M}.md` whose `{M}` is below the current cycle. Cycle 1 lists none.
+
 Dispatch the `workflow-specification-review-gap-analysis` agent via the Task tool:
 
 - **Agent file**: `../../../agents/workflow-specification-review-gap-analysis.md`
@@ -172,6 +174,7 @@ Dispatch the `workflow-specification-review-gap-analysis` agent via the Task too
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
+- **Earlier cycles' gap-analysis tracking files**: the paths listed above — the settled directions a finding may not reverse. None at cycle 1.
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
@@ -203,6 +206,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` < 5
 
+From the second cycle onward the trend decides whether `auto` keeps looping: a churning loop hands the call to the user.
+
+**If `review_cycle` is 2, 3, or 4:**
+
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `churning`.
+
+**If `review_cycle` is 1, or the analysis classified no `churning` trend:**
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -211,9 +222,27 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 → Return to **A. Cycle Initialization**.
 
+**If `review_cycle` is 2, 3, or 4 and the analysis classified the trend as `churning`** (its diagnostic rendered above):
+
+Fetch the gate and emit its section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {work_unit}.specification.{topic} --variant reloop
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+→ Return to **A. Cycle Initialization**.
+
+**If `proceed`:**
+
+→ Proceed to **G. Completion**.
+
 #### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` >= 5
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 Fetch the gate and emit its section verbatim at its marked instruction:
 
@@ -233,7 +262,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {
 
 #### If findings were surfaced and `finding_gate_mode` is `gated`
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 Fetch the gate and emit its section verbatim at its marked instruction:
 

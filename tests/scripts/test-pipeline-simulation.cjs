@@ -1799,6 +1799,17 @@ describe('pipeline simulation', () => {
     const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
     assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
     assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
+    sim.write('.workflows/.cache/scratch/finding-batch.json', JSON.stringify({
+      lane: 'decide',
+      remaining: 0,
+      items: [
+        { title: 'A repeated field name resolves to its last occurrence', detail: 'The sweep table leans this way; first-wins also fits the record.' },
+        { title: 'An empty bare value writes a newline', detail: 'The output contract leans this way; zero bytes also fits the record.' },
+      ],
+    }));
+    const decideBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
+    assert.match(decideBatch, /DISPLAY: finding batch/, 'the decide lane renders its screen at a specification address');
+    assert.match(decideBatch, /`◆ Document them\?`/, 'the veto menu asks the decide lane\'s question');
     // The review restart clears its staging subtree (exists-guarded delete) so a
     // stale cycle can never hijack the post-restart loop's crash-resume guards.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'true');
