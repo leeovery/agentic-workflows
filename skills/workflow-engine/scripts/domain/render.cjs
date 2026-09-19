@@ -2122,7 +2122,7 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
   const options = [cmdOption('l', 'log', 'Capture it as an idea in the inbox for later')];
   // The roadmap park is discussion's valve — research has no roadmap route.
   if (discussion) {
-    options.push(cmdOption('r', 'roadmap', 'Park it on the product roadmap with a horizon'));
+    options.push(cmdOption('r', 'roadmap', 'Put it on the product roadmap for a later release'));
   }
   if (manifest.work_type === 'feature') {
     options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold the concern as its own topic'));

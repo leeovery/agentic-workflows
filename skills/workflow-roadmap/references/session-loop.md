@@ -6,7 +6,7 @@
 
 Follow the stance and hard rules from **[roadmap-guidelines.md](roadmap-guidelines.md)** throughout. No background agents, no review cycles.
 
-**A. Open** picks the opening shape from how the session arrived; **B. Session Loop** runs the exploration; **C. Harvest** sorts when the user pulls — an unconfirmed sort drops straight back into **B**.
+**A. Open** picks the opening shape from how the session arrived; **B. Session Loop** runs the exploration; **C. Harvest** sorts when the user asks to lay it out — an unconfirmed sort drops straight back into **B**.
 
 ## A. Open
 
@@ -19,7 +19,7 @@ The conversation is already live and its record persisted at Step 2 — don't re
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-This is product territory — we'll lay the whole thing out, then pull the first slice into delivery when you're ready. Nothing we say here commits you to building anything.
+This is about the product as a whole — we'll lay it out, then start building the first part when you're ready. Nothing we say here commits you to building anything.
 
 Where do you want to dig in?
 ```
@@ -59,7 +59,7 @@ A fresh session over the map just rendered at Step 3. Brief across the record fi
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-The map's above. You can open a new thread — something the product needs that we haven't shaped — or name changes to what's there: move, rename, remove, re-order horizons, groom an inbox idea on. Both in one go is fine. Say "show roadmap" anytime to pull it back up.
+The map's above. You can open a new thread — something the product needs that we haven't shaped — or name changes to what's there: move, rename, remove, re-order horizons, bring an inbox idea onto the map. Both in one go is fine. Say "show roadmap" anytime to see it again.
 
 What's on your mind?
 ```
@@ -70,7 +70,7 @@ What's on your mind?
 
 ## B. Session Loop
 
-No fixed cadence — follow the conversation, not a checklist. **The loop is the exploration.** Items and horizons are sorted at the harvest in **C**, when the user pulls.
+No fixed cadence — follow the conversation, not a checklist. **The loop is the exploration.** Items and horizons are sorted at the harvest in **C**, when the user asks to lay it out.
 
 1. **Listen.** Take in what the user just said.
 2. **Recognise intent.** An **Edits** write below conjures the log first when none exists yet — the lazy rule, [session-template.md](session-template.md). The user's message may contain:
@@ -81,7 +81,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **Shared files** — paths offered in conversation land via `engine roadmap import '{path}' …`, all of them in one call (each path single-quoted — a shared filename carries spaces and capitals; a `~` path written out in full, since the quotes stop the shell expanding it; a single quote inside a path written `'\''`; self-commits). A refusal carrying `missing_imports` is met by **A refused landing** below. Read what landed for the conversation and record it under **Edits**.
    - **A request to see the map** — *"show roadmap"*. Re-run `gateway.cjs view` and emit its TITLE and DISPLAY sections per their markers (skip the menu — the conversation is live). No STOP; render and continue.
    - **A KB query for prior context** — when a thread would benefit from what shipped work recorded, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
-   - **A harvest pull** — *"lay it out"*, *"that covers it"*, *"let's sort it"*, *"done"*. Route to **C. Harvest**.
+   - **A request to lay it out** — *"lay it out"*, *"that covers it"*, *"let's sort it"*, *"done"*. Route to **C. Harvest**.
 3. **Continue the exploration.** One thread at a time.
 4. **Read the arc for convergence.** When the conversation converges (the guidelines' proxies), surface the ambient nudge — a light aside offering the harvest, once, never a gate (see [harvest-nudge.md](../../workflow-discovery/references/harvest-nudge.md), reading "topics" as "the roadmap sort") — then stay in **B**.
 5. **Keep the running record.** Write the **Exploration** section at natural pauses — the intent, the staging language, the soft decisions and rejected paths with why. Append-forward, prose not transcript; lossiness defeats the point. The lazy-creation rule applies (see [session-template.md](session-template.md)). After writing, commit:
@@ -102,11 +102,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --
 
 **If the answer is `skip`:** the refused paths land nothing — land what the refusal did not name, if anything, then carry on in **B**.
 
-→ Proceed to **C. Harvest** when the user pulls (recognised in step 2); otherwise loop within **B**.
+→ Proceed to **C. Harvest** when the user asks to lay it out (recognised in step 2); otherwise loop within **B**.
 
 ## C. Harvest
 
-Reached from **B** step 2 when the user pulls. The sort is user-pulled — there is no Claude-side gate here.
+Reached from **B** step 2 when the user asks to lay it out. The sort is user-requested — there is no Claude-side gate here.
 
 → Load **[harvest.md](harvest.md)** and follow its instructions as written. It owns its own confirmation and returns an outcome:
 

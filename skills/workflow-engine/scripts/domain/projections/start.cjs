@@ -110,7 +110,7 @@ function roadmapMenuRow(detail) {
   if (!detail.roadmap.exists) return null;
   const label = detail.roadmap.active_session !== null
     ? 'Resume the product session — *roadmap, in progress*'
-    : 'Roadmap — the product conversation, the map, or pull a slice';
+    : 'Open the product roadmap';
   return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap open', label };
 }
 
