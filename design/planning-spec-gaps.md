@@ -286,30 +286,38 @@ review after the bar change. Measure:
 
 ## The stack
 
-0. **This design doc** — standalone, merges last.
+0. **This design doc** (#1224) — standalone, merges last.
 
-1. **Engine** — the derived `specUnsettled` predicate; the
+1. **Engine** (#1225) — the derived `specUnsettled` predicate; the
    `specification` wait for planning in `waits()` and the wait gate's
    clause; `topic start`/`reopen planning` refusals; the entry gate's
    planning arm widened; `computeNextPhase` reusing the predicate; the
-   epic menu's planning rows carrying `blocked` and the reason;
-   `render wait-gate` and `render phase-paused` accepting `planning`.
-   Tests, goldens, simulation permutations.
+   epic menu's planning rows withheld while held, the tree tagged and
+   cued; `render wait-gate` and `render phase-paused` accepting
+   `planning`. Tests, goldens, simulation permutations.
 
-2. **Planning prose** — `resolve-spec-gap.md` (the three tiers at
-   planning) loaded from task design, task authoring, and the review
-   walk's dispose; the planning agents' `## Spec Defects` sections;
-   the shared landing reference extracted from the incoherence flow's
-   §C, loaded by both phases; `correcting-historical-artifacts.md`'s
-   gate and `{correcting_phase}` widened; `triage-landing.md` taking
-   `planning` as an origin; `conclude-plan.md` completing before it
+2. **Shared references** (#1226) — the landing extracted from the
+   incoherence flow's §C into `landing-a-resolution.md`, loaded by
+   both phases, the held-document response staying with each caller;
+   `correcting-historical-artifacts.md`'s gate and
+   `{correcting_phase}` widened to planning; `triage-landing.md`
+   taking `planning` as an origin.
+
+3. **Planning prose** (#1227) — `resolve-spec-gap.md` (the three tiers
+   at planning) loaded from phase design, task design, task authoring,
+   and the review walk's dispose; the planning agents' `## Spec
+   Defects` sections, the shape pinned in `read-specification.md`;
+   `conclude-plan.md` meeting the wait gate and completing before it
    re-stamps the baseline; `[needs-info]` retired across every
-   surface; `CLAUDE.md` phase 8; `docs/`.
+   surface, the output-format contract losing Flagging; `CLAUDE.md`
+   phase 8; `docs/planning.md`.
 
-3. **Spec-review recall** — the three review agents' Observation bar
-   and `review-tracking-format.md`; the claims agent's cited-mechanism
-   read and its dispatch's imports input.
+4. **Spec-review recall** (#1228) — the three review agents' Observation
+   bar and `review-tracking-format.md`; the claims agent's
+   cited-mechanism read and its dispatch's imports input.
 
-4. **Prose cases** — planning settling a tier-1 gap, landing a tier-2
-   decision, and pausing on tier 3; the entry block and the conclusion
-   refusal over an unsettled specification; the §C cases re-pinned.
+5. **Prose cases** (#1229) — planning settling a tier-1 gap, landing a
+   tier-2 decision, and pausing on tier 3; the entry block over an
+   unsettled specification; the conclusion meeting an empty wait gate
+   and completing before the re-stamp; the §C cases re-pinned; the
+   planning cases' conclusion order re-pinned.
