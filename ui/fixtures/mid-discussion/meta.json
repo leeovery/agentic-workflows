@@ -1,0 +1,8 @@
+{
+  "productVersion": "v0.7.13",
+  "recordedAt": "2026-08-26T22:25:25.912Z",
+  "width": 65,
+  "entryPrompt": "/workflow-start",
+  "description": "Feature discussion in flight: rate-limiting; per-host scope decided; background review returned 2 ask-lane findings; 'Work through them now?' gate pending",
+  "moments": []
+}

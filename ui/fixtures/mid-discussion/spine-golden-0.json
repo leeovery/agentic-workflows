@@ -1,0 +1,195 @@
+{
+  "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+  "events": [
+    {
+      "id": "2c1fdc292b1bf3ed",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:07:22+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "3778c45f11512232a9b16779753641d5b67216de",
+        "subject": "chore: project baseline (product installed)",
+        "scope": [
+          "manifest.json"
+        ]
+      }
+    },
+    {
+      "id": "cb11c728c37945cd",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:07:22+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "68156ac75fcad1e65fcf1dd0d08476fe7a58e559",
+        "subject": "chore(knowledge): initialise store",
+        "scope": []
+      }
+    },
+    {
+      "id": "01866080a51514fd",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:11:36+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "08c4325a5317bb2573b0a96b891a553e04dd7f30",
+        "subject": "chore: apply workflow migrations",
+        "scope": []
+      }
+    },
+    {
+      "id": "b047b74b05f37569",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:14:53+01:00",
+      "project": "mid-discussion",
+      "type": "workunit.created",
+      "address": {
+        "workUnit": "rate-limiting"
+      },
+      "payload": {
+        "workType": "feature",
+        "name": "rate-limiting"
+      }
+    },
+    {
+      "id": "c380fc3e5db0f7b2",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:14:53+01:00",
+      "project": "mid-discussion",
+      "type": "artifact.updated",
+      "address": {
+        "workUnit": "rate-limiting"
+      },
+      "payload": {
+        "path": "rate-limiting/discovery/sessions/session-001.md",
+        "hash": "89b526c3ed8beacd123554a14c1f97f2b977553a"
+      }
+    },
+    {
+      "id": "ab2e0611919db740",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:14:53+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "12db6ae763de4a1c7b58d582a6d65e06094d1262",
+        "subject": "discovery(rate-limiting): create work unit (feature)",
+        "scope": [
+          "manifest.json",
+          "rate-limiting"
+        ]
+      }
+    },
+    {
+      "id": "08db533b7988d9e3",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:15:35+01:00",
+      "project": "mid-discussion",
+      "type": "artifact.updated",
+      "address": {
+        "workUnit": "rate-limiting"
+      },
+      "payload": {
+        "path": "rate-limiting/discovery/sessions/session-001.md",
+        "hash": "cd245a6ba7797ee4b903eac7252c4e354b7a3b09"
+      }
+    },
+    {
+      "id": "9a17a3eaadc7a544",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:15:35+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "ee65aba805b031ca2a3c5c34e1f18d092ab92783",
+        "subject": "discovery(rate-limiting): finalise session log",
+        "scope": [
+          "rate-limiting"
+        ]
+      }
+    },
+    {
+      "id": "0978eded3df35d28",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:18:30+01:00",
+      "project": "mid-discussion",
+      "type": "phase.item-changed",
+      "address": {
+        "workUnit": "rate-limiting",
+        "topic": "rate-limiting",
+        "phase": "discussion"
+      },
+      "payload": {
+        "phase": "discussion",
+        "topic": "rate-limiting",
+        "from": "none",
+        "to": "in-progress"
+      }
+    },
+    {
+      "id": "0747c2a21546852a",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:18:30+01:00",
+      "project": "mid-discussion",
+      "type": "artifact.updated",
+      "address": {
+        "workUnit": "rate-limiting"
+      },
+      "payload": {
+        "path": "rate-limiting/discussion/rate-limiting.md",
+        "hash": "18ef4255e15aef4d09b200234a2ebb76d8e35778"
+      }
+    },
+    {
+      "id": "7e15b9c1b9a9dcbb",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:18:30+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "f2d06c6995dd6b5524ac5f85502578c3c36deb99",
+        "subject": "discussion(rate-limiting): initialize rate-limiting discussion",
+        "scope": [
+          "rate-limiting"
+        ]
+      }
+    },
+    {
+      "id": "cb3e00a63cd8fb37",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:20:31+01:00",
+      "project": "mid-discussion",
+      "type": "artifact.updated",
+      "address": {
+        "workUnit": "rate-limiting"
+      },
+      "payload": {
+        "path": "rate-limiting/discussion/rate-limiting.md",
+        "hash": "2ad7172c7f88e03467bb2a201e81d80f7c867f68"
+      }
+    },
+    {
+      "id": "c6b945f172ae57cc",
+      "epoch": "8ce35b9dd03fd39ebb1c1e40894461e3",
+      "ts": "2026-08-26T23:20:31+01:00",
+      "project": "mid-discussion",
+      "type": "commit.landed",
+      "address": {},
+      "payload": {
+        "sha": "2caaad5c63daeabe912af4341b89ceb463fb8f9a",
+        "subject": "discussion(rate-limiting/rate-limiting): decided per-host limiter scope",
+        "scope": [
+          "rate-limiting"
+        ]
+      }
+    }
+  ]
+}

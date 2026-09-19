@@ -1,0 +1,52 @@
+// Bridge config file schema — phase-0 §5 (packaging, discovery, config).
+import { z } from 'zod';
+
+export const ProjectConfig = z.object({
+  // Absolute path to the project root (the directory containing .workflows/).
+  root: z.string(),
+  // Engine discovery override; default is
+  // <root>/.claude/skills/workflow-engine/scripts/ (phase-0 §5).
+  enginePath: z.string().optional(),
+});
+export type ProjectConfig = z.infer<typeof ProjectConfig>;
+
+export const NotificationConfig = z.object({
+  enabled: z.boolean().default(true),
+  // Quiet hours per spec 5 — pushes accrue and fire as one morning roll-up.
+  quietHours: z
+    .object({ start: z.string().default('22:00'), end: z.string().default('08:00') })
+    .default({ start: '22:00', end: '08:00' }),
+  escalationMinutes: z.number().int().positive().default(15),
+  rollupMinutes: z.number().int().positive().default(10),
+  // Spec 5: the pinned morning hour for the daily digest / overnight roll-up.
+  morningHour: z.number().int().min(0).max(23).default(8),
+  // Spec 5: T_stuck (owner-unresponsive) and T_grace (navigation grace) —
+  // consumed from Phase 6, pinned here with the rest of the attention knobs.
+  stuckHours: z.number().int().positive().default(24),
+  graceMinutes: z.number().int().positive().default(5),
+});
+
+// Phase 6 auth. `single` (default) is zero-config — every request is the Phase 0
+// sentinel human, the bearer token is the whole trust boundary. `github` layers
+// identity on top: a human authenticates as a GitHub login, and membership =
+// push access to the origin repo, checked at login and cached per auth session.
+export const AuthConfig = z.object({
+  mode: z.enum(['single', 'github']).default('single'),
+  // owner/repo of the origin whose push-access defines membership (github mode).
+  repo: z.string().optional(),
+  // GitHub API base — overridable for Enterprise; never carries a token.
+  apiBase: z.string().default('https://api.github.com'),
+});
+export type AuthConfig = z.infer<typeof AuthConfig>;
+
+export const BridgeConfig = z.object({
+  projects: z.array(ProjectConfig).default([]),
+  // Every engine invocation pins this width — renders are terminal-width-sensitive.
+  displayWidth: z.number().int().positive().default(65),
+  notifications: NotificationConfig.default({}),
+  port: z.number().int().positive().default(4870),
+  // Daily session cost budget warning, USD (spec 2 lifecycle rules).
+  dailyBudgetUsd: z.number().positive().optional(),
+  auth: AuthConfig.default({}),
+});
+export type BridgeConfig = z.infer<typeof BridgeConfig>;

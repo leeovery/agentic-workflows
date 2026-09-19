@@ -1,0 +1,6 @@
+=== MENU: task approval (emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===
+· · · · · · · · · · · ·
+**`◆ Approve this task?`**
+
+**`y/yes`** → Approve and run it
+**`s/skip`** → Skip it

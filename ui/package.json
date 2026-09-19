@@ -1,0 +1,15 @@
+{
+  "name": "workflow-bridge-ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Web UI for the agentic-workflows process — monorepo root. See ui/plans/ for the plan set.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "bridge": "pnpm --filter @workflow-ui/bridge start",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
