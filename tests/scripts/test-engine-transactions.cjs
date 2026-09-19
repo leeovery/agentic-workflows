@@ -2656,7 +2656,7 @@ describe('a plan is held while its specification is unsettled', () => {
   it('the birth refuses over a specification still in motion, naming what holds it and the way in', () => {
     withSpec({ status: 'completed', sources: { 'refund-policy': { status: 'stale' } } });
     const err = engineFails(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']);
-    assert.strictEqual(err.error, 'planning can\'t start on "refund-policy" — its specification is unsettled (a source is no longer incorporated (refund-policy)); a plan is built from a settled record, so the specification\'s entry is the way in');
+    assert.strictEqual(err.error, 'planning can\'t start on "refund-policy" — its specification is unsettled (a source has moved beneath the extraction (refund-policy)); a plan is built from a settled record, so the specification\'s entry is the way in');
     assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined, 'a refusal creates nothing');
   });
 

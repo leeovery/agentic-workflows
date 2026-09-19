@@ -29,7 +29,6 @@ const {
   reactivateLockPhrases,
   deliveryStarted,
   specUnsettled,
-  specUnsettledPhrase,
   OPEN_SOURCE_STATUSES,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
@@ -125,7 +124,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} action  `start_specification` | `start_planning` | `start_implementation` | `start_review`
  * @property {string} label
  * @property {boolean} [blocked]
- * @property {string} [blocked_reason]  why a start is held — an unsettled specification
  * @property {DepBlocking[]} [deps_blocking]
  */
 
@@ -542,10 +540,9 @@ function epicDetail(cwd, manifest) {
   const planTopics = new Set(planItems.filter(live).map(i => i.name));
   for (const s of specItems) {
     if (s.status === 'completed' && !planTopics.has(s.name)) {
-      const unsettled = specUnsettled(manifest, s.name);
       nextPhaseReady.push({
         name: s.name, action: 'start_planning', label: 'spec completed',
-        ...(unsettled ? { blocked: true, blocked_reason: specUnsettledPhrase(unsettled) } : {}),
+        ...(specUnsettled(manifest, s.name) ? { blocked: true } : {}),
       });
     }
   }

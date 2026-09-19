@@ -19,15 +19,18 @@ const { specUnsettledPhrase } = require('../derivations.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
-// What the gate calls the item it holds. A plan is a plan — the copy would
-// otherwise read "this planning", and only the conversations are named by
-// their phase.
-/** @type {Record<string, string>} */
-const HOLDER_NOUN = { planning: 'plan' };
+// How the gate speaks about the item it holds: what it calls it, and how the
+// keep row names staying put. Only planning departs from the conversations —
+// a plan is a plan, not "this planning", and it is kept rather than kept
+// going, because nobody is talking.
+/** @type {Record<string, {noun: string, keep: string}>} */
+const HOLDER_COPY = {
+  planning: { noun: 'plan', keep: 'Keep planning here' },
+};
 
 /** @param {string} phase */
-function holderNoun(phase) {
-  return HOLDER_NOUN[phase] || phase;
+function holderCopy(phase) {
+  return HOLDER_COPY[phase] || { noun: phase, keep: 'Keep the conversation going' };
 }
 
 // Where the awaited research stands, in the gates' voice — the wait gate and
@@ -68,7 +71,7 @@ function owedWaits(waits, researchSubject) {
  * @returns {string}
  */
 function waitGate(phase, topic, waits, epic) {
-  const noun = holderNoun(phase);
+  const { noun, keep } = holderCopy(phase);
   const research = waits.find((w) => w.kind === 'research');
   const spec = waits.find((w) => w.kind === 'specification');
   const ids = experimentIds(waits);
@@ -106,7 +109,7 @@ function waitGate(phase, topic, waits, epic) {
       cmdOption('y', 'yes', epic
         ? `Pause this ${noun} here and return to the epic menu with ${queued.join(' and ')} queued`
         : `Pause this ${noun} here and continue the work unit at ${queued.join(' and ')}`),
-      cmdOption('k', 'keep', `Keep the conversation going — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
+      cmdOption('k', 'keep', `${keep} — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
     ], { question: epic ? 'Pause to the menu?' : 'Pause here?' })),
   ].join('\n');
 }

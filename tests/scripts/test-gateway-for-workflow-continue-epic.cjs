@@ -532,7 +532,6 @@ describe('workflow-continue-epic discovery', () => {
       const auth = d.next_phase_ready.find(n => n.name === 'auth');
       const billing = d.next_phase_ready.find(n => n.name === 'billing');
       assert.strictEqual(auth.blocked, true);
-      assert.strictEqual(auth.blocked_reason, 'a source is no longer incorporated (talks)');
       assert.strictEqual(billing.blocked, undefined);
       assert.strictEqual(d.gating.can_start_planning, true, 'one settled specification opens the gate');
     });

@@ -2288,9 +2288,9 @@ describe('pipeline simulation', () => {
     // Every planning surface holds: the conclusion, the entry, an unborn
     // plan's birth, and the epic menu's rows.
     sim.refuses(['topic', 'complete', wu, 'planning', 'billing'],
-      /^planning "billing" awaits its specification \(a source is no longer incorporated \(billing\), its own input moved\) — settle the specification to release the wait$/);
+      /^planning "billing" awaits its specification \(a source has moved beneath the extraction \(billing\), its own input moved\) — settle the specification to release the wait$/);
     sim.refuses(['topic', 'start', wu, 'planning', 'fees'],
-      /^planning can't start on "fees" — its specification is unsettled \(a source is no longer incorporated \(fees\), its own input moved\); a plan is built from a settled record, so the specification's entry is the way in$/);
+      /^planning can't start on "fees" — its specification is unsettled \(a source has moved beneath the extraction \(fees\), its own input moved\); a plan is built from a settled record, so the specification's entry is the way in$/);
     assert.match(sim.render(['entry-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /Entry blocked — the specification for "Billing" is unsettled/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys

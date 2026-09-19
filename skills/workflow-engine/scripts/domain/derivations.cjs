@@ -79,16 +79,18 @@ function sourceRow(sources, topic) {
 }
 
 /**
- * A spec item's source rows that are not yet incorporated — `pending` (never
- * extracted) and `stale` (the document moved under the extraction). The one
- * read behind the completion refusal and the unsettled predicate.
+ * A spec item's source rows that are not yet incorporated, each with its own
+ * status — the two classes say different things: `pending` was never
+ * extracted (a source the gap exit added, or one mid-extraction), `stale`
+ * was extracted and the document moved beneath it. The one read behind the
+ * completion refusal and the unsettled predicate.
  * @param {{sources?: object|Array<{name?: string}>}|undefined} item
- * @returns {string[]}
+ * @returns {{name: string, status: string|undefined}[]}
  */
 function openSources(item) {
   return sourceRows(item && item.sources)
     .filter(([, r]) => r.status !== 'incorporated')
-    .map(([name]) => name);
+    .map(([name, r]) => ({ name, status: r.status }));
 }
 
 // Discussion statuses that hold shut every specification sourcing them: a
@@ -184,7 +186,7 @@ function specGroupsSources(item) {
  * @typedef {object} SpecUnsettled
  * @property {string|null} status     the specification item's own status
  * @property {boolean} flagged        it carries a live reconcile flag
- * @property {string[]} open_sources  source rows that are not `incorporated`
+ * @property {{name: string, status: string|undefined}[]} open_sources  source rows that are not `incorporated`
  */
 
 /**
@@ -216,17 +218,29 @@ function specUnsettled(manifest, topic) {
 
 /**
  * Where an unsettled specification stands, one clause per reason that holds,
- * in the order the record moves through them. The one phrasing the entry
- * gate, the birth and reopen refusals, the conclusion wait, and the menu
- * row's reason compose from, so no two surfaces can name it differently.
+ * in the order the record moves through them — the open source rows split
+ * by class, because never extracted and extracted-then-moved are different
+ * facts about the document. The one phrasing the entry gate, the birth and
+ * reopen refusals, and the conclusion wait compose from, so no two surfaces
+ * can name it differently.
  * @param {SpecUnsettled} unsettled
  * @returns {string}
  */
+// The two classes of open source row, in the order the record moves through
+// them, each with its singular and plural voice. `stale` is the one named
+// status: anything else — `pending`, or a row carrying none — has never been
+// extracted, which is what the first clause says.
+const OPEN_ROW_CLAUSES = [
+  { stale: false, one: 'a source is not yet extracted', many: 'sources are not yet extracted' },
+  { stale: true, one: 'a source has moved beneath the extraction', many: 'sources have moved beneath the extraction' },
+];
+
 function specUnsettledPhrase({ status, flagged, open_sources }) {
   const reasons = [];
   if (status !== 'completed') reasons.push(status === 'in-progress' ? 'back in progress' : 'not concluded');
-  if (open_sources.length > 0) {
-    reasons.push(`${open_sources.length === 1 ? 'a source is' : 'sources are'} no longer incorporated (${open_sources.join(', ')})`);
+  for (const { stale, one, many } of OPEN_ROW_CLAUSES) {
+    const names = open_sources.filter((r) => (r.status === 'stale') === stale).map((r) => r.name);
+    if (names.length > 0) reasons.push(`${names.length === 1 ? one : many} (${names.join(', ')})`);
   }
   if (flagged) reasons.push('its own input moved');
   return reasons.join(', ');

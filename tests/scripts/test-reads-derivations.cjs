@@ -1703,7 +1703,7 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', reconcile_needed: 'discussion' }), 'auth'),
         { status: 'completed', flagged: true, open_sources: [] });
       assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', sources: { talks: { status: 'stale' }, roles: { status: 'incorporated' }, pay: { status: 'pending' } } }), 'auth'),
-        { status: 'completed', flagged: false, open_sources: ['talks', 'pay'] });
+        { status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }, { name: 'pay', status: 'pending' }] });
       assert.deepStrictEqual(specUnsettled(unit({ status: 'proposed' }), 'auth'),
         { status: 'proposed', flagged: false, open_sources: [] });
       assert.deepStrictEqual(specUnsettled(unit({}), 'auth'),
@@ -1719,9 +1719,11 @@ describe('reads + derivations', () => {
         'another topic\'s specification holds nothing');
     });
 
-    it('openSources decodes both source forms and keeps every row that is not incorporated', () => {
-      assert.deepStrictEqual(openSources({ sources: { a: { status: 'incorporated' }, b: { status: 'stale' } } }), ['b']);
-      assert.deepStrictEqual(openSources({ sources: [{ name: 'a', status: 'pending' }] }), ['a']);
+    it('openSources decodes both source forms and keeps every row that is not incorporated, with its class', () => {
+      assert.deepStrictEqual(openSources({ sources: { a: { status: 'incorporated' }, b: { status: 'stale' } } }),
+        [{ name: 'b', status: 'stale' }]);
+      assert.deepStrictEqual(openSources({ sources: [{ name: 'a', status: 'pending' }] }),
+        [{ name: 'a', status: 'pending' }]);
       assert.deepStrictEqual(openSources(undefined), []);
     });
 
@@ -1729,10 +1731,19 @@ describe('reads + derivations', () => {
       assert.strictEqual(specUnsettledPhrase({ status: 'in-progress', flagged: false, open_sources: [] }), 'back in progress');
       assert.strictEqual(specUnsettledPhrase({ status: 'proposed', flagged: false, open_sources: [] }), 'not concluded');
       assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: true, open_sources: [] }), 'its own input moved');
-      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: ['talks'] }),
-        'a source is no longer incorporated (talks)');
-      assert.strictEqual(specUnsettledPhrase({ status: 'in-progress', flagged: true, open_sources: ['talks', 'roles'] }),
-        'back in progress, sources are no longer incorporated (talks, roles), its own input moved');
+      // Never extracted and extracted-then-moved are different facts, so
+      // each class takes its own clause, pending before stale.
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }),
+        'a source has moved beneath the extraction (talks)');
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'pending' }] }),
+        'a source is not yet extracted (talks)');
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: undefined }] }),
+        'a source is not yet extracted (talks)', 'a row with no status has never been extracted');
+      assert.strictEqual(specUnsettledPhrase({
+        status: 'in-progress',
+        flagged: true,
+        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'pending' }, { name: 'pay', status: 'stale' }],
+      }), 'back in progress, a source is not yet extracted (roles), sources have moved beneath the extraction (talks, pay), its own input moved');
     });
   });
 
@@ -1813,7 +1824,7 @@ describe('reads + derivations', () => {
         },
       });
       assert.deepStrictEqual(waits(plan({ status: 'completed', sources: { talks: { status: 'stale' } } }), 'planning', 'auth'),
-        [{ kind: 'specification', status: 'completed', flagged: false, open_sources: ['talks'] }]);
+        [{ kind: 'specification', status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }]);
       assert.deepStrictEqual(waits(plan({ status: 'in-progress' }), 'planning', 'auth'),
         [{ kind: 'specification', status: 'in-progress', flagged: false, open_sources: [] }]);
       assert.deepStrictEqual(waits(plan({ status: 'completed' }), 'planning', 'auth'), []);

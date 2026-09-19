@@ -4090,8 +4090,9 @@ function entryGate(cwd, { dotpath, own }) {
       );
     }
     // A specification reading `completed` can still be a record in motion —
-    // its input moved, or a source row is no longer incorporated — and a
-    // plan built from one is built from a document about to change.
+    // its input moved, or a source row is not yet extracted or has moved
+    // beneath the extraction — and a plan built from one is built from a
+    // document about to change.
     const unsettled = specUnsettled(manifest, topic);
     if (unsettled) {
       return blocker(

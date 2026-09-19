@@ -508,10 +508,10 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
       },
     });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.planning.billing' });
-    assert.match(out, /⚑ Conclusion blocked — this plan awaits its specification \(a source is no longer incorporated \(talks\)\)\n/);
+    assert.match(out, /⚑ Conclusion blocked — this plan awaits its specification \(a source has moved beneath the extraction \(talks\)\)\n/);
     assert.match(out, /> Settle the specification first — concluding it releases its wait; this plan can conclude once the specification lands\. The epic menu carries the way in\.\n/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this plan here and return to the epic menu with the specification queued/);
-    assert.match(unwrap(out), /conclusion stays blocked until the specification lands/);
+    assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep planning here — conclusion stays blocked until the specification lands/);
   });
 
   it('a settled specification holds nothing — the plan\'s gate is empty', () => {
@@ -4282,7 +4282,7 @@ describe('render entry-gate', () => {
       /⚑ Entry blocked — the specification for "Auth" is unsettled \(its own input moved\)[\s\S]*Continue the work unit — the specification is its next step\./);
     manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'stale' }, roles: { status: 'pending' } } } } } });
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),
-      /unsettled \(sources are no longer incorporated \(talks, roles\)\)/);
+      /unsettled \(a source is not yet extracted \(roles\), a source has moved beneath the extraction \(talks\)\)/);
     // An epic's way back is its menu's specification row, never a next step.
     manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'stale' } } } } } }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),

@@ -932,7 +932,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
     if (phase === 'specification') {
-      const blocking = openSources(item);
+      const blocking = openSources(item).map((r) => r.name);
       if (blocking.length > 0) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
       }
