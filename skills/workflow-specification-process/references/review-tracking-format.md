@@ -26,7 +26,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 **Source**: [Where this came from — file/section reference, "Specification analysis" for Gap Analysis, or "Tree measurement — `{command}`" for Claims Verification]
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Contradiction | Duplication | Source defect | Unsourced decision
-**Move**: settled | decide | choice | route
+**Move**: settled | choice | route
 **Priority**: [Gap Analysis only — Critical | Important. Omit for Claims Verification and Input Review.]
 **Affects**: [Which section(s) of the specification]
 
@@ -34,10 +34,10 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [What is wrong, in the terms the reader cares about — the product, the end result. Not the analysis that found it.]
 
 **Proposal**:
-[Moves `settled` and `decide` — the call and what determined it, in a sentence or two; a `decide` also names the alternatives that fit the record. Omit for `choice` and `route`.]
+[Move `settled` — the call and what determined it, in a sentence or two; a call the record does not itself determine also names what leaned and the alternatives that fit. Omit for `choice` and `route`.]
 
 **Options**:
-[Move `choice` only — one line per option, "(recommended)" on at most one. Omit for `settled`, `decide`, and `route`.]
+[Move `choice` only — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.]
 
 **Evidence**:
 [Claims Verification only — the claim verbatim, the command, and its output; for a Source defect, which source document and section carries the claim. Omit for Input Review and Gap Analysis.]
@@ -46,7 +46,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [For findings that modify existing content (Enhancement, Duplication, Contradiction) — the existing specification content that will be modified. A Contradiction's Current holds only the passage being corrected; the colliding reading is named in the Problem with its section. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
 
 **Proposed Text**:
-[The exact wording that lands in the specification — Moves `settled` and `decide`. Move `route` leaves it blank permanently: the fix belongs to the source record]
+[The exact wording that lands in the specification — Move `settled`. Move `route` leaves it blank permanently: the fix belongs to the source record]
 
 **Resolution**: Pending | Approved | Adjusted | Declined | Routed
 **Notes**: [Any discussion notes or adjustments made]
@@ -61,26 +61,25 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 - [One line each — a point below the floor, or one minor enough that landing it would only be polish. Never walked, never counted.]
 ```
 
-Some tracking files name the **Proposed Text** field **Proposed Change** or **Proposed Addition** — read all three as the same field. Older files write a `Skipped` resolution — read it as `Declined`.
+Some tracking files name the **Proposed Text** field **Proposed Change** or **Proposed Addition** — read all three as the same field. Older files write a `Skipped` resolution — read it as `Declined` — and a `decide` Move — read it as `settled`, the call made and its provenance named.
 
-`Declined` records a finding left as-is with the reason in Notes: the outcome of the gate's Discuss or Comment exchange, or a point declined at dispose — a mechanism, boundary, or format detail that is the builder's, or a preference no side of which costs the user, so the specification states no rule for it and the reviewer should not have written it as a finding at all. It is never offered as a menu row — a decline without a stated reason is a skip whatever it is called.
+`Declined` records a finding left as-is with the reason in Notes: the outcome of the batch's Discuss or the choice menu's Comment exchange, a gap parked on the roadmap as beyond this specification's scope, or a point declined at dispose — a mechanism, boundary, or format detail that is the builder's, or a preference no side of which costs the user, so the specification states no rule for it and the reviewer should not have written it as a finding at all. It is never offered as a menu row — a decline without a stated reason is a skip whatever it is called.
 
 ## The Move
 
 The move is what the reader has to do about the finding, and it alone decides how the finding is presented. Category describes what the reviewer found; it never picks the shape.
 
-- **settled** — a source document states the answer, or the record uniquely determines it — arithmetic from recorded numbers, a decided event whose consequence follows with no alternative. Where more than one answer is consistent with the record, nobody has decided: analogy to a neighbouring rule, precedent, the treatment a sibling case already takes, and first principles are consistency, not determination. The finding carries the call and what determined it; `auto` applies it without a stop.
-- **decide** — the fork is product-level — what the product's user gets or how it behaves — and more than one answer fits the record. The reviewer makes the call, names what leaned, and names the alternatives that also fit; the finding carries a Proposal and Proposed Text as a `settled` one does. It never rides `auto`.
-- **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the sources determine is `settled`, a point they are silent on that a measurement or sibling artifact pins is `route`, and a product-level fork the record leaves open that the reviewer can stand behind is `decide`. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
+- **settled** — a source document states the answer; the record uniquely determines it (arithmetic from recorded numbers, a decided event whose consequence follows with no alternative); first principles over the decisions the record made whittle the fork to one answer the reviewer stands behind; or, among the answers that clear the finding's floor, several serve the user equally and the reviewer picks the most appropriate — a fork no side of which costs the user clears no floor and is not a finding. The finding carries the call and what determined it, and a call the record does not itself determine also names what leaned and the alternatives that also fit — the provenance of a decision the record never made. A fork with one live side — a side no informed user would choose — is `settled`, the derivation naming why the other side is dead.
+- **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the record determines, and any fork first principles over it whittle to one answer, is `settled`; a point the sources are silent on that a measurement or sibling artifact pins is `route`. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
 - **route** — the ground belongs to a source document, not this specification. It goes back to the document that owns it.
 
-A `decide` is presented in a batch: a screen of at most five, each row the call and what leaned, scanned for a veto, with any one of them expandable or pulled out for its own exchange. What survives lands twice — in the source document that owns the decision, as a decision that document never made, and then in the specification. A decision nobody made is never applied out of the user's sight, and `auto` never covers one. One that lands records as `Routed`, its Notes naming the document the decision went to and the specification content re-aligned to it.
+Settled findings render together: screens of at most five when the gate is on, each row the call and what leaned, landing on one confirmation, with any one of them expandable or pulled out for its own exchange; under `auto` the same screen documents what landed and never stops. A call the source document never made lands twice — first in that document, as a decision it never took, then in the specification — and records `Routed`, its Notes naming the document. A `choice` walks on its own after the batches, and its pick lands the same two places — the owning document first, then the specification — recording `Routed`.
 
 **Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. It is not written as a finding; at most it is an Observation.
 
 `## Observations` holds what is below the finding floor — a point that names no failure for the product's user, and anything minor enough that landing it would only be polish. One line each, at the end of the tracking file. Observations are never walked, never counted, and never re-raised by a later gap-analysis pass; they ride only a file that carries findings.
 
-The reviewer proposes the move; the orchestrator disposes it against the live session before the finding renders, in both directions, on a derivation written into the finding — a `settled` call the record does not determine becomes a `decide`, and one the session cannot itself stand behind becomes a `choice` and takes the bar; a `choice` below the bar becomes `decide`, `settled`, or `route`, or is declined outright — Resolution `Declined`, the Move left as staged — its derivation recorded (**[process-review-findings.md](process-review-findings.md)**). A choice that names no search is re-derived from scratch.
+The reviewer proposes the move; the orchestrator disposes every finding against the live session before anything renders, in both directions, on a derivation written into the finding — a `settled` call the session cannot itself stand behind becomes a `choice` and takes the bar; a `choice` below the bar becomes `settled` or `route`, or is declined outright — Resolution `Declined`, the Move left as staged — its derivation recorded (**[process-review-findings.md](process-review-findings.md)**). A choice that names no search is re-derived from scratch.
 
 Two categories always take the `route` move, and their findings are never applied, adjusted, or presented at the gate — the orchestrator routes them per [resolve-source-incoherence.md](resolve-source-incoherence.md), and the resolution lands as `Routed`:
 
@@ -92,11 +91,11 @@ Two categories always take the `route` move, and their findings are never applie
 1. Complete your analysis and create the tracking file with all findings
 2. Commit the tracking file — ensures it survives context refresh
 3. Present the summary to the user (from the tracking file)
-4. Work through items one at a time:
-   - A `route` finding routes per **[process-review-findings.md](process-review-findings.md)** — Resolution `Routed`, never presented at the gate
-   - A finding the dispose declines — Resolution `Declined` with its reason, never presented at the gate
-   - A `decide` finding is held for the batch at **C** of **[process-review-findings.md](process-review-findings.md)** — never presented one at a time
-   - Every other item: present it by its move, discuss and refine, get approval, log to specification
+4. Dispose every finding, then work each move per **[process-review-findings.md](process-review-findings.md)**:
+   - A finding the dispose declines — Resolution `Declined` with its reason, never presented
+   - Every `settled` finding lands from the batch — screens of at most five when the gate is on, documented without a stop under `auto`
+   - A `choice` is walked on its own after the batches: presented, discussed, the pick landed in the owning document first and then in the specification — Resolution `Routed`
+   - A `route` finding goes back to the document that owns it — Resolution `Routed`, never presented at a gate
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
 

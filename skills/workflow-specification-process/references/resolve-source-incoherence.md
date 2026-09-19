@@ -1,12 +1,12 @@
 # Resolve Source Incoherence
 
-*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) and [process-review-findings.md](process-review-findings.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption — and by the review walk's decide batch to land a call the session made.*
+*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) and [process-review-findings.md](process-review-findings.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption — and by the review walk to land a settled call or a pick the user made.*
 
 ---
 
-Specification makes decisions clear; it never makes them — and classification is yours. `{lane}` is the calling flow's lane — `construction` from spec construction, `review` from the findings walk — set by the caller's Load directive; its gate mode field (`construction_gate_mode` / `finding_gate_mode`) is the one every auto check here reads. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session. A caller routing a review finding also names its `category`; construction, which routes material rather than a finding, and the decide batch, which lands a resolution already made, name none.
+Specification makes decisions clear; it never makes them — and classification is yours. `{lane}` is the calling flow's lane — `construction` from spec construction, `review` from the findings walk — set by the caller's Load directive; its gate mode field (`construction_gate_mode` / `finding_gate_mode`) is the one every auto check here reads. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session. A caller routing a review finding also names its `category`; construction, which routes material rather than a finding, and a caller whose resolution is already made name none.
 
-The moves, by effort — and derivation is exhausted before any stop: context, logic, sibling artifacts, measurement. What the record yields is settled here; a stop is the exception that argues its way in, naming what was searched and where the record ran out. The one thing never derived is product intent — the spec never invents it. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. A point the sources already decide — supersession, a derivable repair of a mismatch — is derived silently: that is the phase doing its job, and it earns no mention and touches no source document. A decision the sources never made but a derivation pins lands in the owning document with a one-line notify. A point only the user can settle stops for a brief exchange and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. A caller arriving with the resolution already settled — the review walk's decide batch — loads this file for **C. Landing a Resolution** directly; every other caller starts at **A. Classify**.
+The moves, by effort — and derivation is exhausted before any stop: context, logic, sibling artifacts, measurement. What the record yields is settled here; a stop is the exception that argues its way in, naming what was searched and where the record ran out. The one thing never derived is product intent — the spec never invents it. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. A point the sources already decide — supersession, a derivable repair of a mismatch — is derived silently: that is the phase doing its job, and it earns no mention and touches no source document. A decision the sources never made but a derivation pins — the record yielding the answer, or first principles over the decisions it records whittling the fork to one answer you stand behind — lands in the owning document with a one-line notify. A point only the user can settle stops for a brief exchange and lands their answer in the owning document. A gap needing real discussion work stops and goes where it will be worked — a source reopened or a topic opened, either pausing the spec until it concludes, or the roadmap, which pauses nothing. A caller arriving with the resolution already settled — the review walk landing a settled call or a pick — loads this file for **C. Landing a Resolution** directly, and a review exchange that has shown the gap needs the room loads **B. The Gap Exit** directly; every other caller starts at **A. Classify**.
 
 ## A. Classify
 
@@ -84,9 +84,9 @@ The material is unclear, or silent on a point a direct answer fills, and nothing
 
 Attempt the derivation first — constraints, sibling artifacts, measurement.
 
-**If a defensible derivation settles it** — the record yields the answer (a technical parameter the sources never pinned, derived from the rationale they did record):
+**If a defensible derivation settles it** — the record yields the answer (a technical parameter the sources never pinned, derived from the rationale they did record), or first principles over the decisions the record made whittle the fork to one answer you stand behind:
 
-Tell the user in one line what was derived and from what — no gate. It lands through C's decision-the-document-never-made shape, the derivation as the section's reasoning.
+Tell the user in one line what was derived and from what — where the record does not itself determine the answer, name what leaned and the alternatives that also fit. No gate. It lands through C's decision-the-document-never-made shape, the derivation as the section's reasoning.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the derived decision, carrying its derivation}`, doc = `{the owning source's topic}`.
 
@@ -126,7 +126,7 @@ The specification collapsed while this session held it. Tell the user what happe
 
 #### Otherwise
 
-Raise the gap and its acknowledgement gate — a confirm, not a choice: the gap must be filled, and the gate exists so the stop is seen before anything moves. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "lane": "{lane}", "title": "{what is missing, one line}", "context": "{what the topic needs, what was searched for an answer — context, logic, sibling artifacts, measurement — and where the record ran out}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
+Raise the gap and its acknowledgement gate — a confirm, not a debate: there is no `no` here — the gate exists so the stop is seen before anything moves, and on an epic it settles which of the three homes a gap can have takes it. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "lane": "{lane}", "title": "{what is missing, one line}", "context": "{what the topic needs, what was searched for an answer — context, logic, sibling artifacts, measurement — and where the record ran out}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
@@ -152,9 +152,7 @@ The delivery committed itself.
 
 **If `result` is `cancelled`:**
 
-Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the concern stays with this session — work it through with the user:
-
-→ Return to **A. Classify**.
+Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the concern stays with this session: a caller that entered at **A** works it through with the user (→ Return to **A. Classify**); a caller that entered here takes it back to its own exchange (→ Return to caller).
 
 **If the work type is not `epic`:**
 
@@ -166,11 +164,61 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} 
 
 → Proceed to **D. Pause the Specification**.
 
+**If `topic`:**
+
+Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Where the user has not already named it, propose a kebab-case name derived from the gap and ask them to confirm or rename it.
+
+**STOP.** Wait for user response.
+
+**If the user redirects** — a source should take it after all, or it is not a topic at all:
+
+→ Return to **B. The Gap Exit** (the gate re-renders).
+
+**If the user confirms or names it:**
+
+→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{the confirmed name}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap on the new topic's discussion queue.
+
+On return, read `result`.
+
+**If `result` is `landed`:**
+
+Add `{landed_topic}` to this specification's sources — the `pending` row is what holds the specification shut until that discussion concludes, and what makes construction extract it when the specification resumes:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{landed_topic}.status pending
+```
+
+→ Proceed to **D. Pause the Specification**.
+
+**If `result` is `cancelled`:**
+
+Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the gap stays with this session: a caller that entered at **A** works it through with the user (→ Return to **A. Classify**); a caller that entered here takes it back to its own exchange (→ Return to caller).
+
+**If `roadmap`:**
+
+Offered on an epic alone. The gap is a capability beyond this specification's scope. Ask the user which horizon it belongs to — the release the capability sits in, an existing label or a new one.
+
+**STOP.** Wait for user response.
+
+**If the user redirects** — it should reopen a source or open a topic after all:
+
+→ Return to **B. The Gap Exit** (the gate re-renders).
+
+**If the user names a horizon:**
+
+Park it — `{name}` is a kebab-case capability name derived from the gap; the map is born at the first park, and the verb validates and self-commits:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name:(kebabcase)} --horizon "{horizon}" --summary "{the gap in one line}" --origin park:{work_unit} --source {work_unit}/specification/{topic}/specification.md
+```
+
+Tell the user in one line what was parked and where. Nothing reopens — the roadmap item, sourced to this specification, is the record that the ground is not its to fill; a review caller removes what its finding indicted, construction extracts nothing for it.
+
+→ Proceed to **D. Pause the Specification**.
+
 **If comment:**
 
-The objection is the conversation — work it per the settleable branches.
-
-→ Return to **A. Classify**.
+The objection is the conversation. A caller that entered at **A** works it per the settleable branches (→ Return to **A. Classify**); a caller that entered here takes the objection back to its own exchange (→ Return to caller).
 
 ## C. Landing a Resolution
 
@@ -207,14 +255,20 @@ Each gap gets its own raise, acknowledgement, and landing; the specification pau
 
 → Return to **B. The Gap Exit**.
 
+#### If nothing was routed — every gap this pass raised was parked
+
+The specification continues as it was; a review caller records the finding `Declined` against the roadmap item.
+
+→ Return to caller.
+
 #### Otherwise
 
-An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec, and its entry blocks, until every routed source re-concludes. Commit the session's work:
+An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row — a source mid-extraction, or a topic this exit opened — simply extracts the document when construction resumes. Either way the engine refuses to conclude this spec, and its entry blocks, until every routed topic concludes. Commit the session's work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}" --topic specification/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {the topic it went to}" --topic specification/{topic}
 ```
 
-Tell the user: this specification is blocked until the reopened item(s) re-conclude — name them (`{doc}`, each of them). Do not run document dependencies, review, or conclusion.
+Tell the user: this specification is blocked until the routed work concludes — name every one of them, the sources reopened and the topics opened for a gap alike. Do not run document dependencies, review, or conclusion.
 
 Invoke the work type's navigation skill (Skill tool) so the user lands back on their menu with the reopened work in view: `/workflow-continue-epic {work_unit}` for an epic, `/workflow-continue-feature {work_unit}` for a feature, `/workflow-continue-bugfix {work_unit}` for a bugfix, `/workflow-continue-cross-cutting {work_unit}` for a cross-cutting concern.
