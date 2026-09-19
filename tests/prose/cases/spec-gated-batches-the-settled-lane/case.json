@@ -1,5 +1,5 @@
 {
-  "origin": "Under Opus 5 the gap pass returned a fresh double-digit batch every cycle and every finding was approved — with auto on, an approval is what happens when nothing stops, and the specification grew by rules nobody decided. The record bar cuts `settled` back to what the record determines and gives the rest a lane: a product-level fork more than one answer fits is a `decide`, held out of the per-finding walk, put to the user as one scannable veto batch, and landed in the source document that should own the decision before the specification re-aligns to it. This walks that lane end to end against a finding staged `settled` on an analogy to a neighbouring rule — the derivation shape that used to ride auto straight into the specification — and holds it beside a call the record really does determine, so the dispose has to discriminate rather than blanket-hold.",
+  "origin": "With the gate on, the calls a specification review has made are put to the user together: one screen, at most five rows, each the call and what it rests on, answered once for the lot. The screen is the only gate a settled finding has at the specification, and it carries its own way in — a number expands one finding to its report and its wording without resolving anything, and the screen comes back. This walks that screen end to end in manual mode: three calls read, one expanded, all three approved on one answer, two landing in the specification on the record's own authority and one in the discussion that should own it first. The cycle then ends the way a gated cycle ends — asking whether to run another round rather than taking one.",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -33,30 +33,33 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — how long an order waits for capture confirmation — they see that the delivery schedule they already agreed settles it, and they choose auto, because they do not want to be stopped again for things the record has already decided. They know the discussion cold and treat what it determines as decided, not theirs to re-litigate. Shown a screen of calls made on their behalf, they read it, find the reasoning sound, and approve it as it stands — they pull nothing out to discuss and ask for nothing to be expanded. On an order the gateway never confirms they are clear whenever it comes up: they would not have the checkout cancel an order it cannot show failed, and they are content for a customer to be told the payment is still confirming. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They are careful and unhurried: they want to see what goes into the specification before it goes in, and they turn down any offer to approve things for them from here on — being asked is the point of being here. Shown a screen of three calls made on their behalf, each with what it rests on named beside it, they read it and are satisfied by two of them straight away: the 25-minute wait follows from the delivery schedule they already agreed, and refusing a refund on money that was never taken is not a decision anyone needs to make. The third — what happens to an order the gateway never confirms — is the one they want to see in full before agreeing, exact words and all, because it is the one a customer would notice. Once they have read it they are content with it as written and approve the screen as it stands; they pull nothing out to argue about. Asked whether to run another review round, they say yes — one round that turned up three things is not a round that proves there is nothing left. When the second round comes back with nothing, they are ready to finish, and at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
   "stubs": {
     "spec-review-clean": "when the prose dispatches the claims verification or input review agent via the Task tool (any cycle), and when it dispatches the gap analysis agent for review cycle 2 or later — each returns the content below and writes no file",
-    "spec-gap-settled-and-dressed-fork": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+    "spec-gap-three-settled-calls": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
   },
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "render resume-gate pay.specification.pay",
       "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
       "tracking.review-gap-analysis-tracking-c1 in-progress",
       "render findings-summary pay.specification.pay",
-      "render finding pay.specification.pay",
-      "finding_gate_mode auto",
       "render finding-batch pay.specification.pay",
+      "render finding pay.specification.pay",
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay --kb --sweep",
       "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
       "manifest set pay.specification.pay review_cycle 2",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [
-      "render spec-review-gate",
+      "finding_gate_mode auto",
+      "render convergence-diagnostic",
       "render incoherence-gate",
       "topic reopen",
       "topic triage",
@@ -65,13 +68,15 @@
     ],
     "calls_in_order": [
       "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "render finding-batch pay.specification.pay",
       "render finding pay.specification.pay",
-      "finding_gate_mode auto",
       "render finding-batch pay.specification.pay",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
       "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"
     ]

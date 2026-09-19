@@ -1,5 +1,5 @@
 {
-  "origin": "A preference is not a finding. Where a fork's whole substance is presentational — which of two facts a confirmation names first, both carrying the same content — no side costs the customer anything, nothing in the record leans, and the specification has no rule to state for it: the dispose declines it with its reason, the Move left as staged, and nothing renders. The arm needs its own proof because it is the one path where a finding leaves the walk without reaching the user, and an invariant can pin what ran but never that one more render did not. So the case holds the preference beside a call the record determines, which lands from the settled batch, and a genuine choice, which stops even under auto and lands its pick in the discussion that should own it — and the asserter counts the renders.",
+  "origin": "A specification review makes two kinds of call and they land in different documents. Where a source states the answer or the record determines it, the call is the record's and the specification is the only thing that changes. Where the record leaves a fork open and first principles over the decisions it made whittle it to one answer the session stands behind, the call is the session's — a decision the owning source document never took — so it lands there first, carrying what leaned and the alternatives that also fit, and the specification re-aligns to it. This walks both through the settled batch: a first screen while the gate is on, where the user hands the rest over, and a second under auto, where the screen documents what landed and never stops. The second screen holds the two derivations side by side, so the landing has to discriminate rather than blanket-apply.",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -33,10 +33,11 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. The first thing the review puts to them is a one-row screen of calls made on their behalf — the missing 30-day refund window, with the discussion decision it rests on named beside it — offering to document the screen, to hand every remaining call over automatically, to pull one out and talk about it, or to expand one. They hand the rest over automatically: the discussion already settled that one, and they do not want to be stopped for things the record has decided. If asked how the refund confirmation should be worded — which of the amount and the card comes first — they say it makes no difference to them, either reads fine, and they ask why they are being stopped over it. The failed-webhook retry ceiling is different and they treat it differently: nothing decided how long the checkout keeps waiting, and both ways cost a customer something real. Asked, they reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold a customer's order for a day than lose it — and pick the 24-hour reconciliation option instead. The follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They know the discussion cold and treat what it determines as decided, not theirs to re-litigate. The first thing the review puts to them is a one-row screen of calls made on their behalf, each with what it rests on named beside it, offering to document the screen, to hand every remaining call over automatically, to pull one out and talk about it, or to expand one. They hand the rest over automatically and say why: they do not want to be stopped again for things the record has already decided. After that they are content for the review to document what it finds and tell them what it did, and they ask for nothing to be expanded. On an order the gateway never confirms they are clear whenever it comes up: they would not have the checkout cancel an order it cannot show failed, and they are content for a customer to be told the payment is still confirming. The follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
   "stubs": {
-    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool (any cycle), and when it dispatches the input review agent for review cycle 2 or later — each returns the content below and writes no file",
-    "spec-input-preference-and-open-choice": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+    "spec-review-clean": "when the prose dispatches the claims verification agent via the Task tool (any cycle), and when it dispatches the input review or gap analysis agent for review cycle 2 or later — each returns the content below and writes no file",
+    "spec-input-refund-window": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
+    "spec-gap-settled-and-dressed-fork": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
   },
   "invariants": {
     "engine_before_write": true,
@@ -44,19 +45,21 @@
       "render resume-gate pay.specification.pay",
       "manifest set pay.specification.pay review_cycle=1",
       "tracking.review-input-tracking-c1 in-progress",
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
       "render findings-summary pay.specification.pay",
       "render finding-batch pay.specification.pay",
       "finding_gate_mode auto",
-      "render finding pay.specification.pay",
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay --kb --sweep",
       "tracking.review-input-tracking-c1 complete",
+      "tracking.review-gap-analysis-tracking-c1 complete",
       "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [
-      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render finding pay.specification.pay",
+      "render spec-review-gate",
       "render incoherence-gate",
       "topic reopen",
       "topic triage",
@@ -67,11 +70,13 @@
       "tracking.review-input-tracking-c1 in-progress",
       "render finding-batch pay.specification.pay",
       "finding_gate_mode auto",
-      "render finding pay.specification.pay",
+      "tracking.review-input-tracking-c1 complete",
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render finding-batch pay.specification.pay",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
-      "tracking.review-input-tracking-c1 complete",
+      "tracking.review-gap-analysis-tracking-c1 complete",
       "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"
     ]

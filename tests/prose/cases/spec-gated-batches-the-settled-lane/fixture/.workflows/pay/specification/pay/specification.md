@@ -17,8 +17,6 @@
 - A payment is treated as unconfirmed once the gateway's
   re-deliveries are exhausted.
 - Duplicate deliveries are idempotent.
-- A delivery naming an intent no order carries is logged — the
-  intent id, then the delivery time — and ignored.
 
 ### Refunds
 

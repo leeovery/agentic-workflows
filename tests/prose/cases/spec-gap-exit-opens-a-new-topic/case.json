@@ -1,0 +1,80 @@
+{
+  "origin": "Some gaps have no home yet. A review finds the specification deciding something no source decided, the derivation runs out, and the exchange that follows shows the answer needs a room rather than a reply — and the ground it sits on belongs to no topic on the map. The gap exit's third destination is that case: the gap becomes a topic of its own, created on the map, parked on its discussion queue, and added to this specification's sources as pending, so the specification waits for it and extracts it when it concludes. This walks that destination end to end on an epic — the classify running out, the acknowledgement gate offering the three homes a map affords, the name confirmed, the landing self-committing, and the pause handing the session back to the epic.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/create-discovery-topic.md",
+    "skills/workflow-shared/references/topic-name-validation.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user owns search relevance and knows both concluded discussions cold. When the session raises the behavioural score's 30/70 weighting as a decision the record never made, they recognise it at once — that number was invented while the specification was being written, and nobody has ever discussed it. They cannot settle it here and say so plainly: what the ranker optimises for is the whole question, it is bound up with whether raw rates are even the right inputs, and it needs the merchandising lead in the room and something to score a change against, which the epic does not have yet. They are clear it does not belong back in the behavioural-ranking discussion: that one settled how the signals get there, it is closed, and what the ranker should optimise for is a different question with different people in it. They want it opened as its own piece of work, and if asked what to call it they call it the signal-weighting question. They expect the specification to stop where it is and to land back on the epic menu with the new work in view. They never offer a number, never ask to shelve the question for a later release, and never ask to reopen anything themselves.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-input-unsourced-weighting": "when the prose dispatches the input review agent via the Task tool — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate search-relevance.specification.behavioural-ranking",
+      "manifest set search-relevance.specification.behavioural-ranking review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary search-relevance.specification.behavioural-ranking",
+      "manifest get search-relevance.specification.behavioural-ranking status",
+      "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "discovery-map add search-relevance signal-weighting discussion",
+      "topic triage search-relevance discussion signal-weighting",
+      "manifest set search-relevance.specification.behavioural-ranking sources.signal-weighting.status",
+      "spec(search-relevance): pause"
+    ],
+    "calls_exclude": [
+      "topic complete",
+      "topic reopen",
+      "roadmap add",
+      "sources stale",
+      "render finding search-relevance.specification.behavioural-ranking",
+      "render finding-batch",
+      "render spec-review-gate",
+      "render spec-completion-gate",
+      "--variant conflict",
+      "knowledge.cjs index .workflows/search-relevance/discussion"
+    ],
+    "calls_in_order": [
+      "manifest set search-relevance.specification.behavioural-ranking review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary search-relevance.specification.behavioural-ranking",
+      "manifest get search-relevance.specification.behavioural-ranking status",
+      "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
+      "discovery-map add search-relevance signal-weighting discussion",
+      "topic triage search-relevance discussion signal-weighting",
+      "manifest set search-relevance.specification.behavioural-ranking sources.signal-weighting.status",
+      "spec(search-relevance): pause"
+    ]
+  }
+}

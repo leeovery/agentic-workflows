@@ -1,15 +1,16 @@
 'use strict';
 
-// A specification at the review boundary whose gap analysis stages two
-// findings: a settled call the specification's own rules determine (the
-// wait before a payment is unconfirmed, which the delivery schedule and
-// the exhaustion rule fix between them), and a call over what the
-// customer gets when that wait runs out — staged settled on an analogy
-// to the rejection rule, which is consistency and not determination, so
-// the dispose must rewrite it to `decide`. The discussion decides the
-// gateway and refunds and is silent on an unconfirmed order, so the
-// decide lane's landing has a document to own the decision and a new
-// subtopic to write it into.
+// A specification at the review boundary with a finding waiting in each
+// of two review streams. Input review has the refund window the
+// discussion fixes and the specification omits — a call the source
+// document itself determines. Gap analysis has two: the wait before a
+// payment is unconfirmed, which the specification's own delivery
+// schedule and exhaustion rule fix between them, and what the customer
+// gets when that wait runs out — staged on an analogy to the rejection
+// rule, which is consistency and not determination, so the call is the
+// session's to make and name. The discussion decides the gateway and
+// refunds and is silent on an unconfirmed order, so that call has a
+// document to own it and a new subtopic to be written into.
 
 const m = require('../../mainlines/feature.cjs');
 
@@ -120,8 +121,7 @@ module.exports = {
       '',
       '### Refunds',
       '',
-      '- Refunds are issued against the original payment intent, within 30',
-      '  days of capture.',
+      '- Refunds are issued against the original payment intent.',
       '- Every capture and every refund appends a line to the payments',
       '  audit log, carrying the payment intent id and the amount.',
       '',

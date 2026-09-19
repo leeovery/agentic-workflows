@@ -20,11 +20,16 @@ The prose should have taken this path:
    decision, and writes nothing into either discussion document
 5. the gap exit first re-reads the spec item's status (live), then
    raises the engine-rendered gap acknowledgement: the display names
-   what is missing, the menu states the routing intent and asks only
-   to proceed — no yes/no choice about whether the gap is real, no
-   option to pick a side
-6. on the user's confirmation the concern lands in synonym-handling's
-   discussion triage queue through the triage landing — an
+   what is missing, and the menu states the routing intent and settles
+   only which home the gap takes — the reopen it proposes, or, this
+   being an epic, a new topic on the map or a roadmap park. There is
+   no yes/no choice about whether the gap is real and no option to
+   pick a side
+6. the user confirms the reopen the gate proposes: the gap belongs to
+   synonym-handling, which decided the ground it sits on, so neither
+   a new topic nor a roadmap park is taken. The concern lands in
+   synonym-handling's discussion triage queue through the triage
+   landing — an
    engine-numbered file carrying the gap's full context — and the
    delivery commits itself; synonym-handling's item reopens to
    in-progress; the spec's never-extracted source rows stay pending
@@ -55,6 +60,10 @@ The end world's claims:
   arrived
 - the git history ends at the self-committed triage delivery; the
   pause commit ran and answered as a no-op, nothing left dirty
+- no topic was created and nothing was parked: the map carries the
+  same three topics it started with, and the project manifest has no
+  roadmap node. The gate's other two destinations were offered and
+  not taken
 - at no point was the user asked to classify the problem, consent to
   the routing with a yes/no choice, or pick a side after the
   escalation — the collision's only asks were the conflict raise's
