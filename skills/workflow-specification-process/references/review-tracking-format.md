@@ -24,7 +24,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 ### 1. [Brief Title]
 
-**Source**: [Where this came from — file/section reference, "Specification analysis" for Gap Analysis, or "Tree measurement — `{command}`" for Claims Verification]
+**Source**: [Where this came from — file/section reference, "Specification analysis" for Gap Analysis, or "Tree measurement — `{command or cited range}`" for Claims Verification]
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Contradiction | Duplication | Source defect | Unsourced decision
 **Move**: settled | choice | route
 **Priority**: [Gap Analysis only — Critical | Important. Omit for Claims Verification and Input Review.]
@@ -40,7 +40,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [Move `choice` only — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.]
 
 **Evidence**:
-[Claims Verification only — the claim verbatim, the command, and its output; for a Source defect, which source document and section carries the claim. Omit for Input Review and Gap Analysis.]
+[Claims Verification only — the claim verbatim and the measurement: the command and its output, or the cited range with the lines that settle it; for a Source defect, which source document and section carries the claim. Omit for Input Review and Gap Analysis.]
 
 **Current**:
 [For findings that modify existing content (Enhancement, Duplication, Contradiction) — the existing specification content that will be modified. A Contradiction's Current holds only the passage being corrected; the colliding reading is named in the Problem with its section. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
@@ -77,7 +77,7 @@ Settled findings render together: screens of at most five when the gate is on, e
 
 **Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. It is not written as a finding; at most it is an Observation.
 
-`## Observations` holds what is below the finding floor — a point that names no failure for the product's user, and anything minor enough that landing it would only be polish. One line each, at the end of the tracking file. Observations are never walked, never counted, and never re-raised by a later gap-analysis pass; they ride only a file that carries findings.
+`## Observations` holds what is below the finding floor — a point that names no failure for the product's user, and anything minor enough that landing it would only be polish. One line each, at the end of the tracking file. Observations are never walked, never counted, and never re-raised by a later gap-analysis pass; they ride only a file that carries findings. Size never demotes what the record already answers: a user-facing string, value, or behaviour whose answer the record holds — a design frame, a source document, a sibling section, a stated rule — is a `settled` finding, and a Contradiction is a finding; neither is ever an Observation.
 
 The reviewer proposes the move; the orchestrator disposes every finding against the live session before anything renders, in both directions, on a derivation written into the finding — a `settled` call the session cannot itself stand behind becomes a `choice` and takes the bar; a `choice` below the bar becomes `settled` or `route`, or is declined outright — Resolution `Declined`, the Move left as staged — its derivation recorded (**[process-review-findings.md](process-review-findings.md)**). A choice that names no search is re-derived from scratch.
 

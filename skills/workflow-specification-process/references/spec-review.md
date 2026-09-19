@@ -114,6 +114,11 @@ Dispatch the `workflow-specification-review-claims` agent via the Task tool:
   4. Otherwise → `.workflows/{work_unit}/discussion/{source-name}.md`
 
   Pass all resolved paths to the agent.
+- **Import paths**: the reference material the work unit holds — read the entries:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} imports
+  ```
+  Each entry's `path` is relative to `.workflows/{work_unit}/`. Resolve them and pass them all; empty means the unit holds none.
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
