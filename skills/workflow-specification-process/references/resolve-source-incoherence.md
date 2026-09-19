@@ -212,7 +212,7 @@ Park it — `{name}` is a kebab-case capability name derived from the gap; the m
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name:(kebabcase)} --horizon "{horizon}" --summary "{the gap in one line}" --origin park:{work_unit} --source {work_unit}/specification/{topic}/specification.md
 ```
 
-Tell the user in one line what was parked and where. Nothing reopens and nothing is written into the specification — the roadmap item, sourced to it, is the record that this ground is not the specification's to fill.
+Tell the user in one line what was parked and where. Nothing reopens — the roadmap item, sourced to this specification, is the record that the ground is not its to fill; a review caller removes what its finding indicted, construction extracts nothing for it.
 
 → Proceed to **D. Pause the Specification**.
 
