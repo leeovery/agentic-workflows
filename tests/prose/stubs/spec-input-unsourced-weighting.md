@@ -18,7 +18,7 @@ The tracking file:
 
 ### 1. The Behavioural Score's Weighting Is Nobody's Decision
 
-**Source**: discussion/behavioural-ranking.md · Signal Ingestion
+**Source**: No source decides this
 **Category**: Unsourced decision
 **Move**: route
 **Affects**: Ranking Features

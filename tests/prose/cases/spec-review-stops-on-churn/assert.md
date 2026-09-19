@@ -46,8 +46,10 @@ Expected path:
     settled at the dispose on the record's own derivation, and the
     settled batch renders once more — this time `finding_gate_mode`
     holds `auto`, so the surface answers with its auto-approved
-    display alone: the worklist and a line saying what landed, no
-    menu, no auto-override line, **no stop**. Both findings are
+    display alone: the worklist closed by a line in the present
+    tense, saying it is documenting them, because the landings come
+    after it — no menu, no auto-override line, **no stop**. Both
+    findings are
     applied to Refunds and the cycle-2 tracking entry flips to
     `complete`
 12. findings were surfaced, the mode is `auto`, and the cycle is 2, so

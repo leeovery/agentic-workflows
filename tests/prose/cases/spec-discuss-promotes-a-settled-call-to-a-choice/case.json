@@ -1,0 +1,76 @@
+{
+  "origin": "A specification review's settled batch is a scan, not a vote — but it has one door out that changes what a finding is. Say discuss and a number and the row is pulled aside for an exchange, and where that exchange shows the pick belongs to the reader rather than the record, the row is rewritten from a call this session made into a choice the user makes: Options in place of a Proposal, the search named, and the stop it earns in the walk that follows. This is the only path by which a batched row becomes a stop, and nothing else in the corpus walks it. The case takes it end to end on the gated path — one call landing with the screen, one promoted and then picked against the recommendation, the pick landing in the discussion that should own it before the specification re-aligns to it — and pins that the batch does not render a second time, because the promotion resolved the lane rather than leaving it.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They never hand anything over automatically — being asked is the point of being here — and they ask for nothing to be expanded. Shown a two-row screen of calls made on their behalf, the 25-minute wait they are content with straight away: it follows from the delivery schedule they already agreed and nobody needs to decide it. The second row — what the checkout tells a customer while the capture is still confirming — they pull off the screen to talk about, and they will not accept it as settled. Both ways cost a customer something real, they say: a payment-pending page loses people at the last step of a checkout and fills the support queue with callers asking whether the money left their account, while an optimistic confirmation means someone who was told they had bought something can be told hours later that they had not. Which of those the shop is willing to wear does not follow from anything in the record — it is a call about the business, it is theirs, and they say so plainly rather than letting the session make it for them. Put to them as a choice, they take the optimistic side, against the recommendation: the checkout has always confirmed the order at the end of checkout, they are not going to start showing people a holding page, and a customer whose payment later fails is emailed. They expect that decision to be written down where payment decisions live, not only in the specification. Asked whether to run another review round they proceed to completion, and at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or input review agent via the Task tool — each returns the content below and writes no file",
+    "spec-gap-settled-and-confirmation-fork": "when the prose dispatches the gap analysis agent via the Task tool — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "render finding-batch pay.specification.pay",
+      "render finding pay.specification.pay",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay --kb --sweep",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "finding_gate_mode auto",
+      "render incoherence-gate",
+      "topic reopen",
+      "topic triage",
+      "sources stale"
+    ],
+    "calls_in_order": [
+      "render finding-batch pay.specification.pay",
+      "render finding pay.specification.pay",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ]
+  }
+}

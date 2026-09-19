@@ -19,15 +19,17 @@ The prose should have taken this path:
    gap — it does NOT re-present the conflict menu, does NOT settle a
    decision, and writes nothing into either discussion document
 5. the gap exit first re-reads the spec item's status (live), then
-   raises the engine-rendered gap acknowledgement: the display names
-   what is missing, and the menu states the routing intent and settles
-   only which home the gap takes — the reopen it proposes, or, this
-   being an epic, a new topic on the map or a roadmap park. There is
-   no yes/no choice about whether the gap is real and no option to
-   pick a side
-6. the user confirms the reopen the gate proposes: the gap belongs to
-   synonym-handling, which decided the ground it sits on, so neither
-   a new topic nor a roadmap park is taken. The concern lands in
+   raises the engine-rendered gap acknowledgement in its gap-route
+   variant: the display names what is missing, and — this being an
+   epic — the menu names the reopen's cost and asks which of the
+   three homes a map affords takes it, `Reopen it?` over the reopen
+   of the named document, a new topic on the map, and a roadmap park.
+   There is no yes/no choice about whether the gap is real and no
+   option to pick a side
+6. the user takes the reopen the gate's first row proposes: the gap
+   belongs to synonym-handling, which decided the ground it sits on,
+   so neither a new topic nor a roadmap park is taken. The concern
+   lands in
    synonym-handling's discussion triage queue through the triage
    landing — an
    engine-numbered file carrying the gap's full context — and the
@@ -64,8 +66,9 @@ The end world's claims:
   same three topics it started with, and the project manifest has no
   roadmap node. The gate's other two destinations were offered and
   not taken
-- at no point was the user asked to classify the problem, consent to
-  the routing with a yes/no choice, or pick a side after the
-  escalation — the collision's only asks were the conflict raise's
-  options and the gap gate's single acknowledgement; the construction
-  gate's ordinary chunk approvals on untouched grounds are permitted
+- at no point was the user asked to classify the problem, to say
+  whether the gap was real, or to pick a side after the escalation —
+  the collision's only asks were the conflict raise's options and the
+  gap gate's one answer, which settles the home and nothing else; the
+  construction gate's ordinary chunk approvals on untouched grounds
+  are permitted

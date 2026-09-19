@@ -55,13 +55,14 @@ Expected path:
 10. the user asks for the third to be expanded. Its payload is
     written with move `settled` and rendered through the finding
     surface, which at a specification address answers with the report
-    and its wording alone — no menu, no auto-approved line, and no
+    and its diff alone — no menu, no auto-approved line, and no
     `a/auto` row anywhere, because the screen is the gate. The
-    finding has no Current and a short Proposed Text, so the wording
-    renders visible as an additions-only diff rather than waiting
-    behind a view option. It carries the held-order rule, not the
-    cancellation the agent staged — the dispose ran before anything
-    rendered
+    finding has no Current and a short Proposed Text, so the payload
+    carries it as a diff with an empty current side and the wording
+    reads in place; no separate wording section is owed, that shape
+    belonging to a finding that proposes a whole section. It carries
+    the held-order rule, not the cancellation the agent staged — the
+    dispose ran before anything rendered
 11. nothing is resolved by expanding, so the batch screen renders
     again, unchanged, and the walk **STOPS** a second time
 12. the user answers `yes`, and the screen's three findings land in

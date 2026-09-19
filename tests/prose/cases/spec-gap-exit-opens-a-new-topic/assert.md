@@ -13,7 +13,9 @@ The prose should have taken this path:
    setup resets both gate modes to `gated` and finds no stale rows
    and no consult references; construction finds the source
    incorporated and nothing left to extract — no content is
-   re-presented
+   re-presented — and the epic's document-dependencies step runs
+   between construction and review, as it does on every epic
+   specification
 3. review cycle 1 initialises — `review_cycle` set to 1 with the
    construction baseline word count in the same write, committed.
    Claims verification runs first and returns clean through its stub
@@ -51,9 +53,11 @@ The prose should have taken this path:
    live, then raises the engine-rendered gap acknowledgement in its
    gap-route variant: what is missing, what was searched, what cannot
    be written until it is decided, and — this being an epic — a menu
-   carrying the reopen it proposes, a new topic on the map, and a
-   roadmap park
-10. the user takes the new topic. The session proposes a kebab-case
+   that names the reopen's cost and asks `Reopen it?` over three
+   homes: reopening behavioural-ranking with the gap and pausing
+   here, opening a new topic on the map, and parking it on the
+   roadmap
+10. the user takes the new topic row. The session proposes a kebab-case
     name derived from the gap and **STOPS** for the user to confirm
     or rename it; the user confirms `signal-weighting`
 11. the triage landing resolves the target against the live map,
@@ -75,8 +79,9 @@ The prose should have taken this path:
 14. the specification pauses in-progress: the pause commit runs and
     carries the pending sources row the manifest gained after the
     delivery's own commit; the user is told the specification is blocked until
-    signal-weighting concludes, and no document dependencies, review,
-    or conclusion run. The cycle-1 input tracking entry is left
+    signal-weighting concludes, and nothing further runs — the
+    remaining review, the conclusion, and any re-run of document
+    dependencies all stop here. The cycle-1 input tracking entry is left
     `in-progress`, its finding still Pending: the exit does not
     return, and the remaining work re-processes at the next entry
 15. the session invokes the epic's continue skill with the work unit —
@@ -100,10 +105,19 @@ The end world's claims:
   never completed, never cancelled — with
   `sources.behavioural-ranking.status` still `incorporated` and
   `sources.signal-weighting.status` `pending`
-- the specification document is byte-identical to the fixture's: the
-  30/70 weighting is still on the page, unchanged and uncorrected.
-  Nothing about this exit edits the specification — the decision is
-  owed elsewhere first
+- the specification's own content is untouched: the 30/70 weighting is
+  still on the page, unchanged and uncorrected. Nothing about this
+  exit edits the specification — the decision is owed elsewhere
+  first. A Dependencies section, which the epic's own step adds
+  between construction and review, is the one addition the pass is
+  allowed to have made
+- the pending row is load-bearing, not bookkeeping: the specification
+  is now shut at its own door. `render entry-gate
+  search-relevance.specification.behavioural-ranking` answers with
+  the not-concluded blocker naming `signal-weighting`, and the epic
+  gateway's DATA lists the specification under `spec_blocked` with
+  that topic as what it waits on. A world where either reads clear
+  has a pending row nothing enforces
 - the c1 input tracking file is on disk with its one finding still
   Pending, and the manifest's tracking entry for it still reads
   `in-progress`

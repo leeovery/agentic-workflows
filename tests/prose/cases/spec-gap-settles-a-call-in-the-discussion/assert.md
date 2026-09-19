@@ -68,9 +68,10 @@ Expected path:
 12. with both findings disposed the walk reaches the settled batch
     again and writes a two-item payload. `finding_gate_mode` now holds
     `auto`, so the surface answers with its auto-approved display
-    alone — the worklist and a line saying what landed, no menu, no
-    auto-override line, **no stop**. The walk emits it and lands both
-    findings in the order they read
+    alone — the worklist closed by a line in the present tense,
+    saying it is documenting them, because the landings come after it
+    — no menu, no auto-override line, **no stop**. The walk emits it
+    and lands both findings in the order they read
 13. the waiting-window finding is the record's own call, so it lands
     in the specification alone: its Proposed Text goes into Capture
     Webhooks, re-derived against the live document, and its Resolution
