@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.66] - 2026-09-19
+
+✨ Added
+- Specification review's gap exit now offers three destinations on an epic — reopen the source discussion, spin up a new topic the spec waits on, or park the gap on the roadmap — instead of only the reopen.
+
+🔧 Changed
+- Specification review no longer stops for a veto on every self-made call — settled calls land as a batch you can scan and auto-approve, and only genuine either-or choices still stop for your pick.
+- A specification is now blocked from entry not just by a source discussion back in-progress, but also by one still parked as a new topic the gap exit opened.
+- The discussion reviewer now also hunts the user-visible edges of mechanisms you've already decided — empty/malformed inputs, unavailable dependencies, boundaries, failure modes — so more gaps get caught before specification instead of surfacing there as unowned findings.
+
 ## [0.7.65] - 2026-09-19
 
 🔧 Changed
