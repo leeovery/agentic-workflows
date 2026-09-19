@@ -778,7 +778,7 @@ describe('start projections: roadmap rows', () => {
     assert.ok(row, 'the layer renders its row');
     assert.strictEqual(row.key, 'r');
     assert.strictEqual(row.route, '/workflow-roadmap open');
-    assert.strictEqual(row.label, 'Roadmap — the product conversation, the map, or pull a slice');
+    assert.strictEqual(row.label, 'Open the product roadmap');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
 

@@ -56,7 +56,7 @@ The bucket names (epic / feature / …) are workflow internals; they mean nothin
 
 | Internal | User-facing |
 |---|---|
-| product road | *"the whole product across time — we'd lay it out as a roadmap and pull the first slice into delivery"* |
+| product road | *"the whole product across time — we'd lay it out as a roadmap and start building the first part from there"* |
 | epic | *"several distinct things — more than one feature in scope"* |
 | feature | *"a single coherent piece of work"* |
 | cross-cutting | *"a pattern or principle that affects the whole project — something to define, not ship as a feature"* |
@@ -131,7 +131,7 @@ Commit only when signals have **converged AND been stable** across the last few 
 
 The forming work may already have a home the user forgot: a waiting roadmap item, or an inbox capture. The opener read both indexes; as the shape converges, match it against them by name and theme — a match earns one soft question, a miss earns silence.
 
-- **A waiting roadmap item holds this ground** — epic- and feature-shaped reads only; bugs and quick-fixes never touch the roadmap. A fresh work unit beside the item would strand its record and twin it. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — pull it from there so the record comes along?"* On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
+- **A waiting roadmap item holds this ground** — epic- and feature-shaped reads only; bugs and quick-fixes never touch the roadmap. A fresh work unit beside the item would strand its record and twin it. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — start it from there so the notes come along?"* On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
 - **A live inbox item captured this thought** — *"You logged 'checkout race' on 12 Jul — read it in as the seed?"* On accept, add the item's path to `inbox_seeds` and read it — it becomes the work's seed through the normal confirm-trigger landing. On decline, continue.
 
 **If the user accepts a pull offer:** invoke `/workflow-roadmap pull` via the Skill tool. This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

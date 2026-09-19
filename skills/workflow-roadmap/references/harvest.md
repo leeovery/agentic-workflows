@@ -1,6 +1,6 @@
 # Harvest
 
-*Reference for **[session-loop](session-loop.md)** — loaded at the user's pull*
+*Reference for **[session-loop](session-loop.md)** — loaded when the user asks to lay it out*
 
 ---
 

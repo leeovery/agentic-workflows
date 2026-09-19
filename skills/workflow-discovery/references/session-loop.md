@@ -16,12 +16,12 @@ If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient
 
 #### If `pull_continuation` is set (an epic just born at a roadmap pull)
 
-The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the fenced slice in one conversational sentence (the pulled items, by name), then render the transition:
+The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the items brought over from the roadmap in one conversational sentence (by name, in plain words — never "slice", "pull", or "fenced"), then render the transition:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Topics come later — they fall out once we've deepened the slice; the pulled items are the rough shapes.
+Topics come later — they fall out once we've gone deeper; the items you brought over are the rough shapes.
 
 Anything to reshape before we go deeper — or shall we dig in?
 ```

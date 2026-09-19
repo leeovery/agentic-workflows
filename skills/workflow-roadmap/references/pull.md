@@ -106,7 +106,7 @@ This skill ends. The invoked skill will load into context and provide additional
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Pulled and fenced — entering plan mode to hand the feature to its first phase in a clean context.
+> Feature created from the roadmap — entering plan mode to hand it to its first phase in a clean context.
 ```
 
 Invoke `/workflow-bridge {work_unit} discovery {routing}` via the Skill tool.

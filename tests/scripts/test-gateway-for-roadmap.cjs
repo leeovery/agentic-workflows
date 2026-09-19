@@ -74,7 +74,7 @@ describe('workflow-roadmap gateway: view', () => {
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(!/ {2}p {2}pull/.test(res.stdout), 'no pull action over zero waiting items');
-    assert.match(res.stdout, /Open a product session/);
+    assert.match(res.stdout, /Talk about the product, add or re-sort items/);
   });
 });
 
@@ -96,7 +96,7 @@ describe('workflow-roadmap gateway: pull-set', () => {
     assert.match(res.stdout, /  1 {2}menus {2}mvp/);
     assert.match(res.stdout, /  2 {2}loyalty {2}v1/);
     assert.ok(!/=== TITLE/.test(res.stdout), 'no TITLE — the skill step marker heads the ceremony');
-    assert.match(res.stdout, /=== MENU[\s\S]*What goes into delivery\?/);
+    assert.match(res.stdout, /=== MENU[\s\S]*Which items do you want to start building\?/);
   });
 
   it('refuses loudly when nothing is waiting', () => {

@@ -188,16 +188,16 @@ function roadmapPullSetView(state) {
 
   const options = [];
   if (rows.length === 1) {
-    options.push(cmdOption('1', null, 'Pull the item into delivery'));
+    options.push(cmdOption('1', null, 'Start work on the item'));
   } else {
-    options.push(rangeOption(1, rows.length, 'Pull item(s) into delivery (comma-separated for several)'));
+    options.push(rangeOption(1, rows.length, 'Start work on item(s) (comma-separated for several)'));
   }
-  options.push(cmdOption('b', 'back', 'Return without pulling'));
+  options.push(cmdOption('b', 'back', 'Go back without starting anything'));
 
   return {
     data,
     display: lines.join('\n') + '\n',
-    menu: menuFrame(['What goes into delivery?', '', ...options]),
+    menu: menuFrame(['Which items do you want to start building?', '', ...options]),
     rows,
   };
 }
@@ -221,12 +221,12 @@ function roadmapAddGate(state, horizon) {
   }
   const units = [...new Set(joined.map((r) => /** @type {string} */ (r.work_unit)))];
   const deliveryLabel = units.length === 1
-    ? `Into the delivery — a fresh topic in "${units[0]}" (full phase discipline applies)`
-    : 'Into the delivery — a fresh topic in one of its units (name which)';
+    ? `Into the work underway — a new topic in "${units[0]}"`
+    : 'Into the work underway — a new topic in one of its work units (name which)';
 
   const options = [cmdOption('1', null, deliveryLabel)];
   if (waiting.length > 0) {
-    options.push(cmdOption('2', null, `Waiting in "${horizon}" beside its ${waiting.length} uncommitted item${waiting.length === 1 ? '' : 's'}`));
+    options.push(cmdOption('2', null, `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}`));
     options.push(cmdOption('3', null, 'Another horizon (name it)'));
   } else {
     options.push(cmdOption('2', null, 'Another horizon (name it)'));
@@ -234,8 +234,8 @@ function roadmapAddGate(state, horizon) {
   options.push(promptOption('Ask', 'Talk it through first'));
 
   const question = waiting.length > 0
-    ? `"${horizon}" is partly in delivery. Where does this land?`
-    : `"${horizon}" is being built right now. Where does this land?`;
+    ? `"${horizon}" is partly being built. Where does this go?`
+    : `"${horizon}" is being built right now. Where does this go?`;
   return menu('', options, { question });
 }
 
@@ -256,10 +256,10 @@ function roadmapHomeMenu(state) {
     action: 'converse',
     label: state.active_session !== null
       ? 'Resume the open product session'
-      : 'Open a product session — talk, add, re-sort, groom',
+      : 'Talk about the product, add or re-sort items',
   });
   if (state.totals.waiting > 0) {
-    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Pull waiting item(s) into delivery (${state.totals.waiting} waiting)` });
+    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Start work on waiting item(s) — creates an epic or feature (${state.totals.waiting} waiting)` });
   }
   keys.push({ key: 'b', word: 'back', action: 'back', label: 'Return to the start menu' });
 
@@ -275,16 +275,16 @@ function roadmapHomeMenu(state) {
 /** The roadmap harvest's sort confirm. */
 function roadmapHarvestGate() {
   return menu('', [
-    cmdOption('y', 'yes', 'Commit these items to the roadmap'),
+    cmdOption('y', 'yes', 'Add these items to the roadmap'),
     cmdOption('e', 'explore', 'Go back to the conversation; not ready yet'),
     promptOption('Adjust', 'Tell me what to change (move, split, merge, rename, re-word)'),
-  ], { question: 'Commit this sort to the roadmap?' });
+  ], { question: 'Put these on the roadmap as shown?' });
 }
 
 /** The epic synthesis' parks-only confirm — the whole sort is the roadmap's. */
 function roadmapParksGate() {
   return menu('', [
-    cmdOption('y', 'yes', 'Commit these items to the roadmap and conclude'),
+    cmdOption('y', 'yes', 'Add these items to the roadmap and conclude'),
     cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
     promptOption('Adjust', 'Tell me what to change (move between horizons, rename, re-word)'),
   ], { question: 'Park these on the roadmap?' });
@@ -293,8 +293,8 @@ function roadmapParksGate() {
 /** The pull's shape confirm — epic vs feature, the framing. */
 function roadmapShapeGate() {
   return menu('', [
-    cmdOption('y', 'yes', 'Create it and continue into delivery'),
-    promptOption('Adjust', 'Tell me what to change (epic vs feature, the framing)'),
+    cmdOption('y', 'yes', 'Create it and carry on into it'),
+    promptOption('Adjust', 'Tell me what to change (epic or feature, the description)'),
   ], { question: 'Shape it this way?' });
 }
 

@@ -4492,8 +4492,8 @@ describe('roadmap surfaces', () => {
       'mvp-2': { work_type: 'epic', status: 'in-progress' },
     });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /Into the delivery — a fresh topic in one of its units/);
-    assert.match(out, /Waiting in "mvp" beside its 2 uncommitted items/, 'the plural form');
+    assert.ok(out.includes(`Into the work underway — a new topic in one of its work\n${NB(6)}units (name which)`), 'the multi-unit label, wrapped');
+    assert.match(out, /On the roadmap in "mvp", waiting with its 2 other items/, 'the plural form');
   });
 
   it('roadmap-add-gate: fully-in-delivery renders the strict two-way menu naming the unit', () => {
@@ -4506,17 +4506,17 @@ describe('roadmap surfaces', () => {
     }, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
     assert.match(out, /^=== MENU: roadmap add gate/);
-    assert.match(out, /"mvp" is being built right now\. Where does this land\?/);
-    assert.match(out, /Into the delivery — a fresh topic in "mvp"/);
+    assert.match(out, /"mvp" is being built right now\. Where does this go\?/);
+    assert.match(out, /Into the work underway — a new topic in "mvp"/);
     assert.match(out, /`2`.*Another horizon/);
-    assert.ok(!out.includes('Waiting in'), 'no waiting side-door into a fully-delivered horizon');
+    assert.ok(!out.includes('On the roadmap in'), 'no waiting side-door into a fully-delivered horizon');
   });
 
   it('roadmap-add-gate: a partly-composed horizon keeps the waiting option', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /"mvp" is partly in delivery\. Where does this land\?/);
-    assert.match(out, /Waiting in "mvp" beside its 1 uncommitted item/);
+    assert.match(out, /"mvp" is partly being built\. Where does this go\?/);
+    assert.match(out, /On the roadmap in "mvp", waiting with its 1 other item/);
     assert.match(out, /`3`.*Another horizon/);
   });
 
@@ -5010,7 +5010,7 @@ describe('render off-topic-offer', () => {
       "**Gift cards** is beyond this topic's scope.",
       '',
       '**`l/log`**     → Capture it as an idea in the inbox for later',
-      '**`r/roadmap`** → Park it on the product roadmap with a horizon',
+      '**`r/roadmap`** → Put it on the product roadmap for a later release',
       '**`p/pivot`**   → Convert this work to an epic so it can hold the',
       `${NB(12)}concern as its own topic`,
       '**`i/ignore`**  → Note it in the Summary and move on',
@@ -5036,8 +5036,8 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
   it('roadmap-harvest-gate: the sort confirm', () => {
     const out = renderSurface(dir, 'roadmap-harvest-gate', {});
     assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
-    assert.match(out, /`◆ Commit this sort to the roadmap\?`/);
-    assert.match(out, /`y\/yes`.*Commit these items to the roadmap/);
+    assert.match(out, /`◆ Put these on the roadmap as shown\?`/);
+    assert.match(out, /`y\/yes`.*Add these items to the roadmap/);
     assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
     assert.match(out, /\*\*Adjust\*\*.*Tell me what to change \(move, split, merge, rename,/);
   });
@@ -5045,15 +5045,15 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
   it('roadmap-parks-gate: the parks-only confirm in the park register', () => {
     const out = renderSurface(dir, 'roadmap-parks-gate', {});
     assert.match(out, /`◆ Park these on the roadmap\?`/);
-    assert.match(out, /`y\/yes`.*Commit these items to the roadmap and conclude/);
+    assert.match(out, /`y\/yes`.*Add these items to the roadmap and conclude/);
     assert.match(out, /\*\*Adjust\*\*.*move between horizons/);
   });
 
   it('roadmap-shape-gate: the pull ceremony confirm', () => {
     const shape = renderSurface(dir, 'roadmap-shape-gate', {});
     assert.match(shape, /`◆ Shape it this way\?`/);
-    assert.match(shape, /`y\/yes`.*Create it and continue into delivery/);
-    assert.match(shape, /\*\*Adjust\*\*.*epic vs feature, the framing/);
+    assert.match(shape, /`y\/yes`.*Create it and carry on into it/);
+    assert.ok(shape.includes(`**Adjust** → Tell me what to change (epic or feature, the\n${NB(9)}description)`), 'the Adjust label, wrapped');
   });
 });
 
