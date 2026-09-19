@@ -90,7 +90,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '     └─ Auth Flow             [pending]',
     '',
     'PLANNING (1 completed)',
-    '  └─ Roles And Permissions    [completed · tick]',
+    '  └─ Roles And Permissions    [completed · blocked · tick]',
     '',
     '── DELIVERY ─────────────────────────────────────────────────────',
     '',
@@ -154,7 +154,12 @@ describe('epic projections: dashboard (map branch)', () => {
         discovery: { items: { 'menu-admin': { routing: 'discussion', source: 'discovery', order: 1 } } },
         discussion: { items: { 'menu-admin': { status: 'completed' } } },
         specification: { items: { 'menu-admin': { status: 'completed', reconcile_needed: 'discussion', sources: { 'menu-admin': { status: 'stale' } } } } },
-        planning: { items: { 'other-topic': { status: 'in-progress', reconcile_needed: 'specification' } } },
+        planning: {
+          items: {
+            'menu-admin': { status: 'completed', reconcile_needed: 'specification' },
+            'other-topic': { status: 'in-progress', reconcile_needed: 'specification' },
+          },
+        },
       },
     });
     const out = epicDashboard('v1', d);
@@ -162,9 +167,9 @@ describe('epic projections: dashboard (map branch)', () => {
     const key = epicKey(d);
     assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
     const { keys } = epicMenu('v1', d);
-    const start = keys.find((k) => k.action === 'start_planning');
-    assert.ok(start, 'start_planning entry present');
-    assert.strictEqual(start.label, 'Start planning for "Menu Admin" — *spec completed* · input moved');
+    const start = keys.find((k) => k.action === 'start_implementation');
+    assert.ok(start, 'start_implementation entry present');
+    assert.strictEqual(start.label, 'Start implementation of "Menu Admin" — *plan completed* · input moved');
     const cont = keys.find((k) => k.action === 'continue_planning');
     assert.ok(cont, 'continue_planning entry present');
     assert.strictEqual(cont.label, 'Continue "Other Topic" — *planning [in-progress]* · input moved');
@@ -220,20 +225,29 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.notStrictEqual(sOption && sOption.recommended, true, 'analyze is not the recommendation');
   });
 
-  it('an input-moved start entry is never the recommendation', () => {
-    const d = detailFor(dir, 'v1', {
+  it('an input-moved start entry is never the recommendation, and an unsettled specification carries no start row at all', () => {
+    const world = (phases) => detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
         discussion: { items: { fees: { status: 'completed' } } },
-        specification: { items: { fees: { status: 'completed', reconcile_needed: 'discussion', sources: { fees: { status: 'stale' } } } } },
+        ...phases,
       },
     });
-    const { keys } = epicMenu('v1', d);
-    const start = keys.find((k) => k.action === 'start_planning');
-    assert.ok(start, 'start_planning entry present');
+    const flaggedPlan = world({
+      specification: { items: { fees: { status: 'completed', sources: { fees: { status: 'incorporated' } } } } },
+      planning: { items: { fees: { status: 'completed', reconcile_needed: 'specification' } } },
+    });
+    const start = epicMenu('v1', flaggedPlan).keys.find((k) => k.action === 'start_implementation');
+    assert.ok(start, 'start_implementation entry present');
     assert.strictEqual(start.input_moved, true);
     assert.notStrictEqual(start.recommended, true, 'flagged-source start never recommended');
+    // A plan's own upstream goes further than a cue: the specification is
+    // unsettled, so the start is refused at the door and never offered.
+    const movedSpec = world({
+      specification: { items: { fees: { status: 'completed', reconcile_needed: 'discussion', sources: { fees: { status: 'stale' } } } } },
+    });
+    assert.strictEqual(epicMenu('v1', movedSpec).keys.find((k) => k.action === 'start_planning'), undefined);
   });
 
   it('a triaged stub renders fresh with the triage waiting cue and counts as fresh', () => {
@@ -1948,6 +1962,34 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.notStrictEqual(spec.recommended, true);
     assert.match(epicInSessionGate('v1', spec),
       /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are not concluded \(Fees\) — so proceeding meets that gate next\. Only proceed/);
+  });
+
+  it('a plan under an unsettled specification is rowless, tagged blocked, and cued — a session holding it keeps its struck row', () => {
+    const world = (spec) => detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { billing: spec } },
+        planning: { items: { billing: { status: 'in-progress' } } },
+      },
+    });
+    const d = world({ status: 'completed', sources: [{ topic: 'talks', status: 'stale' }] });
+    assert.deepStrictEqual(d.phases.planning[0].blocked_by, ['specification']);
+    assert.ok(!epicMenu('v1', d).keys.some((k) => k.action === 'continue_planning'), 'nobody holds it: rowless');
+    assert.match(epicDashboard('v1', d), /Billing\s+\[in-progress · blocked\]/);
+    assert.ok(epicKey(d).includes(
+      '    blocked (planning)      — its specification is unsettled; settle\n'
+      + '                              it and the item returns to the menu'), epicKey(d));
+    const { keys } = epicMenu('v1', d, { presence: [peerIn('planning', 'billing', 60)] });
+    const plan = keys.find((k) => k.action === 'continue_planning');
+    assert.strictEqual(plan.in_session, true);
+    assert.deepStrictEqual(plan.blocked_by, ['specification']);
+    assert.match(epicInSessionGate('v1', plan),
+      /Its entry is also held shut — the specification for "Billing" is unsettled — so proceeding meets that gate next\./);
+    // The specification settling releases it: the row, the tag, and the cue go.
+    const settled = world({ status: 'completed', sources: [{ topic: 'talks', status: 'incorporated' }] });
+    assert.strictEqual(settled.phases.planning[0].blocked_by, undefined);
+    assert.ok(epicMenu('v1', settled).keys.some((k) => k.action === 'continue_planning'));
+    assert.ok(!epicKey(settled).includes('blocked (planning)'));
   });
 
   it('an unblocked held row carries no entry-hold clause — the gate reads as before', () => {

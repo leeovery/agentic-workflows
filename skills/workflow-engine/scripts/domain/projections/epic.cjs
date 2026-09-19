@@ -451,6 +451,10 @@ const CUE_PLAN_BLOCKED =
   + '                              the ⚑ list names the dependency,\n'
   + '                              u/unblock is the override';
 
+const CUE_PLAN_SPEC_BLOCKED =
+  '    blocked (planning)      — its specification is unsettled; settle\n'
+  + '                              it and the item returns to the menu';
+
 /**
  * Section B — the Key block, showing only categories present in the display
  * whose vocabulary the rows don't spell out themselves: phase-item status
@@ -484,6 +488,7 @@ function epicKey(detail) {
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
   if (blockedAny('discussion')) cueLines.push(CUE_DISCUSSION_BLOCKED);
   if (blockedAny('specification')) cueLines.push(CUE_BLOCKED);
+  if (blockedAny('planning')) cueLines.push(CUE_PLAN_SPEC_BLOCKED);
   if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
   if (anyBlocked) blocks.push(KEY_BLOCKING);
@@ -963,9 +968,9 @@ function epicMenu(workUnit, detail, opts = {}) {
 /** @param {string} phase @param {string} topic @param {string[]|undefined} by */
 function entryHoldClause(phase, topic, by) {
   if (by === undefined) return '';
-  const what = phase === 'discussion'
-    ? `research on "${titlecase(topic)}" is outstanding`
-    : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
+  const what = phase === 'discussion' ? `research on "${titlecase(topic)}" is outstanding`
+    : phase === 'planning' ? `the specification for "${titlecase(topic)}" is unsettled`
+      : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
   return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
 }
 

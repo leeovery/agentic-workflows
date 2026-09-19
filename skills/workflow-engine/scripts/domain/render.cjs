@@ -46,12 +46,12 @@ const { experimentRegister, experimentApprovalGate, experimentPick, experimentNe
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
 const { waitGate, phasePaused, researchWaitState } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, OPEN_SOURCE_STATUSES, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2715,17 +2715,28 @@ function experimentNextGateSurface(cwd, { dotpath }) {
 }
 
 /**
+ * Resolve an address restricted to a set of phases. Loud on any other.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @param {string[]} phases  the phases the surface serves
+ * @param {string} noun      what the address names, for the refusal
+ * @returns {{phase: string, topic: string, manifest: object}}
+ */
+function resolvePhaseItem(cwd, dotpath, surface, phases, noun) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (!phases.includes(phase)) {
+    throw new Error(`render ${surface}: address must be <work_unit>.<${phases.join('|')}>.<topic> — ${noun}; got phase "${phase}"`);
+  }
+  return { phase, topic, manifest };
+}
+
+/**
  * Resolve a conversation address — a research or discussion item, the two
- * phases that spawn experiments and hold waits. Loud on any other phase.
+ * phases that spawn experiments.
  * @param {string} cwd @param {string} dotpath @param {string} surface
  * @returns {{phase: string, topic: string, manifest: object}}
  */
 function resolveConversation(cwd, dotpath, surface) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
-  if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
-    throw new Error(`render ${surface}: address must be <work_unit>.<${EXPERIMENT_SPAWN_PHASES.join('|')}>.<topic> — the conversation's own item; got phase "${phase}"`);
-  }
-  return { phase, topic, manifest };
+  return resolvePhaseItem(cwd, dotpath, surface, EXPERIMENT_SPAWN_PHASES, "the conversation's own item");
 }
 
 /**
@@ -2746,15 +2757,16 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
 
 /**
  * The blocked-conclusion gate over every wait the item holds — the research
- * a discussion stands on, the experiments a conversation spawned. Empty
- * when nothing is owed: the calling flow branches on the response, so one
- * fetch stands in for the read-then-render pair.
+ * a discussion stands on, the specification a plan stands on, the
+ * experiments a conversation spawned. Empty when nothing is owed: the
+ * calling flow branches on the response, so one fetch stands in for the
+ * read-then-render pair.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string} the gate's sections, or '' when nothing blocks conclusion
  */
 function waitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'wait-gate');
+  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAITING_PHASES, "the waiting item's own");
   if (!itemOf(manifest, phase, topic)) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
@@ -3595,11 +3607,11 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
- * The bridge's paused banner — `phase-completed`'s sibling for a
- * conversation leaving on a wait. Derived, never told: the phase's
- * in-progress items holding waits, each named with what it awaits. A peer
- * can land the wait between the gate and the bridge, so no holder left
- * renders the bare line rather than refusing.
+ * The bridge's paused banner — `phase-completed`'s sibling for a phase
+ * leaving on a wait. Derived, never told: the phase's in-progress items
+ * holding waits, each named with what it awaits. A peer can land the wait
+ * between the gate and the bridge, so no holder left renders the bare line
+ * rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args
  * @returns {string}
@@ -3607,8 +3619,8 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 function phasePausedSurface(cwd, { dotpath, phase }) {
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
   if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
-  if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
-    throw new Error(`render phase-paused: --phase must be <${EXPERIMENT_SPAWN_PHASES.join('|')}> — the conversations that pause on a wait; got "${phase}"`);
+  if (!WAITING_PHASES.includes(phase)) {
+    throw new Error(`render phase-paused: --phase must be <${WAITING_PHASES.join('|')}> — the phases that pause on a wait; got "${phase}"`);
   }
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
@@ -4075,6 +4087,18 @@ function entryGate(cwd, { dotpath, own }) {
       return blocker(
         `"${t}" was promoted to the cross-cutting work unit "${String(spec.promoted_to || '')}"`,
         'Cross-cutting specifications inform other plans — they are not planned directly.',
+      );
+    }
+    // A specification reading `completed` can still be a record in motion —
+    // its input moved, or a source row is no longer incorporated — and a
+    // plan built from one is built from a document about to change.
+    const unsettled = specUnsettled(manifest, topic);
+    if (unsettled) {
+      return blocker(
+        `Entry blocked — the specification for "${t}" is unsettled (${specUnsettledPhrase(unsettled)})`,
+        manifest.work_type === 'epic'
+          ? 'Return to the epic menu — its specification row is the way in.'
+          : 'Continue the work unit — the specification is its next step.',
       );
     }
     return '';

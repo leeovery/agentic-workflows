@@ -157,8 +157,13 @@ function isImportOrigin(origin) {
 
 // The two conversation phases — the ones whose sessions spawn experiments
 // (each spawn locks the spawning phase's own item, `awaiting_experiments`,
-// research and discussion identically) and the ones that hold waits.
+// research and discussion identically).
 const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
+
+// Every phase whose item can hold a wait on an upstream that has not landed:
+// the two conversations, plus planning, which stands on its specification.
+// The wait surfaces address these and no others.
+const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
 
 // Gate modes. `auto` runs to the end of the session — the entry reset
 // returns every gate to `gated`; `bounded` is auto with an end the gate
@@ -218,6 +223,7 @@ module.exports = {
   IMPORT_PHASES,
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
+  WAITING_PHASES,
   VALID_GATE_MODES,
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,

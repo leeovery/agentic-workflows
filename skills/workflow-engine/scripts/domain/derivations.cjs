@@ -78,6 +78,19 @@ function sourceRow(sources, topic) {
   return entry ? entry[1] : undefined;
 }
 
+/**
+ * A spec item's source rows that are not yet incorporated — `pending` (never
+ * extracted) and `stale` (the document moved under the extraction). The one
+ * read behind the completion refusal and the unsettled predicate.
+ * @param {{sources?: object|Array<{name?: string}>}|undefined} item
+ * @returns {string[]}
+ */
+function openSources(item) {
+  return sourceRows(item && item.sources)
+    .filter(([, r]) => r.status !== 'incorporated')
+    .map(([name]) => name);
+}
+
 // Discussion statuses that hold shut every specification sourcing them: a
 // source back in-progress (a gap routed into it), and a topic the gap exit
 // opened and parked as a stub no session has drained. Either way the
@@ -165,6 +178,58 @@ function specIsStarted(item) {
  */
 function specGroupsSources(item) {
   return item.status !== 'cancelled' && item.status !== 'superseded';
+}
+
+/**
+ * @typedef {object} SpecUnsettled
+ * @property {string|null} status     the specification item's own status
+ * @property {boolean} flagged        it carries a live reconcile flag
+ * @property {string[]} open_sources  source rows that are not `incorporated`
+ */
+
+/**
+ * Why a plan's specification is not a settled record, or null when it is.
+ * Three facts make one predicate: the record has concluded, nothing has
+ * moved beneath it, and every source it extracted is still incorporated.
+ * Keying on the status alone fires too late — a triage landing stales a
+ * source row while the specification still reads `completed` — and keying
+ * on the flag alone fires only at the reopen, one step after the landing.
+ * Derived from the specification item, never stored.
+ *
+ * A terminal specification is settled by exit rather than by agreement:
+ * cancelled, superseded, and promoted each close the record for good, and
+ * the entry gate's own arms say where the work went. An absent item is not
+ * unsettledness either — it is "no specification", the entry gate's first
+ * arm, and `topic start` has never enforced pipeline order.
+ * @param {object} manifest @param {string} topic
+ * @returns {SpecUnsettled|null}
+ */
+function specUnsettled(manifest, topic) {
+  const spec = itemOf(manifest, 'specification', topic);
+  if (!spec || TERMINAL_STATUSES.includes(spec.status)) return null;
+  const status = spec.status ?? null;
+  const flagged = spec.reconcile_needed !== undefined;
+  const open_sources = openSources(spec);
+  if (status === 'completed' && !flagged && open_sources.length === 0) return null;
+  return { status, flagged, open_sources };
+}
+
+/**
+ * Where an unsettled specification stands, one clause per reason that holds,
+ * in the order the record moves through them. The one phrasing the entry
+ * gate, the birth and reopen refusals, the conclusion wait, and the menu
+ * row's reason compose from, so no two surfaces can name it differently.
+ * @param {SpecUnsettled} unsettled
+ * @returns {string}
+ */
+function specUnsettledPhrase({ status, flagged, open_sources }) {
+  const reasons = [];
+  if (status !== 'completed') reasons.push(status === 'in-progress' ? 'back in progress' : 'not concluded');
+  if (open_sources.length > 0) {
+    reasons.push(`${open_sources.length === 1 ? 'a source is' : 'sources are'} no longer incorporated (${open_sources.join(', ')})`);
+  }
+  if (flagged) reasons.push('its own input moved');
+  return reasons.join(', ');
 }
 
 /**
@@ -317,7 +382,9 @@ function awaitedExperiments(manifest, phase, topic) {
 }
 
 /**
- * @typedef {{kind: 'research', status: string} | {kind: 'experiment', id: string}} Wait
+ * @typedef {{kind: 'research', status: string}
+ *   | {kind: 'specification'} & SpecUnsettled
+ *   | {kind: 'experiment', id: string}} Wait
  */
 
 // Research statuses that hold the same-named discussion shut — its entry and
@@ -348,11 +415,11 @@ function outstandingResearchPhrase(status) {
 }
 
 /**
- * Every wait holding one item's conclusion shut, in presentation order: a
- * `research` wait when a discussion's same-named research is still
- * outstanding (research feeds discussion), then one `experiment` wait per
- * live awaited id. Derived from the items' statuses alone — never stored —
- * and work-type agnostic; an absent item holds nothing.
+ * Every wait holding one item's conclusion shut, in presentation order: the
+ * upstream the phase stands on — a discussion's outstanding research,
+ * a plan's unsettled specification — then one `experiment` wait per live
+ * awaited id. Derived from the items' own state alone — never stored — and
+ * work-type agnostic; an absent item holds nothing.
  * @param {object} manifest @param {string} phase @param {string} topic
  * @returns {Wait[]}
  */
@@ -362,6 +429,8 @@ function waits(manifest, phase, topic) {
   if (!itemOf(manifest, phase, topic)) return out;
   const research = phase === 'discussion' ? outstandingResearch(manifest, topic) : null;
   if (research) out.push({ kind: 'research', status: research });
+  const spec = phase === 'planning' ? specUnsettled(manifest, topic) : null;
+  if (spec) out.push({ kind: 'specification', ...spec });
   for (const id of awaitedExperiments(manifest, phase, topic)) out.push({ kind: 'experiment', id });
   return out;
 }
@@ -449,9 +518,15 @@ function computeNextPhase(manifest) {
         }
         return { next_phase: phase, phase_label: `${phase} (in-progress)` };
       }
-      const flagged = phaseItems(manifest, phase)
-        .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined);
-      if (flagged) {
+      // A completed item whose record has moved since. The flag is the
+      // general signal; a specification carries a second one the flag never
+      // reaches — a source row staled by a triage landing moves the document
+      // with no reopen and no flag — and walking past it hands the plan a
+      // specification about to change.
+      const moved = phaseItems(manifest, phase).some((i) => i.status === 'completed'
+        && (i.reconcile_needed !== undefined
+          || (phase === 'specification' && specUnsettled(manifest, i.name) !== null)));
+      if (moved) {
         return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
       }
     }
@@ -982,6 +1057,7 @@ module.exports = {
   phaseStatus,
   sourceRows,
   sourceRow,
+  openSources,
   OPEN_SOURCE_STATUSES,
   sourcingSpecs,
   UNIT_PHASES,
@@ -990,6 +1066,8 @@ module.exports = {
   discoveryUnitExists,
   specIsStarted,
   specGroupsSources,
+  specUnsettled,
+  specUnsettledPhrase,
   lockingSpecs,
   liveSeries,
   cancelPlan,

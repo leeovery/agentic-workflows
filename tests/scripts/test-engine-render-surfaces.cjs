@@ -400,11 +400,11 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
   });
 
-  it('the wait gate is empty over an item with no live wait, and refuses an address outside the conversation pair', () => {
+  it('the wait gate is empty over an item with no live wait, and refuses an address outside the waiting phases', () => {
     holderWith('research');
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.research.timing' }), '');
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.timing' }),
-      /address must be <work_unit>\.<research\|discussion>\.<topic>/);
+      /address must be <work_unit>\.<research\|discussion\|planning>\.<topic>/);
   });
 });
 
@@ -494,10 +494,34 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.ok(!out.includes('menu'), 'no menu on a linear unit');
   });
 
-  it('refuses a phase outside the conversation pair', () => {
+  it('refuses a phase that holds no wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress' });
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.billing' }),
-      /address must be <work_unit>\.<research\|discussion>\.<topic>/);
+      /address must be <work_unit>\.<research\|discussion\|planning>\.<topic>/);
+  });
+
+  it('a plan waits on its specification — the blocker names why it is unsettled, the guidance the way out', () => {
+    writeManifest(dir, 'lab', {
+      phases: {
+        specification: { items: { billing: { status: 'completed', sources: { talks: { status: 'stale' } } } } },
+        planning: { items: { billing: { status: 'in-progress' } } },
+      },
+    });
+    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.planning.billing' });
+    assert.match(out, /⚑ Conclusion blocked — this plan awaits its specification \(a source is no longer incorporated \(talks\)\)\n/);
+    assert.match(out, /> Settle the specification first — concluding it releases its wait; this plan can conclude once the specification lands\. The epic menu carries the way in\.\n/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this plan here and return to the epic menu with the specification queued/);
+    assert.match(unwrap(out), /conclusion stays blocked until the specification lands/);
+  });
+
+  it('a settled specification holds nothing — the plan\'s gate is empty', () => {
+    writeManifest(dir, 'lab', {
+      phases: {
+        specification: { items: { billing: { status: 'completed', sources: { talks: { status: 'incorporated' } } } } },
+        planning: { items: { billing: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.planning.billing' }), '');
   });
 });
 
@@ -558,11 +582,23 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       `${HEADER}\nDiscussion paused for "Pay".\n`);
   });
 
-  it('is loud on a missing phase, a phase outside the conversation pair, a dotted address, and an unknown unit', () => {
+  it('a paused plan names the specification it awaits', () => {
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: {
+        specification: { items: { pay: { status: 'in-progress' } } },
+        planning: { items: { pay: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'planning' }),
+      `${HEADER}\nPlanning paused for "Pay" — awaiting its specification (back in progress).\n`);
+  });
+
+  it('is loud on a missing phase, a phase that holds no wait, a dotted address, and an unknown unit', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'planning' }),
-      /--phase must be <research\|discussion> — the conversations that pause on a wait; got "planning"/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'specification' }),
+      /--phase must be <research\|discussion\|planning> — the phases that pause on a wait; got "specification"/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
   });
@@ -4237,6 +4273,22 @@ describe('render entry-gate', () => {
     manifestWith({ specification: { items: { auth: { status: 'promoted', promoted_to: 'cc-auth' } } } });
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /promoted to the cross-cutting work unit "cc-auth"/);
     manifestWith({ specification: { items: { auth: { status: 'completed' } } } });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');
+  });
+
+  it('planning: a completed specification still in motion holds the entry — the flag and the open source row alike', () => {
+    manifestWith({ specification: { items: { auth: { status: 'completed', reconcile_needed: 'discussion' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),
+      /⚑ Entry blocked — the specification for "Auth" is unsettled \(its own input moved\)[\s\S]*Continue the work unit — the specification is its next step\./);
+    manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'stale' }, roles: { status: 'pending' } } } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),
+      /unsettled \(sources are no longer incorporated \(talks, roles\)\)/);
+    // An epic's way back is its menu's specification row, never a next step.
+    manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'stale' } } } } } }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),
+      /Return to the epic menu — its specification row is the way in\./);
+    // Every row incorporated and no flag: the record has stopped moving.
+    manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'incorporated' } } } } } });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');
   });
 
