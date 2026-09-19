@@ -19,16 +19,20 @@ Expected path:
 6. gap analysis runs third and its stub writes the cycle-1
    gap-analysis tracking file with two findings; the tracking entry
    records `in-progress`, commits, and the findings summary renders
-7. **Finding 1 (settled — how long an order waits for confirmation)**
-   stands settled at the dispose: the delivery schedule and the
-   exhaustion rule fix the wait between them. It is presented at the
-   gate and the user answers `auto`: it is applied to Gateway
-   Integration, its Resolution set to Approved, `finding_gate_mode`
-   set to `auto` on the manifest, and the work committed
-8. **Finding 2 (settled — how long a quoted total stands)** rides
-   auto: disposed, rendered, applied to Checkout Session, and
-   announced in a line, with no stop and no menu. The cycle-1 tracking
-   entry flips to `complete`
+7. both findings are disposed before anything renders and both stand
+   settled on the record's own derivation — **how long an order waits
+   for confirmation**, which the delivery schedule and the exhaustion
+   rule fix between them, and **how long a quoted total stands**,
+   which the checkout session's own life fixes
+8. the settled batch renders once, a two-row payload at the
+   specification's address with lane `settled`. The gate is `gated`,
+   so the screen carries its menu and the walk **STOPS**. The user
+   answers `auto`: `finding_gate_mode` is set to `auto` on the
+   manifest and the screen lands as a yes would — the waiting window
+   into Gateway Integration, the quote's life into Checkout Session,
+   both Resolutions set to Approved, the work committed and the
+   landing confirmed in one line. The cycle-1 tracking entry flips to
+   `complete`
 9. findings were surfaced and the mode is `auto` at cycle 1, so the
    loop runs a follow-up cycle without reading the trend and without
    any gate — cycle 1 is the one cycle the churn check never covers
@@ -39,9 +43,15 @@ Expected path:
 11. the cycle-2 stub writes the cycle-2 gap-analysis tracking file with
     two findings, both in a section neither cycle-1 finding touched;
     the tracking entry records `in-progress` and commits. Both stand
-    settled at the dispose and both ride auto — rendered, applied to
-    Refunds, announced a line each, with no stop. The cycle-2 tracking
-    entry flips to `complete`
+    settled at the dispose on the record's own derivation, and the
+    settled batch renders once more — this time `finding_gate_mode`
+    holds `auto`, so the surface answers with its auto-approved
+    display alone: the worklist closed by a line in the present
+    tense, saying it is documenting them, because the landings come
+    after it — no menu, no auto-override line, **no stop**. Both
+    findings are
+    applied to Refunds and the cycle-2 tracking entry flips to
+    `complete`
 12. findings were surfaced, the mode is `auto`, and the cycle is 2, so
     the loop reads the trend before looping again: the convergence
     analysis runs over both cycles' tracking files in churning-render
@@ -73,13 +83,20 @@ Also true:
 - the diagnostic renders **before** the gate. A gate fetched without
   one means the loop asked the user without reading the trend, which
   is the unreachable-and-invisible exit this cycle replaced
-- all four findings end Approved: none is skipped, declined, routed,
-  or held for a decide batch, and no `render finding-batch` call is
-  recorded
+- all four findings end Approved: none is skipped, declined, or
+  routed, and none is landed in the discussion — every one of them is
+  the record's own call, so the specification is the only document
+  that changes
+- exactly two `render finding-batch` calls are recorded, one per
+  cycle: the first carrying its menu and stopping, the second
+  answering with the auto-approved display and not stopping. No
+  `render finding` call is recorded at all — a settled finding at the
+  specification is gated by its batch screen and nothing else, and
+  this user asked for nothing to be expanded
 - the user is stopped exactly four times in the whole walk — the
-  resume choice, finding 1's gate, the re-loop prompt, and sign-off.
-  Neither cycle-2 finding stops, and nothing stops between the auto
-  opt-in and the re-loop prompt
+  resume choice, cycle 1's batch screen, the re-loop prompt, and
+  sign-off. Neither cycle-2 finding stops, and nothing stops between
+  the auto opt-in and the re-loop prompt
 - the diagnostic payload carries the word-count pair. A payload
   without it means the baseline recorded at cycle 1 was never read
   back, and the growth signal — the one reading that says whether the

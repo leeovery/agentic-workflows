@@ -1,0 +1,78 @@
+{
+  "origin": "The gap exit's three homes are not three flavours of the same move. Two of them stop the specification — a source reopened, or a topic opened — and the third does not: a gap that is a capability the product may want later is parked on the roadmap, sourced to the specification that found it, and the session carries straight on. This walks that third destination end to end on an epic: an unsourced decision the derivation cannot reach, a conversational stop, a user who says the ground is a whole piece of work for another release, the acknowledgement gate's roadmap row, the horizon ask, the park, and then the pause section's nothing-was-routed arm handing the walk back to record the finding Declined and finish the review. Nothing reopens, nothing is written into a source, and the specification concludes in the same sitting.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/dependencies.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user owns search relevance and knows both concluded discussions cold. When the session raises the behavioural score's 30/70 weighting as a decision the record never made, they recognise it at once — that number was invented while the specification was being written, and nobody has ever discussed it. They will not settle it here and they say why: what the ranker should optimise for is not a parameter, it is a whole capability — a relevance objective the team can state, tune and score a change against — and the epic has nothing to score against and nobody in the room to state it. They are equally clear where it does not belong: not back in the behavioural-ranking discussion, which settled how signals get there and is closed, and not as a topic on this epic either, because they are not taking that work on now and do not want this specification sitting blocked behind it. They want it written down where the product's later releases are kept, so it comes back when there is something to measure with, and they want this specification to carry on and finish today. Asked which horizon it belongs to, they name the release after this one: v2. They never offer a weighting, never ask for the number on the page to be changed or removed, and never ask to reopen anything. Shown a dependencies section for the specification they read it and confirm it. Asked afterwards whether to run another review round they proceed to completion — one finding, and it went somewhere else; another round is not owed. They agree the specification is directly plannable rather than cross-cutting, and at sign-off they confirm.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-input-unsourced-weighting": "when the prose dispatches the input review agent via the Task tool — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate search-relevance.specification.behavioural-ranking",
+      "manifest set search-relevance.specification.behavioural-ranking review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary search-relevance.specification.behavioural-ranking",
+      "manifest get search-relevance.specification.behavioural-ranking status",
+      "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
+      "roadmap add",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate search-relevance.specification.behavioural-ranking --variant reloop",
+      "render spec-completion-gate search-relevance.specification.behavioural-ranking --variant signoff",
+      "topic complete search-relevance specification behavioural-ranking"
+    ],
+    "calls_exclude": [
+      "topic triage",
+      "discovery-map add",
+      "topic reopen",
+      "sources stale",
+      "render finding-batch",
+      "spec(search-relevance): pause",
+      "knowledge.cjs index .workflows/search-relevance/discussion"
+    ],
+    "calls_in_order": [
+      "manifest set search-relevance.specification.behavioural-ranking review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary search-relevance.specification.behavioural-ranking",
+      "manifest get search-relevance.specification.behavioural-ranking status",
+      "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
+      "roadmap add",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate search-relevance.specification.behavioural-ranking --variant reloop",
+      "render spec-completion-gate search-relevance.specification.behavioural-ranking --variant signoff",
+      "topic complete search-relevance specification behavioural-ranking"
+    ]
+  }
+}

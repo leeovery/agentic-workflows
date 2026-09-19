@@ -32,7 +32,7 @@
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-shared/references/compliance-check.md"
   ],
-  "conduct": "The user is specifying the expansion pipeline and knows both records cold. When the batch-vs-live-stream conflict is raised they do not pick a side: they explain that neither decision survives, because what expansion freshness the product actually needs was never explored in either discussion — the live stream was rejected on cost, the daily batch was assumed without measuring, and picking either here would invent ground. They engage briefly on the merits but hold that this needs real discussion work, not a menu answer. When the gap raise appears stating it will route to synonym-handling and pause the spec, they confirm — they would push back only if asked to choose or classify, and they expect to land back on the epic menu told which discussion to re-conclude. They never ask to reopen anything themselves and never offer a settling decision.",
+  "conduct": "The user is specifying the expansion pipeline and knows both records cold. When the batch-vs-live-stream conflict is raised they do not pick a side: they explain that neither decision survives, because what expansion freshness the product actually needs was never explored in either discussion — the live stream was rejected on cost, the daily batch was assumed without measuring, and picking either here would invent ground. They engage briefly on the merits but hold that this needs real discussion work, not a menu answer. When the gap raise appears stating it will route to synonym-handling and pause the spec, they confirm the route it proposes: the ground belongs to the synonym-handling discussion, which decided the expansion source in the first place, so there is nothing here to open as a topic of its own and nothing to shelve for a later release. They would push back only if asked to choose or classify, and they expect to land back on the epic menu told which discussion to re-conclude. They never ask to reopen anything themselves and never offer a settling decision.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
@@ -52,7 +52,9 @@
       "topic complete search-relevance specification expansion",
       "sources stale search-relevance",
       "knowledge.cjs index .workflows/search-relevance/discussion",
-      "construction_gate_mode auto"
+      "construction_gate_mode auto",
+      "discovery-map add",
+      "roadmap add"
     ]
   }
 }
