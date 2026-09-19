@@ -1947,7 +1947,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.deepStrictEqual(spec.blocked_by, ['fees']);
     assert.notStrictEqual(spec.recommended, true);
     assert.match(epicInSessionGate('v1', spec),
-      /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are back in-progress \(Fees\) — so proceeding meets that gate next\. Only proceed/);
+      /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are not concluded \(Fees\) — so proceeding meets that gate next\. Only proceed/);
   });
 
   it('an unblocked held row carries no entry-hold clause — the gate reads as before', () => {

@@ -78,6 +78,12 @@ function sourceRow(sources, topic) {
   return entry ? entry[1] : undefined;
 }
 
+// Discussion statuses that hold shut every specification sourcing them: a
+// source back in-progress (a gap routed into it), and a topic the gap exit
+// opened and parked as a stub no session has drained. Either way the
+// specification waits for a record that has not concluded.
+const OPEN_SOURCE_STATUSES = ['in-progress', 'triaged'];
+
 /**
  * The non-terminal specification items whose `sources` name `discussion`,
  * as `[name, item]` entries — proposed groupings included; callers filter
@@ -976,6 +982,7 @@ module.exports = {
   phaseStatus,
   sourceRows,
   sourceRow,
+  OPEN_SOURCE_STATUSES,
   sourcingSpecs,
   UNIT_PHASES,
   unitItems,
