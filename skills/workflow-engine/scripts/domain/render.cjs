@@ -51,7 +51,7 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = req
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -1300,11 +1300,12 @@ function linters(cwd, { dotpath, file, variant }) {
 //   conflict  — the settle-it-here menu: one numbered option per documented
 //               side (recommended first) plus Comment — classification is
 //               Claude's, the menu offers only the documented sides
-//   gap-route — the gap raise plus its acknowledgement gate: the menu states
-//               the routing intent and confirms it (no "no" — an objection
-//               arrives as Comment and drops into the settleable exchange),
-//               and on an epic offers the two destinations a map has that a
-//               linear work unit does not: a new topic, or the roadmap
+//   gap-route — the gap raise plus its gate (no "no" — an objection arrives
+//               as Comment and drops into the settleable exchange): a linear
+//               work unit has one home for the gap, so the menu states the
+//               routing intent and confirms it; an epic has three — the
+//               reopen, a new topic on the map, the roadmap — so it asks the
+//               fork
 //   held-doc  — the fallback when another session holds the owning document
 // The raise body takes the finding idiom: bold head, one meta bullet per
 // cited quote, a labelled context paragraph, stakes beneath.
@@ -1387,24 +1388,27 @@ function incoherenceGate(cwd, args) {
       return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
         menu(overAuto ? AUTO_OVERRIDE_LINE : '', options, { question: 'Which decision stands?' }))].join('\n');
     }
-    // The reopen is the default because the gap usually belongs to a source
-    // already on the record. An epic has two more places to put one: a topic
-    // of its own on the map, or the roadmap, where it is not this
-    // specification's to fill. The linear types have neither.
-    const destinations = manifest.work_type === 'epic' ? [
-      cmdOption('t', 'topic', 'Open a new topic on the map for it — this specification waits for it to conclude'),
-      cmdOption('r', 'roadmap', "Park it on the roadmap — outside this specification's scope"),
-    ] : [];
+    const gap = manifest.work_type === 'epic'
+      ? {
+        statement: `The gap needs the room. Reopening "${p.doc}" with it pauses this specification until the answer lands; the map offers two other homes.`,
+        question: 'Reopen it?',
+        rows: [
+          cmdOption('y', 'yes', `Reopen "${p.doc}" with the gap and pause here`),
+          cmdOption('t', 'topic', 'Open a new topic on the map for it — this specification waits for it to conclude'),
+          cmdOption('r', 'roadmap', "Park it on the roadmap — outside this specification's scope"),
+        ],
+      }
+      : {
+        statement: `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`,
+        question: 'Proceed?',
+        rows: [cmdOption('y', 'yes', 'Land the gap and pause here')],
+      };
     return [
       section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n')),
       section('MENU: incoherence gap', INCOHERENCE_STOP, menu(
-        `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`,
-        [
-          cmdOption('y', 'yes', 'Land the gap and pause here'),
-          ...destinations,
-          promptOption('Comment', 'Tell me what you\'re thinking before it moves'),
-        ],
-        { question: 'Proceed?' },
+        `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}${gap.statement}`,
+        [...gap.rows, promptOption('Comment', 'Tell me what you\'re thinking before it moves')],
+        { question: gap.question },
       )),
     ].join('\n');
   }
@@ -3069,9 +3073,11 @@ function findingAnnounce(cwd, { dotpath, file }) {
 // BATCH_MAX items — a larger lane renders over successive screens, each
 // approved on its own.
 //
-// This is the one gate that never stops under auto: a scan the user opted
-// out of is a screen with nothing on it to do, so the whole surface renders
-// as a display of what landed.
+// The settled lane at the specification is the one screen a gate mode
+// reaches: it carries the row that sets the mode, and under auto it renders
+// as a display of what is landing, with no menu — a scan the user opted out
+// of is a screen with nothing on it to do. Every other lane is a scan for a
+// user who is present, and renders its gated screen whatever the mode says.
 
 const BATCH_MAX = 5;
 
@@ -3079,9 +3085,10 @@ const BATCH_MAX = 5;
 const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
 
 // The call screen — one presentation under the name each door uses. The
-// `a/auto` row rides the specification's name alone: its walk is the one
-// with a gate mode this screen can flip.
-/** @type {{intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss: string, ask: string, done: string, fields: string[]}} */
+// `auto` member rides the specification's name alone: its walk is the one
+// with a gate mode this screen can flip, so its lane is the only one with an
+// unstopped form.
+/** @type {{intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss: string, ask: string, fields: string[]}} */
 const CALL_LANE = {
   intro: (n) => (n === 1
     ? "This one is a call I've made, with what it rests on named beside it."
@@ -3090,21 +3097,28 @@ const CALL_LANE = {
   confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
   discuss: "Say discuss and a number — I'll raise it after the rest land",
   ask: 'Tell me a number to expand',
-  done: 'documented',
   fields: ['title', 'detail'],
 };
 
-/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, autoRow?: string, done: string, fields: string[]}>} */
+/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, auto?: {row: string, line: (n: number) => string}, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
     question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
     confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
     ask: "Tell me a number to expand, or one you don't think is settled",
-    done: 'applied',
     fields: ['title', 'detail'],
   },
-  settled: { ...CALL_LANE, autoRow: 'Document this screen and every remaining settled finding automatically' },
+  settled: {
+    ...CALL_LANE,
+    // The opt-in and its unstopped form: the row that sets the gate mode,
+    // and the line the screen closes on once it is set. The landings follow
+    // the line, so it speaks in the present.
+    auto: {
+      row: 'Document this screen and every remaining settled finding automatically',
+      line: (n) => (n === 1 ? 'Documenting it' : `Documenting all ${n}`),
+    },
+  },
   decide: CALL_LANE,
   route: {
     intro: (n) => (n === 1
@@ -3113,7 +3127,6 @@ const BATCH_LANES = {
     question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
     confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
     ask: 'Tell me a number to expand, or one that should stay here',
-    done: 'sent',
     fields: ['title', 'target', 'detail'],
   },
 };
@@ -3166,9 +3179,9 @@ function findingBatch(cwd, { dotpath, file }) {
     intro: lane.intro(count),
     items: p.items.map((it) => ({ title: it.title, tag: it.target ? `→ ${it.target}` : undefined, note: it.detail })),
   });
-  if (laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
+  if (lane.auto && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
     return section('DISPLAY: finding batch auto-approved', AUTO_GATE_MARKDOWN_INSTRUCTION,
-      `${body}\n\n${count} finding${count === 1 ? '' : 's'} ${lane.done} [auto].`);
+      `${body}\n\n${lane.auto.line(count)} [auto].`);
   }
   return [
     section('DISPLAY: finding batch', 'emit verbatim as markdown', body),
@@ -3177,7 +3190,7 @@ function findingBatch(cwd, { dotpath, file }) {
       "emit verbatim as markdown, then STOP for the user's response",
       menu('', [
         cmdOption('y', 'yes', lane.confirm(count, more)),
-        ...(lane.autoRow ? [cmdOption('a', 'auto', lane.autoRow)] : []),
+        ...(lane.auto ? [cmdOption('a', 'auto', lane.auto.row)] : []),
         ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
         promptOption('Ask', lane.ask),
       ], { question: lane.question(count) }),
@@ -3286,9 +3299,10 @@ function findingChoice(p, head, item) {
  * A settled call: the body carries what determined it, a short diff renders
  * in place, and whole proposed content is held behind `v/view` rather than
  * dumped — the finding is a report, and the artifact text is the payload of
- * the fix, not its explanation. Where the phase batches its calls the report
- * is all there is: the batch screen is the gate, and this render is the
- * screen's `ask N` expansion.
+ * the fix, not its explanation. Where the phase batches its calls the gate
+ * is the batch screen and this render is its `ask N` expansion: no menu, and
+ * the wording rides the report, the expansion being the ask `v/view` would
+ * otherwise answer.
  * @param {any} p @param {string[]} head @param {any} item
  * @param {{view: boolean, batched: boolean}} mode @returns {string}
  */
@@ -3325,13 +3339,16 @@ function findingSettled(p, head, item, { view, batched }) {
     return section('MENU: finding gate', STOP_FOR_RESPONSE, menu('', options, { question: 'Apply this?' }));
   };
 
+  /** The proposed content as markdown — its label, then the lines verbatim. */
+  const wording = () => section('DISPLAY: finding wording', 'emit verbatim as markdown',
+    [`**${p.content.label}**`, '', ...p.content.lines].join('\n'));
+
   // `--view` answers the gate's own v/view row: the wording the user asked
   // for, and the gate again minus that row. The report is not repeated —
   // re-rendering it whole is how one finding comes to fill a screen twice.
   if (view) {
     if (!p.content) throw new Error('render finding: --view needs "content" — a diff finding shows its change in place');
-    const wording = section('DISPLAY: finding wording', 'emit verbatim as markdown', [`**${p.content.label}**`, '', ...p.content.lines].join('\n'));
-    return batched ? wording : [wording, gateMenu(false)].join('\n');
+    return batched ? wording() : [wording(), gateMenu(false)].join('\n');
   }
 
   head.push('', p.proposal);
@@ -3349,11 +3366,14 @@ function findingSettled(p, head, item, { view, batched }) {
     }
     parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
   }
-  // Whole-section content is validated above and never rendered here — source
-  // read aloud is what buried the report; it waits for `v/view`, where it
-  // renders as markdown rather than as a wall of syntax.
-
-  if (batched) return parts.join('\n');
+  // At a walked gate whole-section content waits for `v/view` — source read
+  // aloud is what buried the report. A batched address has no such row: the
+  // expansion is the user asking to see the finding, so the wording comes
+  // with it, as markdown rather than as a wall of syntax.
+  if (batched) {
+    if (p.content) parts.push(wording());
+    return parts.join('\n');
+  }
 
   if (item.finding_gate_mode === 'auto') {
     parts.push(section(
@@ -4135,16 +4155,17 @@ function entryGate(cwd, { dotpath, own }) {
         );
       }
       // The topic's own sources must be settled: a source discussion back
-      // in-progress (a gap routed into it) blocks this spec until it
-      // re-concludes. sourceRows decodes the map and legacy array forms.
+      // in-progress (a gap routed into it), or one the gap exit opened as a
+      // new topic and parked, blocks this spec until it concludes.
+      // sourceRows decodes the map and legacy array forms.
       const spec = itemOf(manifest, 'specification', topic);
       const open = sourceRows(spec && spec.sources)
         .map(([n]) => n)
-        .filter((n) => n && items[n] && items[n].status === 'in-progress');
+        .filter((n) => n && items[n] && OPEN_SOURCE_STATUSES.includes(items[n].status));
       if (open.length > 0) {
         return blocker(
-          `Sources for "${t}" are back in-progress: ${open.join(', ')}`,
-          'A specification cannot be built from an in-flight record — conclude the reopened discussion(s), then re-enter this specification.',
+          `Sources for "${t}" are not concluded: ${open.join(', ')}`,
+          'A specification cannot be built from a record still open — conclude the discussion(s), then re-enter this specification.',
         );
       }
       return '';

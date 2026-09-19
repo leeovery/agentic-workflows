@@ -1757,12 +1757,36 @@ describe('render finding-batch', () => {
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: two });
     assert.ok(out.startsWith('=== DISPLAY: finding batch auto-approved (emit verbatim as markdown — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\n'));
     assert.ok(out.includes("Each of these is a call I've made"), 'the screen still shows what landed');
-    assert.ok(out.endsWith('\n2 findings documented [auto].\n'));
-    assert.ok(!out.includes('MENU'), 'the one gate that never stops under auto');
+    assert.ok(out.endsWith('\nDocumenting all 2 [auto].\n'), 'the line is true when it is emitted — the landings follow it');
+    assert.ok(!out.includes('MENU'), 'the lane that carries the flip never stops once it is set');
     assert.ok(!out.includes('Auto is on'), 'a screen that does not stop overrides nothing');
     const one = writePayload(dir, 'auto1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
     assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: one })
-      .endsWith('\n1 finding documented [auto].\n'), 'the singular reads singular');
+      .endsWith('\nDocumenting it [auto].\n'), 'the singular reads singular');
+  });
+
+  it('the other lanes are scans a user is present for — auto never lands one', () => {
+    // The gate mode is the findings walk's, and the planning walk holds one:
+    // its call lane is `decide`, which has no flip of its own to answer.
+    writeManifest(dir, 'pay', {
+      phases: {
+        planning: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
+        specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
+      },
+    });
+    for (const [dotpath, lane, items] of [
+      ['pay.planning.checkout', 'decide', [{ title: 'A', detail: 'a.' }]],
+      ['pay.planning.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
+      ['pay.planning.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
+      ['pay.specification.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
+      ['pay.specification.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
+    ]) {
+      const file = writePayload(dir, `scan-${dotpath}-${lane}.json`, { lane, items });
+      const out = renderSurface(dir, 'finding-batch', { dotpath, file });
+      assert.ok(out.includes('=== MENU: finding batch'), `${dotpath} ${lane}: the screen still asks`);
+      assert.ok(!out.includes('auto-approved'), `${dotpath} ${lane}: no lane but settled has an auto form`);
+      assert.ok(!out.includes('Auto is on'), `${dotpath} ${lane}: a scan overrides nothing`);
+    }
   });
 
   it("the call lane is the address's: settled at the specification, decide everywhere else", () => {
@@ -2851,9 +2875,24 @@ describe('render finding', () => {
       const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
       assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), `${mode}: the expansion still shows the report`);
       assert.ok(out.includes('=== DISPLAY: diff ('), `${mode}: the diff rides along — the expansion is problem, call, and change`);
+      assert.ok(!out.includes('DISPLAY: finding wording'), `${mode}: a diff finding has no wording to show`);
       assert.ok(!out.includes('MENU: finding'), `${mode}: the batch already asked`);
       assert.ok(!out.includes('finding auto-approved'), `${mode}: the batch already said what landed`);
     }
+  });
+
+  it('a settled finding at the specification shows its whole wording — the expansion is the ask', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
+    const file = writePayload(dir, 'sw.json', {
+      ...settled,
+      content: { label: 'Proposed Addition', lines: ['## Delivery', '', 'Retries are bounded at four attempts.'] },
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), 'the report leads');
+    assert.ok(out.endsWith('=== DISPLAY: finding wording (emit verbatim as markdown) ===\n**Proposed Addition**\n\n## Delivery\n\nRetries are bounded at four attempts.\n'),
+      `the wording closes the expansion: ${out}`);
+    assert.ok(!out.includes('MENU: finding'), 'the batch screen is the gate — the expansion asks nothing');
+    assert.ok(!/`v\/view`/.test(out), 'there is no row left to ask the wording with');
   });
 
   it('--view full at the specification returns the wording alone', () => {
@@ -3320,11 +3359,11 @@ describe('render proposed-task', () => {
       '',
       "=== MENU: incoherence gap (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
-      'Routing this to "synonym-handling" — it reopens with the gap, and this specification pauses until the answer lands.',
+      'The gap needs the room. Reopening "synonym-handling" with it pauses this specification until the answer lands; the map offers two other homes.',
       '',
-      '**`◆ Proceed?`**',
+      '**`◆ Reopen it?`**',
       '',
-      '**`y/yes`**     → Land the gap and pause here',
+      '**`y/yes`**     → Reopen "synonym-handling" with the gap and pause here',
       '**`t/topic`**   → Open a new topic on the map for it — this',
       `${NB(12)}specification waits for it to conclude`,
       "**`r/roadmap`** → Park it on the roadmap — outside this specification's",
@@ -3347,11 +3386,18 @@ describe('render proposed-task', () => {
       phases: { implementation: { items: { solo: { status: 'in-progress' } } } },
     });
     const file = writePayload(dir, 'ig3.json', { lane: 'review', doc: 'solo', title: 't', context: 'c' });
-    const linear = renderSurface(dir, 'incoherence-gate', { dotpath: 'solo.implementation.solo', file, variant: 'gap-route' });
+    const linear = unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'solo.implementation.solo', file, variant: 'gap-route' }));
+    assert.ok(linear.includes('Routing this to "solo" — it reopens with the gap, and this specification pauses until the answer lands.'),
+      'one home is a statement, not a fork');
+    assert.ok(/\*\*`◆ Proceed\?`\*\*/.test(linear));
     assert.ok(/\*\*`y\/yes`\*\* +→ Land the gap and pause here/.test(linear));
     assert.ok(!linear.includes('`t/topic`'), 'a feature has no map to open a topic on');
     assert.ok(!linear.includes('`r/roadmap`'), 'the park is the map\'s neighbour, offered where the map is');
     const epic = unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' }));
+    assert.ok(epic.includes('The gap needs the room. Reopening "solo" with it pauses this specification until the answer lands; the map offers two other homes.'),
+      'three homes make it a fork — and the reopen names its cost');
+    assert.ok(/\*\*`◆ Reopen it\?`\*\*/.test(epic));
+    assert.ok(epic.includes('**`y/yes`**     → Reopen "solo" with the gap and pause here'));
     assert.ok(epic.includes('**`t/topic`**   → Open a new topic on the map for it — this specification waits for it to conclude'));
     assert.ok(epic.includes('**`r/roadmap`** → Park it on the roadmap — outside this specification\'s scope'));
   });
@@ -4233,31 +4279,39 @@ describe('render entry-gate', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
   });
 
-  it('epic specification with a topic: a source discussion back in-progress blocks that spec', () => {
+  it('epic specification with a topic: a source discussion that has not concluded blocks that spec', () => {
     manifestWith({
       discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
-      /⚑ Sources for "Auth" are back in-progress: a[\s\S]*cannot be built from an in-flight record/);
+      /⚑ Sources for "Auth" are not concluded: a[\s\S]*cannot be built from a record still open/);
+    // A topic the gap exit opened and parked waits the same way — it has
+    // never concluded, and the specification is its reader.
+    manifestWith({
+      discussion: { items: { a: { status: 'triaged' }, b: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'pending' }, b: { status: 'incorporated' } } } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
+      /⚑ Sources for "Auth" are not concluded: a[\s\S]*conclude the discussion\(s\), then re-enter/);
     // The legacy array form decodes the same way.
     manifestWith({
       discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
       specification: { items: { auth: { status: 'in-progress', sources: [{ name: 'a', status: 'stale' }] } } },
     }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are not concluded: a/);
     // Settled sources are clear; an open discussion outside the spec's sources does not block it.
     manifestWith({
       discussion: { items: { a: { status: 'completed' }, c: { status: 'in-progress' } } },
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
-    // Plural open sources list every holder.
+    // Plural open sources list every holder, whichever way each is open.
     manifestWith({
-      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' }, c: { status: 'completed' } } },
-      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'stale' } } } } },
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'triaged' }, c: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'pending' }, c: { status: 'incorporated' } } } } },
     }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a, b/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are not concluded: a, b/);
   });
 
   it('discussion: outstanding research holds the entry shut, every work type — landed, absent, or closed research clears it', () => {

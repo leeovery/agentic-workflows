@@ -965,7 +965,7 @@ function entryHoldClause(phase, topic, by) {
   if (by === undefined) return '';
   const what = phase === 'discussion'
     ? `research on "${titlecase(topic)}" is outstanding`
-    : `its sources are back in-progress (${by.map(titlecase).join(', ')})`;
+    : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
   return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
 }
 

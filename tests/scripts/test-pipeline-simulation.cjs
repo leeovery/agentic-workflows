@@ -1699,7 +1699,7 @@ describe('pipeline simulation', () => {
     // sources: the entry gate refuses direct entry, and the scoped view marks
     // the row blocked (unselectable until the discussion re-concludes).
     const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });
-    assert.match(gateWhileOpen, /Sources for "Unified" are back in-progress: beta/);
+    assert.match(gateWhileOpen, /Sources for "Unified" are not concluded: beta/);
     const openView = specDetail(sim.dir, wu);
     assert.strictEqual(openView.scenario, 'blocked-discussions-open',
       'the single fast-path into an itself-blocked spec derives the terminal scenario');
@@ -1835,7 +1835,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'finding_gate_mode', 'auto']);
     const autoBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
     assert.match(autoBatch, /DISPLAY: finding batch auto-approved/, 'auto lands the screen as a display');
-    assert.match(autoBatch, /2 findings documented \[auto\]\./);
+    assert.match(autoBatch, /Documenting all 2 \[auto\]\./);
     assert.ok(!autoBatch.includes('MENU'), 'auto means auto — the batch never stops');
     // The review restart clears its staging subtree (exists-guarded delete) so a
     // stale cycle can never hijack the post-restart loop's crash-resume guards.
@@ -1942,6 +1942,43 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'cancel-gate', `${wu}.specification.unified`], /is locked — implementation has started/);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.status, 'completed');
+
+    // The gap exit's new-topic destination: a gap the room has to take is
+    // offered three homes on an epic, and the `t/topic` pick opens one on
+    // the map, parks the gap on it, and joins it to this specification's
+    // sources — which then waits for it exactly as for a reopened source.
+    sim.write('.workflows/.cache/scratch/gap-route.json', JSON.stringify({
+      lane: 'review', doc: 'refund-window', title: 'The refund window is undecided',
+      context: 'No source bounds how long a refund can be claimed.',
+    }));
+    const gapGate = sim.render(['incoherence-gate', `${wu}.specification.unified`,
+      '--file', '.workflows/.cache/scratch/gap-route.json', '--variant', 'gap-route'], { expect: 'content' });
+    assert.match(gapGate, /`◆ Reopen it\?`/, 'an epic gap is a fork between three homes, not an acknowledgement');
+    assert.match(gapGate, /`y\/yes`.+→ Reopen "refund-window" with the gap and pause here/);
+    assert.match(gapGate, /`t\/topic`/);
+    assert.match(gapGate, /`r\/roadmap`/);
+    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+      '### Refund window\n*From: unified · specification · 2026-07-23*\n\nHow long can a refund be claimed?\n');
+    sim.run(['discovery-map', 'add', wu, 'refund-window', 'discussion',
+      '--summary', 'How long a refund can be claimed', '--source', 'reroute:unified']);
+    const gapParked = sim.run(['topic', 'triage', wu, 'discussion', 'refund-window',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'refund-window',
+      '-m', `spec(${wu}/unified): reroute the refund-window gap to its own topic`]);
+    assert.strictEqual(gapParked.status, 'triaged');
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.refund-window.status', 'pending']);
+    const blockedByGap = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail.spec_blocked;
+    assert.deepStrictEqual(blockedByGap(), [{ name: 'unified', by: ['refund-window'] }],
+      'a source that has never concluded blocks its spec like one back in-progress');
+    assert.match(sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' }),
+      /Sources for "Unified" are not concluded: refund-window/);
+    sim.refuses(['topic', 'complete', wu, 'specification', 'unified'],
+      /unresolved source rows \(refund-window\)/);
+    // Opening the conversation releases nothing: the specification waits for
+    // the answer, not for the room to sit.
+    sim.run(['topic', 'start', wu, 'discussion', 'refund-window']);
+    assert.deepStrictEqual(blockedByGap(), [{ name: 'unified', by: ['refund-window'] }]);
+    assert.match(sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' }),
+      /Sources for "Unified" are not concluded: refund-window/);
   });
 
   it('epic topic cancel: one unit per stage, a later stage locking the earlier, waits released before the holders close', () => {

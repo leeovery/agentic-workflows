@@ -12,11 +12,13 @@
 // by the adapter, which owns file access) arrive as an input.
 // ---------------------------------------------------------------------------
 
+const { OPEN_SOURCE_STATUSES } = require('./derivations.cjs');
+
 /**
  * @typedef {object} DiscoverySource
  * @property {string} name
  * @property {string} status              raw manifest value: incorporated | pending
- * @property {string} discussion_status   completed | in-progress | unknown
+ * @property {string} discussion_status   raw manifest value: completed | in-progress | triaged | … | unknown
  */
 
 /**
@@ -64,8 +66,8 @@
  * @property {number} stale               sources extracted but revised since — needing reconciliation
  * @property {number} consult_pending
  * @property {string} verb                Creating | Continuing | Refining
- * @property {string[]} open_sources      sources whose discussion is back in-progress
- * @property {boolean} blocked            any open source — the spec is not enterable until it re-concludes
+ * @property {string[]} open_sources      sources whose discussion has not concluded — back in-progress, or opened by the gap exit and parked
+ * @property {boolean} blocked            any open source — the spec is not enterable until it concludes
  */
 
 /**
@@ -137,7 +139,7 @@ function specRow(spec, hints) {
     });
   }
 
-  const open = kept.filter((s) => s.discussion_status === 'in-progress').map((s) => s.name);
+  const open = kept.filter((s) => OPEN_SOURCE_STATUSES.includes(s.discussion_status)).map((s) => s.name);
   const row = {
     name: spec.name,
     status: spec.status,

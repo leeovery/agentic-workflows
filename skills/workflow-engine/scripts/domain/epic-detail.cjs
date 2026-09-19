@@ -28,6 +28,7 @@ const {
   specReactivateLocks,
   reactivateLockPhrases,
   deliveryStarted,
+  OPEN_SOURCE_STATUSES,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
 const { discoveryLifecycleLabel, titlecase } = require('./conventions.cjs');
@@ -69,7 +70,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           what holds the item's entry shut — a specification's
- *                                             source discussions back in-progress, or `['research']`
+ *                                             source discussions still open, or `['research']`
  *                                             on a discussion whose research is outstanding
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
@@ -175,7 +176,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {NextPhaseEntry[]} next_phase_ready
  * @property {string[]} unaccounted_discussions
  * @property {string[]} reopened_discussions
- * @property {{name: string, by: string[]}[]} spec_blocked  live spec items whose source discussion is back in-progress
+ * @property {{name: string, by: string[]}[]} spec_blocked  live spec items whose source discussion has not concluded
  * @property {MapRow[]} discovery_map
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
@@ -485,9 +486,9 @@ function epicDetail(cwd, manifest) {
   const planItems = sortItemsByBuildOrder(phaseItems(manifest, 'planning'), manifest, 'planning');
   const implItems = sortItemsByBuildOrder(phaseItems(manifest, 'implementation'), manifest, 'implementation');
 
-  // A spec item (proposed included) whose source discussion is back
-  // in-progress is blocked from entry until it re-concludes — the epic menu
-  // hard-blocks the route.
+  // A spec item (proposed included) whose source discussion has not
+  // concluded — back in-progress, or opened by the gap exit and parked — is
+  // blocked from entry until it does; the epic menu hard-blocks the route.
   const discussionStatus = new Map(discussionItems.map((d) => [d.name, d.status]));
   /** @type {{name: string, by: string[]}[]} */
   const specBlocked = [];
@@ -496,7 +497,8 @@ function epicDetail(cwd, manifest) {
     const srcs = Array.isArray(s.sources)
       ? s.sources
       : Object.entries(s.sources || {}).map(([topic, data]) => ({ topic, ...(typeof data === 'object' ? data : {}) }));
-    const open = srcs.map((src) => src.topic || src.name).filter((n) => n && discussionStatus.get(n) === 'in-progress');
+    const open = srcs.map((src) => src.topic || src.name)
+      .filter((n) => n && OPEN_SOURCE_STATUSES.includes(discussionStatus.get(n)));
     if (open.length > 0) specBlocked.push({ name: s.name, by: open });
   }
   // The display tree shows the blocked state; the menu withholds a blocked
