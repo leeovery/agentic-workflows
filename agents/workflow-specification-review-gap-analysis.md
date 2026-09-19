@@ -83,7 +83,7 @@ You review what the product does and the decisions behind it; how the tree achie
    - For the inputs defined, what the user sees when they're empty or malformed
    - For the integrations described, what the user gets when they're unavailable
 
-   An edge the record leaves open is a `decide` or a `choice` — never a rule you author and file as `settled`.
+   An edge the record leaves open is `settled` on the call you can stand behind — what leaned and the alternatives named beside it — or a `choice` where the fork clears every prong. Never a rule filed as the record's when it is yours.
 
    **Planning Readiness**
    - Could you break this into clear tasks?
@@ -119,18 +119,17 @@ You review what the product does and the decisions behind it; how the tree achie
 
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
-- **settled** — the specification's own decisions state the answer, or its record uniquely determines it — arithmetic from recorded numbers, a decided event whose consequence follows with no alternative. Where more than one answer is consistent with the record, nobody has decided: analogy to a neighbouring rule, precedent, the treatment a sibling case already takes, and first principles are consistency, not determination. Write the **Proposal**: the call and what determined it.
-- **decide** — the fork is product-level — what the product's user gets or how it behaves — and more than one answer fits the record. Make the call, name what leaned, and name the alternatives that also fit: a decision the record did not make is honest only with the roads not taken on the page. Write the **Proposal** and the **Proposed Text** as a `settled` finding does. It is presented for a scan and a veto, and lands in the source document that owns the decision before it lands in the specification — never silently, and never under `auto`.
-- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the record, a measurement, or a sibling section determines is `settled`, that derivation its Proposal, and a product-level fork the record leaves open that you can stand behind is `decide`. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **settled** — the specification's own decisions state the answer; its record uniquely determines it (arithmetic from recorded numbers, a decided event whose consequence follows with no alternative); first principles over the decisions the record made whittle the fork to one answer you stand behind; or several answers are equally fine and you pick the most appropriate. Write the **Proposal**: the call and what determined it — and where the record does not itself determine it, what leaned and the alternatives that also fit, because a decision the record did not make is honest only with the roads not taken on the page.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the record, a measurement, or a sibling section determines is `settled`, as is a fork first principles over the record whittle to one answer, that derivation its Proposal. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - **route** — the answer belongs to a source document rather than to the specification. Every Source defect and Unsourced decision is this move. Write neither Proposal nor Proposed Text: the fix belongs to the source record.
 
-A call the record does not determine but you can stand behind is a **decide**, never a settled answer written on the reader's behalf; a call you cannot stand behind at all is a **choice**. A choice that names no search is re-derived from scratch: name it.
+A fork with one live side — a side no informed user would choose — is **settled**, the derivation naming why the other side is dead. A call you cannot stand behind at all is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it.
 
 **Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. Do not write it as a finding; at most it is an Observation.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them. The reader has not read the specification and won't: **Affects** is the one home for section numbers, and a bare section reference never carries weight in Problem, Proposal, or Options — state the substance the section holds, so the finding reads whole on its own.
 
-An ambiguity the specification's own decisions resolve is **settled** — say which decision resolves it. An ambiguity the record leaves open, where what the product does is at stake and you can stand behind a call, is a **decide**: make it, name what leaned, and name the alternatives that also fit. An ambiguity that survives the whole document and the search, a side of it visibly costing the user, is a **choice**: frame the ways it could go, name what was searched, and take a stance.
+An ambiguity the specification's own decisions resolve is **settled** — say which decision resolves it. An ambiguity the record leaves open, where what the product does is at stake and you can stand behind a call, is **settled** too: make it, name what leaned, and name the alternatives that also fit. An ambiguity that survives the whole document and the search, a side of it visibly costing the user, is a **choice**: frame the ways it could go, name what was searched, and take a stance.
 
 ## Output File Format
 
@@ -145,7 +144,7 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 
 **Source**: Specification analysis
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Contradiction | Duplication | Unsourced decision
-**Move**: settled | decide | choice | route
+**Move**: settled | choice | route
 **Priority**: Critical | Important
 **Affects**: {which section(s) of the specification}
 
@@ -153,16 +152,16 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 {What a builder reading this specification would get wrong, or be unable to decide, in the terms the reader cares about. Name the consequence, not the analysis that found it.}
 
 **Proposal**:
-{Moves `settled` and `decide` — what you would add or change and what determined it; a `decide` also names the alternatives that fit the record. Omit for `choice` and `route`.}
+{Move `settled` — what you would add or change and what determined it; a call the record does not itself determine also names what leaned and the alternatives that fit. Omit for `choice` and `route`.}
 
 **Options**:
-{Move `choice` — one line per option, "(recommended)" on at most one. Omit for `settled`, `decide`, and `route`.}
+{Move `choice` — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.}
 
 **Current**:
 {For findings that modify existing content (Enhancement, Duplication, Contradiction) — copy the existing specification content that will be modified. A Contradiction's Current holds only the passage being corrected; name the colliding reading in the Problem with its section. This enables diff presentation to the user. Omit for New topic, Gap/Ambiguity, and Unsourced decision findings.}
 
 **Proposed Text**:
-{The exact wording that lands in the specification — Moves `settled` and `decide`. Leave blank permanently for Unsourced decision: the fix belongs to the source record}
+{The exact wording that lands in the specification — Move `settled`. Leave blank permanently for Unsourced decision: the fix belongs to the source record}
 
 **Resolution**: Pending
 **Notes**:

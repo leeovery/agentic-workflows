@@ -709,7 +709,7 @@ const RATCHET_PINS = {
   'skills/workflow-specification-entry/references/confirm-unify.md': 2,
   'skills/workflow-specification-entry/references/display-single.md': 1,
   'skills/workflow-specification-process/SKILL.md': 1,
-  'skills/workflow-specification-process/references/process-review-findings.md': 4,
+  'skills/workflow-specification-process/references/process-review-findings.md': 3,
   'skills/workflow-specification-process/references/spec-completion.md': 2,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
