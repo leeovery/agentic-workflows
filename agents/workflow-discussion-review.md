@@ -23,9 +23,9 @@ What a review looks for follows the document's maturity. Derive it from the Disc
 
 - **Early** — findings are fuel: areas the conversation has not touched, questions worth asking, adjacent concerns worth a look. Offer things to pull on, not defects to resolve — a document with no shape yet has nothing to have gaps in.
 - **Forming** — gaps proper: decisions missing rationale, alternatives unexplored, edge cases unraised, subtopics that stalled.
-- **Settled** — every candidate faces one test: **would the phase that consumes this document be wrong or blocked without it?** Specification consumes a discussion, so the test lands on contradictions, stale text, and ground a spec cannot be built on.
+- **Settled** — every candidate faces one test: **would the phase that consumes this document be wrong or blocked without it?** Specification consumes a discussion, so the test lands on contradictions, stale text, ground a spec cannot be built on, and the user-visible edges of the mechanisms and screens the document has already decided: an input empty or malformed, a dependency or integration unavailable, a boundary or limit the document mentions, a failure of the decided mechanism itself, a fallback or default left unstated where the user would notice. How the tree achieves a decided behaviour is the builder's and never a finding; what the product's user meets at an edge of it is this phase's, and specification will not decide it. Such a finding takes a lane like any other — `decide` where the record determines the answer, `ask` where it does not.
 
-At every maturity, a candidate that fails — a nit, a stylistic preference, an implementation detail specification will settle on its own, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
+At every maturity, a candidate that fails — a nit, a stylistic preference, a mechanism the planner settles, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
 
 Nothing is deferred past this phase. A finding that names a genuine model decision passes the bar and is raised, however small; it does not become a note for specification to pick up.
 
@@ -48,7 +48,7 @@ Findings do not overlap. Two observations that resolve to the same correction ar
 2. **Read the Discussion Map** — subtopic states live in the work unit's manifest, not the discussion file. From the discussion file path `.workflows/{work_unit}/discussion/{topic}.md`, read `.workflows/{work_unit}/manifest.json` → `phases.discussion.items.{topic}.subtopics` (states: `pending`, `exploring`, `converging`, `decided`, `deferred`)
 3. **Assess coverage** — are there subtopics still `pending` or `exploring` that should have progressed? Are there obvious adjacent concerns never mentioned on the Discussion Map? (Security, error handling, scalability, observability, migration, rollback — depending on the domain)
 4. **Assess decision quality** — does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged? Is confidence appropriate?
-5. **Assess depth** — are there shallow areas? Are edge cases identified? Were false paths documented?
+5. **Assess depth** — are there shallow areas? Were false paths documented? Take every decided mechanism and screen through the edge classes named in **The Bar**
 6. **Identify gaps** — implicit assumptions never validated, external dependencies not acknowledged, questions the participants should be asking but haven't
 7. **Apply the bar** to every candidate, then **assign a lane** to each that survives
 8. **Write findings** to the output file path via the `.txt`-then-rename mechanism (see Output File Format)
@@ -113,7 +113,7 @@ Each finding's first body line is its lane; for `route`, name the owning topic. 
 
 ## Observations
 
-{Everything that failed the bar, one line each — nits, stylistic preferences, implementation detail specification will settle, questions the document had no reason to answer. Plus anything else notable: strong areas, risks, patterns. Never assigned an id, never surfaced.}
+{Everything that failed the bar, one line each — nits, stylistic preferences, mechanisms the planner settles, questions the document had no reason to answer. Plus anything else notable: strong areas, risks, patterns. Never assigned an id, never surfaced.}
 ```
 
 If no gaps or questions found:
