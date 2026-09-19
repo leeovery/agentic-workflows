@@ -53,11 +53,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 Every unresolved finding is disposed before anything renders — its Move settled against the bar and recorded in the tracking file. A finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-dispose, re-present, or re-apply it.
 
-Take the unresolved findings one at a time. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved, and the source document the finding names, read where the row's excerpt does not settle the point. Where a finding names no Move, classify it from scratch against the same bar. Reclassification runs in both directions, always on a derivation written down.
+Take the unresolved findings one at a time. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved, and the source document the finding names, read where the row's excerpt does not settle the point. Where a finding names no Move, or a Move outside this vocabulary, classify it from scratch against the same bar. Reclassification runs in both directions, always on a derivation written down.
 
 **`route`** — the answer is owned by a source document rather than by this specification. Every Source defect and Unsourced decision is this move, and so is a point the sources are silent on that a measurement or a sibling artifact pins: the derivation belongs in the owning document, never in the specification alone.
 
-**`settled`** — a source document states the answer; or the record uniquely determines it — arithmetic over recorded numbers, a decided event whose consequence follows with no alternative; or first principles over the decisions the record made whittle the fork to one answer this session stands behind; or several answers are equally fine and this session picks the most appropriate. A call the record does not itself determine names what leaned and the alternatives that also fit — that sentence is the call's provenance, and a call that lands without it is a rule filed as the record's when it is this session's. A fork with one live side — a side no informed user would choose — is `settled` too, the derivation naming why the other side is dead, whatever the derivation is made of. The Proposal carries the derivation; Proposed Text, and Current where existing content changes, as the format requires.
+**`settled`** — a source document states the answer; or the record uniquely determines it — arithmetic over recorded numbers, a decided event whose consequence follows with no alternative; or first principles over the decisions the record made whittle the fork to one answer this session stands behind; or, among the answers that clear the finding's floor, several serve the user equally and this session picks the most appropriate — a fork no side of which costs the user clears no floor, and is declined below. A call the record does not itself determine names what leaned and the alternatives that also fit — that sentence is the call's provenance, and a call that lands without it is a rule filed as the record's when it is this session's. A fork with one live side — a side no informed user would choose — is `settled` too, the derivation naming why the other side is dead, whatever the derivation is made of. The Proposal carries the derivation; Proposed Text, and Current where existing content changes, as the format requires.
 
 **`choice`** — the pick is the user's. It stands only where every prong holds:
 
@@ -142,10 +142,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 Land every other finding on the screen as `yes` does, then raise the named one in conversation.
 
-- **The exchange settles it**: land it as `yes` lands one, and confirm. → Return to **C. The Settled Batch**.
+- **The exchange settles it** — as staged, or with its content revised: where it changed, rewrite the row's Proposal and Proposed Text first, then land it as `yes` lands one, Resolution `Adjusted` in place of `Approved` where revised content lands in the specification alone, and confirm. → Return to **C. The Settled Batch**.
 - **The exchange shows the pick is the reader's**: rewrite the Move to `choice` in the tracking file with its Options — the call as one, the alternatives it named as the others — and the search named; it walks in **D**. → Return to **C. The Settled Batch**.
 - **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **C. The Settled Batch**.
-- **The exchange shows the gap needs work this specification cannot do in place**: the finding's Problem is the gap, and the exit's outcomes are those **D** names for a choice — a roadmap park returns here with the finding `Declined` against the item, every other destination pauses the specification. → Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **B. The Gap Exit** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, taking the finding's Problem as the gap.
+- **The exchange shows the gap needs work this specification cannot do in place**: → Proceed to **The Gap Door**.
 
 **If ask (a number):**
 
@@ -155,7 +155,7 @@ Write that finding's payload per **The Finding Payload** with `move` = `settled`
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
-Where the user asks for the exact wording and the finding carries whole proposed content, re-render with `--view full` and emit the returned section the same way. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged.
+A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged.
 
 → Return to **C. The Settled Batch**.
 
@@ -179,9 +179,9 @@ On return, land by what the reference did:
 
 - **The decision landed** — apply the finding's Proposed Text to the specification exactly as staged, re-derived as above; Resolution `Routed` with Notes naming the document the decision landed in and the specification content re-aligned to it.
 - **The resolution was queued** to a session holding the document — the specification's copy stays untouched; Resolution `Routed` with Notes naming the queue. The decision reaches the specification when the source re-concludes and this specification reconciles.
-- **The landing returned `cancelled`** — the owning topic is closed and nothing landed; the finding stays with this session, worked through with the user exactly as a Discuss or Comment exchange works one.
+- **The landing returned `cancelled`** — the owning topic is closed and nothing landed. Raise it in conversation as **discuss** raises one — a stop owed whatever the gate mode, since a call with no document to own it is not one the specification makes alone — and dispose it by the exchange: the call stands → apply the Proposed Text to the specification, Resolution `Approved` with Notes naming why the owning document could not take it; the call falls → Resolution `Declined` with the reason.
 
-When every finding on the screen has landed, commit the specification and the tracking file together:
+When every finding on the screen is disposed, commit the specification and the tracking file together:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the screen settled}" --topic specification/{topic}
@@ -191,14 +191,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 `render finding` serves two readers: a `settled` finding expanded from the batch, and a `choice` presented in **D**. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
-- `n`, `total`, `title` — the finding's position and titlecased brief title.
+- `n`, `total`, `title` — the finding's position among the tracking file's findings in file order, the file's count, and the titlecased brief title.
 - `meta` — `[label, value]` pairs: Source / Category / Affects, plus Priority for Gap Analysis findings.
 - `move` — the finding's Move, as **B** disposed it: `settled` or `choice`.
 - `category` — the Category's token (`enhancement`, `new-topic`, `gap`, `contradiction`, `duplication`). The source-lane tokens refuse at the surface — a backstop should **B** misclassify a route.
 - `problem` — the Problem field, or the finding's substance restated in the terms the user cares about: the product, the end result. Never the analysis that found it, and never the specification's own wording read aloud.
 - `proposal` — `settled` only: the Proposal field, or the call and what determined it, in a sentence or two.
 - `options` — `choice` only: `[{"summary": "…", "recommended": true}, …]` from the Options field, at most one recommended. Where the finding names no options, they are yours to frame — one line each, and take a stance.
-- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Where a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Text as the proposed lines). Where there is no Current and the Proposed Text is short — a sentence to a handful of lines — `diff` with `"current": []`, so the wording is visible. A whole proposed section: `content` — `{"label": "Proposed Text", "lines": […]}`, held for `--view full`.
+- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Where a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Text as the proposed lines). Where there is no Current and the Proposed Text is short — a sentence to a handful of lines — `diff` with `"current": []`, so the wording is visible. A whole proposed section: `content` — `{"label": "Proposed Text", "lines": […]}`, rendered beneath the report when the finding is expanded.
 
 The user decides from the presentation alone — they have not read the specification. Where the tracking file's Problem, Proposal, or Options lean on a section reference, replace it with the substance that section holds; the `meta` Affects row is the one place a section number belongs.
 
@@ -246,7 +246,16 @@ Work the point through in conversation.
 
 - **The exchange settles on a side**: land it as the numbered pick lands one. → Return to **D. The Choices**.
 - **The choice stands**: re-present it. → Return to **D. The Choices**.
-- **The exchange shows the gap needs work this specification cannot do in place**: the finding's Problem is the gap. A gap parked on the roadmap comes back here with nothing owed to the specification — Resolution `Declined`, a note naming the roadmap item, committed, and the remaining choices continue; every other destination pauses the specification and routes the session out. → Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **B. The Gap Exit** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, taking the finding's Problem as the gap.
+- **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **D. The Choices**.
+- **The exchange shows the gap needs work this specification cannot do in place**: → Proceed to **The Gap Door**.
+
+### The Gap Door
+
+Reached from the settled batch's discuss and the choice's comment alike: the finding's Problem is the gap.
+
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **B. The Gap Exit** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, taking the finding's Problem as the gap.
+
+→ On return, dispose the finding by what the exit left: a roadmap park — Resolution `Declined` with the roadmap item in Notes, announced in a line, committed; a landing that delivered nothing — the exchange continues and ends in one of the caller's other outcomes. Then return to the section that came here — **C. The Settled Batch** or **D. The Choices**. Every other destination pauses the specification and routes the session out; the tracking entry stays `in-progress` and its remaining findings re-process at the next entry.
 
 ---
 
