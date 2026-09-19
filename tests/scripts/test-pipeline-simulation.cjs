@@ -1812,17 +1812,31 @@ describe('pipeline simulation', () => {
     const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
     assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
     assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
+    // The specification's calls batch on the settled lane — gated it asks
+    // once for the screen and offers the flip; under auto the same screen
+    // lands as a display, the one gate that never stops.
     sim.write('.workflows/.cache/scratch/finding-batch.json', JSON.stringify({
-      lane: 'decide',
+      lane: 'settled',
       remaining: 0,
       items: [
         { title: 'A repeated field name resolves to its last occurrence', detail: 'The sweep table leans this way; first-wins also fits the record.' },
         { title: 'An empty bare value writes a newline', detail: 'The output contract leans this way; zero bytes also fits the record.' },
       ],
     }));
-    const decideBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
-    assert.match(decideBatch, /DISPLAY: finding batch/, 'the decide lane renders its screen at a specification address');
-    assert.match(decideBatch, /`◆ Document them\?`/, 'the veto menu asks the decide lane\'s question');
+    const settledBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
+    assert.match(settledBatch, /DISPLAY: finding batch/, 'the settled lane renders its screen at a specification address');
+    assert.match(settledBatch, /`◆ Document them\?`/, 'the batch asks the call lane\'s question');
+    assert.match(settledBatch, /`a\/auto`/, 'the screen offers the flip that retires the rest');
+    sim.write('.workflows/.cache/scratch/finding-batch-decide.json', JSON.stringify({
+      lane: 'decide', items: [{ title: 'A', detail: 'a.' }],
+    }));
+    sim.refuses(['render', 'finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch-decide.json'],
+      /lane "decide" is not served at the specification phase/);
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'finding_gate_mode', 'auto']);
+    const autoBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
+    assert.match(autoBatch, /DISPLAY: finding batch auto-approved/, 'auto lands the screen as a display');
+    assert.match(autoBatch, /2 findings documented \[auto\]\./);
+    assert.ok(!autoBatch.includes('MENU'), 'auto means auto — the batch never stops');
     // The review restart clears its staging subtree (exists-guarded delete) so a
     // stale cycle can never hijack the post-restart loop's crash-resume guards.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'true');

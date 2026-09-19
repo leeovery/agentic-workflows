@@ -180,12 +180,13 @@ function section(name, instruction, body) {
 // for a real gate the user's a/auto or b/bounded choice bypasses, and says exactly
 // that. Neither names a next step: where the flow goes is the prose's to
 // own, and an engine string that duplicated it would be a second routing
-// source to keep in sync. The markdown variant serves surfaces whose
+// source to keep in sync. The markdown variants serve surfaces whose
 // register cannot live in a fence — worklist strikethrough and code-span
 // tags, the task brief's and result header's emphasis.
 const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
 const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
+const AUTO_GATE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — the user set this gate to auto: do not stop; continue as the workflow instructs';
 
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
@@ -391,5 +392,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 
