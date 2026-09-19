@@ -65,6 +65,26 @@ Read the task detail file and count tasks. Verify task count matches the task ta
 
 **On an amendment run** (the manifest still carries `rejected` rows): the rewrite is validated — reset each rejected row to `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per id); in auto mode they approve automatically, like any pending row.
 
+**Settle the spec defects** — classified before any task reaches its gate, so what the user approves was authored against a correct specification.
+
+**If the agent's return carries a `## Spec Defects` section** — once per entry:
+
+→ Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the task it surfaced in}`.
+
+When at least one corrigendum landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
+```
+
+**If a landing changed the specification, or the reference returned work the plan must carry:**
+
+The detail file was written against a record that has since moved, so the whole phase is authored again — a full run by **B**'s own rule, no `rejected` row remaining: the correction is the specification's, not per-task feedback. Name the returned work in the invocation so the task that owns it carries it.
+
+→ Return to **B. Invoke the Agent**.
+
+**Otherwise:**
+
 → Proceed to **D. Check Gate Mode**.
 
 #### If `mismatch` and fewer than 2 agent invocations have been made

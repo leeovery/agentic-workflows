@@ -35,7 +35,23 @@ Invoke `workflow-planning-task-designer` with these file paths:
 
 ### Present the Output
 
-The agent returns a task overview and task table. Write the task table to the planning file under the phase. Where the overview names work deferred to another phase, add that deferral to the receiving phase's **Acceptance** list in the same write.
+The agent returns a task overview and task table.
+
+**Settle the spec defects** — classified before the task list is written, so what the user approves was designed against a correct specification.
+
+**If the return carries a `## Spec Defects` section** — once per entry:
+
+→ Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the task it surfaced in}`.
+
+Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-task-designer` through its amendment path with the corrections and that work as the feedback, and take the revised task list forward. When at least one corrigendum landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
+```
+
+**Otherwise:** nothing to settle — continue.
+
+Write the task table to the planning file under the phase. Where the overview names work deferred to another phase, add that deferral to the receiving phase's **Acceptance** list in the same write.
 
 Update the manifest planning position:
 ```bash

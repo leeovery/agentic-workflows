@@ -59,6 +59,14 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer the specification, the plan's own conventions, or a measurement yields → `settled`, the derivation carried as the Proposal's reasoning; a fork in how the plan builds it that nothing leans on → `settled` on your honest call, the Proposal naming it as such; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
+**If the finding indicts the specification** — the plan cannot be made to trace because the record is silent or wrong on what the product does: a hallucinated-content finding that is really a spec omission, a missing-from-plan finding the specification asserts without the mechanism that makes it true.
+
+→ Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `review`, gap = `{what the specification asserts or omits, the evidence, what goes wrong for the product's user, and the finding it surfaced in}`.
+
+On return, dispose it against the corrected record — usually `settled`, carrying what landed into the plan; `Declined` with the reason in Notes where the landing made it moot.
+
+**Otherwise:** the record stands as the finding found it — continue.
+
 Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's decisions, the plan's own conventions, ground that has moved, and the task or phase the finding names, read where the row's excerpt does not settle the point. Reclassification runs in both directions, always on a derivation written down; a finding this sitting's gate exchange revised is presented as it stands — the exchange was its disposal. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice` and takes the bar like any other. A `choice` stands only when every prong holds:
 
 - **Product level** — the fork is what the product's user gets or how it behaves, never how the plan achieves it: phase ownership, task grouping, helper extraction, internal naming, and internal bounds never qualify.
