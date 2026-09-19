@@ -60,13 +60,6 @@ The git pathspecs this format writes **outside `--plan`'s own scope** — the pl
 <!-- What categorisation is available beyond phases -->
 {Available labels/tags and their purpose, or "No additional categorisation beyond phases."}
 
-## Flagging
-
-<!-- How to mark tasks as needing clarification -->
-When information is missing:
-
-{Format-specific flagging instructions}
-
 ## Cleanup (Restart)
 
 <!-- How to delete all authored tasks for a topic -->

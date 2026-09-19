@@ -46,7 +46,6 @@ Must include:
   - **Status** — available values and their meanings
   - **Phase grouping** — how tasks are grouped into phases
   - **Labels/tags** — categorisation available beyond phases
-- **Flagging** — how to mark tasks as needing clarification
 - **Cleanup (Restart)** — how to delete all authored tasks for a topic
 
 ### reading.md

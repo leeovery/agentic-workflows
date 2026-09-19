@@ -12,9 +12,9 @@ Re-read the specification in full before starting. Don't rely on memory — read
 
 ## What You're NOT Doing
 
-- **Not adding new requirements** — If the plan requires something of the product the spec never decided, the fix is to remove it from the plan or flag it with `[needs-info]`, not to justify its inclusion; how the plan builds a decided requirement is the planner's, not a requirement
+- **Not adding new requirements** — where the plan requires something of the product the spec never decided, the fix is to take it out of the plan, or to name the ground the specification owes and never decided; never to justify its inclusion. How the plan builds a decided requirement is the planner's, not a requirement
 - **Not expanding scope** — Missing spec content should be added as tasks; it shouldn't trigger re-architecture of the plan
-- **Not being lenient with hallucinated content** — Product content that can't be traced to the specification must be removed or the user must explicitly approve it as an intentional addition
+- **Not being lenient with hallucinated content** — product content that cannot be traced to the specification comes out of the plan, or stands as a gap the record must answer; it is never approved into the plan as an intentional addition
 - **Not re-litigating spec decisions** — The specification reflects validated decisions; you're checking the plan's fidelity to them
 
 ---
@@ -64,7 +64,7 @@ Every finding names the **move** it owes the reader — what they have to do abo
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the fix and what determined it. Most traceability findings are this: the specification already decided, and carrying its decision into the plan is not a new decision.
 - **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. It holds only where the fork is what the product's user gets or how it behaves, nothing in the specification, the plan's own conventions, or a measurement breaks the tie, a side visibly costs the user, and the tie-break is the reader's — appetite, product intent, or a fact only they hold. A fork in how the plan achieves it is the planner's, and a fork every side of which leaves the user well served is a preference, not a decision: either settles on what leans, and where nothing leans, on your honest call, the Proposal naming it as such and what it weighed. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
-- Planning findings never route: the plan is the document under review, and its answers live in the specification or the record.
+- A finding that indicts the specification **routes** — the plan cannot be made to trace because the record is silent or wrong on what the product does, so the answer lands in the record before the finding is disposed. Name that in the Problem; the Move stays `settled` or `choice`.
 
 A fix you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference nothing leans on is settled on your honest call, never staged as a choice.
 
