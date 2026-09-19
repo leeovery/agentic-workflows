@@ -145,6 +145,7 @@ Land every other finding on the screen as `yes` does, then raise the named one i
 - **The exchange settles it**: land it as `yes` lands one, and confirm. → Return to **C. The Settled Batch**.
 - **The exchange shows the pick is the reader's**: rewrite the Move to `choice` in the tracking file with its Options — the call as one, the alternatives it named as the others — and the search named; it walks in **D**. → Return to **C. The Settled Batch**.
 - **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **C. The Settled Batch**.
+- **The exchange shows the gap needs work this specification cannot do in place**: the finding's Problem is the gap, and the exit's outcomes are those **D** names for a choice — a roadmap park returns here with the finding `Declined` against the item, every other destination pauses the specification. → Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** for **B. The Gap Exit** and follow its instructions, with doc = `{the owning source's topic}`, lane = `review`, taking the finding's Problem as the gap.
 
 **If ask (a number):**
 

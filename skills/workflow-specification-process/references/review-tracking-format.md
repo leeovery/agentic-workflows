@@ -73,7 +73,7 @@ The move is what the reader has to do about the finding, and it alone decides ho
 - **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the record determines, and any fork first principles over it whittle to one answer, is `settled`; a point the sources are silent on that a measurement or sibling artifact pins is `route`. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
 - **route** — the ground belongs to a source document, not this specification. It goes back to the document that owns it.
 
-Settled findings render together: screens of at most five when the gate is on, each row the call and what leaned, landing on one confirmation, with any one of them expandable or pulled out for its own exchange; under `auto` the same screen documents what landed and never stops. A call the source document never made lands twice — first in that document, as a decision it never took, then in the specification — and records `Routed`, its Notes naming the document. A `choice` walks on its own after the batches.
+Settled findings render together: screens of at most five when the gate is on, each row the call and what leaned, landing on one confirmation, with any one of them expandable or pulled out for its own exchange; under `auto` the same screen documents what landed and never stops. A call the source document never made lands twice — first in that document, as a decision it never took, then in the specification — and records `Routed`, its Notes naming the document. A `choice` walks on its own after the batches, and its pick lands the same two places — the owning document first, then the specification — recording `Routed`.
 
 **Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. It is not written as a finding; at most it is an Observation.
 
@@ -94,7 +94,7 @@ Two categories always take the `route` move, and their findings are never applie
 4. Dispose every finding, then work each move per **[process-review-findings.md](process-review-findings.md)**:
    - A finding the dispose declines — Resolution `Declined` with its reason, never presented
    - Every `settled` finding lands from the batch — screens of at most five when the gate is on, documented without a stop under `auto`
-   - A `choice` is walked on its own after the batches: presented, discussed, the pick logged to the specification
+   - A `choice` is walked on its own after the batches: presented, discussed, the pick landed in the owning document first and then in the specification — Resolution `Routed`
    - A `route` finding goes back to the document that owns it — Resolution `Routed`, never presented at a gate
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
