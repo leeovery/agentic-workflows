@@ -45,9 +45,9 @@ The prose should have taken this path:
    fetched again through the engine — a second fetch, the same address
    — its MENU section re-emitted, and the walk STOPS again. The fifth
    scripted answer concludes the plan
-10. the yes arm: the spec baseline is re-stamped from the current
-    commit, the plan completes through the engine, and the final commit
-    lands
+10. the yes arm: the plan completes through the engine first, the spec
+    baseline is re-stamped from the current commit after it, and the
+    final commit lands
 11. the walk stops at the pipeline continuation — the bridge is never
     invoked
 

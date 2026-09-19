@@ -70,8 +70,8 @@
       "planning(pay): complete plan review",
       "render conclude-gate pay.planning.pay",
       "render conclude-gate pay.planning.pay",
-      "manifest set pay.planning.pay spec_commit",
-      "topic complete pay planning pay"
+      "topic complete pay planning pay",
+      "manifest set pay.planning.pay spec_commit"
     ],
     "calls_exclude": [
       "staging.author",

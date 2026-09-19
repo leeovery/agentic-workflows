@@ -74,8 +74,8 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
-      "manifest set pay.planning.pay spec_commit",
-      "topic complete pay planning pay"
+      "topic complete pay planning pay",
+      "manifest set pay.planning.pay spec_commit"
     ],
     "calls_exclude": [
       "manifest set pay.planning.pay review_cycle 1",
