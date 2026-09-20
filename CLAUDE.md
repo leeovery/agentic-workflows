@@ -155,7 +155,7 @@ Use `/create-output-format` to scaffold a new format adapter. Each format is a d
 ```
 skills/workflow-planning-process/references/output-formats/{format}/
 ├── about.md        # Benefits, setup, output location
-├── authoring.md    # Task storage, flagging, cleanup
+├── authoring.md    # Task storage, properties, cleanup
 ├── reading.md      # Extracting tasks, next available task
 ├── updating.md     # Marking complete/skipped
 └── graph.md        # Task graph — priority + dependencies

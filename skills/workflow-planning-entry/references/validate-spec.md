@@ -12,7 +12,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_u
 
 #### If the response is empty
 
-The specification is completed — clear to plan.
+The specification is completed and settled — clear to plan.
 
 → Return to caller.
 
