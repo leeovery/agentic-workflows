@@ -30,7 +30,9 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
-const { ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, walkthroughScreen, walkthroughHome } = require('./projections/walkthrough.cjs');
+const {
+  ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
+} = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
@@ -5230,6 +5232,21 @@ function walkthroughHomeSurface(_cwd, _args) {
   return walkthroughHome();
 }
 
+/** @param {string} _cwd @param {object} _args @returns {string} */
+function walkthroughTopicsSurface(_cwd, _args) {
+  return walkthroughTopics();
+}
+
+/**
+ * One reference card, addressed by the slug the topics menu's DATA table
+ * gives for the number the reader pressed. `--menu-only` serves the return
+ * from a question, as it does on a screen.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function walkthroughTopicSurface(_cwd, args) {
+  return walkthroughTopic(loadCard(args.name), Boolean(args['menu-only']));
+}
+
 /**
  * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
  * the reuse variant alone — the system configuration its yes row names. A
@@ -5368,6 +5385,8 @@ const SURFACES = {
   'baseline-offer-gate': baselineOfferGateSurface,
   'walkthrough-screen': walkthroughScreenSurface,
   'walkthrough-home': walkthroughHomeSurface,
+  'walkthrough-topics': walkthroughTopicsSurface,
+  'walkthrough-topic': walkthroughTopicSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
