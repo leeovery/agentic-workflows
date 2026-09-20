@@ -166,11 +166,16 @@ source rows is not `incorporated`. The predicate is derived from the
 specification item alone, never stored. It holds the plan's entry
 (the existing entry gate's planning arm, widened), its birth and
 reopen, its conclusion (a `specification` wait alongside the
-research and experiment waits), its epic menu rows (keyless, carrying
-the reason), and the linear next-step derivation (which walks past a
-stale-but-unflagged specification today). A session already inside
-the plan meets the hold at its conclusion — the same backstop the
-research wait is for a discussion already in session.
+research and experiment waits), its epic menu rows (withheld while
+held, as a blocked discussion's or specification's are — the tree tag
+and the key's cue carry the reason), the linear next-step derivation
+and the linear dashboard's cue (one reading of a moved input, so the
+route never names a phase the display calls settled). A session
+already inside the plan meets the hold at its conclusion — the same
+backstop the research wait is for a discussion already in session —
+and keeping the session there is a terminal stop: a finished plan has
+no loop to return to, so it re-enters from the menu once the
+specification settles.
 
 **R4 — planning's agents report spec defects; the orchestrator judges
 them before the gate renders.** The phase designer, task designer, and
@@ -234,6 +239,40 @@ not hold stays Unreproducible.
   extraction aside and continue with others; a plan has one
   specification and nothing to continue with. The agreed resolution
   goes to the held session's queue and the plan pauses.
+
+- **A live or held specification routes nothing.** A gap the
+  correction route returns unsettled because the specification is
+  back in its own phase, or held by a peer, is left exactly as
+  reported — the implementation precedent, a later pass re-finds it.
+  The plan is held while the specification is unsettled, and a
+  derivable correction sent to a discussion's queue would reopen a
+  settled topic for a one-line edit; tier 3 has two entries, the
+  exchange and a held discussion, and this is neither.
+
+- **A decision landed while the specification is occupied waits for
+  its session.** Where the decision has already landed in the
+  discussion and the specification's own correction route returns
+  unsettled, the plan's own extraction row is marked stale — the one
+  landing that runs `sources stale` without `--except`, single-topic
+  work types included — so the specification's session takes the
+  decision when it reconciles. The plan is held until it does; nothing
+  is re-run against a record that did not change.
+
+- **A routed gap records `Routed` in the review walk.** The findings
+  walk disposes a finding the gap flow routed to the owning document's
+  queue as the specification's walk does — Resolution `Routed`, the
+  queue named, never applied and never declined at the dispose; the
+  plan is held until the record lands. Integrity findings can indict
+  the specification as traceability findings can — a criterion whose
+  ground the record never states — and both reviews read the same
+  rule.
+
+- **A re-run settles once more, then stops.** A defect the phase or
+  task designer, or the task author, still reports after one re-run
+  against the corrected record is left to the review walk, which meets
+  the plan against the specification at the end of the phase. A
+  re-run of the task author voids the phase's staging rows — every
+  task is rewritten, so nothing already approved may be transcribed.
 
 - **Planning's third tier reopens the owning discussion only.** The
   specification's gap exit offers a new topic and a roadmap park
@@ -319,5 +358,8 @@ review after the bar change. Measure:
 5. **Prose cases** (#1229) — planning settling a tier-1 gap, landing a
    tier-2 decision, and pausing on tier 3; the entry block over an
    unsettled specification; the conclusion meeting an empty wait gate
-   and completing before the re-stamp; the §C cases re-pinned; the
-   planning cases' conclusion order re-pinned.
+   and completing before the re-stamp; the review lane landing a
+   decision under `auto`; the task author re-run over a settled
+   defect; the §C cases re-pinned; the planning cases' conclusion
+   order and wait-gate fetch re-pinned; the claims cases' imports read
+   pinned.
