@@ -256,11 +256,38 @@ with Lee.
 
 ## Build log (2026-09-20)
 
-Stack shape: this design as a standalone PR; then three implementation
-layers — engine (state, verb, boot field, surfaces, the eight screens'
-content, tests); the reference cards and the topics surface; the skill,
-the shared answering rule, the workflow-start hooks, the prose cases,
-the docs and CLAUDE.md.
+Stack #1236, three layers over this design (its own standalone PR,
+#1231): #1232 the engine (state home, `walkthrough record`, the boot
+field, `walkthrough-screen` and `walkthrough-home`, the eight screens'
+content, the `h/help` rows, the 65-column invariant); #1233 the nine
+reference cards and their surfaces; #1235 the `workflow-help` skill,
+workflow-start's Step 0.2 and the renumbering behind it, the shared
+answering rule, the glossary, the prose-test stamp and allowlist with
+three cases, CLAUDE.md, CONVENTIONS.md and the docs.
+
+Deltas from the decisions, each ratchet- or convention-driven:
+
+- **The topics menu carries a DATA table** (`key  slug` per row): a
+  card's title does not determine its slug (`The kinds of work` →
+  `kinds-of-work`), and routing by label is what CONVENTIONS forbids.
+- **A card rendered from inside a session emits TITLE and DISPLAY only.**
+  Its menu (`t/topics`, `b/back`) belongs to help and routes nowhere
+  else, so the answering rule leaves it.
+- **The walk guards a second record.** Screen 1 under first-run has no
+  back row, but `n/next` then `b/back` lands on it again; the record
+  branches skip when this walk already recorded, so the engine's refusal
+  never reaches the user.
+- **The rule points at the book's URL**, not `docs/`: an installed
+  project carries the skills alone.
+- **Every prose case declares the answering rule**, since the framework
+  loads it unconditionally — one line added across the corpus.
+- Screen 1 names the knowledge base (the setup gate's and the docs'
+  word) and describes it as the memory; the conventions lint's title-H1
+  set gains `workflow-help`; card 06 gained the diagram decision 10 asks
+  of every screen and card.
+
+Prose cases still owed a walk: the three shipped cases, plus one
+representative of the framework change.
 
 ## Open / deferred
 
