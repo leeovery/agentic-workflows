@@ -25,7 +25,7 @@ Every raise is a cold start — it lands in a corner of the document the user la
 
 ## B. The Position
 
-Always. Where you stand and the one load-bearing reason that carries it — a clause, not the derivation — at the firmness the answer has actually earned. Where the position leans against an alternative, that alternative gets **at most one clause naming the kind of cost it carries** — never two costs, never a cost with its consequence spelled out, whether the cost comes from the record or from your own reading. A clause that enumerates or explains has become the case, and the case stays back.
+Always. Where you stand and the one load-bearing reason that carries it — a clause, not the derivation — at the firmness the answer has actually earned. Where the position leans against an alternative, that alternative gets **at most one clause naming the kind of cost it carries** — never two costs, never a cost with its consequence spelled out, whether the cost comes from the record or from your own reading. A clause that enumerates or explains has become the case, and the case stays back. An option the record already rejected is not an alternative the position leans against: it stays back whole — unnamed, uncounted — with the rest of the case, and enters only as a response when the user reaches toward it.
 
 **Firmness** — judged live against the session, never read off the record. Where re-derivation moves the problem itself — it holds, it's narrower than framed, a decision made since the record was written already covers it — that is part of the position; say it. Then match the register to how determined the answer is:
 
@@ -49,6 +49,6 @@ The raise ends by saying what kind of reply moves things forward. One of three s
 
 A dead stop is not an ending: a raise that trails off after its position leaves the user unsure whether a reply is owed or the conversation broke. No keyed menu, no bundled follow-ups, no stock closer: "what do you think?" is never the ask, and a closing beat repeated verbatim across a walk or a queue reads as chrome, not a colleague — phrase it from the problem just raised. The beat draws only on what the opener already said — reaching into the held-back depth for a concrete pivot is how the case leaks back in one clause at a time.
 
-**The test**, before the raise goes out — read it as the user will, cold, in one glance: they can picture the behaviour, they know where you stand, and they know what reply is wanted, with no code identifier, no slug, no report or topic named ahead of their situation, no tuning number in front of them, and no second cost on the alternative. A raise that fails is recomposed at altitude, never sent and explained after.
+**The test**, before the raise goes out — read it as the user will, cold, in one glance: they can picture the behaviour, they know where you stand, and they know what reply is wanted, with no code identifier, no slug, no report or topic named ahead of their situation, no tuning number in front of them, no second cost on the alternative, and no option the record already rejected. A raise that fails is recomposed at altitude, never sent and explained after.
 
 → Return to caller.

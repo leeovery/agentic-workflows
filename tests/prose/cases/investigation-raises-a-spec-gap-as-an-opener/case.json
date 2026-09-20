@@ -23,7 +23,7 @@
   ],
   "answers": [
     "c — continue",
-    "d — discuss"
+    "y — yes"
   ],
   "conduct": "The user concluded the crash-fix investigation in an earlier sitting and returns because the specification stalled on a question it could not answer and sent it back here — they know one concern is waiting and want to hear it before anything else. They continue at the resume gate and take the queue when it is offered, and they read the raised concern with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
   "invariants": {
