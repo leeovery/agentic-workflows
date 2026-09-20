@@ -4565,7 +4565,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5016,6 +5016,18 @@ describe('walkthrough surfaces', () => {
   const screenFiles = () => fs.readdirSync(SCREENS).filter((f) => f.endsWith('.md')).sort();
   const screenText = (n) => fs.readFileSync(path.join(SCREENS, screenFiles()[n - 1]), 'utf8');
   const titleOf = (n) => screenText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
+
+  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough', 'topics');
+  const cardFiles = () => fs.readdirSync(TOPICS).filter((f) => f.endsWith('.md')).sort();
+  const cardText = (n) => fs.readFileSync(path.join(TOPICS, cardFiles()[n - 1]), 'utf8');
+  const cardTitle = (n) => cardText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
+  // The addresses `walkthrough-topic` takes. Pinned rather than re-derived
+  // from the filenames the projection reads: a slug is what a session routes
+  // on, and a card renamed out from under one has to fail here.
+  const SLUGS = [
+    'kinds-of-work', 'the-phases', 'epics-the-map-and-the-dashboard', 'the-roadmap', 'gates-and-auto',
+    'the-knowledge-base-and-the-baseline', 'the-inbox', 'reshaping-work', 'working-in-parallel',
+  ];
   /** The section markers of a render, in order — the shape the emitting prose walks. */
   const markers = (out) => out.split('\n').filter((l) => l.startsWith('=== ')).map((l) => l.slice(4, l.indexOf(' (')));
   const menuOf = (out) => out.slice(out.indexOf('=== MENU:'));
@@ -5148,6 +5160,77 @@ describe('walkthrough surfaces', () => {
       '**Ask**      → Ask anything about how the workflows work',
       '',
     ].join('\n'));
+  });
+
+  it('walkthrough-topics: every card numbered in file order, its slug on the DATA row', () => {
+    assert.strictEqual(renderSurface(dir, 'walkthrough-topics', {}), [
+      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      '# **`■ Help · Topics`**',
+      '',
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      'CARDS (key  name):',
+      ...SLUGS.map((slug, i) => `  ${i + 1}  ${slug}`),
+      '',
+      "=== MENU: walkthrough topics (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Which area?`**',
+      '',
+      ...SLUGS.map((_slug, i) => `**\`${i + 1}\`**      → ${cardTitle(i + 1)}`),
+      '**`b/back`** → Back to help',
+      '**Ask**    → Ask anything about how the workflows work',
+      '',
+    ].join('\n'));
+  });
+
+  it('a card is its heading, its content in file order, then the menu every card wears', () => {
+    const out = renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough card']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      `# **\`■ Help · ${cardTitle(1)}\`**`,
+      '',
+      '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
+    ].join('\n')), out.slice(0, 400));
+
+    const body = cardText(1).split('\n').slice(1).join('\n');
+    const chunks = body.split(/^```$/m).map((c) => c.replace(/^\n+|\n+$/g, '')).filter(Boolean);
+    assert.strictEqual(chunks.length, 3, 'the first card is prose, diagram, prose');
+    let cursor = 0;
+    for (const chunk of chunks) {
+      const at = out.indexOf(chunk, cursor);
+      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.slice(0, 60)}…`);
+      cursor = at;
+    }
+
+    assert.strictEqual(menuOf(out), [
+      "=== MENU: walkthrough card (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      '**`t/topics`** → Back to the topics',
+      '**`b/back`**   → Back to help',
+      "**Ask**      → Ask anything about what's on this card",
+      '',
+    ].join('\n'));
+  });
+
+  it('every card renders, and --menu-only is the keys back exactly as they stood', () => {
+    for (const slug of SLUGS) {
+      const full = renderSurface(dir, 'walkthrough-topic', { name: slug });
+      const menuOnly = renderSurface(dir, 'walkthrough-topic', { name: slug, 'menu-only': '1' });
+      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough card']);
+      assert.strictEqual(menuOnly, menuOf(full), slug);
+    }
+  });
+
+  it('refuses a missing or unknown card, naming the ones there are', () => {
+    const named = new RegExp(`--name is one of ${SLUGS.join(', ')} — got`);
+    for (const name of [undefined, '', 'the-map', '01-kinds-of-work', 'Kinds-Of-Work']) {
+      assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name }), named, JSON.stringify(name));
+      // The return from a question is addressed the same way: a menu never
+      // comes back for a card that does not exist.
+      assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name, 'menu-only': '1' }), named, JSON.stringify(name));
+    }
   });
 });
 

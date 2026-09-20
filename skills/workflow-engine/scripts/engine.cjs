@@ -349,6 +349,8 @@ Commands:
   render baseline-offer-gate
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
   render walkthrough-home
+  render walkthrough-topics
+  render walkthrough-topic --name <slug> [--menu-only]
   render migration-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
