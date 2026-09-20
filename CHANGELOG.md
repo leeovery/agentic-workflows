@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.69] - 2026-09-20
+
+✨ Added
+
+- A short, skippable walkthrough teaches how the workflows work on first run — eight screens covering the whole system, offered once and re-runnable anytime from `h/help` on the start menu.
+- Nine reference cards under `h/help` → topics cover kinds of work, phases, epics, the roadmap, gates, the knowledge base, the inbox, reshaping work, and parallel sessions.
+- Any session can now answer a plain-language question about how the system works, then put your previous menu back.
+
+🔧 Changed
+
+- `workflow-start`'s first-run setup sequence now opens with the walkthrough offer before the session-label, knowledge, and baseline gates (renumbered accordingly).
+
 ## [0.7.68] - 2026-09-20
 
 🔧 Changed
