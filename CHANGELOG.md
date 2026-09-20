@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.67] - 2026-09-20
+
+✨ Added
+- Planning now handles specification gaps in place instead of dumping them on the user unanswered — record-settled gaps land as silent corrections, product forks stop for a quick decision, and only genuine open questions get routed back to a discussion, pausing the plan until answered.
+- Plans now wait on their specification when the underlying discussion has been reopened, showing as held on menus and dashboards until the record settles.
+- Specification review can now verify code citations directly — reading the cited lines and checking the claim against them, not just running commands.
+
+🔧 Changed
+- The `[needs-info]` flag is gone from planning and its output formats — a spec gap is now always resolved or routed, never just flagged and left.
+- Findings that a design, source document, or stated rule already answers are now always treated as real findings, never quietly downgraded to observations because they're small.
+
 ## [0.7.66] - 2026-09-19
 
 ✨ Added
