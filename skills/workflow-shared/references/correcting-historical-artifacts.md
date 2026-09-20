@@ -12,7 +12,7 @@ Derive the owning work unit and the topic from the specification's path (`.workf
 
 → Proceed to **A. Another Work Unit's Specification**.
 
-**If it is this work unit's own specification and this session's phase is implementation or review:**
+**If it is this work unit's own specification and this session's phase is downstream of it — planning, implementation, or review:**
 
 → Proceed to **B. This Work Unit's Specification**.
 
@@ -119,7 +119,7 @@ Classify the defect — **if in doubt, treat it as open**, and doubt inside the 
 
 An approved, landed change supersedes the claim, or the repair is a factual value derivable by direct measurement against the tree.
 
-Apply it silently — no gate, no raise. This is the one place a downstream phase edits another phase's artifact: the corrigenda entry and the re-index are the audit trail that replaces the gate. `{correcting_phase}` below is the phase that found it — `implementation/{topic}` or `review/{topic}`.
+Apply it silently — no gate, no raise. This is the one place a downstream phase edits another phase's artifact: the corrigenda entry and the re-index are the audit trail that replaces the gate. `{correcting_phase}` below is the phase that found it — `planning/{topic}`, `implementation/{topic}`, or `review/{topic}`.
 
 1. **Edit in place.** Replace the wrong claim in its section with corrected content — or, where the defect is an omission, add the missing content to the section that owns the ground. The live file is current truth; git history is the historical record — never keep wrong content in the body for posterity.
 
@@ -135,7 +135,7 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
    ```
 
-4. **Commit.** Scoped to the corrected topic — one specification file and the store the re-index dirtied. `--kb` carries the store; `--sweep` always rides here — the session's working topic is its own implementation or review topic, never this specification topic:
+4. **Commit.** Scoped to the corrected topic — one specification file and the store the re-index dirtied. `--kb` carries the store; `--sweep` always rides here — the session's working topic sits under its own downstream phase, never under this specification:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_phase}" --topic specification/{topic} --kb --sweep

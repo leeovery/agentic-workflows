@@ -24,7 +24,7 @@ Tell the user in one line what was measured and what it corrects — no gate; th
 
 **If the corrected value undermines a conclusion but itself determines how it falls** — the conclusion re-derives from the corrected value alone, nothing new committed and no live alternative picked between:
 
-A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice. The repair revises what the document concluded: a conclusion recorded in a Decision block takes C's dated timeline revision, the failed measurement as its trigger — never an in-place value substitution; only restatements outside the block are repaired in place.
+A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice. The repair revises what the document concluded: a conclusion recorded in a Decision block takes the landing's dated timeline revision (`landing-a-resolution.md`, loaded from **C**), the failed measurement as its trigger — never an in-place value substitution; only restatements outside the block are repaired in place.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the corrected claim and the conclusion repaired against it, carrying its command and result}`, doc = `{the owning source's topic}`.
 
@@ -86,7 +86,7 @@ Attempt the derivation first — constraints, sibling artifacts, measurement.
 
 **If a defensible derivation settles it** — the record yields the answer (a technical parameter the sources never pinned, derived from the rationale they did record), or first principles over the decisions the record made whittle the fork to one answer you stand behind:
 
-Tell the user in one line what was derived and from what — where the record does not itself determine the answer, name what leaned and the alternatives that also fit. No gate. It lands through C's decision-the-document-never-made shape, the derivation as the section's reasoning.
+Tell the user in one line what was derived and from what — where the record does not itself determine the answer, name what leaned and the alternatives that also fit. No gate. It lands through the landing's decision-the-document-never-made shape (`landing-a-resolution.md`, loaded from **C**), the derivation as the section's reasoning.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the derived decision, carrying its derivation}`, doc = `{the owning source's topic}`.
 
@@ -222,26 +222,23 @@ The objection is the conversation. A caller that entered at **A** works it per t
 
 ## C. Landing a Resolution
 
-The resolution is written into the owning source document in that phase's own idiom — no meta-narration, no reference to specification or to this session: the document reads as its own record.
+The resolution lands in the owning source document, which another session may hold. Check presence first: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
 
-1. **Check presence**: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
+#### If a row matches `{doc}`'s phase and topic with `held` true
 
-   **If a row matches `{doc}`'s phase and topic with `held` true** — another session owns that document, however long it has idled. Do not edit. Write `{"doc": "{doc}", "lane": "{lane}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
+Another session owns that document, however long it has idled. Do not edit. Write `{"doc": "{doc}", "lane": "{lane}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
 
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
-   ```
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
+```
 
-   **STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the landing delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is queued, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
+**STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the landing delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is queued, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
 
-   **Otherwise** — no row holds `{doc}`:
+#### Otherwise
 
-   → Proceed to step 2.
+No row holds `{doc}`.
 
-2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision, or the failed measurement as its command and result — never this session or the specification: the record explains itself in its own terms. Citing prose the resolution invalidates is repaired in place — and the claim rarely lives in one place: whatever the document type, search it for the claim's terms and repair every restatement — in a discussion, check the Summary's Key Insights and Current State. A resolved document that still asserts what the resolution invalidated — a disproven measurement or a superseded position alike — is not resolved. A correction that revises no decision — a measured value and the prose citing it — is repaired in place wherever it sits. A decision the document never made lands as a new subtopic section in the template's subtopic shape — Context, Options Considered where sides were weighed, Journey, Decision — with no timeline entry and no `#### Initial` (there is no prior block to revise), and no Discussion Map registration: the map tracks live sessions, and the completed record gains the section alone. The section speaks in the document's own voice throughout, the Decision line included: Context and Journey state why the record needed this ground in the topic's own terms, the Decision names what determined it as the deciding decision and its rule, and nothing in it — no sentence, no parenthetical, no reference — names the specification, a review, a tracking file or finding, or this session, whether as what raised it or as where the derivation was recorded. Investigation and research documents carry no timeline rule — edit the affected passages directly; the every-restatement sweep applies to them all the same.
-3. **Reindex it**: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {the resolved artifact path}` — the knowledge base serves the resolution for the rest of the work.
-4. **Stale the other extractions.** Single-topic work types skip this step — no sibling specs exist — and so does a non-discussion `{doc}` (the reverse join covers discussion sources). For an epic whose `{doc}` is a discussion, run `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`; when the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
-5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{source phase}({work_unit}/{doc}): {what the resolution settled}" --topic {source phase}/{doc} --kb --sweep`. `--kb` carries the reindex; `--sweep` says the topic is somebody else's.
+→ Load **[../../workflow-shared/references/landing-a-resolution.md](../../workflow-shared/references/landing-a-resolution.md)** with work_unit = `{work_unit}`, topic = `{topic}`, doc = `{doc}`, source_phase = `{the source's own phase}`, resolution = `{resolution}`.
 
 The caller continues against the updated source.
 
