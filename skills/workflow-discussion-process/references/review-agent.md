@@ -4,7 +4,7 @@
 
 ---
 
-These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — not optional, not deferred.
+These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — the loop's own and any a loaded reference makes mid-session, a triage absorb included — not optional, not deferred.
 
 **If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, both queues empty, the closing gates neither next nor underway: a review is stale on arrival over any of them, whoever asked — at the close it is the gates' to offer. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the queue), then:
 

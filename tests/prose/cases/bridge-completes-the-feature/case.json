@@ -33,7 +33,7 @@
     "skills/workflow-bridge/references/feature-continuation.md"
   ],
   "answers": [
-    "c — continue to review actions"
+    "c — complete the review"
   ],
   "stubs": {
     "review-task-verified": "each time a task verifier is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block; one firing per task",

@@ -142,7 +142,7 @@ The ask is worked here after all. Continue with the raise below.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
 ```
 
-Route on the ground the concern reopens — the subtopic its title names (`{title:(kebabcase)}`), or, when its title names no subtopic, the subtopic whose recorded content its ask corrects or re-decides; only a concern that touches nothing recorded is new ground. Note the prior state for the fold; `{subtopic}` is the routed ground's name:
+Route on the ground the concern reopens — the subtopic its title names (`{title:(kebabcase)}`), or, when its title names no subtopic, the subtopic whose recorded content its ask would rewrite: an ask that corrects or re-decides what a block records routes to that block. An ask that only stands near a recorded decision — whether something more is owed, whether the decision already covers it, what follows from it — rewrites nothing and is new ground of its own, however much its answer leans on that decision. Note the prior state for the fold; `{subtopic}` is the routed ground's name:
 
 - Not on the map — new ground. Add it, then arm it:
 
