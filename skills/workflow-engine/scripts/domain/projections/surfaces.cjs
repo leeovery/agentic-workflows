@@ -188,6 +188,20 @@ const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
 const AUTO_GATE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — the user set this gate to auto: do not stop; continue as the workflow instructs';
 
+// The view's chrome heading (CONVENTIONS.md: Phase Titles): one markdown H1
+// in the chrome family's heaviest register — bold inline code with the
+// filled square, so the renderer styles it at any terminal width.
+const TITLE_INSTRUCTION = "emit verbatim as markdown — the view's chrome heading";
+
+/**
+ * A TITLE section carrying `text` as the view's chrome heading.
+ * @param {string} text
+ * @returns {string}
+ */
+function titleSection(text) {
+  return section('TITLE', TITLE_INSTRUCTION, `# **\`■ ${text}\`**`);
+}
+
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
@@ -392,5 +406,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

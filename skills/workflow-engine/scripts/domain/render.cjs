@@ -17,7 +17,7 @@ const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost } = require('../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -30,6 +30,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, walkthroughScreen, walkthroughHome } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
@@ -1759,7 +1760,7 @@ function reviewPresentation(cwd, { dotpath, file }) {
 
   const title = titlecase(p.topic);
   const sections = [
-    section('TITLE', "emit verbatim as markdown — the view's chrome heading", `# **\`■ Review — ${title}\`**`),
+    titleSection(`Review — ${title}`),
   ];
   if (p.verdict === 'fail') {
     const n = replan.length;
@@ -5202,6 +5203,33 @@ function baselineDocPickSurface(cwd, _args) {
   return baselineDocPick();
 }
 
+// ---------------------------------------------------------------------------
+// The walkthrough surfaces — project-level, no address, no state. A screen is
+// a content file, so the only things to resolve are which screen and where
+// the walk was entered from; the recorded answer drives the offer alone, and
+// no surface reads it.
+// ---------------------------------------------------------------------------
+
+/**
+ * One screen of the walk. `--from` carries the caller, which is what varies
+ * the exits: a first run can skip to the start menu, a walk opened from help
+ * goes back to it. `--menu-only` serves the return from a question — the
+ * screen is already on the reader's terminal.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function walkthroughScreenSurface(_cwd, args) {
+  const origin = args.from;
+  if (origin === undefined || !WALKTHROUGH_ORIGINS.includes(origin)) {
+    throw new Error(`render walkthrough-screen: --from must be one of ${WALKTHROUGH_ORIGINS.join(', ')}, got "${origin ?? ''}"`);
+  }
+  return walkthroughScreen(loadScreen(args.screen), origin, Boolean(args['menu-only']));
+}
+
+/** @param {string} _cwd @param {object} _args @returns {string} */
+function walkthroughHomeSurface(_cwd, _args) {
+  return walkthroughHome();
+}
+
 /**
  * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
  * the reuse variant alone — the system configuration its yes row names. A
@@ -5338,6 +5366,8 @@ const SURFACES = {
   'baseline-manage-gate': baselineManageGateSurface,
   'baseline-doc-pick': baselineDocPickSurface,
   'baseline-offer-gate': baselineOfferGateSurface,
+  'walkthrough-screen': walkthroughScreenSurface,
+  'walkthrough-home': walkthroughHomeSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,

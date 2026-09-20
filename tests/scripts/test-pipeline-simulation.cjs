@@ -3525,6 +3525,19 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['baseline-manage-gate'], { expect: 'content' }), /What would you like to do\?/);
     assert.match(sim.render(['baseline-doc-pick'], { expect: 'content' }), /Which doc\?/);
 
+    // The walkthrough is the project's other one-time record, and the same
+    // shape: refuse anything but the two answers, write once, and stay
+    // recorded. Its screens are content, so they render at any state.
+    assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
+    assert.match(sim.render(['walkthrough-home'], { expect: 'content' }), /What would you like to do\?/);
+    sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
+    sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
+    const answer = sim.run(['walkthrough', 'record', 'walked']);
+    assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.walkthrough.status']), 'walked');
+    sim.refuses(['walkthrough', 'record', 'skipped'], /recorded once/);
+    assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
+
     // After every refusal the unit still derives and completes normally.
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });

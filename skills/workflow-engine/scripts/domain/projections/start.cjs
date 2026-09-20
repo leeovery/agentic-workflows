@@ -114,6 +114,9 @@ function roadmapMenuRow(detail) {
   return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap open', label };
 }
 
+/** @type {StartMenuKey} */
+const HELP_ROW = { key: 'h', word: 'help', action: 'open_help', route: '/workflow-help', label: 'How the workflows work' };
+
 // ---------------------------------------------------------------------------
 // Overview
 // ---------------------------------------------------------------------------
@@ -228,6 +231,7 @@ function startMenu(detail) {
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
   }
+  options.push(HELP_ROW);
   options.push({ key: 'm', word: 'manage', action: 'manage', route: null, label: "Manage a work unit's lifecycle" });
 
   const lines = ['What would you like to do?', ''];
@@ -312,6 +316,7 @@ function emptyMenu(detail) {
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
   }
+  options.push(HELP_ROW);
 
   const lines = ['What would you like to start?', ''];
   for (const o of options) {

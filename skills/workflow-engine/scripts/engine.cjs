@@ -45,6 +45,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
+const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 
 /** @param {string} msg @returns {never} */
@@ -198,6 +199,7 @@ Commands:
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
   baseline record <native|skipped>
+  walkthrough record <walked|skipped>
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -345,6 +347,8 @@ Commands:
   render baseline-manage-gate
   render baseline-doc-pick
   render baseline-offer-gate
+  render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
+  render walkthrough-home
   render migration-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
@@ -1197,15 +1201,12 @@ function runInbox(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// roadmap — the product-roadmap layer on the project manifest
-// (domain/roadmap.cjs): horizons + capability-grain items, lifecycle by
-// join. Every mutation is one transaction under the project lock with its
-// own pathspec commit of the project manifest — no work-unit cadence covers
-// it, and a park fired mid-session must be durable immediately. `state` is
-// the derived read every consumer shares.
+// baseline, walkthrough — the project's two one-time records
+// (domain/baseline.cjs, domain/walkthrough.cjs). Each answers a question
+// workflow-start asks once, writes one field on the project manifest, and
+// commits it confined in the same call.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
 /**
  * `baseline record <native|skipped>` — workflow-start's one-time verdict,
  * written and committed in one confined transaction.
@@ -1226,6 +1227,36 @@ function runBaseline(argv) {
   }
 }
 
+/**
+ * `walkthrough record <walked|skipped>` — the answer to workflow-start's
+ * one-time offer, written and committed in one confined transaction.
+ * @param {string[]} argv
+ */
+function runWalkthrough(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+  try {
+    if (command === 'record') {
+      if (rest.length !== 1) throw new Error('Usage: engine walkthrough record <walked|skipped>');
+      respond(walkthrough.recordWalkthrough(cwd, rest[0]));
+      return;
+    }
+    throw new Error(`Unknown walkthrough command: ${command}. Usage: engine walkthrough record <walked|skipped>`);
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// roadmap — the product-roadmap layer on the project manifest
+// (domain/roadmap.cjs): horizons + capability-grain items, lifecycle by
+// join. Every mutation is one transaction under the project lock with its
+// own pathspec commit of the project manifest — no work-unit cadence covers
+// it, and a park fired mid-session must be durable immediately. `state` is
+// the derived read every consumer shares.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
 function runRoadmap(argv) {
   const [command, ...rest] = argv;
   const cwd = process.cwd();
@@ -1831,7 +1862,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1847,6 +1878,7 @@ function runRender(argv) {
       if (flags.has('donow')) args.donow = '1';
       if (flags.has('recommendations')) args.recommendations = '1';
       if (flags.has('dead-end')) args['dead-end'] = '1';
+      if (flags.has('menu-only')) args['menu-only'] = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);
@@ -1934,6 +1966,9 @@ function runCli(argv) {
       break;
     case 'baseline':
       runBaseline(rest);
+      break;
+    case 'walkthrough':
+      runWalkthrough(rest);
       break;
     case 'cache':
       runCache(rest);

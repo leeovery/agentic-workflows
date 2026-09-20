@@ -4565,7 +4565,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -4623,6 +4623,27 @@ describe('single-source invariants', () => {
   // a content grep cannot isolate the wrapped-callout idiom without false
   // positives. Single-sourcing there is enforced structurally — flaggedCallout
   // delegates to surfaces.callout — and guarded by review.
+
+  it('every walkthrough diagram fits the pinned width — the fence cannot re-flow (D8)', () => {
+    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(p); continue; }
+        if (!entry.isFile() || !p.endsWith('.md')) continue;
+        let fenced = false;
+        fs.readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+          if (line.startsWith('```')) { fenced = !fenced; return; }
+          // Characters, not bytes: the diagrams are drawn with arrows and
+          // box-drawing glyphs, each of which is several bytes wide.
+          if (fenced && [...line].length > 65) offenders.push(`${path.relative(contentRoot, p)}:${i + 1}`);
+        });
+      }
+    })(contentRoot);
+    assert.deepStrictEqual(offenders, [],
+      'a fenced line renders as drawn — past the narrowest pane it wraps and the diagram breaks');
+  });
 
   it('box-glyph frames are retired everywhere — the fence is the frame (D8)', () => {
     const skillsRoot = path.join(__dirname, '..', '..', 'skills');
@@ -4983,6 +5004,150 @@ describe('baseline surfaces', () => {
     // The way out of the baseline is the surface it was entered from.
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
     assert.match(renderSurface(dir, 'baseline-doc-pick', {}), /Which doc\? \(enter the area name, or \*\*`b\/back`\*\*\)/);
+  });
+});
+
+describe('walkthrough surfaces', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough', 'screens');
+  const screenFiles = () => fs.readdirSync(SCREENS).filter((f) => f.endsWith('.md')).sort();
+  const screenText = (n) => fs.readFileSync(path.join(SCREENS, screenFiles()[n - 1]), 'utf8');
+  const titleOf = (n) => screenText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
+  /** The section markers of a render, in order — the shape the emitting prose walks. */
+  const markers = (out) => out.split('\n').filter((l) => l.startsWith('=== ')).map((l) => l.slice(4, l.indexOf(' (')));
+  const menuOf = (out) => out.slice(out.indexOf('=== MENU:'));
+
+  it('a screen is its heading, its content in file order, then its menu', () => {
+    const out = renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' });
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough screen']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      `# **\`■ How the workflows work · 1 of ${screenFiles().length} · ${titleOf(1)}\`**`,
+      '',
+      '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
+    ].join('\n')), out.slice(0, 400));
+
+    // Every chunk the file marks off reaches the render whole, in file order:
+    // the prose as written, the diagram as drawn.
+    const body = screenText(1).split('\n').slice(1).join('\n');
+    const chunks = body.split(/^```$/m).map((c) => c.replace(/^\n+|\n+$/g, '')).filter(Boolean);
+    assert.strictEqual(chunks.length, 3, 'screen 1 is prose, diagram, prose');
+    let cursor = 0;
+    for (const chunk of chunks) {
+      const at = out.indexOf(chunk, cursor);
+      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.slice(0, 60)}…`);
+      cursor = at;
+    }
+  });
+
+  it('the first screen: a first run can only go on or skip; from help it goes on or back', () => {
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(2)}`,
+      "**`s/skip`** → Skip this for now — it's under h/help whenever you want",
+      `${NB(9)}it`,
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'help' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(2)}`,
+      '**`b/back`** → Back to help',
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+  });
+
+  it('a middle screen: next, back, and a stop that names where stopping lands', () => {
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(3)}`,
+      '**`b/back`** → Go back a screen',
+      "**`s/skip`** → Stop here — it's under h/help whenever you want it",
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'help' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(3)}`,
+      '**`b/back`** → Go back a screen',
+      '**`s/stop`** → Stop here and go back to help',
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+  });
+
+  it('the last screen: one way out, and the closing invitation beside the standing one', () => {
+    const last = screenFiles().length;
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      '**`d/done`**  → Go to the start menu',
+      "**Ask**     → Ask anything about what's on this screen",
+      "**Tell me** → Tell me what you're likely to start with, and I'll say",
+      `${NB(10)}what path it will take`,
+      '',
+    ].join('\n'));
+
+    assert.match(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'help' }), /\*\*`d\/done`\*\*\s+→ Back to help/);
+  });
+
+  it('--menu-only is the menu alone — the return from a question, not the screen again', () => {
+    for (const from of ['first-run', 'help']) {
+      const full = renderSurface(dir, 'walkthrough-screen', { screen: '2', from });
+      const menuOnly = renderSurface(dir, 'walkthrough-screen', { screen: '2', from, 'menu-only': '1' });
+      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough screen']);
+      assert.strictEqual(menuOnly, menuOf(full), `${from}: the keys come back exactly as they stood`);
+    }
+  });
+
+  it('refuses a screen outside the walk, a missing or unknown origin', () => {
+    const total = screenFiles().length;
+    for (const screen of [undefined, '', '0', String(total + 1), 'two', '1.5']) {
+      assert.throws(
+        () => renderSurface(dir, 'walkthrough-screen', { screen, from: 'help' }),
+        new RegExp(`--screen is 1–${total} — got "${screen ?? ''}"`),
+        JSON.stringify(screen),
+      );
+    }
+    assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1' }), /--from must be one of first-run, help, got ""/);
+    assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'menu' }), /--from must be one of first-run, help, got "menu"/);
+  });
+
+  it('walkthrough-home: the walk, the cards, a question, and the way back', () => {
+    assert.strictEqual(renderSurface(dir, 'walkthrough-home', {}), [
+      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      '# **`■ Help`**',
+      '',
+      "=== MENU: walkthrough home (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What would you like to do?`**',
+      '',
+      `**\`w/walk\`**   → Walk through how the workflows work (${screenFiles().length} short screens)`,
+      '**`t/topics`** → Read about one area in more depth',
+      '**`b/back`**   → Back to the start menu',
+      '**Ask**      → Ask anything about how the workflows work',
+      '',
+    ].join('\n'));
   });
 });
 
