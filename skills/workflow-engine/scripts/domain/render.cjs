@@ -2766,7 +2766,7 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
  * @returns {string} the gate's sections, or '' when nothing blocks conclusion
  */
 function waitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAITING_PHASES, "the waiting item's own");
+  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAITING_PHASES, 'the waiting item itself');
   if (!itemOf(manifest, phase, topic)) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
@@ -4098,7 +4098,7 @@ function entryGate(cwd, { dotpath, own }) {
       return blocker(
         `Entry blocked — the specification for "${t}" is unsettled (${specUnsettledPhrase(unsettled)})`,
         manifest.work_type === 'epic'
-          ? 'Return to the epic menu — its specification row is the way in.'
+          ? 'Return to the epic menu — the specification is the way in: its row, or c/completed while it still reads completed.'
           : 'Continue the work unit — the specification is its next step.',
       );
     }

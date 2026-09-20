@@ -446,14 +446,26 @@ const CUE_BLOCKED =
   + '                              in-progress; re-conclude it and the\n'
   + '                              item returns to the menu';
 
-const CUE_PLAN_BLOCKED =
-  '    blocked (planning)      — implementation waits on another plan;\n'
-  + '                              the ⚑ list names the dependency,\n'
-  + '                              u/unblock is the override';
+// Two different causes tag a planning row `· blocked`, and the key explains
+// a rendered tag, not a field — so they share one term and stack their
+// explanations beneath it, the upstream hold before the dependency.
+const CUE_PLAN_TERM = '    blocked (planning)      ';
 
-const CUE_PLAN_SPEC_BLOCKED =
-  '    blocked (planning)      — its specification is unsettled; settle\n'
-  + '                              it and the item returns to the menu';
+const PLAN_BLOCKED_CAUSES = [
+  'its specification is unsettled; settle\n'
+  + '                              it and the item returns to the menu',
+  'implementation waits on another plan;\n'
+  + '                              the ⚑ list names the dependency,\n'
+  + '                              u/unblock is the override',
+];
+
+/** @param {boolean[]} fired  one flag per cause, in PLAN_BLOCKED_CAUSES order */
+function cuePlanBlocked(fired) {
+  return PLAN_BLOCKED_CAUSES
+    .filter((_, i) => fired[i])
+    .map((cause, i) => `${i === 0 ? CUE_PLAN_TERM : ' '.repeat(CUE_PLAN_TERM.length)}— ${cause}`)
+    .join('\n');
+}
 
 /**
  * Section B — the Key block, showing only categories present in the display
@@ -488,8 +500,8 @@ function epicKey(detail) {
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
   if (blockedAny('discussion')) cueLines.push(CUE_DISCUSSION_BLOCKED);
   if (blockedAny('specification')) cueLines.push(CUE_BLOCKED);
-  if (blockedAny('planning')) cueLines.push(CUE_PLAN_SPEC_BLOCKED);
-  if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
+  const planCauses = [blockedAny('planning'), anyBlocked];
+  if (planCauses.some(Boolean)) cueLines.push(cuePlanBlocked(planCauses));
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   if (blocks.length === 0) return '';
@@ -663,9 +675,12 @@ function startEntries(workUnit, detail, phase) {
     const srcPhase = EPIC_PIPELINE[EPIC_PIPELINE.indexOf(phase) - 1];
     const srcItem = srcPhase ? (detail.phases[srcPhase] || []).find((i) => i.name === n.name) : undefined;
     const srcFlagged = srcItem !== undefined && srcItem.reconcile_needed !== undefined;
-    // A dep-blocked implementation start is not actionable — no menu row;
-    // the ⚑ plans-not-ready block and the tree cue carry its blocked state,
-    // and the u/unblock command option is the escape hatch.
+    // A blocked start is not actionable — no menu row, either way. A
+    // dep-blocked implementation start shows its state in the ⚑
+    // plans-not-ready block and the tree cue, with u/unblock the escape
+    // hatch; a planning start held on an unsettled specification has
+    // neither, and the specification's own tree row — its open source rows,
+    // its input-moved tag — is what carries the state.
     if (n.blocked) continue;
     /** @type {MenuKey} */
     const entry = {

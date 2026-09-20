@@ -272,7 +272,7 @@ Commands:
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
-  render wait-gate        <wu.research|discussion.topic>     (empty when the item holds no wait)
+  render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
   render checkpoint-files-gate <wu.implementation.topic>
@@ -291,7 +291,7 @@ Commands:
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <research|discussion>
+  render phase-paused      <wu> --phase <research|discussion|planning>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)

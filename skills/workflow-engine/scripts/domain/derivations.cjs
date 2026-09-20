@@ -199,10 +199,11 @@ function specGroupsSources(item) {
  * Derived from the specification item, never stored.
  *
  * A terminal specification is settled by exit rather than by agreement:
- * cancelled, superseded, and promoted each close the record for good, and
- * the entry gate's own arms say where the work went. An absent item is not
- * unsettledness either — it is "no specification", the entry gate's first
- * arm, and `topic start` has never enforced pipeline order.
+ * a cancel takes the plan with it (`topic cancel` is Definition-unit-wide),
+ * and supersession and promotion each close the record for good under the
+ * entry gate's own arms, which say where the work went. An absent item is
+ * not unsettledness either — it is "no specification", the entry gate's
+ * first arm, and `topic start` has never enforced pipeline order.
  * @param {object} manifest @param {string} topic
  * @returns {SpecUnsettled|null}
  */
@@ -216,6 +217,13 @@ function specUnsettled(manifest, topic) {
   return { status, flagged, open_sources };
 }
 
+// `stale` is the one named status: anything else — `pending`, or a row
+// carrying none — has never been extracted, which is what the first says.
+const OPEN_ROW_CLAUSES = [
+  { stale: false, one: 'a source is not yet extracted', many: 'sources are not yet extracted' },
+  { stale: true, one: 'a source has moved beneath the extraction', many: 'sources have moved beneath the extraction' },
+];
+
 /**
  * Where an unsettled specification stands, one clause per reason that holds,
  * in the order the record moves through them — the open source rows split
@@ -226,15 +234,6 @@ function specUnsettled(manifest, topic) {
  * @param {SpecUnsettled} unsettled
  * @returns {string}
  */
-// The two classes of open source row, in the order the record moves through
-// them, each with its singular and plural voice. `stale` is the one named
-// status: anything else — `pending`, or a row carrying none — has never been
-// extracted, which is what the first clause says.
-const OPEN_ROW_CLAUSES = [
-  { stale: false, one: 'a source is not yet extracted', many: 'sources are not yet extracted' },
-  { stale: true, one: 'a source has moved beneath the extraction', many: 'sources have moved beneath the extraction' },
-];
-
 function specUnsettledPhrase({ status, flagged, open_sources }) {
   const reasons = [];
   if (status !== 'completed') reasons.push(status === 'in-progress' ? 'back in progress' : 'not concluded');
@@ -244,6 +243,35 @@ function specUnsettledPhrase({ status, flagged, open_sources }) {
   }
   if (flagged) reasons.push('its own input moved');
   return reasons.join(', ');
+}
+
+/**
+ * Whether a completed item's record has moved since it completed — its
+ * reconcile flag, or, for a specification, unsettledness the flag does not
+ * carry (a source row staled by a triage landing moves the document with no
+ * reopen and no flag). The one reading the linear route and the linear
+ * dashboard's cue share, so the bridge can never route back to a phase the
+ * display calls settled.
+ * @param {object} manifest @param {string} phase
+ * @param {{name: string, status?: string, reconcile_needed?: unknown}} item
+ * @returns {boolean}
+ */
+function inputMoved(manifest, phase, item) {
+  if (item.status !== 'completed') return false;
+  if (item.reconcile_needed !== undefined) return true;
+  return phase === 'specification' && specUnsettled(manifest, item.name) !== null;
+}
+
+/**
+ * What moved a completed item's input, as the surfaces name it: the stored
+ * flag's value, or `true` where the move is derived and names no single
+ * upstream — the "reconcile at next entry" voice the brief flag already
+ * uses.
+ * @param {{reconcile_needed?: unknown}} item
+ * @returns {unknown}
+ */
+function movedFrom(item) {
+  return item.reconcile_needed !== undefined ? item.reconcile_needed : true;
 }
 
 /**
@@ -532,15 +560,9 @@ function computeNextPhase(manifest) {
         }
         return { next_phase: phase, phase_label: `${phase} (in-progress)` };
       }
-      // A completed item whose record has moved since. The flag is the
-      // general signal; a specification carries a second one the flag never
-      // reaches — a source row staled by a triage landing moves the document
-      // with no reopen and no flag — and walking past it hands the plan a
-      // specification about to change.
-      const moved = phaseItems(manifest, phase).some((i) => i.status === 'completed'
-        && (i.reconcile_needed !== undefined
-          || (phase === 'specification' && specUnsettled(manifest, i.name) !== null)));
-      if (moved) {
+      // Walking past a completed item whose record has moved hands the next
+      // phase input about to change — so the walk stops there instead.
+      if (phaseItems(manifest, phase).some((i) => inputMoved(manifest, phase, i))) {
         return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
       }
     }
@@ -1082,6 +1104,8 @@ module.exports = {
   specGroupsSources,
   specUnsettled,
   specUnsettledPhrase,
+  inputMoved,
+  movedFrom,
   lockingSpecs,
   liveSeries,
   cancelPlan,
