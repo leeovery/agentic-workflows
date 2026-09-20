@@ -8,6 +8,8 @@ The plan builds what the specification decided; where it decided nothing, or dec
 
 `{doc}` is the source document that owns the ground a decision would land on — read the specification item's sources (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources`) and take the one that owns it, a single-topic unit's being the same-named document; `{source_phase}` is that source's own phase, `discussion`, or `investigation` for a bugfix.
 
+An entry an earlier settle already landed — its corrigendum present in the specification, or its concern already queued on `{doc}`'s triage queue (`node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {source_phase} {doc}` lists it) — is skipped.
+
 The moves, by effort — and derivation is exhausted before any stop: context, the specification's own decisions, sibling artifacts, measurement against the tree. What the record yields is settled and lands silently. The one thing never derived is product intent: the plan never invents what the product does.
 
 ## A. Classify
@@ -40,9 +42,9 @@ The tree does not yet do what the specification decides. From planning that is p
 
 **If it returns the entry unsettled** — the specification is live in its own phase, or another session holds it:
 
-Leave it exactly as reported; never re-classify it here. The plan is held either way, so the point goes where it will be worked.
+Leave it exactly as reported: never re-classify it here, and route nothing. Tell the user in one line that the specification is out and the entry stands. The plan is held while its specification is unsettled, and a later run — the next agent return, or the review walk — re-finds the point once it settles.
 
-→ Proceed to **D. Route the Gap**.
+→ Return to caller.
 
 #### Otherwise
 
@@ -86,37 +88,57 @@ No row holds `{doc}`.
 
 → Load **[../../workflow-shared/references/landing-a-resolution.md](../../workflow-shared/references/landing-a-resolution.md)** with work_unit = `{work_unit}`, topic = `{topic}`, doc = `{doc}`, source_phase = `{source_phase}`, resolution = `{the decision the user settled, carrying what it turns on}`.
 
-The document now carries the decision, and that is the record that settles the specification — its correction lands under the record-settled arm, the corrigendum citing the decision:
+The document now carries the decision, and that decision is the record that settles the specification — the correction route classifies it record-settled, the corrigendum citing it:
 
 → Load **[../../workflow-shared/references/correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `planning/{topic}`.
+
+**If it landed the correction:**
 
 Tell the user in one line what landed where — the decision in the source document, the specification brought into line.
 
 → Return to caller — construction re-runs its agent against the corrected record before the gate renders, and the review walk re-disposes its finding against it.
 
+**If it returns the entry unsettled** — the specification is live in its own phase, or another session holds it:
+
+The decision stands in the record, and the specification takes it when its own session reconciles. Flip this plan's specification extraction stale so that reconciliation happens — no `--except` here: this is the one landing whose own specification must go stale, and a single-topic work type runs it too (the skip in `landing-a-resolution.md` is about sibling specifications, which it has none of). The verb takes a discussion, so a bugfix whose `{doc}` is an investigation flips nothing — its specification is the live session already reading that document:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc}
+```
+
+Tell the user in one line: the decision is in the record, and the specification takes it when it next runs — the plan is held until it does.
+
+→ Return to caller — no re-run: the specification did not change.
+
 ## D. Route the Gap
 
-The point goes to the owning document's triage queue — its item reopens, the queued concern survives any context clear, and the reopened session surfaces it and cannot conclude without folding it.
+The point goes to `{doc}`'s triage queue — its item reopens, the queued concern survives any context clear, and the reopened session surfaces it and cannot conclude without folding it.
 
-**If the work type is `epic`:**
+#### If the work type is `epic`
 
 → Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{what the plan needs, the evidence, what was explored, and the agreed resolution where there is one}`, origin = `{topic}`, phase = `planning`, landing_phase = `discussion`, date = `{today}`.
 
-On return, read `result`.
+On return, read `result` and `landed_topic`.
 
 **If `result` is `landed`:**
 
-The delivery committed itself.
+The delivery committed itself, and `{landed_topic}` is the document it landed on — validation may have renamed the target.
 
 → Proceed to **E. Pause the Plan**.
 
-**If `result` is `cancelled`:**
+**If `result` is `cancelled` and this section was entered from B. The Exchange:**
 
 Nothing was written — the point stays with this session.
 
 → Return to **B. The Exchange**.
 
-**If the work type is not `epic`:**
+**If `result` is `cancelled` and this section was entered from C. Land the Decision:**
+
+Nothing was written, and the agreed resolution reached nobody — say so in one line; the held session will not see it.
+
+→ Return to caller.
+
+#### Otherwise
 
 Write the concern in the triage entry shape pinned in [triage-landing.md](../../workflow-shared/references/triage-landing.md) — `### {short title}`, `*From: {topic} · planning · {date}*`, then what the plan needs, the evidence, what was explored, and the agreed resolution where there is one — to `.workflows/.cache/{work_unit}/planning/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself:
 
@@ -124,14 +146,16 @@ Write the concern in the triage entry shape pinned in [triage-landing.md](../../
 node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source_phase} {doc} --concern .workflows/.cache/{work_unit}/planning/{topic}/gap-concern.md --slug {kebab-case gap name} -m "planning({work_unit}): gap routed to {doc}"
 ```
 
+Set `landed_topic` = `{doc}`.
+
 → Proceed to **E. Pause the Plan**.
 
 ## E. Pause the Plan
 
-The landing moved the ground beneath the specification, and the plan is held until the specification settles against what the discussion decides. Commit the session's work:
+The landing moved the ground beneath the specification, and the plan is held until the specification settles against what `{landed_topic}` decides. Commit the session's work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): pause — gap routed to {doc}" --topic planning/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): pause — gap routed to {landed_topic}" --topic planning/{topic}
 ```
 
 Fetch the pause gate:
@@ -140,7 +164,9 @@ Fetch the pause gate:
 node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.planning.{topic}
 ```
 
-Emit the returned sections verbatim per their markers — the blocker naming what is owed, its guidance, then the menu.
+#### If sections are returned
+
+Emit them verbatim per their markers — the blocker naming what is owed, its guidance, then the menu.
 
 **STOP.** Wait for user response.
 
@@ -149,7 +175,7 @@ Emit the returned sections verbatim per their markers — the blocker naming wha
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with the gap queued — planning resumes once the discussion has decided it and the specification has been brought into line.
+> Paused with the gap queued — planning resumes once {landed_topic} has decided it and the specification has been brought into line.
 ```
 
 Invoke `/workflow-bridge {work_unit} planning none paused`.
@@ -157,5 +183,11 @@ Invoke `/workflow-bridge {work_unit} planning none paused`.
 **If `keep`:**
 
 Planning continues. The conclusion stays shut until the specification lands — the conclude gate meets the wait again.
+
+→ Return to caller.
+
+#### If the output is empty
+
+Nothing holds the plan — the specification no longer sources `{landed_topic}`, or it is terminal. Planning continues.
 
 → Return to caller.

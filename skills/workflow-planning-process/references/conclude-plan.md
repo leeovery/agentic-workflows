@@ -38,9 +38,13 @@ Invoke `/workflow-bridge {work_unit} planning none paused`.
 
 **If `keep`:**
 
-The plan stays open, and the conclusion meets the wait again.
+> *Output the next fenced block as markdown (not a code block):*
 
-→ Return to caller.
+```
+> The plan stays open. Pick planning back up from the menu once the specification has settled — the conclusion meets this wait again.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 **If the output is empty:**
 

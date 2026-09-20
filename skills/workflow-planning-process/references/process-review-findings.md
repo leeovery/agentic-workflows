@@ -37,7 +37,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 ```
 
 - `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
-- `status` — the finding's Resolution: `Fixed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
+- `status` — the finding's Resolution: `Fixed` or `Routed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
 Render and emit the section verbatim at its marked instruction:
 
@@ -51,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` or `Declined` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed`, `Routed`, or `Declined` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it.
 
 **If no unresolved finding remains** — every row already settled, whether this sitting or an earlier one:
 
@@ -63,7 +63,7 @@ Read the next unresolved finding's **Move** — it decides everything that follo
 
 → Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `review`, gap = `{what the specification asserts or omits, the evidence, what goes wrong for the product's user, and the finding it surfaced in}`.
 
-On return, dispose it against the corrected record — usually `settled`, carrying what landed into the plan; `Declined` with the reason in Notes where the landing made it moot.
+On return, dispose it by what the reference did. A landing — a corrigendum on the specification, or a decision landed in the source document and the specification re-aligned to it — is re-disposed against the corrected record: `settled` carrying what landed into the plan, or `choice` where the corrected record still leaves the fork. Work the plan must carry is `settled`, that work the Proposal. A gap the reference routed to the owning document's queue is not applied at all — Resolution `Routed`, the queue named in Notes; the plan is held until the record lands, and the walk moves on to its remaining findings. (`yes` at the reference's pause is terminal — the bridge takes the session out.)
 
 **Otherwise:** the record stands as the finding found it — continue.
 
@@ -80,7 +80,7 @@ Three rules govern the evidence:
 - A fork with one live side — a side no informed user would choose — is settled.
 - A choice that names no search is not a verdict: run the search yourself.
 
-A fork that clears every prong stands as a `choice` — the plan never invents product intent. Below the bar the move is `settled`: where the specification, the plan's own conventions, or a measurement yields exactly one answer, that derivation is the Proposal; where nothing leans, an honest call, the Proposal naming it as such and what it weighed — a fork the plan is left to settle is the planner's, however it was staged. Nothing routes and nothing is declined at the dispose: the plan is the document under review, and a preference nothing leans on is settled, never dropped.
+A fork that clears every prong stands as a `choice` — the plan never invents product intent. Below the bar the move is `settled`: where the specification, the plan's own conventions, or a measurement yields exactly one answer, that derivation is the Proposal; where nothing leans, an honest call, the Proposal naming it as such and what it weighed — a fork the plan is left to settle is the planner's, however it was staged. Nothing is declined at the dispose, and the one route is the specification's own gap: the plan is the document under review, and a preference nothing leans on is settled, never dropped.
 
 Where the disposal moved anything — the move, the derivation, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten; the Change Type re-read against the fix the derivation lands (a staged choice's was picked with no fix content behind it); the Proposal written with the derivation naming what decided it; the Options removed; Current and Proposed Text supplied — the exact content that lands on approval, Current copied from the live plan and omitted for `add-task`/`add-phase`, Proposed Text in full plan format and omitted for `remove-task`/`remove-phase`. A new task or phase takes the canonical template: load **[task-design.md](task-design.md)** before composing one. To `choice`: Move rewritten, the Proposal, Current, and Proposed Text replaced with Options, the search named.
 

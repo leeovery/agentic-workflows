@@ -46,13 +46,13 @@ Invoke `workflow-planning-phase-designer` with these file paths:
 
 The agent returns phases only — goals, ordering rationale, and acceptance criteria. **Task lists are designed separately in a later step; do not request or include them.** Write the phase structure directly to the planning file body.
 
-**Settle the spec defects** — classified before the structure gate renders, so what the user approves was designed against a correct specification.
+**Settle the spec defects** — classified before the structure gate renders, so what the user approves was designed against a correct specification. The section is the orchestrator's: it never reaches the planning file.
 
 **If the return carries a `## Spec Defects` section** — once per entry:
 
 → Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the phase it surfaced in}`.
 
-Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-phase-designer` through its amendment path with the corrections and that work as the feedback, and write the revised structure to the planning file. When at least one corrigendum landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-phase-designer` through its amendment path with the corrections and that work as the feedback, and write the revised structure to the planning file. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase. When at least one corrigendum landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
@@ -102,7 +102,11 @@ Re-invoke `workflow-planning-phase-designer` with all original inputs PLUS:
 - **Previous output**: the current phase structure
 - **User feedback**: what the user wants changed
 
-Update the planning file with the revised output.
+The revision reads the specification again, so its defects are settled before the revised output is written — once per `## Spec Defects` entry:
+
+→ Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the phase it surfaced in}`.
+
+Where a landing changed the specification, re-invoke the designer once more with the corrections as the feedback; a defect it still reports after that re-run is left to the review walk. Update the planning file with the revised output.
 
 → Return to **B. Review and Approve**.
 
