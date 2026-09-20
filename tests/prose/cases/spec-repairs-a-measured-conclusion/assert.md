@@ -49,7 +49,10 @@ The prose should have taken this path:
 9. the source row flips to incorporated when extraction exhausts;
    review cycle 1 runs claims verification, input review, and gap
    analysis sequentially, each clean through the stubs, never in
-   parallel; completion verifies tracking and sources and puts the
+   parallel. The claims dispatch reads the work unit's imports from the
+   manifest alongside its sources and passes them to the agent — this
+   unit holds none, so the list is empty and nothing is resolved from
+   it; completion verifies tracking and sources and puts the
    sign-off to the user; on their yes the topic completes through the
    engine and the conclusion commits
 10. the walk stops at the pipeline continuation without invoking the

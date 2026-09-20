@@ -56,6 +56,7 @@
       "manifest set pay.planning.pay review_cycle 1",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
+      "render wait-gate pay.planning.pay",
       "render conclude-gate pay.planning.pay",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
@@ -67,6 +68,7 @@
       "render phase-tree pay.planning.pay",
       "manifest set pay.planning.pay review_cycle 1",
       "planning(pay): complete plan review",
+      "render wait-gate pay.planning.pay",
       "topic complete pay planning pay",
       "manifest set pay.planning.pay spec_commit"
     ],

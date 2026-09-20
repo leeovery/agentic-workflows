@@ -60,6 +60,7 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
+      "render wait-gate pay.planning.pay",
       "render conclude-gate pay.planning.pay",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
@@ -74,6 +75,7 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
+      "render wait-gate pay.planning.pay",
       "topic complete pay planning pay",
       "manifest set pay.planning.pay spec_commit"
     ],

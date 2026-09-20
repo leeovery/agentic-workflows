@@ -45,6 +45,7 @@
       "render resume-gate pay.specification.pay",
       "manifest set pay.specification.pay review_cycle=1",
       "review_baseline_words=",
+      "manifest get pay imports",
       "tracking.review-claims-tracking-c1 in-progress",
       "render findings-summary pay.specification.pay",
       "presence scan pay",

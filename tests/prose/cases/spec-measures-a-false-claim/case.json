@@ -45,6 +45,7 @@
       "sources.pay.status pending",
       "sources.pay.status incorporated",
       "review_cycle=0",
+      "manifest get pay imports",
       "finding_gate_mode=gated",
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",

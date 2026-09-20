@@ -33,10 +33,12 @@ The prose should have taken this path:
    tracking file written; re-verification passes with every tracking
    entry complete, and the review completes and commits
 10. the compliance self-check refreshes the session's instructions;
-    the conclusion gate is put to the user and, on their yes, the plan
-    completes through the engine first and only then is the spec
-    baseline re-stamped from the current commit, before the final
-    commit lands
+    the conclusion asks the engine what the plan is waiting on first —
+    the wait gate comes back empty, so no blocker and no pause menu is
+    emitted — and only then is the conclusion gate put to the user and,
+    on their yes, the plan completes through the engine first and only
+    then is the spec baseline re-stamped from the current commit,
+    before the final commit lands
 11. the walk stops at the pipeline continuation — the bridge is never
     invoked
 
