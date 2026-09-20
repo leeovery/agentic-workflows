@@ -21,6 +21,8 @@ const {
   computeUnitPhaseState,
   lastCompletedPhase,
   triagePhases,
+  inputMoved,
+  movedFrom,
 } = require('./derivations.cjs');
 
 /**
@@ -135,14 +137,23 @@ function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
 }
 
-/** Live pipeline phases whose item carries a reconcile flag, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]} */
+/**
+ * Live pipeline phases whose input has moved, in pipeline order — the
+ * stored flag, or a completed specification the flag never reached (its
+ * source rows no longer incorporated). The same reading `computeNextPhase`
+ * routes on, so the dashboard never calls settled a phase the bridge routes
+ * back to; a derived one names no revised upstream, so it carries `true` —
+ * the "reconcile at next entry" voice the brief flag already uses.
+ * @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]}
+ */
 function reconcilePhases(cfg, manifest) {
   /** @type {{phase: string, from: string|boolean}[]} */
   const out = [];
   for (const phase of cfg.pipeline) {
-    const flagged = phaseItems(manifest, phase)
-      .find((i) => !TERMINAL_STATUSES.includes(i.status) && i.reconcile_needed !== undefined);
-    if (flagged) out.push({ phase, from: flagged.reconcile_needed });
+    const moved = phaseItems(manifest, phase)
+      .find((i) => !TERMINAL_STATUSES.includes(i.status)
+        && (i.reconcile_needed !== undefined || inputMoved(manifest, phase, i)));
+    if (moved) out.push({ phase, from: /** @type {string|boolean} */ (movedFrom(moved)) });
   }
   return out;
 }

@@ -32,7 +32,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
-  sourceRows, sourceRow, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
+  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
   liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
@@ -167,6 +167,26 @@ function assertResearchLanded(manifest, phase, topic, verb) {
   );
 }
 
+// A plan is built from a settled record: while the same-named specification
+// is unsettled — not concluded, its input moved, or a source row no longer
+// incorporated — the plan is held shut at its birth and its reopen, for
+// every work type. A plan already in session resumes: the entry gate is its
+// door, and the conclusion refusal (completeTopic's waits) is the backstop
+// for a specification a peer unsettles mid-session.
+
+/**
+ * @param {object} manifest @param {string} phase @param {string} topic
+ * @param {'start'|'reopen'} verb  the refused move
+ */
+function assertSpecSettled(manifest, phase, topic, verb) {
+  if (phase !== 'planning') return;
+  const unsettled = specUnsettled(manifest, topic);
+  if (!unsettled) return;
+  throw new Error(
+    `planning can't ${verb} on "${topic}" — its specification is unsettled (${specUnsettledPhrase(unsettled)}); a plan is built from a settled record, so the specification's entry is the way in`,
+  );
+}
+
 // The map decides which of research/discussion a topic can be born into —
 // the same join the epic menu renders its rows from, so the engine is never
 // the permissive path around it. The gate is on birth alone: an in-progress
@@ -227,7 +247,10 @@ function startTopic(cwd, workUnit, phase, topic) {
       const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
-    if (!existing || existing.status === 'triaged') assertResearchLanded(manifest, phase, topic, 'start');
+    if (!existing || existing.status === 'triaged') {
+      assertResearchLanded(manifest, phase, topic, 'start');
+      assertSpecSettled(manifest, phase, topic, 'start');
+    }
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;
@@ -862,6 +885,10 @@ function waitClauses(blocking) {
   if (blocking.some((w) => w.kind === 'research')) {
     clauses.push('awaits research on the topic — conclude the research to release the wait');
   }
+  const spec = blocking.find((w) => w.kind === 'specification');
+  if (spec) {
+    clauses.push(`awaits its specification (${specUnsettledPhrase(spec)}) — settle the specification to release the wait`);
+  }
   const ids = blocking.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
   if (ids.length > 0) {
     clauses.push(`awaits experiment evidence (${ids.join(', ')}) — the wait releases when the experiment concludes or is abandoned`);
@@ -873,10 +900,11 @@ function waitClauses(blocking) {
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first; an item
- * holding a live wait — evidence it awaits, or a discussion's outstanding
- * research — refuses naming every wait; a research or discussion item
- * carrying a landed-upstream flag (`reconcile_needed: research|experiment`)
- * refuses until the session reads what landed and clears it. No git commit.
+ * holding a live wait — evidence it awaits, a discussion's outstanding
+ * research, a plan's unsettled specification — refuses naming every wait;
+ * a research or discussion item carrying a landed-upstream flag
+ * (`reconcile_needed: research|experiment`) refuses until the session reads
+ * what landed and clears it. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -904,9 +932,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
     if (phase === 'specification') {
-      const blocking = sourceRows(item.sources)
-        .filter(([, r]) => r.status !== 'incorporated')
-        .map(([name]) => name);
+      const blocking = openSources(item).map((r) => r.name);
       if (blocking.length > 0) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
       }
@@ -985,6 +1011,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
     }
     assertResearchLanded(manifest, phase, topic, 'reopen');
+    assertSpecSettled(manifest, phase, topic, 'reopen');
     item.status = 'in-progress';
     const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
 

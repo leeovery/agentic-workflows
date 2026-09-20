@@ -141,6 +141,34 @@ describe('workunit projections: status display', () => {
     assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
   });
 
+  it('feature: a completed specification staled with no flag cues the same way — one reading for the route and the display', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'stale' } } } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
+    assert.match(workUnitStatus('feature', unit), /⚑ Specification input moved — reconcile at next entry\./,
+      'a staled row names no revised upstream, so the line takes the general voice');
+    assert.strictEqual(unit.next_phase, 'discussion', 'the earliest in-flight phase still owns the next action');
+    const menu = workUnitMenu('feature', unit);
+    assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(true\)$/m);
+    // Re-incorporating the row settles the record: no cue, no ⚑, no row.
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const settled = unitOf(dir, 'feature', 'auth-flow');
+    assert.doesNotMatch(workUnitStatus('feature', settled), /input moved/);
+    assert.match(workUnitData('feature', settled, workUnitMenu('feature', settled)), /^reconcile_pending: \(none\)$/m);
+  });
+
   it('bugfix: completed investigation and a ready next phase', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',

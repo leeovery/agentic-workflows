@@ -4,7 +4,7 @@ const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
-const { phaseStatus, phaseItems, computeNextPhase } = engine.derivations;
+const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
@@ -38,13 +38,15 @@ function discover(cwd, workUnit) {
   const workType = manifest.work_type;
   const next_phase = computeNextPhase(manifest).next_phase;
 
-  // Live items carrying a reconcile flag — observability for the
-  // continuation prose (routing itself rides next_phase).
+  // Live items whose input has moved — observability for the continuation
+  // prose (routing itself rides next_phase). The same predicate next_phase
+  // walks, so the dump can never name a route its own list calls settled.
   const reconcile_pending = [];
   for (const phase of ALL_PHASES) {
     for (const item of phaseItems(manifest, phase)) {
-      if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed !== undefined) {
-        reconcile_pending.push(`${phase}/${item.name} (${item.reconcile_needed})`);
+      if (!TERMINAL_STATUSES.includes(item.status)
+          && (item.reconcile_needed !== undefined || inputMoved(manifest, phase, item))) {
+        reconcile_pending.push(`${phase}/${item.name} (${movedFrom(item)})`);
       }
     }
   }

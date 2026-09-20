@@ -363,6 +363,22 @@ describe('workflow-bridge format', () => {
     assert.match(out, /^reconcile_pending: specification\/moved \(discussion\)$/m);
   });
 
+  it('a specification staled with no flag surfaces the same way — the bridge never reads done past a moving record', () => {
+    createManifest(dir, 'staled', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { staled: { status: 'completed' } } },
+        specification: { items: { staled: { status: 'completed', sources: { staled: { status: 'stale' } } } } },
+        planning: { items: { staled: { status: 'completed' } } },
+        implementation: { items: { staled: { status: 'completed' } } },
+        review: { items: { staled: { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir, 'staled'));
+    assert.match(out, /^next_phase: specification$/m);
+    assert.match(out, /^reconcile_pending: specification\/staled \(true\)$/m);
+  });
+
   it('epic dump carries no revisitable line and no section', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

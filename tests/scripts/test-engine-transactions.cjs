@@ -2640,6 +2640,56 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
   });
 });
 
+describe('a plan is held while its specification is unsettled', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** Give "refund-policy" a specification in the given state, and optionally a plan. */
+  function withSpec(spec, planning) {
+    const m = epicManifest();
+    m.phases.specification = { items: { 'refund-policy': spec } };
+    if (planning) m.phases.planning = { items: { 'refund-policy': planning } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  }
+
+  it('the birth refuses over a specification still in motion, naming what holds it and the way in', () => {
+    withSpec({ status: 'completed', sources: { 'refund-policy': { status: 'stale' } } });
+    const err = engineFails(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']);
+    assert.strictEqual(err.error, 'planning can\'t start on "refund-policy" — its specification is unsettled (a source has moved beneath the extraction (refund-policy)); a plan is built from a settled record, so the specification\'s entry is the way in');
+    assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined, 'a refusal creates nothing');
+  });
+
+  it('the reopen refuses the same way, and a plan already in session resumes', () => {
+    withSpec({ status: 'completed', reconcile_needed: 'discussion' }, { status: 'completed' });
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'refund-policy']).error,
+      /planning can't reopen on "refund-policy" — its specification is unsettled \(its own input moved\)/);
+    withSpec({ status: 'in-progress' }, { status: 'in-progress' });
+    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).status, 'in-progress');
+  });
+
+  it('the conclusion refuses while the record moves, and the settling releases it', () => {
+    withSpec({ status: 'in-progress' }, { status: 'in-progress' });
+    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).error,
+      'planning "refund-policy" awaits its specification (back in progress) — settle the specification to release the wait');
+    engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
+  });
+
+  it('a settled specification holds nothing, and a terminal one releases the plan outright', () => {
+    withSpec({ status: 'completed', sources: { 'refund-policy': { status: 'incorporated' } } });
+    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
+    withSpec({ status: 'cancelled' }, { status: 'in-progress' });
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
+  });
+
+  it('no specification at all is the entry gate\'s business, not the engine\'s — the birth stands', () => {
+    const m = epicManifest();
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
+  });
+});
+
 describe('engine topic complete — a landed upstream holds a conversation shut until the session reads it', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
@@ -2701,9 +2751,13 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
     m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']).status, 'completed');
+    // The specification's own flag is its entry's business, but it leaves the
+    // record unsettled — which is the plan's wait, not the plan's own flag.
+    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).error,
+      /awaits its specification \(its own input moved\)/);
+    engine(dir, ['manifest', 'delete', 'payments.specification.refund-policy', 'reconcile_needed']);
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
     const after = readManifest(dir, 'payments');
-    assert.strictEqual(after.phases.specification.items['refund-policy'].reconcile_needed, 'discussion');
     assert.strictEqual(after.phases.planning.items['refund-policy'].reconcile_needed, 'specification');
   });
 });

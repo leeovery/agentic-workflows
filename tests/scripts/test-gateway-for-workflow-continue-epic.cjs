@@ -516,6 +516,52 @@ describe('workflow-continue-epic discovery', () => {
       assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'resolved dependency missing task reference' }]);
     });
 
+    it('start_planning is blocked while the specification is unsettled, and gating follows it', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: {
+            items: {
+              auth: { status: 'completed', sources: { talks: { status: 'stale' } } },
+              billing: { status: 'completed', sources: { money: { status: 'incorporated' } } },
+            },
+          },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      const auth = d.next_phase_ready.find(n => n.name === 'auth');
+      const billing = d.next_phase_ready.find(n => n.name === 'billing');
+      assert.strictEqual(auth.blocked, true);
+      assert.strictEqual(billing.blocked, undefined);
+      assert.strictEqual(d.gating.can_start_planning, true, 'one settled specification opens the gate');
+    });
+
+    it('an in-progress plan under an unsettled specification is blocked, and gating shuts with no settled spec', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { auth: { status: 'completed', reconcile_needed: 'discussion' } } },
+          planning: { items: { auth: { status: 'in-progress' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.deepStrictEqual(d.phases.planning[0].blocked_by, ['specification']);
+      assert.strictEqual(d.gating.can_start_planning, false);
+    });
+
+    it('a settled specification leaves the plan free of any hold', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { auth: { status: 'completed' } } },
+          planning: { items: { auth: { status: 'in-progress' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.phases.planning[0].blocked_by, undefined);
+      assert.strictEqual(d.gating.can_start_planning, true);
+    });
+
     it('next_phase_ready marks start_implementation blocked only while deps are unmet', () => {
       // Three-topic chain: cli-presentation implemented; mint-release-tool
       // depends on its task (met); commit-command depends on both (one unmet).

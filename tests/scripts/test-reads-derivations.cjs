@@ -19,6 +19,7 @@ const {
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
 describe('reads + derivations', () => {
@@ -1685,6 +1686,95 @@ describe('reads + derivations', () => {
     });
   });
 
+  describe('specUnsettled — the one predicate every planning surface holds the plan on', () => {
+    const unit = (spec) => ({
+      name: 'pay', work_type: 'epic',
+      phases: spec ? { specification: { items: { auth: spec } } } : {},
+    });
+
+    it('a concluded record with nothing moving beneath it is settled', () => {
+      assert.strictEqual(specUnsettled(unit({ status: 'completed' }), 'auth'), null);
+      assert.strictEqual(specUnsettled(unit({ status: 'completed', sources: { talks: { status: 'incorporated' } } }), 'auth'), null);
+    });
+
+    it('names each reason that holds — the status, the open rows, the flag', () => {
+      assert.deepStrictEqual(specUnsettled(unit({ status: 'in-progress' }), 'auth'),
+        { status: 'in-progress', flagged: false, open_sources: [] });
+      assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', reconcile_needed: 'discussion' }), 'auth'),
+        { status: 'completed', flagged: true, open_sources: [] });
+      assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', sources: { talks: { status: 'stale' }, roles: { status: 'incorporated' }, pay: { status: 'pending' } } }), 'auth'),
+        { status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }, { name: 'pay', status: 'pending' }] });
+      assert.deepStrictEqual(specUnsettled(unit({ status: 'proposed' }), 'auth'),
+        { status: 'proposed', flagged: false, open_sources: [] });
+      assert.deepStrictEqual(specUnsettled(unit({}), 'auth'),
+        { status: null, flagged: false, open_sources: [] });
+    });
+
+    it('a terminal specification is settled by exit, and an absent one is no specification at all', () => {
+      for (const status of ['cancelled', 'superseded', 'promoted']) {
+        assert.strictEqual(specUnsettled(unit({ status }), 'auth'), null, status);
+      }
+      assert.strictEqual(specUnsettled(unit(undefined), 'auth'), null);
+      assert.strictEqual(specUnsettled(unit({ status: 'in-progress' }), 'other'), null,
+        'another topic\'s specification holds nothing');
+    });
+
+    it('openSources decodes both source forms and keeps every row that is not incorporated, with its class', () => {
+      assert.deepStrictEqual(openSources({ sources: { a: { status: 'incorporated' }, b: { status: 'stale' } } }),
+        [{ name: 'b', status: 'stale' }]);
+      assert.deepStrictEqual(openSources({ sources: [{ name: 'a', status: 'pending' }] }),
+        [{ name: 'a', status: 'pending' }]);
+      assert.deepStrictEqual(openSources(undefined), []);
+    });
+
+    it('phrases every reason that holds, in the order the record moves through them', () => {
+      assert.strictEqual(specUnsettledPhrase({ status: 'in-progress', flagged: false, open_sources: [] }), 'back in progress');
+      assert.strictEqual(specUnsettledPhrase({ status: 'proposed', flagged: false, open_sources: [] }), 'not concluded');
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: true, open_sources: [] }), 'its own input moved');
+      // Never extracted and extracted-then-moved are different facts, so
+      // each class takes its own clause, pending before stale.
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }),
+        'a source has moved beneath the extraction (talks)');
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'pending' }] }),
+        'a source is not yet extracted (talks)');
+      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: undefined }] }),
+        'a source is not yet extracted (talks)', 'a row with no status has never been extracted');
+      assert.strictEqual(specUnsettledPhrase({
+        status: 'completed', flagged: false,
+        open_sources: [{ name: 'talks', status: 'pending' }, { name: 'roles', status: 'pending' }],
+      }), 'sources are not yet extracted (talks, roles)');
+      assert.strictEqual(specUnsettledPhrase({
+        status: 'completed', flagged: false,
+        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'stale' }],
+      }), 'sources have moved beneath the extraction (talks, roles)');
+      assert.strictEqual(specUnsettledPhrase({
+        status: 'in-progress',
+        flagged: true,
+        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'pending' }, { name: 'pay', status: 'stale' }],
+      }), 'back in progress, a source is not yet extracted (roles), sources have moved beneath the extraction (talks, pay), its own input moved');
+    });
+  });
+
+  describe('computeNextPhase — a specification whose row staled routes back before the plan', () => {
+    const feature = (spec, planning) => ({
+      name: 'feat', work_type: 'feature',
+      phases: {
+        discussion: { items: { feat: { status: 'completed' } } },
+        specification: { items: { feat: spec } },
+        planning: { items: { feat: planning } },
+      },
+    });
+
+    it('a stale source row with no flag routes to the specification, never past it', () => {
+      assert.deepStrictEqual(
+        computeNextPhase(feature({ status: 'completed', sources: { feat: { status: 'stale' } } }, { status: 'in-progress' })),
+        { next_phase: 'specification', phase_label: 'specification (input moved — reconcile)' });
+      assert.deepStrictEqual(
+        computeNextPhase(feature({ status: 'completed', sources: { feat: { status: 'incorporated' } } }, { status: 'in-progress' })),
+        { next_phase: 'planning', phase_label: 'planning (in-progress)' });
+    });
+  });
+
   describe('waits — every kind that holds a conclusion shut', () => {
     const world = (research, discussion) => ({
       name: 'lab', work_type: 'epic',
@@ -1731,6 +1821,26 @@ describe('reads + derivations', () => {
     it('is work-type agnostic — a feature\'s discussion waits on its research the same way', () => {
       const m = { ...world({ status: 'in-progress' }, { status: 'in-progress' }), work_type: 'feature' };
       assert.deepStrictEqual(waits(m, 'discussion', 'pay'), [{ kind: 'research', status: 'in-progress' }]);
+    });
+
+    it('a plan waits on its specification while the record is unsettled, and on nothing once it settles', () => {
+      const plan = (spec) => ({
+        name: 'pay', work_type: 'epic',
+        phases: {
+          specification: { items: { auth: spec } },
+          planning: { items: { auth: { status: 'in-progress' } } },
+        },
+      });
+      assert.deepStrictEqual(waits(plan({ status: 'completed', sources: { talks: { status: 'stale' } } }), 'planning', 'auth'),
+        [{ kind: 'specification', status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }]);
+      assert.deepStrictEqual(waits(plan({ status: 'in-progress' }), 'planning', 'auth'),
+        [{ kind: 'specification', status: 'in-progress', flagged: false, open_sources: [] }]);
+      assert.deepStrictEqual(waits(plan({ status: 'completed' }), 'planning', 'auth'), []);
+      assert.deepStrictEqual(waits(plan({ status: 'cancelled' }), 'planning', 'auth'), [],
+        'a cancelled specification releases the plan — the cancel is the exit');
+      const orphan = plan({ status: 'in-progress' });
+      delete orphan.phases.planning;
+      assert.deepStrictEqual(waits(orphan, 'planning', 'auth'), [], 'no plan item — nothing to hold shut');
     });
 
     it('topicWaits joins the in-progress holders alone — a completed discussion\'s outstanding research is its flag\'s business', () => {

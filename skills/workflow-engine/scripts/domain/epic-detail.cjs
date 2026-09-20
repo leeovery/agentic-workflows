@@ -28,6 +28,7 @@ const {
   specReactivateLocks,
   reactivateLockPhrases,
   deliveryStarted,
+  specUnsettled,
   OPEN_SOURCE_STATUSES,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
@@ -70,8 +71,9 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           what holds the item's entry shut — a specification's
- *                                             source discussions still open, or `['research']`
- *                                             on a discussion whose research is outstanding
+ *                                             source discussions still open, `['research']`
+ *                                             on a discussion whose research is outstanding, or
+ *                                             `['specification']` on a plan whose spec is unsettled
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
@@ -508,6 +510,13 @@ function epicDetail(cwd, manifest) {
     const b = specBlocked.find((x) => x.name === e.name);
     if (b) e.blocked_by = b.by;
   }
+  // A plan stands on its specification: while that record is unsettled the
+  // plan's entry, birth, reopen, and conclusion are all held engine-side, so
+  // the menu withholds its row (a live session's hold excepted) and the tree
+  // tags it blocked. The specification's own row is the way in.
+  for (const e of phases.planning || []) {
+    if (!TERMINAL_STATUSES.includes(e.status) && specUnsettled(manifest, e.name)) e.blocked_by = ['specification'];
+  }
   // A completed item held at entry is no resume candidate either — the
   // completed list carries its entry's blocked state, so the resume menu
   // and the `c` option read the one fact the tree and the main menu read.
@@ -531,7 +540,10 @@ function epicDetail(cwd, manifest) {
   const planTopics = new Set(planItems.filter(live).map(i => i.name));
   for (const s of specItems) {
     if (s.status === 'completed' && !planTopics.has(s.name)) {
-      nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec completed' });
+      nextPhaseReady.push({
+        name: s.name, action: 'start_planning', label: 'spec completed',
+        ...(specUnsettled(manifest, s.name) ? { blocked: true } : {}),
+      });
     }
   }
 
@@ -559,7 +571,9 @@ function epicDetail(cwd, manifest) {
     }
   }
 
-  const hasCompletedSpec = specItems.some(s => s.status === 'completed');
+  // Planning opens on a settled record: a completed specification still
+  // holding an open source row, or carrying a flag, gates nothing open.
+  const hasSettledSpec = specItems.some(s => s.status === 'completed' && !specUnsettled(manifest, s.name));
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
@@ -604,7 +618,7 @@ function epicDetail(cwd, manifest) {
     analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
       can_start_specification: hasCompletedDiscussion,
-      can_start_planning: hasCompletedSpec,
+      can_start_planning: hasSettledSpec,
       can_start_implementation: hasCompletedPlan,
       can_start_review: hasCompletedImpl,
     },

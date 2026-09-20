@@ -83,6 +83,8 @@ module.exports = {
     sourceRows: derivations.sourceRows,
     specIsStarted: derivations.specIsStarted,
     specGroupsSources: derivations.specGroupsSources,
+    inputMoved: derivations.inputMoved,
+    movedFrom: derivations.movedFrom,
   },
   discussionMap: {
     addSubtopic: discussionMap.addSubtopic,
