@@ -68,7 +68,7 @@ Take the unresolved findings one at a time. The tracking file proposed; this ses
 
 A `choice` names what was searched and where the record ran out. A `settled` call this session cannot itself stand behind is a `choice` and takes the same bar.
 
-**Declined at dispose** — the fork is the builder's: a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or a preference no side of which costs the user. The specification states no rule for it — Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
+**Declined at dispose** — the fork is the builder's: a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or a preference no side of which costs the user — never a user-facing string, value, or behaviour the record already answers, which is `settled` whatever its size. The specification states no rule for it — Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
 
 Three rules govern the evidence:
 
