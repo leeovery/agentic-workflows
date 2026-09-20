@@ -1,0 +1,38 @@
+{
+  "origin": "screen 1 is the offer: a first run meets it straight after boot, before any setup gate, and `s` declines it once through the one verb — the walk the design owed for the skip",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-help/references/walk.md",
+    "skills/workflow-start/references/empty-state.md"
+  ],
+  "answers": [
+    "s"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "render walkthrough-screen --screen 1 --from first-run",
+      "walkthrough record skipped",
+      "gateway.cjs"
+    ],
+    "calls_exclude": [
+      "walkthrough record walked",
+      "render walkthrough-screen --screen 2",
+      "manifest set project.walkthrough"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "render walkthrough-screen --screen 1 --from first-run",
+      "walkthrough record skipped",
+      "gateway.cjs"
+    ]
+  }
+}

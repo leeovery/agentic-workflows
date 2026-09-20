@@ -498,6 +498,11 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-discovery'), []);
   });
 
+  it('accepts the project-level places the start menu opens as their own sessions', () => {
+    assert.deepEqual(cases.entryErrors('workflow-roadmap'), []);
+    assert.deepEqual(cases.entryErrors('workflow-help'), []);
+  });
+
   it('rejects a navigation skill — always invoked by workflow-start, never cold', () => {
     const [error] = cases.entryErrors('workflow-continue-feature');
     assert.match(error, /not somewhere a session starts/);

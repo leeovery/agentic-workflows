@@ -341,7 +341,7 @@ const SETTINGS = path.join('.claude', 'settings.json');
 // collected tree ever holds.
 const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
 
-/** @typedef {{baseline: boolean, settings_created: boolean}} Stamped */
+/** @typedef {{baseline: boolean, walkthrough: boolean, settings_created: boolean}} Stamped */
 
 /**
  * Write `defaults.tmux_labels: false` into the world's project manifest
@@ -368,6 +368,15 @@ function stampHarnessState(dir) {
   // wins here.
   const baseline = manifest.baseline === undefined;
   if (baseline) manifest.baseline = { status: 'native' };
+  // The same shape for the same reason: workflow-start's Step 0.2 offers
+  // the walkthrough while nothing is recorded, so an unstamped world would
+  // meet the offer in every start case that has no business with it.
+  // `skipped` is the declined answer — the offer never repeats, and the
+  // walk stays under `h/help`. A case about the offer itself pins its own
+  // state in fixture-state.cjs (`walkthrough: {}` reads as nothing
+  // recorded), which wins here.
+  const walkthrough = manifest.walkthrough === undefined;
+  if (walkthrough) manifest.walkthrough = { status: 'skipped' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
   // Boot syncs the session hooks into `.claude/settings.json` and
@@ -379,24 +388,28 @@ function stampHarnessState(dir) {
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
   const sync = syncSessionHooks(dir, { session: false, presence: true });
   if (sync.error) throw new Error(`cannot seed the session hooks: ${sync.error}`);
-  return { baseline, settings_created: settingsCreated };
+  return { baseline, walkthrough, settings_created: settingsCreated };
 }
 
 /** What materialise stamped into a world, per its marker. @param {string} dir @returns {Stamped} */
 function readStampMarker(dir) {
   const file = path.join(dir, STAMP_MARKER);
-  const none = { baseline: false, settings_created: false };
+  const none = { baseline: false, walkthrough: false, settings_created: false };
   if (!fs.existsSync(file)) return none;
   try {
     const marker = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return { baseline: Boolean(marker.baseline), settings_created: Boolean(marker.settings_created) };
+    return {
+      baseline: Boolean(marker.baseline),
+      walkthrough: Boolean(marker.walkthrough),
+      settings_created: Boolean(marker.settings_created),
+    };
   } catch { return none; }
 }
 
 /**
  * Reverse the stamp on a collected tree so deltas compare against
- * unstamped snapshots: the manifest's label kill and baseline stamp, then
- * the seeded session hooks.
+ * unstamped snapshots: the manifest's label kill, baseline and walkthrough
+ * stamps, then the seeded session hooks.
  * @param {Map<string, Buffer>} tree
  * @param {Stamped} stamped  what materialise recorded stamping
  */
@@ -406,11 +419,22 @@ function unstampHarnessState(tree, stamped) {
 }
 
 /**
+ * A one-time record holding the stamped status and nothing else — the
+ * shape materialise wrote. A record the walk moved on from, or filled out,
+ * is the case's own delta and stays.
+ * @param {any} node @param {string} status
+ */
+function isExactly(node, status) {
+  return Boolean(node) && typeof node === 'object' && !Array.isArray(node)
+    && node.status === status && Object.keys(node).length === 1;
+}
+
+/**
  * Drop `defaults.tmux_labels` when it carries the harness value, drop an
- * emptied `defaults`, drop the baseline stamp only when materialise
- * stamped one (a verdict the walk recorded itself is a real delta the
- * case pins, never a stamp), and drop the manifest entirely when the
- * stamp was all it held.
+ * emptied `defaults`, drop the baseline and walkthrough stamps only when
+ * materialise stamped them (an answer the walk recorded itself is a real
+ * delta the case pins, never a stamp), and drop the manifest entirely when
+ * the stamp was all it held.
  * @param {Map<string, Buffer>} tree @param {Stamped} stamped
  */
 function unstampManifest(tree, stamped) {
@@ -422,10 +446,8 @@ function unstampManifest(tree, stamped) {
   if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
   delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
-  if (stamped.baseline && manifest.baseline && typeof manifest.baseline === 'object'
-      && manifest.baseline.status === 'native' && Object.keys(manifest.baseline).length === 1) {
-    delete manifest.baseline;
-  }
+  if (stamped.baseline && isExactly(manifest.baseline, 'native')) delete manifest.baseline;
+  if (stamped.walkthrough && isExactly(manifest.walkthrough, 'skipped')) delete manifest.walkthrough;
   if (Object.keys(manifest).length === 0) {
     tree.delete(PROJECT_MANIFEST);
     return;
@@ -544,7 +566,9 @@ function buildWorld(caseId) {
   // root commit then holds no `.workflows/` at all, which is what lets a
   // case put commits before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
-  let stamped = manifestLayered ? { baseline: false, settings_created: false } : stampHarnessState(dir);
+  let stamped = manifestLayered
+    ? { baseline: false, walkthrough: false, settings_created: false }
+    : stampHarnessState(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');

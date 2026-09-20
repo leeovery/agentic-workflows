@@ -39,10 +39,12 @@
 // `entry` names where the walk starts, and it may only be somewhere a
 // real session starts: `workflow-start` (the user's way in), a
 // `workflow-*-entry` skill (what the bridge's plan file invokes after a
-// context clear), `workflow-discovery` (epic continuation), or
-// `workflow-roadmap` (the product layer's own sessions). Nothing
-// else is a legitimate opening — navigation and processing skills are
-// always invoked mid-session, and a reference is never entered directly.
+// context clear), `workflow-discovery` (epic continuation),
+// `workflow-roadmap` (the product layer's own sessions), or
+// `workflow-help` (the start menu's `h/help` row, terminal for
+// workflow-start). Nothing else is a legitimate opening — navigation and
+// processing skills are always invoked mid-session, and a reference is
+// never entered directly.
 //
 // This matters because a walk carries only the context it accumulates.
 // Start one in the middle and the world may be right while the reading
@@ -182,18 +184,19 @@ function headingExists(absPath, anchor) {
 /**
  * Where a walk may begin. A session starts at workflow-start, or at the
  * entry skill a bridge plan file names after a context clear, or at
- * discovery for an epic continuation, or at the roadmap (its own
- * start-menu row) — never anywhere else.
+ * discovery for an epic continuation, or at the roadmap or help (their
+ * own start-menu rows) — never anywhere else.
  */
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
   const allowed = entry === 'workflow-start'
     || entry === 'workflow-discovery'
     || entry === 'workflow-roadmap'
+    || entry === 'workflow-help'
     || /^workflow-[a-z-]+-entry$/.test(entry);
   if (!allowed) {
     return [`entry "${entry}" is not somewhere a session starts — use workflow-start, `
-      + 'a workflow-*-entry skill, workflow-discovery, or workflow-roadmap. Navigation '
+      + 'a workflow-*-entry skill, workflow-discovery, workflow-roadmap, or workflow-help. Navigation '
       + 'and processing skills are only ever reached mid-session, and a reference never directly'];
   }
   if (!fs.existsSync(path.join(ROOT, 'skills', entry, 'SKILL.md'))) {

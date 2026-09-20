@@ -1,0 +1,44 @@
+{
+  "origin": "the one thing a static tutorial cannot do: a question mid-walk is answered from the glossary and the same screen's menu goes back, never the whole screen — and the offer is recorded the moment it is taken, not when the walk ends",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-help/references/walk.md",
+    "skills/workflow-help/references/glossary.md",
+    "skills/workflow-start/references/empty-state.md"
+  ],
+  "answers": [
+    "n",
+    "what do you mean by a phase?",
+    "s"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "render walkthrough-screen --screen 1 --from first-run",
+      "walkthrough record walked",
+      "render walkthrough-screen --screen 2 --from first-run --menu-only",
+      "gateway.cjs"
+    ],
+    "calls_exclude": [
+      "walkthrough record skipped",
+      "--screen 3",
+      "render walkthrough-topic"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "render walkthrough-screen --screen 1 --from first-run",
+      "walkthrough record walked",
+      "render walkthrough-screen --screen 2 --from first-run",
+      "render walkthrough-screen --screen 2 --from first-run --menu-only",
+      "gateway.cjs"
+    ]
+  }
+}
