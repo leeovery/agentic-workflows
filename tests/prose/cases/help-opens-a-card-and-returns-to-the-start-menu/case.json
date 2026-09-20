@@ -1,0 +1,48 @@
+{
+  "origin": "the cards are the half of help that is returned to, and the `h/help` row is unconditional — so the route from a populated start menu into a card and back out again must land the user where they were, with the map never consulted for a slug and nothing recorded on the way",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-start/references/start-menu.md",
+    "skills/workflow-help/SKILL.md",
+    "skills/workflow-help/references/home.md",
+    "skills/workflow-help/references/topics.md"
+  ],
+  "answers": [
+    "h",
+    "t",
+    "1",
+    "b",
+    "b"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "render walkthrough-home",
+      "render walkthrough-topics",
+      "render walkthrough-topic --name kinds-of-work",
+      "engine.cjs session repair"
+    ],
+    "calls_exclude": [
+      "walkthrough-screen",
+      "walkthrough record"
+    ],
+    "calls_in_order": [
+      "gateway.cjs",
+      "render walkthrough-home",
+      "render walkthrough-topics",
+      "render walkthrough-topic --name kinds-of-work",
+      "render walkthrough-home",
+      "engine.cjs session repair",
+      "gateway.cjs"
+    ]
+  }
+}
