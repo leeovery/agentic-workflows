@@ -509,6 +509,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle', '1']);
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
+  // The conclusion asks the wait gate first: a settled specification holds
+  // nothing, so the gate is empty and the conclude gate is what renders.
+  sim.render(['wait-gate', `${wu}.planning.${topic}`], { expect: 'empty' });
   sim.render(['conclude-gate', `${wu}.planning.${topic}`], { expect: 'content' });
 
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
@@ -2293,6 +2296,11 @@ describe('pipeline simulation', () => {
       /^planning can't start on "fees" — its specification is unsettled \(a source has moved beneath the extraction \(fees\), its own input moved\); a plan is built from a settled record, so the specification's entry is the way in$/);
     assert.match(sim.render(['entry-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /Entry blocked — the specification for "Billing" is unsettled/);
+    // The pause is the plan's, in the plan's voice.
+    assert.match(sim.render(['wait-gate', `${wu}.planning.billing`], { expect: 'content' }),
+      /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
+    assert.match(sim.render(['phase-paused', wu, '--phase', 'planning'], { expect: 'content' }),
+      /Planning paused for "Holdplan" — "Billing" awaits its specification/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .filter((k) => k.action === 'continue_planning' || k.action === 'start_planning').map((k) => k.topic).sort();
     assert.deepStrictEqual(planRows(), [], 'a held plan carries no menu row — the specification\'s is the way in');
@@ -2310,6 +2318,51 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/planning/billing/planning.md`, '# Plan\n');
     assert.strictEqual(sim.run(['topic', 'complete', wu, 'planning', 'billing']).status, 'completed');
     sim.run(['topic', 'start', wu, 'planning', 'fees']);
+  });
+
+  it('the triage door reaches the hold, and a planning-origin sources stale spares the plan\'s own specification', () => {
+    const wu = 'holdgate';
+    mappedEpic(sim, wu, ['shared']);
+    // One discussion, two specifications extracting it, a plan on one.
+    sim.run(['topic', 'start', wu, 'discussion', 'shared']);
+    sim.write(`.workflows/${wu}/discussion/shared.md`, '# Shared\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'shared']);
+    for (const spec of ['alpha-spec', 'beta-spec']) {
+      sim.run(['topic', 'start', wu, 'specification', spec]);
+      sim.run(['manifest', 'set', `${wu}.specification.${spec}`, 'sources.shared.status', 'incorporated']);
+      sim.write(`.workflows/${wu}/specification/${spec}/specification.md`, `# Spec — ${spec}\n`);
+      sim.run(['topic', 'complete', wu, 'specification', spec]);
+    }
+    sim.run(['topic', 'start', wu, 'planning', 'alpha-spec']);
+
+    // D4's door: a bare triage lands a concern on the source discussion.
+    // The specification never transitions — it still reads `completed` —
+    // and its source row alone carries the landing, which is why the hold
+    // cannot key on the specification's status.
+    const landed = sim.run(['topic', 'triage', wu, 'discussion', 'shared']);
+    assert.deepStrictEqual(landed.sources_staled.sort(), ['alpha-spec', 'beta-spec']);
+    assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].status, 'completed',
+      'the specification never transitioned — only its row moved');
+    sim.refuses(['topic', 'complete', wu, 'planning', 'alpha-spec'], /awaits its specification/);
+
+    // Reconcile both specifications and the hold releases.
+    sim.run(['topic', 'complete', wu, 'discussion', 'shared']);
+    for (const spec of ['alpha-spec', 'beta-spec']) {
+      sim.run(['manifest', 'delete', `${wu}.specification.${spec}`, 'reconcile_needed']);
+      sim.run(['manifest', 'set', `${wu}.specification.${spec}`, 'sources.shared.status', 'incorporated']);
+    }
+    sim.render(['wait-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
+
+    // A decision landed from planning amends the discussion in place: the
+    // sibling extraction goes stale, the plan's own specification is spared
+    // because the planner re-aligned it — so the plan is never held.
+    const staled = sim.run(['sources', 'stale', wu, 'shared', '--except', 'alpha-spec']);
+    assert.deepStrictEqual(staled.staled, ['beta-spec']);
+    assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].sources.shared.status, 'incorporated');
+    sim.render(['entry-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
+    sim.render(['wait-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
+    sim.write(`.workflows/${wu}/planning/alpha-spec/planning.md`, '# Plan\n');
+    assert.strictEqual(sim.run(['topic', 'complete', wu, 'planning', 'alpha-spec']).status, 'completed');
   });
 
   it('a cancel from the epic menu — a session owning nothing on the unit — touches no row', () => {

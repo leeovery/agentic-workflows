@@ -4286,7 +4286,7 @@ describe('render entry-gate', () => {
     // An epic's way back is its menu's specification row, never a next step.
     manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'stale' } } } } } }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }),
-      /Return to the epic menu — its specification row is the way in\./);
+      /Return to the epic menu — the specification is the way in: its row, or c\/completed while it still reads completed\./);
     // Every row incorporated and no flag: the record has stopped moving.
     manifestWith({ specification: { items: { auth: { status: 'completed', sources: { talks: { status: 'incorporated' } } } } } });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');

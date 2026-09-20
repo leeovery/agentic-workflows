@@ -1740,6 +1740,14 @@ describe('reads + derivations', () => {
       assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: undefined }] }),
         'a source is not yet extracted (talks)', 'a row with no status has never been extracted');
       assert.strictEqual(specUnsettledPhrase({
+        status: 'completed', flagged: false,
+        open_sources: [{ name: 'talks', status: 'pending' }, { name: 'roles', status: 'pending' }],
+      }), 'sources are not yet extracted (talks, roles)');
+      assert.strictEqual(specUnsettledPhrase({
+        status: 'completed', flagged: false,
+        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'stale' }],
+      }), 'sources have moved beneath the extraction (talks, roles)');
+      assert.strictEqual(specUnsettledPhrase({
         status: 'in-progress',
         flagged: true,
         open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'pending' }, { name: 'pay', status: 'stale' }],

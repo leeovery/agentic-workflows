@@ -1729,6 +1729,61 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.strictEqual(epicMenu('v1', d).keys.find((k) => k.action === 'resume_completed'), undefined);
   });
 
+  it('both planning causes share one key term, the upstream hold above the dependency', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { billing: { status: 'completed', sources: [{ topic: 'talks', status: 'stale' }] } } },
+        planning: {
+          items: {
+            billing: { status: 'in-progress' },
+            fees: {
+              status: 'completed',
+              external_dependencies: { billing: { description: 'Ledger', state: 'unresolved' } },
+            },
+          },
+        },
+      },
+    });
+    assert.ok(epicKey(d).includes(
+      '    blocked (planning)      — its specification is unsettled; settle\n'
+      + '                              it and the item returns to the menu\n'
+      + '                            — implementation waits on another plan;\n'
+      + '                              the ⚑ list names the dependency,\n'
+      + '                              u/unblock is the override'), epicKey(d));
+    assert.strictEqual(epicKey(d).match(/blocked \(planning\)/g).length, 1, 'one term, however many causes');
+  });
+
+  it('a completed plan under an unsettled specification is withheld from the completed sub-view, and the c option follows', () => {
+    const world = (spec) => detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { billing: spec } },
+        planning: { items: { billing: { status: 'completed' } } },
+      },
+    });
+    const d = world({ status: 'completed', sources: [{ topic: 'talks', status: 'stale' }] });
+    assert.deepStrictEqual(d.completed.map((c) => [c.phase, c.blocked_by]),
+      [['specification', undefined], ['planning', ['specification']]]);
+    const picks = (detail) => epicCompletedMenu('v1', detail).keys.filter((k) => /^\d+$/.test(k.key));
+    assert.deepStrictEqual(picks(d).map((k) => k.phase), ['specification'],
+      'the plan\'s reopen would be refused, so it is no resume candidate');
+    // The specification settling returns it, and with it the plan's row.
+    const settled = world({ status: 'completed', sources: [{ topic: 'talks', status: 'incorporated' }] });
+    assert.strictEqual(settled.completed.find((c) => c.phase === 'planning').blocked_by, undefined);
+    assert.deepStrictEqual(picks(settled).map((k) => k.phase), ['specification', 'planning']);
+    // A held plan alone leaves nothing to resume — the c option goes too.
+    const onlyPlan = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { billing: { status: 'in-progress' } } },
+        planning: { items: { billing: { status: 'completed' } } },
+      },
+    });
+    assert.deepStrictEqual(picks(onlyPlan), []);
+    assert.strictEqual(epicMenu('v2', onlyPlan).keys.find((k) => k.action === 'resume_completed'), undefined);
+  });
+
   it('the triage tail speaks for the row\'s own phase — a parked research stub never tags the discussion row', () => {
     // research-routed topic, a parked DISCUSSION stub: the research row carries no tail
     assert.strictEqual(epicMenu('v1', billing(undefined, { status: 'triaged' }, { routing: 'research' })).keys[0].label, 'Start research for "Billing"');
