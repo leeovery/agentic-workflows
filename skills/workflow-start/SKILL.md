@@ -132,7 +132,21 @@ All documents up to date.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Session Labels
+### Step 0.2: Walkthrough
+
+Branch on the boot response's `walkthrough` — the one-time offer of a short walk through how the workflows work. A recorded answer (`walked` or `skipped`) never re-offers, and the walk stays reachable from the `h/help` row on the start menu either way.
+
+#### If `walkthrough` is `none`
+
+The offer is the walk's first screen, which records the answer. Load **[walk.md](../workflow-help/references/walk.md)** with origin = `first-run`.
+
+→ On return, proceed to **Step 0.3**.
+
+#### Otherwise
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Session Labels
 
 Branch on the boot response's `tmux_labels` — `prompt` means the session runs inside tmux and the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts; `no-tmux` records nothing, so a later session inside tmux still asks.
 
@@ -160,7 +174,7 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 ```
 
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.4**.
 
 **If `no`:**
 
@@ -170,13 +184,13 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
 ```
 
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.4**.
 
 #### Otherwise
 
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.4**.
 
-### Step 0.3: Knowledge Gate
+### Step 0.4: Knowledge Gate
 
 Branch on the boot response — run no further commands (`compact` already ran inside boot when the knowledge base was ready).
 
@@ -186,9 +200,9 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 #### If `knowledge` is `ready`
 
-→ Proceed to **Step 0.4**.
+→ Proceed to **Step 0.5**.
 
-### Step 0.4: Baseline Judgment
+### Step 0.5: Baseline Judgment
 
 Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
 

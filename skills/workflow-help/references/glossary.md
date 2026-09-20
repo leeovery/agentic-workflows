@@ -1,5 +1,7 @@
 # Glossary
 
+*Reference for **[workflow-help](../SKILL.md)** — loaded by the walk's closing prompt and by any session answering a question about how the workflows work.*
+
 *The canonical vocabulary of the workflows. One word per concept, chosen once; the walkthrough's screens, the reference cards, the menus and every answer about how the system works adhere to it. Definitions say what a thing is, in one or two sentences, and use the glossary's own terms. Where the docs or an older surface use another word, it is listed beneath as an alias to avoid.*
 
 ---

@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[workflow-start](../SKILL.md)** — loaded by the roadmap's and the baseline's back.*
+*Reference for **[workflow-start](../SKILL.md)** — loaded by the roadmap's, the baseline's and the help's back.*
 
 ---
 

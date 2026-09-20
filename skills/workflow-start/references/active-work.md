@@ -51,6 +51,12 @@ Invoke `/workflow-roadmap open` — it reads the roadmap state and routes itself
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
+#### If `action` is `open_help`
+
+Invoke `/workflow-help` — it opens the help home.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
 #### If `action` is `start_new`
 
 → Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{pre_seed}`, inbox_seeds = `none`.

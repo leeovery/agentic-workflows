@@ -432,7 +432,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge', 'workflow-baseline', 'workflow-roadmap']);
+  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge', 'workflow-baseline', 'workflow-roadmap', 'workflow-help']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
