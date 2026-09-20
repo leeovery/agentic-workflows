@@ -24,9 +24,13 @@ The prose should have taken this path:
    no re-loop prompt is put to the user
 8. the compliance self-check refreshes the session's instructions —
    attempting the re-reads and standing on any the tool confirms
-   unchanged — then the conclusion gate is put to the user and, on
-   their yes, the spec baseline is re-stamped from the current commit,
-   the plan completes through the engine, and the final commit lands
+   unchanged — then the conclusion asks the engine what the plan is
+   waiting on before anything else: the wait gate is fetched and comes
+   back empty, so no blocker and no pause menu is emitted. Only then is
+   the conclusion gate put to the user and, on their yes, the plan
+   completes through the engine first and only then is the spec
+   baseline re-stamped from the current commit, before the final commit
+   lands
 9. the walk stops at the pipeline continuation — the bridge is never
    invoked
 

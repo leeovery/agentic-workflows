@@ -25,8 +25,11 @@ The prose should have taken this path:
    no re-loop prompt is put to the user
 8. the compliance self-check refreshes the session's instructions —
    attempting the re-reads and standing on any the tool confirms
-   unchanged — then the conclusion fetches the conclude gate through
-   the engine and emits its MENU section: the conclusion question, a
+   unchanged — then the conclusion asks the engine what the plan is
+   waiting on first: the wait gate is fetched and comes back empty, so
+   no blocker and no pause menu is emitted. Only then does it fetch the
+   conclude gate through the engine and emit its MENU section: the
+   conclusion question, a
    `y/yes` row concluding the plan, and an **Ask** row offering
    questions about the plan without marking it complete — no `n/no` row
    anywhere on it — and STOPS. The fourth scripted answer is the
@@ -43,11 +46,13 @@ The prose should have taken this path:
    no task list is — nor to the review: no second review cycle is
    recorded and no review agent fires again. The conclude gate is then
    fetched again through the engine — a second fetch, the same address
-   — its MENU section re-emitted, and the walk STOPS again. The fifth
-   scripted answer concludes the plan
-10. the yes arm: the spec baseline is re-stamped from the current
-    commit, the plan completes through the engine, and the final commit
-    lands
+   — its MENU section re-emitted, and the walk STOPS again. The wait
+   gate is **not** re-fetched: the Ask arm returns to the conclude
+   gate, not back past the wait. The fifth scripted answer concludes
+   the plan
+10. the yes arm: the plan completes through the engine first, the spec
+    baseline is re-stamped from the current commit after it, and the
+    final commit lands
 11. the walk stops at the pipeline continuation — the bridge is never
     invoked
 

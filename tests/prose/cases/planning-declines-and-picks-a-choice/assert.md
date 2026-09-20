@@ -44,8 +44,11 @@ Expected path:
    the review runs a follow-up cycle: `review_cycle` moves to 2, both
    cycle-2 agents return clean through the stub, and the review
    concludes
-8. the plan concludes: `topic complete`, the conclude commit, and the
-   walk stops at the pipeline continuation without invoking the bridge
+8. the plan concludes: the wait gate is fetched first and comes back
+   empty — no blocker, no pause menu — then the conclude gate renders
+   and, on the user's yes, `topic complete` runs before the spec
+   baseline is re-stamped, the conclude commit lands, and the walk
+   stops at the pipeline continuation without invoking the bridge
 
 Also true:
 

@@ -1,0 +1,84 @@
+{
+  "origin": "Planning's third tier had no coverage, and it is the only one that moves the pipeline: a gap the exchange shows needs real discussion work goes to the owning discussion's triage queue and the plan waits for it. Nothing is decided, nothing is written into either document, and the hold that follows is derived from the specification's own state rather than stored on the plan. This is the twin of planning-lands-a-decision-in-the-discussion — the same raise, a user who will not settle it off the cuff — and it walks the linear work type's direct triage delivery, the pause commit, the wait gate the landing makes non-empty, and the bridge hand-off.",
+  "entry": "workflow-planning-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md",
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-planning-process/references/spec-change-detection.md",
+    "skills/workflow-planning-process/references/session-setup.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/planning-principles.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-planning-process/references/verify-source-material.md",
+    "skills/workflow-planning-process/references/plan-construction.md",
+    "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/define-tasks.md",
+    "skills/workflow-planning-process/references/task-design.md",
+    "skills/workflow-planning-process/references/read-specification.md",
+    "skills/workflow-planning-process/references/resolve-spec-gap.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "answers": [
+    "c — pick the plan up where it left off",
+    "y — the phase structure still matches the spec",
+    "I'm not settling that off the cuff — the whole post-checkout experience needs a proper discussion, not a snap call in the middle of a plan.",
+    "y — pause the plan here"
+  ],
+  "stubs": {
+    "plan-tasks-designed-p1-and-an-open-fork": "when the prose invokes the task-designer agent for Phase 1 — return the content below as the agent's output; one firing"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "topic triage pay discussion pay",
+      "--concern .workflows/.cache/pay/planning/pay/gap-concern.md",
+      "planning(pay): gap routed to pay",
+      "planning(pay): pause — gap routed to pay",
+      "--topic planning/pay",
+      "render wait-gate pay.planning.pay"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "write:.workflows/.cache/pay/planning/pay/gap-concern.md",
+      "topic triage pay discussion pay",
+      "planning(pay): pause — gap routed to pay",
+      "render wait-gate pay.planning.pay"
+    ],
+    "calls_exclude": [
+      "knowledge.cjs index",
+      "corrigendum",
+      "render correction-gate",
+      "render incoherence-gate",
+      "render task-list",
+      "render conclude-gate",
+      "render spec-corrections",
+      "render triage-closed-target",
+      "topic complete pay planning",
+      "topic reopen",
+      "topic start pay discussion",
+      "sources stale",
+      "approvals.tasks.p1",
+      "discovery-map add",
+      "gateway.cjs pay",
+      "workunit create"
+    ]
+  }
+}

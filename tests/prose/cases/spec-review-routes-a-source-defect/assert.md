@@ -7,9 +7,12 @@ The prose should have taken this path:
    references; construction finds the source incorporated and nothing
    left to extract — no content is re-presented, no re-extraction runs
 3. review cycle 1 initialises through the engine; the claims
-   verification agent is dispatched first and returns findings through
-   the harness stub, having written the c1 claims tracking file; the
-   tracking entry records in-progress and commits
+   verification agent is dispatched first, its inputs including the
+   work unit's imports read from the manifest alongside its resolved
+   sources — this unit holds none, so the list is empty and nothing is
+   resolved from it — and it returns findings through the harness stub,
+   having written the c1 claims tracking file; the tracking entry
+   records in-progress and commits
 4. the findings summary renders from the tracking file; the one
    finding's category is Source defect, so it is never presented at
    the finding gate, never applied to the specification as a finding,

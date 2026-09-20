@@ -30,6 +30,7 @@
     "skills/workflow-planning-process/references/invoke-review-traceability.md",
     "skills/workflow-planning-process/references/invoke-review-integrity.md",
     "skills/workflow-planning-process/references/process-review-findings.md",
+    "skills/workflow-planning-process/references/resolve-spec-gap.md",
     "skills/workflow-planning-process/references/review-traceability.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-planning-process/references/conclude-plan.md",
@@ -59,6 +60,7 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
+      "render wait-gate pay.planning.pay",
       "render conclude-gate pay.planning.pay",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
@@ -73,8 +75,9 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
-      "manifest set pay.planning.pay spec_commit",
-      "topic complete pay planning pay"
+      "render wait-gate pay.planning.pay",
+      "topic complete pay planning pay",
+      "manifest set pay.planning.pay spec_commit"
     ],
     "calls_exclude": [
       "manifest set pay.planning.pay review_cycle 1",

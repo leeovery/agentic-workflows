@@ -65,11 +65,13 @@ Expected path:
    `auto` and findings surfaced, the review runs a follow-up cycle
    without stopping — no re-loop gate renders. Cycle 2's two agents
    return clean through the stub, in order, and the review completes
-10. the compliance self-check refreshes the session's instructions, the
-    conclude gate is put to the user and, on their yes, the spec
-    baseline is re-stamped, the plan completes through the engine, the
-    final commit lands, and the walk stops at the pipeline continuation
-    without invoking the bridge
+10. the compliance self-check refreshes the session's instructions; the
+    conclusion asks the engine what the plan is waiting on first — the
+    wait gate comes back empty, so no blocker and no pause menu is
+    emitted — then the conclude gate is put to the user and, on their
+    yes, the plan completes through the engine first and the spec
+    baseline is re-stamped after it, the final commit lands, and the
+    walk stops at the pipeline continuation without invoking the bridge
 
 Also true:
 

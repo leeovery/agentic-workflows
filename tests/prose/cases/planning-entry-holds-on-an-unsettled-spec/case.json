@@ -1,0 +1,33 @@
+{
+  "origin": "A plan could be entered, continued and concluded over a specification whose source discussion had reopened beneath it — the plan's only inflow was an advisory. The hold is now derived from the specification's own state (status, flag, and source rows together) rather than stored on the plan, which matters precisely here: the specification still reads `completed`, so a hold keyed on its status alone fires too late and one keyed on a flag the plan carries fires never. This pins the entry arm — the terminal blocker, and everything downstream of it that must not run.",
+  "entry": "workflow-planning-entry",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-planning-entry/references/validate-spec.md"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.planning.pay"
+    ],
+    "calls_exclude": [
+      "manifest get pay.planning.pay status",
+      "render resume-gate",
+      "render phase-note",
+      "topic reopen pay planning",
+      "topic start pay planning",
+      "manifest list --work-type cross-cutting",
+      "knowledge.cjs query",
+      "knowledge.cjs index",
+      "manifest delete pay.planning.pay reconcile_needed",
+      "manifest set pay.specification.pay",
+      "topic complete",
+      "engine.cjs commit"
+    ]
+  }
+}
