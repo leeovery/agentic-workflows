@@ -39,6 +39,25 @@ Note where cross-cutting decisions apply to the work you are designing.
 
 ---
 
+## Reporting Specification Defects
+
+What the specification leaves open, asserts without the mechanism that makes it true, or contradicts itself on — where the product's user would get something different depending on the guess — is **reported**, never filled in and never noted in a task. Record each one under a `## Spec Defects` section at the end of your output; the orchestrator classifies it and lands the answer in the record before your work is put to the user.
+
+```markdown
+## Spec Defects
+
+### S1: {title}
+- **Claim**: {the specification's claim, quoted, with its section} — or **Omission**: {what the specification asserts and what is missing to make it true}
+- **Consequence**: {what goes wrong for the product's user if the implementer guesses}
+- **Ground**: {what the record offers toward an answer — a measurement, a sibling decision, a convention — or `none found — searched: …`}
+
+### S2: ...
+```
+
+Omit the section when you found none.
+
+---
+
 ## What NOT to Do
 
 - **Do not summarise** — your job is to use the spec directly, not to create a derivative

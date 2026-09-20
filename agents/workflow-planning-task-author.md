@@ -81,6 +81,8 @@ Write all tasks to the task detail file path provided. Use the canonical task te
 
 Author incrementally into the task detail path with `.txt` in place of `.md` using the Write tool, then after the final task immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents. Bash is for this rename only.
 
+Then, where the specification left a defect, close your final message with the `## Spec Defects` section in the shape `read-specification.md` pins — the detail file carries task content alone, so the defects travel in the message; omit the section when you found none.
+
 ## Rules
 
 1. **Self-contained** — any executor (another agent or a human) could pick up any task and run it without opening another document
@@ -90,7 +92,7 @@ Author incrementally into the task detail path with `.txt` in place of `.md` usi
 5. **Tests include edge cases** — not just happy path; reference the edge cases from the task table
 6. **Do steps direct code and tests, never commentary** — rationale and spec citations stay in the task's Problem/Context fields, never "state in-source that…", and no acceptance criterion or test asks for reasoning, a rejected alternative, or a design argument to be recorded anywhere. A comment may be required only for a non-obvious constraint the code cannot express, directed in one line with the wording left to the executor (see task-design.md → Comments Are Not Task Content).
 7. **Write tasks to the task detail file incrementally** — each task written to disk before starting the next
-8. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. When the spec is ambiguous, note the ambiguity in the task's Context section rather than inventing a plausible default.
+8. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. Where the spec leaves a product question open, report it under `## Spec Defects` rather than filling it in anywhere in the task.
 9. **No modifications after approval** — what the user sees is what gets logged
 10. **No git writes** — do not commit or stage. Writing the task detail file is your only file write.
 11. **Never lose your work** — the tasks you author must survive the run, and the task detail file is how they survive. Produce the task detail file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the tasks in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.

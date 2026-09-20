@@ -65,6 +65,8 @@ Phase {N}: {Phase Name}
 
 **CRITICAL**: `{topic}` must be the **exact, full topic name** — never abbreviate or shorten it. The topic name is used for path construction and positional mapping across phases.
 
+Then, where the specification left a defect, close your return with the `## Spec Defects` section in the shape `read-specification.md` pins — omit it when you found none.
+
 ## Rules
 
 1. **One task = one TDD cycle** — write test, implement, pass, commit

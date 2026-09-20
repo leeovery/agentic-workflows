@@ -101,7 +101,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 Continue with the **Hard gate check** below.
 
-**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked items carry no menu row — a blocked spec, a discussion held for its outstanding research, a dep-blocked plan — so none reaches here, except a spec or discussion another session holds open: its struck row arrives through the in-session gate above, and its entry skill's own gate meets it next. The display tree shows the `blocked` cue or the research awaited, and the ⚑ list carries the plan detail.)
+**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked items carry no menu row — a blocked spec, a discussion held for its outstanding research, a plan held for its unsettled specification, a dep-blocked plan — so none reaches here, except a spec, discussion, or plan another session holds open: its struck row arrives through the in-session gate above, and its entry skill's own gate meets it next. The display tree shows the `blocked` cue or the research awaited, and the ⚑ list carries the dep-blocked plan's detail.)
 
 **If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
 

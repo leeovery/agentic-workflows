@@ -65,6 +65,32 @@ Read the task detail file and count tasks. Verify task count matches the task ta
 
 **On an amendment run** (the manifest still carries `rejected` rows): the rewrite is validated — reset each rejected row to `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per id); in auto mode they approve automatically, like any pending row.
 
+**Settle the spec defects** — classified before any task reaches its gate, so what the user approves was authored against a correct specification. The section is the orchestrator's: it never reaches the task detail file or the planning file.
+
+For each `## Spec Defects` entry in the agent's return, once per entry:
+
+→ Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the task it surfaced in}`.
+
+When at least one corrigendum landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
+```
+
+**If a landing changed the specification, or the reference returned work the plan must carry, and this return is not itself from that re-run:**
+
+The detail file was written against a record that has since moved, so the whole phase is authored again — a full run by **B**'s own rule, no `rejected` row remaining: the correction is the specification's, not per-task feedback. Name the returned work in the invocation so the task that owns it carries it. The rewrite replaces every task, so any approvals already recorded are void — where the phase carries a `staging.author-p{N}` subtree (a resumed or amended run; a first authoring run has none), clear it, and **D** repopulates every row `pending`; a row left reading `approved` would transcribe text the user never saw:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} staging.author-p{N}
+```
+
+→ Return to **B. Invoke the Agent**.
+
+**Otherwise:**
+
+A defect the author still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
+
 → Proceed to **D. Check Gate Mode**.
 
 #### If `mismatch` and fewer than 2 agent invocations have been made

@@ -118,7 +118,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### If `outcome` is `paused`
 
-The phase left on a wait — the banner names what its conversation awaits, never a completion. Render and emit the section verbatim:
+The phase left on a wait — the banner names what the paused item awaits, never a completion. Render and emit the section verbatim:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-paused {work_unit} --phase {completed_phase}

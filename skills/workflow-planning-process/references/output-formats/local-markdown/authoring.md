@@ -60,17 +60,7 @@ Phases are encoded in the internal ID: `{topic}-{phase_id}-{task_id}`. The `phas
 Add a `tags` field to frontmatter if additional categorisation is needed:
 
 ```yaml
-tags: [edge-case, needs-info]
-```
-
-## Flagging
-
-In the task file, add a **Needs Clarification** section:
-
-```markdown
-**Needs Clarification**:
-- What's the rate limit threshold?
-- Per-user or per-IP?
+tags: [edge-case]
 ```
 
 ## Cleanup (Restart)

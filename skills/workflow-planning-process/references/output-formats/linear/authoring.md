@@ -95,7 +95,6 @@ Phases are represented as parent issues. Each task belongs to a phase by being a
 
 Apply optional labels for categorisation:
 
-- `needs-info` — task requires additional information
 - `edge-case` — edge case handling task
 - `foundation` — setup/infrastructure task
 - `refactor` — cleanup task
@@ -109,15 +108,6 @@ create_issue_label(
   color: "{hex_color}"
 )
 ```
-
-## Flagging
-
-When creating issues, if something is unclear:
-
-1. **Create the issue anyway** — don't block planning
-2. **Apply `needs-info` label** — makes gaps visible
-3. **Note what's missing** in description — add a **Needs Clarification** section
-4. **Continue planning** — circle back later
 
 ## Cleanup (Restart)
 

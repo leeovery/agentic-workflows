@@ -131,19 +131,6 @@ tick ready --parent <tick-id> --tag security
 
 Set via `--refs` to store the internal ID on each tick task, linking it back to the planning system. Set at all levels — topic, phase, and task — as shown in the Task Storage examples above. References are comma-separated if multiple are needed.
 
-## Flagging
-
-When information is missing, prefix the task title with `[NEEDS INFO]` and include questions in the description:
-
-```bash
-tick create "[NEEDS INFO] Rate limiting strategy" \
-  --parent tick-c3d4 \
-  --description "Needs clarification:
-- What is the rate limit threshold?
-- Per-user or per-IP?
-- What response code on limit exceeded?"
-```
-
 ## Cleanup (Restart)
 
 Remove the topic task and all its descendants. `<topic-tick-id>` is the plan's `external_id` in the manifest:

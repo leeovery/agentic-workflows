@@ -48,16 +48,18 @@ Before logging any task to the plan, ask yourself:
 
 ### Collaboration and Judgment
 
-**Stop and ask when the gap is the product's.** Planning is collaborative — not in the sense that every line needs approval, but in the sense that the user owns what the product does and resolves the ambiguities about it. You must stop and ask when:
+**A gap in what the product does is the specification's.** Planning is collaborative — not in the sense that every line needs approval, but in the sense that the user owns what the product does, and the record is where their answers live. Recognise a gap when:
 
 - The specification is silent or ambiguous about what the product does or how it behaves
 - An edge case in behaviour is not addressed in the specification
 - A decision the specification doesn't cover changes what the user gets
 - Something doesn't add up or feels like a gap in the record
 
-**A fork in how the plan builds it is the planner's.** Phase ownership, task grouping, what a consumer keys on, a bound, internal naming — where the specification, the plan's own conventions, and a measurement all leave it open, settle it on what leans, and on your honest call where nothing does, stating the call and what it weighed in the plan. A how-fork is never a stop and never a `[needs-info]`.
+Each one is classified and landed through **[resolve-spec-gap.md](resolve-spec-gap.md)** the moment it surfaces. It stops for the user only where the record does not settle the fork, and lands the answer in the record either way — what the record settles never reaches the user, and what the user settles never stops at the plan.
 
-**Never invent product intent.** Where the specification doesn't address what the product does, flag it with `[needs-info]` and ask the user. The specification is the golden document — everything the plan requires of the product must trace back to it. Assuming or guessing product intent — even when it seems reasonable — is not acceptable. Surface the problem immediately rather than continuing and hoping to address it later.
+**A fork in how the plan builds it is the planner's.** Phase ownership, task grouping, what a consumer keys on, a bound, internal naming — where the specification, the plan's own conventions, and a measurement all leave it open, settle it on what leans, and on your honest call where nothing does, stating the call and what it weighed in the plan. A how-fork is never a stop.
+
+**Never invent product intent.** Where the specification doesn't address what the product does — or addresses it wrongly — that is a gap in the specification: it takes the flow above, never an answer written into the plan. The specification is the golden document — everything the plan requires of the product must trace back to it. Assuming or guessing product intent — even when it seems reasonable — is not acceptable. Surface the problem immediately rather than continuing and hoping to address it later.
 
 ## Rules
 

@@ -70,6 +70,8 @@ status: draft
 
 Continue for all phases.
 
+Then, where the specification left a defect, close your return with the `## Spec Defects` section in the shape `read-specification.md` pins — omit it when you found none.
+
 ## Rules
 
 1. **Right-size to the specification** — a single phase is a valid plan. Don't create phases to fill a template; create them because the work has genuinely distinct stages. A focused spec might be one phase with 4 tasks. A large spec might be 10 phases. Both are correct.
