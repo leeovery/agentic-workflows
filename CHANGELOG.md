@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.68] - 2026-09-20
+
+🔧 Changed
+
+- Resume-detection prompts now state exactly which step continuing or restarting a session lands on, in discussion, research, and specification workflows.
+- A raised concern that only questions or extends a recorded decision, without correcting or re-deciding it, now routes as new ground instead of being folded into the existing block.
+- The review-agent dispatch check now explicitly applies to mid-session dispatches triggered by loaded references (e.g. a triage absorb), not just the main session loop.
+- Position statements no longer surface a tuned figure from the record or state the size of a rejected alternative's cost, and an option the record already ruled out is left out of the case entirely unless the user raises it.
+
 ## [0.7.67] - 2026-09-20
 
 ✨ Added
