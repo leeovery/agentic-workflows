@@ -24,7 +24,7 @@ Tell the user in one line what was measured and what it corrects — no gate; th
 
 **If the corrected value undermines a conclusion but itself determines how it falls** — the conclusion re-derives from the corrected value alone, nothing new committed and no live alternative picked between:
 
-A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice. The repair revises what the document concluded: a conclusion recorded in a Decision block takes C's dated timeline revision, the failed measurement as its trigger — never an in-place value substitution; only restatements outside the block are repaired in place.
+A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice. The repair revises what the document concluded: a conclusion recorded in a Decision block takes the landing's dated timeline revision (`landing-a-resolution.md`, loaded from **C**), the failed measurement as its trigger — never an in-place value substitution; only restatements outside the block are repaired in place.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the corrected claim and the conclusion repaired against it, carrying its command and result}`, doc = `{the owning source's topic}`.
 
@@ -86,7 +86,7 @@ Attempt the derivation first — constraints, sibling artifacts, measurement.
 
 **If a defensible derivation settles it** — the record yields the answer (a technical parameter the sources never pinned, derived from the rationale they did record), or first principles over the decisions the record made whittle the fork to one answer you stand behind:
 
-Tell the user in one line what was derived and from what — where the record does not itself determine the answer, name what leaned and the alternatives that also fit. No gate. It lands through C's decision-the-document-never-made shape, the derivation as the section's reasoning.
+Tell the user in one line what was derived and from what — where the record does not itself determine the answer, name what leaned and the alternatives that also fit. No gate. It lands through the landing's decision-the-document-never-made shape (`landing-a-resolution.md`, loaded from **C**), the derivation as the section's reasoning.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the derived decision, carrying its derivation}`, doc = `{the owning source's topic}`.
 
