@@ -216,6 +216,7 @@ describe('engine boot', () => {
       label_repaired: false,
       session_hooks_installed: false,
       baseline: 'none',
+      walkthrough: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
       // and the tree it arrived into holds no project file.
       baseline_signal: { root_date: today, workflows_date: today, commits_total: 1, commits_before: 0, history_before: [], files_at_arrival: 0, tree_at_arrival: [] },
@@ -251,6 +252,30 @@ describe('engine boot', () => {
     // No project manifest at all → none.
     fs.rmSync(projManifest);
     assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+  });
+
+  it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {
+    const projManifest = path.join(fix.project, '.workflows/manifest.json');
+
+    for (const status of ['walked', 'skipped']) {
+      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough: { status } }));
+      assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, status);
+    }
+
+    for (const walkthrough of [{ status: 'weird' }, {}, 'walked']) {
+      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough }));
+      assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none', JSON.stringify(walkthrough));
+    }
+
+    // The two one-time records are independent: a recorded baseline says
+    // nothing about the offer, and vice versa.
+    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'native' }, walkthrough: { status: 'skipped' } }));
+    const both = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    assert.strictEqual(both.baseline, 'native');
+    assert.strictEqual(both.walkthrough, 'skipped');
+
+    fs.rmSync(projManifest);
+    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none');
   });
 
   /**

@@ -207,6 +207,7 @@ describe('start projections: menu', () => {
       '**`c/cross-cutting`** → Start new cross-cutting concern',
       '**`i/inbox`**         → View the inbox and start from an item',
       '**`v/view`**          → View completed & cancelled work units',
+      '**`h/help`**          → How the workflows work',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
     ].join('\n'));
   });
@@ -226,6 +227,7 @@ describe('start projections: menu', () => {
       '**`b/bugfix`**        → Start new bugfix',
       '**`q/quick-fix`**     → Start new quick-fix',
       '**`c/cross-cutting`** → Start new cross-cutting concern',
+      '**`h/help`**          → How the workflows work',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
     ].join('\n'));
   });
@@ -272,6 +274,7 @@ describe('start projections: menu', () => {
         ['c', 'start_new', null, null, 'cross-cutting'],
         ['i', 'view_inbox', null, null, null],
         ['v', 'view_completed', null, null, null],
+        ['h', 'open_help', null, '/workflow-help', null],
         ['m', 'manage', null, null, null],
       ]
     );
@@ -313,6 +316,7 @@ describe('start projections: empty state', () => {
       `${NB(18)}planning)`,
       '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or',
       `${NB(18)}policies that inform other work)`,
+      '**`h/help`**          → How the workflows work',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
@@ -323,6 +327,7 @@ describe('start projections: empty state', () => {
         ['b', 'start_new', 'bugfix'],
         ['q', 'start_new', 'quick-fix'],
         ['c', 'start_new', 'cross-cutting'],
+        ['h', 'open_help', null],
       ]
     );
   });
@@ -343,7 +348,7 @@ describe('start projections: empty state', () => {
     assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
       menu.keys.map((k) => k.action).slice(6),
-      ['view_inbox', 'view_completed']
+      ['view_inbox', 'view_completed', 'open_help']
     );
   });
 
@@ -785,6 +790,25 @@ describe('start projections: roadmap rows', () => {
     writeProjectRoadmap(dir, { ...MAP, active_session: '002' });
     const resumed = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
     assert.strictEqual(resumed.label, 'Resume the product session — *roadmap, in progress*');
+  });
+
+  it('both menus carry the h/help row unconditionally — nothing about the project hides the teaching', () => {
+    const HELP = { key: 'h', word: 'help', action: 'open_help', route: '/workflow-help', label: 'How the workflows work' };
+    const helpRow = (m) => m.keys.find((k) => k.action === 'open_help');
+
+    // A bare project, and one carrying every conditional row there is.
+    assert.deepStrictEqual(helpRow(emptyMenu(startDetail(dir))), HELP);
+    const empty = emptyMenu(startDetail(dir)).keys;
+    assert.strictEqual(empty[empty.length - 1].action, 'open_help', 'last on the empty menu');
+
+    writeProjectRoadmap(dir, MAP);
+    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+    const full = startMenu(fullFixture(dir));
+    assert.deepStrictEqual(helpRow(full), HELP);
+    const keys = full.keys.map((k) => k.key);
+    assert.ok(keys.indexOf('v') < keys.indexOf('h'), 'after the view row');
+    assert.ok(keys.indexOf('h') < keys.indexOf('m'), 'before the manage row');
   });
 
   it('the harvested-no-work state never renders an empty screen', () => {
