@@ -91,12 +91,6 @@ See **Task Properties** below for details on each flag.
 
 → Load **[updating.md](updating.md)** and follow its instructions to correct the field using `tick update`.
 
-#### If the create fails with a TOON encoding diagnostic
-
-The task was stored and the diagnostic names its id — a control character in the description is what could not be encoded. Take that id; never re-create, which leaves a duplicate.
-
-→ Load **[updating.md](updating.md)** and follow its instructions to rewrite the description without the control character.
-
 ## Task Properties
 
 ### Status

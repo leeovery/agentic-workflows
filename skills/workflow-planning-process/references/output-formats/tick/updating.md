@@ -34,8 +34,6 @@ To update a task's properties:
 
 `tick update` answers with the stored record read back — the same document `tick show <tick-id>` prints. Confirm the updated fields from it; if any is empty or wrong, re-run the update.
 
-An update that fails with a TOON encoding diagnostic has stored the value — a control character in the text is what could not be encoded, so rewrite the field without it rather than re-running the same update.
-
 ## Phase Completion
 
 Tick automatically cascades status changes through the parent/child hierarchy. **Do not manually update phase or topic parent status** — tick handles it.
