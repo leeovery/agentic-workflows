@@ -564,9 +564,15 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
     'the first plan task banks — the deposits below are made while its phase is still open');
-  // The loop's two stops: an executor that comes back blocked (task-loop C),
-  // and the analysis loop's checkpoint over files implementation never wrote.
-  sim.render(['executor-block-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
+  // The loop's two stops: an executor that comes back blocked or failed
+  // (task-loop C), and the analysis loop's checkpoint over files
+  // implementation never wrote.
+  const sides = sim.write(`.workflows/.cache/${wu}/implementation/${topic}/block-sides.json`, {
+    options: ['Restore the order as paid, refund behind it', { summary: 'Keep the cancellation, return the payment', recommended: true }],
+  });
+  const blockGate = sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'blocked', '--file', sides], { expect: 'content' });
+  assert.match(blockGate, /\*\*`1`\*\*\s+→ Keep the cancellation, return the payment \(recommended\)/, 'the recommended side renders first');
+  sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'failed'], { expect: 'content' });
   sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
@@ -3117,7 +3123,7 @@ describe('pipeline simulation', () => {
       '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(outcomeGate, /Placement: phase 1/, 'the boundary walk renders the shared per-task surface');
     assert.match(outcomeGate, /\*\*Outcome\*\*: o/, 'a proposal may carry its outcome');
-    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:/.test(outcomeGate),
+    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:/.test(outcomeGate),
       'the boundary walk never renders authored blocks');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
     sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
@@ -3127,7 +3133,7 @@ describe('pipeline simulation', () => {
     const proposalGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(proposalGate, /MENU: task approval/, 'a proposal keeps the walk\'s approval gate');
-    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:|\*\*Outcome\*\*|t\/technical/.test(proposalGate),
+    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Outcome\*\*|t\/technical/.test(proposalGate),
       'proposal altitude renders only what the payload carries');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.2', 'skipped']);
     sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
@@ -3271,7 +3277,7 @@ describe('pipeline simulation', () => {
     fs.mkdirSync(path.dirname(path.join(sim.dir, adhocPayload)), { recursive: true });
     fs.writeFileSync(path.join(sim.dir, adhocPayload), JSON.stringify({
       current: 1, total: 1, title: 'Fix redirect', placement: 'phase 1', priority: '1',
-      problem: 'p', solution: 's', outcome: 'o', steps: ['1. x'], criteria: ['- c'], tests: ['- t'],
+      problem: 'p', solution: 's', outcome: 'o', steps: ['1. x'], criteria: ['- c'],
     }));
     const adhocGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', adhocPayload, '--gate', 'gated'], { expect: 'content' });
