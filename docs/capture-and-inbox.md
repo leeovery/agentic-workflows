@@ -10,6 +10,8 @@ What makes capture lightweight is as much what it refuses to do as what it does.
 
 Each note lands in the inbox, a holding area that sits entirely outside the pipeline, sorted by kind into ideas, bugs, and quick-fixes.
 
+The inbox is one of two places to put something aside, and the somedays are its half: things that get picked up when they get picked up. The other is the [roadmap](roadmap.md), for what you place in the near term — "that's a v2 thing", "on the roadmap under Next". Your own words decide it, from inside any phase, and where they leave it open — "backlog that" — you are asked which of the two rather than guessed at.
+
 ## Triaging the backlog
 
 An inbox note does nothing until you decide it should. That decision happens at the top of `/workflow-start`, which shows you the inbox and lets you act on it. You select one or more items to build a **working set**, and every action you choose applies to the whole set. You can add more items to the set, drop items out of it, view the full text of everything in it, promote it into real work, or archive it out of the way.
