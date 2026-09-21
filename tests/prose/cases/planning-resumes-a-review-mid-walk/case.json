@@ -81,7 +81,7 @@
       "manifest set pay.planning.pay spec_commit"
     ],
     "calls_exclude": [
-      "manifest set pay.planning.pay review_cycle 1",
+      "manifest set pay.planning.pay review_cycle=1",
       "staging.author",
       "render author-task-gate",
       "topic reopen",

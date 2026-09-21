@@ -19,13 +19,14 @@ Expected path:
    the engine-rendered phase tree and confirmed; the graph step
    delegates to the grapher — stubbed, reapplying the existing edges
    unchanged — and the approval commits through the scoped plan commit
-5. review cycle 1 initialises through the engine; the traceability
-   review is dispatched first and returns clean through its stub — no
-   tracking file, its no-findings result announced — and only then is
-   the integrity review dispatched, whose stub writes the cycle-1
-   tracking file with three findings; the orchestrator records the
-   tracking entry `in-progress`, commits it, and renders the findings
-   summary
+5. review cycle 1 initialises: `review_cycle` is set to 1 and the
+   plan's word baseline recorded with it in one write, and the manifest
+   committed. The traceability review is dispatched first and returns
+   clean through its stub — no tracking file, its no-findings result
+   announced — and only then is the integrity review dispatched, whose
+   stub writes the cycle-1 tracking file with three findings; the
+   orchestrator records the tracking entry `in-progress`, commits it,
+   and renders the findings summary
 6. **Finding 1 (settled — the intent task's acceptance criteria)** is
    disposed and stands settled: the specification's Payment Intent
    section decides the criteria, and the session can stand behind the
@@ -63,7 +64,9 @@ Expected path:
    Fixed, announced in a line — no stop
 9. the tracking entry flips to `complete`; with `finding_gate_mode`
    `auto` and findings surfaced, the review runs a follow-up cycle
-   without stopping — no re-loop gate renders. Cycle 2's two agents
+   without stopping — no re-loop gate renders. Both cycle-2 dispatches
+   carry the cycle-1 integrity tracking file's path as the settled
+   directions a finding may not reverse, and both agents
    return clean through the stub, in order, and the review completes
 10. the compliance self-check refreshes the session's instructions; the
     conclusion asks the engine what the plan is waiting on first — the

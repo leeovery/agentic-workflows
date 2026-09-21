@@ -42,7 +42,9 @@ Expected path:
    (**Fixed**) with the chosen option named in Notes; the work commits
 7. with every row settled the tracking entry flips to `complete`, and
    the review runs a follow-up cycle: `review_cycle` moves to 2, both
-   cycle-2 agents return clean through the stub, and the review
+   cycle-2 dispatches carry the cycle-1 traceability tracking file's
+   path as the settled directions a finding may not reverse, both
+   agents return clean through the stub, and the review
    concludes
 8. the plan concludes: the wait gate is fetched first and comes back
    empty — no blocker, no pause menu — then the conclude gate renders

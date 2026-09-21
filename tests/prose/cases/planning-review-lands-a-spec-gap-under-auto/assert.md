@@ -19,11 +19,12 @@ Expected path:
    the engine-rendered phase tree and confirmed; the graph step
    delegates to the grapher — stubbed, reapplying the existing edges
    unchanged — and the approval commits through the scoped plan commit
-5. review cycle 1 initialises through the engine; the traceability
-   review is dispatched first and its stub writes the cycle-1
-   traceability tracking file with two findings; the orchestrator
-   records the tracking entry `in-progress`, commits it, and renders
-   the findings summary
+5. review cycle 1 initialises: `review_cycle` is set to 1 and the
+   plan's word baseline recorded with it in one write, and the manifest
+   committed. The traceability review is dispatched first and its stub
+   writes the cycle-1 traceability tracking file with two findings; the
+   orchestrator records the tracking entry `in-progress`, commits it,
+   and renders the findings summary
 6. **Finding 1 (settled — the unknown-intent rule missing from the
    capture task)** does not indict the specification: the record
    decides it and the plan simply never carried it. It is disposed
@@ -94,7 +95,9 @@ Expected path:
     tracking file
 17. findings were surfaced and `finding_gate_mode` is `auto`, so the
     review runs a follow-up cycle without stopping — no re-loop gate
-    renders. Cycle 2's two agents return clean through the stub, in
+    renders. Both cycle-2 dispatches carry the cycle-1 traceability
+    tracking file's path as the settled directions a finding may not
+    reverse, and both agents return clean through the stub, in
     order, and the review completes
 18. the compliance self-check refreshes the session's instructions;
     the conclusion asks the engine what the plan is waiting on first —
