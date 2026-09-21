@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.70] - 2026-09-21
+
+🔧 Changed
+- Planning review now converges on its own — under `auto` it stops as soon as findings start churning or at the five-cycle cap, showing the same convergence diagnostic instead of asking you to keep going.
+- Specification review's `auto` mode also concludes itself on churn or cap without a re-loop prompt.
+- The convergence diagnostic's trend descriptions now describe what's happening instead of recommending what to do next, and its "growing" wording adapts to whichever document is under review (specification or plan).
+- Planning review reviewers now see every earlier cycle's findings, so a fix already landed can't be re-opened or re-litigated by a fresh cycle.
+- Planning review findings must now clear a "would the implementer actually build this wrong" bar — smaller points move to an Observations list, and calls that are genuinely the builder's to make (not the plan's) are declined rather than raised.
+
 ## [0.7.69] - 2026-09-20
 
 ✨ Added
