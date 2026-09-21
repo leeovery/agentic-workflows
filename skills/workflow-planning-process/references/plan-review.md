@@ -89,6 +89,8 @@ Emit the call's MENU section verbatim per its marker.
 
 ## C. Traceability Review
 
+List the earlier cycles' tracking files beside the plan — every `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{M}.md` and `review-integrity-tracking-c{M}.md` whose `{M}` is below the current cycle. Cycle 1 lists none.
+
 → Load **[invoke-review-traceability.md](invoke-review-traceability.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
@@ -106,6 +108,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 ---
 
 ## D. Plan Integrity Review
+
+List the earlier cycles' tracking files beside the plan — every `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{M}.md` and `review-integrity-tracking-c{M}.md` whose `{M}` is below the current cycle. Cycle 1 lists none.
 
 → Load **[invoke-review-integrity.md](invoke-review-integrity.md)** and follow its instructions as written.
 

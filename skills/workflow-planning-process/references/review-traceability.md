@@ -19,6 +19,8 @@ Re-read the specification in full before starting. Don't rely on memory — read
 
 ---
 
+→ Load **[finding-floor.md](../../workflow-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
+
 ## Direction 1: Specification → Plan (completeness)
 
 Is everything from the specification represented in the plan?
@@ -68,6 +70,8 @@ Every finding names the **move** it owes the reader — what they have to do abo
 
 A fix you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference nothing leans on is settled on your honest call, never staged as a choice.
 
+**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is theirs to settle with the code in front of them; the plan is not defective for leaving it open. A finding whose whole remedy is mechanism the specification leaves open is not written; at most it is an Observation. A finding may name that a prescribed mechanism builds the wrong behaviour — its Proposal then restates the behaviour the task must deliver and the criterion and test that prove it, and removes the mechanism the record never decided, never one mechanism swapped for another.
+
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the plan's own wording read back at them.
 
 ## Tracking File
@@ -75,6 +79,8 @@ The **Problem** is what is wrong in the terms the reader cares about — the pro
 After completing the analysis, create a tracking file at `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{N}.md` (where N is the current review cycle).
 
 Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
+
+`## Observations` closes the file and holds what is below the floor — a point that names no failure the implementer would build, and anything minor enough that landing it would only be polish. One line each, never walked, never counted, never re-raised. Size never demotes what the record already answers: a user-facing string, value, or behaviour the specification holds is a `settled` finding whatever its size, and plan content that contradicts the specification is a finding; neither is ever an Observation.
 
 **Format**:
 ```markdown
@@ -112,4 +118,8 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 ### 2. [Next Finding]
 ...
+
+## Observations
+
+- [One line each — a point below the floor, or one minor enough that landing it would only be polish. Never walked, never counted.]
 ```
