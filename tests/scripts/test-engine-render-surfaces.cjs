@@ -4599,7 +4599,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -4806,6 +4806,85 @@ describe('roadmap surfaces', () => {
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'ghost' }), /unknown horizon/);
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), /no member of "v1" is in delivery/);
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', {}), /--horizon is required/);
+  });
+
+  it('horizon-pick: the horizons in map order, each with what waits in it, then the new row', () => {
+    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'horizon-pick', {});
+    assert.strictEqual(out, [
+      "=== MENU: horizon pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '**`◆ Which horizon?`**',
+      '',
+      '**`1`**     → mvp — *1 waiting*',
+      '**`2`**     → v1 — *1 waiting*',
+      '**`n/new`** → A new horizon — name it',
+      '',
+    ].join('\n'), 'the pulled item counts against no horizon — only what waits is offered');
+  });
+
+  it('horizon-pick: refuses a never-born roadmap and one with no horizons', () => {
+    assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
+      /render horizon-pick: no roadmap on the project manifest — the park names its first horizon in prose/);
+    writeRoadmap({ horizons: [], items: {} });
+    assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
+      /render horizon-pick: the roadmap holds no horizons — the park names one in prose/);
+  });
+
+  it('park-gate: an existing horizon, no source', () => {
+    writeRoadmap(TWO_HORIZONS);
+    const out = renderSurface(dir, 'park-gate', {
+      name: 'csv-export', horizon: 'v1', summary: "operators export a day's orders as CSV",
+    });
+    assert.strictEqual(out, [
+      "=== MENU: park gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      'Parking **Csv Export** — operators export a day\'s orders as CSV — puts it on the roadmap under "v1", waiting until it is pulled into work.',
+      '',
+      '**`◆ Park it on the roadmap?`**',
+      '',
+      '**`y/yes`**   → Park it',
+      '**`n/no`**    → Leave it — nothing is recorded',
+      '**Comment** → Tell me what to change (name, horizon, or summary)',
+      '',
+    ].join('\n'));
+  });
+
+  it('park-gate: a horizon the map does not hold is flagged new, and the source rides the statement', () => {
+    writeRoadmap(TWO_HORIZONS);
+    const out = unwrap(renderSurface(dir, 'park-gate', {
+      name: 'csv-export', horizon: 'v2', summary: 'operators export orders as CSV',
+      source: '.workflows/mvp/specification/orders/specification.md',
+    }));
+    assert.match(out, /under "v2" \(new\), waiting until it is pulled into work\. Its source is `\.workflows\/mvp\/specification\/orders\/specification\.md`\./);
+    assert.ok(!out.includes('The roadmap is created with it.'), 'the map exists — only its horizon is new');
+  });
+
+  it('park-gate: with no roadmap at all the statement says the map is created with it', () => {
+    const out = unwrap(renderSurface(dir, 'park-gate', {
+      name: 'csv-export', horizon: 'v1', summary: 'operators export orders as CSV',
+    }));
+    assert.match(out, /puts it on the roadmap under "v1", waiting until it is pulled into work\. The roadmap is created with it\./);
+    assert.ok(!out.includes('(new)'), 'the map\'s own birth already says the horizon is new');
+    assert.ok(!out.includes('Its source is'), 'no --source, no source line');
+  });
+
+  it('park-gate: a name the map already holds refuses in the add verb\'s own words', () => {
+    writeRoadmap(TWO_HORIZONS);
+    assert.throws(() => renderSurface(dir, 'park-gate', { name: 'loyalty', horizon: 'v1', summary: 's' }),
+      /render park-gate: "loyalty" is already on the roadmap — edit it, or pick a different name/);
+  });
+
+  it('park-gate: every required flag is refused by name', () => {
+    writeRoadmap(TWO_HORIZONS);
+    assert.throws(() => renderSurface(dir, 'park-gate', { horizon: 'v1', summary: 's' }),
+      /render park-gate: --name is required/);
+    assert.throws(() => renderSurface(dir, 'park-gate', { name: 'csv-export', summary: 's' }),
+      /render park-gate: --horizon is required/);
+    assert.throws(() => renderSurface(dir, 'park-gate', { name: 'csv-export', horizon: 'v1' }),
+      /render park-gate: --summary is required/);
+    assert.throws(() => renderSurface(dir, 'park-gate', { name: '  ', horizon: 'v1', summary: 's' }),
+      /render park-gate: --name is required/);
   });
 
   it('roadmap-session-receipt: empty without --warn, the advisory with it', () => {
@@ -5533,6 +5612,55 @@ describe('render off-topic-offer', () => {
       () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file, variant: 'nope' }),
       /--variant takes "discussion"/,
     );
+  });
+});
+
+describe('render backlog-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const live = () => writeManifest(dir, 'pay', {
+    work_type: 'feature',
+    phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
+  });
+
+  it('names the idea and offers the two backlogs', () => {
+    live();
+    const file = writePayload(dir, 'b.json', { idea: "a CSV export of the day's orders" });
+    const out = renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file });
+    assert.strictEqual(out, [
+      "=== MENU: backlog gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      "Setting **a CSV export of the day's orders** aside.",
+      '',
+      '**`◆ Which backlog?`**',
+      '',
+      '**`r/roadmap`** → The product roadmap — next, or soon after this work',
+      '**`i/inbox`**   → The inbox — someday, picked up when it is picked up',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing payload, a missing idea, and an empty one', () => {
+    live();
+    assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay' }),
+      /render backlog-gate: --file <payload\.json> is required/);
+    const absent = writePayload(dir, 'a.json', { concern: 'wrong key' });
+    assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file: absent }),
+      /render backlog-gate: "idea" must be a non-empty string/);
+    const blank = writePayload(dir, 'e.json', { idea: '   ' });
+    assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file: blank }),
+      /render backlog-gate: "idea" must be a non-empty string/);
+  });
+
+  it('refuses a dead address', () => {
+    live();
+    const file = writePayload(dir, 'b.json', { idea: 'gift cards' });
+    assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'ghost.implementation.ghost', file }),
+      /render backlog-gate: work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation', file }),
+      /render backlog-gate: address must be <work_unit>\.<phase>\.<topic>/);
   });
 });
 

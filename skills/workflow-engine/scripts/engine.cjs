@@ -299,6 +299,7 @@ Commands:
   render review-findings-gate <wu.discussion.topic>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
+  render backlog-gate     <wu.phase.topic> --file <payload.json>
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json>
   render topic-collision-gate
@@ -365,6 +366,8 @@ Commands:
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
+  render horizon-pick
+  render park-gate --name <kebab> --horizon <h> --summary <text> [--source <path>]
   render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
