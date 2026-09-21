@@ -21,6 +21,11 @@ Use this format when {describe the ideal use case}.
 <!-- Prerequisites, installation, configuration. "No external tools required." if none -->
 {Setup instructions or "No external tools required."}
 
+## Version
+
+<!-- Data the shared version check reads: "Requires {Tool} `{requirement}`. `{command}` prints the installed version as `{output shape}`. Update instructions: {where}." — or "No external tool — nothing to check." if none -->
+{Version declaration or "No external tool — nothing to check."}
+
 ## Structure Mapping
 
 <!-- How workflow concepts map to this format's entities -->

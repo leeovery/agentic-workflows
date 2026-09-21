@@ -16,7 +16,8 @@ For each plan:
 1. Read the plan — understand phases, tasks, and acceptance criteria
 2. Read the linked specification — load design context
 3. Take the plan's `format` and `external_id` from the subtree read above
-4. Load the format's reading adapter from `../../workflow-planning-process/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
-5. Extract all tasks across all phases
+4. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{format}`
+5. Load the format's reading adapter from `../../workflow-planning-process/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
+6. Extract all tasks across all phases
 
 → Return to caller.
