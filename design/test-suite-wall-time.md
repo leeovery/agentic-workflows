@@ -110,19 +110,33 @@ asserts that a `knowledge check` run under the suite's environment
 reports no provider, so a future suite that forgets the module fails
 here rather than silently billing the developer.
 
-Expected: every knowledge-indexing verb in the node suites ~5× faster;
-the suite runs offline; no spend.
+Expected: the suite runs offline; no spend. The wall-time gain is small
+— most fixtures name an artifact the test never wrote, so the CLI
+refused before embedding; only the calls whose artifact existed reached
+the provider.
+
+**Landed 2026-09-21 (#1241).** Transactions 81.0s → 73.7s, absorb 14.7s
+→ 14.0s, commit-door 20.8s → 19.0s; the full run flat at 3,340 tests,
+no golden moved. Two suites that steer the system config through a
+fake `$HOME` take the override off the environment they pass down
+(`test-engine-boot.cjs`, `test-knowledge-setup-forms.cjs`), as does
+`test-knowledge-cli.sh`. The one test that reaches the real API left
+the gate as `knowledge-openai-smoke.cjs`, run by hand with a key.
+Found on the way, out of scope: a `knowledge index` under a config
+naming `openai` with no resolvable key silently builds a keyword-only
+store and says nothing.
 
 ### 2. Golden skip and parallel rebuild
 
 `verifySnapshot` reads and writes the recipe hash in
 `tests/prose/.cache/` (gitignored), recording it after a byte-identical
-rebuild; the committed `.recipe-hash` files go. Rebuilds fan out over a
+rebuild; the committed `.recipe-hash` files go, and `run.cjs snap`
+writes to the cache too. The engine's share of the hash is computed
+once per process, not once per case. Rebuilds fan out over a
 `worker_threads` pool sized to the machine — each world is an
 independent temp directory and the recipe code is synchronous, so a
 worker runs it unchanged — and the test file reports one result per
-case as it does now. The keyword-only knowledge store every world
-needs is built once per run and copied in, not set up per world.
+case as it does now.
 
 Expected: 483s → about a minute on an engine change, zero after.
 
@@ -167,6 +181,10 @@ index row.
   and only if the parallel rebuild is still too slow.
 - **`git fast-import` for layered history**: git is the residual
   per-world cost after 2 and 3. Measure before touching.
+- **One keyword-only store per run, copied into each world**: every
+  mainline sets the store up per recipe, ~80ms hermetic; across a
+  parallel rebuild it is seconds. Not worth a recipe-semantics change
+  unless the profile says otherwise.
 - **The knowledge CLI in-process**: `domain/kb.cjs` spawns the bundle;
   hermetic it costs ~100ms a call. Revisit if it shows in the profile.
 - **The migration orchestrator in one bash**: `engine boot` spawns a
@@ -189,3 +207,6 @@ baseline machine; a run with the network down is green.
 ## Status log
 
 - 2026-09-20 — baseline measured; design opened.
+- 2026-09-21 — slice 1 landed as #1241 (draft, stack bottom); the
+  network leak was real but the wall-time share small — slices 2–4
+  carry the time.
