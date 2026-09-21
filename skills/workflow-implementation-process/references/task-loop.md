@@ -26,7 +26,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for the task brief in **A**, the findings summaries and their lenses in **E** and **F**, and the result summary and its lenses in **G**.
+→ Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for the task brief in **A**, the executor block in **C**, the findings summaries and their lenses in **E** and **F**, and the result summary and its lenses in **G**.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -161,33 +161,101 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 ## C. Handle Executor Block
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = `{the executor's STATUS: blocked or failed}`.
+#### If `STATUS` is `blocked`
 
-> *Output the next fenced block as a code block:*
+The executor stops on intent alone — a product question the task, the specification sections it cites, and the code do not answer. The question takes the same three tiers a spec gap takes in planning, one hop further down, and the classification runs before anything renders:
 
-```
-{executor's ISSUES content}
-```
+→ Load **[../../workflow-planning-process/references/resolve-spec-gap.md](../../workflow-planning-process/references/resolve-spec-gap.md)** with lane = `implementation`, gap = `{the product question the executor reported, what it found, and what goes wrong for the product's user if it guesses}`, task = `{internal_id}`.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic}
-```
+Read the `verdict` it returns.
 
-Emit the call's MENU section verbatim per its marker.
+**If `landed`** — the record carries the answer and the specification is in line with it:
 
-**STOP.** Wait for user response.
+Land it on the task in flight — **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)** section **C. Deliver to the Executor**, an addition marked with its origin: the orchestrator's where the record settled it, the user's where they settled it at the gate.
 
-#### If `retry`
+Nothing stops here — the question is answered, and no gate mode changes that.
 
 → Return to **B. Execute Task**.
 
-#### If `skip`
+**If `answered`** — the user settled it and the record could not take the answer this pass:
 
-→ Proceed to **H. Update Progress and Commit** (mark task as skipped).
+Land it on the task in flight — **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)** section **C. Deliver to the Executor**, an addition from the user — and say in one line that it rides the task while the record is out.
 
-#### If `stop`
+→ Return to **B. Execute Task**.
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+**If `stopped`** — the question this task needs is already queued on the discussion that owns it:
+
+Say in one line that implementation resumes once that discussion has decided it — the epic menu and the linear next-phase derivation both route back to the reopened record.
+
+**STOP.** Do not proceed — terminal condition.
+
+**If `unsettled`** — nothing was asked: the specification is live in its own phase or held by another session, and the reference has told the user so:
+
+The executor still needs an answer, and the gate takes the fork's sides. Render the task's header first:
+
+→ Load **[display-task-result.md](display-task-result.md)** with result = `blocked`.
+
+Beneath it, compose and emit the block as the register's executor block (**[report-register.md](report-register.md)** → Executor Block) — **Blocked on**, **What the executor found**, **Options**, **Recommendation** — from the executor's ISSUES and your own reads of the specification and the code.
+
+Write the sides to `.workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json` with the Write tool — the Options in the order composed, each summary that option's bold label, the recommended one an object and the rest plain strings:
+
+```json
+{"options": [{"summary": "{recommended option's label}", "recommended": true}, "{next option's label}"]}
+```
+
+Fetch the gate and emit its MENU section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result blocked --file .workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json
+```
+
+**STOP.** Wait for user response.
+
+**If the user picks a numbered side:**
+
+Land it on the task in flight — **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)** section **C. Deliver to the Executor**, an addition from the user — and say in one line that it rides the task alone: the specification is out, so this pass corrects nothing in it.
+
+→ Return to **B. Execute Task**.
+
+**If the comment names a side or a direction:**
+
+Land what the user named the same way, and say the same line.
+
+→ Return to **B. Execute Task**.
+
+**If the comment is a question back or feedback:**
+
+Answer it. Where the feedback moves the Options, revise them, re-emit the revised Options, and rewrite the payload. Then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.
+
+**STOP.** Wait for user response.
+
+#### If `STATUS` is `failed`
+
+The executor could not finish — tests it could not make pass, or an environment that will not do what the record assumes. The task is not over; it is being fixed. Neither a skip nor a stop is on offer: an environment that cannot be fixed now is left in progress, and the session that comes back resumes the task where it stands. Render the task's header first:
+
+→ Load **[display-task-result.md](display-task-result.md)** with result = `failed`.
+
+Beneath it, compose and emit the block as the register's executor failure (**[report-register.md](report-register.md)** → Executor Failure) — **What failed**, **What the executor tried**, **Why**, and **Next attempt**, or **What is needed** where the environment is the cause — from the executor's ISSUES and your own read of the failure and the code, never the ISSUES verbatim.
+
+Fetch the gate and emit its MENU section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result failed
+```
+
+**STOP.** Wait for user response.
+
+**If `retry`:**
+
+Carry the block's **Next attempt** and anything the user added into the re-invocation — the retry round of **[invoke-executor.md](invoke-executor.md)**, a continuation of the same executor.
+
+→ Return to **B. Execute Task**.
+
+**If the comment is a question or steers the attempt:**
+
+Answer it. Where it moves the **Next attempt** — a cause you read wrong, an environment the user has just fixed — revise it and re-emit that line. Then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.
+
+**STOP.** Wait for user response.
 
 ---
 
@@ -463,7 +531,7 @@ Include the user's feedback when re-invoking.
 
 ## H. Update Progress and Commit
 
-**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via a skip path (stage C `skip`, or the blocked-tasks `skip`), its skip transition instead.
+**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via the blocked-tasks `skip`, its skip transition instead.
 
 **Determine the phase disposition** — use the format's **reading.md** to list remaining tasks in the current phase, then set `{disposition}`:
 

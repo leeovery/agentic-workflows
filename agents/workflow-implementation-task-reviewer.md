@@ -59,7 +59,7 @@ Are all criteria genuinely met — not just self-reported?
 Do tests actually verify the criteria? Are assertions precise? Are edge cases covered?
 - Is there a test for each acceptance criterion?
 - Would the tests fail if the feature broke?
-- Are edge cases from the task's test cases covered?
+- Are the edges the criteria name covered?
 
 **For quick-fix mechanical changes**: Instead of new test coverage, verify the verification workflow:
 - Were tests run before and after the change?

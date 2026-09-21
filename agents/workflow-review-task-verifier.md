@@ -46,7 +46,7 @@ Plan Task (acceptance criteria)
 From the plan task:
 - What should be built?
 - What are the acceptance criteria?
-- What tests should exist (micro acceptance)?
+- What tests should exist, given the criteria?
 
 ### Step 2: Load Spec Context
 

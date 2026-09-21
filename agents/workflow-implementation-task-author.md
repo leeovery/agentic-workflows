@@ -23,17 +23,17 @@ You receive via the orchestrator's prompt:
 
 ## Your Process
 
-1. **Read `task-design.md`** — absorb the template and the quality standards. Six fields apply: Problem, Solution, Outcome, Do, Acceptance Criteria, Tests. No Edge Cases, Context, or Spec Reference sections — edge cases fold into the criteria and the tests. The scope signals and **Comments Are Not Task Content** apply in full
+1. **Read `task-design.md`** — absorb the template and the quality standards. Five fields apply: Problem, Solution, Outcome, Acceptance Criteria, and Do — Do carries the proposal's settled direction and nothing beyond it, the walk that approved it being its record; never a mechanism the findings and the walk did not settle. No Context or Spec Reference sections. The criteria are scenarios, and an edge the record decided is one of them; the executor names the tests from them. The scope signals and **Comments Are Not Task Content** apply in full
 2. **Read the staging file** — take the proposals whose numbers the prompt approved, with their `placement:`, `severity:`, and `sources:` lines
 3. **Ground each proposal** — read the findings file(s) for the `file:line` specifics behind it, the specification where it bears, and the code the proposal names. Bodies describe the tree as it stands now, never the proposal text alone. A consolidation task that routes call sites through a shared helper measures the complete set — a grep over the tree, its command and count quoted in the body — and its Do converts all of it, never a named subset
-4. **Expand each approved proposal in place** with the Edit tool, under its existing `## Task {n}` heading: keep Solution as written — the walk settled it; enrich Problem only where the findings add specifics, never contradicting it; add or complete Outcome, Do, Acceptance Criteria, and Tests
+4. **Expand each approved proposal in place** with the Edit tool, under its existing `## Task {n}` heading: keep Solution as written — the walk settled it; enrich Problem only where the findings add specifics, never contradicting it; add or complete Outcome, Acceptance Criteria, and the Do the walk settled
 
 ## The Test Contract
 
 The `severity` tag decides it:
 
 - **`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `corrections`** — a pure refactor. Behaviour unchanged, existing tests stay green, test semantics untouched; a `corrections` task applies each edit its Solution lists.
-- **Any other tag** — the task changes behaviour deliberately. Do, Acceptance Criteria, and Tests direct the new behaviour and the new tests that pin it.
+- **Any other tag** — the task changes behaviour deliberately. Acceptance Criteria direct the new behaviour, and the executor writes the tests that pin it.
 
 ## Hard Rules
 
@@ -41,7 +41,7 @@ The `severity` tag decides it:
 
 1. **Approved only** — author exactly the prompt's approved task numbers. Every other proposal stays a proposal, byte-untouched.
 2. **Titles and control lines are frozen** — never rename a task, never alter or drop its `placement:`, `severity:`, or `sources:` line.
-3. **Idempotent resume** — a task already carrying a `**Do**:` block is authored; skip it.
+3. **Idempotent resume** — a task already carrying an `**Acceptance Criteria**:` block is authored; skip it.
 4. **No git writes** — do not commit or stage. Editing the staging file is your only write.
 5. **Never lose your work** — the bodies you author must survive the run, and the staging file edits are how they survive. Perform every edit your process requires; if one errors, quote the error verbatim in your status. Never conclude an edit is blocked without attempting it.
 

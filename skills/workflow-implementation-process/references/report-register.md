@@ -4,7 +4,7 @@
 
 ---
 
-The register for the task loop's report moments — the task brief, the findings summary, the result summary, the technical retells, and the show-me diagrams. A report is sectioned facts, not narrative: the user takes the state of the work in at a glance, and depth is pulled, not pushed — the technical retell and **Ask** sit one option away at the gate. The record files stay fully technical and remain authoritative — a report presents them, never replaces them.
+The register for the task loop's report moments — the task brief, the executor block, the executor failure, the findings summary, the result summary, the technical retells, and the show-me diagrams. A report is sectioned facts, not narrative: the user takes the state of the work in at a glance, and depth is pulled, not pushed — the technical retell and **Ask** sit one option away at the gate. The record files stay fully technical and remain authoritative — a report presents them, never replaces them.
 
 The register governs report blocks only — within one, it composes with **[voice.md](../../workflow-shared/references/voice.md)** rather than competing: this file governs the report's shape and sentence form, voice governs the manner. Conversational turns inside the loop — Ask answers, comment exchanges, blocker discussion — follow voice.md alone. Engine-emitted `DISPLAY`/`MENU` sections sit outside it entirely, byte-for-byte. Agent reports and records are never written in it — the register applies when composing for the user, never to what lands on disk. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — the brief's `summary` and `watch` lines — takes the register at authoring time.
 
@@ -26,6 +26,28 @@ The audience is an engineer with full engineering fluency who knows the product 
 ## Task Brief
 
 The brief's `summary` and `watch` payload fields (**[display-task-brief.md](display-task-brief.md)**) follow the rules in product terms — what the task is about to change, what to look at when it lands.
+
+## Executor Block
+
+Markdown, not a code block. Composed from the executor's ISSUES and your own reads of the specification and the code — never the ISSUES verbatim. Bold section labels, in this order:
+
+- **Blocked on** — one sentence: the question as the executor met it.
+- **What the executor found** — bullets: what the record decides, what the code does, where the two run out. Real names and `file:line` on every fact one anchors.
+- **Options** — a numbered list, two to four, the recommended one first. Each opens with a bold label, then what it is technically, what it means for the product, and what it costs — three facts side by side, the product consequence one of them and never the frame.
+- **Recommendation** — one side, its grounds in a sentence.
+
+The engine's gate follows the block, its numbered sides in the same order and each row the option's bold label.
+
+## Executor Failure
+
+Markdown, not a code block. Composed from the executor's report and your own read of the failure and the code — never the ISSUES verbatim. Bold section labels, in this order:
+
+- **What failed** — the failing test or the error, exact.
+- **What the executor tried** — what it did, in the order it did it.
+- **Why** — your read of the cause, from the report and the code, with `file:line` where it anchors.
+- **Next attempt** — what the retry should do differently. One or two facts.
+
+Where the environment is the cause, **What is needed** takes the place of **Next attempt**: the dependency, service or credential, and what fixing it looks like.
 
 ## Findings Summary
 

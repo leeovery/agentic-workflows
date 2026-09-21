@@ -49,7 +49,7 @@ Review as a senior architect would:
 
 ## Quick-Fix Variant
 
-Quick-fix tasks are deliberately authored without acceptance criteria or micro acceptance — never flag their absence. Substitute:
+Quick-fix tasks are deliberately authored without acceptance criteria — never flag their absence. Substitute:
 
 **Implementation** — verify completeness against the task's Verification section:
 - Are all target files updated?

@@ -35,12 +35,12 @@ But write **complete, functional implementations** — don't artificially minimi
 
 ## RED: Write Failing Test
 
-1. Read task's micro acceptance criteria
+1. Read the task's acceptance criteria
 2. Write test asserting that behavior
 3. Run test - **MUST fail**
 4. Verify it fails for the **right reason** (not syntax error, not missing import)
 
-**Derive tests from plan**: Task's micro acceptance becomes your first test. Edge cases become additional tests.
+**Derive tests from the criteria**: each criterion is a scenario — a starting state, an action, an observable outcome — and is one test's specification; a criterion for a decided edge is a test like any other. Name and write them yourself.
 
 **Assert precisely**: For mutation operations (create, update, delete, state transitions), don't just assert the return value — verify observable side effects independently. A test that checks "operation succeeded" but ignores whether timestamps updated, related records changed, or output structure is correct will miss regressions that only affect side effects. Assert structured output by parsing and checking fields/values, not by string matching the serialized form.
 
