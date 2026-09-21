@@ -8,7 +8,7 @@ The caller provides `format`.
 
 ## A. Read the Declaration
 
-Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool, the version it requires as a pattern in which `*` matches anything (`0.3.*` accepts every 0.3 release), the command that prints the installed version with the shape of its output, and where the update instructions live.
+Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool, the version it requires as a pattern, the command that prints the installed version with the shape of its output, and where the update instructions live.
 
 #### If the section declares nothing to check
 
