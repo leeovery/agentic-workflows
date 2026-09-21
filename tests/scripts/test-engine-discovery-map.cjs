@@ -1,5 +1,7 @@
 'use strict';
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -27,10 +29,6 @@ function runFail(dir, args) {
 }
 
 describe('engine CLI: discovery-map sequence', () => {
-  // Hermetic git: no user/system config leaks into the engine's spawned git.
-  process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-  process.env.GIT_CONFIG_SYSTEM = '/dev/null';
-
   /** @param {string} dir @param {string[]} args */
   function git(dir, args) {
     return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });

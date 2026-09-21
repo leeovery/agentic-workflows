@@ -9,6 +9,8 @@
 // units, seeds), and the malformed-manifest and missing-.workflows guards.
 //
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

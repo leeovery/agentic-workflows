@@ -7,6 +7,8 @@
 // the clamps, the fallback, the memo, and the device reader's behaviour on
 // devices that do and do not exist.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

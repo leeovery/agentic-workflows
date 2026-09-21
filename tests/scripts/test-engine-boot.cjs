@@ -1,5 +1,7 @@
 'use strict';
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -10,11 +12,6 @@ const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs'
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const REAL_ENGINE = path.join(REAL_SCRIPTS, 'engine.cjs');
-
-// Hermetic git: no user/system config leaks into fixtures or the engine's
-// spawned git subprocesses.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {
@@ -747,8 +744,12 @@ describe('engine boot system-config detection', () => {
     writeFile(home, '.config/workflows/config.json', content);
   }
 
+  // The suite's hermetic config directory answers ahead of $HOME, so it comes
+  // off every child environment here — this describe is about the ~ path.
+  const underHome = (extra = {}) => ({ HOME: home, WORKFLOWS_CONFIG_DIR: undefined, ...extra });
+
   it('not-ready with no system config reports absent', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
@@ -763,10 +764,7 @@ describe('engine boot system-config detection', () => {
       credentials: { openai: { api_key: 'sk-STORED-SECRET' } },
     }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
-      HOME: home,
-      OPENAI_API_KEY: 'sk-ENV-SECRET',
-    });
+    const res = runEngine(fix.engine, fix.project, ['boot'], underHome({ OPENAI_API_KEY: 'sk-ENV-SECRET' }));
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.deepStrictEqual(res.system_config, {
@@ -780,31 +778,31 @@ describe('engine boot system-config detection', () => {
   it('not-ready with a valid providerless config reports valid with nulls (keyword-only)', () => {
     writeSystemConfig(JSON.stringify({ knowledge: {} }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
 
     assert.deepStrictEqual(res.system_config, { status: 'valid', provider: null, model: null });
   });
 
   it('not-ready with an unparseable or wrongly-shaped config reports invalid', () => {
     writeSystemConfig('not json at all');
-    const res1 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    const res1 = runEngine(fix.engine, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res1.system_config, { status: 'invalid', provider: null, model: null });
 
     writeSystemConfig(JSON.stringify({ knowledge: 'not-an-object' }));
-    const res2 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    const res2 = runEngine(fix.engine, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res2.system_config, { status: 'invalid', provider: null, model: null });
   });
 
   it('not-ready with a knowledge-less shared config file reports absent', () => {
     writeSystemConfig(JSON.stringify({ session: { tmux_labels: true } }));
-    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
   });
 
   it('ready responses carry no system_config field', () => {
     writeSystemConfig(JSON.stringify({ knowledge: { provider: 'openai', model: 'm' } }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home, STUB_CHECK: 'ready' });
+    const res = runEngine(fix.engine, fix.project, ['boot'], underHome({ STUB_CHECK: 'ready' }));
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.ok(!('system_config' in res));

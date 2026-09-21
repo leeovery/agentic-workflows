@@ -21,6 +21,8 @@
 // system grows: a scenario is just an ordered list of sim.run() calls.
 // ---------------------------------------------------------------------------
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -63,11 +65,6 @@ const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scrip
 function specDetail(dir, workUnit) {
   return specificationDetail(workUnit, SPEC_GATEWAY.discover(dir, workUnit));
 }
-
-// Hermetic git: no user/system config leaks into the sandbox or the engine's
-// spawned git subprocesses.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 function git(dir, args) {
   return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });

@@ -8,6 +8,8 @@
 // code path, CJS interop breakage, Float32Array→plain array conversion
 // not surviving MsgPack round-trip).
 
+require('./hermetic-env.cjs');
+
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

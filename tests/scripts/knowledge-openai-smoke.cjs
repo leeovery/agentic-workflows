@@ -1,11 +1,14 @@
 'use strict';
 
+// Manual smoke test — the OpenAI provider against the real API. Outside the
+// automated suite (which never reaches a provider) by name and by list; run
+// by hand with a key in the environment:
+//   OPENAI_API_KEY=… node --test tests/scripts/knowledge-openai-smoke.cjs
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { OpenAIProvider, DEFAULT_DIMENSIONS } = require('../../src/knowledge/providers/openai');
-
-// This test hits the real OpenAI API. Skipped unless OPENAI_API_KEY is set.
 
 describe('OpenAIProvider integration (real API)', { skip: !process.env.OPENAI_API_KEY }, () => {
   const provider = process.env.OPENAI_API_KEY

@@ -5,6 +5,8 @@
 // --key-only flow against injected prompt deps. CLI-level behaviour of the
 // full forms is covered end-to-end in test-knowledge-cli.sh.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -13,6 +15,27 @@ const path = require('path');
 
 const forms = require('../../src/knowledge/setup-forms.js');
 const config = require('../../src/knowledge/config.js');
+
+/**
+ * A throwaway home the system config resolves through. These forms read
+ * `~/.config/workflows`, so the suite's hermetic override — which answers
+ * ahead of `$HOME` — comes off for the duration.
+ */
+function fakeConfigHome() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-home-'));
+  const savedHome = process.env.HOME;
+  const savedOverride = process.env.WORKFLOWS_CONFIG_DIR;
+  process.env.HOME = home;
+  delete process.env.WORKFLOWS_CONFIG_DIR;
+  return {
+    home,
+    restore() {
+      process.env.HOME = savedHome;
+      process.env.WORKFLOWS_CONFIG_DIR = savedOverride;
+      fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    },
+  };
+}
 
 describe('parseSetupForm', () => {
   it('no form flags selects the wizard', () => {
@@ -93,17 +116,15 @@ describe('summaryLines', () => {
 
 describe('runKeyOnly', () => {
   let home;
-  let savedHome;
+  let configHome;
 
   beforeEach(() => {
-    home = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-keyonly-'));
-    savedHome = process.env.HOME;
-    process.env.HOME = home;
+    configHome = fakeConfigHome();
+    home = configHome.home;
   });
 
   afterEach(() => {
-    process.env.HOME = savedHome;
-    fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    configHome.restore();
   });
 
   const deps = (answers) => ({
@@ -152,27 +173,21 @@ describe('runKeyOnly', () => {
 describe('runFromSystem refusals', () => {
   let home;
   let project;
-  let savedHome;
+  let configHome;
   let savedCwd;
-  let savedEnvKey;
 
   beforeEach(() => {
-    home = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-fromsys-home-'));
+    configHome = fakeConfigHome();
+    home = configHome.home;
     project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-fromsys-proj-'));
     fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
-    savedHome = process.env.HOME;
     savedCwd = process.cwd();
-    savedEnvKey = process.env.OPENAI_API_KEY;
-    process.env.HOME = home;
-    delete process.env.OPENAI_API_KEY;
     process.chdir(project);
   });
 
   afterEach(() => {
     process.chdir(savedCwd);
-    process.env.HOME = savedHome;
-    if (savedEnvKey !== undefined) process.env.OPENAI_API_KEY = savedEnvKey;
-    fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    configHome.restore();
     fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 

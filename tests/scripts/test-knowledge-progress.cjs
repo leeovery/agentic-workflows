@@ -7,6 +7,8 @@
 // not wall-clock time. getProgressClock() (the manifest IO wrapper) is thin
 // glue exercised end-to-end by the CLI tests, not here.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 

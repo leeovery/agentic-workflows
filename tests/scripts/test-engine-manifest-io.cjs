@@ -11,6 +11,8 @@
 // lock file ever leaks into a transaction's commit.
 // ---------------------------------------------------------------------------
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -20,11 +22,6 @@ const { execFileSync, spawnSync, spawn } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
-
-// Hermetic git: no user/system config leaks into fixtures or the engine's
-// spawned git subprocesses.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {

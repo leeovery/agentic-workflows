@@ -5,6 +5,8 @@
 // resolves, every stub is named and triggered, every recipe loads. The
 // token-costing walks run on command via /prose-test — never here.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

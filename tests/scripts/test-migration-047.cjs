@@ -8,6 +8,8 @@
 // the defensive parse-doubt guard.
 //
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

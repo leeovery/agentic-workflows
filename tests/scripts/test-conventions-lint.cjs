@@ -10,6 +10,8 @@
 // (must find zero violations) and a negative test (must catch deliberately
 // broken temp fixtures). No repo files are mutated.
 
+require('./hermetic-env.cjs');
+
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');

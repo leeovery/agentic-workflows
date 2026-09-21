@@ -244,7 +244,9 @@ Every migration has a matching test suite.
 
 Add or update a test alongside any change to engine scripts, adapters, migrations, or `src/knowledge/`.
 
-**Display-width pinning**: the engine detects the terminal width at render time (`kernel/terminal.cjs`), and `CLAUDE_PID` reaches every test env — so `npm test` and `npm run test:cli` pin `WORKFLOWS_DISPLAY_WIDTH=65`, and the prose harness pins it in `recipeEnv()`. **Running a suite directly with `node --test` skips the npm pin** — prefix `WORKFLOWS_DISPLAY_WIDTH=65` by hand, or goldens regenerated from that run will encode whatever pane happened to be open.
+**Hermetic environment**: `tests/scripts/hermetic-env.cjs` pins the suite's world at require time — an empty `WORKFLOWS_CONFIG_DIR`, no `OPENAI_API_KEY`, git's global and system config at `/dev/null`, `WORKFLOWS_DISPLAY_WIDTH=65` — and every process a test spawns inherits it. **Every `tests/scripts/test-*.cjs` requires it first**; `recipeEnv()` in the prose harness composes its exported entries; the shell tiers export the same variables in their npm scripts. The invariant it holds: a test never reads the developer's config or credentials and never reaches an embedding provider — every knowledge store a test builds is keyword-only. `tests/scripts/test-hermetic-env.cjs` guards the pins, lints the adoption, and indexes a document to assert the store records no provider. A suite that fakes `$HOME` to reach a system config takes the override back off the environment it passes down (`test-engine-boot.cjs`, `test-knowledge-setup-forms.cjs`, `test-knowledge-cli.sh`).
+
+**Display-width pinning**: the engine detects the terminal width at render time (`kernel/terminal.cjs`), and `CLAUDE_PID` reaches every test env — so the hermetic module pins `WORKFLOWS_DISPLAY_WIDTH=65` for every entry into the node suites, `npm test` and a direct `node --test <file>` alike, and `npm run test:cli` exports it for the shell suites. A golden regenerated from any of them encodes 65, never whatever pane happened to be open.
 
 ## Pipeline Simulation
 
@@ -272,7 +274,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Stub mode**: When no embedding provider is configured, CLI runs in keyword-only mode (BM25). Treat as supported degraded mode, not broken state. `query` output prepends `[keyword-only mode — ...]` note.
 
-**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. Add a test alongside any `src/knowledge/` change.
+**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. The one test that reaches the real API, `tests/scripts/knowledge-openai-smoke.cjs`, sits outside the gate by name and by list and runs by hand with a key in the environment. Add a test alongside any `src/knowledge/` change.
 
 **Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system config — setup writes provider identity only; the tuning keys `similarity_threshold`, `decay_prune_below`, `decay_base_stability`, `decay_weights` are never written, only honoured as overrides in either config file, project over system, `null` unsetting a key; defaults live in `src/knowledge/config.js` `DEFAULTS`), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
 

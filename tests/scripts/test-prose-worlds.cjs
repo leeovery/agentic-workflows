@@ -6,6 +6,8 @@
 // walk, and a selection filter that lets bookkeeping through selects the whole
 // corpus, which is the same as selecting none.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -21,7 +23,6 @@ function statusLines(dir) {
   return execFileSync('git', ['status', '--porcelain'], {
     cwd: dir,
     encoding: 'utf8',
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
   }).split('\n').filter(Boolean);
 }
 
@@ -44,9 +45,7 @@ describe('buildWorld: sidecar materialisation', () => {
 
       // The modified path's committed side is the sidecar's, and the working
       // tree holds the snapshot's — that difference is the whole point.
-      const committed = execFileSync('git', ['show', `HEAD:${modified}`], {
-        cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
-      });
+      const committed = execFileSync('git', ['show', `HEAD:${modified}`], { cwd: dir, encoding: 'utf8' });
       assert.notStrictEqual(committed, fs.readFileSync(path.join(dir, modified), 'utf8'),
         'the working tree carries the snapshot, the index carries the sidecar');
 
@@ -300,8 +299,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(NATIVE_CASE);
     try {
-      const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
-      const log = (...args) => execFileSync('git', ['log', '--reverse', '--format=%s', ...args], { cwd: dir, encoding: 'utf8', env }).trim().split('\n');
+      const log = (...args) => execFileSync('git', ['log', '--reverse', '--format=%s', ...args], { cwd: dir, encoding: 'utf8' }).trim().split('\n');
       const all = log('HEAD');
       const arrival = log('HEAD', '--', '.workflows');
       assert.ok(all.length > 1, `the world layers history: ${all.join(' | ')}`);
