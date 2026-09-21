@@ -3,6 +3,8 @@
 // Unit tests for progress-driven soft down-rank (idea #33, PR3).
 // Imports the built bundle to validate the shipped surface.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 

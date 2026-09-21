@@ -12,6 +12,8 @@
 // normal run costs nothing, and any engine change invalidates every hash
 // and rebuilds the lot.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 

@@ -5,6 +5,8 @@
 // engine CLI: JIT birth, self-commits scoped to the project manifest, the
 // joined-item guards, horizon restructuring, and the derived state read.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -15,10 +17,6 @@ const { execFileSync, spawnSync } = require('child_process');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-
-// Hermetic git: no user/system config leaks into the engine's spawned git.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {

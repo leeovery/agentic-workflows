@@ -24,6 +24,8 @@
 // heartbeat, an uncommitted file — a recipe declares in a sidecar that
 // materialise turns into the real thing (see WORLD_HISTORY and friends).
 
+const hermeticEnv = require('../../scripts/hermetic-env.cjs');
+
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -116,16 +118,11 @@ function recipeEnv() {
   }
   const env = {
     ...process.env,
+    ...hermeticEnv,
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require ${CLOCK}`].filter(Boolean).join(' '),
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_CONFIG_SYSTEM: '/dev/null',
     GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
     GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
     TZ: 'UTC',
-    // Width is detected from the reader's terminal, and CLAUDE_PID reaches
-    // this env — without a pin, a recipe would render against whatever pane
-    // happened to be open, and resizing would move the snapshots.
-    WORKFLOWS_DISPLAY_WIDTH: '65',
     // Boot installs the session hooks into `.claude/settings.json` — a
     // file a snapshot holds as world state. The engine's test-only switch
     // keeps a recipe's boot out of it.
@@ -315,10 +312,7 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
     const b = path.join(dir, 'actual');
     fs.writeFileSync(a, expectedBuf);
     fs.writeFileSync(b, actualBuf);
-    const res = spawnSync('git', ['diff', '--no-index', '--unified=3', '--no-color', a, b], {
-      encoding: 'utf8',
-      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
-    });
+    const res = spawnSync('git', ['diff', '--no-index', '--unified=3', '--no-color', a, b], { encoding: 'utf8' });
     return `--- ${label}\n${(res.stdout || '').split('\n').slice(4).join('\n').trimEnd()}`;
   } finally {
     removeTree(dir);
@@ -526,8 +520,7 @@ function buildWorld(caseId) {
     throw new Error(`case "${caseId}" has no committed fixture — run: node tests/prose/run.cjs snap ${caseId}`);
   }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), WORLD_PREFIX));
-  const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
-  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env });
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
 
   const sidecar = (name) => (snap.has(name) ? JSON.parse(snap.get(name).toString('utf8')) : []);
   const history = sidecar(WORLD_HISTORY);
@@ -616,7 +609,7 @@ function buildWorld(caseId) {
   }
 
   const knowledge = path.join(dir, '.claude/skills/workflow-knowledge/scripts/knowledge.cjs');
-  const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8', env });
+  const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8' });
   if (setup.status !== 0) {
     removeTree(dir);
     throw new Error(`knowledge setup failed in world:\nstdout: ${setup.stdout}\nstderr: ${setup.stderr}`);

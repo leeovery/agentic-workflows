@@ -6,6 +6,8 @@
 // judged), and the engine-rendered deferral section.
 //
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

@@ -1,5 +1,7 @@
 'use strict';
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -9,11 +11,6 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
-
-// Hermetic git: no user/system config leaks into fixtures or the engine's
-// spawned git subprocesses.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {

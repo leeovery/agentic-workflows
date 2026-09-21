@@ -15,6 +15,8 @@
 // on this exact fixture (absolute phase paths relativised) and is unchanged by
 // the refactor.
 
+require('./hermetic-env.cjs');
+
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

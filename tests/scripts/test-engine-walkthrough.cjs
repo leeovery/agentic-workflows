@@ -1,5 +1,7 @@
 'use strict';
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -9,9 +11,6 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 const { walkthroughState } = require('../../skills/workflow-engine/scripts/domain/walkthrough.cjs');
-
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 function git(dir, args) {
   return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });

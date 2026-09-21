@@ -3,6 +3,8 @@
 // The workflow-roadmap adapter: the home snapshot, the pull working set, and
 // the harvest proposal overlay — sections, flags, and refusals.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');

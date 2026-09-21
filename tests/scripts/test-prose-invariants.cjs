@@ -8,6 +8,8 @@
 // produces the right world, and only the order of what it did gives it
 // away.
 
+require('./hermetic-env.cjs');
+
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 

@@ -7,6 +7,8 @@
 // was simply short. These tests pin the resolution paths so that class of
 // silence cannot return.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { execFileSync } = require('node:child_process');

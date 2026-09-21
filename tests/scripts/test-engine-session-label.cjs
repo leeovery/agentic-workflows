@@ -16,6 +16,8 @@
 // ever sees the stub.
 //
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -27,11 +29,6 @@ const { syncSessionHooks } = require('../../skills/workflow-engine/scripts/domai
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-
-// Hermetic git: no user/system config leaks into the fixture or the
-// engine's spawned git subprocesses (the opt-in commits).
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };

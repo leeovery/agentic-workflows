@@ -27,9 +27,12 @@ assert_eq() {
 # Isolate tests from the developer's real system config (~/.config/workflows/).
 # Without this, a real OpenAI config leaks into keyword-only tests and breaks
 # Test 11 onward. The knowledge CLI resolves the system path via os.homedir(),
-# which honours $HOME — that's the only var that matters.
+# which honours $HOME — and, ahead of it, $WORKFLOWS_CONFIG_DIR, which the
+# test:cli tier exports: the system-config tests below write under this fake
+# home and must be read from there, so the override comes off.
 FAKE_HOME=$(mktemp -d)
 export HOME="$FAKE_HOME"
+unset WORKFLOWS_CONFIG_DIR
 trap 'rm -rf "$FAKE_HOME"' EXIT
 
 # Also unset a real OPENAI_API_KEY so key-resolution tests see "no key" rather

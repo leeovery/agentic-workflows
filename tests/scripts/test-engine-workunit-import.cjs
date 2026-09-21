@@ -5,6 +5,8 @@
 // origin of the session that took it, indexed when it is markdown, committed
 // confined to the imports directory and the manifest.
 
+require('./hermetic-env.cjs');
+
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -13,11 +15,6 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-
-// Hermetic git: no user/system config leaks into fixtures or the engine's
-// spawned git subprocesses.
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-process.env.GIT_CONFIG_SYSTEM = '/dev/null';
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {

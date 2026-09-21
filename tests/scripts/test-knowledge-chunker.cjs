@@ -1,5 +1,7 @@
 'use strict';
 
+require('./hermetic-env.cjs');
+
 const fs = require('fs');
 const path = require('path');
 const { describe, it } = require('node:test');
