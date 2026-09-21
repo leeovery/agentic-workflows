@@ -140,16 +140,29 @@ case as it does now.
 
 Expected: 483s → about a minute on an engine change, zero after.
 
+**Landed 2026-09-21 (#1243).** Cold (cache removed) 93s at 600% CPU on
+a pool of nine; warm 0.26s with all 171 worlds skipping; the full
+`npm test` 9m09s → 3m48s warm, 3,351 tests, no golden moved. 171
+committed hash files gone. The cold gate oversubscribes the machine
+inside a full run (nine threads beside the other files' processes);
+slice 3 cuts the per-world cost rather than the parallelism.
+
 ### 3. The engine in-process
 
-`engine.cjs` exports its `runCli` for callers in the same process:
-argv plus a cwd and an env, answering `{stdout, stderr, code}`. The
+`engine.cjs` exports an in-process entry for callers in the same
+process: argv plus a cwd, an env, and a stdin, answering `{stdout,
+stderr, code}`. The cwd is threaded through the command handlers as a
+parameter rather than set on the process — `process.chdir` is refused
+inside a worker thread, and the world builder now runs in one. The
 four `process.exit` sites become a thrown exit the entry catches; the
-cwd is set around the call; the one module-level memo (the terminal
-width) and any per-process identity reads are reset per call. The
-simulation's harness and the prose world builder's `makeHarness` switch
-to it. Git and the knowledge CLI still spawn — the engine's own
-subprocesses are not this slice's concern.
+response writers and the hook's stdin read go through the call's own
+streams; the env keys a call carries (the presence identity) are set
+for its duration and restored; the one module-level memo (the terminal
+width) is reset per call. The simulation's harness and the prose world
+builder's `makeHarness` switch to it. Git and the knowledge CLI still
+spawn — the engine's own subprocesses are not this slice's concern.
+The proof the in-process path equals the spawned one is the corpus
+itself: every world must rebuild byte-identical through it.
 
 Expected: simulation 138s → under 20s; world rebuilds roughly halved
 again.
@@ -210,3 +223,5 @@ baseline machine; a run with the network down is green.
 - 2026-09-21 — slice 1 landed as #1241 (draft, stack bottom); the
   network leak was real but the wall-time share small — slices 2–4
   carry the time.
+- 2026-09-21 — slice 2 landed as #1243 (stack #1244); the full run is
+  under four minutes warm and the simulation is now the critical path.
