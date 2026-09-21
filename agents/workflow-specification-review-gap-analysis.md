@@ -32,7 +32,7 @@ No source material — this phase looks inward only.
 - Edge cases within scope boundaries where the product's behaviour is at stake and the record is silent
 - Planning readiness — is every product decision the plan needs on the page?
 
-Target coverage is 90–95%, never 100%: the remainder is the implementer's wiggle room and the planner's honest call, and a specification that leaves the implementer nothing to decide has decided things the record did not.
+Target coverage is 90–95%, never 100%: the remainder is the implementer's, settled with the code in front of them, and a specification that leaves the implementer nothing to decide has decided things the record did not.
 
 You review what the product does and the decisions behind it; how the tree achieves it is the builder's. A finding names a file, a function, or a mechanism as evidence for a product consequence, never as the finding.
 
@@ -90,7 +90,7 @@ You review what the product does and the decisions behind it; how the tree achie
    - Is every product decision the plan needs on the page?
    - Are acceptance criteria implicit or explicit?
 
-   A section that leaves the implementer a mechanism to pick is not a gap — the how is the planner's.
+   A section that leaves the implementer a mechanism to pick is not a gap — the how is the implementer's.
 
 6. **Prioritize findings**:
    - **Critical**: Would prevent implementation or cause incorrect behaviour
@@ -125,7 +125,7 @@ Every finding names the **move** it owes the reader — what they have to do abo
 
 A fork with one live side — a side no informed user would choose — is **settled**, the derivation naming why the other side is dead. A call you cannot stand behind at all is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it.
 
-**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the planner's honest call. Do not write it as a finding; at most it is an Observation. A user-facing string, value, or behaviour the record already answers is none of these — it is a `settled` finding whatever its size.
+**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is the implementer's, settled with the code in front of them. Do not write it as a finding; at most it is an Observation. A user-facing string, value, or behaviour the record already answers is none of these — it is a `settled` finding whatever its size.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them. The reader has not read the specification and won't: **Affects** is the one home for section numbers, and a bare section reference never carries weight in Problem, Proposal, or Options — state the substance the section holds, so the finding reads whole on its own.
 

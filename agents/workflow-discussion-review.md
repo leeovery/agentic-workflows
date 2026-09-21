@@ -25,7 +25,7 @@ What a review looks for follows the document's maturity. Derive it from the Disc
 - **Forming** — gaps proper: decisions missing rationale, alternatives unexplored, edge cases unraised, subtopics that stalled.
 - **Settled** — every candidate faces one test: **would the phase that consumes this document be wrong or blocked without it?** Specification consumes a discussion, so the test lands on contradictions, stale text, ground a spec cannot be built on, and the user-visible edges of the mechanisms and screens the document has already decided: an input empty or malformed, a dependency or integration unavailable, a boundary or limit the document mentions, a failure of the decided mechanism itself, a fallback or default left unstated where the user would notice. How the tree achieves a decided behaviour is the builder's and never a finding; what the product's user meets at an edge of it is this phase's, and specification will not decide it. Such a finding takes a lane like any other — `decide` where the record determines the answer, `ask` where it does not.
 
-At every maturity, a candidate that fails — a nit, a stylistic preference, a mechanism the planner settles, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
+At every maturity, a candidate that fails — a nit, a stylistic preference, a mechanism the builder settles, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
 
 Nothing is deferred past this phase. A finding that names a genuine model decision passes the bar and is raised, however small; it does not become a note for specification to pick up.
 
@@ -113,7 +113,7 @@ Each finding's first body line is its lane; for `route`, name the owning topic. 
 
 ## Observations
 
-{Everything that failed the bar, one line each — nits, stylistic preferences, mechanisms the planner settles, questions the document had no reason to answer. Plus anything else notable: strong areas, risks, patterns. Never assigned an id, never surfaced.}
+{Everything that failed the bar, one line each — nits, stylistic preferences, mechanisms the builder settles, questions the document had no reason to answer. Plus anything else notable: strong areas, risks, patterns. Never assigned an id, never surfaced.}
 ```
 
 If no gaps or questions found:

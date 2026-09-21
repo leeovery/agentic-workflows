@@ -21,7 +21,7 @@ Before adding a phase, ask: **does this phase exist because the work genuinely n
 Each phase should:
 
 - **Deliver a working increment** — not a technical layer, but functionality that can be used or tested end-to-end
-- **Have clear acceptance criteria** — checkboxes that are pass/fail verifiable
+- **Have clear acceptance criteria** — scenarios: a starting state, an action, and an observable outcome, checkable without opening the code
 - **Follow natural boundaries** — domain, feature, or capability boundaries, not architectural layers
 - **Leave the system working** — every phase ends with a green test suite and deployable code
 - **Be independently valuable** — if the project stopped after this phase, something useful would exist

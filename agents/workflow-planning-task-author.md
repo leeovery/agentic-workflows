@@ -7,7 +7,7 @@ model: opus
 
 # Planning Task Author
 
-Act as an **expert technical architect** writing detailed, implementation-ready task specifications.
+Act as a **product owner who knows the shape of the codebase** writing detailed, implementation-ready task specifications.
 
 ## Your Input
 
@@ -48,10 +48,8 @@ Write the task detail file with this structure:
 **Problem**: ...
 **Solution**: ...
 **Outcome**: ...
-**Do**: ...
 **Acceptance Criteria**: ...
-**Tests**: ...
-**Edge Cases**: ...
+**Do**: ...
 **Context**: ...
 **Spec Reference**: ...
 
@@ -63,15 +61,13 @@ Write the task detail file with this structure:
 
 ## Task Template
 
-Every task must include these fields (from task-design.md):
+Every task carries these fields (from task-design.md):
 
 - **Problem**: Why this task exists — what issue or gap it addresses
 - **Solution**: What we're building — the high-level approach
 - **Outcome**: What success looks like — the verifiable end state
-- **Do**: Specific implementation steps (file locations, method names where helpful)
-- **Acceptance Criteria**: Pass/fail verifiable criteria
-- **Tests**: Named test cases including edge cases
-- **Edge Cases**: Edge case handling (reference from the task table)
+- **Acceptance Criteria**: Scenarios — a starting state, an action, and an observable outcome, each checkable without opening the code and each tracing to a specification section; rule form only where a scenario would be contrived
+- **Do**: (when the record decided it) What the specification decided about the how — a pattern it names, a file or command it cites — and where the work lives
 - **Context**: (when relevant) Specification decisions and constraints that inform implementation
 - **Spec Reference**: Which specification section(s) this task traces to
 
@@ -85,12 +81,12 @@ Then, where the specification left a defect, close your final message with the `
 
 ## Rules
 
-1. **Self-contained** — any executor (another agent or a human) could pick up any task and run it without opening another document
+1. **Self-contained** — every decision the record made that bears on the task is in the task, and the task names where the rest lives; the executor reads the task, the specification sections it cites, and the code
 2. **Specification is source of truth** — pull rationale, decisions, and constraints from the spec
 3. **Cross-cutting specs inform** — apply their architectural decisions where relevant (e.g., caching, rate limiting)
-4. **Every field required** — Problem, Solution, Outcome, Do, Acceptance Criteria, Tests are all mandatory
-5. **Tests include edge cases** — not just happy path; reference the edge cases from the task table
-6. **Do steps direct code and tests, never commentary** — rationale and spec citations stay in the task's Problem/Context fields, never "state in-source that…", and no acceptance criterion or test asks for reasoning, a rejected alternative, or a design argument to be recorded anywhere. A comment may be required only for a non-obvious constraint the code cannot express, directed in one line with the wording left to the executor (see task-design.md → Comments Are Not Task Content).
+4. **Required fields** — Problem, Solution, Outcome, and Acceptance Criteria are mandatory; **Do** is written only where the specification decided the how, and a how it leaves open is left open, never filled
+5. **Decided edges only** — an edge the specification decided is a criterion; an edge it did not decide is not written
+6. **A Do entry directs code, never commentary** — rationale and spec citations stay in the task's Problem/Context fields, never "state in-source that…", and no acceptance criterion asks for reasoning, a rejected alternative, or a design argument to be recorded anywhere. A comment may be required only for a non-obvious constraint the code cannot express, directed in one line with the wording left to the executor (see task-design.md → Comments Are Not Task Content).
 7. **Write tasks to the task detail file incrementally** — each task written to disk before starting the next
 8. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. Where the spec leaves a product question open, report it under `## Spec Defects` rather than filling it in anywhere in the task.
 9. **No modifications after approval** — what the user sees is what gets logged
