@@ -1,7 +1,8 @@
-The walk runs two review cycles under auto and stops itself at the end
-of the second: every finding of the first cycle resolved, a fresh pair
-in its place, nothing recurring — the churning trend, which ends auto's
-licence to keep looping and hands the call back to the user.
+The walk runs two review cycles under auto and ends the review itself
+at the end of the second: every finding of the first cycle resolved, a
+fresh pair in its place, nothing recurring — the churning trend, which
+under auto concludes the review with the diagnostic shown and one line
+said, and never a gate.
 
 Expected path:
 
@@ -63,12 +64,12 @@ Expected path:
     the engine — the trend, the latest cycle, the resolved and new
     lists, one count per tracking stream, and the baseline against the
     live word count — and emitted
-14. because the trend classified as churning, the re-loop gate is
-    fetched from the engine in its reloop variant and the turn stops.
-    **Auto does not carry past this point**: no third cycle starts on
-    the session's own authority
-15. the user proceeds rather than ordering another cycle. Completion
-    verifies every tracking entry complete and the source
+14. because the trend classified as churning, one line says the
+    findings are churning and the review is concluding, and the loop
+    proceeds straight to completion. **Nothing is asked**: no re-loop
+    gate is fetched, and no third cycle starts — under auto the verdict
+    is the exit, not a question put back to the user
+15. completion verifies every tracking entry complete and the source
     incorporated, fetches the sign-off gate, and on the user's yes the
     topic completes through the engine and the conclusion commits
 16. the walk stops at the pipeline continuation without invoking the
@@ -80,9 +81,11 @@ Also true:
   tracking file is ever written, and no third round of agents is
   dispatched. A walk that looped again has read the cap as the only
   exit and missed the churn one
-- the diagnostic renders **before** the gate. A gate fetched without
-  one means the loop asked the user without reading the trend, which
-  is the unreachable-and-invisible exit this cycle replaced
+- the diagnostic renders, and completion runs straight off it. A walk
+  with no diagnostic reached its exit without reading the trend, which
+  is the unreachable-and-invisible exit this cycle replaced; a re-loop
+  gate fetched anywhere is auto asking a question it has no business
+  asking
 - all four findings end Approved: none is skipped, declined, or
   routed, and none is landed in the discussion — every one of them is
   the record's own call, so the specification is the only document
@@ -93,10 +96,10 @@ Also true:
   `render finding` call is recorded at all — a settled finding at the
   specification is gated by its batch screen and nothing else, and
   this user asked for nothing to be expanded
-- the user is stopped exactly four times in the whole walk — the
-  resume choice, cycle 1's batch screen, the re-loop prompt, and
-  sign-off. Neither cycle-2 finding stops, and nothing stops between
-  the auto opt-in and the re-loop prompt
+- the user is stopped exactly three times in the whole walk — the
+  resume choice, cycle 1's batch screen, and sign-off. Neither cycle-2
+  finding stops, and nothing stops between the auto opt-in and
+  sign-off
 - the diagnostic payload carries the word-count pair. A payload
   without it means the baseline recorded at cycle 1 was never read
   back, and the growth signal — the one reading that says whether the

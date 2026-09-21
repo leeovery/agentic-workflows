@@ -15,10 +15,12 @@ The prose should have taken this path:
 5. the graph step reads the plan's state through the engine and
    delegates to the grapher — stubbed, reapplying the existing edges
    unchanged — and the approval commits through the scoped plan commit
-6. review cycle 1 initialises through the engine; the traceability
-   review is dispatched first — stubbed clean, no tracking file — and
-   its no-findings result is announced; only then is the integrity
-   review dispatched, same clean return, never in parallel
+6. review cycle 1 initialises: `review_cycle` is set to 1 and the
+   plan's word baseline recorded with it in one write, and the manifest
+   committed. The traceability review is dispatched first — stubbed
+   clean, no tracking file — and its no-findings result is announced;
+   only then is the integrity review dispatched, same clean return,
+   never in parallel
 7. with no findings surfaced this cycle the review completes: the
    tracking subtree is verified trivially, the completion commits, and
    no re-loop prompt is put to the user

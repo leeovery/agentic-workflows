@@ -1,5 +1,5 @@
 {
-  "origin": "Against an Opus 5 gap pass no spec review has converged: the exit condition was all three passes returning clean, which a generator that finds a fresh batch every cycle never reaches, so `auto` ran to the cycle-5 cap with one line of output per cycle and the convergence diagnostic — which already computed the churning trend and the growth figure — rendered only at the cap, after the churn had run its course. The churn exit moves that reading to where it can still change something: from cycle 2 onward a churning verdict ends auto's licence, the diagnostic renders, and the re-loop gate asks. This walks it with the shape the diagnosis measured — every cycle's findings resolve and a fresh pair replaces them, nothing recurring — and pins that no third cycle starts on the session's own authority. The cycle-2 dispatch carrying the cycle-1 tracking file as settled directions is a claim only the walker's account can evidence: the recorder keeps a Task dispatch's name and nothing of its prompt.",
+  "origin": "Against an Opus 5 gap pass no spec review has converged: the exit condition was all three passes returning clean, which a generator that finds a fresh batch every cycle never reaches, so `auto` ran to the cycle-5 cap with one line of output per cycle and the convergence diagnostic — which already computed the churning trend and the growth figure — rendered only at the cap, after the churn had run its course. The churn exit moves that reading to where it can still change something: from cycle 2 onward a churning verdict ends the review, the diagnostic renders, and one line says so. This walks it with the shape the diagnosis measured — every cycle's findings resolve and a fresh pair replaces them, nothing recurring — and pins that no third cycle starts. The cycle-2 dispatch carrying the cycle-1 tracking file as settled directions is a claim only the walker's account can evidence: the recorder keeps a Task dispatch's name and nothing of its prompt. Re-pinned 2026-09-21: the churn verdict used to hand the call to the user at the re-loop gate, and under `auto` it now concludes without asking — auto means auto — so the gate is excluded here and completion runs straight off the diagnostic.",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -34,7 +34,7 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They know the record cold and treat what it determines as decided, not theirs to re-litigate. The first thing the review puts to them is a two-row screen of calls made on their behalf — how long an order waits for capture confirmation, and how long a quoted total stands — each with what it rests on named beside it, offering to document the screen, to hand every remaining call over automatically, to pull one out and talk about it, or to expand one. They hand the rest over automatically: they do not want to be stopped again for things the record has already decided, and they ask for nothing to be expanded. If the session comes back saying the review is turning findings over rather than settling them, they take that at face value: they have a release to get out, the specification says what the product does, and they would rather move on than order another round. At sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They know the record cold and treat what it determines as decided, not theirs to re-litigate. The first thing the review puts to them is a two-row screen of calls made on their behalf — how long an order waits for capture confirmation, and how long a quoted total stands — each with what it rests on named beside it, offering to document the screen, to hand every remaining call over automatically, to pull one out and talk about it, or to expand one. They hand the rest over automatically: they do not want to be stopped again for things the record has already decided, and they ask for nothing to be expanded. They have a release to get out and they would rather the specification closed than kept being polished. At sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
   "stubs": {
     "spec-review-clean": "when the prose dispatches the claims verification or input review agent via the Task tool, in either cycle — each returns the content below and writes no file",
     "spec-gap-churn-first-pair": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
@@ -54,12 +54,12 @@
       "tracking.review-gap-analysis-tracking-c2 in-progress",
       "manifest get pay.specification.pay review_baseline_words",
       "render convergence-diagnostic pay.specification.pay",
-      "render spec-review-gate pay.specification.pay --variant reloop",
       "tracking.review-gap-analysis-tracking-c2 complete",
       "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [
+      "render spec-review-gate",
       "manifest set pay.specification.pay review_cycle 3",
       "tracking.review-gap-analysis-tracking-c3",
       "begin review cycle 3",
@@ -82,7 +82,7 @@
       "render finding-batch pay.specification.pay",
       "tracking.review-gap-analysis-tracking-c2 complete",
       "render convergence-diagnostic pay.specification.pay",
-      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay"
     ]
   }

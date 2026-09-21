@@ -95,7 +95,7 @@
       "topic complete pay planning",
       "discussion-map add",
       "task_list_gate_mode auto",
-      "manifest set pay.planning.pay review_cycle 1",
+      "manifest set pay.planning.pay review_cycle=1",
       "manifest set pay.planning.pay spec_commit",
       "workunit create"
     ]
