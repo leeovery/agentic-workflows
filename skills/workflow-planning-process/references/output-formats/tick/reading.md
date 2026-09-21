@@ -27,7 +27,7 @@ To retrieve all tasks for a topic:
 tick list --parent <topic-tick-id>
 ```
 
-This returns all descendants (phases and tasks) with summary-level data: id, title, status, priority, and parent. Results are sorted by priority (ascending), then creation date.
+This returns all descendants (phases and tasks) with summary-level data: id, title, status, priority, and type. Results are sorted by priority (ascending), then creation date.
 
 To list tasks within a specific phase:
 
@@ -53,9 +53,9 @@ To read full task detail including description, blockers, and children:
 tick show <tick-id>
 ```
 
-Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, and full description.
+Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, tags, refs, notes, and the description.
 
-**Reading a value programmatically**: `tick show <tick-id> --json` returns the record with `description` as a verbatim JSON string. The default output indents the description body two columns — not reversible when the content is itself indented or fenced — so `--json` is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)).
+**Reading a value**: `tick show <tick-id> --field description` prints the description's own bytes — no key, no quoting, nothing around it, indentation and fenced blocks intact. That is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)). Any single field reads the same way (`--field title` prints the bare title); several names (`--field parent,status`) return the normal document narrowed to those sections.
 
 Never read or write `.tick/tasks.jsonl` directly — the CLI is the only interface to the store.
 
@@ -63,31 +63,22 @@ Never read or write `.tick/tasks.jsonl` directly — the CLI is the only interfa
 
 To find the next task to implement:
 
-1. **Check for a task already in flight** — a prior session may have started a task and ended before completing it:
+```bash
+tick ready --parent <phase-tick-id> --count 1
+```
 
-   ```bash
-   tick list --parent <phase-tick-id> --status in_progress
-   ```
+This returns the single next task — an `in_progress` one first (a prior session started it and ended before completing it), then `open` tasks by priority, then creation date. A task is ready when:
 
-   `tick start` cascades `in_progress` up the hierarchy, so containers appear alongside the task actually in flight. Exclude any result that has an `open` or `in_progress` child — check each result's children (`tick show <tick-id>`); the open children of a cascaded container are not themselves in this result set, so comparing results against each other is not enough. Only a childless-or-all-done result is resumable. If a task remains, it is the next task: it is already `in_progress` in tick, so skip the format's mark-in-progress transition — the engine `task start` still runs (its task record and gate bookkeeping are separate from tick status).
+1. Status is `open` or `in_progress` (not done, not cancelled)
+2. No unresolved blockers (all `blocked_by` tasks are `done`)
+3. No open children — a container whose children are still open never appears
+4. No dependency-blocked ancestor
+5. Within the specified phase (scoped by `--parent`)
 
-2. **Otherwise, take the next ready task:**
+Read the result's `status` column: an `in_progress` task is being resumed, so skip the format's mark-in-progress transition — the engine `task start` still runs (its task record and gate bookkeeping are separate from tick status).
 
-   ```bash
-   tick ready --parent <phase-tick-id> --count 1
-   ```
+To find the next task across all phases of a topic, run the same command with `--parent <topic-tick-id>`.
 
-   This returns the single next task that is:
+If nothing is returned, either all tasks are complete or remaining tasks are blocked.
 
-   1. Status is `open` (not started, not done, not cancelled)
-   2. No unresolved blockers (all `blocked_by` tasks are `done`)
-   3. No open children (leaf tasks, or parent tasks whose children are all complete)
-   4. Within the specified phase (scoped by `--parent`)
-
-   Results are sorted by priority (lower number = higher priority), then creation date. `--count 1` limits output to the first result.
-
-To find the next task across all phases of a topic, run the same two checks with `--parent <topic-tick-id>`.
-
-If neither check returns a task, either all tasks are complete or remaining tasks are blocked.
-
-**Natural ordering convention**: `tick ready` always returns results in the correct execution order — by priority, then creation date. Consumers should take the first result as the next task. Because creation date preserves authoring order, sequential intra-phase tasks execute in natural order without needing explicit dependencies. Only add dependencies when the correct order differs from the natural order.
+**Natural ordering convention**: `tick ready` always returns results in the correct execution order — in-progress first, then by priority, then creation date. Consumers should take the first result as the next task. Because creation date preserves authoring order, sequential intra-phase tasks execute in natural order without needing explicit dependencies. Only add dependencies when the correct order differs from the natural order.

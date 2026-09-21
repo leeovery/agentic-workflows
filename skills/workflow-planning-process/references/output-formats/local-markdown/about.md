@@ -17,6 +17,10 @@ Use this format for simple features or when you want everything in version-contr
 
 No external tools required. This format uses plain markdown files stored in the repository.
 
+## Version
+
+No external tool — nothing to check.
+
 ## Structure Mapping
 
 | Concept | Local Markdown Entity |

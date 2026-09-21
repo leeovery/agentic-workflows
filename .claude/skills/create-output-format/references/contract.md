@@ -29,6 +29,7 @@ Must include:
 - **Format name and description** — what this format is
 - **Benefits** — why choose this format
 - **Setup** — installation, configuration, prerequisites
+- **Version** — the check every consumer runs before its first command against the format: the tool version the adapter is written against, how to read the installed version, and the stop on a mismatch. A format with no external tool declares `No external tool — nothing to check.`
 - **Structure Mapping** — how workflow concepts (topic, phase, task) map to the format's entities
 - **Output Location** — where tasks are stored
 

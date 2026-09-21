@@ -13,6 +13,6 @@
    - **reading.md** — how to read tasks from the plan
    - **updating.md** — how to mark task progress
    - **authoring.md** — how to create new tasks (needed if analysis adds tasks)
-3. Follow **about.md** for any setup prerequisites (e.g., required tools).
+3. Follow **about.md**'s Version section, then any setup prerequisites it names (e.g., required tools).
 
 → Return to caller.

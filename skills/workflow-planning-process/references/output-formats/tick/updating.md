@@ -14,6 +14,8 @@ Tick uses dedicated commands for each status transition:
 
 `done` and `cancel` set a closed timestamp. `reopen` clears it.
 
+Each transition answers with a `changed` table naming every task whose status moved, cascaded rows marked `auto`.
+
 ## Updating Task Content
 
 **CRITICAL**: Always pass descriptions as inline quoted strings. See [authoring.md](authoring.md) for constraints.
@@ -21,7 +23,7 @@ Tick uses dedicated commands for each status transition:
 To update a task's properties:
 
 - **Title**: `tick update <tick-id> --title "New title"`
-- **Description**: `tick update <tick-id> --description "New description"` (replaces the whole field — an amendment reads the current value first with `tick show <tick-id> --json`, per [reading.md](reading.md), and passes the merged text)
+- **Description**: `tick update <tick-id> --description "New description"` (replaces the whole field — an amendment reads the current value first with `tick show <tick-id> --field description`, per [reading.md](reading.md), and passes the merged text)
 - **Priority**: `tick update <tick-id> --priority 1`
 - **Parent**: `tick update <tick-id> --parent <tick-id>` (pass empty string to clear)
 - **Type**: `tick update <tick-id> --type feature` (clear with `--clear-type`)
@@ -32,7 +34,9 @@ To update a task's properties:
 
 ## Post-Update Verification
 
-After every `tick update`, run `tick show <tick-id>` and confirm that the updated fields were set correctly. If any field is empty or wrong, re-run the update.
+`tick update` answers with the stored record read back — the same document `tick show <tick-id>` prints. Confirm the updated fields from it; if any is empty or wrong, re-run the update.
+
+An update that fails with a TOON encoding diagnostic has stored the value — a control character in the text is what could not be encoded, so rewrite the field without it rather than re-running the same update.
 
 ## Phase Completion
 

@@ -8,7 +8,7 @@
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
    ```
-2. Load the format's **[about.md](output-formats/{format}/about.md)** and **[authoring.md](output-formats/{format}/authoring.md)**
+2. Load the format's **[about.md](output-formats/{format}/about.md)** and follow its Version section, then load **[authoring.md](output-formats/{format}/authoring.md)**
 3. Reset gate modes to `gated` in the manifest — one batched write:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated

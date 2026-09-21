@@ -21,6 +21,11 @@ Use this format when {describe the ideal use case}.
 <!-- Prerequisites, installation, configuration. "No external tools required." if none -->
 {Setup instructions or "No external tools required."}
 
+## Version
+
+<!-- The check consumers run before their first command: the tool version this adapter is written against, the command that reads the installed version, and the stop on a mismatch. "No external tool — nothing to check." if none -->
+{Version check or "No external tool — nothing to check."}
+
 ## Structure Mapping
 
 <!-- How workflow concepts map to this format's entities -->

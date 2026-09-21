@@ -34,6 +34,10 @@ Resolve the team's ID via the Linear MCP (`list_teams`), then persist it as a pr
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linear_team_id {team_id}
 ```
 
+## Version
+
+The Linear MCP server carries no pinned version — nothing to check.
+
 ## Structure Mapping
 
 | Concept | Linear Entity |

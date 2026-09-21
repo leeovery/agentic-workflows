@@ -18,6 +18,14 @@ You should never do the following:
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
+A title beginning with a dash goes after `--`, and every flag goes before it:
+
+```bash
+tick create --parent <tick-id> --refs "{internal_id}" --description "Full description here." -- "--dry-run support"
+```
+
+Anything after `--` is text, so a flag placed there is silently lost.
+
 ## Storage Pathspecs
 
 The git pathspecs this format writes **outside `--plan`'s own scope** — the planning topic's directory and the manifests. The array below is recorded verbatim as `storage_paths` on the planning item at plan init; workflow commits (`engine commit --plan`) stage every entry, and restart cleanups stage the same entries when removing authored tasks. Relative pathspecs only — `[]` when the format stores inside that scope.
@@ -36,7 +44,7 @@ Create the topic task — this is the plan-level entity in tick. Always set `--r
 tick create "{topic:(titlecase)}" --refs "{topic}"
 ```
 
-Returns the topic task ID (e.g., `tick-a1b2`). This is the plan's external identifier.
+The `id:` line of the returned document is the topic's tick id (e.g., `tick-a1b2`) — the plan's external identifier.
 
 ## Phase Structure
 
@@ -49,7 +57,7 @@ tick create "Phase 1: {phase:(titlecase)}" --parent <topic-tick-id> --refs "{top
 tick create "Phase 2: {phase:(titlecase)}" --parent <topic-tick-id> --refs "{topic}-2"  # returns tick-e5f6
 ```
 
-Each command returns the phase's tick ID — this is the phase's external identifier.
+The `id:` line of each returned document is that phase's tick id — the phase's external identifier.
 
 ## Task Storage
 
@@ -85,11 +93,17 @@ See **Task Properties** below for details on each flag.
 
 ## Post-Creation Verification
 
-After every `tick create`, run `tick show <tick-id>` and confirm that the title, description, and parent were all set correctly.
+`tick create` answers with the stored record read back — the same document `tick show <tick-id>` prints. Confirm from it that the title, parent, and description are what was passed; a task created without a description carries no `description:` line at all. Never move on from a create whose document lacks a field that was passed.
 
 #### If any field is empty or wrong
 
 → Load **[updating.md](updating.md)** and follow its instructions to correct the field using `tick update`.
+
+#### If the create fails with a TOON encoding diagnostic
+
+The task was stored and the diagnostic names its id — a control character in the description is what could not be encoded. Take that id; never re-create, which leaves a duplicate.
+
+→ Load **[updating.md](updating.md)** and follow its instructions to rewrite the description without the control character.
 
 ## Task Properties
 
