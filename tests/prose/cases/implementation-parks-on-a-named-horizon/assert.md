@@ -79,8 +79,10 @@ The end world's claims:
   ran
 - the git history carries the engine's own roadmap commit over the
   project manifest. The source and test files the executor stub wrote
-  for pay-1-1 are uncommitted — the loop commits them past its gate,
-  which was never answered — and they are the only dirt in the tree
+  for pay-1-1, the work-unit manifest carrying the task in progress, and
+  the pay-1-1 task file are uncommitted — the loop commits them past
+  its gate, which was never answered — and they are the only dirt in
+  the tree
 - exactly one executor dispatch and one reviewer dispatch fired, both
   stubbed, both for pay-1-1
 - the stops the user met were the two setup skip-again questions, the

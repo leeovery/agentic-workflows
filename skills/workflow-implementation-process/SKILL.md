@@ -59,7 +59,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 Unplanned work the user raises mid-implementation — a bug they hit while testing, a gap they name, a decision they change. When they do, load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -67,7 +67,7 @@ Unplanned work the user raises mid-implementation — a bug they hit while testi
 
 The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -75,7 +75,7 @@ The user says to put an idea aside — "roadmap it", "inbox it", "backlog that",
 
 The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 

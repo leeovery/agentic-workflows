@@ -238,7 +238,7 @@ Filter to the tasks the manifest's `staging.c{N}.tasks` marks `approved`, taking
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-**If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+**If the planning item carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
