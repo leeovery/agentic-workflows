@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.76] - 2026-09-21
+
+✨ Added
+- Executor block gate — when an implementer hits a genuine product fork mid-build, it now stops with numbered options (recommended first) and a comment field instead of a bare retry/skip/stop menu.
+- Implementation gains a three-tier gap resolver — a blocked task's question is checked against the record first (silent fix), then the user (answer lands on the task), and only escalates to a discussion queue when real discussion work is needed.
+
+🔧 Changed
+- Planning tasks no longer author a mechanism the specification didn't decide — the "how" of the code is now the implementer's call, made with the code in front of them, not the planner's.
+- Acceptance criteria are now scenarios (starting state, action, observable outcome) instead of free-form pass/fail checkboxes, and Tests/Edge Cases fields are dropped from the task template — the executor derives and names tests from the criteria.
+- The executor only stops on product intent now; how to build something is never a reason to stop, and a failed task is retried rather than offered a skip or a stop.
+- Task authoring, phase design, and dependency-graphing agents are reframed as "a product owner who knows the shape of the codebase" rather than "an expert technical architect."
+- Planning and specification review findings that amount to an invented mechanism are now removed outright rather than justified as the planner's "honest call."
+
 ## [0.7.75] - 2026-09-21
 
 ✨ Added
