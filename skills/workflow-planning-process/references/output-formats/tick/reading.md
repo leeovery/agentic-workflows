@@ -55,7 +55,7 @@ tick show <tick-id>
 
 Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, tags, refs, notes, and the description.
 
-**Reading a value**: `tick show <tick-id> --field description` prints the description's own bytes — no key, no quoting, nothing around it, indentation and fenced blocks intact. That is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)).
+**Reading a value**: `tick show <tick-id> --field description` prints the description's own bytes. That is the read whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)).
 
 Never read or write `.tick/tasks.jsonl` directly — the CLI is the only interface to the store.
 
@@ -67,11 +67,11 @@ To find the next task to implement:
 tick ready --parent <phase-tick-id> --count 1
 ```
 
-This returns the single next task — an `in_progress` one first (a prior session started it and ended before completing it), then `open` tasks by priority, then creation date. A task is ready when:
+This returns the single next task — an `in_progress` one first, then `open` tasks by priority, then creation date. A task is ready when:
 
 1. Status is `open` or `in_progress` (not done, not cancelled)
 2. No unresolved blockers (all `blocked_by` tasks are `done`)
-3. No open children — a container whose children are still open never appears
+3. No open children
 4. No dependency-blocked ancestor
 5. Within the specified phase (scoped by `--parent`)
 

@@ -33,7 +33,7 @@ Run the declared command and take the installed version from its output. The che
 > *Output the next fenced block as a properties code block (```properties fence):*
 
 ```
-⚑ The installed tool does not match the version this plan format requires
+⚑ The installed tool does not meet the version this plan format requires
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

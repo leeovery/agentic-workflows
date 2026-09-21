@@ -36,7 +36,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 ## Version
 
-The Linear MCP server carries no pinned version — nothing to check.
+The Linear MCP server carries no version to require — nothing to check.
 
 ## Structure Mapping
 
