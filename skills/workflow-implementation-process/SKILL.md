@@ -16,7 +16,7 @@ Follows planning. Execute the plan task by task — an executor implements via s
 
 - **Plan content** (required) - Phases, tasks, and acceptance criteria to execute
 - **Plan format** (required) - How to parse tasks (from manifest)
-- **Specification content** (required) - The specification from the prior phase, for context when task rationale is unclear
+- **Specification content** (required) - The record the plan was built from; the executor and reviewer both receive its path and read the sections each task cites
 - **Environment setup** (optional) - First-time setup instructions
 
 ---
@@ -50,7 +50,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Hard Rules
 
-1. **No autonomous decisions on spec deviations** — when the executor reports a blocker or spec deviation, present to user and STOP. Never resolve on the user's behalf.
+1. **No autonomous decisions on product intent** — a product fork the record does not settle goes to the user and is never resolved on their behalf. A question the record settles lands silently, and an executor that could not finish comes back to the user as the retry — during the build a task is finished or it is being fixed.
 2. **All git operations are the orchestrator's responsibility** — agents never commit, stage, or interact with git.
 
 ---

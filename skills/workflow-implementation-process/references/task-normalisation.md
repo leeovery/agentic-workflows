@@ -20,7 +20,7 @@ INSTRUCTIONS:
 
 ## Rules
 
-- **Include** everything instructional: goal, implementation steps, acceptance criteria, tests, edge cases, context, notes
+- **Include** everything instructional the task carries — goal, acceptance criteria, what the record decided about the how, context, notes, and any other instructional field the task holds
 - **Strip** meta fields: status, priority, dependencies, dates, progress markers
 - **Preserve** the internal structure of the instructional content as-is from the plan — do not summarise, reorder, or rewrite
 

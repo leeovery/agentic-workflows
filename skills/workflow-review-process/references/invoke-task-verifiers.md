@@ -33,7 +33,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope — excluding tasks the backend marks skipped or cancelled (deliberately discarded work is not reviewed; note the excluded ids — they are recorded as covered after the verifiers run, and the report discloses them):
 - Note each task's description
 - Note each task's acceptance criteria — quick-fix tasks carry a **Verification** section instead of acceptance criteria; note that
-- Note expected micro acceptance (test name) — absent for quick-fix tasks
+- Note any test name the task carries — the criteria are scenarios, and the tests that prove them are the executor's to name
 - Note each task's **internal ID** (format: `{topic}-{phase_id}-{task_id}`) — derive the **task suffix** by stripping the topic prefix (e.g., `auth-flow-1-1` → `1-1`)
 
 → Proceed to **C. Filter Tasks**.

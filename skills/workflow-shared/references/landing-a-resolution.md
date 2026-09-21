@@ -1,6 +1,6 @@
 # Landing a Resolution
 
-*Shared reference. Loaded by `resolve-source-incoherence.md` (the specification's landings) and `resolve-spec-gap.md` (planning's).*
+*Shared reference. Loaded by `resolve-source-incoherence.md` (the specification's landings) and `resolve-spec-gap.md` (planning's and implementation's).*
 
 ---
 
@@ -11,7 +11,7 @@ The resolution is written into the owning source document in that phase's own id
 The caller provides these via context before loading:
 
 - `work_unit` — the work unit the source document belongs to. Always present.
-- `topic` — the caller's own topic, which names a specification item (a plan carries its specification's name). Used by the `--except` in step 3 and nothing else.
+- `topic` — the caller's own topic, which names a specification item (a plan or an implementation carries its specification's name). Used by the `--except` in step 3 and nothing else.
 - `doc` — the owning source's topic name.
 - `source_phase` — the source's own phase: `discussion`, `investigation`, or `research`.
 - `resolution` — what lands, carrying whatever settled it: a measurement's command and result, a derivation, the side the user picked.

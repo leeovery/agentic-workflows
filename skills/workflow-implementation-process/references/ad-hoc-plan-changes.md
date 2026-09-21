@@ -4,7 +4,7 @@
 
 ---
 
-Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work** — except the orchestrator's own addition to the task in flight, which enters at **C. Deliver to the Executor**.
+Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work** — except an addition to the task in flight, which enters at **C. Deliver to the Executor**: the orchestrator's own, and the answer the block gate took from the user.
 
 The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending when the conversation interrupted, re-present it — engine-rendered menus re-fetch from their surface, prose menus re-emit from their authoring file.
 
@@ -57,7 +57,7 @@ No plan write — the instruction becomes part of the current task's scope, for 
 1. **Append the instruction to the task's normalised content in session** — every later use of that content carries it: a fresh executor dispatch (item 6 of the payload), and the reviewer's task-content input.
 2. **Deliver it to the executor** with the next send, per **[invoke-executor.md](invoke-executor.md)**: as round material on a continuation (SendMessage to the recorded agent id), or riding the normalised content on a fresh dispatch. Mark it with its origin — an addition from the user, or from the orchestrator.
 
-**The orchestrator's own addition enters here directly** — context the task in flight needs that its content lacks, landed by steps 1–2 with the orchestrator as origin, no gate. It always targets the task being dispatched, never a pending one.
+**Two additions enter here directly** — the orchestrator's own, context the task in flight needs that its content lacks, and the answer the block gate took from the user — each landed by steps 1–2 with its origin marked, no gate. Both always target the task being dispatched, never a pending one.
 
 #### If the task completed approved before any send carried the user's instruction
 
@@ -106,9 +106,9 @@ depends_on: {internal_id or task {n}, ...}
 **Problem**: {what's missing or wrong}
 **Solution**: {what to do}
 **Outcome**: {what success looks like}
-**Do**: {what the record decided about the how, and where the work lives — omitted where it decided none}
 **Acceptance Criteria**:
 - {starting state, action, observable outcome}
+**Do**: {the how the user or the record settled, and where the work lives — omitted where neither did}
 
 ## Task 2: {title}
 ...
@@ -130,7 +130,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 #### Otherwise
 
-Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim at its marked instruction:
+Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "criteria": […]}` from the staging file, `"steps": […]` when the task carries a **Do**, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate_mode} --comment-hint "Provide feedback to adjust"
