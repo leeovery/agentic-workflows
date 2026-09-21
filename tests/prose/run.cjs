@@ -24,6 +24,7 @@ const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
 const prompts = require('./lib/prompts.cjs');
 const invariants = require('./lib/invariants.cjs');
+const { verifyAll } = require('./lib/verify-pool.cjs');
 
 const ROOT = cases.ROOT;
 
@@ -217,25 +218,22 @@ function cmdSnap(argv) {
   }
 }
 
-function cmdVerify(argv) {
+async function cmdVerify(argv) {
   const ids = argv[0] ? [getCase(argv[0]).id] : cases.listCaseIds();
+  const jobs = ids.flatMap((id) => statesOf(cases.loadCase(id)).map((which) => ({ caseId: id, which })));
   let failed = false;
-  for (const id of ids) {
-    const c = cases.loadCase(id);
-    for (const which of statesOf(c)) {
-      const d = worlds.verifySnapshot(id, which);
-      if (d.skipped) {
-        process.stdout.write(`${id}/${which}: unchanged since last build\n`);
-      } else if (!d.missing.length && !d.extra.length && !d.changed.length) {
-        process.stdout.write(`${id}/${which}: snapshot current\n`);
-      } else {
-        failed = true;
-        process.stdout.write(`${id}/${which}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
-        for (const f of d.changed) process.stdout.write(`  changed: ${f}\n`);
-        for (const f of d.extra) process.stdout.write(`  extra (rebuilt, not in snapshot): ${f}\n`);
-        for (const f of d.missing) process.stdout.write(`  missing (in snapshot, not rebuilt): ${f}\n`);
-        process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${id}\n`);
-      }
+  for (const { caseId: id, which, result: d } of await verifyAll(jobs)) {
+    if (d.skipped) {
+      process.stdout.write(`${id}/${which}: unchanged since it last rebuilt clean here\n`);
+    } else if (!d.missing.length && !d.extra.length && !d.changed.length) {
+      process.stdout.write(`${id}/${which}: snapshot current\n`);
+    } else {
+      failed = true;
+      process.stdout.write(`${id}/${which}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
+      for (const f of d.changed) process.stdout.write(`  changed: ${f}\n`);
+      for (const f of d.extra) process.stdout.write(`  extra (rebuilt, not in snapshot): ${f}\n`);
+      for (const f of d.missing) process.stdout.write(`  missing (in snapshot, not rebuilt): ${f}\n`);
+      process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${id}\n`);
     }
   }
   process.exit(failed ? 1 : 0);
@@ -268,4 +266,6 @@ const commands = {
 if (!commands[command]) {
   die('usage: run.cjs <list|select|world|prompt|diff|assert|snap|verify|archive|destroy> …');
 }
-commands[command](rest);
+// `verify` fans its rebuilds out over threads, so a command may answer a
+// promise; a rejection is the same failure a synchronous throw was.
+Promise.resolve(commands[command](rest)).catch((e) => die(e.stack || String(e)));

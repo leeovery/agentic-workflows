@@ -7,21 +7,26 @@
 // the same commit as the change that moved it. Never hand-edit a
 // snapshot to green this.
 //
-// Rebuilds are skipped for worlds whose recipes, shared mainlines, and
-// engine sources are all unchanged since the snapshot was written — so a
-// normal run costs nothing, and any engine change invalidates every hash
-// and rebuilds the lot.
+// Rebuilds fan out over a thread pool and are skipped for worlds whose
+// recipes, shared mainlines, and engine sources are all unchanged since the
+// world last rebuilt clean here — so a second run costs nothing, and any
+// engine change invalidates every cached hash and rebuilds the lot.
 
 require('./hermetic-env.cjs');
 
-const { describe, it } = require('node:test');
+const { after, describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
+const { POOL_SIZE, createVerifyPool } = require('../prose/lib/verify-pool.cjs');
 
-describe('prose-test snapshots', () => {
+// One test in flight per thread: each awaits its own world, so a test's
+// duration is its world's rebuild and the pool never idles.
+describe('prose-test snapshots', { concurrency: POOL_SIZE }, () => {
   const all = cases.loadAllCases();
+  const pool = createVerifyPool();
+  after(() => pool.close());
 
   it('has at least one built world', () => {
     assert.ok(all.some((c) => c.hasFixtureState), 'no case builds a world');
@@ -34,10 +39,10 @@ describe('prose-test snapshots', () => {
     ].filter(Boolean);
 
     for (const which of states) {
-      it(`${c.id}/${which}: rebuilds byte-identical`, () => {
-        assert.ok(worlds.readSnapshot(c.id, which) !== null,
+      it(`${c.id}/${which}: rebuilds byte-identical`, async () => {
+        assert.ok(worlds.hasSnapshot(c.id, which),
           `${c.id}/${which} has no committed snapshot — run: node tests/prose/run.cjs snap ${c.id}`);
-        const d = worlds.verifySnapshot(c.id, which);
+        const d = await pool.submit({ caseId: c.id, which });
         if (d.skipped) return;
         const report = [
           ...d.changed.map((f) => `changed: ${f}`),

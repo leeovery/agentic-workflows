@@ -11,8 +11,11 @@
 //
 // Rebuilds are skipped when nothing that feeds them has changed — the
 // hash of the case's recipes, the shared mainlines, and the engine and
-// knowledge sources is stored inside each snapshot. An engine change
-// invalidates every hash, so drift can never hide behind the skip.
+// knowledge sources. The verify keeps that hash itself, in a gitignored
+// local cache it writes only after a byte-identical rebuild: a hash it
+// cannot find, or one an engine change has moved on from, costs a rebuild,
+// so drift can never hide behind the skip and no PR carries the
+// bookkeeping.
 //
 // Snapshots exclude `.git/` (SHAs), `.workflows/.knowledge/` (binary
 // store, re-derived at materialise) and `.claude/skills|agents/` (copied
@@ -51,7 +54,6 @@ const CLOCK = path.join(__dirname, 'fake-clock.cjs');
 
 const GITIGNORE = '.gitignore';
 const GITIGNORE_ESCAPED = '_gitignore.fixture';
-const HASH_FILE = '.recipe-hash';
 // Written by the walker's PostToolUse hook (lib/record-action.cjs) —
 // observation of the walk, not part of the world it acted on.
 const ACTION_LOG = '.walk-actions.log';
@@ -181,7 +183,7 @@ function runRecipe(caseId, which) {
 function excluded(rel) {
   const parts = rel.split(path.sep);
   if (parts.includes('.git')) return true;
-  if (rel === HASH_FILE || rel === ACTION_LOG || rel === WALK_LOG || rel === ASSERT_PROMPT) return true;
+  if (rel === ACTION_LOG || rel === WALK_LOG || rel === ASSERT_PROMPT) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
@@ -218,6 +220,11 @@ function snapshotDir(caseId, which) {
   return path.join(cases.CASES_DIR, caseId, cases.SNAPSHOTS[which]);
 }
 
+/** Whether a world has a committed snapshot at all — the cheap read. */
+function hasSnapshot(caseId, which) {
+  return fs.existsSync(snapshotDir(caseId, which));
+}
+
 function readSnapshot(caseId, which) {
   const dir = snapshotDir(caseId, which);
   return fs.existsSync(dir) ? collectTree(dir) : null;
@@ -226,7 +233,6 @@ function readSnapshot(caseId, which) {
 // --- recipe hashing -------------------------------------------------------
 
 function hashDir(hash, dir) {
-  if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) hashDir(hash, full);
@@ -234,23 +240,66 @@ function hashDir(hash, dir) {
   }
 }
 
-/** Everything a world's content can depend on: its recipes, the shared
- *  mainlines, and the engine and knowledge sources that execute them. */
-function recipeHash(caseId) {
+/** A digest over a list of paths — a file by its content, a directory by
+ *  its contents. A path that does not exist contributes nothing. */
+function hashPaths(paths) {
   const hash = crypto.createHash('sha256');
-  for (const which of ['fixtureState', 'assertionState']) {
-    const file = path.join(cases.CASES_DIR, caseId, cases.FILES[which]);
-    if (fs.existsSync(file)) hash.update(fs.readFileSync(file));
+  for (const p of paths) {
+    if (!fs.existsSync(p)) continue;
+    if (fs.statSync(p).isDirectory()) hashDir(hash, p);
+    else hash.update(fs.readFileSync(p));
   }
-  hashDir(hash, MAINLINES_DIR);
-  hashDir(hash, path.join(ROOT, 'skills/workflow-engine/scripts'));
-  hash.update(fs.readFileSync(KNOWLEDGE));
   return hash.digest('hex');
 }
 
-function storedHash(caseId, which) {
-  const file = path.join(snapshotDir(caseId, which), HASH_FILE);
+/** What every world is built from, whichever case it belongs to. */
+const SHARED_INPUTS = [MAINLINES_DIR, path.join(ROOT, 'skills/workflow-engine/scripts'), KNOWLEDGE];
+
+let sharedDigest = null;
+
+/** The shared inputs' digest, taken once for the process: the engine tree
+ *  alone is a few hundred files, and every case's hash covers all of it. */
+function sharedInputsHash() {
+  if (sharedDigest === null) sharedDigest = hashPaths(SHARED_INPUTS);
+  return sharedDigest;
+}
+
+/** Everything a world's content can depend on: the case's own recipes, and
+ *  the shared inputs that execute them. */
+function recipeHash(caseId) {
+  const recipes = ['fixtureState', 'assertionState']
+    .map((which) => path.join(cases.CASES_DIR, caseId, cases.FILES[which]));
+  return crypto.createHash('sha256')
+    .update(hashPaths(recipes))
+    .update(sharedInputsHash())
+    .digest('hex');
+}
+
+// --- the recipe-hash cache -------------------------------------------------
+
+// The skip's bookkeeping: the recipe hash a world last rebuilt byte-identical
+// under. Local and gitignored, because it records when a world was built
+// here, never what a case tests — and one file per world rather than one
+// shared file, so a parallel rebuild never has two writers for one path.
+//
+// Only an exact match skips, and only a byte-identical rebuild records: a
+// cache that is cold, stale, half-written or deleted costs a rebuild and
+// nothing else.
+const HASH_CACHE_DIR = path.join(cases.PROSE_DIR, '.cache', 'hashes');
+
+function hashCacheFile(caseId, which) {
+  return path.join(HASH_CACHE_DIR, `${caseId}.${which}`);
+}
+
+/** The hash this world last rebuilt byte-identical under, or null. */
+function cachedHash(caseId, which) {
+  const file = hashCacheFile(caseId, which);
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : null;
+}
+
+function recordHash(caseId, which, hash) {
+  fs.mkdirSync(HASH_CACHE_DIR, { recursive: true });
+  fs.writeFileSync(hashCacheFile(caseId, which), `${hash}\n`);
 }
 
 // --- snapshot write / verify ----------------------------------------------
@@ -269,7 +318,7 @@ function writeSnapshot(caseId, which) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, buf);
     }
-    fs.writeFileSync(path.join(dir, HASH_FILE), `${recipeHash(caseId)}\n`);
+    recordHash(caseId, which, recipeHash(caseId));
     return files.size;
   } finally {
     removeTree(scratch);
@@ -277,13 +326,16 @@ function writeSnapshot(caseId, which) {
 }
 
 /**
- * Rebuild and byte-compare, unless nothing feeding this world has moved.
+ * Rebuild and byte-compare, unless the cache says nothing feeding this world
+ * has moved since it last rebuilt clean. A clean rebuild records the hash it
+ * ran under, a drift records nothing.
  * Returns {skipped} or {missing, extra, changed}.
  */
 function verifySnapshot(caseId, which) {
   const snap = readSnapshot(caseId, which);
   if (snap === null) return { missing: ['<no committed snapshot>'], extra: [], changed: [] };
-  if (storedHash(caseId, which) === recipeHash(caseId)) return { skipped: true };
+  const hash = recipeHash(caseId);
+  if (cachedHash(caseId, which) === hash) return { skipped: true };
 
   const scratch = runRecipe(caseId, STATE_OF[which]);
   try {
@@ -296,6 +348,7 @@ function verifySnapshot(caseId, which) {
       else if (!snap.get(rel).equals(buf)) changed.push(rel);
     }
     for (const rel of snap.keys()) if (!built.has(rel)) missing.push(rel);
+    if (!missing.length && !extra.length && !changed.length) recordHash(caseId, which, hash);
     return { missing, extra, changed };
   } finally {
     removeTree(scratch);
@@ -704,7 +757,9 @@ function readWalkLog(worldDir) {
 module.exports = {
   ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
-  runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
+  runRecipe, collectTree, hasSnapshot, readSnapshot, snapshotDir,
+  hashPaths, SHARED_INPUTS, sharedInputsHash, recipeHash,
+  hashCacheFile, cachedHash, recordHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
   stampHarnessState, unstampHarnessState, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST, SETTINGS,
 };
