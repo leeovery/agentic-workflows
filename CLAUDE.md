@@ -274,7 +274,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Stub mode**: When no embedding provider is configured, CLI runs in keyword-only mode (BM25). Treat as supported degraded mode, not broken state. `query` output prepends `[keyword-only mode — ...]` note.
 
-**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. Add a test alongside any `src/knowledge/` change.
+**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. The one test that reaches the real API, `tests/scripts/knowledge-openai-smoke.cjs`, sits outside the gate by name and by list and runs by hand with a key in the environment. Add a test alongside any `src/knowledge/` change.
 
 **Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system config — setup writes provider identity only; the tuning keys `similarity_threshold`, `decay_prune_below`, `decay_base_stability`, `decay_weights` are never written, only honoured as overrides in either config file, project over system, `null` unsetting a key; defaults live in `src/knowledge/config.js` `DEFAULTS`), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
 

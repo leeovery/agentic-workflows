@@ -1,6 +1,5 @@
 'use strict';
 
-//
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, no provider
 // key, no user or system git config, a fixed display width. A test never
@@ -10,7 +9,6 @@
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
 // entries into it. `test-hermetic-env.cjs` guards both.
-//
 
 const fs = require('fs');
 const os = require('os');
