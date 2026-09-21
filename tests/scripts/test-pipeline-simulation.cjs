@@ -440,7 +440,7 @@ function label(sim, wu, phase, topic) {
   assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
 }
 
-function walkDeliveryPhasesToImplementation(sim, wu, topic) {
+function walkToLiveImplementation(sim, wu, topic) {
   label(sim, wu, 'specification', topic);
   sim.run(['topic', 'start', wu, 'specification', topic]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
@@ -456,6 +456,10 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   label(sim, wu, 'implementation', topic);
   const init = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
+}
+
+function walkDeliveryPhasesToImplementation(sim, wu, topic) {
+  walkToLiveImplementation(sim, wu, topic);
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // Phase boundary: the completion defers its flag, the consolidation pass
@@ -2674,6 +2678,53 @@ describe('pipeline simulation', () => {
 
     // The reserved identity holds: no work unit may take the layer's name.
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
+  });
+
+  it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from a live implementation item', () => {
+    const wu = 'orders';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Orders', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    walkToLiveImplementation(sim, wu, wu);
+    const spec = `.workflows/${wu}/specification/${wu}/specification.md`;
+
+    // The words left the home open, so the door stops at the gate rather
+    // than deciding for the person.
+    const payload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/backlog.json`,
+      { idea: "a CSV export of the day's orders" });
+    assert.match(sim.render(['backlog-gate', `${wu}.implementation.${wu}`, '--file', payload], { expect: 'content' }),
+      /Setting \*\*a CSV export of the day's orders\*\* aside\.[\s\S]*`r\/roadmap`[\s\S]*`i\/inbox`/);
+
+    // Roadmap chosen, but nothing to pick from: a name is content, not a
+    // choice, so the pick refuses and the park confirms the first item.
+    sim.refuses(['render', 'horizon-pick'], /no roadmap on the project manifest/);
+    assert.match(sim.render(['park-gate', '--name', 'csv-export', '--horizon', 'next',
+      '--summary', "operators export a day's orders as CSV", '--source', spec], { expect: 'content' }),
+    /under "next", waiting until it is pulled into work\. The roadmap is created with it\./);
+
+    // The verb behind the gate: the map, its horizon and the item are born
+    // in one transaction, and the park's provenance rides the row.
+    sim.run(['roadmap', 'add', 'csv-export', '--horizon', 'next',
+      '--summary', "operators export a day's orders as CSV", '--origin', `park:${wu}`, '--source', spec]);
+    const parked = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'csv-export');
+    assert.strictEqual(parked.origin, `park:${wu}`);
+    assert.deepStrictEqual(parked.sources, [spec]);
+
+    // With a map, the pick renders — one horizon, what waits in it, the new
+    // row — and the same name refuses at the confirm rather than after it.
+    assert.match(sim.render(['horizon-pick'], { expect: 'content' }), /\*\*`1`\*\*\s+→ next — \*1 waiting\*/);
+    sim.refuses(['render', 'park-gate', '--name', 'csv-export', '--horizon', 'next', '--summary', 's'],
+      /"csv-export" is already on the roadmap — edit it, or pick a different name/);
+
+    // A second park under a horizon the map does not hold flags it new,
+    // while the horizon it does hold renders plain.
+    assert.match(sim.render(['park-gate', '--name', 'bulk-refunds', '--horizon', 'someday',
+      '--summary', 'operators refund a batch of orders'], { expect: 'content' }),
+    /under "someday" \(new\), waiting until it is pulled into work\./);
+    const second = sim.render(['park-gate', '--name', 'bulk-refunds', '--horizon', 'next',
+      '--summary', 'operators refund a batch of orders'], { expect: 'content' });
+    assert.ok(!second.includes('(new)'), 'a horizon the map holds is not flagged new');
+    assert.ok(!second.includes('The roadmap is created with it.'), 'the map exists by now');
   });
 
   it('roadmap: work-unit cancel reverts every join into the unit', () => {

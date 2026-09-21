@@ -2166,6 +2166,26 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
   );
 }
 
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function backlogGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render backlog-gate: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'backlog-gate');
+  const p = readJsonPayload(cwd, file, 'backlog-gate');
+  if (!isFilled(p.idea)) throw new Error('render backlog-gate: "idea" must be a non-empty string');
+  return section('MENU: backlog gate', STOP_FOR_RESPONSE, menu(
+    `Setting **${p.idea}** aside.`,
+    [
+      cmdOption('r', 'roadmap', 'The product roadmap — next, or soon after this work'),
+      cmdOption('i', 'inbox', 'The inbox — someday, picked up when it is picked up'),
+    ],
+    { question: 'Which backlog?' },
+  ));
+}
+
 // reroute-candidates — the ambiguous reroute's selection gate. The plausible
 // homes and the judged landing phase are judgment content; the numbering,
 // the new-topic option, and the override grammar are fixed. A candidate's
@@ -4867,6 +4887,46 @@ function roadmapAddGateSurface(cwd, args) {
   );
 }
 
+/** @param {string} cwd @param {object} _args @returns {string} */
+function horizonPick(cwd, _args) {
+  const state = roadmapState(cwd);
+  if (!state.exists) {
+    throw new Error('render horizon-pick: no roadmap on the project manifest — the park names its first horizon in prose');
+  }
+  if (state.horizons.length === 0) {
+    throw new Error('render horizon-pick: the roadmap holds no horizons — the park names one in prose');
+  }
+  const options = state.horizons.map((horizon, i) => {
+    const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
+    return cmdOption(String(i + 1), null, `${horizon} — *${waiting} waiting*`);
+  });
+  options.push(cmdOption('n', 'new', 'A new horizon — name it'));
+  return section('MENU: horizon pick', STOP_FOR_RESPONSE, menu('Which horizon?', options));
+}
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function parkGate(cwd, args) {
+  const { name, horizon, summary, source } = args;
+  if (!isFilled(name)) throw new Error('render park-gate: --name is required');
+  if (!isFilled(horizon)) throw new Error('render park-gate: --horizon is required');
+  if (!isFilled(summary)) throw new Error('render park-gate: --summary is required');
+  const state = roadmapState(cwd);
+  if (state.items.some((r) => r.name === name)) {
+    throw new Error(`render park-gate: "${name}" is already on the roadmap — edit it, or pick a different name`);
+  }
+  const isNew = state.exists && !state.horizons.includes(horizon);
+  const statement = [
+    `Parking **${titlecase(name)}** — ${summary} — puts it on the roadmap under "${horizon}"${isNew ? ' (new)' : ''}, waiting until it is pulled into work.`,
+    ...(state.exists ? [] : ['The roadmap is created with it.']),
+    ...(isFilled(source) ? [`Its source is \`${source}\`.`] : []),
+  ].join(' ');
+  return section('MENU: park gate', STOP_FOR_RESPONSE, menu(statement, [
+    cmdOption('y', 'yes', 'Park it'),
+    cmdOption('n', 'no', 'Leave it — nothing is recorded'),
+    promptOption('Comment', 'Tell me what to change (name, horizon, or summary)'),
+  ], { question: 'Park it on the roadmap?' }));
+}
+
 /** @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
 function roadmapSessionReceiptSurface(_cwd, args) {
   return sessionReceipt({ warn: args.warn === '1' });
@@ -5313,6 +5373,7 @@ const SURFACES = {
   'review-findings-gate': reviewFindingsGate,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
+  'backlog-gate': backlogGate,
   'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
   'topic-collision-gate': topicCollisionGate,
@@ -5378,6 +5439,8 @@ const SURFACES = {
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,
   'roadmap-add-gate': roadmapAddGateSurface,
+  'horizon-pick': horizonPick,
+  'park-gate': parkGate,
   'roadmap-session-receipt': roadmapSessionReceiptSurface,
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
