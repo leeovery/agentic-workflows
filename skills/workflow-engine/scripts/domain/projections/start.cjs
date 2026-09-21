@@ -231,8 +231,8 @@ function startMenu(detail) {
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
   }
-  options.push(HELP_ROW);
   options.push({ key: 'm', word: 'manage', action: 'manage', route: null, label: "Manage a work unit's lifecycle" });
+  options.push(HELP_ROW);
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {

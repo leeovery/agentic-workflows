@@ -209,8 +209,8 @@ describe('start projections: menu', () => {
       '**`c/cross-cutting`** → Start new cross-cutting concern',
       '**`i/inbox`**         → View the inbox and start from an item',
       '**`v/view`**          → View completed & cancelled work units',
-      '**`h/help`**          → How the workflows work',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
+      '**`h/help`**          → How the workflows work',
     ].join('\n'));
   });
 
@@ -229,8 +229,8 @@ describe('start projections: menu', () => {
       '**`b/bugfix`**        → Start new bugfix',
       '**`q/quick-fix`**     → Start new quick-fix',
       '**`c/cross-cutting`** → Start new cross-cutting concern',
-      '**`h/help`**          → How the workflows work',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
+      '**`h/help`**          → How the workflows work',
     ].join('\n'));
   });
 
@@ -276,8 +276,8 @@ describe('start projections: menu', () => {
         ['c', 'start_new', null, null, 'cross-cutting'],
         ['i', 'view_inbox', null, null, null],
         ['v', 'view_completed', null, null, null],
-        ['h', 'open_help', null, '/workflow-help', null],
         ['m', 'manage', null, null, null],
+        ['h', 'open_help', null, '/workflow-help', null],
       ]
     );
     assert.deepStrictEqual(
@@ -809,8 +809,8 @@ describe('start projections: roadmap rows', () => {
     const full = startMenu(fullFixture(dir));
     assert.deepStrictEqual(helpRow(full), HELP);
     const keys = full.keys.map((k) => k.key);
-    assert.ok(keys.indexOf('v') < keys.indexOf('h'), 'after the view row');
-    assert.ok(keys.indexOf('h') < keys.indexOf('m'), 'before the manage row');
+    assert.ok(keys.indexOf('m') < keys.indexOf('h'), 'after the manage row');
+    assert.strictEqual(full.keys[full.keys.length - 1].action, 'open_help', 'last on the start menu');
   });
 
   it('the harvested-no-work state never renders an empty screen', () => {
