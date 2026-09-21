@@ -47,20 +47,22 @@ home mid-implementation with a task sitting at its fix gate.
   someday. Never decided silently, never asked in prose.
 - **R3 — Every park confirms.** One engine-rendered gate before the verb
   states the item's name, its one-line summary, the horizon (flagged as
-  new when the map does not hold it), that the roadmap itself is created
-  when there is none, and the source pointer. A yes parks; a comment
-  changes the name, the horizon or the summary and re-renders. An inbox
+  new when an existing map does not hold it), that the roadmap itself is
+  created when there is none, and the source pointer. A yes parks; a no
+  records nothing; a comment changes the name, the horizon or the summary
+  and re-renders. An inbox
   capture stays unconfirmed, as every capture is today — archive undoes
   it.
 - **R4 — The horizon is the person's.** Named in the instruction → that
   one. Unnamed with horizons on the map → an engine-rendered pick over
   the existing horizons in their order, with a new-horizon row. Unnamed
   with no map → the person names it in prose (a name is content, not a
-  choice), and the confirm gate shows it as new.
-- **R5 — The source is the session's own document.** Research, discussion,
-  investigation and scoping point at their file, specification at the
-  specification, planning at the plan; implementation and review point at
-  the specification, the record their work is built from. A session that
+  choice), and the confirm gate says the roadmap is created with it.
+- **R5 — The source is the session's own document.** Research, discussion
+  and investigation point at their file, planning at the plan, scoping and
+  specification at the specification (the scoping document is written at
+  the specification's path); implementation and review point at the
+  specification, the record their work is built from. A session that
   keeps a running record (research, discussion, investigation) notes
   where the idea went; the other phases carry no note, the item's own
   `origin` and `sources` are its provenance.
@@ -89,30 +91,36 @@ words.
 
 ### The reference
 
-`workflow-shared/references/backlogging.md`, three steps, always entered at
-**A** by the standing section.
+`workflow-shared/references/backlogging.md`, four lettered sections, always
+entered at **A** by the standing section; every branch carries its own
+routing, so nothing falls through.
 
-**A. Which backlog.** Read the person's words against R2. Roadmap words →
-**B**; inbox words → **C**; open → write `{"idea": "…"}` to
+**A. Which backlog.** Read the person's words against R2. A horizon named
+→ **C** (B is skipped); placed without a horizon → **B**; inbox words →
+**D**; open → write `{"idea": "…"}` to
 `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` and render
-`backlog-gate`, STOP, then **B** on `roadmap` and **C** on `inbox`.
+`backlog-gate`, STOP, then **B** on `roadmap` and **D** on `inbox`.
 
-**B. Park.** Resolve the horizon per R4 (`horizon-pick` when the map has
-horizons and none was named; a prose ask for a name when there is no
-map). Derive a kebab-case name and a one-line summary at capability
+**B. The horizon.** Read `roadmap state`. Horizons on the map →
+`horizon-pick`, STOP; a number is the horizon, `n/new` asks for a name in
+prose. No horizons (a never-born map answers `horizons: []`) → ask for a
+name in prose, STOP. Every exit → **C**.
+
+**C. Park.** Derive a kebab-case name and a one-line summary at capability
 grain (the roadmap guidelines' bar: one thing a person would move around a
-roadmap). Render `park-gate` with the name, horizon, summary and the
-phase's source per R5; STOP. On yes:
+roadmap), take the source from R5's table, render `park-gate`, STOP. A
+refusal is a name clash: derive another and render again. On yes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {source}
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {source}
 ```
 
 The verb validates, births the map and any new horizon, and self-commits.
 Note the park in the running record where the phase keeps one. Say in one
-line where it went. → Return to caller.
+line where it went. → Return to caller. On no, nothing is recorded. On a
+comment, rebuild the park with what it names and render again.
 
-**C. Capture.** Invoke the matching capture skill (`workflow-log-idea`,
+**D. Capture.** Invoke the matching capture skill (`workflow-log-idea`,
 `workflow-log-bug`, `workflow-log-quickfix` — idea when unsure), then
 commit it (`engine commit --inbox -m "workflow(inbox): capture {slug}"`),
 the shape implementation's ad-hoc flow already uses. Note it in the
@@ -123,17 +131,17 @@ running record where the phase keeps one. → Return to caller.
 - `render backlog-gate {wu}.{phase}.{topic} --file <payload.json>` —
   payload `{idea}`; the statement names the idea and asks which backlog;
   rows `r/roadmap` (next, or soon after this work) and `i/inbox`
-  (someday, picked up when it is picked up). The address is validated
-  against a live item as every per-topic surface is.
+  (someday, picked up when it is picked up). The address is validated as
+  every per-topic surface's address is.
 - `render horizon-pick` — project-level; the map's horizons in their
   order as numbered rows, each with its waiting-item count, then `n/new`.
   Refused when no roadmap exists or it holds no horizons — the prose asks
   for a name instead, so the surface never renders an empty pick.
 - `render park-gate --name <kebab> --horizon <h> --summary <text> [--source <path>]`
   — project-level; the statement in the shape of the cancel gate: the item
-  and its summary, the horizon with `(new)` when the map does not hold
-  it, `the roadmap is created with it` when there is no map, the source
-  when given; rows `y/yes` and Comment. Refused when the name is already
+  and its summary, the horizon with `(new)` when an existing map does not
+  hold it, `the roadmap is created with it` when there is no map, the
+  source when given; rows `y/yes`, `n/no` and Comment. Refused when the name is already
   on the roadmap, with the add verb's own message, so a clash is met at
   the confirm rather than after it.
 
@@ -205,4 +213,5 @@ Design doc standalone (PR0). Two implementation slices, each one agent, each rev
 
 ## Log
 
+- 2026-09-21 — Built as stack #1257: #1252 the engine (three surfaces, tests, the simulation permutation), #1256 the prose (the reference in four lettered sections, the eight standing sections, CLAUDE.md, the two docs, the glossary entry, the three cases authored with snapshots). What the build settled against the opening record: the park gate carries `n/no` beside `y/yes` and Comment, the engine's consent invariant; `(new)` is spoken only over an existing map, the first-item statement carrying it alone; the scoping document is written at the specification's path, so the source table has three rows; the horizon fork is its own lettered section, since a converging fork inside a section body has no conventional shape. Walks owed on the user's word.
 - 2026-09-21 — Opened from Folio (v0.7.29, forty releases behind main, though no release carries the door). Rulings R1–R7 agreed in conversation: two doors and one act, words route and ambiguity gates, every park confirms at an engine gate, the laboratory stays out, the existing doors are the follow-on.
