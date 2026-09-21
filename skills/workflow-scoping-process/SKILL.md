@@ -51,7 +51,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -59,7 +59,7 @@ The user says to put an idea aside — "roadmap it", "inbox it", "backlog that",
 
 The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -161,7 +161,7 @@ Load the artifacts as session context: read the spec (`.workflows/{work_unit}/sp
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
 ```
 
-**If the subtree carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+**If the subtree carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
@@ -203,7 +203,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
    ```
-2. **If the subtree carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+2. **If the subtree carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
    ```

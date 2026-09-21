@@ -55,7 +55,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -63,7 +63,7 @@ The user says to put an idea aside — "roadmap it", "inbox it", "backlog that",
 
 The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
 
-→ On return, resume the interrupted flow — never fall through to Step 0.
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
 ---
 
@@ -150,7 +150,7 @@ Order matters — the review file is deleted last, so a crash mid-restart re-off
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
    ```
 2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
-3. If the planning item carries no `storage_paths` (a plan initialised before the field existed): record it now — read the format's authoring.md (format from `manifest get {work_unit}.planning.{topic} format`) → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`)
+3. If the planning item carries no `storage_paths` field (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md (format from `manifest get {work_unit}.planning.{topic} format`) → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`)
 4. **If the abandoned run's `Review Remediation (Cycle {N})` phase already landed in the plan**: mark each of that phase's tasks whose id is **not** in `{work_unit}.implementation.{topic}` `completed_tasks` skipped per the format's **updating.md** (format from `manifest get {work_unit}.planning.{topic} format`) — abandoned remediation must never execute, and a partially-executed phase keeps only what already ran. Then close that phase (`{M}` below is its number) — abandoned work takes no boundary sweep:
    - empty the bank when the manifest holds one (`manifest exists {work_unit}.implementation.{topic} bank`, then `node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank`)
    - drop an in-flight boundary walk when `staging.p{M}` exists (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} staging.p{M}`), and delete `consolidation-findings-p{M}.md` and `consolidation-tasks-p{M}.md` from `.workflows/{work_unit}/implementation/{topic}/`
