@@ -36,6 +36,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
+const { withFrozenClock } = require('./fake-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
@@ -48,9 +49,10 @@ function removeTree(dir) {
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
+const engine = require(ENGINE);
 const KNOWLEDGE = path.join(ROOT, 'skills/workflow-knowledge/scripts/knowledge.cjs');
 const MAINLINES_DIR = path.join(cases.PROSE_DIR, 'mainlines');
-const CLOCK = path.join(__dirname, 'fake-clock.cjs');
+const CLOCK = path.join(__dirname, 'fake-clock-preload.cjs');
 
 const GITIGNORE = '.gitignore';
 const GITIGNORE_ESCAPED = '_gitignore.fixture';
@@ -114,12 +116,16 @@ const SIDECARS = [WORLD_HISTORY, WORLD_PRESENCE, WORLD_DIRT];
 
 // --- the recipe harness ---------------------------------------------------
 
-function recipeEnv() {
+// The environment a recipe's calls run under, as a delta from this process's:
+// the keys to hold, and the keys to take away (`undefined`). The engine runs
+// in-process and holds the delta for the length of one call; git and the
+// knowledge CLI are spawned and take the whole environment `recipeEnv`
+// composes from it.
+function recipeOverlay() {
   if (/\s/.test(CLOCK)) {
-    throw new Error(`fake-clock path contains whitespace — NODE_OPTIONS cannot carry it: ${CLOCK}`);
+    throw new Error(`fake-clock preload path contains whitespace — NODE_OPTIONS cannot carry it: ${CLOCK}`);
   }
-  const env = {
-    ...process.env,
+  return {
     ...hermeticEnv,
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require ${CLOCK}`].filter(Boolean).join(' '),
     GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
@@ -129,16 +135,23 @@ function recipeEnv() {
     // file a snapshot holds as world state. The engine's test-only switch
     // keeps a recipe's boot out of it.
     WORKFLOWS_SKIP_SESSION_HOOKS: '1',
+    // Session labels read the real tmux identity — a recipe's engine calls
+    // must never rename the terminal session the suite happens to run in.
+    TMUX: undefined,
+    TMUX_PANE: undefined,
   };
-  // Session labels read the real tmux identity — a recipe's engine calls
-  // must never rename the terminal session the suite happens to run in.
-  delete env.TMUX;
-  delete env.TMUX_PANE;
+}
+
+/** The same environment whole, for a spawned child. */
+function recipeEnv() {
+  const env = { ...process.env, ...recipeOverlay() };
+  for (const key of Object.keys(env)) if (env[key] === undefined) delete env[key];
   return env;
 }
 
 function makeHarness(dir) {
   const env = recipeEnv();
+  const overlay = recipeOverlay();
   const node = (script, args) => {
     const res = spawnSync('node', [script, ...args], { cwd: dir, encoding: 'utf8', env });
     if (res.status !== 0) {
@@ -149,7 +162,16 @@ function makeHarness(dir) {
   };
   return {
     dir,
-    engine: (...args) => node(ENGINE, args),
+    // The engine runs in this thread: the recipe's own clock is frozen around
+    // the call, where the spawned CLI got it from the preload.
+    engine: (...args) => withFrozenClock(() => {
+      const res = engine.run(args, { cwd: dir, env: overlay });
+      if (res.code !== 0) {
+        throw new Error(`recipe call failed: engine ${args.join(' ')}\n`
+          + `stdout: ${res.stdout}\nstderr: ${res.stderr}`);
+      }
+      return res.stdout;
+    }),
     knowledge: (...args) => node(KNOWLEDGE, args),
     git: (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env }),
     write(rel, content) {
@@ -680,9 +702,9 @@ function buildWorld(caseId) {
     fs.writeFileSync(dest, snap.get(rel));
   }
   for (const row of presence) {
-    const env = { ...recipeEnv(), CLAUDE_PID: String(row.pid ?? 1), CLAUDE_CODE_SESSION_ID: row.session_id ?? '' };
-    const res = spawnSync('node', [ENGINE, 'presence', 'beat', row.work_unit, row.phase, row.topic], { cwd: dir, encoding: 'utf8', env });
-    if (res.status !== 0) {
+    const env = { ...recipeOverlay(), CLAUDE_PID: String(row.pid ?? 1), CLAUDE_CODE_SESSION_ID: row.session_id ?? '' };
+    const res = withFrozenClock(() => engine.run(['presence', 'beat', row.work_unit, row.phase, row.topic], { cwd: dir, env }));
+    if (res.code !== 0) {
       throw new Error(`peer heartbeat failed: ${row.work_unit} ${row.phase}/${row.topic}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     }
   }

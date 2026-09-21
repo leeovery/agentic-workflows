@@ -661,12 +661,12 @@ function findDeepIndex(arr, value) {
   return -1;
 }
 
-/** @param {*} value */
-function outputValue(value) {
+/** @param {Sink} out @param {*} value */
+function outputValue(out, value) {
   if (value !== null && typeof value === 'object') {
-    process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+    out(JSON.stringify(value, null, 2) + '\n');
   } else {
-    process.stdout.write(String(value) + '\n');
+    out(String(value) + '\n');
   }
 }
 
@@ -688,11 +688,18 @@ function parseFieldValuePairs(pairs) {
 }
 
 // ---------------------------------------------------------------------------
-// Reads — bare stdout, byte-compatible with the absorbed CLI
+// Reads — bare output, byte-compatible with the absorbed CLI. The sink is the
+// caller's, not the process's: the engine's shell door hands over
+// `process.stdout`, its in-process entry a buffer.
 // ---------------------------------------------------------------------------
 
-/** @param {string} cwd @param {string[]} args */
-function cmdGet(cwd, args) {
+/**
+ * Where a read's bare output goes.
+ * @typedef {(text: string) => void} Sink
+ */
+
+/** @param {string} cwd @param {string[]} args @param {Sink} out */
+function cmdGet(cwd, args, out) {
   if (args.length < 1) fail('Usage: engine manifest get <path> [field.path]');
 
   // Project manifest routing
@@ -700,12 +707,12 @@ function cmdGet(cwd, args) {
   if (proj.isProject) {
     const manifest = io.readProjectManifest(workflowsDir(cwd));
     if (proj.fieldSegments.length === 0) {
-      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+      out(JSON.stringify(manifest, null, 2) + '\n');
       return;
     }
     const value = getByPath(manifest, proj.fieldSegments);
     if (value === undefined) return;
-    outputValue(value);
+    outputValue(out, value);
     return;
   }
 
@@ -716,13 +723,13 @@ function cmdGet(cwd, args) {
   if (!phase) {
     // Work-unit-level: get <wu> [field]
     if (args.length === 1) {
-      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+      out(JSON.stringify(manifest, null, 2) + '\n');
       return;
     }
     const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
     if (value === undefined) return;
-    outputValue(value);
+    outputValue(out, value);
     return;
   }
 
@@ -733,18 +740,18 @@ function cmdGet(cwd, args) {
   if (topic === '*') {
     const results = resolveWildcardTopic(manifest, phase, fieldSegments);
     if (results.length === 0) return;
-    process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+    out(JSON.stringify(results, null, 2) + '\n');
     return;
   }
 
   const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
   if (value === undefined) return;
-  outputValue(value);
+  outputValue(out, value);
 }
 
-/** @param {string} cwd @param {string[]} args */
-function cmdExists(cwd, args) {
+/** @param {string} cwd @param {string[]} args @param {Sink} out */
+function cmdExists(cwd, args, out) {
   if (args.length < 1) fail('Usage: engine manifest exists <path> [field.path]');
 
   // Project manifest routing: exists project[.field.path]
@@ -753,11 +760,11 @@ function cmdExists(cwd, args) {
     const manifest = io.readProjectManifest(workflowsDir(cwd));
     if (proj.fieldSegments.length === 0) {
       // exists project — check if project manifest has any content
-      process.stdout.write(Object.keys(manifest).length > 0 ? 'true\n' : 'false\n');
+      out(Object.keys(manifest).length > 0 ? 'true\n' : 'false\n');
       return;
     }
     const value = getByPath(manifest, proj.fieldSegments);
-    process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+    out(value !== undefined ? 'true\n' : 'false\n');
     return;
   }
 
@@ -766,13 +773,13 @@ function cmdExists(cwd, args) {
 
   // Work-unit level, no field path — just check if manifest file exists
   if (!phase && args.length === 1) {
-    process.stdout.write(fs.existsSync(mp) ? 'true\n' : 'false\n');
+    out(fs.existsSync(mp) ? 'true\n' : 'false\n');
     return;
   }
 
   // If manifest doesn't exist, any deeper path is false
   if (!fs.existsSync(mp)) {
-    process.stdout.write('false\n');
+    out('false\n');
     return;
   }
 
@@ -782,7 +789,7 @@ function cmdExists(cwd, args) {
     // Work-unit level with field path
     const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
-    process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+    out(value !== undefined ? 'true\n' : 'false\n');
     return;
   }
 
@@ -792,17 +799,17 @@ function cmdExists(cwd, args) {
   // Wildcard topic: check if any topic has the specified field
   if (topic === '*') {
     const results = resolveWildcardTopic(manifest, phase, fieldSegments);
-    process.stdout.write(results.length > 0 ? 'true\n' : 'false\n');
+    out(results.length > 0 ? 'true\n' : 'false\n');
     return;
   }
 
   const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
-  process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+  out(value !== undefined ? 'true\n' : 'false\n');
 }
 
-/** @param {string} cwd @param {string[]} args */
-function cmdList(cwd, args) {
+/** @param {string} cwd @param {string[]} args @param {Sink} out */
+function cmdList(cwd, args, out) {
   /** @type {string|null} */ let filterStatus = null;
   /** @type {string|null} */ let filterWorkType = null;
 
@@ -816,7 +823,7 @@ function cmdList(cwd, args) {
 
   const wfDir = workflowsDir(cwd);
   if (!fs.existsSync(wfDir)) {
-    process.stdout.write('[]\n');
+    out('[]\n');
     return;
   }
 
@@ -848,11 +855,11 @@ function cmdList(cwd, args) {
     }
   }
 
-  process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+  out(JSON.stringify(results, null, 2) + '\n');
 }
 
-/** @param {string} cwd @param {string[]} args */
-function cmdKeyOf(cwd, args) {
+/** @param {string} cwd @param {string[]} args @param {Sink} out */
+function cmdKeyOf(cwd, args, out) {
   if (args.length < 3) fail('Usage: engine manifest key-of <path> <field.path> <value>');
 
   const { workUnit, phase, topic } = parsePath(args[0]);
@@ -873,15 +880,15 @@ function cmdKeyOf(cwd, args) {
     fail(`Value "${searchValue}" not found in "${segments.join('.')}"`, 2);
   }
 
-  process.stdout.write(key + '\n');
+  out(key + '\n');
 }
 
 /**
  * Map `wu.phase[.topic]` to artifact file paths on disk — the knowledge
  * CLI's artifact discovery.
- * @param {string} cwd @param {string[]} args
+ * @param {string} cwd @param {string[]} args @param {Sink} out
  */
-function cmdResolve(cwd, args) {
+function cmdResolve(cwd, args, out) {
   if (!args[0]) {
     fail('Usage: engine manifest resolve <work_unit>.<phase>[.<topic>]\nResolves artifact file paths for indexed phases.');
   }
@@ -903,7 +910,7 @@ function cmdResolve(cwd, args) {
   if (phase === 'research') {
     if (topic) {
       // 3-segment: specific research item.
-      process.stdout.write(path.join(wuDir, 'research', topic + '.md') + '\n');
+      out(path.join(wuDir, 'research', topic + '.md') + '\n');
     } else {
       // 2-segment: iterate phases.research.items from the manifest.
       const items = manifest.phases && manifest.phases.research && manifest.phases.research.items;
@@ -912,7 +919,7 @@ function cmdResolve(cwd, args) {
         return;
       }
       for (const itemName of Object.keys(items)) {
-        process.stdout.write(path.join(wuDir, 'research', itemName + '.md') + '\n');
+        out(path.join(wuDir, 'research', itemName + '.md') + '\n');
       }
     }
     return;
@@ -924,17 +931,17 @@ function cmdResolve(cwd, args) {
   }
 
   if (phase === 'discussion') {
-    process.stdout.write(path.join(wuDir, 'discussion', topic + '.md') + '\n');
+    out(path.join(wuDir, 'discussion', topic + '.md') + '\n');
     return;
   }
 
   if (phase === 'investigation') {
-    process.stdout.write(path.join(wuDir, 'investigation', topic + '.md') + '\n');
+    out(path.join(wuDir, 'investigation', topic + '.md') + '\n');
     return;
   }
 
   if (phase === 'specification') {
-    process.stdout.write(path.join(wuDir, 'specification', topic, 'specification.md') + '\n');
+    out(path.join(wuDir, 'specification', topic, 'specification.md') + '\n');
     return;
   }
 }
@@ -1332,15 +1339,15 @@ function isRead(command) {
 }
 
 /**
- * Execute one field command. Reads print their own bare stdout and return
- * undefined; mutations return the response object for the engine's JSON
+ * Execute one field command. Reads write their own bare output to the sink and
+ * return undefined; mutations return the response object for the engine's JSON
  * line. Unknown commands and all failures throw (reads carry `exitCode`).
- * @param {string} cwd @param {string} command @param {string[]} args
+ * @param {string} cwd @param {string} command @param {string[]} args @param {Sink} out
  * @returns {object|undefined}
  */
-function runFieldCommand(cwd, command, args) {
+function runFieldCommand(cwd, command, args, out) {
   if (isRead(command)) {
-    READS[/** @type {keyof typeof READS} */ (command)](cwd, args);
+    READS[/** @type {keyof typeof READS} */ (command)](cwd, args, out);
     return undefined;
   }
   if (Object.prototype.hasOwnProperty.call(MUTATIONS, command)) {

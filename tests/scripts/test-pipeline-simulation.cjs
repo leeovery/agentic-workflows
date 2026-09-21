@@ -5,7 +5,10 @@
 //
 // Each scenario replays the engine-call sequence a real pipeline run issues
 // (the calls the skill prose prescribes, in prose order), against a sandbox
-// git repo. After EVERY mutation the full state is audited:
+// git repo. The calls go through the engine's in-process entry rather than a
+// process per call: the same argv, the same answers — stdout, stderr and an
+// exit code — a thousandth of the start-up. After EVERY mutation the full
+// state is audited:
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
 //     discovery items status-less, no phase-named shadow roots),
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
@@ -31,7 +34,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '../..');
-const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
+const engine = require(path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs'));
 
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
@@ -237,22 +240,23 @@ class Sim {
     // cache is ephemeral session machinery, mechanical heartbeats included.
     fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
     this.step = 0;
-    // Hermetic environment: the system config dir pins into the sandbox
-    // (the knowledge CLI reads it) and the tmux identity is stripped, so
-    // `session label` can never rename the developer's real session.
+    // Hermetic environment, as a delta from this process's — the engine runs
+    // in-process and holds these keys for the call's duration: the system
+    // config dir pins into the sandbox (the knowledge CLI reads it) and the
+    // tmux identity is taken away, so `session label` can never rename the
+    // developer's real session.
     // A real session always carries its identity, and presence reads it to
     // tell its own holds from a peer's — pin one so the sim never gates
     // against itself, whatever the host environment carries.
     // The sim's own identity: this process, alive with a real start time, so
     // the rows its verbs beat read `held`.
     this.env = {
-      ...process.env,
       WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config'),
       CLAUDE_CODE_SESSION_ID: 'sim-session',
       CLAUDE_PID: String(process.pid),
+      TMUX: undefined,
+      TMUX_PANE: undefined,
     };
-    delete this.env.TMUX;
-    delete this.env.TMUX_PANE;
   }
 
   destroy() {
@@ -303,12 +307,21 @@ class Sim {
     };
   }
 
+  /**
+   * One engine call, in this process: the CLI's argv contract without a
+   * process per assertion. Answers what the spawned CLI answered.
+   * @param {string[]} args @param {object|null} [identity]
+   */
+  engine(args, identity = null) {
+    return engine.run(args, { cwd: this.dir, env: this.envOf(identity) });
+  }
+
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
-    assert.strictEqual(res.status, 0,
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     const nl = res.stdout.indexOf('\n');
     const first = (nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim();
@@ -331,8 +344,8 @@ class Sim {
   runOnStderr(args, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (stderr response)`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
-    assert.strictEqual(res.status, 0,
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     assert.strictEqual(res.stdout, '', `[${label}] a SessionStart hook target keeps stdout empty`);
     const parsed = JSON.parse(res.stderr.trim());
@@ -345,8 +358,8 @@ class Sim {
   refuses(args, pattern, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
-    assert.strictEqual(res.status, 1, `[${label}] expected exit 1, got ${res.status}\nstdout: ${res.stdout}`);
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 1, `[${label}] expected exit 1, got ${res.code}\nstdout: ${res.stdout}`);
     const parsed = JSON.parse(res.stderr.trim());
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
     if (pattern) assert.match(parsed.error, pattern, `[${label}] refusal message drifted`);
@@ -356,13 +369,16 @@ class Sim {
 
   /** Bare-stdout read (manifest get / exists / resolve …). */
   read(args, identity = null) {
-    return execFileSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) }).trim();
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 0,
+      `[read engine ${args.join(' ')}] expected success, got ${res.code}\nstderr: ${res.stderr}`);
+    return res.stdout.trim();
   }
 
   /** Render surface: must exit 0 (an entry-gate that passes renders empty). */
   render(args, { expect, identity = null } = {}) {
-    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
-    assert.strictEqual(res.status, 0,
+    const res = this.engine(['render', ...args], identity);
+    assert.strictEqual(res.code, 0,
       `[render ${args.join(' ')}] crashed or refused\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     if (expect === 'content') {
       assert.ok(res.stdout.trim().length > 0, `[render ${args.join(' ')}] produced no output`);
@@ -2988,9 +3004,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-2`]).do_banking, true,
       'the phase is still open — its next plan task banks too');
     // Every task start gets its brief; the stale first-task payload refuses, the rewritten one renders.
-    const staleBrief = spawnSync('node', [ENGINE, 'render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload],
-      { cwd: sim.dir, encoding: 'utf8' });
-    assert.strictEqual(staleBrief.status, 1, 'a stale brief payload refuses rather than rendering the previous task');
+    const staleBrief = sim.engine(['render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload]);
+    assert.strictEqual(staleBrief.code, 1, 'a stale brief payload refuses rather than rendering the previous task');
     assert.match(staleBrief.stderr, /stale task-brief\.json/, "the refusal names the previous task's payload as stale");
     const briefPayload2 = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
       { id: `${wu}-1-2`, title: 'Close out the auth flow', current: 2, total: 2, phase: '1 — Core', position: '2 of 2 in phase', external: { label: 'tick', id: 'TCK-2' }, summary: 'Close out the auth flow.' });
