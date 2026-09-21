@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.75] - 2026-09-21
+
+✨ Added
+- Walkthrough diagrams now lay themselves out at your terminal's actual width instead of being fixed at 65 columns.
+- Three walkthrough screens now show live samples of the real start menu, roadmap, and epic dashboard instead of hand-drawn approximations.
+
+🔧 Changed
+- Walkthrough screen text rewritten throughout for a clearer, more direct explanation of how the workflows work.
+- The Help row now sits at the bottom of the start menu, below Manage.
+
 ## [0.7.74] - 2026-09-21
 
 ✨ Added
