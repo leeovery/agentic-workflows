@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.73] - 2026-09-21
+
+🔧 Changed
+- Interrupting a phase to backlog an idea or cancel a topic now re-presents any gate that was pending on return, instead of silently dropping it.
+- The `storage_paths` check across planning, implementation, review, and scoping now correctly treats an empty array as present, only triggering on a genuinely missing field.
+
 ## [0.7.72] - 2026-09-21
 
 ✨ Added
