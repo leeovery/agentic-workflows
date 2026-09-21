@@ -106,11 +106,9 @@ depends_on: {internal_id or task {n}, ...}
 **Problem**: {what's missing or wrong}
 **Solution**: {what to do}
 **Outcome**: {what success looks like}
-**Do**: {step-by-step implementation instructions}
+**Do**: {what the record decided about the how, and where the work lives — omitted where it decided none}
 **Acceptance Criteria**:
-- {criterion}
-**Tests**:
-- {test description}
+- {starting state, action, observable outcome}
 
 ## Task 2: {title}
 ...

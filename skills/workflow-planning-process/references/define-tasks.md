@@ -64,7 +64,7 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list" --topic planning/{topic}
 ```
 
-Write the task-list payload for the render surface to the phase cache — one entry per task, each summary a single line, edge cases as short phrases:
+Write the task-list payload for the render surface to the phase cache — one entry per task, each summary a single line, the specification's decided edges as short phrases:
 
 ```json
 .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json

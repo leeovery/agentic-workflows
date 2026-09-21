@@ -6,7 +6,7 @@
 
 Review the plan **as a standalone document** for structural quality, implementation readiness, and adherence to planning standards.
 
-**Purpose**: Ensure that the plan itself is well-structured, complete, and ready for implementation. An implementer (human or AI) should be able to pick up this plan and execute it without ambiguity, without making product decisions, and without referring back to the specification.
+**Purpose**: Ensure that the plan itself is well-structured, complete, and ready for implementation. An implementer (human or AI) executes the plan without making product decisions.
 
 **Key distinction**: The traceability review checked *what's in the plan* against the spec. This review checks *how it's structured* — looking inward at the plan's own quality.
 
@@ -27,12 +27,11 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 → Load **[finding-floor.md](../../workflow-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
 
 1. **Task Template Compliance**
-   - Every task has all required fields: Problem, Solution, Outcome, Do, Acceptance Criteria, Tests
+   - Every task has all required fields: Problem, Solution, Outcome, Acceptance Criteria
    - Problem statements clearly explain WHY the task exists
    - Solution statements describe WHAT we're building
    - Outcome statements define what success looks like
-   - Acceptance criteria are concrete and verifiable (not vague)
-   - Tests include edge cases, not just happy paths
+   - Acceptance criteria are scenarios — a starting state, an action, an observable outcome — concrete and verifiable
 
 2. **Vertical Slicing**
    - Tasks deliver complete, testable functionality
@@ -53,9 +52,8 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
    - Tasks within a phase execute in natural order (by internal ID) unless dependencies or priorities override it. Do not flag missing dependencies for sequential intra-phase tasks where natural order already produces the correct sequence. Only flag dependency issues where: execution would happen in the wrong order without an explicit dependency, a cross-phase dependency is missing, or a convergence point (task needing multiple predecessors) lacks explicit edges.
 
 5. **Task Self-Containment**
-   - Each task contains all context needed for execution
-   - No task requires reading other tasks to understand what to do
-   - Relevant specification decisions are pulled into task context
+   - Every decision the record made that bears on the task is in the task
+   - The task names where the rest lives — its Spec Reference cites the sections it traces to
    - An implementer could pick up any single task and execute it
 
 6. **Scope and Granularity**
@@ -66,8 +64,8 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 7. **Acceptance Criteria Quality**
    - Criteria are pass/fail, not subjective
    - Criteria cover the actual requirement, not just "code exists"
-   - Edge case criteria are specific about boundary values and behaviors
-   - No criteria that an implementer would have to interpret
+   - Each criterion is checkable without opening the code
+   - A criterion for an edge the specification decided is specific about the boundary value and the behaviour
 
 8. **External Dependencies** (epic only — skip for feature/bugfix)
    - All external dependencies from the specification are documented in the plan
@@ -81,16 +79,16 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. It holds only where the fork is what the product's user gets or how it behaves, nothing in the specification, the plan's own conventions, or a measurement breaks the tie, a side visibly costs the user, and the tie-break is the reader's — appetite, product intent, or a fact only they hold. A fork in how the plan achieves it is the planner's, and a fork every side of which leaves the user well served is a preference, not a decision: either settles on what leans, and where nothing leans, on your honest call, the Proposal naming it as such and what it weighed. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. It holds only where the fork is what the product's user gets or how it behaves, nothing in the specification, the plan's own conventions, or a measurement breaks the tie, a side visibly costs the user, and the tie-break is the reader's — appetite, product intent, or a fact only they hold. A fork in how the work is cut — phase ownership, task grouping, order, dependencies — is the planner's and settles on what leans; a fork in how the code does it is the builder's and is not a finding at all. A fork every side of which leaves the user well served is a preference, not a decision. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - A finding that indicts the specification — the plan cannot trace because the record is silent or wrong on what the product does — names that in the Problem and takes `settled` or `choice` like any other; the walk lands the answer in the record before disposing it.
 
-A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference nothing leans on is settled on your honest call, never staged as a choice.
+A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference no side of which costs the user is the builder's, never staged as a choice.
 
-**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is theirs to settle with the code in front of them; the plan is not defective for leaving it open. A finding whose whole remedy is mechanism the specification leaves open is not written; at most it is an Observation. A finding may name that a prescribed mechanism builds the wrong behaviour — its Proposal then restates the behaviour the task must deliver and the criterion and test that prove it, and removes the mechanism the record never decided, never one mechanism swapped for another.
+**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is theirs to settle with the code in front of them; the plan is not defective for leaving it open. A finding whose whole remedy is mechanism the specification leaves open is not written, and no Proposal supplies one; at most it is an Observation. A finding may name that a prescribed mechanism builds the wrong behaviour — its Proposal then restates the behaviour the task must deliver and the criterion that proves it, and removes the mechanism the record never decided, never one mechanism swapped for another.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
 
-A plan defect the specification or the plan's own conventions determine is **settled**. A fork in how the plan achieves a defect's fix — how to split a task, which phase owns a slice, what a consumer keys on — is settled too: on what leans, or on your honest call where nothing does. A **choice** is a fork in what the product's user gets that survives the search with a side visibly costing them: name what was searched, and take a stance.
+A plan defect the specification or the plan's own conventions determine is **settled**. A fork in how the work is cut — how to split a task, which phase owns a slice — is settled too, on what leans. A **choice** is a fork in what the product's user gets that survives the search with a side visibly costing them: name what was searched, and take a stance.
 
 ## Tracking File
 
@@ -99,7 +97,7 @@ After completing the analysis, create a tracking file at `.workflows/{work_unit}
 Categorize each finding by severity:
 
 - **Critical**: Would block implementation or cause incorrect behavior
-- **Important**: Would force the implementer to guess at a behaviour or a criterion the product's user meets
+- **Important**: Would force the implementer to guess at a behaviour or a criterion the product's user meets — a decision the record made that the plan leaves out
 
 Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 

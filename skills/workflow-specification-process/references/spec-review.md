@@ -8,7 +8,7 @@ Three-phase review of the specification. Phase 1 (Claims Verification) measures 
 
 **CRITICAL**: Phases are strictly sequential — never dispatch two agents in parallel. Claims run first because a false claim carried faithfully from a source reads to fidelity review as a perfect match — its routing must land before Phase 2 compares; Phase 2 findings are applied before Phase 3 reviews the updated document.
 
-**Why this matters**: The specification is the golden document — the record of what was decided, from which the plan and then the code are built. A decision it drops never reaches the plan; a rule it adds that nobody made is a decision the record never took. The review holds both lines: every decision the sources made is on the page, and nothing on the page decides what they left open — that remainder is the planner's.
+**Why this matters**: The specification is the golden document — the record of what was decided, from which the plan and then the code are built. A decision it drops never reaches the plan; a rule it adds that nobody made is a decision the record never took. The review holds both lines: every decision the sources made is on the page, and nothing on the page decides what they left open — that remainder is the implementer's.
 
 → Load **[review-tracking-format.md](review-tracking-format.md)** — internalize the tracking file format for all three phases.
 

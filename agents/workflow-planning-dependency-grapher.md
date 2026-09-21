@@ -30,7 +30,7 @@ On **re-invocation after feedback**, you also receive:
 3. Read the planning file — understand phase structure and task tables
 4. List all authored tasks using the method described in reading.md, addressing the plan by its external ID and resolving internal IDs through the task map
 5. **Clear existing graph data** — using graph.md's removal instructions, remove all existing dependencies and priorities from every task. This ensures a clean slate on every invocation (first run, re-invocation after feedback, or `continue` of a previous session).
-6. Read every authored task file — absorb each task's Problem, Solution, Do steps, and Acceptance Criteria
+6. Read every authored task file — absorb each task's Problem, Solution, Outcome, Acceptance Criteria, and Do where the record decided one
 7. Analyze dependencies — follow the methodology in "Detecting Dependencies" below
 8. Assign priorities — follow the methodology in "Assigning Priorities" below
 9. Detect cycles — verify the dependency graph is acyclic (see "Cycle Detection" below)
@@ -55,10 +55,10 @@ A dependency exists when Task B **cannot start** until Task A is **complete**. T
 
 ### How to identify them
 
-For each task, read its **Do** steps and **Acceptance Criteria** carefully. Identify:
+For each task, read its **Solution**, **Outcome**, and **Acceptance Criteria** carefully — and its **Do**, where it carries one. Identify:
 
 1. **What it produces** — what files, classes, endpoints, configurations, or behaviours does this task create or modify?
-2. **What it requires** — what must already exist for this task's Do steps to be executable and its tests to be writable?
+2. **What it requires** — what must already exist for this task's criteria to be met?
 
 Then match produces→requires across all tasks. If Task A produces something that Task B requires, and Task B would fail or be impossible to implement without it, that's a dependency.
 
