@@ -1,0 +1,64 @@
+{
+  "origin": "the backlogging door is new prose, and its third route through `A. Which Backlog` is the one with a map already under it: the words place the idea on the roadmap but name no horizon, so the horizon is the user's to pick from what is there. This walks that pick from a specification mid-construction over a roadmap that already holds two horizons — the state read, the numbered pick rendered, the second horizon carried into a confirm that flags nothing new, and the park sourced to the specification the session is writing",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-shared/references/backlogging.md"
+  ],
+  "answers": [
+    "c — pick the specification up where it left off",
+    "before you write that — one thing that is not this spec's: an operator should be able to refund a paid order from the order screen, without going into the gateway's own dashboard. Put that on the roadmap.",
+    "2",
+    "yes — park it"
+  ],
+  "conduct": "The user is turning their completed card-payments discussion into the specification and knows its decisions cold: the existing gateway account with no new provider onboarding, card-only for v1 with wallets deferred, and capture confirmed by gateway webhook with no polling anywhere. Beyond the scripted answers they add no scope and reopen nothing. On the refund capability they have no more to give than they said — an operator refunding a paid order from the order screen — and asked what to call it or how to summarise it they answer in those same words.",
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.specification.pay",
+      "render resume-gate pay.specification.pay",
+      "render construction-gate pay.specification.pay",
+      "roadmap state",
+      "render horizon-pick",
+      "render park-gate",
+      "--horizon \"v2\"",
+      "--origin park:pay",
+      "--source pay/specification/pay/specification.md"
+    ],
+    "calls_in_order": [
+      "render construction-gate pay.specification.pay",
+      "roadmap state",
+      "render horizon-pick",
+      "render park-gate",
+      "roadmap add"
+    ],
+    "calls_exclude": [
+      "render backlog-gate",
+      "commit --inbox",
+      "roadmap session open",
+      "roadmap horizon add",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "sources.pay.status incorporated",
+      "construction_gate_mode auto",
+      "topic complete pay specification"
+    ]
+  }
+}

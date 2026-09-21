@@ -1,0 +1,25 @@
+{
+  "work_units": {
+    "pay": {
+      "work_type": "feature"
+    }
+  },
+  "roadmap": {
+    "horizons": [
+      "v1",
+      "v2"
+    ],
+    "items": {
+      "wallet-payments": {
+        "horizon": "v1",
+        "summary": "shoppers pay with Apple Pay or Google Pay at checkout",
+        "origin": "harvest"
+      },
+      "subscription-billing": {
+        "horizon": "v2",
+        "summary": "customers are charged on a recurring plan",
+        "origin": "harvest"
+      }
+    }
+  }
+}

@@ -163,6 +163,9 @@ Research that concluded with nothing to carry forward under its own name. The to
 **inbox**:
 Where thoughts are put down without stopping: ideas, bugs and quick-fixes captured in a line ("log that as an idea"). Items wait there until picked up from workflow start, promoted into a piece of work or archived.
 
+**backlog**:
+Putting an idea aside from any conversation, whichever phase you are in. It covers both homes: a park onto the roadmap when you place it, an inbox note when you don't — and you are asked which one when your words leave it open.
+
 **seed**:
 The inbox note a piece of work was started from, moved into the work as its permanent record of origin.
 
