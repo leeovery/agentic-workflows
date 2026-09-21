@@ -3,10 +3,12 @@
 The task-author agent's first run for Phase 1 of the pay plan: it
 writes the task detail file to the path the prose names
 (`.workflows/pay/planning/pay/phase-1-tasks.md`) with the first block's
-exact bytes — carrying no client timeout on the attach task, because
-the specification states none — and returns the second block, whose
-`## Spec Defects` section reports that omission. The defects section is
-the agent's return only: it never reaches the detail file.
+exact bytes — the intent task carrying the bound the specification
+states, the attach task carrying no **Do** at all, because the
+specification decided nothing about how that write is made — and
+returns the second block, whose `## Spec Defects` section reports the
+omission. The defects section is the agent's return only: it never
+reaches the detail file.
 
 ---
 
@@ -25,13 +27,9 @@ The task detail file:
 
 **Outcome**: Every checkout start yields exactly one intent, card-only.
 
-**Do**: Call the gateway's intent-creation API from the checkout-start handler under the shared client's 4 second timeout; enforce card-only in the request; surface gateway rejection as a checkout error.
-
 **Acceptance Criteria**: Intent created on checkout start; card-only enforced; gateway rejection surfaces as a user-visible checkout error; the call runs under the shared gateway client's 4 second timeout.
 
-**Tests**: Intent created on start; rejection path shows the error; duplicate start does not create a second intent; a gateway that never answers trips the 4 second bound.
-
-**Edge Cases**: Gateway rejects the intent; duplicate checkout start.
+**Do**: Open the intent against the existing gateway account, through the shared gateway client the specification configures with a 4 second timeout.
 
 **Context**: The existing gateway account is used — no new provider onboarding.
 
@@ -47,13 +45,7 @@ The task detail file:
 
 **Outcome**: Every order carries the intent id that capture confirmation will match on.
 
-**Do**: Store the gateway intent id on the order record when the intent is created; keep the existing id on retry rather than minting a new one.
-
-**Acceptance Criteria**: Order carries the intent id; retry reuses the existing intent.
-
-**Tests**: Order persists the id; retry path reuses it; abandoned order retains its id harmlessly.
-
-**Edge Cases**: Order abandoned before payment; intent id missing on retry.
+**Acceptance Criteria**: Order carries the intent id; a second checkout start reuses the intent the order already carries, with no second intent created.
 
 **Context**: Webhook capture (Phase 2) matches on this id.
 

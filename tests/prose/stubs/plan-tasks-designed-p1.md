@@ -13,5 +13,5 @@ find it.
 
 | Task | Summary | Edge cases |
 |------|---------|------------|
-| Create Payment Intent | Create a gateway payment intent when checkout begins, card-only enforced. | Gateway rejects the intent; duplicate checkout start |
-| Attach Intent To Order | Persist the intent id on the order for later capture confirmation. | Order abandoned before payment; intent id missing on retry |
+| Create Payment Intent | Create a gateway payment intent when checkout begins, card-only enforced. | Gateway rejects the intent (§1 Payment Intent) |
+| Attach Intent To Order | Persist the intent id on the order for later capture confirmation. | Duplicate checkout start (§1 Payment Intent) |

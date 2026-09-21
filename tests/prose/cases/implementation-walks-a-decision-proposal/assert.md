@@ -53,8 +53,8 @@ The prose should have taken this path:
     that one correction was recorded — one line, no per-correction
     recap
 12. the two findings fold into two staged proposals carrying problem
-    and direction only — no Do, no Acceptance Criteria, no Tests,
-    because nothing has been agreed to build yet. The extraction is
+    and direction only — no Do and no Acceptance Criteria, because
+    nothing has been agreed to build yet. The extraction is
     an ordinary proposal; the short-capture finding is an irreducible
     product fork past the bar — product-level, mirrored costs no
     measurement or spec entry breaks, the tie-break the user's — so
@@ -68,8 +68,8 @@ The prose should have taken this path:
 13. the walk's gate state initialises in one batched write — both
     rows pending — and the tasks-overview renders
 14. the first proposal renders gated at proposal altitude: its
-    payload carries problem and solution and no steps, criteria or
-    tests, and the rendered body shows none of those blocks. The
+    payload carries problem and solution and no steps or criteria,
+    and the rendered body shows neither block. The
     fourth scripted answer takes auto — the row records approved and
     consolidation_gate_mode is set to auto
 15. the second proposal carries a Decision, so the walk loads the
@@ -117,8 +117,8 @@ The prose should have taken this path:
     itself as landed — consolidated_phases gains 1 — before anything
     reaches the plan, then invokes the task author over the staging
     file with both approved task numbers; the author stub adds each
-    task's Do, Acceptance Criteria and Tests beneath its existing
-    heading, leaving titles, control lines, Problem and Solution as
+    task's Do and Acceptance Criteria beneath its existing heading,
+    leaving titles, control lines, Problem and Solution as
     staged
 20. only once the author has returned is the task writer invoked,
     with the per-task consolidation-boundary placement; the writer
@@ -157,8 +157,8 @@ Further claims:
   second proposal's: it carries a stakes string and a decision with
   two sides — exactly one flagged recommended, listed first, its
   summary free of the (recommended) marker — each summary reading as
-  a product end state, never a work plan, and no steps, criteria or
-  tests keys
+  a product end state, never a work plan, and no steps or criteria
+  keys
 - the staging file's second task carries the settled short-capture
   handling in its Solution — the side the rendered menu offered as 2
   — and no **Decision** or **Stakes** lines; both tasks carry the

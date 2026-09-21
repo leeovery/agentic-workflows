@@ -7,8 +7,8 @@ Read the staging file, then:
 1. Create `.workflows/pay/planning/pay/tasks/pay-2-1.md` with the
    frontmatter below and a body carrying the approved task's title as
    the `#` heading, its **Do** content as the description, and its
-   `**Acceptance Criteria**:` and `**Tests**:` lines as the author left
-   them — copied, never rewritten.
+   `**Acceptance Criteria**:` lines as the author left them — copied,
+   never rewritten.
 2. Append a new phase section to
    `.workflows/pay/planning/pay/planning.md`, headed
    `## Phase 2: Analysis (Cycle 1)` — the phase label the dispatch

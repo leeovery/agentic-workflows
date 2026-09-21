@@ -7,8 +7,8 @@ then:
 1. Create `.workflows/pay/planning/pay/tasks/pay-1-3.md` with the
    frontmatter below and a body carrying the staged task's title as
    the `#` heading, its description content, and its
-   `**Acceptance Criteria**:` and `**Tests**:` lines as staged —
-   copied, never rewritten.
+   `**Acceptance Criteria**:` lines as staged — copied, never
+   rewritten.
 2. Append the row `| pay-1-3 | {the staged task's title} |` to the
    Phase 1 task table in `.workflows/pay/planning/pay/planning.md`.
 3. Record the mapping:

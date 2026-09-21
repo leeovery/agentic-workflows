@@ -1,5 +1,5 @@
 {
-  "origin": "The planning review's dispose landed with an arm the specification's lacks — a fork in the how nothing leans on is the planner's honest call, never a stop — and nothing walked it. Two staged choices had to be seen riding auto without a stop: one the specification settles (its duplicate-start rule decides a retried checkout, the derivation sitting in the agent's own recommended option with no search named), and one that is a fork in how the plan achieves idempotency, its search named and nothing leaning, settled on the planner's call and written as such. This pins both, with the user's opt-in at the first settled finding the only stop the review takes.",
+  "origin": "A staged `choice` is the reviewer's opinion about its own finding, and the dispose has to take it apart two different ways before anything renders. One kind is a fork in what the product does that the specification in fact settles — its duplicate-start rule decides a retried checkout, the derivation sitting unremarked in the agent's own recommended option — and the walk has to run the search the agent never named, rewrite the row `settled`, and land it under auto with no stop. The other is a fork in how the code does it — what the capture consumer keys a repeat delivery on — which the plan states no answer to at all: it is declined at the dispose as the builder's and never reaches the user. This pins both against the same tracking file, with the user's opt-in at the first settled finding the only stop the review takes.",
   "entry": "workflow-planning-entry",
   "world": "claims",
   "files": [
@@ -48,7 +48,7 @@
   "stubs": {
     "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states (already-present values reapply unchanged), then return the content below as the agent's summary",
     "plan-review-clean": "when the prose invokes the planning traceability review agent via the Task tool for review cycle 1 — return the content below and write no file",
-    "plan-integrity-derivable-and-honest-choices": "when the prose invokes the planning integrity review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
+    "plan-integrity-derivable-and-builders-fork": "when the prose invokes the planning integrity review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
     "plan-review-clean-c2": "each time the prose invokes a planning review agent via the Task tool for review cycle 2 or later — both the traceability and the integrity review return the content below and write no file"
   },
   "invariants": {
@@ -81,7 +81,6 @@
       "render findings-summary pay.planning.pay",
       "render finding pay.planning.pay",
       "finding_gate_mode auto",
-      "render finding pay.planning.pay",
       "render finding pay.planning.pay",
       "tracking.review-integrity-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",

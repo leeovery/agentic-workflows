@@ -88,8 +88,8 @@ The prose should have taken this path:
 15. no pending row remains and the one row is approved, so the
     no-tasks-approved commit never runs and the flow goes to the plan
     write: the task author is invoked over the staging file with the one
-    approved task number; the stub adds that task's Do, Acceptance
-    Criteria and Tests beneath its existing heading, leaving the title,
+    approved task number; the stub adds that task's Do and Acceptance
+    Criteria beneath its existing heading, leaving the title,
     control lines, Problem and Solution as staged. The author returns
     complete, so the failure branch is never entered
 16. only once the author has returned is the task writer invoked, with
@@ -131,8 +131,8 @@ Further claims:
   wrote it — the settle edits the specification, never the report
 - the staging file holds exactly one task — the import proposal — with
   no second task heading, no **Decision** and no **Stakes** line
-  anywhere; the task carries the Do, Acceptance Criteria and Tests the
-  author added, and carried none of them before the walk
+  anywhere; the task carries the Do and Acceptance Criteria the author
+  added, and carried neither before the walk
 - the proposed-task payload left under .workflows/.cache is the one
   proposal's as rendered: current 1 of 1, with no decision key and no
   stakes key

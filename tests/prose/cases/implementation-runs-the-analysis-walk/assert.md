@@ -89,7 +89,7 @@ The prose should have taken this path:
     approved commit never runs and the flow goes to the plan write
 17. the task author is invoked over the staging file with the approved
     task numbers alone — one number, not two; the stub adds that task's
-    Do, Acceptance Criteria and Tests beneath its existing heading,
+    Do and Acceptance Criteria beneath its existing heading,
     leaving titles, control lines, Problem and Solution as staged, and
     leaving the declined proposal untouched. The author returns complete,
     so the failure branch is never entered
@@ -128,8 +128,8 @@ Further claims:
 - all three findings files exist for cycle 1, the duplication one
   recording no findings, alongside the report and the staging file
 - the proposed-task payload left under .workflows/.cache is the second
-  proposal's: current 2 of 2, and no decision, steps, criteria or tests
-  keys on either proposal's payload
+  proposal's: current 2 of 2, and no decision, steps or criteria keys
+  on either proposal's payload
 - staging.c1 ends with exactly two rows — the first approved, the second
   skipped — and no third; analysis_gate_mode ends gated, as do
   task_gate_mode, fix_gate_mode and consolidation_gate_mode
@@ -138,8 +138,8 @@ Further claims:
   completed_phases and consolidated_phases both still exactly [1], no
   bank field, and no directions field
 - the staging file's second task is exactly as the synthesis staged it —
-  no Do, no Acceptance Criteria, no Tests — while the first carries the
-  three the author added, and neither carried them before the walk
+  no Do and no Acceptance Criteria — while the first carries the two
+  the author added, and neither carried them before the walk
 - tasks/pay-2-1.md exists with status pending and phase 2; the planning
   file carries a Phase 2 headed `Analysis (Cycle 1)` with exactly one
   row; no pay-2-2 exists and the Phase 1 table is unchanged
