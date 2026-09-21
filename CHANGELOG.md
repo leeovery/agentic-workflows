@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.71] - 2026-09-21
+
+🔧 Changed
+- The test suite runs offline and in-process — no network calls, no shared config leakage, and `npm test` drops from ~9 minutes to ~1 minute on a warm cache.
+- The engine CLI gained an in-process entry point (`engine.run`) so test harnesses can drive it by argv without spawning a process per call.
+- Prose-test snapshot rebuilds now cache locally and fan out across worker threads instead of rebuilding every world serially on each run.
+
 ## [0.7.70] - 2026-09-21
 
 🔧 Changed
