@@ -991,6 +991,33 @@ function checkYesAsksQuestion(files) {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Check 21 — an inbox file is named by date. Every `.workflows/.inbox/…`
+// path in the corpus that reaches a file names it `{YYYY-MM-DD}--{slug}.md`
+// (a literal date in the same shape passes). The pickup scan
+// (domain/start.cjs parseInboxFile) recognises that form alone and skips any
+// other name, so a capture filed under another spelling is committed and
+// never offered for promotion.
+// ---------------------------------------------------------------------------
+
+const INBOX_FILE = /\.workflows\/\.inbox\/(?:\.archived\/)?(?:ideas|bugs|quickfixes)\/([^\s`)"'<>]+)/g;
+const INBOX_DATED = /^(?:\{YYYY-MM-DD\}|\d{4}-\d{2}-\d{2})--[^/]+\.md$/;
+
+function checkInboxFileNames(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      for (const m of line.matchAll(INBOX_FILE)) {
+        if (!INBOX_DATED.test(m[1])) {
+          out.push({ file, line: i + 1, message: `inbox file not named by date: "${m[1]}" (expected {YYYY-MM-DD}--{slug}.md)` });
+        }
+      }
+    });
+  }
+  return out;
+}
+
 const CHECKS = [
   ['1: phase-title chrome (drawn borders retired)', checkBorders],
   ['2: step / sub-step chrome (drawn markers retired)', checkMarkers],
@@ -1012,6 +1039,7 @@ const CHECKS = [
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
   ['19: yes rows ask a question', checkYesAsksQuestion],
   ['20: footerless load directives', checkFooterlessLoads],
+  ['21: inbox files are named by date', checkInboxFileNames],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1628,5 +1656,23 @@ test('check 19 (yes rows ask a question) — catches a statement or an unglyphed
     // Option grammar outside a menu is not a menu — no dot frame, no check.
     const prose = write(dir, 'skills/x/prose.md', '**`y/yes`** → the affirmative key\n');
     assert.strictEqual(checkYesAsksQuestion([prose]).length, 0, 'a y/yes row outside a menu is never inspected');
+  });
+});
+
+test('check 21 (inbox file names) — catches a numbered name, permits the dated form', () => {
+  withTemp((dir) => {
+    const bad = write(dir, 'skills/x/bad.md', '- `bug` → `.workflows/.inbox/bugs/{NNN}-{slug}.md`\n');
+    const v = checkInboxFileNames([bad]);
+    assert.strictEqual(v.length, 1, 'a numbered inbox name is caught');
+    assert.strictEqual(v[0].line, 1);
+    assert.match(v[0].message, /not named by date/);
+    const good = write(dir, 'skills/x/good.md', [
+      '`.workflows/.inbox/ideas/{YYYY-MM-DD}--{slug}.md`',
+      '`.workflows/.inbox/.archived/bugs/2026-06-01--login-timeout.md`',
+      '`.workflows/.inbox/quickfixes/` holds the captures',
+      '`.workflows/.inbox/{ideas,bugs,quickfixes}/`',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkInboxFileNames([good]).length, 0, 'the dated form, live or archived, and a bare directory pass');
   });
 });

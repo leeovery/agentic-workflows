@@ -46,11 +46,11 @@ Present each surviving finding as markdown — its summary, its kind (a feature,
 
 **STOP.** Wait for user response.
 
-File what they chose, taking the next available number in each directory:
+File what they chose under today's actual date and a short kebab-case slug for the finding, creating the directory where it is absent:
 
-- `bug` → `.workflows/.inbox/bugs/{NNN}-{slug}.md`
-- `feature` → `.workflows/.inbox/ideas/{NNN}-{slug}.md`
-- `quick-fix` → `.workflows/.inbox/quickfixes/{NNN}-{slug}.md`
+- `bug` → `.workflows/.inbox/bugs/{YYYY-MM-DD}--{slug}.md`
+- `feature` → `.workflows/.inbox/ideas/{YYYY-MM-DD}--{slug}.md`
+- `quick-fix` → `.workflows/.inbox/quickfixes/{YYYY-MM-DD}--{slug}.md`
 
 Each file carries the finding's summary, the failure or gap it names, the files it concerns, and where it came from — `{work_unit}` review, and the source finding ids. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
 
