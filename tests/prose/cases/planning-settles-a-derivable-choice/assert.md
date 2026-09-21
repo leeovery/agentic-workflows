@@ -2,9 +2,10 @@ The walk resumes a graphed plan into its review and processes three
 integrity findings, disposing each staged move against the bar before
 it renders: a settled call rides auto, a staged choice the
 specification settles is rewritten settled and rides auto too, and a
-staged choice that is a fork in the how — nothing leaning — is settled
-on the planner's honest call and rides auto as well. After the opt-in,
-the user is stopped once more: at the plan's conclude gate.
+staged choice whose whole substance is a mechanism the specification
+never decided is declined as the builder's and never rendered at all.
+After the opt-in, the user is stopped once more: at the plan's conclude
+gate.
 
 Expected path:
 
@@ -50,18 +51,18 @@ Expected path:
    renders the finding with move `settled` under `auto`: the fix is
    applied to that task, its Resolution set to Fixed, and announced in
    a line — **no stop, no choice menu, no auto-override line**
-8. **Finding 3 (staged as a choice — what makes two deliveries the same
-   delivery)** is disposed before it renders and falls below the bar on
-   a different prong: the fork is in how the plan achieves idempotency,
-   never what the customer gets — the order is marked paid once either
-   way — and the search the row names holds: no specification rule, no
-   plan convention, no measurement leans. The session settles it on its
-   honest call: it rewrites the row Move `settled`, a Proposal that
-   names the call as the planner's own and states what it weighed, the
-   Options removed, Current and Proposed Text in plan format naming one
-   key in the Handle Capture Webhooks task. Then it renders the finding
-   with move `settled` under `auto`: applied to that task, Resolution
-   Fixed, announced in a line — no stop
+8. **Finding 3 (staged as a choice — what the capture consumer keys a
+   repeat delivery on)** is disposed before anything renders, and the
+   dispose refuses it: its whole substance is a mechanism the
+   specification never decided — what the duplicate key is derived
+   from and where it is kept — and either side leaves the shopper the
+   same order, marked paid once. The fork is the implementer's to
+   settle with the code in front of them, so the plan prescribes
+   nothing for it: Resolution set to **Declined** with that reason in
+   Notes, the Move left as the reviewer staged it, the decline
+   announced in a line, and the work committed. **Nothing is rendered
+   for it and the walk does not stop** — the user never sees this
+   finding, and no key is named anywhere in the plan
 9. the tracking entry flips to `complete`; with `finding_gate_mode`
    `auto` and findings surfaced, the review runs a follow-up cycle
    without stopping — no re-loop gate renders. Both cycle-2 dispatches
@@ -78,23 +79,28 @@ Expected path:
 
 Also true:
 
+- exactly **two** `render finding` calls are recorded in the whole
+  walk. A third means the declined finding was put to the user after
+  all, which is the acceptance rate this decline exists to break
 - the Create Payment Intent task carries acceptance criteria stating
   card-only, a gateway rejection surfacing as a user-visible checkout
   error, and a duplicate checkout start reusing the existing intent
 - the Attach Intent To Order task states that a retried checkout reuses
   the intent already attached to the order — never the
   fresh-intent-per-attempt side
-- the Handle Capture Webhooks task names exactly one idempotency key,
-  in plan format — which one is the planner's call and is not pinned
-  here
-- the tracking file's three rows all end Resolution Fixed and Move
-  `settled`, none carrying Options: row 2's Proposal names the
-  specification's duplicate-start rule as what decided it; row 3's
-  Proposal names the call as the planner's own and states what it
-  weighed; both carry a Proposed Text. A row still reading Move
-  `choice` with an option noted in Notes means the walk stopped on a
-  call the dispose owed
-- no row reads Declined, Pending, or Skipped
+- the declined finding never touched the plan: the Handle Capture
+  Webhooks task names no key, no side table and no stored state, and
+  its text is what the fixture left. A task that now names one means a
+  mechanism the specification never decided was written into the plan
+- the tracking file's first two rows end Resolution Fixed and Move
+  `settled`, neither carrying Options: row 2's Proposal names the
+  specification's duplicate-start rule as what decided it, and carries
+  a Proposed Text. A row still reading Move `choice` with an option
+  noted in Notes means the walk stopped on a call the dispose owed
+- the third row ends Resolution **Declined**, the reason recorded in
+  Notes and its Move still `choice` as staged, with no Proposal and no
+  Proposed Text — nothing was written on the reader's behalf
+- no row reads Pending or Skipped
 - after the user opts into auto at finding 1, they are stopped exactly
   once more — at the plan's conclude gate. No finding stops after
   finding 1, no auto-override line appears, no choice menu renders, and

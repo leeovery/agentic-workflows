@@ -88,8 +88,8 @@ The prose should have taken this path:
 15. all three rows are approved, so the no-tasks-approved commit never
     runs and the flow goes to the plan write: the task author is
     invoked over the staging file with the three task numbers; the stub
-    adds each task's Do, Acceptance Criteria and Tests beneath its
-    existing heading, leaving titles, control lines, Problem and
+    adds each task's Do and Acceptance Criteria beneath its existing
+    heading, leaving titles, control lines, Problem and
     Solution as the walk left them
 16. only once the author has returned is the task writer invoked, with
     the phase label `Analysis (Cycle 1)` as its placement and the

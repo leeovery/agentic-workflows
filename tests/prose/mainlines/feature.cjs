@@ -152,10 +152,11 @@ const TASKS = [
   },
 ];
 
-// The body carries the authored register — the format write copies the
-// detail file's task content, so a real task file always holds its
-// acceptance criteria and named test (invoke-task-verifiers §B reads
-// both back at review).
+// The body is a task file as the previous template produced one —
+// acceptance criteria and a named test. Plans authored under it are read
+// as they stand, with no migration, and every reading path takes the
+// fields it finds; the mainline keeps that shape so the corpus still
+// covers it.
 function taskFile(task, status) {
   return [
     '---',

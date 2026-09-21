@@ -19,13 +19,9 @@ the file's exact bytes; the agent returns after writing it.
 
 **Outcome**: Every checkout start yields exactly one intent, card-only.
 
-**Do**: Call the gateway's intent-creation API from the checkout-start handler; enforce card-only in the request; surface gateway rejection as a checkout error.
-
 **Acceptance Criteria**: Intent created on checkout start; card-only enforced; gateway rejection surfaces as a user-visible checkout error.
 
-**Tests**: Intent created on start; rejection path shows the error; duplicate start does not create a second intent.
-
-**Edge Cases**: Gateway rejects the intent; duplicate checkout start.
+**Do**: Open the intent against the existing gateway account the specification names — no new provider onboarding. The work lives on the checkout-start path.
 
 **Context**: The existing gateway account is used — no new provider onboarding.
 
@@ -41,13 +37,7 @@ the file's exact bytes; the agent returns after writing it.
 
 **Outcome**: Every order carries the intent id that capture confirmation will match on.
 
-**Do**: Store the gateway intent id on the order record when the intent is created; keep the existing id on retry rather than minting a new one.
-
-**Acceptance Criteria**: Order carries the intent id; retry reuses the existing intent.
-
-**Tests**: Order persists the id; retry path reuses it; abandoned order retains its id harmlessly.
-
-**Edge Cases**: Order abandoned before payment; intent id missing on retry.
+**Acceptance Criteria**: Order carries the intent id; a second checkout start reuses the intent the order already carries, with no second intent created.
 
 **Context**: Webhook capture (Phase 2) matches on this id.
 

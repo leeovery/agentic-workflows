@@ -52,20 +52,20 @@ The prose should have taken this path:
     --for pay implementation/pay`, message `impl(pay): phase 1 comment
     corrections`), with no agent, no fix round and no user turn; the
     one finding folds into one staged proposal — title, placement,
-    class tag, Problem and Solution only, with no Do, Acceptance
-    Criteria or Tests, since nothing has yet been agreed to build —
+    class tag, Problem and Solution only, with no Do and no
+    Acceptance Criteria, since nothing has yet been agreed to build —
     and the staging file is written to consolidation-tasks-p1.md
 12. the walk's gate state initialises (staging.p1.tasks.1 pending),
     the tasks-overview renders, and the proposed task renders gated
     at proposal altitude — the payload carries problem and solution,
-    never steps, criteria or tests, and the rendered body shows no
-    Do, Acceptance Criteria or Tests blocks; the fourth scripted
+    never steps or criteria, and the rendered body shows no Do and
+    no Acceptance Criteria block; the fourth scripted
     answer approves — recorded as staging.p1.tasks.1 approved;
     consolidation_gate_mode never flips to auto
 13. E records the pass as landed — consolidated_phases gains 1 —
     then invokes the task author over the staging file with the one
-    approved task number; the author stub adds the Do, Acceptance
-    Criteria and Tests blocks beneath Task 1's existing heading — the
+    approved task number; the author stub adds the Do and Acceptance
+    Criteria blocks beneath Task 1's existing heading — the
     Do quoting the measuring grep and its count and converting every
     site it names — and leaves its title, control lines, Problem and
     Solution as staged.
@@ -113,8 +113,8 @@ Further claims:
 - staging.p1.tasks.1 ends approved; no other staging.p1 row exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both
   exist in the implementation directory, the staging file carrying
-  the task; the task's Do, Acceptance Criteria and Tests blocks are
-  there because
+  the task; the task's Do and Acceptance Criteria blocks are there
+  because
   the author added them after approval, never from the judge
 - the specification is byte-identical to the fixture's — no
   corrigenda section, no edit, and no knowledge re-index of it

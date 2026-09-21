@@ -87,7 +87,7 @@ Further claims:
 
 - the task detail file was written **twice**, and only the second
   version reached the user: it carries the 500 millisecond bound on the
-  attach task's Do, Acceptance Criteria and Tests, and the first
+  attach task's Do and Acceptance Criteria, and the first
   version's bound-less attach task survives nowhere on disk
 - no task reached its gate before the corrigendum landed: the author
   gate is rendered once, after the second authoring run. A gate

@@ -8,8 +8,8 @@ then:
    approved task and `.workflows/pay/planning/pay/tasks/pay-1-4.md`
    for the second, each with the frontmatter below (its own `id`) and
    a body carrying that task's title as the `#` heading, its
-   description content, and its `**Acceptance Criteria**:` and
-   `**Tests**:` lines as staged — copied, never rewritten.
+   description content, and its `**Acceptance Criteria**:` lines as
+   staged — copied, never rewritten.
 2. Append a row `| pay-1-3 | {that task's title} |` and a row
    `| pay-1-4 | {that task's title} |` to the Phase 1 task table in
    `.workflows/pay/planning/pay/planning.md`.

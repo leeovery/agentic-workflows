@@ -1,13 +1,14 @@
-# stub: plan-integrity-derivable-and-honest-choices
+# stub: plan-integrity-derivable-and-builders-fork
 
 An integrity review agent returning three findings on the graphed pay
 plan: one `settled` call the specification determines; one staged as a
 `choice` that the specification in fact settles — its duplicate-start
 rule decides a retried checkout, the derivation sits in the agent's own
 recommended option, and no search is named; and one staged as a
-`choice` that is a fork in how the plan achieves idempotency, its
-search named and nothing in the record leaning either way. Write the
-tracking file to
+`choice` whose whole substance is a mechanism — what the capture
+consumer derives its duplicate key from and where it keeps it, which
+the specification never decided and either side of which leaves the
+shopper the same order. Write the tracking file to
 `.workflows/{work_unit}/planning/{topic}/review-integrity-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
 return the status block. Nothing else: no git activity, no other files.
@@ -82,7 +83,7 @@ ship two checkouts, and one of them strands an open intent per click.
 
 ---
 
-### 3. What Makes Two Deliveries The Same Delivery
+### 3. What The Capture Consumer Keys A Repeat Delivery On
 
 **Severity**: Important
 **Plan Reference**: Phase 2 / Handle Capture Webhooks
@@ -92,11 +93,14 @@ ship two checkouts, and one of them strands an open intent per click.
 
 **Problem**:
 The capture task must treat duplicate deliveries as idempotent and
-never says what makes two deliveries the same one. An implementer keys
-on the gateway's event id or on the intent id and the capture status;
-either satisfies the specification's rule, but they are different
-code, different tests, and different stored state, and the pick is
-written nowhere. Searched the specification's Capture Webhooks section
+never says what the consumer derives that key from or where it keeps
+it. One implementer stores every gateway event id it has seen in a
+side table and matches the next delivery against it; another derives
+the key from the intent id and the order's own capture status and
+stores nothing extra. Either satisfies the specification's rule — the
+order is marked paid once and once only, whatever arrives twice — but
+they are different code, different stored state, and different tests.
+Searched the specification's Capture Webhooks section
 (webhook-confirmed, idempotent deliveries, an unknown intent logged and
 ignored — the last says how a delivery finds its order, not what makes
 two deliveries the same one), the discussion (webhooks confirm capture;
@@ -105,8 +109,8 @@ tree: no key is named, no other
 consumer sets a precedent, and no gateway client exists to measure.
 
 **Options**:
-- Key on the gateway's event id — a delivery is what the gateway says it is, and the consumer keeps the ids it has seen (recommended)
-- Key on the intent id and the capture status — the order's own state records what has been applied, and nothing extra is kept
+- Keep the gateway event ids the consumer has seen in a side table and match each delivery against it (recommended)
+- Derive the key from the intent id and the order's capture status, so the order's own state records what has been applied and nothing extra is kept
 
 **Resolution**: Pending
 **Notes**:

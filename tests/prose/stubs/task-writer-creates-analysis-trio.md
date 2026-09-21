@@ -10,8 +10,8 @@ names. Read the staging file, then:
    approved tasks in staging order, each with the frontmatter below
    (its own `id`) and a body carrying that task's title as the `#`
    heading, its **Do** content as the description, and its
-   `**Acceptance Criteria**:` and `**Tests**:` lines as the author
-   left them — copied, never rewritten.
+   `**Acceptance Criteria**:` lines as the author left them — copied,
+   never rewritten.
 2. Append a new phase section to
    `.workflows/pay/planning/pay/planning.md`, headed
    `## Phase 2: Analysis (Cycle 1)` — the phase label the dispatch
