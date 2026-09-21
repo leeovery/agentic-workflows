@@ -39,7 +39,7 @@ Run the declared command and take the installed version from its output. The che
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> {tool} {installed} is installed; the {format} format requires `{required}`. See {update_instructions} to update to that version. An installed version newer than the requirement means these workflows are behind it — update them with `npx agntc update` and start again.
+> {tool} {installed} is installed; the {format} format requires `{required}`. See {update_instructions} to update to that version.
 ```
 
 **STOP.** Wait for user response.
