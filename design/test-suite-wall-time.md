@@ -233,6 +233,24 @@ section of CLAUDE.md (the harness module, the in-process runner, the
 golden cache, the no-network invariant). Retire the idea file and its
 index row.
 
+**Landed 2026-09-21 (#1249).** The CLAUDE.md paragraphs landed with
+the slices that changed the behaviour they describe; the close retires
+the idea. Final measurement, on the top of the stack, same machine as
+the baseline:
+
+| Run | Baseline | Close |
+|---|---|---|
+| `npm test`, warm cache | 9m09s at 178% CPU | 1m08s at 362% CPU |
+| `npm test`, cache wiped (every world rebuilt) | — | 1m44s at 623% CPU |
+| Tests | 3,304 | 3,384, 0 fail |
+| Prose corpus alone, cold / warm | 483s serial | 55s / 0.35s |
+| `test:cli` / `test:migrations` / typecheck | green | green |
+
+The 60-second target for an engine change is missed by 44 seconds
+and met on any other change; the remaining time is git and the
+frozen fleet's replay inside every world, both parked below with the
+measurement that would justify them.
+
 ## Explicitly parked
 
 - **Finer golden invalidation** (the idea's fourth direction): hashing
@@ -279,3 +297,6 @@ baseline machine; a run with the network down is green.
   and the residual is the engine's own subprocesses.
 - 2026-09-21 — slice 4 landed as #1248; the full run is 1m07s and the
   residual is git. The ledger seed was refuted by the corpus.
+- 2026-09-21 — slice 5 landed as #1249; the stack (#1244) and this
+  design are ready for review. Programme concluded; the design is
+  frozen from here.
