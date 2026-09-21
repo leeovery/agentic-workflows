@@ -135,7 +135,7 @@ Specification is complete when:
 - All topics have validated content
 - All sources are marked as `incorporated` — neither `pending` nor `stale`
 - All consult references are marked as `addressed`
-- At least one review cycle completed with no findings, OR user explicitly chose to proceed past the re-loop prompt
+- At least one review cycle completed with no findings, OR the review loop closed — the user proceeding past the re-loop prompt under `gated`, the churn or cap exit under `auto`
 - Every manifest `tracking` entry `complete`
 - User confirms the specification is complete
 - No blocking gaps remain
