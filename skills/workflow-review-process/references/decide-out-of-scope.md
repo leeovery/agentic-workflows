@@ -46,15 +46,9 @@ Present each surviving finding as markdown — its summary, its kind (a feature,
 
 **STOP.** Wait for user response.
 
-File what they chose, taking the next available number in each directory:
+For each kept finding, invoke the capture skill its kind names — `/workflow-log-bug` for a bug, `/workflow-log-idea` for a feature, `/workflow-log-quickfix` for a quick-fix — with the finding's summary, the failure or gap it names, the files it concerns, and its provenance (`{work_unit}` review, the source finding ids) as the context it synthesises from. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
 
-- `bug` → `.workflows/.inbox/bugs/{NNN}-{slug}.md`
-- `feature` → `.workflows/.inbox/ideas/{NNN}-{slug}.md`
-- `quick-fix` → `.workflows/.inbox/quickfixes/{NNN}-{slug}.md`
-
-Each file carries the finding's summary, the failure or gap it names, the files it concerns, and where it came from — `{work_unit}` review, and the source finding ids. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
-
-Commit any filed items — the inbox has its own scope:
+The capture skill writes the inbox file but does not commit it. Commit the filed items once — the inbox has its own scope:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): file out-of-scope findings to inbox"
