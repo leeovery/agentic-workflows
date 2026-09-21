@@ -1,21 +1,25 @@
 'use strict';
 
 // The prose harness's world machinery: what `buildWorld` makes of a case's
-// sidecars, and which cases a diff implicates. Both are load-bearing and
-// silent when wrong — a peer's hold that materialises stale reads free to the
-// walk, and a selection filter that lets bookkeeping through selects the whole
-// corpus, which is the same as selecting none.
+// sidecars, what the golden gate rebuilds and what it skips, and which cases a
+// diff implicates. All of it is load-bearing and silent when wrong — a peer's
+// hold that materialises stale reads free to the walk, a skip that fires over a
+// moved world hides drift the gate exists to catch, and a selection that
+// implicates the whole corpus is the same as selecting none.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { Worker } = require('worker_threads');
 
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
+const { createVerifyPool } = require('../prose/lib/verify-pool.cjs');
 const { scanPresence, ownsRow } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
 
 /** `git status --porcelain` in a materialised world. */
@@ -24,6 +28,40 @@ function statusLines(dir) {
     cwd: dir,
     encoding: 'utf8',
   }).split('\n').filter(Boolean);
+}
+
+// A case the corpus never sees: `_`-prefixed directories under cases/ are not
+// cases, so a suite validating the corpus beside this one can never meet one.
+const SCRATCH_PREFIX = '_scratch-';
+
+/** The scratch case and whatever it recorded in the hash cache. */
+function removeScratchCase(id) {
+  fs.rmSync(path.join(cases.CASES_DIR, id), { recursive: true, force: true });
+  for (const which of Object.keys(cases.SNAPSHOTS)) {
+    fs.rmSync(worlds.hashCacheFile(id, which), { force: true });
+  }
+}
+
+/**
+ * A scratch case whose recipe writes one file, plus the committed snapshot a
+ * rebuild is compared against — the smallest world that can be verified.
+ * `recipe: null` leaves the case without a recipe, `snapshot: null` without a
+ * committed snapshot.
+ */
+function writeScratchCase(name, { recipe = 'note\n', snapshot = recipe } = {}) {
+  const id = `${SCRATCH_PREFIX}${name}`;
+  removeScratchCase(id);
+  const dir = path.join(cases.CASES_DIR, id);
+  fs.mkdirSync(dir, { recursive: true });
+  if (recipe !== null) {
+    fs.writeFileSync(path.join(dir, cases.FILES.fixtureState),
+      `'use strict';\nmodule.exports = { build(h) { h.write('note.txt', ${JSON.stringify(recipe)}); } };\n`);
+  }
+  if (snapshot !== null) {
+    fs.mkdirSync(path.join(dir, cases.SNAPSHOTS.fixture), { recursive: true });
+    fs.writeFileSync(path.join(dir, cases.SNAPSHOTS.fixture, 'note.txt'), snapshot);
+  }
+  return id;
 }
 
 describe('buildWorld: sidecar materialisation', () => {
@@ -68,15 +106,13 @@ describe('buildWorld: sidecar materialisation', () => {
   it('refuses a dirt path the fixture does not hold', () => {
     // A sidecar naming a file no snapshot carries would silently produce a
     // world missing the dirt the case is about.
-    const CASES_DIR = cases.CASES_DIR;
-    const id = '.tmp-dirt-guard';
-    const dir = path.join(CASES_DIR, id, cases.SNAPSHOTS.fixture);
-    fs.mkdirSync(dir, { recursive: true });
+    const id = writeScratchCase('dirt-guard', { recipe: null, snapshot: 'committed\n' });
     try {
-      fs.writeFileSync(path.join(dir, '.world-dirt.json'), JSON.stringify(['src/never-written.js']));
+      fs.writeFileSync(path.join(cases.CASES_DIR, id, cases.SNAPSHOTS.fixture, '.world-dirt.json'),
+        JSON.stringify(['src/never-written.js']));
       assert.throws(() => worlds.buildWorld(id), /names "src\/never-written\.js", which the fixture does not hold/);
     } finally {
-      fs.rmSync(path.join(CASES_DIR, id), { recursive: true, force: true });
+      removeScratchCase(id);
     }
   });
 });
@@ -85,7 +121,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   const NATIVE_CASE = 'start-records-a-native-verdict';
 
   function scratch() {
-    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'prose-stamp-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-stamp-'));
     fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
     return dir;
   }
@@ -320,17 +356,169 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   });
 });
 
+describe('the recipe hash: what a world is built from', () => {
+  it('a file reaches the digest by its content, a directory by everything under it', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-hash-'));
+    try {
+      const file = path.join(dir, 'engine.cjs');
+      fs.writeFileSync(file, 'one\n');
+      assert.strictEqual(worlds.hashPaths([file]), worlds.hashPaths([file]), 'the same bytes hash the same');
+      const before = worlds.hashPaths([dir]);
+      fs.writeFileSync(file, 'two\n');
+      const edited = worlds.hashPaths([dir]);
+      assert.notStrictEqual(edited, before, 'an edited file under the tree moves the digest');
+      fs.mkdirSync(path.join(dir, 'domain'));
+      fs.writeFileSync(path.join(dir, 'domain', 'kb.cjs'), 'three\n');
+      assert.notStrictEqual(worlds.hashPaths([dir]), edited, 'and so does a new file deeper in it');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('a path that is not there contributes nothing — a case without an assertion recipe still hashes', () => {
+    assert.strictEqual(worlds.hashPaths([path.join(os.tmpdir(), 'prose-hash-absent')]), worlds.hashPaths([]));
+  });
+
+  it('every world\'s hash covers the mainlines, the engine tree and the knowledge bundle', () => {
+    assert.deepStrictEqual(worlds.SHARED_INPUTS, [
+      worlds.MAINLINES_DIR,
+      path.join(worlds.ROOT, 'skills/workflow-engine/scripts'),
+      worlds.KNOWLEDGE,
+    ]);
+    // Taken once per process and reused by every case — so it has to be the
+    // real digest of those inputs, or an engine change would skip past a
+    // moved world.
+    assert.strictEqual(worlds.sharedInputsHash(), worlds.hashPaths(worlds.SHARED_INPUTS));
+  });
+
+  it('a case\'s own recipe is in its hash', () => {
+    const id = writeScratchCase('hash', { recipe: 'first\n' });
+    try {
+      const before = worlds.recipeHash(id);
+      assert.strictEqual(worlds.recipeHash(id), before, 'stable while nothing feeding it moves');
+      writeScratchCase('hash', { recipe: 'second\n' });
+      assert.notStrictEqual(worlds.recipeHash(id), before);
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+});
+
+describe('the recipe-hash cache: the skip the verify maintains', () => {
+  it('a clean rebuild records its hash, and the next verify skips', () => {
+    const id = writeScratchCase('clean');
+    try {
+      assert.strictEqual(worlds.cachedHash(id, 'fixture'), null, 'a cold cache holds nothing');
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), { missing: [], extra: [], changed: [] });
+      assert.strictEqual(worlds.cachedHash(id, 'fixture'), worlds.recipeHash(id));
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), { skipped: true });
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+
+  it('a drift records nothing, so it is still a drift on the next run', () => {
+    const id = writeScratchCase('drift', { recipe: 'rebuilt\n', snapshot: 'committed\n' });
+    const moved = { missing: [], extra: [], changed: ['note.txt'] };
+    try {
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), moved);
+      assert.strictEqual(worlds.cachedHash(id, 'fixture'), null, 'a moved world is never recorded as built');
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), moved);
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+
+  it('a hash from before an engine change rebuilds — a stale cache costs a rebuild, never a skip', () => {
+    const id = writeScratchCase('stale');
+    try {
+      worlds.recordHash(id, 'fixture', 'the digest of an engine tree that has moved on');
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), { missing: [], extra: [], changed: [] });
+      assert.strictEqual(worlds.cachedHash(id, 'fixture'), worlds.recipeHash(id), 'and the clean rebuild re-records');
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+
+  it('a world with no committed snapshot is a miss however fresh the cached hash is', () => {
+    const id = writeScratchCase('unsnapped', { snapshot: null });
+    try {
+      worlds.recordHash(id, 'fixture', worlds.recipeHash(id));
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'),
+        { missing: ['<no committed snapshot>'], extra: [], changed: [] });
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+
+  it('`snap` records the hash too, and the snapshot it writes holds world state alone', () => {
+    const id = writeScratchCase('snap', { snapshot: null });
+    try {
+      assert.strictEqual(worlds.writeSnapshot(id, 'fixture'), 1);
+      assert.strictEqual(worlds.cachedHash(id, 'fixture'), worlds.recipeHash(id));
+      assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), { skipped: true }, 'a just-snapped world skips');
+      assert.deepStrictEqual(fs.readdirSync(path.join(cases.CASES_DIR, id, cases.SNAPSHOTS.fixture)), ['note.txt'],
+        'no bookkeeping inside the snapshot — nothing for a PR to carry');
+      assert.ok(worlds.hashCacheFile(id, 'fixture').startsWith(path.join(cases.PROSE_DIR, '.cache') + path.sep),
+        'the hash is cached in the gitignored cache instead');
+    } finally {
+      removeScratchCase(id);
+    }
+  });
+});
+
+describe('the verify pool: a thread per core, a world at a time', () => {
+  it('answers each job with its own world\'s verdict, and surfaces a failing one', async () => {
+    const clean = writeScratchCase('pool-clean');
+    const drift = writeScratchCase('pool-drift', { recipe: 'rebuilt\n', snapshot: 'committed\n' });
+    const unsnapped = writeScratchCase('pool-unsnapped', { snapshot: null });
+    const recipeless = writeScratchCase('pool-recipeless', { recipe: null, snapshot: 'committed\n' });
+    // Two threads, three jobs: the queue is walked, not just the spawn.
+    const pool = createVerifyPool(2);
+    try {
+      const verdicts = await Promise.all([clean, drift, unsnapped]
+        .map((caseId) => pool.submit({ caseId, which: 'fixture' })));
+      assert.deepStrictEqual(verdicts, [
+        { missing: [], extra: [], changed: [] },
+        { missing: [], extra: [], changed: ['note.txt'] },
+        { missing: ['<no committed snapshot>'], extra: [], changed: [] },
+      ]);
+      assert.strictEqual(worlds.cachedHash(clean, 'fixture'), worlds.recipeHash(clean),
+        'a thread\'s clean rebuild records the hash the main thread would have');
+      await assert.rejects(pool.submit({ caseId: recipeless, which: 'fixture' }),
+        (e) => e.message === `case "${recipeless}" has no ${cases.FILES.fixtureState}`);
+    } finally {
+      await pool.close();
+      for (const id of [clean, drift, unsnapped, recipeless]) removeScratchCase(id);
+    }
+  });
+
+  it('a thread reuses the empty config directory it inherits, never minting its own', async () => {
+    // Every verifying thread requires the harness, which requires the
+    // hermetic module: a thread that pinned a config directory of its own
+    // would leak a temp dir per thread, and one that pinned nothing would run
+    // the developer's config.
+    const worker = new Worker(
+      `require(${JSON.stringify(require.resolve('../prose/lib/worlds.cjs'))});\n`
+      + "require('worker_threads').parentPort.postMessage(process.env.WORKFLOWS_CONFIG_DIR);\n",
+      { eval: true });
+    try {
+      const inThread = await new Promise((resolve, reject) => {
+        worker.once('message', resolve);
+        worker.once('error', reject);
+      });
+      assert.strictEqual(inThread, process.env.WORKFLOWS_CONFIG_DIR);
+    } finally {
+      await worker.terminate();
+    }
+  });
+});
+
 describe('case selection: what a diff implicates', () => {
   const all = cases.loadAllCases();
   const sample = all[0];
 
-  it('a recipe-hash-only change selects nothing', () => {
-    const restamped = all.map((c) => `${c.rel}/${cases.SNAPSHOTS.fixture}/.recipe-hash`);
-    assert.deepStrictEqual(cases.selectCases(all, restamped), [],
-      'bookkeeping records when a world was rebuilt, never what a case tests');
-  });
-
-  it('a snapshot content change still selects its case', () => {
+  it('a snapshot content change selects its case', () => {
     const selected = cases.selectCases(all, [`${sample.rel}/${cases.SNAPSHOTS.fixture}/.workflows/manifest.json`]);
     assert.deepStrictEqual(selected.map((c) => c.id), [sample.id], 'a world that moved is real');
   });
@@ -359,7 +547,7 @@ describe('the asserter prompt file: harness material, never world state', () => 
   // stay out of the tree the differ reads and travel with the logs when a
   // failed world is archived.
   function worldDir() {
-    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'prose-world-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-world-'));
     fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\n');
     fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'walk\n');
     fs.writeFileSync(path.join(dir, worlds.ASSERT_PROMPT), 'PROMPT\n');
