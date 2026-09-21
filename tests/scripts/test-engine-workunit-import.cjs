@@ -73,6 +73,11 @@ function setupFixture({ feature = featureManifest() } = {}) {
   };
 }
 
+/** @param {{root: string}} fix */
+function removeFixture(fix) {
+  fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
 /** Run the engine expecting success; returns the parsed JSON response. */
 const engine = (fix, args, env = {}) => stubbed.ok(fix.project, args, { env: { ...fix.env, ...env } });
 
@@ -93,7 +98,7 @@ const FROM_RESEARCH = ['--from', 'research/ledger'];
 describe('engine workunit import — happy path', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { removeFixture(fix); });
 
   it('lands a binary and a markdown source, records the origin, indexes the markdown alone, commits once', () => {
     writeFile(fix.project, 'shots/Dockset 05 Material.JPEG', 'jpeg bytes\n');
@@ -184,7 +189,7 @@ describe('engine workunit import — happy path', () => {
 describe('engine workunit import — names', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { removeFixture(fix); });
 
   it('dedupes against the directory and the batch, suffixing the stem', () => {
     writeFile(fix.project, 'a/shot.png', 'one\n');
@@ -227,7 +232,7 @@ describe('engine workunit import — names', () => {
 describe('engine workunit import — refusals leave nothing behind', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { removeFixture(fix); });
 
   it('a missing path fails the whole call with missing_imports — nothing copied', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
@@ -278,6 +283,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
   });
 
   it('refuses a work unit that is not in-progress', () => {
+    removeFixture(fix);
     fix = setupFixture({ feature: featureManifest({ status: 'completed' }) });
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', ...FROM_RESEARCH]).error,
@@ -314,6 +320,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
   });
 
   it('refuses a malformed imports node before any file is copied', () => {
+    removeFixture(fix);
     fix = setupFixture({ feature: featureManifest({ imports: 'corrupt' }) });
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', ...FROM_RESEARCH]).error,
@@ -325,7 +332,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
 describe('engine workunit import — the derived tail', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { removeFixture(fix); });
 
   it('a knowledge failure warns and the commit still lands', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
@@ -353,7 +360,7 @@ describe('engine workunit import — the derived tail', () => {
 
   it('every phase the vocabulary carries lands and beats the origin topic, never the work unit', () => {
     for (const phase of ['research', 'discussion', 'investigation']) {
-      fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      removeFixture(fix);
       fix = setupFixture({ feature: epicIn(phase) });
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
       const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', '--from', `${phase}/onboarding`]);
@@ -370,7 +377,7 @@ describe('engine workunit import — the derived tail', () => {
 
   it('a terminal item takes the landing and leaves the row exactly as it found it', () => {
     for (const status of ['completed', 'cancelled', 'superseded', 'promoted']) {
-      fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      removeFixture(fix);
       fix = setupFixture({ feature: featureIn('research', status) });
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
       // A row left by the session that closed the topic: the landing neither
