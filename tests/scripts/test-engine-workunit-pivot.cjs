@@ -2,40 +2,21 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const stubbed = stubbedEngine();
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
-
-// Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; failure is env-driven. The engine's KB behaviour must be
-// deterministic in tests — the real CLI's success depends on the machine's
-// knowledge configuration.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (process.env.STUB_KNOWLEDGE_EXIT) {
-  process.stderr.write('kb exploded\\n');
-  process.exit(parseInt(process.env.STUB_KNOWLEDGE_EXIT, 10));
-}
-process.exit(0);
-`;
 
 /** A feature manifest with completed artifacts, an import, and a seed. */
 function featureManifest(overrides = {}) {
@@ -55,16 +36,9 @@ function featureManifest(overrides = {}) {
   };
 }
 
-/**
- * A hermetic skills layout (real engine scripts, stub
- * knowledge CLI) beside a git-repo project carrying the feature.
- */
+/** A git-repo project carrying the feature. */
 function setupFixture(manifest = featureManifest()) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-pivot-'));
-  const skills = path.join(root, 'skills');
-  fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-
   const project = path.join(root, 'project');
   fs.mkdirSync(project, { recursive: true });
   git(project, ['init', '-q', '-b', 'main']);
@@ -83,36 +57,19 @@ function setupFixture(manifest = featureManifest()) {
   git(project, ['add', '-A']);
   git(project, ['commit', '-q', '-m', 'init']);
 
-  return { root, project, engine: path.join(skills, 'workflow-engine/scripts/engine.cjs') };
+  return { root, project };
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(fix, args, env = {}) {
-  const out = execFileSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  const nl = out.indexOf('\n');
-  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(fix, args, env = {}) {
-  const res = spawnSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -120,11 +77,6 @@ function readManifest(fix, wu) {
 
 function readProjectManifest(fix) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
-}
-
-function knowledgeCalls(fix) {
-  const log = path.join(fix.project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
 }
 
 function shortHead(fix) {
@@ -161,13 +113,13 @@ describe('engine workunit pivot — happy path', () => {
     // The transaction is pure JSON; the continuation menu and the kb
     // advisory are receipt surfaces fetched only by flows with a use for them.
     assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
-    const menu = execFileSync('node', [fix.engine, 'render', 'pivot-continuation', 'auth-flow'], { cwd: fix.project, encoding: 'utf8' });
+    const menu = stubbed.output(fix.project, ['render', 'pivot-continuation', 'auth-flow']);
     assert.ok(menu.includes("=== MENU: pivot continuation (emit verbatim as markdown, then STOP for the user's response) ==="), menu);
     assert.ok(menu.includes('**Auth Flow** converted from feature to epic.'), menu);
-    const advisory = execFileSync('node', [fix.engine, 'render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn'], { cwd: fix.project, encoding: 'utf8' });
+    const advisory = stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
     assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. Indexing can be retried later\./);
     assert.strictEqual(
-      execFileSync('node', [fix.engine, 'render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot'], { cwd: fix.project, encoding: 'utf8' }),
+      stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']),
       '', 'no --warn, no advisory — an empty receipt');
 
     const m = readManifest(fix, 'auth-flow');
@@ -193,7 +145,7 @@ describe('engine workunit pivot — happy path', () => {
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
     // re-indexes them in ONE scoped bulk spawn (was one spawn per artifact).
     // The bulk walk covers the same set (completed topics, imports, seeds, …).
-    assert.deepStrictEqual(knowledgeCalls(fix), [
+    assert.deepStrictEqual(knowledgeCalls(fix.project), [
       'remove --work-unit auth-flow',
       'index --work-unit auth-flow',
     ]);
@@ -270,7 +222,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
     const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');
-    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
   });
 
   it('rejects unknown and missing work units, and extra args', () => {

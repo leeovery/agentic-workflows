@@ -18,45 +18,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const { ok: engineJson, refuses: engineFails } = require('./engine-harness.cjs');
 
-function run(dir, args) {
-  return spawnSync('node', [ENGINE, 'agent', ...args], { cwd: dir, encoding: 'utf8' });
-}
+/** Agent-store runner: the verb prefix is the suite's subject. */
+const runJson = (dir, args) => engineJson(dir, ['agent', ...args]);
 
-function runJson(dir, args) {
-  const out = execFileSync('node', [ENGINE, 'agent', ...args], { cwd: dir, encoding: 'utf8' }).trim();
-  const parsed = JSON.parse(out);
-  assert.strictEqual(parsed.ok, true);
-  return parsed;
-}
-
-function runFails(dir, args) {
-  const res = run(dir, args);
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
-
-/** Engine runner for non-`agent` verbs (topic absorb); first response line only. */
-function engineJson(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  const nl = out.indexOf('\n');
-  const parsed = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-  assert.strictEqual(parsed.ok, true);
-  return parsed;
-}
-
-function engineFails(dir, args) {
-  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const runFails = (dir, args) => engineFails(dir, ['agent', ...args]);
 
 function readStore(dir, wu, phase, topic) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, phase, topic, 'state.json'), 'utf8'));

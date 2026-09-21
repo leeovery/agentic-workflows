@@ -20,14 +20,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawnSync } = require('child_process');
 
-const MANIFEST_CLI = path.resolve(
-  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
-);
-const ENGINE_CLI = path.resolve(
-  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
-);
+const harness = require('./engine-harness.cjs');
 
 let dir;
 
@@ -41,15 +35,9 @@ function cleanup() {
   dir = null;
 }
 
-function runCli(...args) {
-  const r = spawnSync('node', [MANIFEST_CLI, 'manifest', ...args], { cwd: dir, encoding: 'utf8' });
-  return { stdout: r.stdout, stderr: r.stderr, status: r.status };
-}
+const runCli = (/** @type {string[]} */ ...args) => harness.call(dir, ['manifest', ...args]);
 
-function runEngine(...args) {
-  const r = spawnSync('node', [ENGINE_CLI, ...args], { cwd: dir, encoding: 'utf8' });
-  return { stdout: r.stdout, stderr: r.stderr, status: r.status };
-}
+const runEngine = (/** @type {string[]} */ ...args) => harness.call(dir, args);
 
 function readManifest(workUnit) {
   return JSON.parse(fs.readFileSync(
@@ -89,7 +77,7 @@ function ensureCreate(workUnit, topic, routing, { summary, description } = {}) {
   if (!summary && !description) args.push('--backfill');
   args.push('--force-dismissed');
   const r = runEngine(...args);
-  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.code, 0, r.stderr);
 }
 
 describe('ensure-discovery-item: create without summary or description', () => {
@@ -158,7 +146,7 @@ describe('ensure-discovery-item: idempotency on existing item', () => {
     });
 
     const existsResult = runCli('exists', 'payments.discovery.auth');
-    assert.strictEqual(existsResult.status, 0);
+    assert.strictEqual(existsResult.code, 0);
     assert.strictEqual(existsResult.stdout.trim(), 'true');
 
     // Caller short-circuits — ensureCreate is not invoked again. Manifest stays.

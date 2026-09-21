@@ -11,49 +11,26 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const { execFileSync, spawnSync } = require('child_process');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
+const harness = require('./engine-harness.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const { git, cleanupFixture: cleanup, ok, refuses } = harness;
 
 /** A temp-dir git repo with an empty project manifest committed. */
 function setupGitFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-roadmap-'));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  const dir = harness.setupGitFixture('engine-roadmap-');
   fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), '{}\n');
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-q', '-m', 'init']);
   return dir;
 }
 
-function cleanup(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-}
-
 /** Run a roadmap command expecting success; returns the parsed JSON line. */
-function runOk(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, 'roadmap', ...args], { cwd: dir, encoding: 'utf8' }).trim());
-}
+const runOk = (dir, args) => ok(dir, ['roadmap', ...args]);
 
 /** Run a roadmap command expecting failure; returns the parsed stderr JSON. */
-function runFail(dir, args) {
-  const res = spawnSync('node', [ENGINE, 'roadmap', ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected failure for: ${args.join(' ')}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const runFail = (dir, args) => refuses(dir, ['roadmap', ...args]);
 
 function readProject(dir) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8'));
@@ -428,9 +405,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   });
   afterEach(() => { cleanup(dir); });
 
-  function engineOk(args) {
-    return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).split('\n')[0].trim());
-  }
+  const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
 
   it('topic cancel reverts the bound item to waiting, staging the project manifest', () => {
     const res = engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
@@ -635,11 +610,11 @@ describe('engine CLI: roadmap sessions and imports', () => {
     runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n')]);
     fs.appendFileSync(path.join(dir, '.workflows', '.roadmap', 'sessions', 'session-001.md'), '\nMore exploration.\n');
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
-    const res = JSON.parse(execFileSync('node', [ENGINE, 'commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001'], { cwd: dir, encoding: 'utf8' }).trim());
+    const res = ok(dir, ['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
     assert.ok(res.committed);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: exploration notes — session-001');
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
-    const clean = JSON.parse(execFileSync('node', [ENGINE, 'commit', '--roadmap', '-m', 'nothing'], { cwd: dir, encoding: 'utf8' }).trim());
+    const clean = ok(dir, ['commit', '--roadmap', '-m', 'nothing']);
     assert.strictEqual(clean.committed, null);
   });
 });
@@ -816,9 +791,7 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
   });
   afterEach(() => { cleanup(dir); });
 
-  function engineOk(args) {
-    return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).split('\n')[0].trim());
-  }
+  const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
 
   it('discovery-map remove of a fresh joined topic reverts the join, staged in its own commit', () => {
     runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);

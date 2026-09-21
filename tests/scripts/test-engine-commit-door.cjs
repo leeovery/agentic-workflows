@@ -10,32 +10,19 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync, spawn } = require('child_process');
+const { spawn } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const { ENGINE, git, cleanupFixture } = harness;
 
 function setupGitFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-'));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  const dir = harness.setupGitFixture('engine-commit-');
   // The nested gitignore every booted project carries (migration 049) — the
   // cache is ephemeral session machinery, mechanical heartbeats included.
   fs.writeFileSync(path.join(dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
   return dir;
-}
-
-function cleanupFixture(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 function writeFile(dir, rel, content) {
@@ -60,24 +47,10 @@ function statusLines(dir) {
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-function engine(dir, args, env) {
-  const out = execFileSync('node', [ENGINE, ...args], {
-    cwd: dir, encoding: 'utf8', env: { ...process.env, ...env },
-  });
-  const nl = out.indexOf('\n');
-  return JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-}
+const engine = (dir, args, env) => harness.ok(dir, args, { env });
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(dir, args, env) {
-  const res = spawnSync('node', [ENGINE, ...args], {
-    cwd: dir, encoding: 'utf8', env: { ...process.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (dir, args, env) => harness.refuses(dir, args, { env });
 
 function epicManifest() {
   return {

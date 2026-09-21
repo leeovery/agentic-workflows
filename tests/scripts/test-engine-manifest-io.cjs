@@ -18,26 +18,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync, spawn } = require('child_process');
+const { spawn } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const { ENGINE, git, ok: engine } = harness;
 
-/** A temp-dir fixture that is a real git repo with a `.workflows/` tree. */
-function setupGitFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-io-'));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-  return dir;
-}
+const setupGitFixture = () => harness.setupGitFixture('engine-io-');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -65,13 +53,6 @@ function readManifest(dir, wu) {
 function makeStale(file) {
   const past = (Date.now() - io.LOCK_STALE_MS - 60000) / 1000;
   fs.utimesSync(file, past, past);
-}
-
-/** Run the engine expecting success; returns the parsed JSON response. */
-function engine(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  const nl = out.indexOf('\n');
-  return JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
 }
 
 /** @param {number} ms */
@@ -289,11 +270,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Run the engine expecting `{ok:false}` exit 1; returns the parsed stderr JSON. */
-  function engineFail(args) {
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    return JSON.parse(res.stderr.trim());
-  }
+  const engineFail = (/** @type {string[]} */ args) => harness.refuses(dir, args);
 
   /** Write raw manifest bytes; returns a function asserting they are untouched. */
   function plant(rel, raw) {

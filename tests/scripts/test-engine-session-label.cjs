@@ -23,12 +23,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync, execFileSync } = require('child_process');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { syncSessionHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
-
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
@@ -51,7 +49,7 @@ let stubDir; // holds the tmux stub + state/log files
 
 /** @param {string[]} args */
 function git(args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+  return harness.git(dir, args);
 }
 
 function setup() {
@@ -79,32 +77,23 @@ function teardown() {
  * from stderr and holds stdout empty — the SessionStart hook's channel.
  */
 function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {}, response = 'stdout' } = {}) {
-  const env = { ...process.env, ...extraEnv };
-  delete env.TMUX;
-  delete env.TMUX_PANE;
-  delete env.TMUX_STUB_FAIL;
-  delete env.TMUX_STUB_FAIL_RENAME;
-  delete env.TMUX_STUB_FAIL_LS;
-  delete env.CLAUDE_CODE_SESSION_ID;
-  delete env.CLAUDE_PID;
-  delete env.CLAUDE_PROJECT_DIR;
-  if (projectDir) env.CLAUDE_PROJECT_DIR = projectDir;
-  Object.assign(env, tmuxStubEnv(stubDir, env.PATH));
-  if (!noTmux) {
-    env.TMUX = '/fake/sock,123,7';
-    env.TMUX_PANE = '%3';
-  }
-  if (sessionId) env.CLAUDE_CODE_SESSION_ID = sessionId;
-  if (claudePid) env.CLAUDE_PID = String(claudePid);
-  if (fail) env.TMUX_STUB_FAIL = '1';
-  if (failRename) env.TMUX_STUB_FAIL_RENAME = '1';
-  if (failLs) env.TMUX_STUB_FAIL_LS = '1';
-  const r = spawnSync('node', [ENGINE, ...args], { cwd: cwd || dir, encoding: 'utf8', env, input });
-  if (expectFail) {
-    assert.strictEqual(r.status, 1, r.stdout + r.stderr);
-    return JSON.parse(r.stderr.trim());
-  }
-  assert.strictEqual(r.status, 0, r.stderr);
+  // An overlay, where `undefined` takes a key away: what the engine sees is
+  // the identity this call declares and nothing the host environment carries.
+  const env = {
+    ...extraEnv,
+    TMUX: noTmux ? undefined : '/fake/sock,123,7',
+    TMUX_PANE: noTmux ? undefined : '%3',
+    TMUX_STUB_FAIL: fail ? '1' : undefined,
+    TMUX_STUB_FAIL_RENAME: failRename ? '1' : undefined,
+    TMUX_STUB_FAIL_LS: failLs ? '1' : undefined,
+    CLAUDE_CODE_SESSION_ID: sessionId || undefined,
+    CLAUDE_PID: claudePid ? String(claudePid) : undefined,
+    CLAUDE_PROJECT_DIR: projectDir || undefined,
+    ...tmuxStubEnv(stubDir, extraEnv.PATH || process.env.PATH),
+  };
+  if (expectFail) return harness.refuses(cwd || dir, args, { env, stdin: input });
+  const r = harness.call(cwd || dir, args, { env, stdin: input });
+  assert.strictEqual(r.code, 0, r.stderr);
   if (response === 'stderr') {
     assert.strictEqual(r.stdout, '', 'a SessionStart hook target prints nothing on stdout — it would become conversation context');
     return JSON.parse(r.stderr.trim());

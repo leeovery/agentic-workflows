@@ -7,14 +7,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const { ENGINE, git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const stubbed = stubbedEngine();
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -38,61 +34,16 @@ function setupGitFixture(root) {
   return project;
 }
 
-// Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; failure is env-driven. The engine's KB behaviour must be
-// deterministic in tests — the real CLI's success depends on the machine's
-// knowledge configuration.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (process.env.STUB_KNOWLEDGE_EXIT) {
-  process.stderr.write('kb exploded\\n');
-  process.exit(parseInt(process.env.STUB_KNOWLEDGE_EXIT, 10));
-}
-process.exit(0);
-`;
-
-/**
- * A hermetic skills layout: the real engine scripts copied into a temp skills root, with a
- * stub knowledge.cjs sibling — exercising the engine's __dirname-relative
- * resolution exactly as installed.
- */
 function setupFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-create-'));
-  const skills = path.join(root, 'skills');
-  fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-  return {
-    root,
-    project: setupGitFixture(root),
-    engine: path.join(skills, 'workflow-engine/scripts/engine.cjs'),
-  };
+  return { root, project: setupGitFixture(root) };
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-function engine(fix, args, env = {}) {
-  const out = execFileSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  return JSON.parse(out.trim());
-}
+const engine = (fix, args, env = {}) => stubbed.ok(fix.project, args, { env });
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(fix, args, env = {}) {
-  const res = spawnSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
 
 const SESSION_LOG = '# Discovery Session 001\n\nDate: 2026-07-15\n\n## Exploration\n\nShaping prose.\n';
 const LOG_STAGE = '.workflows/.cache/payments/discovery/session-001.md';
@@ -114,11 +65,6 @@ function createArgs(workUnit, workType, extra = []) {
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-function knowledgeCalls(fix) {
-  const log = path.join(fix.project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
 }
 
 function shortHead(fix) {
@@ -195,7 +141,7 @@ describe('engine workunit create — happy path', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
 
     // Both landed files were KB-indexed.
-    assert.deepStrictEqual(knowledgeCalls(fix), [
+    assert.deepStrictEqual(knowledgeCalls(fix.project), [
       'index .workflows/payments/imports/my-design-doc.md',
       'index .workflows/payments/seeds/2026-06-01-smart-retry.md',
     ]);
@@ -352,7 +298,7 @@ describe('engine workunit create — import filename normalisation', () => {
     assert.deepStrictEqual(res.imports, [{ path: 'imports/good.md' }]);
     assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), ['imports/good.md']);
     // The skipped file was never indexed.
-    assert.deepStrictEqual(knowledgeCalls(fix), ['index .workflows/payments/imports/good.md']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/payments/imports/good.md']);
   });
 
   it('suffixes batch collisions — same source twice and distinct sources normalising alike', () => {
@@ -380,7 +326,7 @@ describe('engine workunit create — import filename normalisation', () => {
       { path: 'imports/design.md' },
     ]);
     // Only the markdown-ish landing is knowledge-base material.
-    assert.deepStrictEqual(knowledgeCalls(fix), ['index .workflows/payments/imports/design.md']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/payments/imports/design.md']);
     const entries = readManifest(fix, 'payments').imports;
     assert.deepStrictEqual(entries.map((e) => e.origin), ['discovery', 'discovery', 'discovery']);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/screenshot-one.jpeg'), 'utf8'), 'jpeg bytes\n');
@@ -480,7 +426,7 @@ describe('engine workunit create — missing imports fail fast', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(commitCount(fix), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
   });
 
   it('a directory among the imports refuses before any copy — no half-landed batch', () => {
@@ -495,7 +441,7 @@ describe('engine workunit create — missing imports fail fast', () => {
     assert.deepStrictEqual(err.missing_imports, ['notes/album']);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
     assert.strictEqual(commitCount(fix), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
   });
 });
 
@@ -582,7 +528,7 @@ describe('engine workunit create — validation', () => {
 
 describe('engine workunit create — schema sharing', () => {
   it('validates work types through the shared schema module, never a local literal', () => {
-    const src = fs.readFileSync(path.join(REAL_SCRIPTS, 'domain/workunit-create.cjs'), 'utf8');
+    const src = fs.readFileSync(path.join(path.dirname(ENGINE), 'domain/workunit-create.cjs'), 'utf8');
     assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'workunit-create must require the shared schema');
     assert.ok(!/VALID_WORK_TYPES\s*=\s*\[/.test(src), 'no local copy of the work-type vocabulary');

@@ -7,28 +7,20 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
+
+const { git } = harness;
 const { walkthroughState } = require('../../skills/workflow-engine/scripts/domain/walkthrough.cjs');
 
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
-function run(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  return JSON.parse(out.trim());
-}
+const run = (dir, args) => harness.ok(dir, args);
 function refuses(dir, args, pattern) {
-  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
+  const parsed = harness.refuses(dir, args);
   assert.match(parsed.error, pattern);
   return parsed;
 }

@@ -5,34 +5,17 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const { git, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
 
-/** A temp-dir fixture that is a real git repo with a `.workflows/` tree. */
-function setupGitFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-tx-'));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-  return dir;
-}
+const setupGitFixture = () => harness.setupGitFixture('engine-tx-');
 
-function cleanupFixture(dir) {
-  // Retries absorb the macOS teardown race (ENOTEMPTY while a just-exited
-  // child's writes settle).
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-}
+/** Run `engine render` expecting success; returns the whole stdout (sections). */
+const render = (dir, args) => harness.output(dir, ['render', ...args]);
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -55,31 +38,6 @@ function shortHead(dir) {
 
 function readManifest(dir, wu) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-/** Run the engine expecting success; returns the parsed JSON response. */
-function engine(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  const nl = out.indexOf('\n');
-  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
-  return res;
-}
-engine.lastSections = '';
-
-/** Run `engine render` expecting success; returns the whole stdout (sections). */
-function render(dir, args) {
-  return execFileSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
-}
-
-/** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(dir, args) {
-  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
 }
 
 /** An epic manifest with plural phase items and a discovery-map entry carrying `order`. */
@@ -160,7 +118,7 @@ describe('engine topic cancel — the discovery unit', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a never-started topic takes the map marker alone, its order stashed, and commits', () => {
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
+    const { res, sections } = okSections(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'data-export', phase: 'discovery', status: 'cancelled',
       cancelled: [], discarded: [], abandoned: [], released_waits: [],
@@ -169,7 +127,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 1 });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel data-export (discovery)');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'cancel']),
       /DISPLAY: confirmation[\s\S]*Cancelled "Data Export"\.\n/);
   });
@@ -736,10 +694,10 @@ describe('engine topic triage', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('creates an absent phase item with status triaged — no commit', () => {
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases']);
+    const { res, sections } = okSections(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'discussion', status: 'triaged', created: true, status_before: null });
-    assert.strictEqual(engine.lastSections, '', 'triage appends no sections');
+    assert.strictEqual(sections, '', 'triage appends no sections');
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'triaged' });
@@ -1208,12 +1166,12 @@ describe('topic verbs without section folds', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('every topic verb appends nothing — receipts are render surfaces', () => {
-    engine(dir, ['topic', 'start', 'payments', 'research', 'brand-new']);
-    assert.strictEqual(engine.lastSections, '', 'start appends no sections');
-    engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
-    assert.strictEqual(engine.lastSections, '', 'reopen appends no sections');
-    engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
-    assert.strictEqual(engine.lastSections, '', 'supersede appends no sections — its removal warning stays in the JSON');
+    assert.strictEqual(okSections(dir, ['topic', 'start', 'payments', 'research', 'brand-new']).sections, '',
+      'start appends no sections');
+    assert.strictEqual(okSections(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']).sections, '',
+      'reopen appends no sections');
+    assert.strictEqual(okSections(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']).sections, '',
+      'supersede appends no sections — its removal warning stays in the JSON');
   });
 });
 
@@ -1223,7 +1181,7 @@ describe('engine topic complete', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('completes an indexed-phase item and KB-indexes it — failure is a warning, no commit', () => {
-    const res = engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
+    const { res, sections } = okSections(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.topic, 'auth-flow');
@@ -1232,7 +1190,7 @@ describe('engine topic complete', () => {
     // No KB configured in the fixture — warn-don't-block.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     const advisory = render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete', '--warn']);
     assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. Indexing can be retried later\./);
     assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
@@ -1254,10 +1212,10 @@ describe('engine topic complete', () => {
     m0.phases.scoping = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'in-progress' } } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'complete', 'payments', 'scoping', 'fee-model']);
+    const { res, sections } = okSections(dir, ['topic', 'complete', 'payments', 'scoping', 'fee-model']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'scoping', status: 'completed', warnings: [] });
-    assert.strictEqual(engine.lastSections, '', 'no warnings — no sections');
+    assert.strictEqual(sections, '', 'no warnings — no sections');
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.scoping.items, {
       'auth-flow': { status: 'in-progress' },
@@ -1835,7 +1793,7 @@ describe('engine workunit complete', () => {
 
   it('sets status completed, stamps completed_at today, commits with the given message', () => {
     writeFile(dir, 'unrelated.txt', 'outside the scope\n');
-    const res = engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    const { res, sections } = okSections(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
 
     const today = new Date().toISOString().slice(0, 10);
     assert.strictEqual(res.ok, true);
@@ -1853,7 +1811,7 @@ describe('engine workunit complete', () => {
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     assert.strictEqual(res.work_type, 'feature');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete']),
       /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
   });
@@ -1886,8 +1844,8 @@ describe('engine workunit complete', () => {
 
   it('reactivate renders its confirmation via the receipt surface', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.strictEqual(okSections(dir, ['workunit', 'reactivate', 'auth-flow']).sections, '',
+      'transactions answer with pure JSON');
     assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'reactivate']), /"Auth Flow" reactivated\./);
     assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'cancel']).error,
       /not "cancelled" — the cancel has not run/);
@@ -1951,7 +1909,7 @@ describe('engine workunit cancel', () => {
   });
 
   it('sets status cancelled, removes KB chunks (failure is a warning), commits the fixed message', () => {
-    const res = engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    const { res, sections } = okSections(dir, ['workunit', 'cancel', 'auth-flow']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'cancelled');
@@ -1965,7 +1923,7 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     // Receipt: warning above confirmation, fetched from the cancelled state.
     // Conventions-form callout: 2-space flag, 4-space continuation.
     const receipt = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'cancel', '--warn']);
@@ -2387,8 +2345,8 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
 
 describe('engine usage banner', () => {
   it('lists every topic transition, reopen included', () => {
-    const res = spawnSync('node', [ENGINE, 'bogus-command'], { encoding: 'utf8' });
-    assert.strictEqual(res.status, 1);
+    const res = call(process.cwd(), ['bogus-command']);
+    assert.strictEqual(res.code, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
       'topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]',

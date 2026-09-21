@@ -228,9 +228,7 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
   it('accepts a pre-fetched manifest list and yields the identical set', () => {
     // cmdStatus passes the shared `manifest list` payload in; the result must
     // match the self-fetching path exactly.
-    const { execFileSync } = require('child_process');
-    const engineJs = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-    const units = JSON.parse(execFileSync('node', [engineJs, 'manifest', 'list'], { cwd: root, encoding: 'utf8' }));
+    const units = JSON.parse(require('./engine-harness.cjs').output(root, ['manifest', 'list']));
     assert.deepStrictEqual(normalise(discoverArtifacts(units)), EXPECTED);
   });
 });

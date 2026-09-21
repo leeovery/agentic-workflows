@@ -6,11 +6,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
 const GATED_GATES = { task_gate_mode: 'gated', fix_gate_mode: 'gated', analysis_gate_mode: 'gated', consolidation_gate_mode: 'gated' };
 
@@ -96,26 +95,13 @@ function writeFindings(dir, content) {
  * Run the engine expecting success; returns the first-line JSON response and
  * everything after it (the rendered gate sections, '' when none).
  */
-function engineRaw(dir, args) {
-  const stdout = execFileSync('node', [ENGINE, 'task', ...args], { cwd: dir, encoding: 'utf8' });
-  const nl = stdout.indexOf('\n');
-  return { res: JSON.parse(stdout.slice(0, nl)), sections: stdout.slice(nl + 1) };
-}
+const engineRaw = (dir, args) => harness.okSections(dir, ['task', ...args]);
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-function engine(dir, args) {
-  return engineRaw(dir, args).res;
-}
+const engine = (dir, args) => harness.ok(dir, ['task', ...args]);
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(dir, args) {
-  const res = spawnSync('node', [ENGINE, 'task', ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (dir, args) => harness.refuses(dir, ['task', ...args]);
 
 describe('engine task init', () => {
   let dir;
@@ -870,18 +856,10 @@ describe('engine render task surfaces', () => {
   // above — these surfaces are fetched by the loop at each gate's own stage.
 
   /** Run `engine render` expecting success; returns the whole stdout. */
-  function render(args) {
-    return execFileSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
-  }
+  const render = (/** @type {string[]} */ args) => harness.output(dir, ['render', ...args]);
 
   /** Run `engine render` expecting failure; returns the parsed stderr JSON. */
-  function renderFails(args) {
-    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    const parsed = JSON.parse(res.stderr.trim());
-    assert.strictEqual(parsed.ok, false);
-    return parsed;
-  }
+  const renderFails = (/** @type {string[]} */ args) => harness.refuses(dir, ['render', ...args]);
 
   const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 

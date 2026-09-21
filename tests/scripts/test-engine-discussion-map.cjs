@@ -6,14 +6,14 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
 const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/projections/discussion-map.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/workflow-engine/scripts/kernel/manifest.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 const ADAPTER = path.join(__dirname, '../../skills/workflow-discussion-process/scripts/gateway.cjs');
 
 /** A manifest with one in-progress discussion item, optionally pre-seeded subtopics. */
@@ -306,9 +306,7 @@ describe('engine CLI: discussion-map round-trip', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  function engineDiscussionMap(args) {
-    return JSON.parse(execFileSync('node', [ENGINE, 'discussion-map', ...args], { cwd: dir, encoding: 'utf8' }).trim());
-  }
+  const engineDiscussionMap = (/** @type {string[]} */ args) => harness.ok(dir, ['discussion-map', ...args]);
 
   it('add → set, decision-ready JSON each step, manifest persisted', () => {
     createManifest(dir, 'auth', manifestWith());
@@ -358,13 +356,10 @@ describe('engine CLI: discussion-map round-trip', () => {
     }));
     const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
 
-    const ghost = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'ghost=deferred'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(ghost.status, 1);
-    assert.match(JSON.parse(ghost.stderr.trim()).error, /subtopic "ghost" not found/);
-
-    const badState = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=done'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(badState.status, 1);
-    assert.match(JSON.parse(badState.stderr.trim()).error, /unknown subtopic state "done"/);
+    assert.match(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'ghost=deferred']).error,
+      /subtopic "ghost" not found/);
+    assert.match(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=done']).error,
+      /unknown subtopic state "done"/);
 
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
   });
@@ -374,27 +369,17 @@ describe('engine CLI: discussion-map round-trip', () => {
       a: { status: 'pending', parent: null },
       b: { status: 'pending', parent: null },
     }));
-    const mixed = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a', 'b=decided'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(mixed.status, 1);
-    assert.match(JSON.parse(mixed.stderr.trim()).error, /never mixed/);
+    assert.match(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a', 'b=decided']).error, /never mixed/);
   });
 
   it('errors print {ok:false} JSON to stderr and exit 1, manifest untouched', () => {
     createManifest(dir, 'auth', manifestWith());
     const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
 
-    const res = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'ghost', 'decided'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1);
-    assert.strictEqual(res.stdout, '');
-    assert.deepStrictEqual(JSON.parse(res.stderr.trim()), { ok: false, error: 'subtopic "ghost" not found under "auth-flow"' });
-
-    const missing = spawnSync('node', [ENGINE, 'discussion-map', 'add', 'ghost-unit', 'auth-flow', 'x'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(missing.status, 1);
-    assert.match(JSON.parse(missing.stderr.trim()).error, /manifest not found/);
-
-    const usage = spawnSync('node', [ENGINE, 'discussion-map', 'add', 'auth'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(usage.status, 1);
-    assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine discussion-map add/);
+    assert.deepStrictEqual(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'ghost', 'decided']),
+      { ok: false, error: 'subtopic "ghost" not found under "auth-flow"' });
+    assert.match(harness.refuses(dir, ['discussion-map', 'add', 'ghost-unit', 'auth-flow', 'x']).error, /manifest not found/);
+    assert.match(harness.refuses(dir, ['discussion-map', 'add', 'auth']).error, /Usage: engine discussion-map add/);
 
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
   });
@@ -451,7 +436,7 @@ describe('discussion adapter: map verb', () => {
     assert.match(plural, /There are still 2 subtopics not yet decided — shown on the map above\./);
     assert.match(plural, /Defer them and move toward concluding/);
 
-    execFileSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'b=deferred'], { cwd: dir, encoding: 'utf8' });
+    harness.ok(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'b=deferred']);
     const settled = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
     assert.ok(!settled.includes('MENU: defer gate'), 'no defer gate once all subtopics are settled');
   });

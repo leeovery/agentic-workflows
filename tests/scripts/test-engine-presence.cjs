@@ -13,9 +13,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-'));
@@ -31,28 +31,14 @@ function cleanup(dir) {
 // rows read held and belong to somebody else.
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
-function engine(dir, args, identity = OWN) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...identity } });
-  const nl = out.indexOf('\n');
-  return { res: JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim()), sections: nl === -1 ? '' : out.slice(nl + 1) };
-}
+const engine = (dir, args, identity = OWN) => harness.okSections(dir, args, { env: identity });
 /** The deferral callout as one line — the renderer wraps it at the display width. */
 function unwrapped(sections) {
   return sections.replace(/\n +/g, ' ');
 }
-function engineFails(dir, args, env = {}) {
-  const r = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } });
-  assert.strictEqual(r.status, 1);
-  return JSON.parse(r.stderr.trim());
-}
-function engineWith(dir, args, { env = {}, input, cwd = dir } = {}) {
-  const r = spawnSync('node', [ENGINE, ...args], {
-    cwd, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: input ?? '',
-  });
-  assert.strictEqual(r.status, 0, r.stderr);
-  const nl = r.stdout.indexOf('\n');
-  return JSON.parse((nl === -1 ? r.stdout : r.stdout.slice(0, nl)).trim());
-}
+const engineFails = (dir, args, env = {}) => harness.refuses(dir, args, { env });
+const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
+  harness.ok(cwd, args, { env: { ...OWN, ...env }, stdin: input });
 const EPOCH_START = 'Thu Jan  1 00:00:00 1970';
 function presenceFile(dir, phase, topic) {
   return path.join(dir, '.workflows/.cache/pay', phase, topic, 'presence');
@@ -182,8 +168,8 @@ describe('engine presence', () => {
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
     }) + '\n');
-    const out = execFileSync('node', [ENGINE, 'render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'],
-      { cwd: dir, encoding: 'utf8', env: { ...process.env, ...OWN } });
+    const out = harness.output(dir, ['render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'],
+      { env: OWN });
     assert.ok(out.includes('Starting E1: Alpha'), out);
     assert.ok(fs.existsSync(presenceFile(dir, 'experiment', 'alpha')), 'the note claimed the slot');
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
