@@ -1,0 +1,16 @@
+{
+  "baseline": {
+    "status": "native"
+  },
+  "work_units": {
+    "payments-overhaul": {
+      "work_type": "epic"
+    },
+    "saved-filters": {
+      "work_type": "feature"
+    },
+    "export-timeout": {
+      "work_type": "bugfix"
+    }
+  }
+}

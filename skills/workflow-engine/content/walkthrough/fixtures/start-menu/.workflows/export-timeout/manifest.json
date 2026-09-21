@@ -1,0 +1,16 @@
+{
+  "name": "export-timeout",
+  "work_type": "bugfix",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Large exports time out before the file is produced",
+  "phases": {
+    "investigation": {
+      "items": {
+        "export-timeout": {
+          "status": "in-progress"
+        }
+      }
+    }
+  }
+}

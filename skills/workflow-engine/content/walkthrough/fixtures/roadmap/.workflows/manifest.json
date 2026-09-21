@@ -1,0 +1,47 @@
+{
+  "roadmap": {
+    "horizons": [
+      "launch",
+      "v1",
+      "someday"
+    ],
+    "items": {
+      "sign-in": {
+        "horizon": "launch",
+        "summary": "accounts, sessions and the sign-in surface",
+        "origin": "harvest",
+        "pulled_to": {
+          "work_unit": "launch-core"
+        }
+      },
+      "billing": {
+        "horizon": "launch",
+        "summary": "plans, invoices and the payment provider",
+        "origin": "harvest",
+        "pulled_to": {
+          "work_unit": "launch-core"
+        }
+      },
+      "the-basic-reports": {
+        "horizon": "launch",
+        "summary": "the numbers a customer checks every day",
+        "origin": "harvest"
+      },
+      "exports": {
+        "horizon": "v1",
+        "summary": "csv and pdf of any report",
+        "origin": "harvest"
+      },
+      "marketplace": {
+        "horizon": "someday",
+        "summary": "third-party integrations, listed and billed",
+        "origin": "harvest"
+      }
+    }
+  },
+  "work_units": {
+    "launch-core": {
+      "work_type": "epic"
+    }
+  }
+}

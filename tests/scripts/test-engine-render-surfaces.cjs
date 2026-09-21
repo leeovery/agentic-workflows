@@ -4658,7 +4658,7 @@ describe('single-source invariants', () => {
   // positives. Single-sourcing there is enforced structurally — flaggedCallout
   // delegates to surfaces.callout — and guarded by review.
 
-  it('every walkthrough diagram fits the pinned width — the fence cannot re-flow (D8)', () => {
+  it('every drawn walkthrough diagram fits the pinned width — an untagged fence cannot re-flow (D8)', () => {
     const contentRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough');
     const offenders = [];
     (function walk(dir) {
@@ -4666,12 +4666,15 @@ describe('single-source invariants', () => {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) { walk(p); continue; }
         if (!entry.isFile() || !p.endsWith('.md')) continue;
-        let fenced = false;
+        // A tagged fence is notation, not a drawing: the engine lays it out
+        // at the pane's width, and its own suite drives it at the floor and
+        // the cap. Only what emits as drawn is measured here.
+        let fence = null;
         fs.readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
-          if (line.startsWith('```')) { fenced = !fenced; return; }
+          if (line.startsWith('```')) { fence = fence === null ? line.slice(3).trim() : null; return; }
           // Characters, not bytes: the diagrams are drawn with arrows and
           // box-drawing glyphs, each of which is several bytes wide.
-          if (fenced && [...line].length > 65) offenders.push(`${path.relative(contentRoot, p)}:${i + 1}`);
+          if (fence === '' && [...line].length > 65) offenders.push(`${path.relative(contentRoot, p)}:${i + 1}`);
         });
       }
     })(contentRoot);
@@ -5143,6 +5146,23 @@ describe('walkthrough surfaces', () => {
   ];
   /** The section markers of a render, in order — the shape the emitting prose walks. */
   const markers = (out) => out.split('\n').filter((l) => l.startsWith('=== ')).map((l) => l.slice(4, l.indexOf(' (')));
+  /** A content file's chunks in order, each carrying its fence tag ('' when untagged, null for prose). */
+  const fenceChunks = (text) => {
+    const chunks = [];
+    let tag = null;
+    let buffer = [];
+    const flush = () => {
+      const body = buffer.join('\n').replace(/^\n+|\n+$/g, '');
+      if (body !== '' || tag) chunks.push({ tag, text: body });
+      buffer = [];
+    };
+    for (const line of text.split('\n').slice(1)) {
+      if (line.startsWith('```')) { const open = line.slice(3).trim(); flush(); tag = tag === null ? open : null; continue; }
+      buffer.push(line);
+    }
+    flush();
+    return chunks;
+  };
   const menuOf = (out) => out.slice(out.indexOf('=== MENU:'));
 
   it('a screen is its heading, its content in file order, then its menu', () => {
@@ -5155,15 +5175,17 @@ describe('walkthrough surfaces', () => {
       '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
     ].join('\n')), out.slice(0, 400));
 
-    // Every chunk the file marks off reaches the render whole, in file order:
-    // the prose as written, the diagram as drawn.
-    const body = screenText(1).split('\n').slice(1).join('\n');
-    const chunks = body.split(/^```$/m).map((c) => c.replace(/^\n+|\n+$/g, '')).filter(Boolean);
+    // Every chunk the file marks off reaches the render in file order: the
+    // prose as written, an untagged diagram as drawn. A tagged fence is
+    // notation the engine lays out, so what reaches the render is the
+    // layout's output, not the source — its own suite pins that.
+    const chunks = fenceChunks(screenText(1));
     assert.strictEqual(chunks.length, 3, 'screen 1 is prose, diagram, prose');
     let cursor = 0;
     for (const chunk of chunks) {
-      const at = out.indexOf(chunk, cursor);
-      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.slice(0, 60)}…`);
+      if (chunk.tag) continue;
+      const at = out.indexOf(chunk.text, cursor);
+      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.text.slice(0, 60)}…`);
       cursor = at;
     }
   });

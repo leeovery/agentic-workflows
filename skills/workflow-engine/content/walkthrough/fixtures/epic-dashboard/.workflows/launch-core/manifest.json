@@ -1,0 +1,75 @@
+{
+  "name": "launch-core",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Everything the product has to do before launch",
+  "phases": {
+    "discovery": {
+      "items": {
+        "sign-in": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Accounts, sessions and the sign-in surface.",
+          "description": "Accounts, sessions and the sign-in surface."
+        },
+        "billing": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Plans, invoices and the payment provider.",
+          "description": "Plans, invoices and the payment provider."
+        },
+        "usage-limits": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "What a plan allows, and what happens at the edge.",
+          "description": "What a plan allows, and what happens at the edge."
+        }
+      }
+    },
+    "discussion": {
+      "items": {
+        "sign-in": {
+          "status": "completed",
+          "subtopics": {
+            "session-length": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "billing": {
+          "status": "in-progress"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "sign-in": {
+          "status": "completed",
+          "sources": {
+            "sign-in": {
+              "status": "incorporated"
+            }
+          },
+          "order": 1
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "sign-in": {
+          "status": "completed",
+          "format": "local-markdown"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "sign-in": {
+          "status": "in-progress"
+        }
+      }
+    }
+  }
+}

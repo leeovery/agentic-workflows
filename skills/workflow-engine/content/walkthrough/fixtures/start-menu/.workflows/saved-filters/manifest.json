@@ -1,0 +1,8 @@
+{
+  "name": "saved-filters",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Let a user save a filter set and come back to it",
+  "phases": {}
+}

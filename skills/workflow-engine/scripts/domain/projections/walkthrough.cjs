@@ -7,7 +7,10 @@
 // and cards share one format and one loader: each file opens on its `# Title`
 // and marks its diagrams with fences, and this module splits a file on those
 // fences and renders the parts in order, prose as markdown so it re-flows to
-// the pane, diagrams fenced so their columns hold.
+// the pane, diagrams fenced so their columns hold. A fence carrying a
+// language tag is a diagram written in notation: its body goes to the layout
+// for that kind (./walkthrough-diagrams.cjs), which draws it at the detected
+// width. An untagged fence is emitted exactly as drawn.
 //
 // The menu is the walk: its rows differ by the screen's position and by where
 // the walk was entered from, and nothing else about a screen is conditional.
@@ -17,6 +20,8 @@
 const fs = require('fs');
 const path = require('path');
 const { section, titleSection, menu, cmdOption, promptOption } = require('./surfaces.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
+const { DIAGRAM_KINDS, isDiagramKind, renderDiagram } = require('./walkthrough-diagrams.cjs');
 
 // The install moves the skills under `.claude/skills/`, so the content is
 // resolved from this module rather than from the project root.
@@ -40,6 +45,7 @@ const CLOSING_PROMPT = "Tell me what you're likely to start with, and I'll say w
  * @typedef {object} ContentChunk
  * @property {'prose'|'diagram'} kind
  * @property {string} text
+ * @property {string} [tag] a diagram's fence tag; absent or '' is drawn-as-written
  */
 
 /**
@@ -66,7 +72,13 @@ function contentFiles(dir) {
     .map((name) => path.join(dir, name));
 }
 
-/** A content file's `# Title` and its fence-separated chunks. @param {string} file @returns {{title: string, chunks: ContentChunk[]}} */
+/**
+ * A content file's `# Title` and its fence-separated chunks. A fence's
+ * language tag rides the chunk: an unknown one is refused here, where the
+ * file that carries it is still in hand. A tagged chunk survives an empty
+ * body — a `sample` fence is nothing but its tag.
+ * @param {string} file @returns {{title: string, chunks: ContentChunk[]}}
+ */
 function parseContent(file) {
   const lines = fs.readFileSync(file, 'utf8').split('\n');
   const heading = lines.findIndex((l) => l.startsWith('# '));
@@ -75,30 +87,40 @@ function parseContent(file) {
   const chunks = [];
   /** @type {string[]} */
   let buffer = [];
-  let fenced = false;
+  /** @type {string|null} the open fence's tag; null outside a fence */
+  let fence = null;
   const flush = () => {
     const text = buffer.join('\n').replace(/^\n+|\n+$/g, '');
-    if (text !== '') chunks.push({ kind: fenced ? 'diagram' : 'prose', text });
+    if (fence === null) {
+      if (text !== '') chunks.push({ kind: 'prose', text });
+    } else if (text !== '' || fence !== '') {
+      chunks.push({ kind: 'diagram', text, tag: fence });
+    }
     buffer = [];
   };
   for (const line of lines.slice(heading + 1)) {
     if (line.startsWith('```')) {
+      const tag = line.slice(3).trim();
+      if (fence === null && tag !== '' && !isDiagramKind(tag)) {
+        throw new Error(`walkthrough content: ${path.basename(file)} fences a "${tag}" diagram (tags: ${DIAGRAM_KINDS.join(', ')})`);
+      }
       flush();
-      fenced = !fenced;
+      fence = fence === null ? tag : null;
       continue;
     }
     buffer.push(line);
   }
-  if (fenced) throw new Error(`walkthrough content: ${path.basename(file)} leaves a fence open`);
+  if (fence !== null) throw new Error(`walkthrough content: ${path.basename(file)} leaves a fence open`);
   flush();
   return { title: lines[heading].slice(2).trim(), chunks };
 }
 
-/** A file's content in its two registers — prose re-flows to the pane, a diagram's columns hold. @param {ContentChunk[]} chunks @returns {string[]} */
+/** A file's content in its two registers — prose re-flows to the pane, a diagram's columns hold. A tagged diagram is laid out at the detected width first; an untagged one is emitted as drawn. @param {ContentChunk[]} chunks @returns {string[]} */
 function chunkSections(chunks) {
+  const width = displayWidth();
   return chunks.map((c) => (c.kind === 'prose'
     ? section('DISPLAY: walkthrough prose', PROSE_INSTRUCTION, c.text)
-    : section('DISPLAY: walkthrough diagram', DIAGRAM_INSTRUCTION, c.text)));
+    : section('DISPLAY: walkthrough diagram', DIAGRAM_INSTRUCTION, c.tag ? renderDiagram(c.tag, c.text, width) : c.text)));
 }
 
 /**
@@ -274,4 +296,4 @@ function walkthroughTopic(card, menuOnly) {
   ].join('\n');
 }
 
-module.exports = { ORIGINS, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic };
+module.exports = { ORIGINS, parseContent, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic };

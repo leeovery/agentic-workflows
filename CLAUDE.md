@@ -171,6 +171,7 @@ Contract and scaffolding templates live in `.claude/skills/create-output-format/
 - `skills/workflow-planning-process/references/output-formats.md` - the authoritative list
 - `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
+- `skills/workflow-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
 
 **How other phases reference formats:**
 - Plans include a `format` field in their manifest
