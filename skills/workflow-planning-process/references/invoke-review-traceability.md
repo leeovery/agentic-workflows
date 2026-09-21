@@ -19,6 +19,7 @@ Invoke `workflow-planning-review-traceability` with:
 5. **Cycle number**: the current cycle number `{N}` the caller recorded in **A. Cycle Initialization**
 6. **Topic name**: the topic/work-unit name
 7. **Task design path**: `task-design.md`
+8. **Earlier cycles' tracking files**: every `review-traceability-tracking-c{M}.md` and `review-integrity-tracking-c{M}.md` beside the plan whose `{M}` is below the current cycle — the paths the caller listed, the settled directions a finding may not reverse. None at cycle 1.
 
 ---
 

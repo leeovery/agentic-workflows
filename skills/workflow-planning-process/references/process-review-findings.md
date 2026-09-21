@@ -30,7 +30,7 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 
 ## A. Summary
 
-Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
+Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per row under the tracking file's `## Findings`; an `## Observations` line is never an item:
 
 ```json
 {"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary of the Problem}", "status": "…"}]}
@@ -80,9 +80,17 @@ Three rules govern the evidence:
 - A fork with one live side — a side no informed user would choose — is settled.
 - A choice that names no search is not a verdict: run the search yourself.
 
-A fork that clears every prong stands as a `choice` — the plan never invents product intent. Below the bar the move is `settled`: where the specification, the plan's own conventions, or a measurement yields exactly one answer, that derivation is the Proposal; where nothing leans, an honest call, the Proposal naming it as such and what it weighed — a fork the plan is left to settle is the planner's, however it was staged. Nothing is declined at the dispose, and the one route is the specification's own gap: the plan is the document under review, and a preference nothing leans on is settled, never dropped.
+A fork that clears every prong stands as a `choice` — the plan never invents product intent. Below the bar the move is `settled`: where the specification, the plan's own conventions, or a measurement yields exactly one answer, that derivation is the Proposal; where nothing leans, an honest call, the Proposal naming it as such and what it weighed — a fork inside a fix the plan must carry is the planner's, however it was staged. The one route is the specification's own gap: the plan is the document under review.
+
+**Declined at dispose** — the finding's whole substance is the builder's: a mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or a preference no side of which costs the user — never a behaviour or a criterion the product's user meets, which is `settled` whatever its size. The plan prescribes nothing for it — Resolution `Declined` with the reason in Notes, the Move left as staged, announced in a line, committed, nothing rendered.
 
 Where the disposal moved anything — the move, the derivation, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten; the Change Type re-read against the fix the derivation lands (a staged choice's was picked with no fix content behind it); the Proposal written with the derivation naming what decided it; the Options removed; Current and Proposed Text supplied — the exact content that lands on approval, Current copied from the live plan and omitted for `add-task`/`add-phase`, Proposed Text in full plan format and omitted for `remove-task`/`remove-phase`. A new task or phase takes the canonical template: load **[task-design.md](task-design.md)** before composing one. To `choice`: Move rewritten, the Proposal, Current, and Proposed Text replaced with Options, the search named.
+
+**If the dispose declined the finding:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**Otherwise:**
 
 → Proceed to **Present Finding**.
 
@@ -178,7 +186,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 - **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
-- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it lands only as the outcome of an exchange, this one or the choice menu's Comment, never at **B**'s dispose.
+- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it lands as the outcome of an exchange, this one or the choice menu's Comment, or at **B**'s dispose over a finding whose whole substance is the builder's.
 
 → Return to **B. Process One Item at a Time**.
 
@@ -211,7 +219,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
    ```
 4. Commit
-5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` that stands at **B**'s dispose still stops, and every finding is still rendered — **B** presents each one, declining none
+5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` that stands at **B**'s dispose still stops, and every finding **B** does not decline is still rendered
 
 → Return to **B. Process One Item at a Time**.
 

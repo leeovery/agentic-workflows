@@ -19,15 +19,17 @@ You receive file paths and context via the orchestrator's prompt:
 4. **Cycle number** — current review cycle (for tracking file naming)
 5. **Topic name** — for file naming and paths
 6. **Task design path** — `task-design.md` with the canonical task template and field requirements
+7. **Earlier cycles' tracking files** — the paths the orchestrator supplies, both streams, from cycle 2 onward; cycle 1 has none
 
 ## Your Process
 
 1. **Read the review criteria** (`review-integrity.md`) — absorb all review dimensions before starting
-2. **Read the planning file** for phase structure, goals, and task tables
-3. **Locate and read all task files** following the format's reading.md instructions
-4. **Evaluate all review criteria** as defined in the review criteria file
-5. **Create the tracking file** — write findings to `review-integrity-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file. Produce it in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents
-6. **Return status** — the orchestrator commits the tracking file
+2. **Read the earlier cycles' tracking files** — from cycle 2 onward, both streams. A fix an earlier cycle landed — a row resolved `Fixed` or `Routed`, the plan re-aligned to it — is settled ground: a finding that refines, extends, or re-scopes it is out unless it contradicts it, and a point an earlier cycle declined or recorded as an Observation is never raised again. That bounds what you may find, never what you read — every cycle reads the whole plan and every task file.
+3. **Read the planning file** for phase structure, goals, and task tables
+4. **Locate and read all task files** following the format's reading.md instructions
+5. **Evaluate all review criteria** as defined in the review criteria file
+6. **Create the tracking file** — write findings to `review-integrity-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file. Produce it in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents
+7. **Return status** — the orchestrator commits the tracking file
 
 ## Writing Full Fix Content
 
@@ -56,6 +58,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 7. **Task scope only** — check the plan as built; don't redesign it
 8. **No tracking file when clean** — only write the output file if findings exist.
 9. **Never lose your work** — the findings you generate must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+10. **Every finding clears the floor** — the floor the review criteria load: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed. A point below it goes under `## Observations` — one line each, never counted in `FINDINGS_COUNT`, and only on a file that already carries findings.
 
 ## Your Output
 

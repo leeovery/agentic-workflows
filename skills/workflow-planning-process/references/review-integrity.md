@@ -6,7 +6,7 @@
 
 Review the plan **as a standalone document** for structural quality, implementation readiness, and adherence to planning standards.
 
-**Purpose**: Ensure that the plan itself is well-structured, complete, and ready for implementation. An implementer (human or AI) should be able to pick up this plan and execute it without ambiguity, without needing to make design decisions, and without referring back to the specification.
+**Purpose**: Ensure that the plan itself is well-structured, complete, and ready for implementation. An implementer (human or AI) should be able to pick up this plan and execute it without ambiguity, without making product decisions, and without referring back to the specification.
 
 **Key distinction**: The traceability review checked *what's in the plan* against the spec. This review checks *how it's structured* — looking inward at the plan's own quality.
 
@@ -18,10 +18,13 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 - **Not adding content from outside the spec** — If a task needs more detail, the detail must come from the specification
 - **Not gold-plating** — Focus on issues that would actually impact implementation
 - **Not second-guessing phase structure** — Unless it's fundamentally broken, the structure stands
+- **Not making the builder's calls** — how a task is built where the specification leaves it open belongs to the implementer, with the code in front of them
 
 ---
 
 ## What to Look For
+
+→ Load **[finding-floor.md](../../workflow-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
 
 1. **Task Template Compliance**
    - Every task has all required fields: Problem, Solution, Outcome, Do, Acceptance Criteria, Tests
@@ -83,9 +86,11 @@ Every finding names the **move** it owes the reader — what they have to do abo
 
 A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. A choice that names no search is re-derived from scratch: name it. A preference nothing leans on is settled on your honest call, never staged as a choice.
 
+**Builder's — not a finding.** A mechanism, boundary, byte, ordering, or format detail any competent implementer settles the same way, or one where either way leaves the user well served, is theirs to settle with the code in front of them; the plan is not defective for leaving it open. A finding whose whole remedy is mechanism the specification leaves open is not written; at most it is an Observation. A finding may name that a prescribed mechanism builds the wrong behaviour — its Proposal then restates the behaviour the task must deliver and the criterion and test that prove it, and removes the mechanism the record never decided, never one mechanism swapped for another.
+
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
 
-A plan defect the specification or the plan's own conventions determine is **settled**. A fork in how the plan achieves it — how to split a task, which phase owns a slice, what a consumer keys on — is settled too: on what leans, or on your honest call where nothing does. A **choice** is a fork in what the product's user gets that survives the search with a side visibly costing them: name what was searched, and take a stance.
+A plan defect the specification or the plan's own conventions determine is **settled**. A fork in how the plan achieves a defect's fix — how to split a task, which phase owns a slice, what a consumer keys on — is settled too: on what leans, or on your honest call where nothing does. A **choice** is a fork in what the product's user gets that survives the search with a side visibly costing them: name what was searched, and take a stance.
 
 ## Tracking File
 
@@ -94,10 +99,11 @@ After completing the analysis, create a tracking file at `.workflows/{work_unit}
 Categorize each finding by severity:
 
 - **Critical**: Would block implementation or cause incorrect behavior
-- **Important**: Would force implementer to guess or make design decisions
-- **Minor**: Polish or improvement that strengthens the plan
+- **Important**: Would force the implementer to guess at a behaviour or a criterion the product's user meets
 
 Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
+
+`## Observations` closes the file and holds what is below the floor — a point that names no failure the implementer would build, and anything minor enough that landing it would only be polish. One line each, never walked, never counted, never re-raised. Size never demotes what the record already answers: a user-facing string, value, or behaviour the specification or a design frame holds is a `settled` finding whatever its size, and a contradiction between two parts of the plan is a finding; neither is ever an Observation.
 
 **Format**:
 ```markdown
@@ -107,7 +113,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 ### 1. [Brief Title]
 
-**Severity**: Critical | Important | Minor
+**Severity**: Critical | Important
 **Plan Reference**: [Phase/task in plan]
 **Category**: [Which review criterion — e.g., "Task Template Compliance", "Vertical Slicing"]
 **Move**: settled | choice
@@ -135,4 +141,8 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 ### 2. [Next Finding]
 ...
+
+## Observations
+
+- [One line each — a point below the floor, or one minor enough that landing it would only be polish. Never walked, never counted.]
 ```
