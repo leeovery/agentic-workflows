@@ -50,7 +50,7 @@ Emit the call's MENU section verbatim per its marker.
 
 ## C. Register Plan
 
-1. Load the format's **[about.md](output-formats/{chosen-format}/about.md)** and follow its Version section.
+1. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`.
 2. Capture the current git commit hash: `git rev-parse HEAD`
 3. Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md` with the title `# Plan: {Topic Name}`.
 4. Start the planning item — the engine creates it with `status: in-progress`:

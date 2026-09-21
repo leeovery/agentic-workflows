@@ -46,47 +46,7 @@ Add to `.gitignore`:
 
 ## Version
 
-This adapter is written against Tick `0.3`. Read the installed version before the session's first `tick` command:
-
-```bash
-tick --version
-```
-
-The output is `tick version {major}.{minor}.{patch}`. The check passes when `{major}.{minor}` reads `0.3` — the patch is free. A mismatch stops the session whatever the gate mode.
-
-#### If the installed version is older than `0.3`
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```
-⚑ The installed Tick is older than this adapter's 0.3
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Tick {installed} is installed. Update it — `brew upgrade tick` on macOS, the install script from Setup above on Linux, `go install github.com/leeovery/tick/cmd/tick@latest` with Go — and say when it's done.
-```
-
-**STOP.** Wait for user response.
-
-On the reply, run the check again.
-
-#### If the installed version is newer than `0.3`
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```
-⚑ The installed Tick is newer than this adapter's 0.3
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Tick {installed} is installed and these workflows are behind it. Update them with `npx agntc update`, then start again from `/workflow-start`.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Requires Tick `0.3.*`. `tick --version` prints the installed version as `tick version X.Y.Z`. Update instructions: the [Tick repository](https://github.com/leeovery/tick).
 
 ## Structure Mapping
 
