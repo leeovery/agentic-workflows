@@ -18,14 +18,6 @@ You should never do the following:
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
-A title beginning with a dash goes after `--`, and every flag goes before it:
-
-```bash
-tick create --parent <tick-id> --refs "{internal_id}" --description "Full description here." -- "--dry-run support"
-```
-
-Anything after `--` is text, so a flag placed there is silently lost.
-
 ## Storage Pathspecs
 
 The git pathspecs this format writes **outside `--plan`'s own scope** — the planning topic's directory and the manifests. The array below is recorded verbatim as `storage_paths` on the planning item at plan init; workflow commits (`engine commit --plan`) stage every entry, and restart cleanups stage the same entries when removing authored tasks. Relative pathspecs only — `[]` when the format stores inside that scope.
