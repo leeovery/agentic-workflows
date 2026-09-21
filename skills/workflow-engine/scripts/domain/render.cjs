@@ -530,10 +530,22 @@ function specReviewGate(cwd, { dotpath, variant }) {
 
 const CONVERGENCE_LOOPS = { fix: 'Fix Loop', analysis: 'Analysis', 'planning-review': 'Plan Review', 'spec-review': 'Spec Review' };
 const CONVERGENCE_TRENDS = {
-  churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings. Read what the last cycle added before running another.',
-  converging: 'Continuing is likely to resolve remaining items.',
-  stable: 'Same issues are cycling. Consider manual intervention on the recurring items.',
-  diverging: 'Fixes are introducing new issues. Consider reviewing the approach.',
+  churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
+  converging: 'Resolved findings outnumber new ones — the cycles are closing ground.',
+  stable: 'Resolved and new findings match cycle for cycle — the loop is holding where it is.',
+  diverging: 'New findings outnumber resolved ones — the fixes are introducing new issues.',
+};
+const CONVERGENCE_GROWTH = {
+  'spec-review': {
+    document: 'construction',
+    churn: 'The cycles are adding words while findings churn — the review is writing rules the record never decided. A finding adds what a source states or removes what is wrong; anything else is a decision nobody made.',
+    note: 'Growth is the loop working only where each addition traces to a source; growth from review-authored rules is the review deciding for the user.',
+  },
+  'planning-review': {
+    document: 'plan',
+    churn: 'The cycles are adding words while findings churn — the review is writing mechanism the specification never decided. A finding restates a behaviour the record decides and the criterion that proves it, or removes what is wrong; a corrected mechanism is the builder\'s.',
+    note: 'Growth is the loop working only where each addition traces to the specification; growth from review-authored mechanism is the review deciding for the builder.',
+  },
 };
 
 /**
@@ -584,8 +596,8 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   }
   const hasGrowth = p.review_baseline_words !== undefined || p.live_words !== undefined;
   if (hasGrowth) {
-    if (p.loop_type !== 'spec-review') {
-      throw new Error('render convergence-diagnostic: document growth belongs to spec-review — omit the word counts');
+    if (!multi) {
+      throw new Error('render convergence-diagnostic: document growth belongs to spec-review and planning-review — omit the word counts');
     }
     if (!Number.isInteger(p.review_baseline_words) || !Number.isInteger(p.live_words) || p.review_baseline_words < 0 || p.live_words < 0) {
       throw new Error('render convergence-diagnostic: "review_baseline_words" and "live_words" travel together as non-negative integers');
@@ -617,11 +629,12 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   }
 
   const flags = [callout(CONVERGENCE_TRENDS[p.trend])];
-  if (p.loop_type === 'spec-review' && p.trend === 'churning' && growth > 0) {
-    flags.push(callout('The cycles are adding words while findings churn — the review is writing rules the record never decided. A finding adds what a source states or removes what is wrong; anything else is a decision nobody made. Check the additions against the sources before running another cycle.'));
+  const doc = hasGrowth ? CONVERGENCE_GROWTH[p.loop_type] : null;
+  if (doc && p.trend === 'churning' && growth > 0) {
+    flags.push(callout(doc.churn));
   }
-  if (hasGrowth && growth > p.review_baseline_words / 4) {
-    flags.push(callout(`Review has added ${growth} words to a ${p.review_baseline_words}-word construction. Growth is the loop working only where each addition traces to a source; growth from review-authored rules is the review deciding for the user.`));
+  if (doc && growth > p.review_baseline_words / 4) {
+    flags.push(callout(`Review has added ${growth} words to a ${p.review_baseline_words}-word ${doc.document}. ${doc.note}`));
   }
   parts.push(flags.join('\n'));
 

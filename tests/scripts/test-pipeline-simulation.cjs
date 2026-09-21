@@ -506,9 +506,28 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // consent — each fetched where the flow displays it.
   sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph'], { expect: 'content' });
   sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph'], { expect: 'content' });
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle', '1']);
+  // Review opens: the cycle and the plan's word baseline land in one write,
+  // the way plan-review stamps them.
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle=1', 'review_baseline_words=63929']);
+  assert.strictEqual(sim.read(['manifest', 'get', `${wu}.planning.${topic}`, 'review_baseline_words']), '63929',
+    'the plan baseline survives as a number the growth diagnostic can read');
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
+  // The escalation diagnostic reads the plan's growth the way the spec loop
+  // reads the construction's — same surface, the plan named as the document.
+  sim.write('.workflows/.cache/scratch/plan-convergence.json', JSON.stringify({
+    loop_type: 'planning-review', latest_cycle: 2, trend: 'churning',
+    resolved: [{ title: 'Probe reads the wrong descriptor', last_seen_cycle: 1 }],
+    recurring: [], new: [{ title: 'Escape byte dispatched as a keystroke' }],
+    stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
+    review_baseline_words: 63929, live_words: 90000,
+  }));
+  const planDiagnostic = sim.render(['convergence-diagnostic', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-convergence.json'], { expect: 'content' });
+  assert.match(planDiagnostic, /\(\+26071 net across review\)/);
+  assert.match(planDiagnostic.replace(/\n\s+/g, ' '), /the review is writing mechanism the specification never decided/,
+    'the churn-growth warning reads for the plan');
+  assert.match(planDiagnostic.replace(/\n\s+/g, ' '), /Review has added 26071 words to a 63929-word plan/,
+    'the growth note names the plan, never a construction');
   // The conclusion asks the wait gate first: a settled specification holds
   // nothing, so the gate is empty and the conclude gate is what renders.
   sim.render(['wait-gate', `${wu}.planning.${topic}`], { expect: 'empty' });

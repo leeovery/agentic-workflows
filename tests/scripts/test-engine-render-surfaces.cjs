@@ -2160,8 +2160,8 @@ describe('render convergence-diagnostic', () => {
     assert.ok(out.includes('  Document growth: 6835 → 13637 words (+6802 net across review)'));
     assert.ok(out.includes('    • Marker semantics restated twice (fixed in cycle 4)'));
     assert.ok(out.includes('    • Guard scope drifts per section (cycles 3, 4, 5)\n      · Each fix re-words the guard where it lands instead of at\n        its home.'), 'the hypothesis is a sub-detail under the bullet text, wrapped under its own marker');
-    assert.ok(out.includes('  ⚑ Continuing is likely to resolve remaining items.'));
-    assert.ok(out.includes('⚑ Review has added 6802 words'), 'the >25% growth note fires');
+    assert.ok(out.includes('  ⚑ Resolved findings outnumber new ones — the cycles are closing\n    ground.'));
+    assert.ok(out.includes('⚑ Review has added 6802 words to a 6835-word construction.'), 'the >25% growth note fires and names the spec loop\'s document');
     assert.match(flagText(out), /growth from review-authored rules is the review deciding for the user\./, 'the growth note names review-authored growth');
     assert.ok(!flagText(out).includes('writing rules the record never decided'), 'the churn warning stays quiet on a converging trend');
   });
@@ -2171,6 +2171,7 @@ describe('render convergence-diagnostic', () => {
     let out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: churn });
     assert.match(flagText(out), /the review is writing rules the record never decided/, 'the churn-growth warning fires');
     assert.match(flagText(out), /anything else is a decision nobody made/, 'the warning names the bar a finding clears');
+    assert.ok(!flagText(out).includes('before running another cycle'), 'the warning describes the churn, it never orders the next cycle');
     assert.ok(out.includes('⚑ Review has added 6802 words'));
     const shrink = writePayload(dir, 'c3.json', { ...base, live_words: 6500 });
     out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: shrink });
@@ -2182,7 +2183,39 @@ describe('render convergence-diagnostic', () => {
     writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
     const file = writePayload(dir, 'ch.json', { loop_type: 'fix', latest_cycle: 2, trend: 'churning', resolved: [{ title: 'Off-by-one', last_seen_cycle: 1 }], recurring: [], new: [{ title: 'Missing guard' }] });
     const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    assert.strictEqual(flagText(out), '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings. Read what the last cycle added before running another.');
+    assert.strictEqual(flagText(out), '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.');
+  });
+
+  it('planning-review carries growth too — the flags name the plan and the mechanism', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'pr.json', {
+      ...base, loop_type: 'planning-review', trend: 'churning',
+      stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
+    });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.planning.portal', file });
+    assert.ok(out.includes('── Plan Review — cycle 5 diagnostic ─'));
+    assert.ok(out.includes('  Per stream: traceability 1 · integrity 1'));
+    assert.ok(out.includes('  Document growth: 6835 → 13637 words (+6802 net across review)'));
+    assert.match(flagText(out), /the review is writing mechanism the specification never decided/, 'the churn-growth warning reads for the plan');
+    assert.match(flagText(out), /a corrected mechanism is the builder's\./, 'the warning leaves mechanism to the builder');
+    assert.match(flagText(out), /Review has added 6802 words to a 6835-word plan\./, 'the growth note names the plan, never a construction');
+    assert.match(flagText(out), /growth from review-authored mechanism is the review deciding for the builder\./);
+    assert.ok(!flagText(out).includes('writing rules the record never decided'), 'the spec loop\'s wording stays with the spec loop');
+  });
+
+  it('every trend callout describes what the cycles show — none prescribes a next move', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+    const lines = {
+      churning: '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
+      converging: '⚑ Resolved findings outnumber new ones — the cycles are closing ground.',
+      stable: '⚑ Resolved and new findings match cycle for cycle — the loop is holding where it is.',
+      diverging: '⚑ New findings outnumber resolved ones — the fixes are introducing new issues.',
+    };
+    for (const [trend, line] of Object.entries(lines)) {
+      const file = writePayload(dir, `t-${trend}.json`, { loop_type: 'fix', latest_cycle: 2, trend, resolved: [], recurring: [], new: [{ title: 'Missing guard' }] });
+      const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
+      assert.strictEqual(flagText(out), line, `the ${trend} callout states the reading and stops there`);
+    }
   });
 
   it('single-stream loops skip streams and growth; a fix-loop shape renders lean', () => {
@@ -2193,7 +2226,7 @@ describe('render convergence-diagnostic', () => {
     assert.ok(!out.includes('Per stream'));
     assert.ok(!out.includes('Document growth'));
     assert.ok(!out.includes('Resolved:'), 'empty sections are skipped');
-    assert.ok(out.includes('  ⚑ Same issues are cycling. Consider manual intervention on the'), 'the stable flag wraps via the callout');
+    assert.ok(out.includes('  ⚑ Resolved and new findings match cycle for cycle — the loop is\n    holding where it is.'), 'the stable flag wraps via the callout');
   });
 
   it('a long finding wraps with its continuation under the text, never at column 0', () => {
@@ -2239,7 +2272,8 @@ describe('render convergence-diagnostic', () => {
       '  New this cycle:',
       '    • Missing guard',
       '',
-      '  ⚑ Continuing is likely to resolve remaining items.',
+      '  ⚑ Resolved findings outnumber new ones — the cycles are closing',
+      '    ground.',
       '',
     ].join('\n'));
   });
@@ -2258,7 +2292,9 @@ describe('render convergence-diagnostic', () => {
       [{ ...base, recurring: [{ title: 'x', cycles: '2, 3' }] }, /recurring\[0\] is missing "hypothesis"/],
       [{ ...base, stream_counts: undefined }, /"spec-review" carries "stream_counts"/],
       [{ ...base, loop_type: 'fix', review_baseline_words: undefined, live_words: undefined, stream_counts: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] }, /"fix" is single-stream/],
+      [{ ...base, loop_type: 'analysis', stream_counts: undefined }, /document growth belongs to spec-review and planning-review/],
       [{ ...base, live_words: undefined }, /"review_baseline_words" and "live_words" travel together/],
+      [{ ...base, loop_type: 'planning-review', stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 0 }], live_words: undefined }, /"review_baseline_words" and "live_words" travel together/],
     ];
     cases.forEach(([payload, re], i) => {
       const file = writePayload(dir, `bad-${i}.json`, payload);
