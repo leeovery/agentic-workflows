@@ -335,7 +335,7 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // the form of the output, the flow owns the mode.
 // Two altitudes, picked by the payload: a proposal carries title, problem and
 // solution (outcome only when it adds something the solution doesn't); a task
-// adds the Do/Acceptance Criteria/Tests blocks. Judging comes before
+// adds the Acceptance Criteria and Do blocks. Judging comes before
 // authoring, and detail that doesn't exist yet can't be rendered.
 // A proposal carrying an open decision is raised, never rendered: the
 // DISPLAY slims to the title and meta lines — no Problem, no Solution, no
@@ -389,7 +389,7 @@ function proposedTask(cwd, args) {
   }
   /** @type {Record<string, string[]>} */
   const blocks = {};
-  for (const field of ['steps', 'criteria', 'tests']) {
+  for (const field of ['steps', 'criteria']) {
     if (p[field] === undefined) continue;
     const lines = stringLines(p[field], 'proposed-task', field);
     if (lines.length === 0) throw new Error(`render proposed-task: "${field}" must be non-empty`);
@@ -419,8 +419,8 @@ function proposedTask(cwd, args) {
     if (!isFilled(p.stakes)) {
       throw new Error('render proposed-task: "stakes" must be a non-empty string when "decision" is present — the argument for the stop: each side\'s product consequence, and why no investigation settles the tie');
     }
-    if (blocks.steps || blocks.criteria || blocks.tests) {
-      throw new Error('render proposed-task: "decision" excludes steps/criteria/tests — the direction is settled before bodies are authored');
+    if (blocks.steps || blocks.criteria) {
+      throw new Error('render proposed-task: "decision" excludes steps/criteria — the direction is settled before bodies are authored');
     }
     if (p.outcome !== undefined) {
       throw new Error('render proposed-task: "decision" excludes outcome — the raise carries what the change would look like; the record keeps the rest');
@@ -445,7 +445,7 @@ function proposedTask(cwd, args) {
   if (!p.decision) {
     body.push('', `**Problem**: ${p.problem}`, '', `**Solution**: ${p.solution}`);
     if (isFilled(p.outcome)) body.push('', `**Outcome**: ${p.outcome}`);
-    for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
+    for (const [field, heading] of [['criteria', 'Acceptance Criteria'], ['steps', 'Do']]) {
       if (!blocks[field]) continue;
       body.push('', `**${heading}**:`, ...blocks[field]);
     }
@@ -2925,24 +2925,56 @@ function checkpointFilesGate(cwd, { dotpath }) {
 }
 
 // executor-block-gate — the task loop's stop after an executor returns
-// blocked or failed. The executor's own ISSUES text is echoed above; the
-// three ways out are fixed.
+// blocked or failed. Neither offers a way out of the task — during the build
+// a task is finished or being fixed. A failure offers the retry, with Comment
+// to steer it. A block is the product fork the executor met: its sides ride
+// in a payload, numbered with the recommended side first, and Comment is the
+// exchange; the override line heads the menu when the task gate is auto or
+// bounded, since the stop is one auto never takes for the user.
+const FAILED_ROWS = [
+  cmdOption('r', 'retry', 'Run the executor again with the guidance above and anything you add'),
+  promptOption('Comment', 'Ask about the failure, or steer the next attempt'),
+];
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, result?: string, file?: string}} args
  * @returns {string}
  */
-function executorBlockGate(cwd, { dotpath }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'executor-block-gate');
+function executorBlockGate(cwd, { dotpath, result, file }) {
+  if (result !== 'blocked' && result !== 'failed') {
+    throw new Error(`render executor-block-gate: --result must be one of blocked, failed, got "${result}"`);
+  }
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'executor-block-gate');
   if (phase !== 'implementation') {
     throw new Error(`render executor-block-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
   }
-  return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('r', 'retry', 'Re-invoke the executor with your comments (provide below)'),
-    cmdOption('s', 'skip', 'Skip this task and move to the next'),
-    cmdOption('t', 'stop', 'Stop implementation entirely'),
-  ], { question: 'How would you like to proceed?' }));
+  if (result === 'failed') {
+    if (file !== undefined) throw new Error('render executor-block-gate: --file belongs to --result blocked — a failure carries no sides');
+    return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', FAILED_ROWS, { question: 'How would you like to proceed?' }));
+  }
+  if (!file) throw new Error('render executor-block-gate: --file <sides.json> is required with --result blocked');
+  const item = itemOf(manifest, 'implementation', topic);
+  if (!item) throw new Error(`render executor-block-gate: no implementation item "${topic}"`);
+  const p = readJsonPayload(cwd, file, 'executor-block-gate');
+  if (!Array.isArray(p.options) || p.options.length < 2 || p.options.length > 4) {
+    throw new Error('render executor-block-gate: "options" must be an array of 2–4 sides');
+  }
+  const sides = p.options.map((/** @type {unknown} */ o, /** @type {number} */ i) => {
+    const side = /** @type {{summary?: unknown, recommended?: unknown}} */ (
+      typeof o === 'string' ? { summary: o } : (o && typeof o === 'object' && !Array.isArray(o) ? o : {}));
+    if (!isFilled(side.summary)) {
+      throw new Error(`render executor-block-gate: options[${i}] must be a non-empty string or an object carrying "summary"`);
+    }
+    return { summary: side.summary, recommended: side.recommended === true };
+  });
+  const rows = recommendedMenuRows(sides, 'render executor-block-gate: at most one option may be recommended');
+  const mode = gateOf(item, 'task_gate_mode');
+  const label = mode === 'auto' || mode === 'bounded' ? AUTO_OVERRIDE_LINE : '';
+  return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu(label, [
+    ...rows,
+    promptOption('Comment', "Ask about the options, or tell me what I've missed"),
+  ], { question: 'Which way?' }));
 }
 
 // dependency-approval-gate — planning's three approvals over dependency

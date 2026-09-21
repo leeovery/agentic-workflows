@@ -3064,7 +3064,6 @@ describe('render proposed-task', () => {
     problem: 'The adapter never closes.', solution: 'Close on detach.', outcome: 'No leaked handles.',
     steps: ['1. Add Close()', '2. Call it on detach'],
     criteria: ['- no leaked handles after detach'],
-    tests: ['- detach closes the adapter'],
   };
   beforeEach(() => {
     dir = setup();
@@ -3086,15 +3085,12 @@ describe('render proposed-task', () => {
       '',
       '**Outcome**: No leaked handles.',
       '',
-      '**Do**:',
-      '1. Add Close()',
-      '2. Call it on detach',
-      '',
       '**Acceptance Criteria**:',
       '- no leaked handles after detach',
       '',
-      '**Tests**:',
-      '- detach closes the adapter',
+      '**Do**:',
+      '1. Add Close()',
+      '2. Call it on detach',
       '',
       '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
@@ -3121,8 +3117,8 @@ describe('render proposed-task', () => {
   it('requires --gate and validates the payload loudly', () => {
     const file = writePayload(dir, 'p.json', payload);
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file }), /--gate must be "gated" or "auto"/);
-    const noTests = writePayload(dir, 'bad.json', { ...payload, tests: [] });
-    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noTests, gate: 'gated' }), /"tests" must be non-empty/);
+    const noCriteria = writePayload(dir, 'bad.json', { ...payload, criteria: [] });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noCriteria, gate: 'gated' }), /"criteria" must be non-empty/);
     const noProblem = writePayload(dir, 'bad2.json', { ...payload, problem: '' });
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }), /"problem" must be a non-empty string/);
     const emptySeverity = writePayload(dir, 'bad3.json', { ...payload, severity: '' });
@@ -3130,7 +3126,7 @@ describe('render proposed-task', () => {
   });
 
   // Proposal altitude — the judge's output, before any authoring: problem and
-  // solution alone, the three blocks and outcome absent.
+  // solution alone, both blocks and outcome absent.
   const proposal = {
     current: 1, total: 4, title: 'Merge the near-miss helpers', severity: 'near-miss',
     placement: 'phase 3',
@@ -3166,7 +3162,7 @@ describe('render proposed-task', () => {
     const file = writePayload(dir, 'mx.json', {
       current: 2, total: 4, title: 'Drop the dead formatter', severity: 'dead-code',
       problem: 'Nothing calls it.', solution: 'Delete it.', outcome: 'One fewer surface to keep true.',
-      tests: ['- the suite stays green'],
+      criteria: ['- the suite stays green'],
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.ok(out.startsWith([
@@ -3179,14 +3175,19 @@ describe('render proposed-task', () => {
       '',
       '**Outcome**: One fewer surface to keep true.',
       '',
-      '**Tests**:',
+      '**Acceptance Criteria**:',
       '- the suite stays green',
       '',
       '=== MENU: task approval',
     ].join('\n')), out);
     assert.ok(!out.includes('**Do**:'), 'an absent block leaves no heading behind');
-    assert.ok(!out.includes('**Acceptance Criteria**:'));
     assert.ok(!/\n\n\n/.test(out), 'an omitted block leaves no doubled blank line');
+    const withTests = writePayload(dir, 'mt.json', {
+      current: 2, total: 4, title: 'Drop the dead formatter', severity: 'dead-code',
+      problem: 'Nothing calls it.', solution: 'Delete it.', criteria: ['- the suite stays green'], tests: ['- it is gone'],
+    });
+    const rendered = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withTests, gate: 'gated' });
+    assert.ok(!rendered.includes('**Tests**') && !rendered.includes('it is gone'), 'a tests key is no block the surface renders');
   });
 
   it('outcome is optional both ways, and the detail blocks stay non-empty when present', () => {
@@ -3197,7 +3198,7 @@ describe('render proposed-task', () => {
     assert.ok(!renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: without, gate: 'gated' }).includes('**Outcome**'));
     const emptyOutcome = writePayload(dir, 'o3.json', { ...proposal, outcome: '' });
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptyOutcome, gate: 'gated' }), /"outcome" must be a non-empty string when present/);
-    for (const field of ['steps', 'criteria', 'tests']) {
+    for (const field of ['steps', 'criteria']) {
       const empty = writePayload(dir, `e-${field}.json`, { ...proposal, [field]: [] });
       assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: empty, gate: 'gated' }), new RegExp(`"${field}" must be non-empty`));
       const notLines = writePayload(dir, `n-${field}.json`, { ...proposal, [field]: 'one long string' });
@@ -3294,13 +3295,13 @@ describe('render proposed-task', () => {
   });
 
   it('a decision excludes authored blocks, and the malformed shapes are refused by name', () => {
-    for (const [field, value] of [['steps', ['1. x']], ['criteria', ['- c']], ['tests', ['- t']]]) {
+    for (const [field, value] of [['steps', ['1. x']], ['criteria', ['- c']]]) {
       const file = writePayload(dir, `dx-${field}.json`, {
         ...proposal, [field]: value, stakes: 'the fork is product-shaped',
         decision: { question: 'Which way?', options: ['a', 'b'] },
       });
       assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
-        /"decision" excludes steps\/criteria\/tests/);
+        /"decision" excludes steps\/criteria/);
     }
     for (const [name, decision] of [['null', null], ['a bare string', 'yes']]) {
       const file = writePayload(dir, `dshape-${name.replace(/ /g, '-')}.json`, { ...proposal, decision });
@@ -3601,7 +3602,6 @@ describe('render proposed-task', () => {
       placement: 'phase 2', priority: '1', depends_on: 'portal-2-3',
       steps: ['1. Clear cookie', '2. Redirect'],
       criteria: ['- no loop on expired session'],
-      tests: ['- expired session logs in cleanly'],
     };
     const file = writePayload(dir, 'a.json', adhoc);
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
@@ -4083,7 +4083,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
     const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
     assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
-    const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'], tests: ['t'] });
+    const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
     assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
     const gate = run(['next-phase-gate', 'pay', '--prev', 'implementation', '--next', 'review']);
@@ -6546,7 +6546,7 @@ describe('render — the adopted phase gates', () => {
       /--variant must be "blocking" or "pick"/);
   });
 
-  it('checkpoint-files-gate and executor-block-gate: the implementation loop\'s two static stops', () => {
+  it('checkpoint-files-gate: the analysis loop\'s static stop', () => {
     const checkpoint = renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
     assert.match(checkpoint, /MENU: checkpoint files gate/);
     assert.match(checkpoint, /`◆ Include unexpected files in the checkpoint commit\?`/);
@@ -6554,16 +6554,80 @@ describe('render — the adopted phase gates', () => {
     assert.match(unwrap(checkpoint), /\*\*`s\/skip`\*\*\s+→ Exclude unexpected files, commit only implementation files/);
     assert.match(unwrap(checkpoint), /\*\*Comment\*\* → Specify which to include/);
 
-    const block = renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout' });
-    assert.match(block, /MENU: executor block gate/);
-    assert.match(block, /`◆ How would you like to proceed\?`/);
-    assert.match(unwrap(block), /\*\*`r\/retry`\*\* → Re-invoke the executor with your comments \(provide below\)/);
-    assert.match(unwrap(block), /\*\*`t\/stop`\*\*\s+→ Stop implementation entirely/);
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
+      /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+  });
 
-    for (const surface of ['checkpoint-files-gate', 'executor-block-gate']) {
-      assert.throws(() => renderSurface(dir, surface, { dotpath: 'pay.planning.checkout' }),
-        /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+  it('executor-block-gate: a block renders the fork\'s sides recommended-first, a failure offers the retry', () => {
+    const sides = writePayload(dir, 'sides.json', {
+      options: ['Restore the order as paid, refund behind it', { summary: 'Keep the cancellation, return the payment', recommended: true }],
+    });
+    assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
+      dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides,
+    }), [
+      "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Which way?`**',
+      '',
+      '**`1`**       → Keep the cancellation, return the payment (recommended)',
+      '**`2`**       → Restore the order as paid, refund behind it',
+      "**Comment** → Ask about the options, or tell me what I've missed",
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
+      dotpath: 'pay.implementation.checkout', result: 'failed',
+    }), [
+      "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ How would you like to proceed?`**',
+      '',
+      '**`r/retry`** → Run the executor again with the guidance above and',
+      `${NB(10)}anything you add`,
+      '**Comment** → Ask about the failure, or steer the next attempt',
+      '',
+    ].join('\n'));
+  });
+
+  it('executor-block-gate: the override line heads a block under auto or bounded, and the payload is validated', () => {
+    const sides = writePayload(dir, 'sides.json', { options: ['A side', 'Another side'] });
+    for (const mode of ['auto', 'bounded']) {
+      writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', task_gate_mode: mode } } } } });
+      const out = renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides });
+      assert.ok(out.startsWith([
+        "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+        DOTS,
+        '**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.',
+        '',
+        '**`◆ Which way?`**',
+      ].join('\n')), out);
+      assert.match(unwrap(out), /\*\*`1`\*\*\s+→ A side\n\*\*`2`\*\*\s+→ Another side/);
     }
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', task_gate_mode: 'gated' } } } } });
+    assert.ok(!renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides }).includes('Auto is on'));
+
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked' }),
+      /--file <sides\.json> is required with --result blocked/);
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'failed', file: sides }),
+      /--file belongs to --result blocked/);
+    const one = writePayload(dir, 'one.json', { options: ['Only one'] });
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: one }),
+      /"options" must be an array of 2–4 sides/);
+    const two = writePayload(dir, 'two.json', { options: [{ summary: 'A', recommended: true }, { summary: 'B', recommended: true }] });
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: two }),
+      /at most one option may be recommended/);
+    const bare = writePayload(dir, 'bare.json', { options: ['A', { recommended: true }] });
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: bare }),
+      /options\[1\] must be a non-empty string or an object carrying "summary"/);
+  });
+
+  it('executor-block-gate: refuses a missing or unknown result, and a non-implementation address', () => {
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout' }),
+      /--result must be one of blocked, failed, got "undefined"/);
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'needs-changes' }),
+      /--result must be one of blocked, failed, got "needs-changes"/);
+    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.planning.checkout', result: 'failed' }),
+      /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
   });
 
   it('dependency-approval-gate: three variants, one approve-or-change shape', () => {
