@@ -55,7 +55,7 @@ tick show <tick-id>
 
 Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, tags, refs, notes, and the description.
 
-**Reading a value**: `tick show <tick-id> --field description` prints the description's own bytes — no key, no quoting, nothing around it, indentation and fenced blocks intact. That is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)). Any single field reads the same way (`--field title` prints the bare title); several names (`--field parent,status`) return the normal document narrowed to those sections.
+**Reading a value**: `tick show <tick-id> --field description` prints the description's own bytes — no key, no quoting, nothing around it, indentation and fenced blocks intact. That is the read path whenever a value is being consumed rather than displayed, an amendment's read of the current description above all (see [updating.md](updating.md)).
 
 Never read or write `.tick/tasks.jsonl` directly — the CLI is the only interface to the store.
 

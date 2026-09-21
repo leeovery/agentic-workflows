@@ -14,8 +14,6 @@ Tick uses dedicated commands for each status transition:
 
 `done` and `cancel` set a closed timestamp. `reopen` clears it.
 
-Each transition answers with a `changed` table naming every task whose status moved, cascaded rows marked `auto`.
-
 ## Updating Task Content
 
 **CRITICAL**: Always pass descriptions as inline quoted strings. See [authoring.md](authoring.md) for constraints.
