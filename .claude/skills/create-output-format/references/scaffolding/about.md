@@ -23,7 +23,7 @@ Use this format when {describe the ideal use case}.
 
 ## Version
 
-<!-- Data the shared version check reads: "Requires {Tool} `X.Y.*`. `{command}` prints the installed version as `{output shape}`. Update instructions: {where}." — or "No external tool — nothing to check." if none -->
+<!-- Data the shared version check reads: "Requires {Tool} `{version pattern, * matching anything}`. `{command}` prints the installed version as `{output shape}`. Update instructions: {where}." — or "No external tool — nothing to check." if none -->
 {Version declaration or "No external tool — nothing to check."}
 
 ## Structure Mapping

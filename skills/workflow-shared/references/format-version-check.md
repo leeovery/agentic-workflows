@@ -8,7 +8,7 @@ The caller provides `format`.
 
 ## A. Read the Declaration
 
-Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool and the version it requires as `X.Y.*`, the command that prints the installed version with the shape of its output, and where the update instructions live.
+Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool, the version it requires as a pattern in which `*` matches anything (`0.3.*` accepts every 0.3 release), the command that prints the installed version with the shape of its output, and where the update instructions live.
 
 #### If the section declares nothing to check
 
@@ -22,7 +22,7 @@ Read the **Version** section of the format's **[about.md](../../workflow-plannin
 
 ## B. Compare
 
-Run the declared command and take the installed `X.Y.Z` from its output. The check passes when the installed `X.Y` equals the required `X.Y` — the `*` is the patch, any value.
+Run the declared command and take the installed version from its output. The check passes when the installed version matches the required pattern.
 
 #### If the check passes
 
