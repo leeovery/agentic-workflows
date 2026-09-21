@@ -205,6 +205,27 @@ writes content on an empty world the seed is wrong and the cost stays.
 Expected: the 20–80s files land under 15s each; the corpus cold under
 45s.
 
+**Landed 2026-09-21 (#1248).** 27 suites on `tests/scripts/
+engine-harness.cjs`; 28 runner copies, six stub knowledge CLIs and
+seven fixture builders retired, net −370 lines. Same-session A/B:
+transactions 77s → 51s, session-label 37s → 22s, roadmap 40s → 22s,
+boot 42s → 28s, agent-state 17s → 1s; the adopted set 332s → 199s
+serial. Full `npm test` 2m01s → 1m07s, 3,384 tests; corpus cold 68s →
+55s, warm 0.35s, every world byte-identical. The boot profile: a boot
+call is ~72% its own subprocesses (the stub migrate, the stub knowledge
+CLI, git), so the suite keeps its copied tree, hoisted to one per
+process, and drives it in-process. The 15s-per-file target missed for
+the four git-bound suites — the residual is git, dozens of commits per
+suite. **The ledger seed was tried and reverted**: the frozen fleet
+writes `.claude/settings.json` and `.workflows/.gitignore` on an empty
+world, so a seeded ledger moved every snapshot (`missing:
+.claude/settings.json`, `_gitignore.fixture`). The measurement stands
+for later: a seeded corpus rebuilt cold in 30s against 55s — the
+migration replay is roughly half of every world's cost. Claiming it
+needs the whole already-migrated state seeded (ledger plus those two
+artifacts), or a template world built once per run and copied, not the
+ledger alone.
+
 ### 5. Close
 
 Re-measure the whole run and record it below. Update the Test Gates
@@ -227,8 +248,11 @@ index row.
 - **The knowledge CLI in-process**: `domain/kb.cjs` spawns the bundle;
   hermetic it costs ~100ms a call. Revisit if it shows in the profile.
 - **The migration orchestrator in one bash**: `engine boot` spawns a
-  bash per frozen migration. The fixture seam in 4 removes the cost
-  from the tests; the shipped orchestrator's semantics stay untouched.
+  bash per frozen migration, and slice 4 showed the replay is about
+  half of every prose world's rebuild. The shipped orchestrator's
+  semantics stay untouched in this programme; either a subshell per
+  migration inside one bash, or a migrated template world copied per
+  recipe, is the next second for the corpus.
 - **Splitting the simulation into files** for parallelism: unnecessary
   once it runs in-process.
 - **The shell tiers** (`test:cli`, `test:migrations`): 147s serial,
@@ -253,3 +277,5 @@ baseline machine; a run with the network down is green.
   under four minutes warm and the simulation is now the critical path.
 - 2026-09-21 — slice 3 landed as #1247; the full run is two minutes
   and the residual is the engine's own subprocesses.
+- 2026-09-21 — slice 4 landed as #1248; the full run is 1m07s and the
+  residual is git. The ledger seed was refuted by the corpus.
