@@ -14,11 +14,18 @@
 // primitives (signpost, box, wrap, tree), which remain authoring aids only.
 // Static chrome stays literal in prose; anything parameterised or
 // state-branching renders here.
+//
+// Two doors, one dispatch: `main` binds the process (argv, cwd, the real
+// streams) and `run` binds a caller's (the exported in-process entry, for a
+// test harness that wants the CLI's answers without the CLI's start-up).
+// Nothing below either door reads process state: the directory, the output
+// streams and the stdin text all arrive on the call.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
+const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = require('./domain/commit.cjs');
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
@@ -48,47 +55,76 @@ const baseline = require('./domain/baseline.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 
-/** @param {string} msg @returns {never} */
-function die(msg) {
-  process.stderr.write(msg + '\n');
-  process.exit(1);
+/**
+ * One invocation: the directory it acts on, where its two output streams go,
+ * and the text it was handed on stdin (read lazily — a command that wants
+ * none never asks).
+ * @typedef {object} Call
+ * @property {string} cwd
+ * @property {(text: string) => void} out
+ * @property {(text: string) => void} err
+ * @property {() => string} stdin
+ */
+
+/**
+ * A command's exit, thrown rather than taken on the process: `main` turns it
+ * into an exit code, `run` answers with one. A handler that stops the command
+ * must never stop its caller.
+ */
+class ExitSignal extends Error {
+  /** @param {number} code */
+  constructor(code) {
+    super(`engine exited ${code}`);
+    this.code = code;
+  }
 }
 
-/** One decision-ready JSON line on stdout. @param {object} obj */
-function respond(obj) {
-  process.stdout.write(JSON.stringify({ ok: true, ...obj }) + '\n');
+/** @param {unknown} err @returns {string} */
+function messageOf(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** @param {Call} call @param {string} msg @returns {never} */
+function die(call, msg) {
+  call.err(msg + '\n');
+  throw new ExitSignal(1);
+}
+
+/** One decision-ready JSON line on stdout. @param {Call} call @param {object} obj */
+function respond(call, obj) {
+  call.out(JSON.stringify({ ok: true, ...obj }) + '\n');
 }
 
 /**
  * The same line on stderr — for a SessionStart hook target, whose stdout
  * Claude Code injects into the conversation as context.
- * @param {object} obj
+ * @param {Call} call @param {object} obj
  */
-function respondOnStderr(obj) {
-  process.stderr.write(JSON.stringify({ ok: true, ...obj }) + '\n');
+function respondOnStderr(call, obj) {
+  call.err(JSON.stringify({ ok: true, ...obj }) + '\n');
 }
 
 /**
  * Rendered gate sections after a response's JSON line (domain/projections).
  * Empty when the state renders nothing.
- * @param {string} rendered
+ * @param {Call} call @param {string} rendered
  */
-function respondSections(rendered) {
-  if (rendered !== '') process.stdout.write(rendered);
+function respondSections(call, rendered) {
+  if (rendered !== '') call.out(rendered);
 }
 
 /**
  * `{ok:false}` JSON on stderr, exit 1. Extra decision-ready fields ride on
  * the error's `payload` (e.g. `missing_imports`).
- * @param {unknown} err @returns {never}
+ * @param {Call} call @param {unknown} err @returns {never}
  */
-function failJson(err) {
+function failJson(call, err) {
   const payload =
     err && typeof err === 'object' && 'payload' in err && err.payload && typeof err.payload === 'object'
       ? err.payload
       : {};
-  process.stderr.write(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err), ...payload }) + '\n');
-  process.exit(1);
+  call.err(JSON.stringify({ ok: false, error: messageOf(err), ...payload }) + '\n');
+  throw new ExitSignal(1);
 }
 
 // Minimal flag parser: collects `--key value` pairs, value-less flags named
@@ -377,24 +413,24 @@ Commands:
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runManifest(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runManifest(call, argv) {
   const [command, ...rest] = argv;
   if (command !== undefined && isRead(command)) {
     try {
-      runFieldCommand(process.cwd(), command, rest);
+      runFieldCommand(call.cwd, command, rest, call.out);
     } catch (err) {
       const code = err && typeof err === 'object' && 'exitCode' in err && typeof err.exitCode === 'number' ? err.exitCode : 1;
-      process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
-      process.exit(code);
+      call.err(`Error: ${messageOf(err)}\n`);
+      throw new ExitSignal(code);
     }
     return;
   }
   try {
-    const result = runFieldCommand(process.cwd(), command ?? '', rest);
-    respond(/** @type {object} */ (result));
+    const result = runFieldCommand(call.cwd, command ?? '', rest, call.out);
+    respond(call, /** @type {object} */ (result));
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -420,8 +456,8 @@ function runManifest(argv) {
 // commit — and a beat on that origin's topic when a phase session landed it.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runWorkunit(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runWorkunit(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'create') {
@@ -434,7 +470,7 @@ function runWorkunit(argv) {
       if (flags.has('no-session-log') ? opts['session-log-file'] !== undefined : opts['session-log-file'] === undefined) {
         throw new Error('exactly one of --session-log-file <path> or --no-session-log is required');
       }
-      respond(createWorkUnit(process.cwd(), workUnit, workType, {
+      respond(call, createWorkUnit(call.cwd, workUnit, workType, {
         description: opts.description,
         sessionLogFile: opts['session-log-file'],
         imports: lists.import || [],
@@ -446,7 +482,7 @@ function runWorkunit(argv) {
       if (!workUnit || paths.length === 0 || !opts.from) {
         throw new Error('Usage: engine workunit import <work-unit> <path> [<path> …] --from <origin>');
       }
-      const landed = importWorkUnitFiles(process.cwd(), workUnit, paths, { origin: opts.from });
+      const landed = importWorkUnitFiles(call.cwd, workUnit, paths, { origin: opts.from });
       // A phase session's landing is its own topic's work — the beat is the
       // same act as claiming the slot. A bare `discovery` origin names no
       // topic and beats nothing (discovery is serialised by its marker), and
@@ -454,12 +490,12 @@ function runWorkunit(argv) {
       // not a session sitting in one.
       const [phase, topic] = opts.from.split('/');
       if (topic) {
-        const status = topicStatus(process.cwd(), workUnit, phase, topic);
+        const status = topicStatus(call.cwd, workUnit, phase, topic);
         if (status !== null && !TERMINAL_TOPIC_STATUSES.includes(status)) {
-          beatQuietly(process.cwd(), workUnit, phase, topic);
+          beatQuietly(call.cwd, workUnit, phase, topic);
         }
       }
-      respond(landed);
+      respond(call, landed);
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
@@ -472,33 +508,33 @@ function runWorkunit(argv) {
       if (!workUnit || !message) {
         throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
       }
-      respond(completeWorkUnit(process.cwd(), workUnit, { message }));
+      respond(call, completeWorkUnit(call.cwd, workUnit, { message }));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
-      respond(fn(process.cwd(), workUnit));
+      respond(call, fn(call.cwd, workUnit));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
       if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
-      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
+      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic }));
     } else if (command === 'promote') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, topic] = positional;
       if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
         throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
       }
-      respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
+      respond(call, promoteWorkUnit(call.cwd, workUnit, topic, { to: opts.to, description: opts.description }));
     } else {
       throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -509,11 +545,11 @@ function runWorkunit(argv) {
 // (the session's commit cadence picks the manifest change up).
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runDiscussionMap(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runDiscussionMap(call, argv) {
   const [command, ...rest] = argv;
   const { opts, positional } = parseArgs(rest);
-  const cwd = process.cwd();
+  const { cwd } = call;
 
   try {
     const [workUnit, topic, subtopic, state] = positional;
@@ -521,7 +557,7 @@ function runDiscussionMap(argv) {
       if (!workUnit || !topic || !subtopic) {
         throw new Error('Usage: engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
       }
-      respond(recordSubtopicAdd(cwd, workUnit, topic, subtopic, { parent: opts.parent ?? null }));
+      respond(call, recordSubtopicAdd(cwd, workUnit, topic, subtopic, { parent: opts.parent ?? null }));
     } else if (command === 'set') {
       const pairs = positional.slice(2);
       if (pairs.some((p) => p.includes('='))) {
@@ -530,7 +566,7 @@ function runDiscussionMap(argv) {
         if (!workUnit || !topic || !pairs.length || !pairs.every((p) => /^[^=]+=[^=]+$/.test(p))) {
           throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …] — uniform pairs, never mixed with the positional form`);
         }
-        respond(recordSubtopicStates(cwd, workUnit, topic, pairs.map((p) => {
+        respond(call, recordSubtopicStates(cwd, workUnit, topic, pairs.map((p) => {
           const i = p.indexOf('=');
           return [p.slice(0, i), p.slice(i + 1)];
         })));
@@ -538,13 +574,13 @@ function runDiscussionMap(argv) {
         if (!workUnit || !topic || !subtopic || !state) {
           throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}> — or a uniform <subtopic>=<state> batch`);
         }
-        respond(recordSubtopicState(cwd, workUnit, topic, subtopic, state));
+        respond(call, recordSubtopicState(cwd, workUnit, topic, subtopic, state));
       }
     } else {
       throw new Error('Usage: engine discussion-map <add|set> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -555,11 +591,11 @@ function runDiscussionMap(argv) {
 // (the session's commit cadence picks the manifest change up).
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runResearchThreads(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runResearchThreads(call, argv) {
   const [command, ...rest] = argv;
   const { opts, positional } = parseArgs(rest);
-  const cwd = process.cwd();
+  const { cwd } = call;
 
   try {
     const [workUnit, topic, slug, state] = positional;
@@ -567,7 +603,7 @@ function runResearchThreads(argv) {
       if (!workUnit || !topic || !slug || !opts.question || !opts.origin) {
         throw new Error('Usage: engine research-threads add <work-unit> <topic> <slug> --question <text> --origin <origin> [--parent <slug>]');
       }
-      respond(recordThreadAdd(cwd, workUnit, topic, slug, { question: opts.question, origin: opts.origin, parent: opts.parent ?? null }));
+      respond(call, recordThreadAdd(cwd, workUnit, topic, slug, { question: opts.question, origin: opts.origin, parent: opts.parent ?? null }));
     } else if (command === 'set') {
       const pairs = positional.slice(2);
       if (pairs.some((p) => p.includes('='))) {
@@ -580,7 +616,7 @@ function runResearchThreads(argv) {
         if (opts.note !== undefined) {
           throw new Error('--note is legal with parked alone and takes the positional form: engine research-threads set <work-unit> <topic> <slug> parked --note <text>');
         }
-        respond(recordThreadStates(cwd, workUnit, topic, pairs.map((p) => {
+        respond(call, recordThreadStates(cwd, workUnit, topic, pairs.map((p) => {
           const i = p.indexOf('=');
           return [p.slice(0, i), p.slice(i + 1)];
         })));
@@ -588,23 +624,23 @@ function runResearchThreads(argv) {
         if (!workUnit || !topic || !slug || !state) {
           throw new Error(`Usage: engine research-threads set <work-unit> <topic> <slug> <${VALID_THREAD_STATUSES.join('|')}> [--note <text>] — or a uniform <slug>=<state> batch`);
         }
-        respond(recordThreadState(cwd, workUnit, topic, slug, state, { note: opts.note }));
+        respond(call, recordThreadState(cwd, workUnit, topic, slug, state, { note: opts.note }));
       }
     } else if (command === 'reframe') {
       if (!workUnit || !topic || !slug || !opts.question) {
         throw new Error('Usage: engine research-threads reframe <work-unit> <topic> <slug> --question <text>');
       }
-      respond(recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
+      respond(call, recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
     } else if (command === 'remove') {
       if (!workUnit || !topic || !slug || ('into' in opts && !opts.into)) {
         throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug> [--into <slug>] — --into names the survivor');
       }
-      respond(recordThreadRemove(cwd, workUnit, topic, slug, { into: opts.into ?? null }));
+      respond(call, recordThreadRemove(cwd, workUnit, topic, slug, { into: opts.into ?? null }));
     } else {
       throw new Error('Usage: engine research-threads <add|set|reframe|remove> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -617,10 +653,10 @@ function runResearchThreads(argv) {
 // gates are enforced in the domain op.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runDiscoveryMap(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runDiscoveryMap(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
 
   try {
     const { opts, flags, positional } = parseArgs(rest, ['force-dismissed', 'backfill']);
@@ -634,7 +670,7 @@ function runDiscoveryMap(argv) {
       } catch (err) {
         throw new Error(`discovery-map add-batch: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
       }
-      respond(addItemsBatch(cwd, workUnit, parsed));
+      respond(call, addItemsBatch(cwd, workUnit, parsed));
       return;
     }
     if (command === 'sequence') {
@@ -642,14 +678,14 @@ function runDiscoveryMap(argv) {
         throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       }
       const orders = parseOrderPairs(positional.slice(1));
-      respond(sequenceMap(cwd, workUnit, orders));
+      respond(call, sequenceMap(cwd, workUnit, orders));
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
       if (!workUnit || positional.length !== 3 || (opts.summary === undefined && !flags.has('backfill'))) {
         throw new Error(`Usage: engine discovery-map add <work-unit> <name> <${VALID_ROUTINGS.join('|')}> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]`);
       }
-      respond(addItem(cwd, workUnit, positional[1], {
+      respond(call, addItem(cwd, workUnit, positional[1], {
         routing: positional[2],
         source: opts.source,
         summary: opts.summary,
@@ -665,28 +701,28 @@ function runDiscoveryMap(argv) {
       if (!workUnit || positional.length !== 2 || (summary === undefined && description === undefined)) {
         throw new Error('Usage: engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>] (at least one flag required)');
       }
-      respond(editItem(cwd, workUnit, positional[1], { summary, description }));
+      respond(call, editItem(cwd, workUnit, positional[1], { summary, description }));
     } else if (command === 'remove' || command === 'handle' || command === 'unhandle') {
       if (!workUnit || positional.length !== 2) {
         throw new Error(`Usage: engine discovery-map ${command} <work-unit> <name>`);
       }
       const fn = command === 'remove' ? removeItem : command === 'handle' ? handleItem : unhandleItem;
-      respond(fn(cwd, workUnit, positional[1]));
+      respond(call, fn(cwd, workUnit, positional[1]));
     } else if (command === 'rename') {
       if (!workUnit || positional.length !== 3) {
         throw new Error('Usage: engine discovery-map rename <work-unit> <old> <new>');
       }
-      respond(renameItem(cwd, workUnit, positional[1], positional[2]));
+      respond(call, renameItem(cwd, workUnit, positional[1], positional[2]));
     } else if (command === 'reroute') {
       if (!workUnit || positional.length !== 3) {
         throw new Error(`Usage: engine discovery-map reroute <work-unit> <name> <${VALID_ROUTINGS.join('|')}>`);
       }
-      respond(rerouteItem(cwd, workUnit, positional[1], positional[2]));
+      respond(call, rerouteItem(cwd, workUnit, positional[1], positional[2]));
     } else {
       throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|unhandle> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -721,10 +757,10 @@ function parseOrderPairs(pairs) {
 // lives in the domain op.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runBuildOrder(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runBuildOrder(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
 
   try {
     if (command !== 'sequence') {
@@ -736,9 +772,9 @@ function runBuildOrder(argv) {
       throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
     }
     const orders = parseOrderPairs(positional.slice(1));
-    respond(sequenceBuildOrder(cwd, workUnit, orders));
+    respond(call, sequenceBuildOrder(cwd, workUnit, orders));
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -753,8 +789,8 @@ function runBuildOrder(argv) {
 // model-authored — the engine never writes prose.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runDiscoverySession(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runDiscoverySession(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'open') {
@@ -769,7 +805,7 @@ function runDiscoverySession(argv) {
       if (!workUnit || !sessionLogFile) {
         throw new Error('Usage: engine discovery-session open <work-unit> --session-log-file <path>');
       }
-      respond(openDiscoverySession(process.cwd(), workUnit, { sessionLogFile }));
+      respond(call, openDiscoverySession(call.cwd, workUnit, { sessionLogFile }));
     } else if (command === 'close') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
@@ -782,12 +818,12 @@ function runDiscoverySession(argv) {
       if (!workUnit || !message) {
         throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
       }
-      respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
+      respond(call, closeDiscoverySession(call.cwd, workUnit, { message }));
     } else {
       throw new Error('Usage: engine discovery-session <open|close> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -826,13 +862,13 @@ const UNIT_VERBS = ['cancel', 'reactivate'];
 /**
  * A session hook target's session id: the argument when given, else the
  * hook's stdin JSON.
- * @param {string[]} rest @param {string} usage @returns {string|null}
+ * @param {Call} call @param {string[]} rest @param {string} usage @returns {string|null}
  */
-function hookSessionId(rest, usage) {
+function hookSessionId(call, rest, usage) {
   if (rest.length > 1) throw new Error(usage);
   let sessionId = rest[0] || null;
-  if (!sessionId && !process.stdin.isTTY) {
-    try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
+  if (!sessionId) {
+    try { sessionId = (JSON.parse(call.stdin()) || {}).session_id || null; } catch { sessionId = null; }
   }
   return sessionId;
 }
@@ -841,16 +877,16 @@ function hookSessionId(rest, usage) {
  * The project root a session hook acts on: the invocation cwd when it is
  * a project root (has `.workflows`), else CLAUDE_PROJECT_DIR for a hook
  * fired from a drifted cwd.
- * @returns {string}
+ * @param {string} cwd @returns {string}
  */
-function hookProjectDir() {
-  return fs.existsSync(path.join(process.cwd(), '.workflows'))
-    ? process.cwd()
-    : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
+function hookProjectDir(cwd) {
+  return fs.existsSync(path.join(cwd, '.workflows'))
+    ? cwd
+    : (process.env.CLAUDE_PROJECT_DIR || cwd);
 }
 
-/** @param {string[]} argv */
-function runPresence(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runPresence(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'beat' || command === 'clear') {
@@ -858,7 +894,7 @@ function runPresence(argv) {
       if (!workUnit || !phase || !topic || rest.length !== 3) {
         throw new Error(`Usage: engine presence ${command} <work-unit> <phase> <topic>`);
       }
-      respond((command === 'beat' ? beatPresence : clearPresence)(process.cwd(), workUnit, phase, topic));
+      respond(call, (command === 'beat' ? beatPresence : clearPresence)(call.cwd, workUnit, phase, topic));
       return;
     }
     if (command === 'scan') {
@@ -874,27 +910,27 @@ function runPresence(argv) {
       // deferral section is the analysis dispatch's, which always scans one
       // work unit — a project scan renders nothing.
       if (!workUnit) {
-        respond(scanProject(process.cwd()));
+        respond(call, scanProject(call.cwd));
         return;
       }
-      const res = scanPresence(process.cwd(), workUnit);
-      respond(res);
-      respondSections(deferralSection(res));
+      const res = scanPresence(call.cwd, workUnit);
+      respond(call, res);
+      respondSections(call, deferralSection(res));
       return;
     }
     if (command === 'cleanup') {
       // The SessionEnd hook's target.
-      respond(cleanupPresence(hookProjectDir(), hookSessionId(rest, 'Usage: engine presence cleanup [session-id]')));
+      respond(call, cleanupPresence(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine presence cleanup [session-id]')));
       return;
     }
     throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
-/** @param {string[]} argv */
-function runSession(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runSession(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'label') {
@@ -904,7 +940,7 @@ function runSession(argv) {
       if (![1, 3].includes(rest.length) || rest.some((a) => !a)) {
         throw new Error('Usage: engine session label <name> [<phase> <topic>]');
       }
-      respond(applySessionLabel(process.cwd(), name, phase, topic));
+      respond(call, applySessionLabel(call.cwd, name, phase, topic));
       return;
     }
     if (command === 'label-config') {
@@ -912,32 +948,32 @@ function runSession(argv) {
       if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
         throw new Error('Usage: engine session label-config <true|false>');
       }
-      respond(recordLabelChoice(process.cwd(), value === 'true'));
+      respond(call, recordLabelChoice(call.cwd, value === 'true'));
       return;
     }
     if (command === 'repair') {
       if (rest.length !== 0) throw new Error('Usage: engine session repair');
-      respond(repairSessionLabels(process.cwd()));
+      respond(call, repairSessionLabels(call.cwd));
       return;
     }
     if (command === 'cleanup') {
       // The SessionEnd hook's target.
-      respond(restoreSessionLabel(hookProjectDir(), hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
+      respond(call, restoreSessionLabel(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine session cleanup [session-id]')));
       return;
     }
     if (command === 'resume') {
       // The SessionStart hook's target.
-      respondOnStderr(resumeSessionLabel(hookProjectDir(), hookSessionId(rest, 'Usage: engine session resume [session-id]')));
+      respondOnStderr(call, resumeSessionLabel(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine session resume [session-id]')));
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
-/** @param {string[]} argv */
-function runSources(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runSources(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'stale') {
@@ -946,17 +982,17 @@ function runSources(argv) {
       if (!workUnit || !discussion || positional.length !== 2 || ('except' in opts && typeof opts.except !== 'string')) {
         throw new Error('Usage: engine sources stale <work-unit> <discussion> [--except <spec-topic>]');
       }
-      respond(staleSources(process.cwd(), workUnit, discussion, { except: opts.except }));
+      respond(call, staleSources(call.cwd, workUnit, discussion, { except: opts.except }));
       return;
     }
     throw new Error('Usage: engine sources <stale> …');
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
-/** @param {string[]} argv */
-function runTopic(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runTopic(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'supersede') {
@@ -965,7 +1001,7 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.by) {
         throw new Error('Usage: engine topic supersede <work-unit> <phase> <topic> --by <topic>');
       }
-      respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
+      respond(call, supersedeTopic(call.cwd, workUnit, phase, topic, { by: opts.by }));
       return;
     }
     if (command === 'queue') {
@@ -973,12 +1009,12 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || rest.length !== 3) {
         throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
       }
-      const status = queueStatus(process.cwd(), workUnit, phase, topic);
+      const status = queueStatus(call.cwd, workUnit, phase, topic);
       // A read is reachable for any topic — a foreign queue is legitimately
       // checked from another session — so it refreshes an owned hold only,
       // never creates one.
-      refreshQuietly(process.cwd(), workUnit, phase, topic);
-      respond(status);
+      refreshQuietly(call.cwd, workUnit, phase, topic);
+      respond(call, status);
       return;
     }
     if (command === 'absorb') {
@@ -997,9 +1033,9 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
         throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
       }
-      const absorbed = absorbConcern(process.cwd(), workUnit, phase, topic, { file, message, subtopic });
-      beatQuietly(process.cwd(), workUnit, phase, topic);
-      respond(absorbed);
+      const absorbed = absorbConcern(call.cwd, workUnit, phase, topic, { file, message, subtopic });
+      beatQuietly(call.cwd, workUnit, phase, topic);
+      respond(call, absorbed);
       return;
     }
     if (command === 'requeue') {
@@ -1016,7 +1052,7 @@ function runTopic(argv) {
       if (!workUnit || !fromPhase || !toPhase || !topic || pos.length !== 4 || !file || !message) {
         throw new Error('Usage: engine topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      respond(requeueConcern(process.cwd(), workUnit, fromPhase, toPhase, topic, { file, message }));
+      respond(call, requeueConcern(call.cwd, workUnit, fromPhase, toPhase, topic, { file, message }));
       return;
     }
     if (command === 'triage') {
@@ -1036,7 +1072,7 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || pos.length !== 3 || (delivering && !(concern && slug && message))) {
         throw new Error('Usage: engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]');
       }
-      respond(triageTopic(process.cwd(), workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
+      respond(call, triageTopic(call.cwd, workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
@@ -1048,15 +1084,15 @@ function runTopic(argv) {
       const phaseArg = UNIT_VERBS.includes(command) ? '<discovery|specification>' : '<phase>';
       throw new Error(`Usage: engine topic ${command} <work-unit> ${phaseArg} <topic>`);
     }
-    const result = fn(process.cwd(), workUnit, phase, topic);
-    if (TOPIC_BEATS.includes(command)) beatQuietly(process.cwd(), workUnit, phase, topic);
+    const result = fn(call.cwd, workUnit, phase, topic);
+    if (TOPIC_BEATS.includes(command)) beatQuietly(call.cwd, workUnit, phase, topic);
     // The close releases the slot. Everything after it — the conclusion
     // commit, a plan or implementation wrap-up — is a session tidying a topic
     // it has finished, and none of it should re-take the hold.
-    if (command === 'complete') clearQuietly(process.cwd(), workUnit, phase, topic);
-    respond(result);
+    if (command === 'complete') clearQuietly(call.cwd, workUnit, phase, topic);
+    respond(call, result);
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1075,10 +1111,10 @@ function runTopic(argv) {
 // conclude or abandon clears it: the record's close is the session's release.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runExperiment(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runExperiment(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
   try {
     const { opts, positional } = parseArgs(rest);
     const [workUnit, topic, id] = positional;
@@ -1088,7 +1124,7 @@ function runExperiment(argv) {
       }
       const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
-      respond(created);
+      respond(call, created);
       return;
     }
     if (command === 'conclude' || command === 'abandon') {
@@ -1100,7 +1136,7 @@ function runExperiment(argv) {
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
       (isParentExperimentId(id) ? clearQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
-      respond(result);
+      respond(call, result);
       return;
     }
     if (command === 'advance' || command === 'approve') {
@@ -1109,12 +1145,12 @@ function runExperiment(argv) {
       }
       const result = (command === 'advance' ? advanceExperiment : approveExperiment)(cwd, workUnit, topic, id);
       beatQuietly(cwd, workUnit, 'experiment', topic);
-      respond(result);
+      respond(call, result);
       return;
     }
     throw new Error('Usage: engine experiment <create|advance|approve|conclude|abandon> <work-unit> <topic> …');
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1128,30 +1164,30 @@ function runExperiment(argv) {
 // cycle-limit, cycle-gate) at the stage that displays them.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runTask(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runTask(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
   try {
     const { opts, flags, positional } = parseArgs(rest, ['skipped', 'phase-complete']);
     const [workUnit, topic, internalId] = positional;
     if (command === 'init' || command === 'analysis-cycle') {
       if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
       if (command === 'init') {
-        respond(initTasks(cwd, workUnit, topic));
+        respond(call, initTasks(cwd, workUnit, topic));
       } else {
-        respond(analysisCycle(cwd, workUnit, topic));
+        respond(call, analysisCycle(cwd, workUnit, topic));
       }
     } else if (command === 'start') {
       if (!workUnit || !topic || !internalId) {
         throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
       }
-      respond(startTask(cwd, workUnit, topic, internalId));
+      respond(call, startTask(cwd, workUnit, topic, internalId));
     } else if (command === 'fix-attempt') {
       if (!workUnit || !topic || !internalId || !opts['findings-file']) {
         throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
       }
-      respond(fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
+      respond(call, fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
     } else if (command === 'complete') {
       if (!workUnit || !topic) {
         throw new Error('Usage: engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]');
@@ -1171,12 +1207,12 @@ function runTask(argv) {
         phase,
         phaseComplete: flags.has('phase-complete'),
       });
-      respond(result);
+      respond(call, result);
     } else {
       throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1186,19 +1222,19 @@ function runTask(argv) {
 // commit for the whole set.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runInbox(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runInbox(call, argv) {
   const [command, ...paths] = argv;
   try {
     if (!['archive', 'restore', 'delete'].includes(command) || paths.length === 0) {
       throw new Error('Usage: engine inbox <archive|restore|delete> <path> [<path> …]');
     }
-    const cwd = process.cwd();
-    if (command === 'archive') respond(archiveItems(cwd, paths));
-    else if (command === 'restore') respond(restoreItems(cwd, paths));
-    else respond(deleteItems(cwd, paths));
+    const { cwd } = call;
+    if (command === 'archive') respond(call, archiveItems(cwd, paths));
+    else if (command === 'restore') respond(call, restoreItems(cwd, paths));
+    else respond(call, deleteItems(cwd, paths));
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1212,40 +1248,40 @@ function runInbox(argv) {
 /**
  * `baseline record <native|skipped>` — workflow-start's one-time verdict,
  * written and committed in one confined transaction.
- * @param {string[]} argv
+ * @param {Call} call @param {string[]} argv
  */
-function runBaseline(argv) {
+function runBaseline(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
   try {
     if (command === 'record') {
       if (rest.length !== 1) throw new Error('Usage: engine baseline record <native|skipped>');
-      respond(baseline.recordBaselineVerdict(cwd, rest[0]));
+      respond(call, baseline.recordBaselineVerdict(cwd, rest[0]));
       return;
     }
     throw new Error(`Unknown baseline command: ${command}. Usage: engine baseline record <native|skipped>`);
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
 /**
  * `walkthrough record <walked|skipped>` — the answer to workflow-start's
  * one-time offer, written and committed in one confined transaction.
- * @param {string[]} argv
+ * @param {Call} call @param {string[]} argv
  */
-function runWalkthrough(argv) {
+function runWalkthrough(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
   try {
     if (command === 'record') {
       if (rest.length !== 1) throw new Error('Usage: engine walkthrough record <walked|skipped>');
-      respond(walkthrough.recordWalkthrough(cwd, rest[0]));
+      respond(call, walkthrough.recordWalkthrough(cwd, rest[0]));
       return;
     }
     throw new Error(`Unknown walkthrough command: ${command}. Usage: engine walkthrough record <walked|skipped>`);
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1258,14 +1294,14 @@ function runWalkthrough(argv) {
 // the derived read every consumer shares.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runRoadmap(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runRoadmap(call, argv) {
   const [command, ...rest] = argv;
-  const cwd = process.cwd();
+  const { cwd } = call;
   try {
     if (command === 'state') {
       if (rest.length !== 0) throw new Error('Usage: engine roadmap state');
-      respond(roadmap.roadmapState(cwd));
+      respond(call, roadmap.roadmapState(cwd));
       return;
     }
     if (command === 'session') {
@@ -1277,7 +1313,7 @@ function runRoadmap(argv) {
           else throw new Error(`unexpected argument "${srest[i]}"`);
         }
         if (!sessionLogFile) throw new Error('Usage: engine roadmap session open --session-log-file <path>');
-        respond(roadmapSession.openRoadmapSession(cwd, { sessionLogFile }));
+        respond(call, roadmapSession.openRoadmapSession(cwd, { sessionLogFile }));
         return;
       }
       if (sub === 'close') {
@@ -1287,7 +1323,7 @@ function runRoadmap(argv) {
           else throw new Error(`unexpected argument "${srest[i]}"`);
         }
         if (!message) throw new Error('Usage: engine roadmap session close -m <message>');
-        respond(roadmapSession.closeRoadmapSession(cwd, { message }));
+        respond(call, roadmapSession.closeRoadmapSession(cwd, { message }));
         return;
       }
       throw new Error('Usage: engine roadmap session <open|close> …');
@@ -1296,7 +1332,7 @@ function runRoadmap(argv) {
       if (rest.length === 0 || rest.some((a) => a.startsWith('--'))) {
         throw new Error('Usage: engine roadmap import <path> [<path> …]');
       }
-      respond(roadmapSession.importRoadmapFiles(cwd, rest));
+      respond(call, roadmapSession.importRoadmapFiles(cwd, rest));
       return;
     }
     if (command === 'horizon') {
@@ -1310,25 +1346,25 @@ function runRoadmap(argv) {
       }
       if (sub === 'add') {
         if (positional.length !== 1) throw new Error('Usage: engine roadmap horizon add <name> [--position <n>]');
-        respond(roadmap.addHorizon(cwd, positional[0], { position }));
+        respond(call, roadmap.addHorizon(cwd, positional[0], { position }));
       } else if (sub === 'rename') {
         if (positional.length !== 2) throw new Error('Usage: engine roadmap horizon rename <old> <new>');
-        respond(roadmap.renameHorizon(cwd, positional[0], positional[1]));
+        respond(call, roadmap.renameHorizon(cwd, positional[0], positional[1]));
       } else if (sub === 'reorder') {
         if (positional.length === 0) throw new Error('Usage: engine roadmap horizon reorder <name> [<name> …] (the complete order)');
-        respond(roadmap.reorderHorizons(cwd, positional));
+        respond(call, roadmap.reorderHorizons(cwd, positional));
       } else if (sub === 'merge') {
         if (positional.length !== 1 || !opts.into) throw new Error('Usage: engine roadmap horizon merge <from> --into <to>');
-        respond(roadmap.mergeHorizons(cwd, positional[0], opts.into));
+        respond(call, roadmap.mergeHorizons(cwd, positional[0], opts.into));
       } else if (sub === 'split') {
         if (positional.length !== 1 || !opts.new || !opts.items) {
           throw new Error('Usage: engine roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]');
         }
         const items = opts.items.split(',').map((s) => s.trim()).filter((s) => s !== '');
-        respond(roadmap.splitHorizon(cwd, positional[0], { newName: opts.new, items, position }));
+        respond(call, roadmap.splitHorizon(cwd, positional[0], { newName: opts.new, items, position }));
       } else if (sub === 'remove') {
         if (positional.length !== 1) throw new Error('Usage: engine roadmap horizon remove <name>');
-        respond(roadmap.removeHorizon(cwd, positional[0]));
+        respond(call, roadmap.removeHorizon(cwd, positional[0]));
       } else {
         throw new Error('Usage: engine roadmap horizon <add|rename|reorder|merge|split|remove> …');
       }
@@ -1341,7 +1377,7 @@ function runRoadmap(argv) {
       if (positional.length !== 1) {
         throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]');
       }
-      respond(roadmap.addRoadmapItem(cwd, positional[0], {
+      respond(call, roadmap.addRoadmapItem(cwd, positional[0], {
         horizon: opts.horizon,
         summary: opts.summary,
         origin: opts.origin,
@@ -1355,48 +1391,48 @@ function runRoadmap(argv) {
       } catch (err) {
         throw new Error(`roadmap add-batch: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
       }
-      respond(roadmap.addRoadmapItemsBatch(cwd, parsed));
+      respond(call, roadmap.addRoadmapItemsBatch(cwd, parsed));
     } else if (command === 'edit') {
       if (positional.length !== 1 || opts.summary === undefined) {
         throw new Error('Usage: engine roadmap edit <name> --summary <text>');
       }
-      respond(roadmap.editRoadmapItem(cwd, positional[0], { summary: opts.summary }));
+      respond(call, roadmap.editRoadmapItem(cwd, positional[0], { summary: opts.summary }));
     } else if (command === 'rename') {
       if (positional.length !== 2) throw new Error('Usage: engine roadmap rename <old> <new>');
-      respond(roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
+      respond(call, roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
     } else if (command === 'move') {
       if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h>');
-      respond(roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+      respond(call, roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
     } else if (command === 'remove') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
-      respond(roadmap.removeRoadmapItem(cwd, positional[0]));
+      respond(call, roadmap.removeRoadmapItem(cwd, positional[0]));
     } else if (command === 'pull') {
       if (positional.length === 0 || !opts.into) {
         throw new Error('Usage: engine roadmap pull <name> [<name> …] --into <work-unit>');
       }
-      respond(roadmap.pullItems(cwd, positional, { into: opts.into }));
+      respond(call, roadmap.pullItems(cwd, positional, { into: opts.into }));
     } else if (command === 'bind') {
       if (positional.length !== 1 || !opts.topic) {
         throw new Error('Usage: engine roadmap bind <name> --topic <topic>');
       }
-      respond(roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
+      respond(call, roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
       if (positional.length !== 1 || !opts.into || !opts.routing) {
         throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]');
       }
-      respond(roadmap.pullForwardItem(cwd, positional[0], {
+      respond(call, roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,
         routing: opts.routing,
         forceDismissed: flags.has('force-dismissed'),
       }));
     } else if (command === 'flag') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap flag <name>');
-      respond(roadmap.flagJoined(cwd, positional[0]));
+      respond(call, roadmap.flagJoined(cwd, positional[0]));
     } else {
       throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull|bind|pull-forward|flag|horizon> …');
     }
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1406,16 +1442,16 @@ function runRoadmap(argv) {
 // the calling flow's commit cadence picks the manifest change up.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runCache(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runCache(call, argv) {
   const [command, workUnit, kind] = argv;
   try {
     if (command !== 'stamp' || !workUnit || !kind) {
       throw new Error('Usage: engine cache stamp <work-unit> gap-analysis');
     }
-    respond(stampAnalysisCache(process.cwd(), workUnit, kind));
+    respond(call, stampAnalysisCache(call.cwd, workUnit, kind));
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1426,17 +1462,17 @@ function runCache(argv) {
 // reachable for any topic, so it refreshes an owned hold only.
 // ---------------------------------------------------------------------------
 
-/** @param {string[]} argv */
-function runAgent(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runAgent(call, argv) {
   const [command, ...rest] = argv;
   try {
     const { opts, flags, lists, positional } = parseArgs(rest, ['clean', 'final'], ['label']);
     const [workUnit, phase, topic, id, finding] = positional;
-    const cwd = process.cwd();
+    const { cwd } = call;
     /** @param {object} result */
     const answer = (result) => {
       beatQuietly(cwd, workUnit, phase, topic);
-      respond(result);
+      respond(call, result);
     };
     if (command === 'dispatch') {
       if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.kind) {
@@ -1451,7 +1487,7 @@ function runAgent(argv) {
       }
       const scanned = agentState.scanAgents(cwd, workUnit, phase, topic);
       refreshQuietly(cwd, workUnit, phase, topic);
-      respond(scanned);
+      respond(call, scanned);
       return;
     }
     if (command === 'ack') {
@@ -1480,7 +1516,7 @@ function runAgent(argv) {
     }
     throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate> <work-unit> <phase> <topic> …');
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1489,11 +1525,11 @@ function runAgent(argv) {
 // check (failure reports not-ready), compact when ready (warn-don't-block).
 // ---------------------------------------------------------------------------
 
-function runBoot() {
+function runBoot(call) {
   try {
-    respond(boot(process.cwd()));
+    respond(call, boot(call.cwd));
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
@@ -1618,6 +1654,7 @@ function assertCodeTarget(cwd, target) {
  * concurrently by design).
  * @param {string} cwd @param {string[]} paths @param {string} message
  * @param {{workUnit: string, phase: string, topic: string}} target
+ * @returns {{committed: string|null, left_dirty: string[], note?: string}}
  */
 function commitCodePaths(cwd, paths, message, target) {
   assertCodeTarget(cwd, target);
@@ -1628,13 +1665,13 @@ function commitCodePaths(cwd, paths, message, target) {
   /** @type {{committed: string|null, left_dirty: string[], note?: string}} */
   const result = { committed, left_dirty: left };
   if (committed === null) result.note = 'nothing to commit';
-  respond(result);
+  return result;
 }
 
 const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
 
-/** @param {string[]} argv */
-function runCommit(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runCommit(call, argv) {
   try {
     /** @type {string|null} */ let workUnit = null;
     /** @type {string|null} */ let message = null;
@@ -1672,7 +1709,7 @@ function runCommit(argv) {
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
-    const cwd = process.cwd();
+    const { cwd } = call;
 
     if (paths) {
       // Code commits are the one scope no layout derives (P7): declared,
@@ -1684,7 +1721,7 @@ function runCommit(argv) {
           || discovery || importsScope || stateScope || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
-      commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] });
+      respond(call, commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] }));
       return;
     }
 
@@ -1721,7 +1758,7 @@ function runCommit(argv) {
       // imports) plus the project manifest (the roadmap node lives there).
       const specs = stageableSpecs(cwd, [roadmapSession.ROADMAP_DIR, '.workflows/manifest.json']);
       if (specs.length === 0) {
-        respond({ committed: null, note: 'nothing to commit' });
+        respond(call, { committed: null, note: 'nothing to commit' });
         return;
       }
       scope = specs;
@@ -1775,8 +1812,8 @@ function runCommit(argv) {
             else beatQuietly(cwd, wu, phase, topic);
           }
         }
-        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
-        else respond({ committed });
+        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
+        else respond(call, { committed });
         return;
       }
       if (stateScope) {
@@ -1790,8 +1827,8 @@ function runCommit(argv) {
           `.workflows/${wu}/.state`,
           `.workflows/${wu}/manifest.json`,
         ], message);
-        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
-        else respond({ committed });
+        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
+        else respond(call, { committed });
         return;
       }
       if (importsScope) {
@@ -1808,8 +1845,8 @@ function runCommit(argv) {
         // paths — session logs, briefs, the manifest the map lives in.
         const specs = stageableSpecs(cwd, discoveryScope(wu));
         const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
-        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
-        else respond({ committed });
+        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
+        else respond(call, { committed });
         return;
       }
       if (plan !== null) {
@@ -1854,15 +1891,15 @@ function runCommit(argv) {
     const committed = rider
       ? commitPathspecWithKb(cwd, scope, message)
       : commitPathspecScoped(cwd, scope, message);
-    if (committed === null) respond({ committed: null, note: 'nothing to commit' });
-    else respond({ committed });
+    if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
+    else respond(call, { committed });
   } catch (err) {
-    failJson(err);
+    failJson(call, err);
   }
 }
 
-/** @param {string[]} argv */
-function runRender(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runRender(call, argv) {
   const [command, ...rest] = argv;
   const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
@@ -1881,115 +1918,195 @@ function runRender(argv) {
       if (flags.has('recommendations')) args.recommendations = '1';
       if (flags.has('dead-end')) args['dead-end'] = '1';
       if (flags.has('menu-only')) args['menu-only'] = '1';
-      respondSections(renderSurface(process.cwd(), command, args));
+      respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
-      failJson(err);
+      failJson(call, err);
     }
     return;
   }
 
   switch (command) {
     case 'signpost':
-      if (!positional.length) die('Usage: engine render signpost <label> [--style step|substep] [--width N]');
-      process.stdout.write(signpost(positional.join(' '), { style: /** @type {'step'|'substep'} */ (opts.style) || 'step', width }) + '\n');
+      if (!positional.length) die(call, 'Usage: engine render signpost <label> [--style step|substep] [--width N]');
+      call.out(signpost(positional.join(' '), { style: /** @type {'step'|'substep'} */ (opts.style) || 'step', width }) + '\n');
       break;
     case 'box':
-      if (!positional.length) die('Usage: engine render box <title> [--width N]');
-      process.stdout.write(box(positional.join(' '), { width }));
+      if (!positional.length) die(call, 'Usage: engine render box <title> [--width N]');
+      call.out(box(positional.join(' '), { width }));
       break;
     case 'wrap': {
-      if (!positional.length) die('Usage: engine render wrap <text> [--width N] [--prefix STR]');
+      if (!positional.length) die(call, 'Usage: engine render wrap <text> [--width N] [--prefix STR]');
       const lines = wrapWithPrefix(positional.join(' '), { width, prefix: opts.prefix || '' });
-      process.stdout.write(lines.join('\n') + '\n');
+      call.out(lines.join('\n') + '\n');
       break;
     }
     case 'tree': {
       // Reads a JSON node array from stdin (the data-owner builds it).
-      const input = fs.readFileSync(0, 'utf8');
-      process.stdout.write(renderTree(JSON.parse(input), opts.width !== undefined ? { width } : {}));
+      const input = call.stdin();
+      call.out(renderTree(JSON.parse(input), opts.width !== undefined ? { width } : {}));
       break;
     }
     default:
-      die(USAGE);
+      die(call, USAGE);
   }
 }
 
-/** @param {string[]} argv */
-function runCli(argv) {
+/** @param {Call} call @param {string[]} argv */
+function runCli(call, argv) {
   const [command, ...rest] = argv;
   switch (command) {
     case 'boot':
-      runBoot();
+      runBoot(call);
       break;
     case 'manifest':
-      runManifest(rest);
+      runManifest(call, rest);
       break;
     case 'workunit':
-      runWorkunit(rest);
+      runWorkunit(call, rest);
       break;
     case 'discussion-map':
-      runDiscussionMap(rest);
+      runDiscussionMap(call, rest);
       break;
     case 'research-threads':
-      runResearchThreads(rest);
+      runResearchThreads(call, rest);
       break;
     case 'discovery-map':
-      runDiscoveryMap(rest);
+      runDiscoveryMap(call, rest);
       break;
     case 'build-order':
-      runBuildOrder(rest);
+      runBuildOrder(call, rest);
       break;
     case 'discovery-session':
-      runDiscoverySession(rest);
+      runDiscoverySession(call, rest);
       break;
     case 'topic':
-      runTopic(rest);
+      runTopic(call, rest);
       break;
     case 'experiment':
-      runExperiment(rest);
+      runExperiment(call, rest);
       break;
     case 'sources':
-      runSources(rest);
+      runSources(call, rest);
       break;
     case 'presence':
-      runPresence(rest);
+      runPresence(call, rest);
       break;
     case 'session':
-      runSession(rest);
+      runSession(call, rest);
       break;
     case 'task':
-      runTask(rest);
+      runTask(call, rest);
       break;
     case 'inbox':
-      runInbox(rest);
+      runInbox(call, rest);
       break;
     case 'roadmap':
-      runRoadmap(rest);
+      runRoadmap(call, rest);
       break;
     case 'baseline':
-      runBaseline(rest);
+      runBaseline(call, rest);
       break;
     case 'walkthrough':
-      runWalkthrough(rest);
+      runWalkthrough(call, rest);
       break;
     case 'cache':
-      runCache(rest);
+      runCache(call, rest);
       break;
     case 'agent':
-      runAgent(rest);
+      runAgent(call, rest);
       break;
     case 'commit':
-      runCommit(rest);
+      runCommit(call, rest);
       break;
     case 'render':
-      runRender(rest);
+      runRender(call, rest);
       break;
     default:
-      die(USAGE);
+      die(call, USAGE);
   }
 }
 
-if (require.main === module) {
+/**
+ * One command against a bound call, answering its exit code. Every stop a
+ * handler takes arrives here as an ExitSignal; anything else that escapes is
+ * a handler that threw without answering, and gets the CLI's last word — the
+ * message on stderr, exit 1.
+ * @param {Call} call @param {string[]} argv @returns {number}
+ */
+function dispatch(call, argv) {
+  try {
+    runCli(call, argv);
+  } catch (err) {
+    if (err instanceof ExitSignal) return err.code;
+    call.err(messageOf(err) + '\n');
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * Environment keys held for the duration of `fn` and restored exactly — a key
+ * that was absent is absent again afterwards. `undefined` takes a key away
+ * for the call, which is how a caller hands over an environment a spawned
+ * process would have had by replacement rather than overlay. Inside a worker
+ * thread `process.env` is that thread's own copy, so this is thread-local.
+ *
+ * The display width is a memo over the environment, resolved once per process
+ * because a CLI process is one command: scoping the environment scopes the
+ * memo with it, on the way in and on the way out.
+ * @template T
+ * @param {Record<string, string|undefined>} overlay @param {() => T} fn @returns {T}
+ */
+function withEnv(overlay, fn) {
+  /** @type {Map<string, string|undefined>} */
+  const saved = new Map();
+  /** @param {string} key @param {string|undefined} value */
+  const apply = (key, value) => {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  };
+  for (const [key, value] of Object.entries(overlay)) {
+    saved.set(key, Object.hasOwn(process.env, key) ? process.env[key] : undefined);
+    apply(key, value);
+  }
+  resetDisplayWidth();
+  try {
+    return fn();
+  } finally {
+    for (const [key, value] of saved) apply(key, value);
+    resetDisplayWidth();
+  }
+}
+
+/**
+ * The in-process entry: the CLI's argv contract with the invocation supplied
+ * rather than taken from the process. Answers what the spawned CLI answered —
+ * the same bytes on the same two streams, the same exit code — and never
+ * exits, chdirs, or leaves the environment moved. Callers are test harnesses
+ * that want the engine's answers without a process per answer; skills' own
+ * scripts take the library (lib.cjs).
+ *
+ * The cwd is a parameter rather than a chdir because `process.chdir` is
+ * refused inside a worker thread, and the prose world builder runs in one.
+ *
+ * @param {string[]} argv
+ * @param {{cwd?: string, env?: Record<string, string|undefined>, stdin?: string}} [options]
+ * @returns {{stdout: string, stderr: string, code: number}}
+ */
+function run(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
+  /** @type {string[]} */ const stdout = [];
+  /** @type {string[]} */ const stderr = [];
+  const code = withEnv(env, () => dispatch({
+    cwd,
+    out: (text) => stdout.push(text),
+    err: (text) => stderr.push(text),
+    stdin: () => stdin,
+  }, argv));
+  return { stdout: stdout.join(''), stderr: stderr.join(''), code };
+}
+
+/** The shell door: the process's own argv, directory, streams and stdin. */
+function main() {
   // A downstream reader closing early (`engine … | head -1`) makes the next
   // stdout write raise EPIPE; without a handler Node prints an unhandled-error
   // stack. Treat the closed pipe as a clean stop.
@@ -1997,11 +2114,19 @@ if (require.main === module) {
     if (err && typeof err === 'object' && 'code' in err && err.code === 'EPIPE') process.exit(0);
     throw err;
   });
-  try {
-    runCli(process.argv.slice(2));
-  } catch (err) {
-    die(err instanceof Error ? err.message : String(err));
-  }
+  const code = dispatch({
+    cwd: process.cwd(),
+    out: (text) => process.stdout.write(text),
+    err: (text) => process.stderr.write(text),
+    // A terminal hands nothing over until someone types; a hook's JSON
+    // arrives on a pipe.
+    stdin: () => (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8')),
+  }, process.argv.slice(2));
+  // Only a failure exits explicitly: falling off the end lets Node flush a
+  // long render to a pipe before the process goes.
+  if (code !== 0) process.exit(code);
 }
 
-module.exports = { parseArgs };
+if (require.main === module) main();
+
+module.exports = { parseArgs, run };

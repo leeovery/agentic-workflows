@@ -1,10 +1,15 @@
 'use strict';
 
-// Frozen clock preload for fixture recipes (injected via NODE_OPTIONS
-// --require). Recipes must be byte-deterministic — the same recipe always
-// builds the same snapshot — but the engine stamps real times (work-unit
-// `created`, agent-state rows, cache payload headers). Pinning Date in
-// every recipe subprocess removes the only nondeterministic input.
+// Frozen clock for fixture recipes. Recipes must be byte-deterministic — the
+// same recipe always builds the same snapshot — but the engine stamps real
+// times (work-unit `created`, agent-state rows, cache payload headers).
+// Pinning Date over a recipe's engine calls removes the only
+// nondeterministic input.
+//
+// Two ways in, because a recipe's calls run two ways. `withFrozenClock`
+// pins it around an in-process call (the engine, which the harness calls
+// directly); `fake-clock-preload.cjs` pins it for a spawned one (the
+// knowledge CLI, reached through NODE_OPTIONS --require).
 //
 // Worlds materialised for live walks do NOT use this: walker runs are
 // real sessions and never byte-compared.
@@ -27,4 +32,24 @@ class FrozenDate extends RealDate {
   }
 }
 
-global.Date = FrozenDate;
+/** Freeze the calling realm's clock; answers the undo. @returns {() => void} */
+function freeze() {
+  const previous = global.Date;
+  global.Date = FrozenDate;
+  return () => { global.Date = previous; };
+}
+
+/**
+ * Run `fn` with the clock frozen, and leave the realm's own clock as it was.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function withFrozenClock(fn) {
+  const thaw = freeze();
+  try {
+    return fn();
+  } finally {
+    thaw();
+  }
+}
+
+module.exports = { FIXED_MS, freeze, withFrozenClock };
