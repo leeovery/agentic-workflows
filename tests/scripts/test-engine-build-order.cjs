@@ -5,32 +5,15 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
+
+const { git, cleanupFixture, ok: engine, refuses: engineFails } = harness;
 const { computeBuildOrderNeedsSequencing, buildOrderLive } = require('../../skills/workflow-engine/scripts/domain/build-order.cjs');
 const { epicDetail } = require('../../skills/workflow-engine/scripts/domain/epic-detail.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
-
-function setupGitFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-bo-'));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-  return dir;
-}
-
-function cleanupFixture(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-}
+const setupGitFixture = () => harness.setupGitFixture('engine-bo-');
 
 function writeManifest(dir, wu, manifest) {
   const full = path.join(dir, '.workflows', wu, 'manifest.json');
@@ -49,20 +32,6 @@ function lastMessage(dir) {
 
 function readManifest(dir, wu) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-function engine(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  const nl = out.indexOf('\n');
-  return JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-}
-
-function engineFails(dir, args) {
-  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
 }
 
 /** An epic with three live spec topics and one terminal of each flavour. */

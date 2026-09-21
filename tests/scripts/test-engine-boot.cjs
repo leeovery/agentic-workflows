@@ -7,16 +7,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
+const harness = require('./engine-harness.cjs');
 
-const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const REAL_ENGINE = path.join(REAL_SCRIPTS, 'engine.cjs');
-
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const { git, knowledgeCalls } = harness;
+const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -141,61 +137,47 @@ process.exit(1);
 `;
 
 /**
- * A hermetic skills layout: the real engine scripts copied into a temp skills root, with stub
- * migrate.cjs / knowledge.cjs siblings — exercising the engine's own
- * __dirname-relative resolution exactly as installed.
+ * The engine copied into a temp skills root beside stub migrate.cjs /
+ * knowledge.cjs siblings, because boot resolves both relative to its own file
+ * — so the copy is what exercises that resolution exactly as installed. The
+ * tree is never written to during the run, so one serves the whole suite; each
+ * test brings its own project.
  */
-function setupSkillsFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-'));
-  const skills = path.join(root, 'skills');
+function stubbedSkillsTree() {
+  const skills = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-skills-'));
+  process.on('exit', () => fs.rmSync(skills, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
   writeFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-  return {
-    root,
-    project: setupProject(root),
-    engine: path.join(skills, 'workflow-engine/scripts/engine.cjs'),
-  };
+  return path.join(skills, 'workflow-engine/scripts/engine.cjs');
+}
+
+const STUB_ENGINE = stubbedSkillsTree();
+/** The two engines a test drives: the stubbed copy, and the repo's real scripts. */
+const stubbed = harness.harness(STUB_ENGINE);
+const real = harness;
+
+/** A git-repo project carrying the settings every booted project has. */
+function setupFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-'));
+  return { root, project: setupProject(root) };
 }
 
 /** Run an engine expecting success; returns the parsed JSON response. */
-function runEngine(engine, dir, args, env = {}) {
-  const out = execFileSync('node', [engine, ...args], {
-    cwd: dir,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  return JSON.parse(out.trim());
-}
+const runEngine = (engine, dir, args, env = {}) => engine.ok(dir, args, { env });
 
 /** Run an engine expecting failure; returns the parsed stderr JSON. */
-function runEngineFails(engine, dir, args, env = {}) {
-  const res = spawnSync('node', [engine, ...args], {
-    cwd: dir,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
-
-function knowledgeCalls(project) {
-  const log = path.join(project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
-}
+const runEngineFails = (engine, dir, args, env = {}) => engine.refuses(dir, args, { env });
 
 describe('engine boot', () => {
   let fix;
-  beforeEach(() => { fix = setupSkillsFixture(); });
+  beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('happy path: no pending migrations, knowledge ready — compact runs', () => {
     // TMUX pinned so the label-state leg is deterministic whatever terminal
     // runs the suite; no project manifest makes it `prompt`.
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_CHECK: 'ready',
       TMUX: '/fake/sock,123,7',
     });
@@ -226,7 +208,7 @@ describe('engine boot', () => {
 
     for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
-      const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+      const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
       assert.strictEqual(res.baseline, status);
       // A recorded verdict is never re-judged, so the signal travels only with `none`.
       assert.ok(!('baseline_signal' in res), `${status}: no signal once a status is recorded`);
@@ -234,21 +216,21 @@ describe('engine boot', () => {
 
     // Unrecognised value → none (the judgment-eligible default), signal attached.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
-    const weird = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const weird = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
     assert.strictEqual(weird.baseline, 'none');
     assert.strictEqual(weird.baseline_signal.commits_before, 0);
 
     // An object with nothing recorded → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
-    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
 
     // Malformed field shape → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: 'in-progress' }));
-    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
 
     // No project manifest at all → none.
     fs.rmSync(projManifest);
-    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
   });
 
   it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {
@@ -256,23 +238,23 @@ describe('engine boot', () => {
 
     for (const status of ['walked', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough: { status } }));
-      assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, status);
+      assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, status);
     }
 
     for (const walkthrough of [{ status: 'weird' }, {}, 'walked']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough }));
-      assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none', JSON.stringify(walkthrough));
+      assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none', JSON.stringify(walkthrough));
     }
 
     // The two one-time records are independent: a recorded baseline says
     // nothing about the offer, and vice versa.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'native' }, walkthrough: { status: 'skipped' } }));
-    const both = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const both = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
     assert.strictEqual(both.baseline, 'native');
     assert.strictEqual(both.walkthrough, 'skipped');
 
     fs.rmSync(projManifest);
-    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none');
   });
 
   /**
@@ -311,7 +293,7 @@ describe('engine boot', () => {
     // leaves the tree alone: the whole history predates the workflows, and
     // the tree is HEAD's.
     writeFile(project, '.workflows/.state/migrations', '');
-    let res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update' });
+    let res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update' });
     assert.strictEqual(res.baseline, 'none');
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
@@ -324,7 +306,7 @@ describe('engine boot', () => {
     // stub knowledge CLI logs into the project; that is not project code.)
     fs.rmSync(path.join(project, 'knowledge-calls.log'), { force: true });
     commit('add workflows', '2025-09-01');
-    res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
@@ -337,7 +319,7 @@ describe('engine boot', () => {
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) writeFile(project, f, '# code\n');
     writeFile(project, '.workflows/.state/migrations', '');
     commit('import', '2025-01-01');
-    const res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 0, history_before: [],
       files_at_arrival: 5, tree_at_arrival: ['app/ (3)', 'config/ (1)', 'Gemfile'],
@@ -361,7 +343,7 @@ describe('engine boot', () => {
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-04-01');
     execFileSync('git', ['merge', '-q', '--no-edit', 'side'], { cwd: project, env: { ...process.env, GIT_AUTHOR_DATE: '2025-05-01T12:00:00Z', GIT_COMMITTER_DATE: '2025-05-01T12:00:00Z' } });
-    const res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 5, commits_before: 2,
       history_before: ['2025-01-01  root', '2025-02-01  main work'],
@@ -377,7 +359,7 @@ describe('engine boot', () => {
     }
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-02-01');
-    const sig = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const sig = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
     assert.strictEqual(sig.commits_before, 15);
     assert.strictEqual(sig.history_before.length, 8 + 1 + 4);
     assert.strictEqual(sig.history_before[8], '… 3 more …');
@@ -394,9 +376,9 @@ describe('engine boot', () => {
     commit('root', '2025-01-01');
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-02-01');
-    const plain = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const plain = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
     git(project, ['config', 'log.showSignature', 'true']);
-    const signed = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const signed = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
     assert.deepStrictEqual(signed, plain);
     assert.strictEqual(plain.commits_before, 1);
   });
@@ -409,7 +391,7 @@ describe('engine boot', () => {
     // boot's hook install and its ledger sweep would each otherwise make the
     // root commit — the history this test needs absent.
     writeFile(empty, '.claude/settings.json', hooked([PRESENCE_HOOK]));
-    const res = runEngine(fix.engine, empty, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, empty, ['boot'], { STUB_CHECK: 'ready' });
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);
 
@@ -434,7 +416,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
     fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'), JSON.stringify({ work_units: {}, baseline: {} }));
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal.commits_before, 0);
@@ -443,13 +425,13 @@ describe('engine boot', () => {
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
     fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'),
       JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'in-progress');
   });
 
   it('pending migration: changed true, report captured with the stop-gate lines stripped', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update',
       STUB_CHECK: 'ready',
     });
@@ -463,7 +445,7 @@ describe('engine boot', () => {
   });
 
   it('a migration touching config files commits settings.json and .gitignore, leaving .workflows to the skill', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, true);
@@ -489,7 +471,7 @@ describe('engine boot', () => {
     writeFile(fix.project, '.claude/settings.json', hooked([PRESENCE_HOOK], { permissions: { allow: ['x'] } }));
     writeFile(fix.project, '.gitignore', 'node_modules\n.DS_Store\n');
 
-    const res = runEngine(fix.engine, fix.project, ['boot']);
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.migrations.changed, false);
     // Both stay dirty; HEAD is still the baseline, not a config commit.
@@ -500,7 +482,7 @@ describe('engine boot', () => {
   });
 
   it('a migration that ran while changing nothing still recorded it — boot commits the ledger line no review gate would sweep', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, false);
@@ -524,7 +506,7 @@ describe('engine boot', () => {
     git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
     writeFile(fix.project, '.workflows/.state/migrations', '045\n046\n');
 
-    const res = runEngine(fix.engine, fix.project, ['boot']);
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.migrations.ran, 0, 'nothing ran this boot');
     assert.strictEqual(res.migrations.changed, false);
@@ -535,7 +517,7 @@ describe('engine boot', () => {
   });
 
   it('a run that changed documents leaves the ledger to the reviewed commit — boot never commits it twice', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
 
     assert.strictEqual(res.migrations.changed, true);
     assert.strictEqual(res.migrations.ran, 1);
@@ -553,7 +535,7 @@ describe('engine boot', () => {
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
 
-    const clean = runEngine(fix.engine, fix.project, ['boot'], {
+    const clean = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_REPORT: '{"ran": 2, "tracking": ".workflows/.state/migrations"}',
     });
     assert.strictEqual(clean.migrations.ran, 2);
@@ -567,7 +549,7 @@ describe('engine boot', () => {
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'ignore the ledger']);
 
-    const ignored = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+    const ignored = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
     assert.strictEqual(ignored.ok, true);
     assert.strictEqual(ignored.migrations_committed, null);
     assert.deepStrictEqual(ignored.warnings, []);
@@ -579,7 +561,7 @@ describe('engine boot', () => {
     fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
     fs.chmodSync(hook, 0o755);
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.ran, 1);
@@ -591,7 +573,7 @@ describe('engine boot', () => {
 
   it('a run report boot cannot read degrades to a warning — ran 0, no commit, plumbing still stripped', () => {
     for (const payload of ['not json at all', '{"ran": "two", "tracking": ".workflows/.state/migrations"}', '{"ran": 1, "tracking": "/etc/passwd"}']) {
-      const res = runEngine(fix.engine, fix.project, ['boot'], {
+      const res = runEngine(stubbed, fix.project, ['boot'], {
         STUB_MIGRATE_MODE: 'record-only',
         STUB_MIGRATE_REPORT: payload,
       });
@@ -604,7 +586,7 @@ describe('engine boot', () => {
       assert.ok(!res.migrations.output.includes('MIGRATIONS_RUN'), payload);
     }
     // A sound `ran` beside an implausible path keeps the count and drops the commit.
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'record-only',
       STUB_MIGRATE_REPORT: '{"ran": 1, "tracking": "../elsewhere/migrations"}',
     });
@@ -613,7 +595,7 @@ describe('engine boot', () => {
   });
 
   it('a runner that reports nothing reads as no migrations run', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'record-only',
       STUB_MIGRATE_NO_REPORT: '1',
     });
@@ -624,7 +606,7 @@ describe('engine boot', () => {
   });
 
   it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot']);
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.compacted, false);
@@ -638,7 +620,7 @@ describe('engine boot', () => {
     writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
     writeFile(fix.project, '.workflows/.knowledge/config.json', '{}\n');
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
@@ -653,7 +635,7 @@ describe('engine boot', () => {
     git(fix.project, ['commit', '-q', '-m', 'store v1']);
     writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v2-compacted\n');
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.compacted, true);
@@ -674,7 +656,7 @@ describe('engine boot', () => {
     git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
     writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update-config',
     });
 
@@ -696,7 +678,7 @@ describe('engine boot', () => {
   });
 
   it('a crashing knowledge check is not-ready — never a crash', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'not-ready');
@@ -705,7 +687,7 @@ describe('engine boot', () => {
   });
 
   it('a failing compact is a warning, never a block', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_CHECK: 'ready',
       STUB_COMPACT_EXIT: '1',
     });
@@ -718,7 +700,7 @@ describe('engine boot', () => {
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
-    const err = runEngineFails(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
+    const err = runEngineFails(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
 
     assert.match(err.error, /migrate\.cjs failed/);
     assert.match(err.error, /never half-run silently/);
@@ -732,7 +714,7 @@ describe('engine boot system-config detection', () => {
   let fix;
   let home;
   beforeEach(() => {
-    fix = setupSkillsFixture();
+    fix = setupFixture();
     // Hermetic home: system-config detection resolves ~ via $HOME, so the
     // developer's real ~/.config/workflows never leaks into assertions.
     home = path.join(fix.root, 'home');
@@ -749,7 +731,7 @@ describe('engine boot system-config detection', () => {
   const underHome = (extra = {}) => ({ HOME: home, WORKFLOWS_CONFIG_DIR: undefined, ...extra });
 
   it('not-ready with no system config reports absent', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome());
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
@@ -764,7 +746,7 @@ describe('engine boot system-config detection', () => {
       credentials: { openai: { api_key: 'sk-STORED-SECRET' } },
     }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], underHome({ OPENAI_API_KEY: 'sk-ENV-SECRET' }));
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome({ OPENAI_API_KEY: 'sk-ENV-SECRET' }));
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.deepStrictEqual(res.system_config, {
@@ -778,31 +760,31 @@ describe('engine boot system-config detection', () => {
   it('not-ready with a valid providerless config reports valid with nulls (keyword-only)', () => {
     writeSystemConfig(JSON.stringify({ knowledge: {} }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome());
 
     assert.deepStrictEqual(res.system_config, { status: 'valid', provider: null, model: null });
   });
 
   it('not-ready with an unparseable or wrongly-shaped config reports invalid', () => {
     writeSystemConfig('not json at all');
-    const res1 = runEngine(fix.engine, fix.project, ['boot'], underHome());
+    const res1 = runEngine(stubbed, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res1.system_config, { status: 'invalid', provider: null, model: null });
 
     writeSystemConfig(JSON.stringify({ knowledge: 'not-an-object' }));
-    const res2 = runEngine(fix.engine, fix.project, ['boot'], underHome());
+    const res2 = runEngine(stubbed, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res2.system_config, { status: 'invalid', provider: null, model: null });
   });
 
   it('not-ready with a knowledge-less shared config file reports absent', () => {
     writeSystemConfig(JSON.stringify({ session: { tmux_labels: true } }));
-    const res = runEngine(fix.engine, fix.project, ['boot'], underHome());
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
   });
 
   it('ready responses carry no system_config field', () => {
     writeSystemConfig(JSON.stringify({ knowledge: { provider: 'openai', model: 'm' } }));
 
-    const res = runEngine(fix.engine, fix.project, ['boot'], underHome({ STUB_CHECK: 'ready' }));
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome({ STUB_CHECK: 'ready' }));
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.ok(!('system_config' in res));
@@ -811,7 +793,7 @@ describe('engine boot system-config detection', () => {
 
 describe('engine boot session hooks', () => {
   let fix;
-  beforeEach(() => { fix = setupSkillsFixture(); });
+  beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
@@ -836,13 +818,12 @@ describe('engine boot session hooks', () => {
 
   /** Boot with the tmux identity pinned; `tmux` absent unless given; `env` layered over the process's own. */
   function bootWith({ tmux = false, skipHooks = false, env: extra = {} } = {}) {
-    const env = { ...process.env, ...extra };
-    delete env.TMUX;
-    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
-    if (tmux) env.TMUX = '/fake/sock,123,7';
-    if (skipHooks) env.WORKFLOWS_SKIP_SESSION_HOOKS = '1';
-    const out = execFileSync('node', [fix.engine, 'boot'], { cwd: fix.project, encoding: 'utf8', env });
-    return JSON.parse(out.trim());
+    const env = {
+      ...extra,
+      TMUX: tmux ? '/fake/sock,123,7' : undefined,
+      WORKFLOWS_SKIP_SESSION_HOOKS: skipHooks ? '1' : undefined,
+    };
+    return runEngine(stubbed, fix.project, ['boot'], env);
   }
 
   function settings() {
@@ -870,7 +851,7 @@ describe('engine boot session hooks', () => {
     const stub = installTmuxStub();
     try {
       const identity = { ...tmuxStubEnv(stub), TMUX_PANE: '%3', CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid) };
-      runEngine(fix.engine, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], { ...identity, TMUX: '/fake/sock,123,7' });
+      runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], { ...identity, TMUX: '/fake/sock,123,7' });
       assert.strictEqual(tmuxStubName(stub), 'proj-abc · payments · discussion');
       assert.strictEqual(bootWith({ tmux: true, env: identity }).label_repaired, true);
       assert.strictEqual(tmuxStubName(stub), 'proj-abc');
@@ -929,7 +910,7 @@ describe('engine boot session hooks', () => {
     const env = { ...process.env };
     delete env.TMUX;
     delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
-    const child = spawn('node', [fix.engine, 'boot'], { cwd: fix.project, env });
+    const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     // 'close', not 'exit': stdout must be fully flushed before it is parsed.
@@ -987,7 +968,7 @@ describe('engine boot (real scripts)', () => {
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('runs the real migrate.cjs and knowledge CLI against an isolated project', async () => {
-    const first = runEngine(REAL_ENGINE, project, ['boot']);
+    const first = runEngine(real, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
     assert.strictEqual(typeof first.migrations.output, 'string');
@@ -1018,7 +999,7 @@ describe('engine boot (real scripts)', () => {
 
     // …and the restart's boot finds the store ready and commits it: the
     // untracked setup output rides `chore(knowledge): initialise store`.
-    const second = runEngine(REAL_ENGINE, project, ['boot']);
+    const second = runEngine(real, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
     // Everything is recorded, so nothing ran — and the ledger the first boot
@@ -1032,7 +1013,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
 
     // Third boot: nothing new to commit, the ledger included.
-    const third = runEngine(REAL_ENGINE, project, ['boot']);
+    const third = runEngine(real, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');
     assert.strictEqual(third.kb_committed, null);
     assert.strictEqual(third.migrations_committed, null);
@@ -1052,7 +1033,7 @@ describe('engine boot verification addenda (real scripts)', () => {
     writeFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
-    const res = runEngine(REAL_ENGINE, project, ['boot']);
+    const res = runEngine(real, project, ['boot']);
 
     assert.strictEqual(res.ok, true);
     const entry = res.migrations.verify.find((v) => v.id === '054');
@@ -1061,7 +1042,7 @@ describe('engine boot verification addenda (real scripts)', () => {
     assert.match(entry.info, /triage queue/);
     assert.ok(!res.migrations.output.includes('VERIFY_ADDENDA'), 'plumbing stripped from the report');
     // Second boot: recorded — nothing re-fires.
-    const second = runEngine(REAL_ENGINE, project, ['boot']);
+    const second = runEngine(real, project, ['boot']);
     assert.deepStrictEqual(second.migrations.verify, []);
   });
 });
@@ -1081,7 +1062,7 @@ describe('engine commit --workflows', () => {
     writeFile(project, '.workflows/.state/migrations', '045\n');
     writeFile(project, 'unrelated.txt', 'outside the scope\n');
 
-    const res = runEngine(REAL_ENGINE, project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
+    const res = runEngine(real, project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
@@ -1098,19 +1079,19 @@ describe('engine commit --workflows', () => {
   });
 
   it('a clean tree is fine: committed null, nothing-to-commit note, exit 0', () => {
-    const res = runEngine(REAL_ENGINE, project, ['commit', '--workflows', '-m', 'noop']);
+    const res = runEngine(real, project, ['commit', '--workflows', '-m', 'noop']);
     assert.deepStrictEqual(res, { ok: true, committed: null, note: 'nothing to commit' });
   });
 
   it('rejects mixed scopes — exactly one of {wu, --inbox, --workflows}', () => {
     assert.match(
-      runEngineFails(REAL_ENGINE, project, ['commit', '--workflows', 'payments', '-m', 'msg']).error,
+      runEngineFails(real, project, ['commit', '--workflows', 'payments', '-m', 'msg']).error,
       /Usage: engine commit/);
     assert.match(
-      runEngineFails(REAL_ENGINE, project, ['commit', '--workflows', '--inbox', '-m', 'msg']).error,
+      runEngineFails(real, project, ['commit', '--workflows', '--inbox', '-m', 'msg']).error,
       /Usage: engine commit/);
     assert.match(
-      runEngineFails(REAL_ENGINE, project, ['commit', '--workflows']).error,
+      runEngineFails(real, project, ['commit', '--workflows']).error,
       /Usage: engine commit/);
   });
 });

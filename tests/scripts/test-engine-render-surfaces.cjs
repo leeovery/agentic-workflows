@@ -4059,9 +4059,8 @@ describe('titlecaseLabel', () => {
   });
 });
 
-describe('CLI boundary — engine render via subprocess', () => {
-  const { execFileSync, spawnSync } = require('child_process');
-  const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+describe('CLI boundary — engine render through the argv entry', () => {
+  const harness = require('./engine-harness.cjs');
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -4076,9 +4075,7 @@ describe('CLI boundary — engine render via subprocess', () => {
   });
   afterEach(() => teardown(dir));
 
-  function run(args) {
-    return execFileSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
-  }
+  const run = (/** @type {string[]} */ args) => harness.output(dir, ['render', ...args]);
 
   it('flags survive argv: --triage, --variant, --approve, --gate, scalar flags', () => {
     assert.ok(run(['resume-gate', 'pay.discussion.pay', '--triage', '2']).includes('2 rerouted concern(s)'));
@@ -4101,9 +4098,8 @@ describe('CLI boundary — engine render via subprocess', () => {
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
-    const res = spawnSync('node', [ENGINE, 'render', 'proposed-task', 'pay.planning.pay', '--file', 'missing.json', '--gate', 'nope'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1);
-    assert.match(JSON.parse(res.stderr.trim()).error, /--gate must be "gated" or "auto"/);
+    assert.match(harness.refuses(dir, ['render', 'proposed-task', 'pay.planning.pay', '--file', 'missing.json', '--gate', 'nope']).error,
+      /--gate must be "gated" or "auto"/);
   });
 });
 

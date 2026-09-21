@@ -19,37 +19,23 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync, spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function run(dir, args) {
-  return spawnSync('node', [ENGINE, 'manifest', ...args], { cwd: dir, encoding: 'utf8' });
-}
+const { ENGINE } = harness;
+
+/** The raw answer — this suite asserts on exit codes and both streams. */
+const run = (dir, args) => harness.call(dir, ['manifest', ...args]);
 
 /** Success path: returns raw stdout. */
-function runOk(dir, args) {
-  return execFileSync('node', [ENGINE, 'manifest', ...args], { cwd: dir, encoding: 'utf8' });
-}
+const runOk = (dir, args) => harness.output(dir, ['manifest', ...args]);
 
 /** Mutation success: returns the parsed one-line JSON response. */
-function runJson(dir, args) {
-  const out = runOk(dir, args).trim();
-  const parsed = JSON.parse(out);
-  assert.strictEqual(parsed.ok, true);
-  return parsed;
-}
+const runJson = (dir, args) => harness.ok(dir, ['manifest', ...args]);
 
 /** Mutation failure: exit 1, {ok:false} JSON on stderr, empty stdout. */
-function runFails(dir, args) {
-  const res = run(dir, args);
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const runFails = (dir, args) => harness.refuses(dir, ['manifest', ...args]);
 
 /** @param {string} dir @param {string} name @param {string} workType */
 function writeWorkUnit(dir, name, workType, extra = {}) {
@@ -87,10 +73,10 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     assert.strictEqual(runOk(dir, ['get', 'auth']), JSON.stringify(manifest, null, 2) + '\n');
 
     const missing = run(dir, ['get', 'auth', 'no.such.path']);
-    assert.strictEqual(missing.status, 0);
+    assert.strictEqual(missing.code, 0);
     assert.strictEqual(missing.stdout, '');
     const ghost = run(dir, ['get', 'ghost']);
-    assert.strictEqual(ghost.status, 0);
+    assert.strictEqual(ghost.code, 0);
     assert.strictEqual(ghost.stdout, '');
   });
 
@@ -104,7 +90,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
       [['exists', 'ghost', 'work_type'], 'false\n'],
     ]) {
       const res = run(dir, args);
-      assert.strictEqual(res.status, 0, args.join(' '));
+      assert.strictEqual(res.code, 0, args.join(' '));
       assert.strictEqual(res.stdout, expected, args.join(' '));
     }
   });
@@ -125,7 +111,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     });
     assert.strictEqual(runOk(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-abc']), 'auth-1-1\n');
     const miss = run(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-zzz']);
-    assert.strictEqual(miss.status, 2);
+    assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "tick-zzz" not found/);
   });
 
@@ -136,15 +122,15 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
       path.join(dir, '.workflows/auth/discussion/auth.md') + '\n'
     );
     const miss = run(dir, ['resolve', 'ghost.discussion.foo']);
-    assert.strictEqual(miss.status, 2);
+    assert.strictEqual(miss.code, 2);
     const planning = run(dir, ['resolve', 'auth.planning.auth']);
-    assert.strictEqual(planning.status, 1);
+    assert.strictEqual(planning.code, 1);
     assert.match(planning.stderr, /not indexed/);
   });
 
   it('read errors keep the CLI convention: Error: line on stderr, never JSON', () => {
     const res = run(dir, ['get', 'auth.cooking.soup', 'status']);
-    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Error: Invalid phase "cooking"/);
     assert.ok(!res.stderr.includes('"ok"'));
   });

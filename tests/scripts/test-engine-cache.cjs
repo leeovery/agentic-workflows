@@ -6,13 +6,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
-
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
+const { ok: engine, refuses: engineFails } = require('./engine-harness.cjs');
 const { stampAnalysisCache } = require('../../skills/workflow-engine/scripts/domain/cache.cjs');
 const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
-
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
 // The drift-proof contract: a stamp is computed with the same collection and
 // checksum logic the read side uses, so computeAnalysisCacheStatus must judge
@@ -51,21 +48,6 @@ function readManifest(dir) {
 
 function readStatus(dir, kind) {
   return computeAnalysisCacheStatus(readManifest(dir), path.join(dir, '.workflows'), kind);
-}
-
-/** Run the engine expecting success; returns the parsed JSON response. */
-function engine(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).trim());
-}
-
-/** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(dir, args) {
-  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
 }
 
 describe('engine cache stamp: gap-analysis', () => {

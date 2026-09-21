@@ -7,33 +7,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const stubbed = stubbedEngine();
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
-
-// Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; failure is env-driven.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (process.env.STUB_KNOWLEDGE_EXIT) {
-  process.stderr.write('kb exploded\\n');
-  process.exit(parseInt(process.env.STUB_KNOWLEDGE_EXIT, 10));
-}
-process.exit(0);
-`;
 
 /**
  * The promotable epic: a completed spec whose sources span two discussions
@@ -73,16 +56,9 @@ function epicManifest(overrides = {}) {
   };
 }
 
-/**
- * A hermetic skills layout (real engine scripts, stub knowledge CLI) beside a
- * git-repo project carrying the epic.
- */
+/** A git-repo project carrying the epic. */
 function setupFixture({ epic = epicManifest() } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-promote-'));
-  const skills = path.join(root, 'skills');
-  fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-
   const project = path.join(root, 'project');
   fs.mkdirSync(project, { recursive: true });
   git(project, ['init', '-q', '-b', 'main']);
@@ -103,44 +79,22 @@ function setupFixture({ epic = epicManifest() } = {}) {
   git(project, ['add', '-A']);
   git(project, ['commit', '-q', '-m', 'init']);
 
-  return { root, project, engine: path.join(skills, 'workflow-engine/scripts/engine.cjs') };
+  return { root, project };
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(fix, args, env = {}) {
-  const out = execFileSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  const nl = out.indexOf('\n');
-  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
-  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(fix, args, env = {}) {
-  const res = spawnSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-function knowledgeCalls(fix) {
-  const log = path.join(fix.project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
 }
 
 function shortHead(fix) {
@@ -199,9 +153,7 @@ describe('engine workunit promote — happy path', () => {
       warnings: [],
     });
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = execFileSync('node',
-      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching'],
-      { cwd: fix.project, encoding: 'utf8' });
+    const receipt = stubbed.output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching']);
     assert.match(receipt, new RegExp([
       'Promoted to Cross-Cutting',
       '',
@@ -286,7 +238,7 @@ describe('engine workunit promote — happy path', () => {
 
     // KB: moved artifacts indexed at their cc identities, the epic's old
     // chunks removed — per discussion, then the spec.
-    assert.deepStrictEqual(knowledgeCalls(fix), [
+    assert.deepStrictEqual(knowledgeCalls(fix.project), [
       'index .workflows/caching/discussion/cache-invalidation.md',
       'remove --work-unit payments --phase discussion --topic cache-invalidation',
       'index .workflows/caching/discussion/ttl-policy.md',
@@ -308,7 +260,7 @@ describe('engine workunit promote — happy path', () => {
     assert.deepStrictEqual(readManifest(fix, 'caching').phases, {
       specification: { items: { caching: { status: 'completed', date: today() } } },
     });
-    assert.deepStrictEqual(knowledgeCalls(fix), [
+    assert.deepStrictEqual(knowledgeCalls(fix.project), [
       'index .workflows/caching/specification/caching/specification.md',
       'remove --work-unit payments --phase specification --topic caching-strategy',
     ]);
@@ -349,7 +301,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
     return err;
   }
 
@@ -509,7 +461,7 @@ describe('engine workunit promote — the import carry', () => {
     }
 
     // The markdown copies are indexed at the cc identity; the binary is not.
-    const indexed = knowledgeCalls(fix).filter((c) => c.includes('/imports/'));
+    const indexed = knowledgeCalls(fix.project).filter((c) => c.includes('/imports/'));
     assert.deepStrictEqual(indexed, [
       'index .workflows/caching/imports/spec-linked.md',
       'index .workflows/caching/imports/attached.md',
@@ -533,9 +485,7 @@ describe('engine workunit promote — the import carry', () => {
   it('the receipt names the carried count beside its sibling facts, and omits the row without one', () => {
     setupCarrying();
     engine(fix, PROMOTE);
-    const receipt = (args) => execFileSync('node',
-      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', ...args],
-      { cwd: fix.project, encoding: 'utf8' });
+    const receipt = (args) => stubbed.output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', ...args]);
 
     assert.ok(receipt(['--imports', '3']).includes([
       '  • Specification: moved',
@@ -545,11 +495,8 @@ describe('engine workunit promote — the import carry', () => {
     assert.ok(receipt(['--imports', '0']).includes('  • Specification: moved\n  • Epic status: promoted'));
     assert.ok(receipt([]).includes('  • Specification: moved\n  • Epic status: promoted'));
 
-    const bad = spawnSync('node',
-      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', '--imports', 'abc'],
-      { cwd: fix.project, encoding: 'utf8' });
-    assert.strictEqual(bad.status, 1);
-    assert.strictEqual(JSON.parse(bad.stderr).error,
+    assert.strictEqual(stubbed.refuses(fix.project,
+      ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', '--imports', 'abc']).error,
       'render promote-receipt: --imports must be a carried import count, got "abc"');
   });
 

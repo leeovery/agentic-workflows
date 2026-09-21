@@ -12,33 +12,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
-const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-}
+const stubbed = stubbedEngine();
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
-
-// Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; failure is env-driven.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (process.env.STUB_KNOWLEDGE_EXIT) {
-  process.stderr.write('kb exploded\\n');
-  process.exit(parseInt(process.env.STUB_KNOWLEDGE_EXIT, 10));
-}
-process.exit(0);
-`;
 
 /** The importing work unit: a feature mid-research. */
 function featureManifest(overrides = {}) {
@@ -68,10 +51,6 @@ function epicIn(phase, topic = 'onboarding') {
 
 function setupFixture({ feature = featureManifest() } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-import-'));
-  const skills = path.join(root, 'skills');
-  fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-
   const project = path.join(root, 'project');
   fs.mkdirSync(project, { recursive: true });
   git(project, ['init', '-q', '-b', 'main']);
@@ -90,42 +69,18 @@ function setupFixture({ feature = featureManifest() } = {}) {
   return {
     root,
     project,
-    engine: path.join(skills, 'workflow-engine/scripts/engine.cjs'),
     env: { CLAUDE_CODE_SESSION_ID: 'import-session', CLAUDE_PID: String(process.pid) },
   };
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-function engine(fix, args, env = {}) {
-  const out = execFileSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...fix.env, ...env },
-  });
-  return JSON.parse(out.trim());
-}
+const engine = (fix, args, env = {}) => stubbed.ok(fix.project, args, { env: { ...fix.env, ...env } });
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-function engineFails(fix, args, env = {}) {
-  const res = spawnSync('node', [fix.engine, ...args], {
-    cwd: fix.project,
-    encoding: 'utf8',
-    env: { ...process.env, ...fix.env, ...env },
-  });
-  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-  assert.strictEqual(res.stdout, '');
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env: { ...fix.env, ...env } });
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-function knowledgeCalls(fix) {
-  const log = path.join(fix.project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
 }
 
 function shortHead(fix) {
@@ -167,7 +122,7 @@ describe('engine workunit import — happy path', () => {
     assert.ok(fs.existsSync(path.join(fix.project, 'shots/Dockset 05 Material.JPEG')));
 
     // Only the markdown landing is knowledge-base material.
-    assert.deepStrictEqual(knowledgeCalls(fix), ['index .workflows/ledger/imports/onboarding-notes.md']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/ledger/imports/onboarding-notes.md']);
 
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 2 file(s) for research/ledger');
   });
@@ -283,7 +238,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
     assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
   });
 
   it('a directory among the paths refuses before any copy — no half-landed batch', () => {

@@ -6,7 +6,6 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const {
@@ -15,7 +14,7 @@ const {
 const { researchThreads } = require('../../skills/workflow-engine/scripts/domain/projections/research-threads.cjs');
 const { VALID_THREAD_STATUSES, isThreadOrigin } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const harness = require('./engine-harness.cjs');
 
 /** A manifest with one in-progress research item, optionally pre-seeded threads. */
 function manifestWith(threads) {
@@ -406,15 +405,8 @@ describe('engine CLI: research-threads round-trip', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  function threads(args) {
-    return JSON.parse(execFileSync('node', [ENGINE, 'research-threads', ...args], { cwd: dir, encoding: 'utf8' }).trim());
-  }
-  function refuses(args) {
-    const res = spawnSync('node', [ENGINE, 'research-threads', ...args], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1, `expected a refusal: ${args.join(' ')}`);
-    assert.strictEqual(res.stdout, '');
-    return JSON.parse(res.stderr.trim());
-  }
+  const threads = (/** @type {string[]} */ args) => harness.ok(dir, ['research-threads', ...args]);
+  const refuses = (/** @type {string[]} */ args) => harness.refuses(dir, ['research-threads', ...args]);
   function saved() {
     return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8')).phases.research.items['space-homing'].threads;
   }

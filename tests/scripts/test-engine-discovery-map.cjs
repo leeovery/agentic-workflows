@@ -6,41 +6,22 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
-
-const os = require('os');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const harness = require('./engine-harness.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const { git } = harness;
 
 /** Run a discovery-map command expecting success; returns the parsed JSON line. */
-function runOk(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', ...args], { cwd: dir, encoding: 'utf8' }).trim());
-}
+const runOk = (dir, args) => harness.ok(dir, ['discovery-map', ...args]);
 
 /** Run a discovery-map command expecting failure; returns the parsed stderr JSON. */
-function runFail(dir, args) {
-  const res = spawnSync('node', [ENGINE, 'discovery-map', ...args], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, `expected failure for: ${args.join(' ')}`);
-  const parsed = JSON.parse(res.stderr.trim());
-  assert.strictEqual(parsed.ok, false);
-  return parsed;
-}
+const runFail = (dir, args) => harness.refuses(dir, ['discovery-map', ...args]);
 
 describe('engine CLI: discovery-map sequence', () => {
-  /** @param {string} dir @param {string[]} args */
-  function git(dir, args) {
-    return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-  }
-
   /** A temp-dir git repo holding one epic with a two-topic discovery map. */
   function setupGitFixture() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-seq-'));
-    git(dir, ['init', '-q', '-b', 'main']);
-    git(dir, ['config', 'user.email', 'test@example.com']);
-    git(dir, ['config', 'user.name', 'Test']);
-    git(dir, ['config', 'commit.gpgsign', 'false']);
+    const dir = harness.setupGitFixture('engine-seq-');
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
@@ -67,7 +48,7 @@ describe('engine CLI: discovery-map sequence', () => {
 
   it('sets every order, commits scoped with the sequence message, reports the assignment', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
-    const res = JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());
+    const res = runOk(dir, ['sequence', 'payments', 'auth-flow=1', 'session-model=2']);
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.ordered, { 'auth-flow': 1, 'session-model': 2 });
@@ -90,7 +71,7 @@ describe('engine CLI: discovery-map sequence', () => {
     git(dir, ['commit', '-q', '-m', 'a peer topic']);
     fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\nhalf a turn\n');
 
-    execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
+    runOk(dir, ['sequence', 'payments', 'auth-flow=1', 'session-model=2']);
 
     assert.deepStrictEqual(
       git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
@@ -101,32 +82,25 @@ describe('engine CLI: discovery-map sequence', () => {
   });
 
   it('re-applying the same orders is a no-op commit: committed null, note, exit 0', () => {
-    execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
-    const res = JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());
+    runOk(dir, ['sequence', 'payments', 'auth-flow=1', 'session-model=2']);
+    const res = runOk(dir, ['sequence', 'payments', 'auth-flow=1', 'session-model=2']);
     assert.deepStrictEqual(res, { ok: true, ordered: { 'auth-flow': 1, 'session-model': 2 }, committed: null, note: 'nothing to commit' });
   });
 
   it('rejects unknown topics before writing anything', () => {
     const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
-    const res = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'ghost=2'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1);
-    assert.match(JSON.parse(res.stderr.trim()).error, /no discovery item "ghost"/);
+    assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'ghost=2']).error, /no discovery item "ghost"/);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
   it('rejects bad orders and malformed assignments — loud and specific', () => {
     for (const pair of ['auth-flow=0', 'auth-flow=-1', 'auth-flow=abc', 'auth-flow=1.5', 'auth-flow']) {
-      const res = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', pair], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 1, pair);
-      assert.match(JSON.parse(res.stderr.trim()).error, /bad assignment/, pair);
+      assert.match(runFail(dir, ['sequence', 'payments', pair]).error, /bad assignment/, pair);
     }
-    const dup = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'auth-flow=2'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(dup.stderr.trim()).error, /assigned twice/);
-    const usage = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine discovery-map sequence/);
-    const noMap = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'ghost-unit', 'auth-flow=1'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(noMap.stderr.trim()).error, /manifest not found/);
+    assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'auth-flow=2']).error, /assigned twice/);
+    assert.match(runFail(dir, ['sequence', 'payments']).error, /Usage: engine discovery-map sequence/);
+    assert.match(runFail(dir, ['sequence', 'ghost-unit', 'auth-flow=1']).error, /manifest not found/);
   });
 });
 
@@ -717,11 +691,11 @@ describe('engine CLI: discovery-map operations', () => {
 
   describe('commit cadence', () => {
     it('map operations never commit — the session picks the change up', () => {
-      execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir, encoding: 'utf8' });
-      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
-      execFileSync('git', ['config', 'user.name', 'Test'], { cwd: dir });
-      execFileSync('git', ['add', '-A'], { cwd: dir });
-      execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: dir });
+      git(dir, ['init', '-q', '-b', 'main']);
+      git(dir, ['config', 'user.email', 'test@example.com']);
+      git(dir, ['config', 'user.name', 'Test']);
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-q', '-m', 'init']);
 
       runOk(dir, ['add', 'payments', 'brand-new', 'research', '--summary', 'no commit']);
       runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'no commit']);
@@ -731,8 +705,8 @@ describe('engine CLI: discovery-map operations', () => {
       runOk(dir, ['handle', 'payments', 'renamed-rich']);
       runOk(dir, ['unhandle', 'payments', 'renamed-rich']);
 
-      assert.strictEqual(execFileSync('git', ['log', '--pretty=%s'], { cwd: dir, encoding: 'utf8' }).trim(), 'init');
-      assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), / M \.workflows\/payments\/manifest\.json/);
+      assert.strictEqual(git(dir, ['log', '--pretty=%s']).trim(), 'init');
+      assert.match(git(dir, ['status', '--porcelain']), / M \.workflows\/payments\/manifest\.json/);
     });
   });
 });
