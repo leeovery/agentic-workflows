@@ -46,7 +46,7 @@ Add to `.gitignore`:
 
 ## Version
 
-Requires Tick `0.3.*`. `tick --version` prints the installed version as `tick version X.Y.Z`. Update instructions: the [Tick repository](https://github.com/leeovery/tick).
+Requires Tick `>=0.3.*`. `tick --version` prints the installed version as `tick version X.Y.Z`. Update instructions: the [Tick repository](https://github.com/leeovery/tick).
 
 ## Structure Mapping
 

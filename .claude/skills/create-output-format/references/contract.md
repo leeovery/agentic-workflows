@@ -29,7 +29,7 @@ Must include:
 - **Format name and description** — what this format is
 - **Benefits** — why choose this format
 - **Setup** — installation, configuration, prerequisites
-- **Version** — the declaration the shared version check (`workflow-shared/references/format-version-check.md`) reads before a flow's first command against the format's tool: the tool, the version it requires as a pattern, the command that prints the installed version and the shape of its output, and where the update instructions live. A format with no external tool declares `No external tool — nothing to check.`
+- **Version** — the declaration the shared version check (`workflow-shared/references/format-version-check.md`) reads before a flow's first command against the format's tool: the tool, the version it requires, the command that prints the installed version and the shape of its output, and where the update instructions live. A format with no external tool declares `No external tool — nothing to check.`
 - **Structure Mapping** — how workflow concepts (topic, phase, task) map to the format's entities
 - **Output Location** — where tasks are stored
 

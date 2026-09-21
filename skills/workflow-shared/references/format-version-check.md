@@ -8,7 +8,7 @@ The caller provides `format`.
 
 ## A. Read the Declaration
 
-Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool, the version it requires as a pattern, the command that prints the installed version with the shape of its output, and where the update instructions live.
+Read the **Version** section of the format's **[about.md](../../workflow-planning-process/references/output-formats/{format}/about.md)**. It declares the tool, the version it requires, the command that prints the installed version with the shape of its output, and where the update instructions live.
 
 #### If the section declares nothing to check
 
@@ -22,7 +22,7 @@ Read the **Version** section of the format's **[about.md](../../workflow-plannin
 
 ## B. Compare
 
-Run the declared command and take the installed version from its output. The check passes when the installed version matches the required pattern.
+Run the declared command and take the installed version from its output. The check passes when the installed version satisfies the requirement.
 
 #### If the check passes
 
@@ -39,7 +39,7 @@ Run the declared command and take the installed version from its output. The che
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> {tool} {installed} is installed; the {format} format requires `{required}`. See {update_instructions} to update to that version.
+> {tool} {installed} is installed; the {format} format requires `{required}`. See {update_instructions} to update.
 ```
 
 **STOP.** Wait for user response.
