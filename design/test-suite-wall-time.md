@@ -167,17 +167,43 @@ itself: every world must rebuild byte-identical through it.
 Expected: simulation 138s → under 20s; world rebuilds roughly halved
 again.
 
+**Landed 2026-09-21 (#1247).** Simulation alone 125s → 33s; corpus cold
+104s → 68s, warm 0.3s; full `npm test` 3m48s → 2m01s, 3,371 tests. All
+172 worlds rebuilt byte-identical through the entry — nothing
+regenerated. The entry is `engine.run(argv, {cwd, env, stdin})`; the
+io is threaded through every handler as a `call` object (123 sites),
+never swapped on the module; the field surface's bare reads take a
+sink; the env is an overlay whose `undefined` takes a key away, which
+is what lets a harness reproduce a replaced environment; the frozen
+clock is pinned around each in-process call and stays a preload for
+the processes the engine spawns. A profile of one world's rebuild
+(2.63s): 2.48s in the engine's own subprocesses — `engine boot`'s
+migration orchestrator 1.36s (a bash per frozen migration), the
+knowledge CLI 0.44s over five calls, git 0.67s over 48 — and ~150ms of
+engine work. Inside a full run the critical path is now the simulation
+under nine-thread contention (45s), boot (34s), the agent store (21s),
+and the session-label suites (17s + 15s).
+
 ### 4. Adoption and the boot seam
 
 The remaining CLI-driving suites (transactions, roadmap, experiment,
-commit-door, tasks, discovery-map, session-label, agent-state, the
-workunit verbs) move onto the shared harness's in-process runner;
-their local `engine`/`engineFails`/`setupGitFixture` copies retire.
-The boot suite gets a fixture whose migration ledger already records
-every migration, so the 42 tests that are not about migrations stop
-replaying 59 of them; the nine that are keep the real fleet.
+commit-door, tasks, discovery-map, discussion-map, research-threads,
+session-label, agent-state, presence, cache, manifest-fields, the
+workunit verbs, the gateway suites' spot spawns) move onto one shared
+harness module's in-process runner; their local
+`engine`/`engineFails`/`run`/`runOk` copies retire. The boot suite
+already stubs the migration orchestrator and the knowledge CLI inside a
+copied engine tree — its cost is profiled before it is touched, and it
+adopts the entry against the copy or keeps spawning, whichever the
+profile says. The per-world boot cost in the corpus is the frozen
+fleet replayed on an empty world: a mainline that writes the
+migration ledger as fixture state before its boot — a project already
+migrated, which is what every real world is — takes that out, and is
+kept only if every world still rebuilds byte-identical; if a migration
+writes content on an empty world the seed is wrong and the cost stays.
 
-Expected: the 20–80s files land under 15s each.
+Expected: the 20–80s files land under 15s each; the corpus cold under
+45s.
 
 ### 5. Close
 
@@ -225,3 +251,5 @@ baseline machine; a run with the network down is green.
   carry the time.
 - 2026-09-21 — slice 2 landed as #1243 (stack #1244); the full run is
   under four minutes warm and the simulation is now the critical path.
+- 2026-09-21 — slice 3 landed as #1247; the full run is two minutes
+  and the residual is the engine's own subprocesses.
