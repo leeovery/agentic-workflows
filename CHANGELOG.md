@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.74] - 2026-09-21
+
+✨ Added
+
+- Plan output formats now declare a required tool version, checked automatically before the first command against a plan — Tick requires `>=0.3.*`, Linear and local-markdown declare nothing to check.
+
+🔧 Changed
+
+- Tick task reads and writes now use `--field description` and the create/update command's own echoed record instead of `--json` and follow-up `tick show` calls, and `tick ready` alone now finds the next task (dropping the separate in-progress check).
+
 ## [0.7.73] - 2026-09-21
 
 🔧 Changed
