@@ -36,16 +36,19 @@ all 156, which nobody does. On main today 154 of 156 are stale: every
 run rebuilds 154 worlds at ~2.8s each, serially inside one file. The
 file is the critical path of the whole run whatever the parallelism.
 
-**The suite is not hermetic and calls OpenAI.** The node suites and the
-prose recipe environment never isolate the system config, so every
-knowledge-indexing verb — `topic complete`, `workunit
-complete|cancel|reactivate`, absorb, promote, a `--kb` commit; roughly
-330 calls across the node suites, plus every prose world rebuilt —
-reads the developer's real `~/.config/workflows/config.json` and embeds
-through `text-embedding-3-small` for real. `topic complete` measures
-779ms against the real config and 152ms against an empty one. Beyond
-the time, the suite fails offline, spends money, and depends on whose
-machine it runs on. Only `test-knowledge-cli.sh` fakes `HOME`.
+**The node suites are not hermetic and call OpenAI.** They never
+isolate the system config, so every knowledge-indexing verb — `topic
+complete`, `workunit complete|cancel|reactivate`, absorb, promote, a
+`--kb` commit; roughly 330 calls per run — reads the developer's real
+`~/.config/workflows/config.json` and embeds through
+`text-embedding-3-small` for real. `topic complete` measures 779ms
+against the real config and 152ms against an empty one. Beyond the
+time, the suite fails offline, spends money, and depends on whose
+machine it runs on. Only `test-knowledge-cli.sh` fakes `HOME`. The
+prose worlds are safe by a different route: every mainline runs
+`knowledge setup --keyword-only` first, and the project config it
+writes overrides the system one — a convention each recipe happens to
+follow, not an invariant the harness holds.
 
 **A process per assertion.** An engine CLI spawn is ~60ms, a git commit
 ~30ms, `engine boot` ~1.5s because the migration orchestrator spawns a
@@ -107,8 +110,8 @@ asserts that a `knowledge check` run under the suite's environment
 reports no provider, so a future suite that forgets the module fails
 here rather than silently billing the developer.
 
-Expected: every knowledge-indexing verb ~5× faster; the suite runs
-offline; no spend.
+Expected: every knowledge-indexing verb in the node suites ~5× faster;
+the suite runs offline; no spend.
 
 ### 2. Golden skip and parallel rebuild
 
