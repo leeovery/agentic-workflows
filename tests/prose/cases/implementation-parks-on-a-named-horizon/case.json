@@ -1,0 +1,82 @@
+{
+  "origin": "the backlogging door is new prose, and its shortest route had no coverage: the user's words name a horizon, so `A. Which Backlog` goes straight to the park — no ambiguity gate, no horizon pick. This walks that route from an implementation session's first task gate over a project with no roadmap at all, where the confirm says the roadmap is created with the item and one verb births map, horizon and item together, then hands the interrupted gate back",
+  "entry": "workflow-implementation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-implementation-process/references/display-task-brief.md",
+    "skills/workflow-implementation-process/references/display-task-result.md",
+    "skills/workflow-implementation-process/references/report-register.md",
+    "skills/workflow-implementation-process/references/task-normalisation.md",
+    "skills/workflow-implementation-process/references/invoke-executor.md",
+    "skills/workflow-implementation-process/references/bank-deposit.md",
+    "skills/workflow-implementation-process/references/invoke-reviewer.md",
+    "skills/workflow-shared/references/backlogging.md"
+  ],
+  "answers": [
+    "y — skip project skills again",
+    "y — skip linters again",
+    "hold the gate a second — nothing to do with this task: a shopper should be able to save a card at checkout and pay with it next time without typing it in again. Put that on the roadmap under Next.",
+    "yes — park it"
+  ],
+  "conduct": "Beyond the scripted answers, the user wants saved cards on the roadmap under Next and nothing else from this session. Asked what to call it, how to summarise it, or which horizon it belongs to, they answer in the same words — Next, and a shopper paying with a card they saved earlier — and they add no scope, no detail about this task, and no second idea.",
+  "stubs": {
+    "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for pay-1-1 — create the dispatched task's source and test files as the stub gives them and return that task's STATUS block; one firing",
+    "reviewer-task-approves": "when the workflow-implementation-task-reviewer agent is dispatched for pay-1-1 — return the stub's verdict with the TASK line filled from the dispatched task; write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "task start pay pay pay-1-1",
+      "render task-brief pay.implementation.pay",
+      "render task-result pay.implementation.pay",
+      "render task-gate pay.implementation.pay",
+      "render park-gate",
+      "--source pay/specification/pay/specification.md",
+      "roadmap add",
+      "--origin park:pay"
+    ],
+    "calls_in_order": [
+      "render task-gate pay.implementation.pay",
+      "render park-gate",
+      "roadmap add",
+      "render task-gate pay.implementation.pay"
+    ],
+    "calls_exclude": [
+      "render backlog-gate",
+      "render horizon-pick",
+      "roadmap state",
+      "roadmap session open",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "commit --inbox",
+      "task complete pay pay pay-1-1",
+      "task start pay pay pay-1-2",
+      "topic complete pay implementation",
+      "task_gate_mode auto"
+    ]
+  }
+}

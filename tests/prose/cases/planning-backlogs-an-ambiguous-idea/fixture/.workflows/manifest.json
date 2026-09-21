@@ -1,0 +1,10 @@
+{
+  "work_units": {
+    "pay": {
+      "work_type": "feature"
+    }
+  },
+  "defaults": {
+    "plan_format": "local-markdown"
+  }
+}
