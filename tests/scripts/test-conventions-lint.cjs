@@ -667,7 +667,6 @@ const RATCHET_PINS = {
   'skills/workflow-discovery/references/map-operations.md': 2,
   'skills/workflow-discovery/references/opener-pattern.md': 1,
   'skills/workflow-discovery/references/session-loop.md': 1,
-  'skills/workflow-discovery/references/show-dismissed.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-continue.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-process/references/background-agent-surfacing.md': 2,
@@ -712,7 +711,6 @@ const RATCHET_PINS = {
   'skills/workflow-start/references/inbox-archived.md': 3,
   'skills/workflow-start/references/inbox-working-set.md': 2,
   'skills/workflow-start/references/knowledge-gate.md': 3,
-  'skills/workflow-start/references/view-completed.md': 1,
   'skills/workflow-start/references/view-plan.md': 2,
 };
 
