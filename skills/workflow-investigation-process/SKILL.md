@@ -70,7 +70,15 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ## Backlogging
 
-The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. An idea, not a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+
+→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
+
+---
+
+## Postponing the Topic
+
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name. Load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = the named topic, topic = `{topic}`, phase = `investigation`, from any point in the phase.
 
 → On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
 
