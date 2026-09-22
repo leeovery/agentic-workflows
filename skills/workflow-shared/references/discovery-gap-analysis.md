@@ -132,9 +132,11 @@ description: |
   {paragraphs}
 routing: {routing-from-C}
 source: gap-analysis
+source_artifacts: {filename1}.md, {filename2}.md
+gap_type: {cross-artifact|emergent|integration|uncovered}
 ```
 
-`routing` is the value decided per-candidate in **C** (`discussion` or `research`). The bare `gap-analysis` source carries the provenance — the analysis synthesises across artifacts, so no single parent exists to name. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
+`routing` is the value decided per-candidate in **C** (`discussion` or `research`). The bare `gap-analysis` source carries the provenance — the analysis synthesises across artifacts, so no single parent exists to name. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. `source_artifacts` and `gap_type` are this candidate's values from **B** — the artifacts the gap was read out of and its category — carried per-candidate because the gate writes the topic's discovery brief from the block. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
 
 ---
 
