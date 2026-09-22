@@ -23,21 +23,20 @@
   ],
   "answers": [
     "f — start a new feature",
-    "Saved search filters on the orders list. A user picks the filters they use often — status, date range, customer — names the combination, and it appears in a dropdown above the list so they can apply it in one click. Filters are per-user, not shared. Nothing else about the orders list changes.",
-    "y — that's the right shape, set it up",
-    "search-filters"
+    "Saved search filters on the orders list. A user picks the filters they use often — status, date range, customer — names the combination, and it appears in a dropdown above the list so they can apply it in one click. Filters are per-user, not shared. Nothing else about the orders list changes. Call it search-filters.",
+    "y — that's the right shape, set it up"
   ],
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "manifest exists search-filters",
       "workunit create search-filters feature"
     ],
     "calls_in_order": [
-      "manifest exists search-filters",
+      "write:.workflows/.cache/search-filters/discovery/session-001.md",
       "workunit create search-filters feature"
     ],
     "calls_exclude": [
+      "render name-gate",
       "discovery-map",
       "discovery-session close",
       "topic start"

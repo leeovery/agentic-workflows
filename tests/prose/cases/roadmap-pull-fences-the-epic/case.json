@@ -28,17 +28,15 @@
     "r — open the roadmap",
     "p — pull into delivery",
     "1, 2 — ordering and menu management",
-    "y — shape it as an epic",
-    "A different name — call it mvp"
+    "y — shape it as an epic, and call it mvp"
   ],
-  "conduct": "The user shaped Orderflow's roadmap in an earlier session and has come back ready to start building. They want the first slice small: customer ordering and menu upkeep now, the kitchen display to follow once those stand. They confirm the epic shape when it is proposed, name the unit 'mvp' themselves, and stop as soon as the epic's discovery opens — they will deepen it another day.",
+  "conduct": "The user shaped Orderflow's roadmap in an earlier session and has come back ready to start building. They want the first slice small: customer ordering and menu upkeep now, the kitchen display to follow once those stand. They confirm the epic shape when it is proposed, naming the unit 'mvp' themselves as they do, and stop as soon as the epic's discovery opens — they will deepen it another day.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "engine.cjs boot",
       "workflow-roadmap/scripts/gateway.cjs view",
       "workflow-roadmap/scripts/gateway.cjs pull-set",
-      "manifest exists mvp",
       "workunit create mvp epic",
       "roadmap pull",
       "--into mvp",
@@ -53,6 +51,7 @@
       "workflow-discovery/scripts/gateway.cjs mvp"
     ],
     "calls_exclude": [
+      "render name-gate",
       "render resume-gate",
       "roadmap session open",
       "workflow-bridge",

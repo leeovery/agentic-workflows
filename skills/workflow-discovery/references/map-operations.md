@@ -114,9 +114,17 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 
 Branch on `result`:
 
-- `collision-active` — rejection already rendered by the reference. Remove the operation from its group.
+- `collision-active` — render the rejection below and remove the operation from its group.
 - `matches-dismissed` — allowed. A Rename target that matches a dismissed name leaves the dismissed entry alone; the new active item simply exists alongside it as historical record.
 - `ok` — proceed.
+
+**Name-collision rejection** — for a Rename whose new name is already on the map:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+That name is already on the map. Pick a different name or use edit-summary / change-routing on the existing item.
+```
 
 → On return, proceed to **C. Apply**.
 

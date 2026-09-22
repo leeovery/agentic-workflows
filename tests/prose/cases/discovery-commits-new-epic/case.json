@@ -25,22 +25,20 @@
   "answers": [
     "e — start a new epic",
     "Search relevance across the catalogue is poor and it is several problems at once. Ranking barely uses behavioural signals. Synonyms and misspellings are handled by a hand-maintained list nobody trusts. And we have no way to tell whether a change made results better or worse, so every tweak is an argument. I want to take the whole thing on rather than patch one piece.",
-    "y — that's the right shape, set it up",
-    "search-relevance"
+    "y — that's the right shape, set it up"
   ],
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "manifest exists search-relevance",
-      "workunit create search-relevance epic",
-      "workflow-discovery/scripts/gateway.cjs search-relevance"
+      "workunit create",
+      "workflow-discovery/scripts/gateway.cjs"
     ],
     "calls_in_order": [
-      "manifest exists search-relevance",
-      "workunit create search-relevance epic",
-      "workflow-discovery/scripts/gateway.cjs search-relevance"
+      "workunit create",
+      "workflow-discovery/scripts/gateway.cjs"
     ],
     "calls_exclude": [
+      "render name-gate",
       "topic start",
       "discussion-map",
       "workflow-discussion-entry",

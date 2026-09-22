@@ -26,7 +26,7 @@ Read the live map:
 node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
-You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
+You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern; hold the derived name whichever way the read lands. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
 
 On a `grown-thread` entry the current topic is never the answer — the thread grew here and a home of its own is the point, so the target is a sibling or the new name by construction.
 
@@ -84,7 +84,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. A phase appended to the selection overrides `landing_phase`.
+A chosen candidate is the target; `new` takes the name derived in **A**. A phase appended to the selection overrides `landing_phase`.
 
 → Proceed to **C. Land It**.
 
@@ -92,7 +92,7 @@ A chosen candidate is the target; `new` means propose a kebab-case name and conf
 
 The concern travels with the full context discussed about it — the target picks it up cold. Honour triage-landing's one-ask-per-file rule as you build it: material making several asks the target could accept or reject independently is delivered as separate concerns under this one confirmed reroute.
 
-→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel.
+→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, derives another.
 
 **If `result` is `cancelled`:**
 

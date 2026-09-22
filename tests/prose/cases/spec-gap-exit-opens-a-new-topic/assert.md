@@ -57,9 +57,9 @@ The prose should have taken this path:
    homes: reopening behavioural-ranking with the gap and pausing
    here, opening a new topic on the map, and parking it on the
    roadmap
-10. the user takes the new topic row. The session proposes a kebab-case
-    name derived from the gap and **STOPS** for the user to confirm
-    or rename it; the user confirms `signal-weighting`
+10. the user takes the new topic row. The topic's name is the one they
+    gave in the exchange, `signal-weighting` — the session neither
+    proposes a name back to them nor stops to have one confirmed
 11. the triage landing resolves the target against the live map,
     finds no row, and creates one through the shared topic-creation
     core: the name is validated against the map and the dismissed
@@ -129,6 +129,6 @@ The end world's claims:
   by the pause commit; nothing is left dirty
 - the user was asked exactly three things in this walk: the resume
   choice, the unmade decision (in conversation, not at a gate), and
-  the gap gate — plus the one confirmation of the new topic's name.
-  They were never asked to classify the problem, never offered sides
-  to pick between, and never asked to approve a finding
+  the gap gate. They were never asked to name or confirm the new
+  topic, never asked to classify the problem, never offered sides to
+  pick between, and never asked to approve a finding

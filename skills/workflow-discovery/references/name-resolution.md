@@ -1,69 +1,15 @@
-# Name Resolution
+# Name Derivation
 
 *Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 
-Resolve the work-unit name and clear any collision before the unit is created. Loaded by [confirm-trigger.md](confirm-trigger.md) and by the roadmap pull ([pull.md](../../workflow-roadmap/references/pull.md)). On return, `work_unit` is a confirmed, collision-free kebab-case name.
+Derive the work unit's name. Loaded by [confirm-trigger.md](confirm-trigger.md) and by the roadmap pull ([pull.md](../../workflow-roadmap/references/pull.md)). On return, `work_unit` holds a kebab-case name.
 
-Inputs held from earlier steps: `work_type` (for phrasing), `inbox_seeds` (the promoted inbox file path(s), if the work came from the inbox), and the shaped one-line `description`.
+Inputs held from earlier steps: `work_type`, `inbox_seeds` (the promoted inbox file path(s), if the work came from the inbox), and the shaped one-line `description`.
 
-## A. Suggest a Name
+A name the user gave during shaping is the name. Otherwise, with a **single** inbox seed as the origin, use its **filename slug** — strip the `YYYY-MM-DD--` date prefix and the `.md` extension. With several seeds (no single slug to borrow) or none at all, derive it from the shaped `description`.
 
-Derive a kebab-case suggestion. If a **single** inbox seed was the origin, use its **filename slug** — strip the `YYYY-MM-DD--` date prefix and the `.md` extension, which keeps the inbox item and the work unit recognisably linked. For multiple seeds (no single slug to borrow) or no seed at all, derive it from the shaped `description`.
-
-Render the suggestion (for bugfix / feature / quick-fix the name becomes both `{work_unit}` and `{topic}` — the same value; for epic / cross-cutting it's the work unit):
-
-> *Output the next fenced block as a code block:*
-
-```
-Suggested {work-type} name: {work_unit}
-```
-
-Fetch the gate and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render name-gate
-```
-
-**STOP.** Wait for user response.
-
-Once the user confirms a name (the suggestion or their own), kebab-case it and hold it as `work_unit`.
-
-→ Proceed to **B. Conflict Check**.
-
-## B. Conflict Check
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}
-```
-
-#### If a work unit with the same name exists
-
-A name collision is most often the user re-entering work that already exists — signpost the resume path rather than silently re-prompting.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-A work unit named "{work_unit}" already exists.
-
-To pick that work back up, run /workflow-start and select it. Or choose a different name to start fresh.
-```
-
-Fetch the gate and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render name-gate --variant collision
-```
-
-**STOP.** Wait for user response.
-
-Kebab-case the name the user gives and hold it as `work_unit` — don't re-derive the original suggestion.
-
-→ Return to **B. Conflict Check**.
-
-#### If no conflict
-
-The name is clean.
+Kebab-case it and hold it as `work_unit`. Never put the name to the user.
 
 → Return to caller.

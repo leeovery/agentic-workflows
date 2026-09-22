@@ -6,9 +6,10 @@ The prose should have taken this path:
    answer — the pre-seed is a hint, and the several interacting strands
    they describe are what makes it an epic rather than the menu key they
    pressed
-3. a name is checked against existing work before anything is created,
-   and one engine transaction then creates the work unit, installs the
-   session log staged in the cache, and commits
+3. the name is derived from what the user described and never put back
+   to them — no suggestion, no gate — and one engine transaction creates
+   the work unit, installs the session log staged in the cache, and
+   commits
 4. resume detection is skipped: it answers whether an earlier session was
    interrupted, and work created moments ago cannot have been
 5. the commit does not conclude the work as it would for a single-phase
@@ -24,7 +25,8 @@ Further claims:
 EXPECTED WORLD — the walk should have produced, from a project that held
 no work at all:
 
-- an epic work unit named `search-relevance`, in progress, registered in
+- an epic work unit under a kebab-case name the session derived from the
+  description (`search-relevance` or near it), in progress, registered in
   the project manifest alongside its own manifest
 - a description drawn from what the user said about ranking signals,
   synonyms and measurement — not invented, and not narrowed to one of them

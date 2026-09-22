@@ -11,11 +11,11 @@ Validates a proposed topic name. First step normalises to kebab-case silently (c
 The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
-- `proposed_name` — the topic name the user has proposed. Always present.
+- `proposed_name` — the topic name the caller derived or extracted. Always present.
 
 After return, the caller reads `result` from conversation memory. Possible values:
 
-- `collision-active` — name matches an active discovery-map item. Rejection rendered.
+- `collision-active` — name matches an active discovery-map item.
 - `matches-dismissed` — name matches an entry on the dismissed list. **Informational** — the creating flow's write clears the entry.
 - `ok` — no conflict. Caller proceeds.
 
@@ -58,13 +58,7 @@ Check whether `proposed_name` matches any `name` in `discovery_map` (case-sensit
 
 #### If a match exists
 
-Set `result = "collision-active"` and render the rejection:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-"{proposed_name}" is already on the map. Pick a different name or use edit-summary / change-routing on the existing item.
-```
+Set `result = "collision-active"`.
 
 → Return to caller.
 

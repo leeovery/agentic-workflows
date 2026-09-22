@@ -13,7 +13,7 @@ The caller has already resolved and confirmed the target, and confirmed it is a 
 The caller provides these via context before loading:
 
 - `work_unit` — the epic. Always present.
-- `target` — the destination topic the concern belongs to (an existing map name, or a new kebab-case name the caller proposed and confirmed).
+- `target` — the destination topic the concern belongs to (an existing map name, or a new kebab-case name the caller derived).
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
 - `phase` — the current session's phase, `research`, `discussion`, `specification`, `planning`, or `implementation`. Recorded in the entry.
@@ -76,19 +76,9 @@ The landing phase is already judged and confirmed — `{landing_phase}` decides,
 
 Create the target via the shared topic-creation core, routed at the judged landing phase. The core writes the map item alone — the phase item is created as `triaged` in **C**, never started:
 
-→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `reroute:{origin}`.
+→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `reroute:{origin}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
 
-**If `result` is `cancelled`:**
-
-The user dropped the new target — nothing was written.
-
-→ Return to caller.
-
-**Otherwise:**
-
-The topic was created — `{created_topic}` holds the validated name. Set `target = {created_topic}`.
-
-→ Proceed to **C. Land the Concern**.
+→ On return, proceed to **C. Land the Concern**.
 
 ## C. Land the Concern
 
