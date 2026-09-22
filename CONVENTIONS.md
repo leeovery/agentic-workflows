@@ -525,11 +525,15 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [one-time prompt when the boot response says so; otherwise silent]
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Knowledge Gate
-[branch on the boot response: not-ready → terminal stop; ready → proceed]
+### Step 0.4: Gate Surface
+[one-time prompt when the boot response says so; otherwise silent]
 → Proceed to **Step 0.5**.
 
-### Step 0.5: Baseline Judgment
+### Step 0.5: Knowledge Gate
+[branch on the boot response: not-ready → terminal stop; ready → proceed]
+→ Proceed to **Step 0.6**.
+
+### Step 0.6: Baseline Judgment
 [one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
 → Proceed to **Step 1**.
 ```

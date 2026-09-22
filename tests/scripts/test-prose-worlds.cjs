@@ -156,7 +156,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       const tree = worlds.collectTree(dir);
       assert.deepStrictEqual(manifestOf(tree), {
         work_units: {},
-        defaults: { tmux_labels: false },
+        defaults: { tmux_labels: false, gate_surface: false },
         baseline: { status: 'native' },
         walkthrough: { status: 'skipped' },
       });
@@ -177,7 +177,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({
           work_units: {},
-          defaults: { tmux_labels: false },
+          defaults: { tmux_labels: false, gate_surface: false },
           baseline: { status: 'native' },
           walkthrough: { status: 'skipped' },
         }, null, 2) + '\n');
@@ -202,7 +202,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({
           work_units: {},
-          defaults: { tmux_labels: false },
+          defaults: { tmux_labels: false, gate_surface: false },
           baseline: { status: 'native' },
           walkthrough: { status: 'skipped' },
         }, null, 2) + '\n');
@@ -219,7 +219,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     // `walked` is not what materialise wrote, so it is the walk's own —
     // and a record grown a second field is no longer the stamp either.
     const tree = new Map([[worlds.PROJECT_MANIFEST, Buffer.from(JSON.stringify({
-      defaults: { tmux_labels: false },
+      defaults: { tmux_labels: false, gate_surface: false },
       baseline: { status: 'native', areas: {} },
       walkthrough: { status: 'walked' },
     }, null, 2) + '\n')]]);
@@ -227,6 +227,20 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     assert.deepStrictEqual(JSON.parse(tree.get(worlds.PROJECT_MANIFEST).toString('utf8')), {
       baseline: { status: 'native', areas: {} },
       walkthrough: { status: 'walked' },
+    });
+  });
+
+  it('a kill the walk answered for itself is a real delta — only the value the harness wrote is stripped', () => {
+    // A case about the gate-surface question turns it on; the label kill
+    // beside it is still the harness's and still goes.
+    const tree = new Map([[worlds.PROJECT_MANIFEST, Buffer.from(JSON.stringify({
+      work_units: {},
+      defaults: { tmux_labels: false, gate_surface: true },
+    }, null, 2) + '\n')]]);
+    worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: false });
+    assert.deepStrictEqual(JSON.parse(tree.get(worlds.PROJECT_MANIFEST).toString('utf8')), {
+      work_units: {},
+      defaults: { gate_surface: true },
     });
   });
 
@@ -341,7 +355,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.ok(all.length > 1, `the world layers history: ${all.join(' | ')}`);
       assert.ok(all.indexOf(arrival[0]) > 0, `.workflows/ arrives after the root commit: ${all.join(' | ')}`);
       const manifest = JSON.parse(fs.readFileSync(path.join(dir, worlds.PROJECT_MANIFEST), 'utf8'));
-      assert.strictEqual(manifest.defaults.tmux_labels, false, 'the label kill lands on the layered manifest');
+      assert.deepStrictEqual(manifest.defaults, { tmux_labels: false, gate_surface: false }, 'both kills land on the layered manifest');
       assert.deepStrictEqual(manifest.baseline, {}, 'the fixture\'s nothing-recorded baseline is left alone');
       assert.deepStrictEqual(manifest.walkthrough, { status: 'skipped' },
         'the walkthrough the fixture says nothing about is stamped with the layer');

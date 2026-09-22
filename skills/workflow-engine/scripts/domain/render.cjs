@@ -33,7 +33,7 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { migrationGate, labelGate, gateSurfaceGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -5544,6 +5544,7 @@ const SURFACES = {
   'walkthrough-topic': walkthroughTopicSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
+  'gate-surface-gate': () => gateSurfaceGate(),
   'knowledge-gate': knowledgeGateSurface,
   'legacy-split-gate': legacySplitGateSurface,
   'legacy-split-display': legacySplitDisplaySurface,
