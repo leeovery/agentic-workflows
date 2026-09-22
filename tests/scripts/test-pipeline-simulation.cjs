@@ -486,10 +486,14 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
 
-  // Planning.
+  // Planning. A fresh plan opens on the context offer (validate-phase),
+  // which the plan's own birth closes — a plan under way reconciles instead.
   sim.render(['entry-gate', `${wu}.planning.${topic}`], { expect: 'empty' });
   label(sim, wu, 'planning', topic);
+  sim.render(['plan-context-gate', `${wu}.planning.${topic}`], { expect: 'content' });
   sim.run(['topic', 'start', wu, 'planning', topic]);
+  sim.refuses(['render', 'plan-context-gate', `${wu}.planning.${topic}`],
+    /planning item "[^"]+" is in-progress — the context offer opens a fresh plan/);
   sim.write(`.workflows/${wu}/planning/${topic}/planning.md`, `# Plan — ${topic}\n`);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
@@ -691,6 +695,13 @@ describe('pipeline simulation', () => {
     const wu = 'pay';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
+    // Discovery's single-phase endpoint (first-phase-routing A): which of
+    // research and discussion leans is the session's read, so it rides a
+    // payload; having the choice at all is the work type's.
+    const read = sim.write(`.workflows/.cache/${wu}/discovery/first-phase.json`,
+      { read: "The shape's clear and the open questions are trade-offs — I'd start with discussion." });
+    assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
+      /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
     // Nothing completed and no review to skip: the bridge's gate renders
     // empty and the continuation goes straight to plan mode.
     sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
@@ -1138,6 +1149,12 @@ describe('pipeline simulation', () => {
   it('cross-cutting: the discussion→specification hop offers proceed or revisit, never the skip', () => {
     const wu = 'error-shape';
     sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
+    // Cross-cutting takes the same first-phase choice as a feature; the
+    // fixed-first-phase types never reach the gate at all.
+    const read = sim.write(`.workflows/.cache/${wu}/discovery/first-phase.json`,
+      { read: 'Discussion is the usual spine here — research is optional.' });
+    assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
+      /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
     label(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
