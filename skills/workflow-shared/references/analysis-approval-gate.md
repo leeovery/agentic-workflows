@@ -167,9 +167,9 @@ Drawn from the discovery-gap analysis, read out of {source_artifacts}.
 {the questions the gap raises, as bullets — what the next phase has to settle}
 ```
 
-#### If `postpone_after`
+#### If `postpone_after` is `true`
 
-The row and its brief are on the map, so the topic is one the postpone can take whole.
+The row is on the map and its brief is written, so there is a whole topic for the postpone to take.
 
 → Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
 
