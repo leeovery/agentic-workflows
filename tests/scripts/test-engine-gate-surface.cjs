@@ -314,10 +314,11 @@ describe('render gate-surface-gate', () => {
     assert.strictEqual(harness.output(dir, ['render', 'gate-surface-gate']), [
       "=== MENU: gate surface gate (emit verbatim as markdown, then STOP for the user's response) ===",
       Array(12).fill('·').join(' '),
-      '**`◆ Turn the gate surface on for this project?`**',
+      '**`◆ Show menus like this one as buttons above the prompt?`**',
       '',
-      '**`y/yes`** → Draw the gates above the prompt',
-      '**`n/no`**  → Keep the gates as text menus',
+      '**`y/yes`** → Click a row or press its key; the menu stays put as you',
+      '\u00a0'.repeat(8) + 'scroll',
+      '**`n/no`**  → Keep menus as text in the conversation, as now',
       '',
     ].join('\n'));
   });
