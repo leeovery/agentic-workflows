@@ -6,7 +6,7 @@
 
 Presents the candidate topics gap-analysis staged, gates each per-topic before anything lands on the discovery map, and writes the approved ones. The analysis has already staged its genuinely-new candidates — content in the staging file, gate state in the manifest's `analysis_staging.discovery-gap-analysis` subtree, each candidate `pending`; the already-on-map and dismissed cases were resolved silently at stage time and never reach this gate.
 
-The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}` and gives it a discovery brief of its own; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it.
+The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}` and gives it a discovery brief of its own; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it; postponing writes it exactly as an approval does and then sends it to the roadmap, for a gap that is real but not this epic's to close.
 
 ## Parameters
 
@@ -65,6 +65,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### Otherwise
 
+Set `postpone_after` = `false`; the `postpone` arm below is the only thing that raises it, and it is raised for one candidate at a time.
+
 Write the candidate payload to `.workflows/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
 
 ```bash
@@ -100,6 +102,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 ```
 
 → Return to **B. Gate Each Candidate**.
+
+**If `postpone`:**
+
+The candidate is approved exactly as `yes` approves it, and then leaves for the roadmap. Set `postpone_after` = `true`.
+
+→ Proceed to **C. Write Approved Candidate**.
 
 **If comment:**
 
@@ -158,5 +166,15 @@ Drawn from the discovery-gap analysis, read out of {source_artifacts}.
 
 {the questions the gap raises, as bullets — what the next phase has to settle}
 ```
+
+#### If `postpone_after`
+
+The row and its brief are on the map, so the topic is one the postpone can take whole.
+
+→ Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
+
+→ On return, return to **B. Gate Each Candidate**.
+
+#### Otherwise
 
 → Return to **B. Gate Each Candidate**.

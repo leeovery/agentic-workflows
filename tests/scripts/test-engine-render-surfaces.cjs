@@ -6286,7 +6286,7 @@ describe('render candidate-gate', () => {
     dotpath: 'pay', file: writePayload(dir, name, obj),
   });
 
-  it('renders the gated candidate byte-exactly — display then the four-way gate', () => {
+  it('renders the gated candidate byte-exactly — display then the five-way gate', () => {
     staged('gated');
     assert.strictEqual(render(), [
       '=== DISPLAY: candidate (emit verbatim as a code block) ===',
@@ -6298,13 +6298,16 @@ describe('render candidate-gate', () => {
       DOTS,
       '**`◆ Add this topic to the map?`**',
       '',
-      '**`y/yes`**   → Approve — the topic joins the map and its phase can',
-      `${NB(10)}start from the epic menu`,
-      '**`a/auto`**  → Approve this and all remaining candidates automatically',
-      '**`s/skip`**  → Skip and dismiss — the analysis never re-proposes this',
-      `${NB(10)}name`,
-      '**Comment** → Tell me what to change (routing, summary, or',
-      `${NB(10)}description)`,
+      '**`y/yes`**      → Approve — the topic joins the map and its phase can',
+      `${NB(13)}start from the epic menu`,
+      '**`a/auto`**     → Approve this and all remaining candidates',
+      `${NB(13)}automatically`,
+      '**`s/skip`**     → Skip and dismiss — the analysis never re-proposes',
+      `${NB(13)}this name`,
+      '**`p/postpone`** → Postpone — the topic joins the map with its brief',
+      `${NB(13)}and waits on the roadmap under a horizon you name`,
+      '**Comment**    → Tell me what to change (routing, summary, or',
+      `${NB(13)}description)`,
       '',
     ].join('\n'));
   });

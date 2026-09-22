@@ -2469,6 +2469,7 @@ function candidateGate(cwd, { dotpath, file }) {
     cmdOption('y', 'yes', 'Approve — the topic joins the map and its phase can start from the epic menu'),
     cmdOption('a', 'auto', 'Approve this and all remaining candidates automatically'),
     cmdOption('s', 'skip', 'Skip and dismiss — the analysis never re-proposes this name'),
+    cmdOption('p', 'postpone', 'Postpone — the topic joins the map with its brief and waits on the roadmap under a horizon you name'),
     promptOption('Comment', 'Tell me what to change (routing, summary, or description)'),
   ], { question: 'Add this topic to the map?' }))].join('\n');
 }
