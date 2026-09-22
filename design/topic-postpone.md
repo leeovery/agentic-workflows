@@ -61,7 +61,10 @@ same need and is retired by this design.
   `postponed_from: {work_unit, topic}` and its `sources` gain the topic's
   brief, research, and discussion files where they exist. A waiting item
   already holding the name that is not this topic's refuses the postpone
-  naming the clash; the roadmap's rename or remove resolves it.
+  naming the clash; the roadmap's rename or remove resolves it. The clash
+  is read twice — in the plan, before the epic writes, and again under the
+  project lock at the landing — so a name a peer takes between the two
+  refuses rather than overwrites.
 - **R4 — The horizon is the person's.** Named in the instruction → that
   one. Unnamed with horizons on the map → `horizon-pick`. Unnamed with no
   map → a name in prose, and the map is born with it. The backlogging
@@ -78,10 +81,21 @@ same need and is retired by this design.
   A pull into another epic seeds a fresh topic (`source: roadmap`) whose
   map row carries `prior: {work_unit, topic}` from the item's
   `postponed_from`; its research or discussion reads the prior record in
-  full at initialisation — brief, research file, discussion file, and
-  the triage queue's undelivered concerns — as a durable input beside the
-  brief, and relitigates everything. The prior epic's files are its
-  record and are never drained, edited, or moved by the later one.
+  full at initialisation through the shared `read-prior-record.md` —
+  brief, research file, discussion file, and both triage queues'
+  undelivered concerns — as a durable input beside the brief, and
+  relitigates everything: a queued concern whose ask still applies is
+  raised as an opener through the existing raise and fold, one that no
+  longer applies takes a line in the phase's opening context, and no
+  tracking field records the read because the record is frozen. The pull
+  itself reads the same set at `pull.md`'s record read, derived from
+  `postponed_from`, never enumerated from `sources`. The prior epic's
+  files are its record and are never drained, edited, or moved by the
+  later one. The epic menu carries the return's own row, the postpone's
+  mirror: a sub-view over the roadmap items this epic postponed that
+  still wait, restoring the unit through `pull-forward` and a `restore`
+  receipt; an item another epic has since pulled is rowless, and an item
+  that was never this epic's stays the discovery session's pull-forward.
 - **R7 — After the postpone the roadmap owns the topic.** `roadmap
   remove` over an item carrying `postponed_from` cancels the epic's row
   in the same transaction — marker and stashed items alike — so "actually
@@ -89,10 +103,13 @@ same need and is retired by this design.
   postponed row naming the roadmap. `roadmap move` re-buckets it freely.
   `topic triage` accepts a postponed row: a concern for a topic that
   waits is mail that waits with it.
-- **R8 — A live experiment locks.** Any non-terminal record on the
-  topic's series refuses the postpone naming the record; conclude or
-  abandon it first. A laboratory cannot run under a topic that has left
-  the epic, and abandoning it is the destructive act this design avoids.
+- **R8 — A live experiment locks, and so does a dead end.** Any
+  non-terminal record on the topic's series refuses the postpone naming
+  the record; conclude or abandon it first. A laboratory cannot run under
+  a topic that has left the epic, and abandoning it is the destructive
+  act this design avoids. A dead-ended (`handled`) topic refuses too: it
+  has nothing to carry forward, so "later" is a contradiction — reopen
+  it first.
 - **R9 — Presence is a cue, never a lock.** A unit a live session holds
   shows its in-session age on the menu row and in the gate; cancel's
   ruling, reused.
@@ -151,9 +168,11 @@ born_map, born_horizon, reverted_join}`.
 
 ### The derivations
 
-- `postponePlan(manifest, name)` in `derivations.cjs`, beside
-  `cancelPlan`; `postponeLocks` folded in so a menu row and a refusal read
-  one source.
+- `postponePlan(manifest, name, project)` in `derivations.cjs`, beside
+  `cancelPlan`, its locks folded in so a menu row and a refusal read one
+  source: no such topic, already postponed, cancelled, dead-ended, a
+  started specification over the discussion, a live experiment record, a
+  roadmap name clash.
 - `computeTopicLifecycle` reads `postponed: true` first, beside
   `cancelled`, and answers `postponed`. Every non-live status list gains
   `postponed` where it names `cancelled` — `NON_LIVE`, the aggregation
@@ -190,6 +209,11 @@ born_map, born_horizon, reverted_join}`.
 - `render topic-receipt {wu}.discovery.{name} --verb postpone` — the
   verb enum extended; the receipt names the horizon.
 - `render horizon-pick` — reused as it is.
+- `gateway.cjs pull-forward-menu {wu}` — the return's sub-view: the
+  roadmap items this epic postponed that still wait, one row each with
+  its horizon, the key carrying the item's own name.
+- `render topic-receipt {wu}.discovery.{name} --verb restore` — the pull
+  forward's receipt, naming the statuses the unit's items returned to.
 
 ### The doors
 
@@ -219,9 +243,12 @@ born_map, born_horizon, reverted_join}`.
   `cancelled` does.
 - The pull side: `pull.md`'s record read derives the prior record from
   `postponed_from` beside the sources; the research and discussion
-  initialisation read `prior` in full — brief, research, discussion, and
-  the queue's files as concerns to raise where they still apply — as a
-  durable input, never relayed through the handoff.
+  initialisations load `read-prior-record.md` beside the brief read —
+  brief, research, discussion, and both queues' files as concerns to
+  raise where they still apply — as a durable input, never relayed
+  through the handoff.
+- The epic menu's `f/forward` row: the pull-forward sub-view, the verb
+  with `--routing` naming nothing, the restore receipt, back to the menu.
 
 ### The gap brief
 
@@ -282,8 +309,8 @@ The write rides the gate's own commit.
 | `roadmap.cjs` | birth/re-wait arm, `postponed_from`, sources extension, clash refusal; `remove` cascade; `pull-forward` restore branch; `bind` copies `prior` |
 | `fields.cjs` | status write and delete refused on postponed items |
 | `epic-detail.cjs` / `projections` | the postponed line with horizons; the menu row |
-| `render.cjs` | `postponeGate`; `topic-receipt --verb postpone` |
-| `gateway.cjs` (continue-epic) | `postpone-menu` |
+| `render.cjs` | `postponeGate`; `topic-receipt --verb postpone|restore`; the candidate gate's `p/postpone` row |
+| `gateway.cjs` (continue-epic) | `postpone-menu`, `pull-forward-menu` |
 | `discovery-map.cjs` | `add --brief-path` |
 | schema | `postponed`, `postponed_from`, `prior` |
 | `engine.cjs` / `commands.md` | usage lines |
@@ -312,9 +339,9 @@ The write rides the gate's own commit.
   line), `discussion-postpones-its-own-topic` (the section, the commit
   first, the bridge), `research-postpones-a-sibling` (no bridge, the turn
   resumes), `gap-gate-postpones-a-candidate`, `gap-gate-approve-writes-a-brief`,
-  `pull-forward-restores-a-postponed-topic`, `discussion-reads-a-prior-record`
+  `epic-menu-restores-a-postponed-topic`, `discussion-reads-a-prior-record`
   (the new-epic topic's initialisation reads the prior files and raises a
-  queued concern).
+  queued concern), `roadmap-pull-reads-a-postponed-record`.
 
 ## Build plan
 
@@ -339,6 +366,17 @@ opens.
 
 ## Log
 
+- 2026-09-22 — Built as PR1 #1273 (the gap brief) and stack #1281
+  (#1273 → #1280 engine → #1285 doors → #1288 return), each slice one
+  agent, each reviewed against the tree before the next opened. Settled
+  during the build: a dead end locks the postpone (reopen first); the
+  roadmap name clash is re-read under the project lock at the landing;
+  the epic menu carries the return's own `f/forward` row over the items
+  this epic postponed; the horizon step is one shared reference
+  (`choosing-a-horizon.md`) the park and the postpone both load; the
+  prior record's queued concerns are raised through the existing raise
+  and fold with no tracking field; `--routing` names nothing on the
+  return branch of `pull-forward`. Walks owed on the user's word.
 - 2026-09-22 — Opened as `design/topic-postpone.md` (PR0). Rulings
   R1–R13 agreed in conversation 2026-09-15 to 2026-09-22: the need behind
   idea 44 is the roadmap's; postpone is cancel's unit with a different
