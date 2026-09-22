@@ -205,7 +205,7 @@ function baselineDocPick(d) {
 }
 
 /**
- * The one-time boot offer — workflow-start's Step 0.5 gate.
+ * The one-time boot offer — workflow-start's Step 0.6 gate.
  * @returns {string}
  */
 function baselineOfferGate() {

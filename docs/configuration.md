@@ -28,6 +28,18 @@ If you work inside tmux, the first `/workflow-start` in a project asks once whet
 
 Whatever you answer, the workflows keep a small session-end hook in the project's Claude settings, which tidies up after a finished session — clearing the markers that tell other sessions a topic is in use, and restoring your tmux name if you opted in. Opting in adds a second hook that puts the label back when you resume a session. You may see them appear in `.claude/settings.json` after your first start.
 
+## The gate surface
+
+The first `/workflow-start` in a project also asks once whether the workflows may draw their gates as pressable rows in the band above the prompt, instead of printing each menu into the transcript. Turned on, the rows stay put while the transcript scrolls and a click, the row's own key, or Enter answers; turned off, every gate is the text menu it always was. You answer once per project.
+
+Saying yes writes `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` block of the project's `.claude/settings.json` — the switch for Claude Code's function hooks, which are early access, and which the flag turns on for every plugin in this project's sessions. Claude Code reads settings when a session starts, so the session you answer in still sees text menus; the next one has the rows. Changing your mind later is one command, and it puts the flag back either way:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
+```
+
+Nothing else depends on the answer: the engine emits every menu as text regardless, so a gate surface that is off, absent or broken leaves the menus exactly as they were.
+
 ## Handing over the gates
 
 Every approval loop offers an auto option, and choosing it is how you hand that particular gate over — from then on the system proceeds there without stopping to ask. This is scoped and reversible rather than a global switch. Some gates reset to asking at the start of each session, so auto is an opt-in for a sitting rather than a permanent setting, and the implementation task and fix gates also offer a bounded auto that hands the gate over only to the end of the current plan phase; and certain escalations override auto entirely — when a fix loop or an analysis loop hits its limit, it stops and asks regardless, because those are the moments a human needs to look. Auto is always something you choose at a gate, never something the system infers from a past choice or a stored preference. The reasoning is covered in [the collaboration model](collaboration.md).
