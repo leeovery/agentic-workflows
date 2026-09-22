@@ -474,11 +474,11 @@ function lockingSpecsPhrase(specs, nameOf = (n) => n) {
 function postponePlan(manifest, name, project) {
   /** @type {{reason: string}[]} */
   const locks = [];
-  const lifecycle = computeTopicLifecycle(manifest, name).lifecycle;
   if (!discoveryUnitExists(manifest, name)) {
     locks.push({ reason: `no topic "${name}" — nothing on the map and no research or discussion item of that name` });
     return { items: [], discards: [], locks };
   }
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'postponed') {
     locks.push({ reason: `"${name}" is already postponed — it waits on the roadmap` });
   }

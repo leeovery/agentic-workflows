@@ -5,10 +5,12 @@
 // unit, stored on the project manifest's `roadmap` node: an ordered
 // `horizons` list (user-named release labels; position carries the
 // semantics) and an `items` record of capability-grain chunks, each
-// `{horizon, summary, origin[, sources][, pulled_to]}` — never a status
-// field: item lifecycle is computed at render time by joining `pulled_to`
-// against the named work unit, the same trick the discovery map uses one
-// level down. "Waiting" is the absence of a join.
+// `{horizon, summary, origin[, sources][, pulled_to][, postponed_from]}` —
+// never a status field: item lifecycle is computed at render time by joining
+// `pulled_to` against the named work unit, the same trick the discovery map
+// uses one level down. "Waiting" is the absence of a join, and
+// `postponed_from` names the epic a waiting item left, so the removal and
+// the return can each find the row that waits for it.
 //
 // Authority splits at the pull (design/product-roadmap.md, decision 25):
 // left of it the map is loose — un-pulled items take every edit; right of it
@@ -353,18 +355,20 @@ function transactProject(cwd, fn) {
 }
 
 /**
- * Tail-commit the project manifest and stamp the result — the shared close
- * of every mutation. The state write has landed; a git failure degrades to
- * a warning and a pending note, never a failed verb.
+ * Tail-commit the project manifest — and a work unit's alongside it, for the
+ * mutations that reach across the boundary — and stamp the result: the shared
+ * close of every mutation. The state write has landed; a git failure degrades
+ * to a warning and a pending note, never a failed verb. `warnings` seeds the
+ * array where the mutation already gathered some (a knowledge sync).
  * @param {string} cwd @param {RoadmapOpResult} result @param {string} message
+ * @param {{workUnit?: string, warnings?: string[]}} [opts]
  * @returns {RoadmapOpResult}
  */
-function commitRoadmap(cwd, result, message) {
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, message, warnings);
+function commitRoadmap(cwd, result, message, { workUnit, warnings = [] } = {}) {
+  const spec = workUnit ? [PROJECT_MANIFEST_SPEC, `.workflows/${workUnit}/manifest.json`] : PROJECT_MANIFEST_SPEC;
+  const outcome = commitTailPathspec(cwd, spec, message, warnings);
   result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
+  if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -602,19 +606,9 @@ function removeRoadmapItem(cwd, name) {
     if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
     return out;
   });
-  if (!postponed) return commitRoadmap(cwd, result, `roadmap: remove ${name}`);
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitTailPathspec(
-    cwd,
-    [PROJECT_MANIFEST_SPEC, `.workflows/${postponed.work_unit}/manifest.json`],
-    `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  return result;
+  return postponed
+    ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit })
+    : commitRoadmap(cwd, result, `roadmap: remove ${name}`);
 }
 
 /**
@@ -875,20 +869,9 @@ function bindItem(cwd, name, { topic } = {}) {
   if (result.prior) {
     const { setPrior } = require('./discovery-map.cjs');
     setPrior(cwd, /** @type {string} */ (result.work_unit), topic, result.prior);
-    /** @type {string[]} */
-    const warnings = [];
-    const outcome = commitTailPathspec(
-      cwd,
-      [PROJECT_MANIFEST_SPEC, `.workflows/${result.work_unit}/manifest.json`],
-      `roadmap: bind ${name} to ${result.work_unit}/${topic}`,
-      warnings,
-    );
-    result.committed = outcome.committed;
-    if (outcome.failed) result.warnings = warnings;
-    noteCommitOutcome(result, outcome);
-    return result;
   }
-  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`);
+  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`,
+    result.prior ? { workUnit: result.work_unit } : {});
 }
 
 /**
@@ -910,16 +893,8 @@ function returnPostponed(cwd, name, into, topic) {
     delete item.postponed_from;
     return { op: 'pull-forward', name, into, topic, state: 'in-flight', restored: returned.restored };
   });
-  const outcome = commitTailPathspec(
-    cwd,
-    [PROJECT_MANIFEST_SPEC, `.workflows/${into}/manifest.json`],
-    `roadmap: pull-forward ${name} into ${into}`,
-    returned.warnings,
-  );
-  result.committed = outcome.committed;
-  if (returned.warnings.length > 0) result.warnings = returned.warnings;
-  noteCommitOutcome(result, outcome);
-  return result;
+  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`,
+    { workUnit: into, warnings: returned.warnings });
 }
 
 /**
@@ -997,18 +972,7 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     if (from) out.prior = { work_unit: from.work_unit, topic: from.topic };
     return out;
   });
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitTailPathspec(
-    cwd,
-    [PROJECT_MANIFEST_SPEC, `.workflows/${into}/manifest.json`],
-    `roadmap: pull-forward ${name} into ${into}`,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  return result;
+  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`, { workUnit: into });
 }
 
 /**

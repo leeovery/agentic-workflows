@@ -75,6 +75,15 @@ function assertNotDerived(phase, message) {
 }
 
 /**
+ * The refusal every hand transition makes over a postponed item: the topic
+ * left the epic whole and the pull is the one way back.
+ * @param {string} phase @param {string} topic
+ */
+function postponedRefusal(phase, topic) {
+  return `${phase} item "${topic}" is postponed — the topic waits on the roadmap; pull it forward from there instead`;
+}
+
+/**
  * @typedef {object} CancelledItem
  * @property {string} phase
  * @property {string} previous_status  the status the item held before the cancel
@@ -285,15 +294,6 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {string} [note]       delivery form: set when committed is null
  * @property {string[]} [warnings] delivery form: the tail commit's failure detail
  */
-
-/**
- * The refusal every hand transition makes over a postponed item: the topic
- * left the epic whole and the pull is the one way back.
- * @param {string} phase @param {string} topic
- */
-function postponedRefusal(phase, topic) {
-  return `${phase} item "${topic}" is postponed — the topic waits on the roadmap; pull it forward from there instead`;
-}
 
 /**
  * A topic name usable in paths: non-empty, no separators, no traversal.
