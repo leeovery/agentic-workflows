@@ -456,16 +456,28 @@ function postponeClashPhrase(name, item) {
 }
 
 /**
- * The horizon a postponed topic waits under — the roadmap item whose
- * `postponed_from` names it — or null when no item does.
- * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
- * @returns {string|null}
+ * @typedef {object} PostponedItem
+ * @property {string} name          the item's own name — the topic's, or the name it waited under before the pull that made it a topic
+ * @property {string|null} horizon  the bucket it sits in
+ * @property {boolean} waiting      no join — the pull forward's return leg is open
  */
-function postponedHorizon(project, workUnit, topic) {
-  for (const item of Object.values(roadmapItems(project))) {
+/**
+ * The roadmap item a postponed topic waits as — the one whose
+ * `postponed_from` names it — or null when no item does. The one join the
+ * dashboard's postponed line, the receipt's horizon, and the pull-forward
+ * row all read.
+ * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
+ * @returns {PostponedItem|null}
+ */
+function postponedItem(project, workUnit, topic) {
+  for (const [name, item] of Object.entries(roadmapItems(project))) {
     const from = item && typeof item === 'object' ? itemPostponedFrom(item) : null;
     if (from && from.work_unit === workUnit && from.topic === topic) {
-      return typeof item.horizon === 'string' ? item.horizon : null;
+      return {
+        name,
+        horizon: typeof item.horizon === 'string' ? item.horizon : null,
+        waiting: itemJoin(item) === null,
+      };
     }
   }
   return null;
@@ -1350,7 +1362,7 @@ module.exports = {
   itemPostponedFrom,
   postponeTarget,
   postponeClashPhrase,
-  postponedHorizon,
+  postponedItem,
   lockingSpecsPhrase,
   proposedGroupings,
   specReactivateLocks,

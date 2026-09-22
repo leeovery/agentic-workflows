@@ -777,6 +777,12 @@ function commandOptions(workUnit, detail, hasMap) {
   if (detail.cancelled.length > 0) {
     opts.push({ key: 'e', word: 'reactivate', action: 'reactivate_topic', topic: null, route: null, label: 'Reactivate a cancelled topic' });
   }
+  // The postpone's mirror: this menu let the topic go, so this menu takes it
+  // back. A postponed item pulled into some other epic is that epic's now —
+  // no longer waiting, and no row here.
+  if (detail.postponed.some((t) => t.waiting)) {
+    opts.push({ key: 'f', word: 'forward', action: 'pull_forward_topic', topic: null, route: null, label: 'Pull a postponed topic back from the roadmap' });
+  }
   const anyPlanBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   if (anyPlanBlocked) {
@@ -1065,6 +1071,7 @@ function epicInSessionGate(workUnit, entry) {
  * @property {string|null} route      skill invocation, or null when the flow continues internally
  * @property {string} label
  * @property {string} [dep]           unblock rows — the dependency topic to mark satisfied
+ * @property {string} [item]          pull-forward rows — the roadmap item the topic waits as
  */
 
 /**
@@ -1075,6 +1082,7 @@ function epicInSessionGate(workUnit, entry) {
  * @property {string|null} route
  * @property {string} [group]  the display heading the row sits under — the titlecased phase when absent
  * @property {string} [dep]   unblock rows — the dependency topic to mark satisfied
+ * @property {string} [item]  pull-forward rows — the roadmap item the topic waits as
  */
 
 /**
@@ -1129,7 +1137,7 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
     let hang = 0;
     if (r.locked === undefined) {
       const key = String(keys.length + 1);
-      keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.dep ? { dep: r.dep } : {}) });
+      keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.dep ? { dep: r.dep } : {}), ...(r.item ? { item: r.item } : {}) });
       text = `${key}. ${r.row}`;
       hang = `${key}. `.length;
     } else {
@@ -1275,6 +1283,30 @@ function epicPostponeMenu(detail, opts = {}) {
 }
 
 /**
+ * Section I — the Postponed Topics list and pick menu: the topics this epic
+ * sent to the roadmap that still wait there, each row naming the horizon it
+ * waits under. The key carries the roadmap item's own name, which the pull
+ * forward addresses. No routes — the flow runs the pull-forward transaction.
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
+ */
+function epicPullForwardMenu(detail) {
+  const rows = detail.postponed.filter((t) => t.waiting).map((t) => {
+    const name = titlecase(t.name);
+    return {
+      phase: 'discovery',
+      group: UNIT_GROUP.discovery,
+      topic: t.name,
+      item: /** @type {string} */ (t.item),
+      row: `${title({ label: name, tag: 'postponed' })} — ${t.horizon}`,
+      label: `Pull "${name}" forward — *waiting under ${t.horizon}*`,
+      route: null,
+    };
+  });
+  return selectionSubView('Postponed Topics', 'No postponed topics waiting.', 'Which topic would you like to pull forward?', 'pull-forward', rows);
+}
+
+/**
  * Section G — the blocked-plans list and pick menu, one row per blocking
  * dependency (a plan with two blockers gets two rows). The `topic` slot
  * carries the plan, the `dep` field the dependency topic to mark satisfied.
@@ -1300,4 +1332,4 @@ function epicUnblockMenu(detail) {
   return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };

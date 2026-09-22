@@ -21,7 +21,7 @@ const {
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  postponePlan, postponeTarget, postponeClashPhrase, postponedHorizon,
+  postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1198,14 +1198,18 @@ describe('reads + derivations', () => {
         'a roadmap item named "auth" is not this topic\'s — rename or remove it on the roadmap first');
     });
 
-    it('postponedHorizon joins the roadmap by postponed_from, null when nothing does', () => {
+    it('postponedItem joins the roadmap by postponed_from, null when nothing does', () => {
       const proj = { roadmap: { horizons: ['next'], items: {
         ordering: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'away' } },
+        taken: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'gone' }, pulled_to: { work_unit: 'other' } },
       } } };
-      assert.strictEqual(postponedHorizon(proj, 'pay', 'away'), 'next');
-      assert.strictEqual(postponedHorizon(proj, 'other', 'away'), null);
-      assert.strictEqual(postponedHorizon(proj, 'pay', 'auth'), null);
-      assert.strictEqual(postponedHorizon(null, 'pay', 'away'), null);
+      // The item's own name, not the topic's — a harvest rename moves them apart.
+      assert.deepStrictEqual(postponedItem(proj, 'pay', 'away'), { name: 'ordering', horizon: 'next', waiting: true });
+      // Pulled into another epic since: still the topic's item, no longer waiting.
+      assert.deepStrictEqual(postponedItem(proj, 'pay', 'gone'), { name: 'taken', horizon: 'next', waiting: false });
+      assert.strictEqual(postponedItem(proj, 'other', 'away'), null);
+      assert.strictEqual(postponedItem(proj, 'pay', 'auth'), null);
+      assert.strictEqual(postponedItem(null, 'pay', 'away'), null);
     });
 
     it('the lifecycle reads the marker first, and a map-less topic by its every-item fallback', () => {

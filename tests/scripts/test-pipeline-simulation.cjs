@@ -60,7 +60,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.c
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
-const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
 
@@ -2280,6 +2280,8 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const detail = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
     const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
+    const pullable = () => epicPullForwardMenu(detail()).keys.filter((k) => k.action === 'pull-forward').map((k) => [k.topic, k.item]);
+    const menuActions = () => epicMenu(wu, detail()).keys.map((k) => k.action);
 
     sim.run(['topic', 'start', wu, 'research', 'researched']);
     sim.write(`.workflows/${wu}/research/researched.md`, '# Research — researched\n');
@@ -2315,9 +2317,9 @@ describe('pipeline simulation', () => {
     // own completion all walk past a topic that has left.
     const d = detail();
     assert.deepStrictEqual(d.postponed, [
-      { name: 'decided', horizon: 'later' },
-      { name: 'fresh-one', horizon: 'next' },
-      { name: 'researched', horizon: 'later' },
+      { name: 'decided', horizon: 'later', item: 'decided', waiting: true },
+      { name: 'fresh-one', horizon: 'next', item: 'fresh-one', waiting: true },
+      { name: 'researched', horizon: 'later', item: 'researched', waiting: true },
     ]);
     assert.strictEqual(d.discovery_map.find((r) => r.name === 'researched').lifecycle, 'postponed');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.researched`, 'status']), 'postponed');
@@ -2347,9 +2349,16 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].cancelled, true);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].postponed, undefined);
 
+    // The menu's return row and its sub-view carry what still waits — the
+    // removed item is gone from both, the cancelled row with it.
+    assert.ok(menuActions().includes('pull_forward_topic'));
+    assert.deepStrictEqual(pullable(), [['decided', 'decided'], ['researched', 'researched']]);
+
     // The pull is the return: the same epic restores the unit it postponed.
     const back = sim.run(['roadmap', 'pull-forward', 'researched', '--into', wu]);
     assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'completed' }]);
+    assert.match(sim.render(['topic-receipt', `${wu}.discovery.researched`, '--verb', 'restore'], { expect: 'content' }),
+      /Pulled "Researched" forward\. Restored research \[completed\]\./);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.researched.order, 2, 'the map order returns');
     assert.strictEqual(sim.manifest(wu).phases.research.items.researched.status, 'completed');
     assert.strictEqual('postponed_from' in sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched'), false);
@@ -2364,6 +2373,11 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(elsewhere.prior, { work_unit: wu, topic: 'decided' });
     assert.deepStrictEqual(sim.manifest(next).phases.discovery.items.decided.prior, { work_unit: wu, topic: 'decided' });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.decided.postponed, true, 'the prior epic keeps its record');
+    // Taken by another epic, the item no longer waits: the prior epic's row
+    // stays postponed with no way back, and its return row withdraws.
+    assert.deepStrictEqual(detail().postponed.filter((t) => t.waiting), []);
+    assert.deepStrictEqual(pullable(), []);
+    assert.ok(!menuActions().includes('pull_forward_topic'));
 
     // A pulled-from-roadmap topic postponed again re-waits its own item.
     sim.run(['topic', 'postpone', next, 'decided', '--horizon', 'someday']);

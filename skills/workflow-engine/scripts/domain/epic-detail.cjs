@@ -28,7 +28,7 @@ const {
   lockingSpecs,
   CLOSED_LIFECYCLES,
   postponePlan,
-  postponedHorizon,
+  postponedItem,
   specReactivateLocks,
   reactivateLockPhrases,
   deliveryStarted,
@@ -117,6 +117,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @typedef {object} PostponedTopic
  * @property {string} name
  * @property {string|null} horizon  the roadmap bucket it waits in — null when no item joins it
+ * @property {string|null} item     the roadmap item's own name — the pull forward's argument
+ * @property {boolean} waiting      the item is waiting, so the topic can be pulled back
  */
 
 /**
@@ -371,16 +373,26 @@ function postponableUnits(manifest, discoveryMap, project) {
 }
 
 /**
- * The postponed topics with the horizon each waits under — the roadmap
- * joined by `postponed_from`, so the dashboard's compact line names where
- * the topic went rather than only that it left.
+ * The postponed topics with the roadmap item each waits as — joined by
+ * `postponed_from`, so the dashboard's compact line names where the topic
+ * went rather than only that it left, and the pull-forward row knows which
+ * item brings it back. An item pulled into another epic since is no longer
+ * waiting: its topic stays postponed here with no way back.
  * @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
  * @returns {PostponedTopic[]}
  */
 function postponedTopics(manifest, discoveryMap, project) {
   return discoveryUnits(manifest, discoveryMap)
     .filter(({ name, row }) => (row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle) === 'postponed')
-    .map(({ name }) => ({ name, horizon: postponedHorizon(project, manifest.name, name) }));
+    .map(({ name }) => {
+      const item = postponedItem(project, manifest.name, name);
+      return {
+        name,
+        horizon: item ? item.horizon : null,
+        item: item ? item.name : null,
+        waiting: item !== null && item.waiting,
+      };
+    });
 }
 
 /**
