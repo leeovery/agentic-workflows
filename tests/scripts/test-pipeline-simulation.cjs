@@ -982,6 +982,13 @@ describe('pipeline simulation', () => {
     const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
     assert.strictEqual(closed.status, 'incorporated');
 
+    // The findings sign-off (findings-signoff B) is read from the
+    // investigation file, and the gate refuses a topic that has none.
+    assert.match(sim.render(['findings-signoff-gate', `${wu}.investigation.${wu}`], { expect: 'content' }),
+      /◆ Do these findings match your understanding\?/);
+    sim.refuses(['render', 'findings-signoff-gate', `${wu}.investigation.never-traced`],
+      /no investigation file for "never-traced" — the sign-off is read from the record/);
+
     sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`, '--topic', `investigation/${wu}`]);
     sim.render(['conclude-gate', `${wu}.investigation.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
@@ -1101,11 +1108,26 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', log]);
 
-    // Complexity check promotes: both manifests flip, then commit.
+    // Complexity check (complexity-check B): which criteria the change fails
+    // is the session's read, so the concerns ride a payload; the type is the
+    // surface's to check. Both manifests flip, then commit.
+    const concerns = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/complexity.json`,
+      { concerns: ['Requires design decisions about the new API surface'] });
+    assert.match(sim.render(['complexity-gate', wu, '--file', concerns], { expect: 'content' }),
+      /• Requires design decisions about the new API surface/);
     sim.run(['manifest', 'set', wu, 'work_type', 'feature']);
     sim.run(['manifest', 'set', `project.work_units.${wu}.work_type`, 'feature']);
     sim.run(['commit', '--workflows', '-m', `workflow(${wu}): promote quick-fix to feature`]);
     assert.strictEqual(sim.manifest(wu).work_type, 'feature');
+    sim.refuses(['render', 'complexity-gate', wu, '--file', concerns],
+      /"grows" is a feature — the complexity check is the quick-fix's own/);
+
+    // The promotion opens the first-phase choice (complexity-check C), which
+    // the flipped type is what makes reachable.
+    const read = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/first-phase.json`,
+      { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
+    assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
+      /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
 
     // The promoted feature runs its first phase normally.
     sim.run(['topic', 'start', wu, 'discussion', wu]);
