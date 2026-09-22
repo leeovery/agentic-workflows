@@ -199,7 +199,7 @@ Branch on the boot response's `gate_surface` — `prompt` means the choice was n
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time.
+> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time by setting `gate_surface` to `false` in `.workflows/manifest.json`.
 ```
 
 Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim as markdown (not a code block):
