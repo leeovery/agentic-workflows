@@ -481,9 +481,11 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
 }
 
 function walkDeliveryPhases(sim, wu, topic, { sources }) {
-  // Specification. The source gate holds engine-side: completion refuses
-  // while any row is still pending, then clears once every row incorporates.
+  // Specification. The entry confirms before the handoff, then the source
+  // gate holds engine-side: completion refuses while any row is still
+  // pending, then clears once every row incorporates.
   label(sim, wu, 'specification', topic);
+  sim.render(['spec-confirm-gate', wu], { expect: 'content' });
   sim.run(['topic', 'start', wu, 'specification', topic]);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'pending']);
@@ -1663,9 +1665,12 @@ describe('pipeline simulation', () => {
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
+    sim.render(['spec-confirm-gate', wu], { expect: 'content' });
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
+    // The unify route confirms through the same gate the create route took.
+    sim.render(['spec-confirm-gate', wu], { expect: 'content' });
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=pending', 'sources.beta.status=pending']);

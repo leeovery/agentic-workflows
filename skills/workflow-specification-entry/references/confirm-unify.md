@@ -29,15 +29,11 @@ Existing specifications to incorporate:
 Output: .workflows/{work_unit}/specification/unified/specification.md
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -58,15 +54,11 @@ Sources:
 Output: .workflows/{work_unit}/specification/unified/specification.md
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
