@@ -1,0 +1,6 @@
+{
+  "name": "workflow-gates",
+  "version": "0.0.1",
+  "description": "Renders agentic-workflows engine gates as real UI instead of prose the model has to echo",
+  "author": { "name": "Lee Overy" }
+}
