@@ -246,7 +246,7 @@ Commands:
   roadmap remove <name>
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
-  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]
+  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
   roadmap flag <name>
   roadmap session open --session-log-file <path>
   roadmap session close -m <message>
