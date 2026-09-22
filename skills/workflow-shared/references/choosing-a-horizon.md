@@ -4,7 +4,7 @@
 
 ---
 
-The caller needs a horizon and the user has not named one. Set `{horizon}` and return.
+The caller needs a horizon for what it is about to land. Set `{horizon}` and return.
 
 ## The Horizon
 
