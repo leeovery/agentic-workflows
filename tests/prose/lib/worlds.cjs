@@ -413,14 +413,19 @@ const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
 
 /** @typedef {{baseline: boolean, walkthrough: boolean, settings_created: boolean}} Stamped */
 
+// The one-time opt-ins every world is pinned out of: a walk never renames
+// the developer's terminal, and never meets the gate-surface question.
+const KILLED_DEFAULTS = { tmux_labels: false, gate_surface: false };
+
 /**
- * Write `defaults.tmux_labels: false` into the world's project manifest
- * (creating the manifest when the fixture has none) — the engine's sole
- * label opt-in, pinned off so a walk never renames the terminal the suite
- * runs in. Canonical manifest style, so mid-walk engine rewrites stay
+ * Write `defaults.tmux_labels: false` and `defaults.gate_surface: false`
+ * into the world's project manifest (creating the manifest when the fixture
+ * has none) — the engine's two one-time opt-ins, pinned off so a walk never
+ * renames the terminal the suite runs in and never meets the gate-surface
+ * question. Canonical manifest style, so mid-walk engine rewrites stay
  * byte-stable. Then seed the session hooks boot wants under that kill
  * into `.claude/settings.json` (creating the file when the fixture has
- * none). Returns what was stamped beyond the label kill.
+ * none). Returns what was stamped beyond the two kills.
  * @param {string} dir
  * @returns {Stamped}
  */
@@ -429,7 +434,7 @@ function stampHarnessState(dir) {
   /** @type {Record<string, any>} */
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-  manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
+  manifest.defaults = { ...(manifest.defaults || {}), ...KILLED_DEFAULTS };
   // A world grows up on the workflows, and workflow-start's one-time
   // baseline judgment would record exactly that — a manifest write and a
   // commit in every start case's delta. `native` pins the branch shut; a
@@ -500,11 +505,12 @@ function isExactly(node, status) {
 }
 
 /**
- * Drop `defaults.tmux_labels` when it carries the harness value, drop an
- * emptied `defaults`, drop the baseline and walkthrough stamps only when
- * materialise stamped them (an answer the walk recorded itself is a real
- * delta the case pins, never a stamp), and drop the manifest entirely when
- * the stamp was all it held.
+ * Drop each killed default that still carries the harness value — an answer
+ * the walk recorded itself reads as a real delta and stays — drop an emptied
+ * `defaults`, drop the baseline and walkthrough stamps only when materialise
+ * stamped them (an answer the walk recorded itself is a real delta the case
+ * pins, never a stamp), and drop the manifest entirely when the stamp was
+ * all it held.
  * @param {Map<string, Buffer>} tree @param {Stamped} stamped
  */
 function unstampManifest(tree, stamped) {
@@ -513,8 +519,10 @@ function unstampManifest(tree, stamped) {
   /** @type {Record<string, any>} */
   let manifest;
   try { manifest = JSON.parse(buf.toString('utf8')); } catch { return; }
-  if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
-  delete manifest.defaults.tmux_labels;
+  if (!manifest || typeof manifest !== 'object' || !manifest.defaults) return;
+  const killed = Object.entries(KILLED_DEFAULTS).filter(([key, value]) => manifest.defaults[key] === value);
+  if (killed.length === 0) return;
+  for (const [key] of killed) delete manifest.defaults[key];
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
   if (stamped.baseline && isExactly(manifest.baseline, 'native')) delete manifest.baseline;
   if (stamped.walkthrough && isExactly(manifest.walkthrough, 'skipped')) delete manifest.walkthrough;

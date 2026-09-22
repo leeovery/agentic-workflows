@@ -190,7 +190,51 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config fals
 
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Knowledge Gate
+### Step 0.4: Gate Surface
+
+Branch on the boot response's `gate_surface` — `prompt` means the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts.
+
+#### If `gate_surface` is `prompt`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The workflows can draw their gates as pressable rows above the prompt instead of printing them as text — the rows stay put while the transcript scrolls, and a click, the row's own key, or Enter answers. It turns on Claude Code's early-access function hooks for every plugin in this project's sessions, and the first session after you answer still sees text menus — settings are read at startup. You're asked once per project.
+```
+
+Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the settings file or the commit will be re-tried at the next start:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
+```
+
+→ Proceed to **Step 0.5**.
+
+**If `no`:**
+
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the settings file or the commit will be re-tried at the next start:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config false
+```
+
+→ Proceed to **Step 0.5**.
+
+#### Otherwise
+
+→ Proceed to **Step 0.5**.
+
+### Step 0.5: Knowledge Gate
 
 Branch on the boot response — run no further commands (the bulk `knowledge index` and `compact` already ran inside boot when the knowledge base was ready, the index building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
 
@@ -200,9 +244,9 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 #### If `knowledge` is `ready`
 
-→ Proceed to **Step 0.5**.
+→ Proceed to **Step 0.6**.
 
-### Step 0.5: Baseline Judgment
+### Step 0.6: Baseline Judgment
 
 Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
 
