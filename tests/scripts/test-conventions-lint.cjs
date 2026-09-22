@@ -683,7 +683,7 @@ const RATCHET_PINS = {
   'skills/workflow-log-bug/SKILL.md': 1,
   'skills/workflow-log-idea/SKILL.md': 1,
   'skills/workflow-log-quickfix/SKILL.md': 1,
-  'skills/workflow-planning-entry/references/cross-cutting-context.md': 2,
+  'skills/workflow-planning-entry/references/cross-cutting-context.md': 1,
   'skills/workflow-planning-process/references/analyze-task-graph.md': 3,
   'skills/workflow-planning-process/references/author-tasks.md': 6,
   'skills/workflow-planning-process/references/conclude-plan.md': 1,
