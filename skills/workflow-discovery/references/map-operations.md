@@ -35,13 +35,14 @@ Then read the user's most recent message. Extract one or more operations. Recogn
 | *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
 | *"close X as a dead end"*, *"X is a dead end"*, *"mark X handled"* | Close as dead end | name                   |
 | *"reopen X"*, *"unhandle X"*                               | Reopen            | name                   |
+| *"postpone X"*, *"push X back to the roadmap"*, *"X is v2"*  | Postpone          | name, horizon if named |
 
 If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one clarifying question before proceeding. No STOP gate is needed for clarification — it's part of conversational flow, not a manifest write.
 
 **Group operations** for safety-by-destructiveness:
 
 - **Additive group** — a contiguous run of Edit summary operations *or* a contiguous run of Edit description operations. Each group batches into one STOP gate, one commit, one session-log entry.
-- **Destructive group** — a single Remove, Rename, or Change routing operation. Each is its own group of one with its own STOP gate and commit.
+- **Destructive group** — a single Remove, Rename, Change routing, or Postpone operation. Each is its own group of one with its own STOP gate and commit; Postpone's STOP is the postpone confirm itself, not `map-op-gate`.
 - **Marker group** — a single Close as dead end or Reopen operation. Non-destructive (it sets or clears a display/convergence marker only), but still its own group of one with its own STOP gate and commit.
 
 Walk the groups in user order. For mixed batches, each destructive op is its own group; contiguous additive ops in between batch.
@@ -52,19 +53,22 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
+**Lifecycle gates** — for destructive (Remove, Rename, Change routing, Postpone) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
-| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled` |
+| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled`, `postponed` |
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
-| Close as dead end | any except `handled`, `cancelled` | `handled`, `cancelled`                                     |
+| Close as dead end | any except `handled`, `cancelled`, `postponed` | `handled`, `cancelled`, `postponed`           |
 | Reopen          | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
+| Postpone        | any except `cancelled`, `postponed` | `cancelled`, `postponed`                                   |
 
-`cancelled` is also disallowed for Remove because the discovery item is the record that the topic was raised and declined. Remove is for mistakes and duplicates — a never-started topic that should not be on the map. Not doing a topic, started or not, is the epic menu's `a/cancel`: it keeps the row and can be reversed.
+`cancelled` and `postponed` are also disallowed for Remove because the discovery item is the record that the topic was raised and declined, or that it went to the roadmap. Remove is for mistakes and duplicates — a never-started topic that should not be on the map. Not doing a topic, started or not, is the epic menu's `a/cancel`: it keeps the row and can be reversed. Not doing it *yet* is Postpone.
+
+Postpone carries no pre-check beyond that row: its gate is the postpone confirm, which refuses a cancelled or already-postponed row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. Every other lifecycle postpones, a dead end included.
 
 `fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 
@@ -89,8 +93,9 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 - `decided` — `discussion has concluded`
 - `handled` — `it is closed as a dead end and stays on the map as record`
 - `cancelled` — `it is cancelled and stays on the map as record`
+- `postponed` — `it is postponed and waits on the roadmap`
 
-`{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For a `cancelled` target, `Reactivate it from the epic menu first.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
+`{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For a `cancelled` target, `Reactivate it from the epic menu first.` For a `postponed` target, `Pull it forward from the roadmap first.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead — or postpone it to the roadmap for later.`
 
 **Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `triage=waiting` topic, or a Reopen op on a non-`handled` topic, render in a code block:
 
@@ -104,8 +109,10 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 
 - Close as dead end on `handled` — `it's already closed`
 - Close as dead end on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
+- Close as dead end on `postponed` — `it's postponed; pull it forward from the roadmap first`
 - Close as dead end on `triage=waiting` — `rerouted concerns are parked in its {research|discussion} triage; start the topic to drain them, or cancel the topic from the epic menu instead`
 - Reopen on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
+- Reopen on `postponed` — `it's postponed; pull it forward from the roadmap first`
 - Reopen on any other non-`handled` lifecycle — `it isn't closed as a dead end, so there's nothing to reopen`
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
@@ -159,6 +166,10 @@ Walk the validated operation groups in user order. For the next pending group:
 #### If the group is a Reopen operation
 
 → Proceed to **J. Reopen**.
+
+#### If the group is a Postpone operation
+
+→ Proceed to **L. Postpone**.
 
 #### Otherwise (no groups remain)
 
@@ -451,3 +462,31 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 All operation groups have been processed.
 
 → Return to caller.
+
+## L. Postpone
+
+The horizon, the confirm, the transaction, and the receipt are the shared door's. It returns having sent the topic to the roadmap, or having left it where it is.
+
+→ Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `discovery`, topic = `none`.
+
+**If the topic was postponed:**
+
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
+
+```markdown
+- Postponed: {name} → {horizon}
+```
+
+The verb committed both manifests itself, so this commit carries the log alone:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): postpone {name} to {horizon}" --discovery
+```
+
+→ Return to **C. Apply** for the next group.
+
+**Otherwise:**
+
+The postpone was refused or declined — nothing was written, and nothing is logged.
+
+→ Return to **C. Apply** for the next group.
