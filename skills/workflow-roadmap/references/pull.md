@@ -52,7 +52,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate
 
 Hold `work_type` (`epic` or `feature`).
 
-Load **[name-resolution.md](../../workflow-discovery/references/name-resolution.md)** and follow its instructions as written — `inbox_seeds` is `none`; the suggestion derives from the `description`. On return, `work_unit` is confirmed and collision-free.
+Load **[name-resolution.md](../../workflow-discovery/references/name-resolution.md)** and follow its instructions as written — `inbox_seeds` is `none`; the name derives from the `description`, or from the horizon where the selection is a whole one. On return, `work_unit` holds the derived kebab-case name.
 
 → On return, proceed to **C. Read the Record**.
 
@@ -76,10 +76,23 @@ Draft the unit's first discovery session log at `.workflows/.cache/{work_unit}/d
 
 ## E. Create and Join
 
-One creation, then the joins (each self-commits):
+Create the unit (self-commits):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md
+```
+
+#### If the response is `ok: false` naming a work unit that already exists
+
+The derived name is taken and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the backfill re-stages under it.
+
+→ Return to **D. Author the Backfill**.
+
+#### Otherwise
+
+Join the items (self-commits):
+
+```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull {item} {item} --into {work_unit}
 ```
 

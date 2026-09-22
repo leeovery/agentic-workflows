@@ -7,8 +7,9 @@ The prose should have taken this path:
    with only the waiting items, and the selection resolves through its
    numbered table
 3. the unit is shaped with the user — one epic for the two items — and
-   the name they give is checked for collision before anything is
-   created
+   the name they gave while shaping is carried straight into the
+   creation: nothing is suggested back to them, and no collision check
+   runs ahead of the engine
 4. the record crosses as the fenced backfill: the epic's session-001 is
    authored from the pulled items' slice of the roadmap record (their
    threads, the launch reasoning), not a copy of the whole product

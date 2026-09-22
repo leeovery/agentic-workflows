@@ -27,9 +27,8 @@
     "i — view the inbox",
     "1 and 2 — both ideas",
     "w — work the set",
-    "Exactly that — it's one feature. Saved filters on the orders list: a user names a combination of status, date range, and customer, it appears in a dropdown above the list, and they can mark one saved filter as their default view on login. Per-user, not shared, and nothing else about the orders list changes. No files beyond what you've read.",
-    "y — that's the right shape, set it up",
-    "call it saved-filters"
+    "Exactly that — it's one feature. Saved filters on the orders list: a user names a combination of status, date range, and customer, it appears in a dropdown above the list, and they can mark one saved filter as their default view on login. Per-user, not shared, and nothing else about the orders list changes. Call it saved-filters. No files beyond what you've read.",
+    "y — that's the right shape, set it up"
   ],
   "invariants": {
     "engine_before_write": true,
@@ -37,7 +36,6 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "manifest exists saved-filters",
       "workunit create saved-filters feature",
       "--seed .workflows/.inbox/ideas/2026-01-01--saved-search-filters.md",
       "--seed .workflows/.inbox/ideas/2026-01-01--filter-default-view.md"
@@ -46,10 +44,10 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "manifest exists saved-filters",
       "workunit create saved-filters feature"
     ],
     "calls_exclude": [
+      "render name-gate",
       "inbox archive",
       "inbox restore",
       "inbox delete",

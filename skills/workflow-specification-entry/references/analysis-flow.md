@@ -141,7 +141,7 @@ Work through these steps in order:
 5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, collect a `delete` op removing the whole item:
    - `{work_unit}.specification` → delete `items.{name}`
 
-6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it. Surface it as a **naming conflict** to the user and drop or rename the colliding target. This protects the invariant — an anchor is never overwritten by a proposed item. A target name equal to a cancelled specification's key is renamed — the key is reserved for that specification's reactivation, and the resemblance line from **C** is what the user sees.
+6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it — rename the colliding target; an anchor is never overwritten by a proposed item. A target name equal to a cancelled specification's key is renamed too — the key is reserved for that specification's reactivation, and the resemblance line from **C** is what the user sees.
 
 7. **Upsert proposed.** For each surviving target name, collect `set` ops — `status: proposed` plus one `sources.{discussion}.status: pending` per grouping member — and, for an existing-proposed item being regenerated, a `delete` op per source no longer in the grouping (pruning is allowed only on proposed items, never anchors). A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
 

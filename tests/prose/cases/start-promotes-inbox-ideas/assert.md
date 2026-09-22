@@ -20,9 +20,9 @@ The prose should have taken this path:
    settles the shape decisively
 7. the read is stated as prose above the commit gate; the fifth answer
    confirms — the work type is feature
-8. name resolution: with multiple seeds the suggestion derives from
-   the description, and the sixth answer names it saved-filters; the
-   conflict check finds no existing work unit
+8. the name is the one the user gave while shaping, saved-filters —
+   neither derived from the seeds nor put back to them at a gate, and
+   nothing checks it against existing work before the transaction
 9. the session log is staged to the cache path with a Seed section
    listing both items as seeds/{filename} (inbox:idea), Imports
    (none), and Map State at Start (n/a — single-topic work)

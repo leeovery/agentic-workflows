@@ -18,7 +18,7 @@ Read the recognition indexes silently for the detection core's **J** (skip eithe
 
 Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The folder already pre-seeded `work_type` (bugs → bugfix, quick-fixes → quick-fix, ideas → none); the seeds are still confirmed like any other pick.
 
-With a single seed, hold its filename for name resolution at the confirm-trigger (the filename-slug becomes the suggested name). With several, the name is shaped from the conversation instead.
+With a single seed, hold its filename for the name derivation at the confirm-trigger (the filename-slug becomes the name). With several, the name is derived from the conversation instead.
 
 → Proceed to **B. Render the Opener**.
 

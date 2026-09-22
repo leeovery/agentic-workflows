@@ -166,17 +166,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} 
 
 **If `topic`:**
 
-Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Where the user has not already named it, propose a kebab-case name derived from the gap and ask them to confirm or rename it.
+Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Its name is the one the user gave in the exchange, or a kebab-case name derived from the gap where they gave none.
 
-**STOP.** Wait for user response.
-
-**If the user redirects** — a source should take it after all, or it is not a topic at all:
-
-→ Return to **B. The Gap Exit** (the gate re-renders).
-
-**If the user confirms or names it:**
-
-→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{the confirmed name}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap on the new topic's discussion queue.
+→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{the name}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap on the new topic's discussion queue.
 
 On return, read `result`.
 

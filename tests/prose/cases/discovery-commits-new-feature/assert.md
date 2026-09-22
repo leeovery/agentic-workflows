@@ -7,8 +7,8 @@ The prose should have taken this path:
    with no seed material to read
 3. the pre-seeded work type is treated as a hint, not a given: the read is
    put to the user at a gate and only committed on their answer
-4. a name is suggested, the user's own name is taken in its place, and it
-   is checked against existing work before anything is created
+4. the name is the one the user gave while shaping — nothing is suggested
+   back to them, and no gate asks them to confirm it
 5. the session log is authored into the cache, and one engine transaction
    creates the work unit, installs that log and commits — the log is never
    written into the work unit directory by the walk

@@ -4,13 +4,13 @@
 
 ---
 
-The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists the work unit for **every** work type: resolve the name → author the session log → one engine transaction that creates the work unit, lands imports and seed(s), installs the log, and commits. Routing by work type is deferred to **D**.
+The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists the work unit for **every** work type: derive the name → author the session log → one engine transaction that creates the work unit, lands imports and seed(s), installs the log, and commits. Routing by work type is deferred to **D**.
 
 Inputs held from earlier steps: committed `work_type`, shaped one-line `description`, `import_paths` (paths the user shared during shaping, may be empty), `inbox_seeds` (the list of promoted inbox file paths, may be empty).
 
-## A. Resolve the Name
+## A. Derive the Name
 
-Load **[name-resolution.md](name-resolution.md)** and follow its instructions as written. On return, `work_unit` is confirmed and collision-free.
+Load **[name-resolution.md](name-resolution.md)** and follow its instructions as written. On return, `work_unit` holds the derived kebab-case name.
 
 → On return, proceed to **B. Author the Session Log**.
 
@@ -28,7 +28,7 @@ This session log is the durable carrier: for single-phase types it (plus the man
 
 ## C. Create the Work Unit
 
-One engine transaction persists everything: the manifest (create-if-absent — an existing work unit is reused, never overwritten), imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit.
+One engine transaction persists everything: the manifest, imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit.
 
 Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. A shared path is single-quoted — an image's filename carries spaces, and unquoted each word becomes its own positional — a `~` path is written out in full, since the quotes stop the shell expanding it, and a single quote inside a path is written `'\''`. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
 
@@ -57,6 +57,12 @@ Replace the refused entries in `import_paths` with the corrected value(s). The s
 **If the answer is `skip`:**
 
 Drop the refused entries from `import_paths` — they land nothing — and re-derive the log's **Imports** lines over what remains.
+
+→ Return to **B. Author the Session Log**.
+
+#### If the response is `ok: false` naming a work unit that already exists
+
+The derived name is taken and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the log re-stages under it.
 
 → Return to **B. Author the Session Log**.
 
