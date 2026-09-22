@@ -42,24 +42,13 @@ The output is the full manifests — read each unit's spec status directly from 
 
 **If relevant in-progress specs exist:**
 
-> *Output the next fenced block as a code block:*
+Write the relevant work unit names to `.workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json` with the Write tool — `{"units": ["{cc_work_unit}", …]}` — then render it:
 
-```
-Cross-cutting specifications still in progress:
-These may contain architectural decisions relevant to this plan.
-
-  • {cc_work_unit}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-gate --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed without these, or complete them first?`**
-
-**`c/continue`** → Plan without them
-**`s/stop`**     → Complete them first
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
