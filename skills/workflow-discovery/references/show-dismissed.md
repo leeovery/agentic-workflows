@@ -36,25 +36,13 @@ Dismissed Topics
 
 ## B. Render and Prompt
 
-> *Output the next fenced block as a code block:*
+Fetch the dismissed list and its re-add offer:
 
-```
-Dismissed Topics
-
-@foreach(name in dismissed)
-  • {name}
-@endforeach
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dismissed-topics {work_unit}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Re-add any of these to the map?`**
-
-**`b/back`**    → Return to the session
-**Name them** → Tell me which to re-add (and routing if known)
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

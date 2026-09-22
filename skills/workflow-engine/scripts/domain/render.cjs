@@ -22,7 +22,7 @@ const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
+const { absorbTargetMenu, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate, completedActions } = require('./projections/start.cjs');
 const { archivedItem } = require('./inbox-set.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
@@ -2475,6 +2475,35 @@ function candidateGate(cwd, { dotpath, file }) {
     cmdOption('p', 'postpone', 'Postpone — the topic joins the map with its brief and waits on the roadmap under a horizon you name'),
     promptOption('Comment', 'Tell me what to change (routing, summary, or description)'),
   ], { question: 'Add this topic to the map?' }))].join('\n');
+}
+
+// dismissed-topics — the names removed from the map, and the re-add offer
+// the session loop opens over them. The list is the display and the menu is
+// the ask: a re-add names topics and their routing, never one row. An empty
+// list refuses — the loop returns before the fetch.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function dismissedTopics(cwd, { dotpath }) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'dismissed-topics');
+  const names = ((manifest.phases || {}).discovery || {}).dismissed;
+  if (!Array.isArray(names) || names.length === 0) {
+    throw new Error(`render dismissed-topics: "${workUnit}" has no dismissed topics`);
+  }
+  return [
+    section('DISPLAY: dismissed topics', 'emit verbatim as a code block, directly above the menu', [
+      'Dismissed Topics',
+      '',
+      ...names.flatMap((name) => bulletRow(name)),
+    ].join('\n')),
+    section('MENU: dismissed topics', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('b', 'back', 'Return to the session'),
+      promptOption('Name them', 'Tell me which to re-add (and routing if known)'),
+    ], { question: 'Re-add any of these to the map?' })),
+  ].join('\n');
 }
 
 // triage-closed-target — the reroute's stop over a target no future session
@@ -5031,6 +5060,19 @@ function archivedDeleteGateSurface(cwd, args) {
   return archivedDeleteGate(resolveArchivedItem(cwd, args, 'archived-delete-gate'));
 }
 
+// completed-actions — the completed & cancelled view's action menu over the
+// selected unit, its status read where the list read it. An active unit
+// refuses: the list it is picked from holds closed units alone.
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function completedActionsSurface(cwd, args) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, args.dotpath, 'completed-actions');
+  if (manifest.status !== 'completed' && manifest.status !== 'cancelled') {
+    throw new Error(`render completed-actions: "${workUnit}" is not completed or cancelled (status: ${manifest.status ?? 'none'})`);
+  }
+  return completedActions(workUnit, manifest.status);
+}
+
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function revisitPhasesSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
@@ -5582,6 +5624,7 @@ const SURFACES = {
   'backlog-gate': backlogGate,
   'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
+  'dismissed-topics': dismissedTopics,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
   'closing-gate': closingGate,
@@ -5642,6 +5685,7 @@ const SURFACES = {
   'plan-topics': planTopics,
   'archived-actions': archivedActionsSurface,
   'archived-delete-gate': archivedDeleteGateSurface,
+  'completed-actions': completedActionsSurface,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,
   'roadmap-add-gate': roadmapAddGateSurface,
