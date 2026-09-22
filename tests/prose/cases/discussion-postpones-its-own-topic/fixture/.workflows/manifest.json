@@ -1,0 +1,25 @@
+{
+  "work_units": {
+    "search-relevance": {
+      "work_type": "epic"
+    }
+  },
+  "roadmap": {
+    "horizons": [
+      "v1",
+      "v2"
+    ],
+    "items": {
+      "saved-searches": {
+        "horizon": "v1",
+        "summary": "shoppers keep a search and hear when its results change",
+        "origin": "harvest"
+      },
+      "merchandising-rules": {
+        "horizon": "v2",
+        "summary": "buyers pin and bury products for a campaign",
+        "origin": "harvest"
+      }
+    }
+  }
+}

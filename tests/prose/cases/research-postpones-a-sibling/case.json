@@ -1,0 +1,74 @@
+{
+  "origin": "the postpone door is entered two ways and the sibling branch is the one with no safety net: the session stays where it is, so nothing about the commit, the agent close, or the bridge applies, and a door that treated every postpone as its own would close a live research session over a topic it was not working. This walks a user who sends a different topic of the epic to the roadmap mid-research, with the horizon named in the same breath — the named-horizon arm, no roadmap read, no commit, no agent close, no hand-off, and the turn resumed",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-shared/references/postponing-the-topic.md",
+    "skills/workflow-shared/references/choosing-a-horizon.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user opened this research to find out what could replace the hand-maintained synonym list, and is still genuinely on it: they answer what is asked about the failing queries and the expansion sources, and they want the sitting to carry on. What they also bring is a decision made elsewhere about a different topic on this epic's map — relevance-measurement, the evaluation-harness work. The team has agreed there is no harness until the analytics platform migration finishes next year, so that topic is a v2 thing and should go back on the roadmap until then. They say so plainly and in those words, naming it as one of the epic's own topics rather than as something new, and they name v2 in the same breath because the release is exactly what the decision was about. It is an aside, not a change of subject: asked anything about it they repeat the same two facts and nothing more, and they expect to carry on with the synonym research afterwards. On rendered gates they are agreeable: asked to confirm, they confirm. They never ask for a deep dive, never ask to conclude, and never suggest their own topic is in any trouble.",
+  "invariants": {
+    "calls_include": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "render resume-gate search-relevance.research.synonym-handling",
+      "manifest get search-relevance work_type",
+      "render postpone-gate search-relevance.discovery.relevance-measurement --horizon v2",
+      "topic postpone search-relevance relevance-measurement --horizon v2",
+      "render topic-receipt search-relevance.discovery.relevance-measurement --verb postpone"
+    ],
+    "calls_in_order": [
+      "render resume-gate search-relevance.research.synonym-handling",
+      "manifest get search-relevance work_type",
+      "render postpone-gate search-relevance.discovery.relevance-measurement",
+      "topic postpone search-relevance relevance-measurement",
+      "render topic-receipt search-relevance.discovery.relevance-measurement --verb postpone"
+    ],
+    "calls_exclude": [
+      "roadmap state",
+      "render horizon-pick",
+      "render park-gate",
+      "render backlog-gate",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "agent incorporate",
+      "topic postpone search-relevance synonym-handling",
+      "topic cancel",
+      "render cancel-gate",
+      "render research-conclude-gate",
+      "--dead-end",
+      "topic complete",
+      "discovery-map",
+      "workflow-continue-epic/scripts/gateway.cjs",
+      "render phase-completed",
+      "render phase-paused",
+      "workunit cancel"
+    ]
+  }
+}

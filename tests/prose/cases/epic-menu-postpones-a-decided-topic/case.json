@@ -1,0 +1,63 @@
+{
+  "origin": "topic-postpone design — a topic an epic raised itself had no way to the roadmap: cancel marks it declined and takes its knowledge with it, and the park births a capture-weight item from an idea rather than moving an existing topic. Nothing walked the epic menu's primary door: the row, the pick list over Discovery units, the horizon asked in prose over a project with no roadmap, the engine's confirm, and the one transaction that marks the row and creates the map in the same move",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/postponing-the-topic.md",
+    "skills/workflow-shared/references/choosing-a-horizon.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "p — postpone a topic",
+    "2 — Synonym Handling",
+    "v2 — it goes with the managed search product next year",
+    "y — confirm the postpone"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs postpone-menu search-relevance",
+      "manifest get search-relevance work_type",
+      "roadmap state",
+      "render postpone-gate search-relevance.discovery.synonym-handling",
+      "topic postpone search-relevance synonym-handling --horizon v2",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb postpone"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs postpone-menu search-relevance",
+      "roadmap state",
+      "render postpone-gate search-relevance.discovery.synonym-handling",
+      "topic postpone search-relevance synonym-handling",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb postpone",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "render horizon-pick",
+      "render park-gate",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "render cancel-gate",
+      "topic cancel",
+      "topic reactivate",
+      "agent scan",
+      "discovery-map",
+      "manifest set search-relevance.discovery",
+      "topic start",
+      "workunit cancel"
+    ]
+  }
+}

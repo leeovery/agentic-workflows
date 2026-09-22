@@ -1,0 +1,83 @@
+{
+  "origin": "a user mid-discussion said the topic belonged to a later release and the session had nowhere honest to go: cancel marks it declined and takes its conclusions out of retrieval, the backlogging door parks an idea rather than a topic, and conclude pretends the work is done. This walk holds a user who sends the whole topic back to the roadmap two turns in and pins the in-session postpone — the unit resolved from the session's own phase, the horizon picked from a map that exists, the commit before the gate, the engine's confirm, the agent close, one transaction, and the bridge carrying the postponed outcome to the epic menu with no phase banner",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/postponing-the-topic.md",
+    "skills/workflow-shared/references/choosing-a-horizon.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/epic-continuation.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user opened this discussion two sittings ago to settle which behavioural signals feed the ranker, and comes back having learned that none of it can be built yet: the two engineers who own the ranker have been pulled onto the checkout rebuild until the next release, and the refresh cadence they were about to argue is a question for whoever owns the ranker then. They engage honestly for a turn or two first — they answer what is asked about the open thread rather than dodging it — and then say plainly that this whole topic belongs to a later release and should go back on the roadmap. Not cancelled, not written up and closed out, not one thought put aside while the rest carries on: the topic itself, whole, waiting until the team can take it. Pressed on whether to keep going without them, they are firm rather than hesitant — deciding a cadence nobody will implement for a year is deciding it twice. They do not say which release when they first raise it; asked which horizon it belongs to, they pick the second one, v2, because that is when the ranker work is scheduled. If asked again what they want done with it they say the same thing in plainer words and nothing more. On rendered gates they are agreeable: asked to confirm, they confirm. They introduce no new material, never ask what comes next, and never ask to wrap up or conclude.",
+  "invariants": {
+    "calls_include": [
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "manifest get search-relevance work_type",
+      "roadmap state",
+      "render horizon-pick",
+      "render postpone-gate search-relevance.discovery.behavioural-ranking",
+      "agent scan search-relevance discussion behavioural-ranking",
+      "topic postpone search-relevance behavioural-ranking --horizon v2",
+      "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_in_order": [
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "roadmap state",
+      "render horizon-pick",
+      "render postpone-gate search-relevance.discovery.behavioural-ranking",
+      "topic postpone search-relevance behavioural-ranking",
+      "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "topic complete",
+      "topic cancel",
+      "render cancel-gate",
+      "none cancelled",
+      "none paused",
+      "render phase-completed",
+      "render phase-paused",
+      "render backlog-gate",
+      "render park-gate",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "discovery-map",
+      "workunit cancel",
+      "topic reopen",
+      "agent dispatch"
+    ]
+  }
+}
