@@ -18,8 +18,9 @@ The prose should have taken this path:
    construction opens
 4. the one source still reads `pending` and the specification holds
    only the body template, so extraction runs over the discussion and
-   the first piece is presented in the shape it would take in the
-   specification, followed by the engine-rendered construction gate.
+   the first piece is drafted to the topic's cache and presented
+   through the construction gate, which renders the section in the
+   shape it would take in the specification above its approval menu.
    The walk **STOPS**
 5. the second scripted answer does not answer the gate — it puts a
    capability aside. The processing skill's standing `## Backlogging`

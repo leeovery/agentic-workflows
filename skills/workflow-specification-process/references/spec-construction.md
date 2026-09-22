@@ -57,7 +57,7 @@ Re-fetch with `--view full` and emit its sections verbatim — the full updated 
 
 #### If the user provides feedback
 
-Work through the changes per **C. Discuss and Refine**, then re-present the gate with the revised content (rewrite the payload, re-fetch).
+Discuss the changes as **C. Discuss and Refine** describes (its exit does not apply here), then re-present this gate with the revised content (rewrite the payload, re-fetch).
 
 → Return to **A. Exhaustive Extraction**.
 
@@ -89,33 +89,21 @@ Check the draft against the one-home rule (**[specification-format.md](specifica
 
 Source disagreement or a measured mismatch first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
 
-Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Here's what I understand about [topic] based on the reference material. This is exactly what I'll write into the specification:
-
-[content as rendered markdown]
-```
-
-Then fetch the gate — it reads `construction_gate_mode` from the manifest and answers with the approval menu or the auto announcement:
+Write the drafted section to `.workflows/.cache/{work_unit}/specification/{topic}/proposed-section.md` with the Write tool — the content exactly as it will read in the specification, nothing else — no framing sentence around it. Then fetch the gate, emitting each section verbatim at its marked instruction — the section first, shown in both modes, then the call's decision: the approval menu or the auto announcement:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic} --present .workflows/.cache/{work_unit}/specification/{topic}/proposed-section.md
 ```
 
 #### If the response carried `DISPLAY: construction auto-approved`
 
-Emit the section per its marker.
+The turn does not end here — the logging and commit follow in the same turn.
 
 **CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
 
 → Proceed to **E. Log and Commit**.
 
 #### If the response carried `MENU: construction gate`
-
-Emit it per its marker.
 
 **STOP.** Wait for user response.
 
@@ -152,19 +140,35 @@ This is a **human-level conversation**, not form-filling. The user brings contex
 
 ## D. Approval Gate
 
-**DO NOT PROCEED TO LOGGING WITHOUT EXPLICIT USER APPROVAL.**
+Rewrite `.workflows/.cache/{work_unit}/specification/{topic}/proposed-section.md` with the revised content and re-fetch the gate, emitting each section verbatim at its marked instruction:
 
-If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do you want to change something?"
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic} --present .workflows/.cache/{work_unit}/specification/{topic}/proposed-section.md
+```
 
-> **CHECKPOINT**: If you are about to write to the specification and the user's last message was not explicit approval, **STOP**. Present the choices again.
+> **CHECKPOINT**: This menu is the approval. Nothing reaches the specification until the user answers it — a message that moves on, or reads as agreement without answering, is not approval.
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
 
 → Proceed to **E. Log and Commit**.
+
+**If `auto`:**
+
+Set `construction_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode auto`).
+
+→ Proceed to **E. Log and Commit**.
+
+**If the user provides feedback:**
+
+→ Return to **C. Discuss and Refine**.
 
 ---
 
 ## E. Log and Commit
 
-1. Write to the specification — **verbatim** as presented and approved. No silent modifications. Before extracting a `pending` source, re-read the specification for content already logged from it (a crash can leave content written with the status still `pending`) — never double-log.
+1. Write `.workflows/.cache/{work_unit}/specification/{topic}/proposed-section.md`'s content to the specification **verbatim** — that file is what was approved. No silent modifications. Before extracting a `pending` source, re-read the specification for content already logged from it (a crash can leave content written with the status still `pending`) — never double-log.
 2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`). `{source-name}` is the registered key — read the existing `sources` map and flip that row, never invent a new name (for a bugfix it is `{topic}`). See **[specification-format.md](specification-format.md)** for source status details.
 3. Commit at natural breaks — after significant exchanges, after each major topic, and before any context refresh:
    ```bash

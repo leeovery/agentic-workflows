@@ -47,7 +47,7 @@ At every stop point, the user must explicitly approve before you proceed or log 
 - The user making a comment or observation without explicit approval
 - ANY response that isn't explicit confirmation
 
-When uncertain whether the user approved, ask: "Ready to log it, or do you want to change something?"
+When uncertain whether the user approved, re-present the construction gate — its menu is the approval.
 
 ❌ **NEVER:**
 - Create the specification document and then ask the user to review it
@@ -66,7 +66,7 @@ When uncertain whether the user approved, ask: "Ready to log it, or do you want 
 1. **Extract exhaustively**: For each topic, re-scan ALL source materials. When working with multiple sources, search each one — information about a single topic may be scattered across documents. Search for keywords and related terms. Collect everything the sources decided before synthesizing — what the product does and the decisions behind it; the how they left open is the implementer's. Include only what we're building (not discarded alternatives).
 2. **Filter**: Reference material may contain hallucinations, inaccuracies, or outdated concepts. Validate before including.
 3. **Enrich**: Reference material may have gaps. Fill them through discussion.
-4. **Present**: Synthesize and present content to the user in the format it would appear in the specification.
+4. **Present**: Synthesize the content exactly as it will read in the specification and present it through the construction gate.
 5. **STOP AND WAIT**: Do not proceed until the user explicitly approves. This is not optional.
 6. **Log**: Only after explicit approval, write content verbatim to the specification.
 7. **Final review**: After all topics and dependencies are documented, perform a comprehensive review of ALL source material against the specification. Flag any potentially missed content to the user — but only from the sources, never fabricated. User confirms before any additions.

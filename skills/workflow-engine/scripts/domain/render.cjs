@@ -1494,33 +1494,39 @@ function resurfaceGate(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
-// construction-gate — spec construction's per-topic approval. The draft
-// presentation stays with the flow (artifact content, presented verbatim);
-// this surface owns the state-branching moment after it: the gate mode is
-// read from the manifest's construction_gate_mode at the dotpath, answering
-// with the approval menu when gated and the auto announcement when auto.
+// construction-gate — spec construction's per-topic approval. The drafted
+// section rides in as `--present`, so presenting it and reaching the gate are
+// one call: the presentation renders first, then the state-branching moment —
+// the gate mode read from the manifest's construction_gate_mode at the
+// dotpath, answering with the approval menu when gated and the auto
+// announcement when auto. Both modes see the section.
 // ---------------------------------------------------------------------------
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, present?: string}} args
  * @returns {string}
  */
-function constructionGate(cwd, { dotpath }) {
+function constructionGate(cwd, { dotpath, present }) {
+  if (!present) throw new Error('render construction-gate: --present <section.md> is required');
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'construction-gate');
-  const item = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
+  const proposed = presentedSection(
+    '**Proposed section** — exactly as it will read in the specification',
+    readMarkdownPayload(cwd, present, 'construction-gate'),
+  );
+  const item = itemOf(manifest, phase, topic) || {};
   if (item.construction_gate_mode === 'auto') {
-    return section(
+    return [proposed, section(
       'DISPLAY: construction auto-approved',
       `after logging the content: ${AUTO_GATE_INSTRUCTION}`,
       `${titlecase(topic)} — auto-approved. Recording to the specification.`,
-    );
+    )].join('\n');
   }
-  return section('MENU: construction gate', INCOHERENCE_STOP, menu('', [
+  return [proposed, section('MENU: construction gate', INCOHERENCE_STOP, menu('', [
     cmdOption('y', 'yes', 'Add exactly as shown, no modifications'),
     cmdOption('a', 'auto', 'Approve this and all remaining topics automatically'),
     promptOption('Tell me what to change', 'Revise before recording'),
-  ], { question: 'Record this to the specification verbatim?' }));
+  ], { question: 'Record this to the specification verbatim?' }))].join('\n');
 }
 
 /**
@@ -1667,6 +1673,32 @@ function readJsonPayload(cwd, file, surface) {
     throw new Error(`render ${surface}: payload must be a JSON object or array`);
   }
   return parsed;
+}
+
+/**
+ * A `--present` payload: drafted artifact text, carried through byte-for-byte.
+ * Existence and emptiness are the whole contract — the engine never parses a
+ * markdown artifact, so there is nothing else here to check.
+ * @param {string} cwd @param {string} file @param {string} surface @returns {string}
+ */
+function readMarkdownPayload(cwd, file, surface) {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
+  } catch {
+    throw new Error(`render ${surface}: presented file not found: ${file}`);
+  }
+  if (raw.trim() === '') throw new Error(`render ${surface}: presented file is blank: ${file}`);
+  return raw;
+}
+
+/**
+ * The presentation a `--present` payload renders as: one framing line, then
+ * the drafted content beneath it.
+ * @param {string} framing @param {string} body @returns {string}
+ */
+function presentedSection(framing, body) {
+  return section('DISPLAY: proposed section', 'emit verbatim as markdown', `${framing}\n\n${body}`);
 }
 
 /** @param {unknown} v @returns {v is string} */

@@ -482,6 +482,20 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
   }
+  // Construction presents through the gate: the drafted section is the
+  // payload, so presenting it and reaching the gate are one call — and the
+  // section renders in both modes (spec-construction.md B).
+  const drafted = sim.write(`.workflows/.cache/${wu}/specification/${topic}/proposed-section.md`,
+    `## ${topic}\n\nThe export runs nightly.\n`);
+  sim.refuses(['render', 'construction-gate', `${wu}.specification.${topic}`], /--present <section\.md> is required/);
+  const gatedSection = sim.render(['construction-gate', `${wu}.specification.${topic}`, '--present', drafted], { expect: 'content' });
+  assert.match(gatedSection, /DISPLAY: proposed section[\s\S]*The export runs nightly\.[\s\S]*MENU: construction gate/,
+    'the drafted section leads, the approval menu follows it');
+  sim.run(['manifest', 'set', `${wu}.specification.${topic}`, 'construction_gate_mode', 'auto']);
+  const autoSection = sim.render(['construction-gate', `${wu}.specification.${topic}`, '--present', drafted], { expect: 'content' });
+  assert.match(autoSection, /DISPLAY: proposed section[\s\S]*DISPLAY: construction auto-approved/,
+    'auto sees the same section, then the announcement');
+  assert.ok(!autoSection.includes('MENU:'), 'auto removes the approval stop, never the presentation');
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);

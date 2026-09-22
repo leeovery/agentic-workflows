@@ -3581,18 +3581,54 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file: emptyDiff }), /at least one current\/proposed line/);
   });
 
-  it('construction-gate: reads the manifest gate mode — menu when gated, announcement when auto', () => {
-    const gated = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
-    assert.ok(gated.includes('MENU: construction gate'));
+  it('construction-gate: the presented section leads, then the gate mode — menu when gated, announcement when auto', () => {
+    const present = writePayload(dir, 'section.md', '## Export Cadence\n\nThe export runs nightly.\n');
+    const gated = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal', present });
+    assert.ok(gated.startsWith('=== DISPLAY: proposed section (emit verbatim as markdown) ===\n'
+      + '**Proposed section** — exactly as it will read in the specification\n\n'
+      + '## Export Cadence\n\nThe export runs nightly.\n'), gated);
+    assert.ok(gated.indexOf('DISPLAY: proposed section') < gated.indexOf('MENU: construction gate'));
     assert.ok(gated.includes('**`◆ Record this to the specification verbatim?`**'));
     assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(unwrap(gated)));
     const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), 'utf8'));
     m.phases.implementation.items.portal.construction_gate_mode = 'auto';
     fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
-    const auto = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
+    const auto = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal', present });
+    assert.ok(auto.includes('=== DISPLAY: proposed section (emit verbatim as markdown) ===\n'
+      + '**Proposed section** — exactly as it will read in the specification\n\n'
+      + '## Export Cadence\n\nThe export runs nightly.\n'), auto);
     assert.ok(auto.includes('DISPLAY: construction auto-approved'));
     assert.ok(auto.includes('Portal — auto-approved. Recording to the specification.'));
-    assert.ok(!auto.includes('MENU:'));
+    assert.ok(!auto.includes('MENU:'), 'auto sees the section and no gate');
+  });
+
+  it('construction-gate carries the draft byte-for-byte — markdown syntax is never parsed or reflowed', () => {
+    const body = [
+      '## Rate Limits',
+      '',
+      'The limiter reads `X-Rate-Limit` and **rejects** the request past 100/min.',
+      '',
+      '```json',
+      '{ "burst": 10, "window": "1m" }',
+      '```',
+      '',
+      '| Field | Value |',
+      '| --- | --- |',
+      '| burst | 10 |',
+    ].join('\n');
+    const present = writePayload(dir, 'syntax.md', `${body}\n`);
+    const out = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal', present });
+    assert.ok(out.includes(`\n\n${body}\n`), out);
+  });
+
+  it('construction-gate refuses without a section to present, and over a missing or blank file', () => {
+    assert.throws(() => renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' }),
+      /render construction-gate: --present <section\.md> is required/);
+    assert.throws(() => renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal', present: 'gone.md' }),
+      /render construction-gate: presented file not found: gone\.md/);
+    const blank = writePayload(dir, 'blank.md', '\n   \n');
+    assert.throws(() => renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal', present: blank }),
+      /render construction-gate: presented file is blank: blank\.md/);
   });
 
   it('renders the ad hoc shape: no severity/sources, placement lines present', () => {
