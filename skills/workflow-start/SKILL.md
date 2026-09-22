@@ -212,13 +212,23 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
 
 **If `yes`:**
 
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the settings file or the commit will be re-tried at the next start:
+Record the choice:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
 ```
 
-→ Proceed to **Step 0.5**.
+If the command fails (`ok: false`), surface its error — the prompt returns at a future start once the project manifest is fixed — and proceed to **Step 0.5**. If it succeeds carrying `warnings`, surface them — the choice is recorded; the settings file or the commit will be re-tried at the next start — and proceed to **Step 0.5**.
+
+On a clean success:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Done. Exit Claude Code and start it again in this project, then run `/workflow-start`. The menus will show as buttons from then on.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 **If `no`:**
 
