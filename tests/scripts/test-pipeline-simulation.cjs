@@ -2711,7 +2711,13 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'complete', wu, '-m', 'workflow(flip): done']);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
     sim.refuses(['workunit', 'complete', wu, '-m', 'again'], /./);
+    // The completed & cancelled view's route back in: a number resolves to
+    // the unit, its action menu renders over it, r/reactivate runs.
+    assert.match(sim.render(['completed-actions', wu], { expect: 'content' }),
+      /\*\*Flip\*\* \(completed\)[\s\S]*What would you like to do\?/);
     sim.run(['workunit', 'reactivate', wu]);
+    sim.refuses(['render', 'completed-actions', wu],
+      /"flip" is not completed or cancelled \(status: in-progress\)/);
     assert.strictEqual(sim.manifest(wu).completed_at, undefined, 'reactivate clears the stamp');
     sim.run(['workunit', 'cancel', wu]);
     assert.strictEqual(sim.manifest(wu).status, 'cancelled');
@@ -2839,6 +2845,9 @@ describe('pipeline simulation', () => {
     sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion'], /previously dismissed/);
     sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
     sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
+    // The discovery session's show-dismissed door reads the same list the
+    // re-add is refused against.
+    assert.match(sim.render(['dismissed-topics', 'mvp'], { expect: 'content' }), /• reporting/);
 
     // The render surfaces hold over the live state: the map view and the
     // add-to-joined-horizon gate.
