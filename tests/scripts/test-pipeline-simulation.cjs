@@ -556,10 +556,17 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.match(planResume, /DISPLAY: spec change summary[\s\S]*unchanged since planning started[\s\S]*MENU: resume gate/,
     'the spec-change read leads, the resume menu follows it');
 
-  // The graph approval, then the review loop's two gates and the conclusion's
-  // consent — each fetched where the flow displays it.
-  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph'], { expect: 'content' });
-  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph'], { expect: 'content' });
+  // The graph approval carries the grapher's report: the two graph variants
+  // present it and reach the menu in one call, and the payload kinds do not
+  // cross (analyze-task-graph.md B).
+  const graphReport = sim.write(`.workflows/.cache/${wu}/planning/${topic}/dependency-graph.md`,
+    "I've analyzed all 1 tasks and the natural execution order is already correct.\n");
+  sim.refuses(['render', 'dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph'],
+    /--present <graph\.md> is required for --variant graph/);
+  const graphGate = sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph', '--present', graphReport], { expect: 'content' });
+  assert.match(graphGate, /DISPLAY: dependency analysis[\s\S]*natural execution order is already correct[\s\S]*MENU: dependency approval gate/,
+    'the analysis leads, the approval menu follows it');
+  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph', '--present', graphReport], { expect: 'content' });
   // Review opens: the cycle and the plan's word baseline land in one write,
   // the way plan-review stamps them.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle=1', 'review_baseline_words=63929']);
@@ -610,7 +617,14 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   const blockGate = sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'blocked', '--file', sides], { expect: 'content' });
   assert.match(blockGate, /\*\*`1`\*\*\s+→ Keep the cancellation, return the payment \(recommended\)/, 'the recommended side renders first');
   sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'failed'], { expect: 'content' });
-  sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
+  const checkpointFiles = sim.write(`.workflows/.cache/${wu}/implementation/${topic}/checkpoint-files.json`, {
+    files: [{ path: 'src/scratch.js', status: 'modified' }, { path: 'notes.txt', status: 'untracked' }],
+  });
+  sim.refuses(['render', 'checkpoint-files-gate', `${wu}.implementation.${topic}`],
+    /--file <payload\.json> is required/);
+  const checkpointGate = sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`, '--file', checkpointFiles], { expect: 'content' });
+  assert.match(checkpointGate, /DISPLAY: checkpoint files[\s\S]*• src\/scratch\.js \[modified\][\s\S]*MENU: checkpoint files gate/,
+    'the unexpected files lead, the commit question follows them');
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
   // Code has no layout to derive a scope from — this is the one commit whose
@@ -1687,7 +1701,17 @@ describe('pipeline simulation', () => {
     // asks first (display-analyze A), and the map's provenance recovery has
     // its own two stops (summary-backfill B and D).
     sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
-    sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
+    const summaryBatch = sim.write(`.workflows/.cache/${wu}/discovery/summary-batch.json`, {
+      items: [
+        { name: 'alpha', routing: 'research', summary: 'What the alpha topic set out to learn', populated: false },
+        { name: 'delta', routing: 'research', summary: null, populated: false },
+      ],
+    });
+    sim.refuses(['render', 'summary-backfill-gate', wu, '--variant', 'batch'],
+      /--file <payload\.json> is required for --variant batch/);
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaryBatch], { expect: 'content' }),
+      /DISPLAY: proposed summaries[\s\S]*Proposed summaries for 2 topic\(s\):[\s\S]*source file missing[\s\S]*MENU: summary batch gate/,
+      'the drafted lines lead, the accept menu follows them');
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
@@ -1751,7 +1775,13 @@ describe('pipeline simulation', () => {
     sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'blocking'], { expect: 'content' });
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'pick',
       '--blocking', 'alpha'], { expect: 'content' }), /\*\*`1`\*\* → Alpha — Needs alpha shipped/);
-    sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
+    // The resolution approval reads the rows the flow already wrote — it
+    // carries no payload, and takes neither flag (resolve-dependencies.md G).
+    const resolution = sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
+    assert.match(resolution, /DISPLAY: dependency resolution[\s\S]*Alpha \(unresolved\)[\s\S]*MENU: dependency approval gate/,
+      'the resolution leads, the approval menu follows it');
+    sim.refuses(['render', 'dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution', '--file', 'x.json'],
+      /--file belongs to the graph variants — the resolution is manifest state and is read at the address/);
     const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
     const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
     let keys = menuNow().keys;
@@ -1766,6 +1796,19 @@ describe('pipeline simulation', () => {
     assert.ok(keys.some((k) => k.action === 'start_implementation' && k.topic === 'unified'),
       'a satisfied dependency restores the implementation row');
     assert.ok(!keys.some((k) => k.action === 'unblock_plan'), 'the unblock option withdraws');
+
+    // The other half of the resolution display: a reverse check run while
+    // planning alpha resolves its dependency on unified to one of unified's
+    // tasks, and unified's own gate reads that link out of the sibling plan.
+    sim.run(['topic', 'start', wu, 'planning', 'alpha']);
+    sim.run(['manifest', 'set', `${wu}.planning.alpha`,
+      'external_dependencies.unified.description=Needs the unified surface',
+      'external_dependencies.unified.state=resolved',
+      'external_dependencies.unified.internal_id=unified-1-1']);
+    assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' }),
+      /Reverse resolutions:\n {2}• Alpha → Unified:unified-1-1/,
+      'the sibling plan\'s resolved link reads as the reverse row');
+    sim.run(['manifest', 'delete', `${wu}.planning.alpha`, 'external_dependencies']);
 
     // Supersession is terminal: the absorbed spec cannot restart or complete.
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);

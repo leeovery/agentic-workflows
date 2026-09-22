@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `workflow-planning-dependency-grapher` agent (`../../../agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `workflow-planning-dependency-grapher` agent (`../../../agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent and carry its output into the approval gate.
 
 ---
 
@@ -45,19 +45,11 @@ The agent clears any existing dependencies/priorities, analyzes all tasks, and �
 
 The natural task order is already correct.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-I've analyzed all {M} tasks and the natural execution order is already correct — no explicit dependencies or priorities are needed.
-
-{notes from agent output}
-```
+Write the finding to `.workflows/.cache/{work_unit}/planning/{topic}/dependency-graph.md` with the Write tool — "I've analyzed all {M} tasks and the natural execution order is already correct — no explicit dependencies or priorities are needed.", then the agent's notes beneath it, nothing else. Then fetch the gate, emitting each section verbatim at its marked instruction — the finding first, then the approval menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph --present .workflows/.cache/{work_unit}/planning/{topic}/dependency-graph.md
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -105,25 +97,11 @@ Adjust based on user direction — options include adjusting task scope, merging
 
 Dependencies and priorities have already been written to the task files.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-I've analyzed and applied dependencies and priorities across all {M} tasks:
-
-**Dependencies** ({count} relationships):
-{dependency list from agent output}
-
-**Priorities**:
-{priority list from agent output}
-
-{any notes from agent output}
-```
+Write the applied graph to `.workflows/.cache/{work_unit}/planning/{topic}/dependency-graph.md` with the Write tool — "I've analyzed and applied dependencies and priorities across all {M} tasks:", then a **Dependencies** ({count} relationships) list and a **Priorities** list from the agent's output, then any notes it returned. Then fetch the gate, emitting each section verbatim at its marked instruction — the graph first, then the approval menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph --present .workflows/.cache/{work_unit}/planning/{topic}/dependency-graph.md
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

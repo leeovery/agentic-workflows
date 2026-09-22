@@ -19,8 +19,8 @@ The prose should have taken this path:
    engine, loads the format's reading and graph references, and
    delegates to the grapher — stubbed: the edges and priorities land in
    the task files' frontmatter and the summary comes back complete
-6. the applied graph is presented and, on the user's yes, committed
-   through the scoped plan commit
+6. the approval gate leads with the applied graph and, on the user's
+   yes, the commit lands through the scoped plan commit
 7. the walk stops there — external dependencies are epic-only and never
    run, the plan review never starts, and the plan is not concluded
 

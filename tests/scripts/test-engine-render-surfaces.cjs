@@ -6599,9 +6599,33 @@ describe('render — the adopted phase gates', () => {
       /takes no --reason/);
   });
 
-  it('summary-backfill-gate: the static batch gate and the payload-named unsourced set', () => {
-    const batch = renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'batch' });
-    assert.match(batch, /MENU: summary batch gate/);
+  it('summary-backfill-gate: the batch draws its drafted lines, the unsourced set its names', () => {
+    const batch = renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay',
+      variant: 'batch',
+      file: writePayload(dir, 'b.json', {
+        items: [
+          { name: 'auth-flow', routing: 'research', summary: 'Token lifetimes across the session boundary', populated: false },
+          { name: 'legacy-bits', routing: 'discussion', summary: null, populated: false },
+          { name: 'data-model', routing: 'research', summary: 'The canonical row shape', populated: true },
+        ],
+      }),
+    });
+    assert.ok(batch.startsWith([
+      '=== DISPLAY: proposed summaries (emit verbatim as a code block) ===',
+      'Proposed summaries for 3 topic(s):',
+      '',
+      '1. Auth Flow [research]',
+      '   · Token lifetimes across the session boundary',
+      '',
+      '2. Legacy Bits [discussion]',
+      '   · (source file missing — please provide)',
+      '',
+      '3. Data Model [research]',
+      '   · The canonical row shape (already populated)',
+      '',
+      "=== MENU: summary batch gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    ].join('\n')), batch);
     assert.match(batch, /`◆ Accept these summaries\?`/);
     assert.match(unwrap(batch), /\*\*`y\/yes`\*\*\s+→ Accept all summaries as drafted \(description is auto-drafted silently\)/);
     assert.match(unwrap(batch), /\*\*`e\/edit`\*\* → Edit one or more summary lines before accepting/);
@@ -6616,16 +6640,45 @@ describe('render — the adopted phase gates', () => {
     assert.match(unwrap(unsourced), /\*\*`l\/leave`\*\*\s+→ Leave them unset; this flow re-offers next time/);
   });
 
-  it('summary-backfill-gate: validates the variant, the payload and the address', () => {
+  it('summary-backfill-gate: validates the variant, the address, and each variant\'s own payload', () => {
+    const batchPayload = writePayload(dir, 'b.json', {
+      items: [{ name: 'auth-flow', routing: 'research', summary: 'A line', populated: false }],
+    });
     assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay' }),
       /--variant must be "batch" or "unsourced", got "undefined"/);
-    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay.discovery.x', variant: 'batch' }),
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay.discovery.x', variant: 'batch', file: batchPayload }),
       /address must be a bare <work_unit>/);
-    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'unsourced' }),
-      /--file <payload\.json> is required/);
+    for (const variant of ['batch', 'unsourced']) {
+      assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant }),
+        new RegExp(`--file <payload\\.json> is required for --variant ${variant}`));
+    }
+    // Each variant reads its own shape — the other variant's payload is a miss.
     assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
-      dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: [] }),
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'u.json', { names: ['auth-flow'] }),
+    }), /"items" must be a non-empty array of \{name, routing, summary, populated\}/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'unsourced', file: batchPayload }),
+      /"names" must be a non-empty array of topic names/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'empty.json', { names: [] }),
     }), /"names" must be a non-empty array of topic names/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [] }),
+    }), /"items" must be a non-empty array/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [{ routing: 'research', summary: 'A', populated: false }] }),
+    }), /items\[0\] is missing "name"/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [{ name: 'a', routing: 'planning', summary: 'A', populated: false }] }),
+    }), /items\[0\] carries unknown routing "planning" \(expected research\/discussion\)/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [{ name: 'a', routing: 'research', summary: '', populated: false }] }),
+    }), /items\[0\] "summary" must be a non-empty string, or null where no source file could be read/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [{ name: 'a', routing: 'research', summary: 'A' }] }),
+    }), /items\[0\] "populated" must be a boolean/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'batch', file: writePayload(dir, 'x.json', { items: [{ name: 'a', routing: 'research', summary: null, populated: true }] }),
+    }), /items\[0\] is populated with no summary — the two never go together/);
   });
 
   it('external-dependency-gate: the blocking gate is static, the pick reads its descriptions from the plan', () => {
@@ -6661,16 +6714,40 @@ describe('render — the adopted phase gates', () => {
       /--variant must be "blocking" or "pick"/);
   });
 
-  it('checkpoint-files-gate: the analysis loop\'s static stop', () => {
-    const checkpoint = renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
-    assert.match(checkpoint, /MENU: checkpoint files gate/);
+  it('checkpoint-files-gate: the files lead, the commit question follows them', () => {
+    const files = writePayload(dir, 'files.json', {
+      files: [{ path: 'src/scratch.js', status: 'modified' }, { path: 'notes.txt', status: 'untracked' }],
+    });
+    const checkpoint = renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout', file: files });
+    assert.ok(checkpoint.startsWith([
+      '=== DISPLAY: checkpoint files (emit verbatim as a code block) ===',
+      'Pre-analysis checkpoint — unexpected files detected:',
+      '  • src/scratch.js [modified]',
+      '  • notes.txt [untracked]',
+      '',
+      "=== MENU: checkpoint files gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    ].join('\n')), checkpoint);
     assert.match(checkpoint, /`◆ Include unexpected files in the checkpoint commit\?`/);
     assert.match(unwrap(checkpoint), /\*\*`y\/yes`\*\*\s+→ Include all/);
     assert.match(unwrap(checkpoint), /\*\*`s\/skip`\*\*\s+→ Exclude unexpected files, commit only implementation files/);
     assert.match(unwrap(checkpoint), /\*\*Comment\*\* → Specify which to include/);
 
-    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout', file: files }),
       /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+  });
+
+  it('checkpoint-files-gate: refuses without the payload, and validates every row', () => {
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' }),
+      /render checkpoint-files-gate: --file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', {
+      dotpath: 'pay.implementation.checkout', file: writePayload(dir, 'x.json', { files: [] }),
+    }), /"files" must be a non-empty array of \{path, status\}/);
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', {
+      dotpath: 'pay.implementation.checkout', file: writePayload(dir, 'x.json', { files: [{ status: 'modified' }] }),
+    }), /files\[0\] is missing "path"/);
+    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', {
+      dotpath: 'pay.implementation.checkout', file: writePayload(dir, 'x.json', { files: [{ path: 'a.js', status: 'staged' }] }),
+    }), /files\[0\] carries unknown status "staged" \(expected modified\/untracked\)/);
   });
 
   it('executor-block-gate: a block renders the fork\'s sides recommended-first, a failure offers the retry', () => {
@@ -6745,23 +6822,132 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
   });
 
-  it('dependency-approval-gate: three variants, one approve-or-change shape', () => {
-    const graph = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph' });
-    assert.match(graph, /MENU: dependency approval gate/);
+  it('dependency-approval-gate: the two graph variants lead with the grapher\'s report', () => {
+    const present = writePayload(dir, 'graph.md',
+      "I've analyzed all 12 tasks and the natural execution order is already correct.\n");
+    const graph = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', present });
+    assert.ok(graph.startsWith([
+      '=== DISPLAY: dependency analysis (emit verbatim as markdown) ===',
+      "**Dependency analysis** — what the graph found across the plan's tasks",
+      '',
+      "I've analyzed all 12 tasks and the natural execution order is already correct.",
+      '',
+      "=== MENU: dependency approval gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    ].join('\n')), graph);
     assert.match(graph, /`◆ Approve the dependency graph\?`/);
     assert.match(unwrap(graph), /\*\*`y\/yes`\*\*\s+→ Proceed/);
     assert.match(unwrap(graph), /\*\*Tell me what to change\*\* → which priorities or dependencies to adjust/);
 
-    assert.match(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph' }),
-      /`◆ Approve the updated graph\?`/);
+    const updated = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', present });
+    assert.match(updated, /=== DISPLAY: dependency graph \(emit verbatim as markdown\) ===\n\*\*Dependency graph\*\* — the dependencies and priorities written across the plan's tasks\n/);
+    assert.match(updated, /`◆ Approve the updated graph\?`/);
+  });
+
+  it('dependency-approval-gate: the resolution reads the rows at the address — states, the resolved task beneath, the reverse links', () => {
+    // The plan's own declarations, and one sibling plan resolved against it.
+    writeManifest(dir, 'pay', {
+      phases: {
+        planning: {
+          items: {
+            checkout: {
+              status: 'in-progress',
+              external_dependencies: {
+                'data-model': { description: 'the shared row shape', state: 'resolved', internal_id: 'data-model-1-2' },
+                'auth-flow': { description: 'session tokens', state: 'unresolved' },
+                'payment-gateway': { description: 'card capture', state: 'satisfied_externally' },
+              },
+            },
+            billing: {
+              status: 'in-progress',
+              external_dependencies: {
+                checkout: { description: 'the order total', state: 'resolved', internal_id: 'checkout-2-1' },
+                'data-model': { description: 'the shared row shape', state: 'unresolved' },
+              },
+            },
+          },
+        },
+      },
+    });
     const resolution = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
+    assert.ok(resolution.startsWith([
+      '=== DISPLAY: dependency resolution (emit verbatim as a code block) ===',
+      'External Dependencies',
+      '',
+      '  Data Model (resolved)',
+      '  └─ data-model-1-2',
+      '',
+      '  Auth Flow (unresolved)',
+      '',
+      '  Payment Gateway (satisfied_externally)',
+      '',
+      'Reverse resolutions:',
+      '  • Billing → Checkout:checkout-2-1',
+      '',
+      "=== MENU: dependency approval gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    ].join('\n')), resolution);
     assert.match(resolution, /`◆ Approve the dependency resolution\?`/);
     assert.match(unwrap(resolution), /\*\*Tell me what to change\*\* → which resolutions to adjust or links to add/);
+    // Billing's unresolved dependency on a third topic is not a link into
+    // checkout, and checkout's own row is not a reverse resolution of itself.
+    assert.doesNotMatch(resolution, /Data Model → /);
+    assert.doesNotMatch(resolution, /Checkout → Checkout/);
+  });
 
+  it('dependency-approval-gate: a reverse-only pass renders the links alone', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        planning: {
+          items: {
+            checkout: { status: 'in-progress' },
+            billing: { status: 'in-progress', external_dependencies: { checkout: { description: 'the order total', state: 'resolved', internal_id: 'checkout-2-1' } } },
+          },
+        },
+      },
+    });
+    const reverseOnly = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
+    assert.ok(reverseOnly.startsWith([
+      '=== DISPLAY: dependency resolution (emit verbatim as a code block) ===',
+      'Reverse resolutions:',
+      '  • Billing → Checkout:checkout-2-1',
+      '',
+      "=== MENU: dependency approval gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    ].join('\n')), reverseOnly);
+  });
+
+  it('dependency-approval-gate: the graph variants take --present, the resolution takes neither flag', () => {
+    const present = writePayload(dir, 'graph.md', 'The graph as analysed.\n');
+    const file = writePayload(dir, 'res.json', { anything: true });
     assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout' }),
       /--variant must be one of graph, updated-graph, resolution, got "undefined"/);
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.discussion.checkout', variant: 'graph' }),
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.discussion.checkout', variant: 'graph', present }),
       /address must be <work_unit>\.planning\.<topic>/);
+    for (const variant of ['graph', 'updated-graph']) {
+      assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant }),
+        new RegExp(`--present <graph\\.md> is required for --variant ${variant}`));
+      assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant, file }),
+        new RegExp(`--file belongs to no variant — the ${variant} report rides --present`));
+    }
+    for (const flag of ['present', 'file']) {
+      assert.throws(() => renderSurface(dir, 'dependency-approval-gate', {
+        dotpath: 'pay.planning.checkout', variant: 'resolution', [flag]: flag === 'present' ? present : file,
+      }), new RegExp(`--${flag} belongs to the graph variants — the resolution is manifest state and is read at the address`));
+    }
+  });
+
+  it('dependency-approval-gate: the resolution refuses a topic with nothing to show', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        planning: {
+          items: {
+            checkout: { status: 'in-progress' },
+            // A sibling's unresolved dependency is not a link into checkout.
+            billing: { status: 'in-progress', external_dependencies: { checkout: { description: 'the order total', state: 'unresolved' } } },
+          },
+        },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }),
+      /"checkout" declares no external dependency and no plan resolves against it — the summary follows a resolution that changed something/);
   });
 
   it('task-count-gate: the authoring mismatch stop', () => {

@@ -311,11 +311,11 @@ Commands:
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
-  render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
+  render summary-backfill-gate <wu> --variant batch|unsourced --file <payload.json>
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
-  render checkpoint-files-gate <wu.implementation.topic>
+  render checkpoint-files-gate <wu.implementation.topic> --file <payload.json>
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
-  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
+  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --present <graph.md> | --variant resolution
   render task-count-gate  <wu.planning.topic>
   render plan-format-gate
   render plan-review-gate <wu.planning.topic> --variant continue|reloop

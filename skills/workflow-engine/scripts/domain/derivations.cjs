@@ -93,6 +93,36 @@ function openSources(item) {
     .map(([name, r]) => ({ name, status: r.status }));
 }
 
+/**
+ * A planning item's `external_dependencies` as rows — the one decoder of the
+ * stored map (`{dep_topic: {description, state, internal_id?}}`), in manifest
+ * order. A container that is not an object reads as none.
+ * @param {{external_dependencies?: object}|undefined} item
+ * @returns {{topic: string, description?: string, state?: string, internal_id?: string}[]}
+ */
+function externalDependencies(item) {
+  const declared = item && item.external_dependencies;
+  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) return [];
+  return Object.entries(declared)
+    .filter(([, d]) => d && typeof d === 'object')
+    .map(([topic, d]) => ({ topic, ...d }));
+}
+
+/**
+ * The links other plans in this work unit hold into `topic` — every sibling
+ * planning item whose dependency on this topic a reverse check resolved to
+ * one of its tasks. The other direction of `externalDependencies`.
+ * @param {object} manifest @param {string} topic
+ * @returns {{other_topic: string, internal_id: string}[]}
+ */
+function reverseResolutions(manifest, topic) {
+  return phaseItems(manifest, 'planning')
+    .filter((item) => item.name !== topic)
+    .flatMap((item) => externalDependencies(item)
+      .filter((d) => d.topic === topic && d.state === 'resolved' && typeof d.internal_id === 'string' && d.internal_id !== '')
+      .map((d) => ({ other_topic: item.name, internal_id: /** @type {string} */ (d.internal_id) })));
+}
+
 // Discussion statuses that hold shut every specification sourcing them: a
 // source back in-progress (a gap routed into it), and a topic the gap exit
 // opened and parked as a stub no session has drained. Either way the
@@ -1094,6 +1124,8 @@ module.exports = {
   sourceRows,
   sourceRow,
   openSources,
+  externalDependencies,
+  reverseResolutions,
   OPEN_SOURCE_STATUSES,
   sourcingSpecs,
   UNIT_PHASES,

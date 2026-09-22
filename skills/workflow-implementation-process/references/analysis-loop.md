@@ -110,21 +110,19 @@ Ensure clean code before analysis. Run `git status` and set aside every `.workfl
 Categorize the dirty code files:
 
 - **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
-- **Unexpected files** (files not touched during implementation) — present to the user:
+- **Unexpected files** (files not touched during implementation) — put these to the user.
 
-> *Output the next fenced block as a code block:*
+Write the unexpected files to `.workflows/.cache/{work_unit}/implementation/{topic}/checkpoint-files.json` with the Write tool, each carrying the state `git status` gave it:
 
+```json
+{"files": [{"path": "{file}", "status": "{modified|untracked}"}]}
 ```
-Pre-analysis checkpoint — unexpected files detected:
-- {file} ({status: modified/untracked})
-- ...
-```
+
+Fetch the gate, emitting each section verbatim at its marked instruction — the files first, then the commit question:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/checkpoint-files.json
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

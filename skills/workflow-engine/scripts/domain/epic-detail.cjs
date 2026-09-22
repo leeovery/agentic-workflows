@@ -29,6 +29,7 @@ const {
   reactivateLockPhrases,
   deliveryStarted,
   specUnsettled,
+  externalDependencies,
   OPEN_SOURCE_STATUSES,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
@@ -199,11 +200,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @returns {{deps_satisfied: boolean, deps_blocking: DepBlocking[]}}
  */
 function resolveDeps(manifest, planItem) {
-  const externalDepsObj = (planItem.external_dependencies && typeof planItem.external_dependencies === 'object' && !Array.isArray(planItem.external_dependencies))
-    ? planItem.external_dependencies
-    : {};
-
-  const externalDeps = Object.entries(externalDepsObj).map(([depTopic, d]) => ({ topic: depTopic, ...d }));
+  const externalDeps = externalDependencies(planItem);
   let depsSatisfied = true;
   const depsBlocking = [];
 

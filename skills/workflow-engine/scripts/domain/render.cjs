@@ -55,6 +55,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  externalDependencies, reverseResolutions,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2861,10 +2862,52 @@ function waitGateSurface(cwd, { dotpath }) {
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
 }
 
-// summary-backfill-gate — the epic's provenance recovery, both stops. The
-// batch variant is static (the proposed lines are displayed above it); the
-// unsourced variant names the topics no source file could be drafted from,
-// so its list rides as a payload.
+// summary-backfill-gate — the epic's provenance recovery, both stops, each
+// carrying what it asks about. The batch variant draws the drafted summary
+// lines the gate accepts; the unsourced variant names the topics no source
+// file could be drafted from. Both ride a payload: the names, the routing
+// and the drafted text are the flow's reading of the source files, and the
+// layout is the engine's.
+const BACKFILL_ROUTINGS = ['research', 'discussion'];
+
+/**
+ * The proposed-summary display: one numbered row per topic, the drafted line
+ * beneath it — or the missing-source note where no file could be read, or
+ * the standing summary where the field was already set.
+ * @param {any} p @returns {string}
+ */
+function proposedSummaries(p) {
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error('render summary-backfill-gate: "items" must be a non-empty array of {name, routing, summary, populated}');
+  }
+  p.items.forEach((it, i) => {
+    if (!it || typeof it !== 'object' || !isFilled(it.name)) {
+      throw new Error(`render summary-backfill-gate: items[${i}] is missing "name"`);
+    }
+    if (!BACKFILL_ROUTINGS.includes(it.routing)) {
+      throw new Error(`render summary-backfill-gate: items[${i}] carries unknown routing "${it.routing}" (expected ${BACKFILL_ROUTINGS.join('/')})`);
+    }
+    if (it.summary !== null && !isFilled(it.summary)) {
+      throw new Error(`render summary-backfill-gate: items[${i}] "summary" must be a non-empty string, or null where no source file could be read`);
+    }
+    if (typeof it.populated !== 'boolean') {
+      throw new Error(`render summary-backfill-gate: items[${i}] "populated" must be a boolean — a populated row is shown as it stands, never re-drafted`);
+    }
+    if (it.populated && it.summary === null) {
+      throw new Error(`render summary-backfill-gate: items[${i}] is populated with no summary — the two never go together`);
+    }
+  });
+  const count = p.items.length;
+  const lines = [`Proposed summaries for ${count} topic(s):`, ''];
+  p.items.forEach((it, i) => {
+    lines.push(`${i + 1}. ${titlecase(it.name)} [${it.routing}]`);
+    lines.push(subDetail(it.summary === null
+      ? '(source file missing — please provide)'
+      : `${it.summary}${it.populated ? ' (already populated)' : ''}`));
+    if (i < count - 1) lines.push('');
+  });
+  return lines.join('\n');
+}
 
 /**
  * @param {string} cwd
@@ -2876,15 +2919,16 @@ function summaryBackfillGate(cwd, { dotpath, variant, file }) {
     throw new Error(`render summary-backfill-gate: --variant must be "batch" or "unsourced", got "${variant}"`);
   }
   resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
+  if (!file) throw new Error(`render summary-backfill-gate: --file <payload.json> is required for --variant ${variant}`);
+  const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
   if (variant === 'batch') {
-    return section('MENU: summary batch gate', STOP_FOR_RESPONSE, menu('', [
+    const display = section('DISPLAY: proposed summaries', 'emit verbatim as a code block', proposedSummaries(p));
+    return [display, section('MENU: summary batch gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('y', 'yes', 'Accept all summaries as drafted (description is auto-drafted silently)'),
       cmdOption('e', 'edit', 'Edit one or more summary lines before accepting'),
       cmdOption('s', 'skip', 'Skip the whole batch (leave fields blank)'),
-    ], { question: 'Accept these summaries?' }));
+    ], { question: 'Accept these summaries?' }))].join('\n');
   }
-  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
-  const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
   if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
     throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
   }
@@ -2940,10 +2984,10 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
   if (names.length === 0) {
     throw new Error('render external-dependency-gate: --blocking <topic,topic,…> is required for --variant pick — the blocking set, in offer order');
   }
-  const declared = ((((manifest.phases || {}).planning || {}).items || {})[topic] || {}).external_dependencies || {};
+  const declared = externalDependencies(itemOf(manifest, 'planning', topic));
   const rows = names.map((name, i) => {
-    const dep = declared[name];
-    if (!dep || typeof dep !== 'object') {
+    const dep = declared.find((d) => d.topic === name);
+    if (!dep) {
       throw new Error(`render external-dependency-gate: "${name}" is not an external dependency of "${topic}"`);
     }
     if (!isFilled(dep.description)) {
@@ -2955,24 +2999,42 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
 }
 
 // checkpoint-files-gate — the analysis loop's pre-analysis checkpoint. The
-// unexpected files are listed above by the flow; the gate only asks what the
-// commit should carry.
+// files implementation never wrote are the flow's reading of `git status`
+// and ride a payload; the gate asking what the commit should carry renders
+// beneath them, so the list and the question are one call.
+const CHECKPOINT_STATUSES = ['modified', 'untracked'];
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function checkpointFilesGate(cwd, { dotpath }) {
+function checkpointFilesGate(cwd, { dotpath, file }) {
   const { phase } = resolveAddress(cwd, dotpath, 'checkpoint-files-gate');
   if (phase !== 'implementation') {
     throw new Error(`render checkpoint-files-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
   }
-  return section('MENU: checkpoint files gate', STOP_FOR_RESPONSE, menu('', [
+  if (!file) throw new Error('render checkpoint-files-gate: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'checkpoint-files-gate');
+  if (!Array.isArray(p.files) || p.files.length === 0) {
+    throw new Error('render checkpoint-files-gate: "files" must be a non-empty array of {path, status}');
+  }
+  const rows = p.files.flatMap((f, i) => {
+    if (!f || typeof f !== 'object' || !isFilled(f.path)) {
+      throw new Error(`render checkpoint-files-gate: files[${i}] is missing "path"`);
+    }
+    if (!CHECKPOINT_STATUSES.includes(f.status)) {
+      throw new Error(`render checkpoint-files-gate: files[${i}] carries unknown status "${f.status}" (expected ${CHECKPOINT_STATUSES.join('/')})`);
+    }
+    return bulletRow(`${f.path} [${f.status}]`);
+  });
+  const display = section('DISPLAY: checkpoint files', 'emit verbatim as a code block',
+    ['Pre-analysis checkpoint — unexpected files detected:', ...rows].join('\n'));
+  return [display, section('MENU: checkpoint files gate', STOP_FOR_RESPONSE, menu('', [
     cmdOption('y', 'yes', 'Include all'),
     cmdOption('s', 'skip', 'Exclude unexpected files, commit only implementation files'),
     promptOption('Comment', 'Specify which to include'),
-  ], { question: 'Include unexpected files in the checkpoint commit?' }));
+  ], { question: 'Include unexpected files in the checkpoint commit?' }))].join('\n');
 }
 
 // executor-block-gate — the task loop's stop after an executor returns
@@ -3029,30 +3091,82 @@ function executorBlockGate(cwd, { dotpath, result, file }) {
 }
 
 // dependency-approval-gate — planning's three approvals over dependency
-// work: the graph as first analysed, the graph after it was applied, and the
-// external-dependency resolutions. One shape — approve, or say what to
-// change — with each variant's own wording.
+// work, each carrying what it approves. The graph as first analysed and the
+// graph after it was applied are the grapher's report, judgment prose that
+// rides `--present`; the external-dependency resolutions are manifest state
+// by the time the gate renders, so that variant takes no payload at all and
+// reads the rows at the address. One menu shape beneath all three: approve,
+// or say what to change, with each variant's own wording.
 const DEPENDENCY_APPROVALS = {
-  graph: { question: 'Approve the dependency graph?', change: 'which priorities or dependencies to adjust' },
-  'updated-graph': { question: 'Approve the updated graph?', change: 'which priorities or dependencies to adjust' },
+  graph: {
+    question: 'Approve the dependency graph?',
+    change: 'which priorities or dependencies to adjust',
+    label: 'DISPLAY: dependency analysis',
+    framing: "**Dependency analysis** — what the graph found across the plan's tasks",
+  },
+  'updated-graph': {
+    question: 'Approve the updated graph?',
+    change: 'which priorities or dependencies to adjust',
+    label: 'DISPLAY: dependency graph',
+    framing: "**Dependency graph** — the dependencies and priorities written across the plan's tasks",
+  },
   resolution: { question: 'Approve the dependency resolution?', change: 'which resolutions to adjust or links to add' },
 };
 
 /**
+ * The resolution display, read at the address: each dependency this plan
+ * declares with its state, a resolved one hanging the task it links to
+ * beneath it, then the links the other plans gained into this one.
+ * @param {object} manifest @param {string} topic @returns {string}
+ */
+function dependencyResolution(manifest, topic) {
+  const deps = externalDependencies(itemOf(manifest, 'planning', topic));
+  const reverse = reverseResolutions(manifest, topic);
+  if (deps.length === 0 && reverse.length === 0) {
+    throw new Error(`render dependency-approval-gate: "${topic}" declares no external dependency and no plan resolves against it — the summary follows a resolution that changed something`);
+  }
+  const lines = [];
+  if (deps.length > 0) {
+    lines.push('External Dependencies', '');
+    for (const d of deps) {
+      lines.push(`  ${titlecase(d.topic)} (${d.state})`);
+      if (d.state === 'resolved' && isFilled(d.internal_id)) lines.push(treeList([d.internal_id], { indent: '  ' }));
+      lines.push('');
+    }
+  }
+  if (reverse.length > 0) {
+    lines.push('Reverse resolutions:');
+    for (const r of reverse) lines.push(...bulletRow(`${titlecase(r.other_topic)} → ${titlecase(topic)}:${r.internal_id}`));
+  }
+  return lines.join('\n');
+}
+
+/**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string}} args
+ * @param {{dotpath: string, variant?: string, present?: string, file?: string}} args
  * @returns {string}
  */
-function dependencyApprovalGate(cwd, { dotpath, variant }) {
+function dependencyApprovalGate(cwd, { dotpath, variant, present, file }) {
   const spec = variant === undefined ? undefined : DEPENDENCY_APPROVALS[variant];
   if (!spec) {
     throw new Error(`render dependency-approval-gate: --variant must be one of ${Object.keys(DEPENDENCY_APPROVALS).join(', ')}, got "${variant}"`);
   }
-  resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
-  return section('MENU: dependency approval gate', STOP_FOR_RESPONSE, menu('', [
+  const { topic, manifest } = resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
+  const gate = section('MENU: dependency approval gate', STOP_FOR_RESPONSE, menu('', [
     cmdOption('y', 'yes', 'Proceed'),
     promptOption('Tell me what to change', spec.change),
   ], { question: spec.question }));
+  if (variant === 'resolution') {
+    for (const [flag, value] of [['--present', present], ['--file', file]]) {
+      if (value !== undefined) throw new Error(`render dependency-approval-gate: ${flag} belongs to the graph variants — the resolution is manifest state and is read at the address`);
+    }
+    const body = dependencyResolution(manifest, topic);
+    return [section('DISPLAY: dependency resolution', 'emit verbatim as a code block', body), gate].join('\n');
+  }
+  if (file !== undefined) throw new Error(`render dependency-approval-gate: --file belongs to no variant — the ${variant} report rides --present`);
+  if (!present) throw new Error(`render dependency-approval-gate: --present <graph.md> is required for --variant ${variant}`);
+  const report = readMarkdownPayload(cwd, present, 'dependency-approval-gate');
+  return [presentedSection(spec.label, spec.framing, report), gate].join('\n');
 }
 
 // task-count-gate — the authoring loop's stop when the detail file and the

@@ -40,28 +40,19 @@ For each readable file:
 
 ## B. Batch Review
 
-Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
+The summaries go to the user as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
-> *Output the next fenced block as a code block:*
+Write the batch to `.workflows/.cache/{work_unit}/discovery/summary-batch.json` with the Write tool — one entry per item in `items_to_recover`, in their order. Where `item.needs_summary` is true the entry carries `item.derived_summary` (`null` where the source file was missing) with `populated` false; where it is false it carries the standing `item.summary` with `populated` true:
 
+```json
+{"items": [{"name": "{item.name}", "routing": "{research|discussion}", "summary": "{summary}", "populated": false}]}
 ```
-Proposed summaries for {N} topic(s):
 
-@foreach(item in items_to_recover)
-  {N}. {item.name:(titlecase)}  ({item.routing})
-@if(item.needs_summary)
-       @if(item.derived_summary) {item.derived_summary} @else (source file missing — please provide) @endif
-@else
-       {item.summary}  (already populated)
-@endif
-@endforeach
-```
+Fetch the gate, emitting each section verbatim at its marked instruction — the proposed summaries first, then the accept menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch --file .workflows/.cache/{work_unit}/discovery/summary-batch.json
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -103,9 +94,9 @@ New summary for "{item.name:(titlecase)}":
 
 **STOP.** Wait for user response.
 
-Update the in-memory summary for that item with the user's response. Re-render the batch from **B** so the user can see the updated state, then return to the prompt at the top of this section.
+Update the in-memory summary for that item with the user's response — **B** rewrites the payload from the updated set, so the same gate serves the edited batch.
 
-→ Return to **C. Edit Loop**.
+→ Return to **B. Batch Review**.
 
 ## D. Write and Commit
 

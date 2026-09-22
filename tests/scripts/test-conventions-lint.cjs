@@ -662,7 +662,7 @@ function checkInertLoadChrome(files) {
 // the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  'skills/workflow-continue-epic/references/summary-backfill.md': 2,
+  'skills/workflow-continue-epic/references/summary-backfill.md': 1,
   'skills/workflow-discovery/references/continuity-load.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 2,
   'skills/workflow-discovery/references/opener-pattern.md': 1,
@@ -674,7 +674,6 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-process/references/perspective-agents.md': 1,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 3,
   'skills/workflow-implementation-process/SKILL.md': 1,
-  'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/task-loop.md': 2,
   'skills/workflow-investigation-entry/references/gather-context.md': 1,
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 1,
@@ -685,7 +684,7 @@ const RATCHET_PINS = {
   'skills/workflow-log-idea/SKILL.md': 1,
   'skills/workflow-log-quickfix/SKILL.md': 1,
   'skills/workflow-planning-entry/references/cross-cutting-context.md': 2,
-  'skills/workflow-planning-process/references/analyze-task-graph.md': 3,
+  'skills/workflow-planning-process/references/analyze-task-graph.md': 1,
   'skills/workflow-planning-process/references/author-tasks.md': 5,
   'skills/workflow-planning-process/references/conclude-plan.md': 1,
   'skills/workflow-planning-process/references/define-tasks.md': 1,
@@ -693,7 +692,6 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/plan-construction.md': 3,
   'skills/workflow-planning-process/references/plan-review.md': 2,
   'skills/workflow-planning-process/references/process-review-findings.md': 1,
-  'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
   'skills/workflow-research-process/references/deep-dive-agent.md': 1,
   'skills/workflow-roadmap/references/session-loop.md': 1,
   'skills/workflow-scoping-process/SKILL.md': 2,
