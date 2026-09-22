@@ -426,6 +426,20 @@ function postponeTarget(project, workUnit, topic) {
 }
 
 /**
+ * The name clash a postpone's birth would overwrite, as one sentence: the
+ * plan's lock reads the roadmap before the epic manifest is written, and the
+ * landing reads it again under the project lock, so both refusals say the
+ * same thing about the same item.
+ * @param {string} name  the topic the birth would take the name of
+ * @param {Record<string, any>} item  what already sits there
+ * @returns {string}
+ */
+function postponeClashPhrase(name, item) {
+  const horizon = typeof item.horizon === 'string' ? item.horizon : '';
+  return `a roadmap item named "${name}"${horizon ? ` (horizon "${horizon}")` : ''} is not this topic's — rename or remove it on the roadmap first`;
+}
+
+/**
  * The horizon a postponed topic waits under — the roadmap item whose
  * `postponed_from` names it — or null when no item does.
  * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
@@ -498,10 +512,7 @@ function postponePlan(manifest, name, project) {
   }
   const target = postponeTarget(project, manifest.name, name);
   if (!target.joined && target.item !== undefined) {
-    const horizon = typeof target.item.horizon === 'string' ? target.item.horizon : '';
-    locks.push({
-      reason: `a roadmap item named "${name}"${horizon ? ` (horizon "${horizon}")` : ''} is not this topic's — rename or remove it on the roadmap first`,
-    });
+    locks.push({ reason: postponeClashPhrase(name, target.item) });
   }
   return { items: liveUnitItems(manifest, 'discovery', name), discards: proposedGroupings(manifest, name), locks };
 }
@@ -1311,6 +1322,7 @@ module.exports = {
   roadmapItems,
   itemJoin,
   postponeTarget,
+  postponeClashPhrase,
   postponedHorizon,
   lockingSpecsPhrase,
   proposedGroupings,

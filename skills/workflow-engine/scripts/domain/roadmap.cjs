@@ -41,7 +41,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-const { itemJoin, postponeTarget } = require('./derivations.cjs');
+const { itemJoin, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
@@ -1021,11 +1021,14 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * The postpone's roadmap half: the item that waits for the topic. An item
  * joined to `{workUnit, topic}` **re-waits** — the join deleted, the chosen
  * horizon taken, its own name and origin left as they were; otherwise one is
- * **born** under the topic's name with origin `postpone:{workUnit}`. Either
- * way it records `postponed_from` and gains the topic's files as sources, and
- * the node and the horizon are created just-in-time. Runs under the project
- * lock, **no commit** — the postpone transaction stages the project manifest
- * alongside the epic's.
+ * **born** under the topic's name with origin `postpone:{workUnit}` — or
+ * refuses, when that name is taken: nothing on the roadmap is ever
+ * overwritten, and the plan's clash lock is read again here because the plan
+ * ran before the epic manifest was written. Either way the item records
+ * `postponed_from` and gains the topic's files as sources, and the node and
+ * the horizon are created just-in-time. Runs under the project lock, **no
+ * commit** — the postpone transaction stages the project manifest alongside
+ * the epic's.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @param {{horizon: string, summary: string, sources: string[]}} opts
  * @returns {PostponeLanding}
@@ -1038,7 +1041,12 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
     const bornMap = !hasRoadmapNode(manifest);
     const roadmap = ensureRoadmap(manifest);
     const target = postponeTarget(manifest, workUnit, topic);
-    if (!target.joined) validateName('item', target.name);
+    if (!target.joined) {
+      // Read again under the project lock: the plan's clash check ran before
+      // the epic write, and a name a peer took since must refuse, never overwrite.
+      if (target.item !== undefined) throw new Error(postponeClashPhrase(topic, target.item));
+      validateName('item', target.name);
+    }
     const bornHorizon = ensureHorizon(roadmap, horizon);
     if (!target.joined) {
       roadmap.items[target.name] = { horizon, summary, origin: `postpone:${workUnit}` };

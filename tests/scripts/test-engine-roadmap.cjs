@@ -4,6 +4,9 @@
 // (skills/workflow-engine/scripts/domain/roadmap.cjs) — driven through the
 // engine CLI: JIT birth, self-commits scoped to the project manifest, the
 // joined-item guards, horizon restructuring, and the derived state read.
+// One landing guard is driven directly instead: a peer taking a name
+// between a postpone's plan and its write is a race no CLI sequence can
+// reach, and the guard is the reason it can never become an overwrite.
 
 require('./hermetic-env.cjs');
 
@@ -13,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { postponeToRoadmap } = require('../../skills/workflow-engine/scripts/domain/roadmap.cjs');
 const harness = require('./engine-harness.cjs');
 
 const { git, cleanupFixture: cleanup, ok, refuses, stubbedEngine, knowledgeCalls } = harness;
@@ -485,6 +489,18 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     engineFails(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next'],
       /a roadmap item named "ordering" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
     assert.deepStrictEqual([projectManifestText(dir), fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')], before);
+  });
+
+  it('the landing refuses a name a peer took between the plan and the write — a birth never overwrites', () => {
+    // The verb's plan reads the roadmap under the work-unit lock, before the
+    // epic manifest is written; this item lands in the window after it.
+    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'somebody else\'s', '--origin', 'harvest']);
+    const before = projectManifestText(dir);
+    assert.throws(
+      () => postponeToRoadmap(dir, 'mvp', 'ordering', { horizon: 'next', summary: 'Customers order', sources: [] }),
+      /a roadmap item named "ordering" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/,
+    );
+    assert.strictEqual(projectManifestText(dir), before, 'the peer\'s item stands, untouched');
   });
 
   it('refuses a missing horizon and a non-epic work unit', () => {
