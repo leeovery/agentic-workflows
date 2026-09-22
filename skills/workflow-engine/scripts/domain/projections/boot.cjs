@@ -43,6 +43,22 @@ function labelGate() {
   return section('MENU: label gate', MENU_INSTRUCTION, body);
 }
 
+/**
+ * The one-time gate-surface opt-in.
+ * @returns {string}
+ */
+function gateSurfaceGate() {
+  const body = menu(
+    '',
+    [
+      cmdOption('y', 'yes', 'Draw the gates above the prompt'),
+      cmdOption('n', 'no', 'Keep the gates as text menus'),
+    ],
+    { question: 'Turn the gate surface on for this project?' },
+  );
+  return section('MENU: gate surface gate', MENU_INSTRUCTION, body);
+}
+
 // The knowledge gate's menus, keyed by what each asks: reuse = adopt the
 // system configuration (its yes row names it — provider · model, or
 // keyword-only), deviate = the per-project alternatives to it, mode = the
@@ -97,4 +113,4 @@ function knowledgeGate(variant, config = {}) {
   return section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options, { question: gate.question }));
 }
 
-module.exports = { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS };
+module.exports = { migrationGate, labelGate, gateSurfaceGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS };

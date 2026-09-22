@@ -194,6 +194,7 @@ describe('engine boot', () => {
       tmux_labels: 'prompt',
       label_repaired: false,
       session_hooks_installed: false,
+      gate_surface: 'prompt',
       baseline: 'none',
       walkthrough: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
