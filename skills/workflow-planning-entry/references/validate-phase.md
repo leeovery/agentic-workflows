@@ -12,15 +12,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If output is empty (plan doesn't exist — fresh start)
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-context-gate {work_unit}.planning.{topic}
 ```
-· · · · · · · · · · · ·
-Any additional context since the specification was completed?
 
-**`c/continue`**  → Continue with the specification as-is
-**Add context** → Tell me the priorities, constraints, or new considerations
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

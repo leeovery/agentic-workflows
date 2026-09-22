@@ -21,6 +21,7 @@
   "invariants": {
     "calls_include": [
       "render entry-gate pay.planning.pay",
+      "render plan-context-gate pay.planning.pay",
       "manifest list",
       "knowledge.cjs query"
     ],
