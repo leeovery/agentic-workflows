@@ -507,16 +507,21 @@ function postponePlan(manifest, name, project) {
 }
 
 /**
- * @typedef {{topic: string, reason: 'cancelled'} | {topic: string, reason: 'held', by: string}} ReactivateLock
+ * @typedef {{topic: string, reason: 'cancelled'|'postponed'} | {topic: string, reason: 'held', by: string}} ReactivateLock
  */
+
+// The source lifecycles that hold a cancelled specification's reactivate
+// shut, each with its own way out. A dead-ended source is not among them:
+// its discussion still concluded, so the specification can stand on it.
+const UNAVAILABLE_SOURCE_LIFECYCLES = ['cancelled', 'postponed'];
 
 /**
  * What holds a cancelled specification's reactivate shut: a source topic
- * whose Discovery unit is cancelled (reactivate the topic first), or a
- * source another started specification has since taken (regroup at the
- * specification entry). One row per offending source, spec order for the
- * holds — the refusal and the reactivate menu's locked rows read the same
- * facts.
+ * that has left the board — cancelled (reactivate the topic first) or
+ * postponed (pull it forward from the roadmap first) — or a source another
+ * started specification has since taken (regroup at the specification
+ * entry). One row per offending source, spec order for the holds — the
+ * refusal and the reactivate menu's locked rows read the same facts.
  * @param {object} manifest @param {string} spec
  * @returns {ReactivateLock[]}
  */
@@ -525,8 +530,9 @@ function specReactivateLocks(manifest, spec) {
   /** @type {ReactivateLock[]} */
   const locks = [];
   for (const [topic] of sourceRows(item && item.sources)) {
-    if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
-      locks.push({ topic, reason: 'cancelled' });
+    const { lifecycle } = computeTopicLifecycle(manifest, topic);
+    if (UNAVAILABLE_SOURCE_LIFECYCLES.includes(lifecycle)) {
+      locks.push({ topic, reason: /** @type {'cancelled'|'postponed'} */ (lifecycle) });
       continue;
     }
     for (const [other, holder] of sourcingSpecs(manifest, topic)) {
@@ -535,6 +541,13 @@ function specReactivateLocks(manifest, spec) {
   }
   return locks;
 }
+
+// The way back for each source lifecycle that holds a reactivate shut,
+// singular and plural, in the order the sentence names them.
+const GONE_SOURCE_RECOVERY = /** @type {const} */ ([
+  ['cancelled', 'reactivate the topic first', 'reactivate the topics first'],
+  ['postponed', 'pull the topic forward from the roadmap first', 'pull the topics forward from the roadmap first'],
+]);
 
 /**
  * A reactivate lock set as one sentence's two halves — what holds the
@@ -549,13 +562,14 @@ function specReactivateLocks(manifest, spec) {
 function reactivateLockPhrases(locks, nameOf, { now = false } = {}) {
   const quote = (/** @type {string} */ n) => `"${nameOf(n)}"`;
   const unique = (/** @type {string[]} */ names) => [...new Set(names)].map(quote);
-  const cancelled = unique(locks.filter((l) => l.reason === 'cancelled').map((l) => l.topic));
   const held = locks.filter((l) => l.reason === 'held');
   const holds = [];
   const recovery = [];
-  if (cancelled.length > 0) {
-    holds.push(cancelled.length === 1 ? `its source ${cancelled[0]} is cancelled` : `its sources ${cancelled.join(', ')} are cancelled`);
-    recovery.push(cancelled.length === 1 ? 'reactivate the topic first' : 'reactivate the topics first');
+  for (const [reason, way, ways] of GONE_SOURCE_RECOVERY) {
+    const gone = unique(locks.filter((l) => l.reason === reason).map((l) => l.topic));
+    if (gone.length === 0) continue;
+    holds.push(gone.length === 1 ? `its source ${gone[0]} is ${reason}` : `its sources ${gone.join(', ')} are ${reason}`);
+    recovery.push(gone.length === 1 ? way : ways);
   }
   if (held.length > 0) {
     const specs = unique(held.map((l) => /** @type {{by: string}} */ (l).by));

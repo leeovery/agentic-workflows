@@ -15,7 +15,7 @@ const path = require('path');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture: cleanup, ok, refuses } = harness;
+const { git, cleanupFixture: cleanup, ok, refuses, stubbedEngine, knowledgeCalls } = harness;
 
 /** A temp-dir git repo with an empty project manifest committed. */
 function setupGitFixture() {
@@ -381,6 +381,227 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']).error, /previously dismissed/);
     const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
     assert.strictEqual(res.state, 'in-flight');
+  });
+});
+
+describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    createManifest(dir, 'mvp', {
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        discovery: { items: {
+          ordering: { routing: 'discussion', source: 'discovery', summary: 'Customers order', order: 1, brief_path: 'discovery/briefs/ordering.md' },
+          menus: { routing: 'discussion', source: 'discovery', summary: 'Operators maintain', order: 2 },
+          loyalty: { routing: 'discussion', source: 'discovery', order: 3 },
+        } },
+        research: { items: { ordering: { status: 'completed' } } },
+        discussion: { items: { ordering: { status: 'in-progress' }, menus: { status: 'completed' } } },
+        specification: { items: { grp: { status: 'proposed', sources: { ordering: { status: 'pending' } } } } },
+      },
+    });
+    for (const rel of ['discovery/briefs/ordering.md', 'research/ordering.md', 'discussion/ordering.md']) {
+      const abs = path.join(dir, '.workflows', 'mvp', rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, '# x\n');
+    }
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'fixture']);
+  });
+  afterEach(() => { cleanup(dir); });
+
+  const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
+  const engineFails = (/** @type {string[]} */ args, /** @type {RegExp} */ p) => refuses(dir, args, p);
+  const epic = () => JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+
+  it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
+    const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    assert.strictEqual(res.status, 'postponed');
+    assert.deepStrictEqual(res.postponed, [
+      { phase: 'research', previous_status: 'completed' },
+      { phase: 'discussion', previous_status: 'in-progress' },
+    ]);
+    assert.deepStrictEqual(res.discarded, ['grp']);
+    assert.deepStrictEqual(res.roadmap, { name: 'ordering', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
+
+    assert.deepStrictEqual(readProject(dir).roadmap, {
+      horizons: ['next'],
+      items: { ordering: {
+        horizon: 'next',
+        summary: 'Customers order',
+        origin: 'postpone:mvp',
+        postponed_from: { work_unit: 'mvp', topic: 'ordering' },
+        sources: ['mvp/discovery/briefs/ordering.md', 'mvp/research/ordering.md', 'mvp/discussion/ordering.md'],
+      } },
+    });
+    const m = epic();
+    assert.deepStrictEqual(m.phases.discovery.items.ordering,
+      { routing: 'discussion', source: 'discovery', summary: 'Customers order', brief_path: 'discovery/briefs/ordering.md', postponed: true, previous_order: 1 });
+    assert.strictEqual(m.phases.research.items.ordering.status, 'postponed');
+    assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
+    assert.strictEqual(m.phases.specification.items.grp, undefined, 'the proposed grouping is discarded, never stashed');
+
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'workflow(mvp): postpone ordering → next');
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest staged');
+    assert.ok(staged.includes('.workflows/mvp/manifest.json'), 'epic manifest staged');
+  });
+
+  it('a never-started topic with no files: the row alone, the summary falling back to its name', () => {
+    const res = engineOk(['topic', 'postpone', 'mvp', 'loyalty', '--horizon', 'later']);
+    assert.deepStrictEqual(res.postponed, []);
+    const item = readProject(dir).roadmap.items.loyalty;
+    assert.strictEqual(item.summary, 'Loyalty');
+    assert.strictEqual('sources' in item, false);
+    assert.strictEqual(epic().phases.discovery.items.loyalty.postponed, true);
+  });
+
+  it('a second postpone joins the existing map under a new horizon', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const res = engineOk(['topic', 'postpone', 'mvp', 'menus', '--horizon', 'later']);
+    assert.deepStrictEqual(res.roadmap, { name: 'menus', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(readProject(dir).roadmap.horizons, ['next', 'later']);
+  });
+
+  it('the re-wait arm: a pulled topic\'s own item loses its join, takes the horizon, and keeps its name and origin', () => {
+    runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order', '--origin', 'harvest']);
+    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
+    assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: true });
+    const item = readProject(dir).roadmap.items['guest-ordering'];
+    assert.strictEqual('pulled_to' in item, false, 'the join reverts');
+    assert.strictEqual(item.horizon, 'later');
+    assert.strictEqual(item.origin, 'harvest', 'a re-wait leaves the origin as it was');
+    assert.deepStrictEqual(item.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
+    assert.strictEqual(readProject(dir).roadmap.items.ordering, undefined, 'no second item is born under the topic name');
+  });
+
+  it('a name clash refuses the whole transaction — nothing on either manifest moves', () => {
+    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'somebody else\'s', '--origin', 'harvest']);
+    const before = [projectManifestText(dir), fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')];
+    engineFails(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next'],
+      /a roadmap item named "ordering" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
+    assert.deepStrictEqual([projectManifestText(dir), fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')], before);
+  });
+
+  it('refuses a missing horizon and a non-epic work unit', () => {
+    engineFails(['topic', 'postpone', 'mvp', 'ordering'], /--horizon is required/);
+    createManifest(dir, 'small', { work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { small: { status: 'in-progress' } } } } });
+    engineFails(['topic', 'postpone', 'small', 'small', '--horizon', 'next'],
+      /postpone is epic-only — "small" is a feature, whose topic is the work unit/);
+  });
+
+  it('the roadmap owns it from there: cancel and reactivate refuse, triage lands, the field surface refuses a status write and a delete', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    engineFails(['topic', 'cancel', 'mvp', 'discovery', 'ordering'],
+      /"ordering" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
+    engineFails(['topic', 'reactivate', 'mvp', 'discovery', 'ordering'],
+      /"ordering" is postponed, not cancelled — pull it forward from the roadmap instead/);
+    engineFails(['topic', 'start', 'mvp', 'discussion', 'ordering'],
+      /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);
+    engineFails(['manifest', 'set', 'mvp.discussion.ordering', 'status', 'in-progress'],
+      /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
+    engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
+      /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
+    // A concern for a topic that waits is mail that waits with it.
+    const parked = engineOk(['topic', 'triage', 'mvp', 'research', 'ordering']);
+    assert.strictEqual(parked.status, 'postponed', 'the triage leaves the hold alone');
+  });
+
+  it('roadmap remove cancels the epic\'s row in the same transaction, one commit over both manifests', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const res = runOk(dir, ['remove', 'ordering']);
+    assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
+    const m = epic();
+    assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined);
+    assert.strictEqual(m.phases.discovery.items.ordering.cancelled, true);
+    assert.strictEqual(m.phases.discovery.items.ordering.previous_order, 1, 'the stashed order survives for the reactivate');
+    assert.strictEqual(m.phases.research.items.ordering.status, 'cancelled');
+    assert.strictEqual(m.phases.research.items.ordering.previous_status, 'completed');
+    assert.strictEqual(readProject(dir).roadmap.items.ordering, undefined);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove ordering — ordering cancelled in mvp');
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/manifest.json') && staged.includes('.workflows/mvp/manifest.json'), 'both manifests ride one commit');
+    // And the reactivate is then the way back, as for any cancelled unit.
+    assert.deepStrictEqual(ok(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']).restored,
+      [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
+  });
+
+  it('roadmap remove of an item whose epic is gone refuses rather than orphaning the row', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    fs.rmSync(path.join(dir, '.workflows', 'mvp'), { recursive: true, force: true });
+    runFail(dir, ['remove', 'ordering']);
+    assert.match(runFail(dir, ['remove', 'ordering']).error,
+      /"ordering" was postponed from work unit "mvp", which no longer exists — the join is orphaned/);
+  });
+
+  it('pull-forward back into the same epic restores the unit, re-indexes its completed artifacts, and drops postponed_from', () => {
+    const stub = stubbedEngine();
+    stub.ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    assert.ok(knowledgeCalls(dir).includes('remove --work-unit mvp --phase research --topic ordering'), 'the postpone removes the chunks');
+    const res = stub.ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
+    assert.strictEqual(res.op, 'pull-forward');
+    assert.strictEqual(res.state, 'in-flight');
+    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
+    assert.ok(knowledgeCalls(dir).includes('index .workflows/mvp/research/ordering.md'), 'the return re-indexes the completed artifact');
+    const m = epic();
+    assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined, 'the marker is gone');
+    assert.strictEqual(m.phases.discovery.items.ordering.order, 1, 'the map order returns');
+    assert.strictEqual(m.phases.research.items.ordering.status, 'completed');
+    assert.strictEqual('previous_status' in m.phases.research.items.ordering, false);
+    const item = readProject(dir).roadmap.items.ordering;
+    assert.deepStrictEqual(item.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
+    assert.strictEqual('postponed_from' in item, false, 'the item is in flight again — a later postpone re-sets it');
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/manifest.json') && staged.includes('.workflows/mvp/manifest.json'));
+  });
+
+  it('pull-forward into another epic creates as usual and carries prior onto the new row', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    createManifest(dir, 'v2', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    const res = runOk(dir, ['pull-forward', 'ordering', '--into', 'v2', '--routing', 'discussion']);
+    assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
+    const row = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
+    assert.deepStrictEqual(row, { routing: 'discussion', source: 'roadmap', summary: 'Customers order', prior: { work_unit: 'mvp', topic: 'ordering' } });
+    assert.strictEqual(epic().phases.discovery.items.ordering.postponed, true, 'the prior epic keeps its record and its marker');
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
+  });
+
+  it('bind carries prior when the pull landed elsewhere, and never when it came home', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: { discovery: { items: { checkout: { routing: 'discussion', source: 'discovery', summary: 's' } } } },
+    });
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'v2']);
+    runOk(dir, ['pull', 'ordering', '--into', 'v2']);
+    const res = runOk(dir, ['bind', 'ordering', '--topic', 'checkout']);
+    assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
+    assert.deepStrictEqual(
+      JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.checkout.prior,
+      { work_unit: 'mvp', topic: 'ordering' });
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/v2/manifest.json'), 'the map write rides the bind commit');
+  });
+
+  it('a bind back into the epic that postponed the topic writes no prior', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    const res = runOk(dir, ['bind', 'ordering', '--topic', 'menus']);
+    assert.strictEqual('prior' in res, false);
+    assert.strictEqual('prior' in epic().phases.discovery.items.menus, false);
+  });
+
+  it('roadmap move re-buckets a postponed item freely — it is waiting', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const res = runOk(dir, ['move', 'ordering', '--horizon', 'later']);
+    assert.strictEqual(res.state, 'waiting');
+    assert.strictEqual(readProject(dir).roadmap.items.ordering.horizon, 'later');
   });
 });
 

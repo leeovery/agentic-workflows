@@ -60,7 +60,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.c
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
-const { epicMenu, epicDashboard, epicCancelMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
 
@@ -2265,6 +2265,111 @@ describe('pipeline simulation', () => {
       sim.refuses(['topic', 'reactivate', wu, phase, 'billing'], /^reactivate is topic-level per stage — discovery/);
     }
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export', '--cascade'], /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
+  });
+
+  it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {
+    const wu = 'later';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Postpone units', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'fresh-one', routing: 'discussion', summary: 'Nothing started' },
+      { name: 'researched', routing: 'research', summary: 'Research landed' },
+      { name: 'decided', routing: 'discussion', summary: 'Discussion concluded' },
+      { name: 'specd', routing: 'discussion', summary: 'Specified already' },
+    ])]);
+    sim.run(['discovery-map', 'sequence', wu, 'fresh-one=1', 'researched=2', 'decided=3', 'specd=4']);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
+    const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
+
+    sim.run(['topic', 'start', wu, 'research', 'researched']);
+    sim.write(`.workflows/${wu}/research/researched.md`, '# Research — researched\n');
+    sim.run(['topic', 'complete', wu, 'research', 'researched']);
+    for (const topic of ['decided', 'specd']) {
+      sim.run(['topic', 'start', wu, 'discussion', topic]);
+      sim.write(`.workflows/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.run(['topic', 'complete', wu, 'discussion', topic]);
+    }
+    sim.run(['topic', 'start', wu, 'specification', 'specd']);
+    sim.run(['manifest', 'set', `${wu}.specification.specd`, 'sources.specd.status', 'incorporated']);
+
+    // Every Discovery unit is offered; the spec'd one is locked with its reason.
+    assert.deepStrictEqual(postponable(), ['decided', 'researched', 'fresh-one']);
+    assert.strictEqual(detail().postponable.find((u) => u.name === 'specd').locked,
+      'postponing "specd" is refused while the specification "specd" sources its discussion — a topic past specification is past "not yet"');
+    sim.refuses(['topic', 'postpone', wu, 'specd', '--horizon', 'next'], /a topic past specification is past "not yet"/);
+    sim.refuses(['render', 'postpone-gate', `${wu}.discovery.specd`, '--horizon', 'next'], /a topic past specification is past "not yet"/);
+
+    // The map is born at the first postpone; the second takes a new horizon.
+    assert.strictEqual(sim.run(['roadmap', 'state']).exists, false);
+    sim.render(['postpone-gate', `${wu}.discovery.fresh-one`, '--horizon', 'next'], { expect: 'content' });
+    const first = sim.run(['topic', 'postpone', wu, 'fresh-one', '--horizon', 'next']);
+    assert.deepStrictEqual(first.roadmap, { name: 'fresh-one', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
+    assert.match(sim.render(['topic-receipt', `${wu}.discovery.fresh-one`, '--verb', 'postpone'], { expect: 'content' }),
+      /Postponed "Fresh One" → next\./);
+    const second = sim.run(['topic', 'postpone', wu, 'researched', '--horizon', 'later']);
+    assert.deepStrictEqual(second.roadmap, { name: 'researched', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false });
+    assert.deepStrictEqual(second.postponed, [{ phase: 'research', previous_status: 'completed' }]);
+    sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
+
+    // The lifecycle, the aggregation, the sequencing flag, and the epic's
+    // own completion all walk past a topic that has left.
+    const d = detail();
+    assert.deepStrictEqual(d.postponed, [
+      { name: 'decided', horizon: 'later' },
+      { name: 'fresh-one', horizon: 'next' },
+      { name: 'researched', horizon: 'later' },
+    ]);
+    assert.strictEqual(d.discovery_map.find((r) => r.name === 'researched').lifecycle, 'postponed');
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.researched`, 'status']), 'postponed');
+    assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'research'), null, 'the only research item is postponed — the phase aggregates to nothing');
+    assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
+    assert.strictEqual(d.convergence_state, 'settled', 'a topic that has left holds convergence open no more than a cancelled one');
+    assert.deepStrictEqual(d.postponable.map((u) => u.name), ['specd'], 'a postponed unit leaves the postpone list');
+    assert.deepStrictEqual(postponable(), [], 'and the one unit left is locked, so nothing is pickable');
+    assert.ok(!d.cancellable.some((u) => u.name === 'fresh-one'), 'a postponed unit leaves the cancel list too');
+    // The gap analysis reads completed artifacts: the postponed research and
+    // the postponed discussion both drop out of its input set.
+    assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.workflows'), 'gap-analysis')
+      .map((f) => path.basename(f)), ['specd.md']);
+
+    // The roadmap owns it: cancel and reactivate refuse, triage lands.
+    sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);
+    sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
+    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
+    const mail = sim.run(['topic', 'triage', wu, 'discussion', 'decided',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'mail-that-waits',
+      '-m', `discussion(${wu}/specd): reroute concern to decided`]);
+    assert.strictEqual(mail.status, 'postponed', 'a concern for a topic that waits is mail that waits with it');
+
+    // `roadmap remove` is the door to "actually never".
+    const removed = sim.run(['roadmap', 'remove', 'fresh-one']);
+    assert.deepStrictEqual(removed.epic_row_cancelled, { work_unit: wu, topic: 'fresh-one' });
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].cancelled, true);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items['fresh-one'].postponed, undefined);
+
+    // The pull is the return: the same epic restores the unit it postponed.
+    const back = sim.run(['roadmap', 'pull-forward', 'researched', '--into', wu]);
+    assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'completed' }]);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.researched.order, 2, 'the map order returns');
+    assert.strictEqual(sim.manifest(wu).phases.research.items.researched.status, 'completed');
+    assert.strictEqual('postponed_from' in sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched'), false);
+    assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'in-flight');
+
+    // A pull into a different epic seeds a fresh topic carrying the prior
+    // record's address; a bind does the same for a plain pull.
+    const next = 'later-v2';
+    sim.run(['workunit', 'create', next, 'epic', '--description', 'The next release', '--session-log-file', sessionLog(sim, next)]);
+    sim.run(['discovery-session', 'close', next, '-m', `discovery(${next}): shape the map`]);
+    const elsewhere = sim.run(['roadmap', 'pull-forward', 'decided', '--into', next, '--routing', 'discussion']);
+    assert.deepStrictEqual(elsewhere.prior, { work_unit: wu, topic: 'decided' });
+    assert.deepStrictEqual(sim.manifest(next).phases.discovery.items.decided.prior, { work_unit: wu, topic: 'decided' });
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.decided.postponed, true, 'the prior epic keeps its record');
+
+    // A pulled-from-roadmap topic postponed again re-waits its own item.
+    sim.run(['topic', 'postpone', next, 'decided', '--horizon', 'someday']);
+    const rewaited = sim.run(['topic', 'postpone', wu, 'researched', '--horizon', 'someday']);
+    assert.deepStrictEqual(rewaited.roadmap, { name: 'researched', horizon: 'someday', born_map: false, born_horizon: false, reverted_join: true });
+    assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {

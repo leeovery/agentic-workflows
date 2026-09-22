@@ -3764,8 +3764,12 @@ function discoveryCancelStatement(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
     throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
   }
-  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle === 'cancelled') {
     throw new Error(`render cancel-gate: "${topic}" is already cancelled — the menu never offers it`);
+  }
+  if (lifecycle === 'postponed') {
+    throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
   const locking = lockingSpecs(manifest, topic);
   if (locking.length > 0) {

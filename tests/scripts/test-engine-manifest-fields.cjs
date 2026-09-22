@@ -481,6 +481,19 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.anchor.sources.alpha, undefined);
   });
 
+  it('a postponed item takes no status write and no delete either — the refusal names the roadmap', () => {
+    const m = readWorkUnit(dir, 'payments');
+    m.phases.discussion = { items: { shelved: { status: 'postponed', previous_status: 'in-progress' } } };
+    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(manifestPath, 'utf8');
+    const refusal = /discussion item "shelved" is postponed — pull it forward from the roadmap instead/;
+    assert.match(runFails(dir, ['set', 'payments.discussion.shelved', 'status', 'in-progress']).error, refusal);
+    assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.shelved']).error, refusal);
+    assert.match(runFails(dir, ['delete', 'payments.discussion.shelved', 'previous_status']).error, refusal);
+    assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
+  });
+
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {
     const file = payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },

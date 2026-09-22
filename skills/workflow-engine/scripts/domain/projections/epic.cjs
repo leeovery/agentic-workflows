@@ -204,8 +204,10 @@ function flaggedCallout(text) {
 
 /** @param {EpicDetail} detail */
 function mapStatusSuffix(detail) {
-  if (detail.convergence_state === 'settled') return ' · all decided';
   const s = detail.map_summary;
+  // "All decided" is the settled map's shorthand — but a topic that left for
+  // the roadmap was never decided, so the breakdown speaks for itself there.
+  if (detail.convergence_state === 'settled' && !(s && s.postponed > 0)) return ' · all decided';
   if (!s) return '';
   const parts = [];
   if (s.decided) parts.push(`${s.decided} decided`);
@@ -402,7 +404,9 @@ function epicDashboard(workUnit, detail, opts = {}) {
     const callouts = arrivalCallouts(newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     block += treeHeader(`RESEARCH & DISCUSSION (${drawn.length} topic${drawn.length === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
-    block += renderTree(mapNodes(drawn, heldAges), { width: TREE_WIDTH, gap: true });
+    // Every row postponed leaves the tree with nothing to draw — the map's
+    // own empty word, with the line below naming where the topics went.
+    block += drawn.length > 0 ? renderTree(mapNodes(drawn, heldAges), { width: TREE_WIDTH, gap: true }) : '  (empty)\n';
     stages.push(block);
   }
 

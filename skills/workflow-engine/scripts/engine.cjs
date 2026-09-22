@@ -1430,8 +1430,10 @@ function runRoadmap(call, argv) {
       }
       respond(call, roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
-      if (positional.length !== 1 || !opts.into || !opts.routing) {
-        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]');
+      // `--routing` belongs to the creating branch: the return of a topic
+      // this epic postponed restores the row it already has, routing and all.
+      if (positional.length !== 1 || !opts.into) {
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)');
       }
       respond(call, roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,

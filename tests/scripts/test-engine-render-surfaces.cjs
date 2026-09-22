@@ -143,7 +143,10 @@ describe('cancel-gate', () => {
   it('refuses what the menu never offers — locked, cancelled, proposed — and a non-unit address', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+        discovery: { items: {
+          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+          away: { routing: 'discussion', source: 'discovery', postponed: true },
+        } },
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: {
           unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } },
@@ -158,6 +161,8 @@ describe('cancel-gate', () => {
       /"auth" is locked by the specification sourcing its discussion \(unified\) — the menu never offers it/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.gone' }),
       /"gone" is already cancelled — the menu never offers it/);
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.away' }),
+      /"away" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.ghost' }),
       /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.shipped' }),
@@ -170,6 +175,153 @@ describe('cancel-gate', () => {
       /no specification item "ghost"/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discussion.auth' }),
       /address must be <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "discussion"/);
+  });
+});
+
+describe('postpone-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  /** @param {object|null} roadmap */
+  function writeProject(roadmap) {
+    fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+      JSON.stringify(roadmap === null ? { work_units: {} } : { work_units: {}, roadmap }, null, 2));
+  }
+
+  const LIVE = {
+    phases: {
+      discovery: { items: { auth: { routing: 'research', source: 'discovery', summary: 'Auth flow' } } },
+      research: { items: { auth: { status: 'completed' } } },
+      discussion: { items: { auth: { status: 'in-progress' } } },
+    },
+  };
+
+  it('a never-started topic with no roadmap: the row alone, and the map is created with it', () => {
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
+    });
+    const out = renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.data-export', horizon: 'next' });
+    assert.match(out, /MENU: postpone gate/);
+    assert.match(unwrap(out), /Postponing \*\*Data Export\*\* sets it aside — nothing has started, so only the map row is marked\. It waits on the roadmap under "next", until it is pulled into work\. The roadmap is created with it\./);
+    assert.match(out, /◆ Postpone it\?/);
+    assert.match(out, /\*\*`y\/yes`\*\*   → Confirm/);
+    assert.match(out, /\*\*`n\/no`\*\*    → Keep it here/);
+    assert.match(out, /\*\*Comment\*\* → Tell me what to change \(the horizon\)/);
+    assert.ok(!out.includes('(new)'), 'the map\'s own birth already says the horizon is new');
+  });
+
+  it('a started topic: the items by phase, the groupings discarded, the horizon flagged new over an existing map', () => {
+    writeProject({ horizons: ['mvp'], items: { other: { horizon: 'mvp', summary: 's', origin: 'harvest' } } });
+    writeManifest(dir, 'pay', {
+      phases: {
+        ...LIVE.phases,
+        specification: { items: {
+          grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+          other: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+        } },
+      },
+    });
+    const out = unwrap(renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: 'v2' }));
+    assert.match(out, /Postponing \*\*Auth\*\* marks its research \[completed\] and discussion \[in-progress\] postponed — its record stays on disk and comes back with the pull\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\. It waits on the roadmap under "v2" \(new\), until it is pulled into work\./);
+    assert.ok(!out.includes('The roadmap is created with it.'), 'the map exists — only its horizon is new');
+  });
+
+  it('a topic the roadmap already sent here: its own item re-waits, whatever the item is named', () => {
+    writeProject({
+      horizons: ['mvp', 'v2'],
+      items: { ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'pay', topic: 'auth' } } },
+    });
+    writeManifest(dir, 'pay', LIVE);
+    const out = unwrap(renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: 'v2' }));
+    assert.match(out, /Its own item \*\*Ordering\*\* re-waits under "v2"\./);
+    assert.ok(!out.includes('It waits on the roadmap under'), 'a re-wait is not a birth');
+  });
+
+  it('every lock refuses at the gate, so a locked unit is met at the confirm', () => {
+    writeProject({ horizons: ['mvp'], items: { auth: { horizon: 'mvp', summary: 'somebody else\'s', origin: 'harvest' } } });
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: {
+          auth: { routing: 'research', source: 'discovery' },
+          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+          away: { routing: 'discussion', source: 'discovery', postponed: true },
+          locked: { routing: 'discussion', source: 'discovery' },
+          busy: { routing: 'discussion', source: 'discovery' },
+        } },
+        discussion: { items: {
+          auth: { status: 'in-progress' },
+          locked: { status: 'completed' },
+          busy: { status: 'in-progress' },
+        } },
+        experiment: { items: { busy: { status: 'in-progress', experiments: {
+          E1: { slug: 'a', status: 'concluded', verdict: 'held' },
+          E2: { slug: 'b', status: 'running' },
+          'E2.1': { slug: 'c', status: 'conceived' },
+        } } } },
+        specification: { items: { unified: { status: 'in-progress', sources: { locked: { status: 'incorporated' } } } } },
+      },
+    });
+    const gate = (topic) => renderSurface(dir, 'postpone-gate', { dotpath: `pay.discovery.${topic}`, horizon: 'mvp' });
+    assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+    assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
+    assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
+    assert.throws(() => gate('locked'), /render postpone-gate: postponing "locked" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"/);
+    assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
+    assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
+  });
+
+  it('refuses a dead address, a non-Discovery address, and a missing horizon', () => {
+    writeManifest(dir, 'pay', LIVE);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discussion.auth', horizon: 'mvp' }),
+      /render postpone-gate: address must be <work_unit>\.discovery\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'ghost.discovery.auth', horizon: 'mvp' }),
+      /render postpone-gate: work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth' }),
+      /render postpone-gate: --horizon is required/);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: '  ' }),
+      /render postpone-gate: --horizon is required/);
+  });
+});
+
+describe('topic-receipt — the postpone verb', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  function writeWorld(postponed) {
+    fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next'], items: {
+        ordering: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'auth' } },
+      } },
+    }, null, 2));
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', ...(postponed ? { postponed: true } : {}) } } },
+        discussion: { items: { auth: { status: postponed ? 'postponed' : 'in-progress', ...(postponed ? { previous_status: 'in-progress' } : {}) } } },
+      },
+    });
+  }
+
+  it('names the horizon the topic waits under, the removal advisory riding --warn', () => {
+    writeWorld(true);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone' }),
+      /Postponed "Auth" → next\.\n/);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone', warn: '1' }),
+      /⚑ Knowledge removal warning[\s\S]*Postponed "Auth" → next\.\n/);
+  });
+
+  it('refuses a topic that is not postponed, a non-Discovery address, and a dead name', () => {
+    writeWorld(false);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone' }),
+      /"auth" is not postponed — the postpone has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'postpone' }),
+      /--verb postpone addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'postpone' }),
+      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
   });
 });
 

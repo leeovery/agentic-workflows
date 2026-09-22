@@ -21,6 +21,7 @@ const {
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  postponePlan, postponeTarget, postponedHorizon,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1080,6 +1081,23 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(specReactivateLocks(m, 'parked'), [{ topic: 'gone', reason: 'cancelled' }]);
     });
 
+    it('a postponed source holds a cancelled specification\'s reactivate shut, naming the pull', () => {
+      const m = unitManifest();
+      m.phases.discovery.items.gone.cancelled = false;
+      m.phases.discovery.items.gone.postponed = true;
+      m.phases.discussion.items.gone.status = 'postponed';
+      assert.deepStrictEqual(specReactivateLocks(m, 'parked'),
+        [{ topic: 'gone', reason: 'postponed' }, { topic: 'held', reason: 'held', by: 'unified' }]);
+      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'postponed' }], (n) => n),
+        { holds: 'its source "a" is postponed', recovery: 'pull the topic forward from the roadmap first' });
+      assert.deepStrictEqual(reactivateLockPhrases([
+        { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'postponed' }, { topic: 'c', reason: 'postponed' },
+      ], (n) => n), {
+        holds: 'its source "a" is cancelled and its sources "b", "c" are postponed',
+        recovery: 'reactivate the topic first and pull the topics forward from the roadmap first',
+      });
+    });
+
     it('reactivateLockPhrases: singular, plural, and mixed — the names cast by the caller, the hold marked since the cancel on request', () => {
       assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'cancelled' }], (n) => n),
         { holds: 'its source "a" is cancelled', recovery: 'reactivate the topic first' });
@@ -1092,6 +1110,104 @@ describe('reads + derivations', () => {
         holds: 'its sources "a", "b" are cancelled and the specifications "x", "y" source "c", "d"',
         recovery: 'reactivate the topics first and regroup at the specification entry',
       });
+    });
+  });
+
+  describe('the postpone plan', () => {
+    // A live topic with a proposed grouping over its discussion, a topic
+    // under a started specification, one with a live record on its series,
+    // one already postponed, and one cancelled.
+    function manifest() {
+      return {
+        name: 'pay',
+        work_type: 'epic',
+        phases: {
+          discovery: { items: {
+            auth: { routing: 'research', source: 'discovery' },
+            timing: { routing: 'discussion', source: 'discovery' },
+            busy: { routing: 'discussion', source: 'discovery' },
+            away: { routing: 'discussion', source: 'discovery', postponed: true },
+            gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+          } },
+          research: { items: { auth: { status: 'completed' } } },
+          discussion: { items: {
+            auth: { status: 'in-progress' },
+            timing: { status: 'completed' },
+            busy: { status: 'in-progress' },
+            away: { status: 'postponed', previous_status: 'in-progress' },
+          } },
+          experiment: { items: {
+            busy: { status: 'in-progress', experiments: { E1: { status: 'concluded' }, E2: { status: 'running' }, 'E2.1': { status: 'conceived' } } },
+          } },
+          specification: { items: {
+            grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
+            unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } },
+          } },
+        },
+      };
+    }
+
+    const project = { roadmap: { horizons: ['next'], items: {
+      auth: { horizon: 'next', summary: 'somebody else\'s', origin: 'harvest' },
+      ordering: { horizon: 'next', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'pay', topic: 'busy' } },
+    } } };
+
+    it('takes the live items and the proposed groupings; the experiment series is never touched', () => {
+      const plan = postponePlan(manifest(), 'auth', null);
+      assert.deepStrictEqual(plan.items.map(({ phase, item }) => [phase, item.status]), [['research', 'completed'], ['discussion', 'in-progress']]);
+      assert.deepStrictEqual(plan.discards, ['grp']);
+      assert.deepStrictEqual(plan.locks, []);
+    });
+
+    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, a roadmap clash', () => {
+      const m = manifest();
+      const reasons = (name, proj = null) => postponePlan(m, name, proj).locks.map((l) => l.reason);
+      assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — nothing on the map and no research or discussion item of that name']);
+      assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
+      assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
+      assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
+      assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
+      assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
+    });
+
+    it('an item joined to the topic is its own — the re-wait arm, never a clash', () => {
+      assert.deepStrictEqual(postponePlan(manifest(), 'busy', project).locks.map((l) => l.reason),
+        ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic'],
+        'the joined item named "ordering" holds no clash against "busy"');
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
+      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
+    });
+
+    it('postponedHorizon joins the roadmap by postponed_from, null when nothing does', () => {
+      const proj = { roadmap: { horizons: ['next'], items: {
+        ordering: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'away' } },
+      } } };
+      assert.strictEqual(postponedHorizon(proj, 'pay', 'away'), 'next');
+      assert.strictEqual(postponedHorizon(proj, 'other', 'away'), null);
+      assert.strictEqual(postponedHorizon(proj, 'pay', 'auth'), null);
+      assert.strictEqual(postponedHorizon(null, 'pay', 'away'), null);
+    });
+
+    it('the lifecycle reads the marker first, and a map-less topic by its every-item fallback', () => {
+      const m = manifest();
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'away'),
+        { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: null, discussion_state: 'postponed', triage_parked: false, reconcile_pending: false });
+      // The cancel outranks the postpone: a row holding both is off the board.
+      m.phases.discovery.items.away.cancelled = true;
+      assert.strictEqual(computeTopicLifecycle(m, 'away').lifecycle, 'cancelled');
+      // No map row: every attempted item terminal and one postponed reads postponed.
+      delete m.phases.discovery.items.away;
+      assert.strictEqual(computeTopicLifecycle(m, 'away').lifecycle, 'postponed');
+      m.phases.research.items.away = { status: 'cancelled' };
+      assert.strictEqual(computeTopicLifecycle(m, 'away').lifecycle, 'cancelled', 'the cancel outranks the postpone in the fallback too');
+    });
+
+    it('phaseStatus drops a postponed item, as it drops every non-live one', () => {
+      const items = (statuses) => ({ phases: { discussion: { items: Object.fromEntries(statuses.map((s, i) => [`t${i}`, { status: s }])) } } });
+      assert.strictEqual(phaseStatus(items(['postponed']), 'discussion'), null);
+      assert.strictEqual(phaseStatus(items(['postponed', 'completed']), 'discussion'), 'completed');
+      assert.strictEqual(phaseStatus(items(['postponed', 'in-progress']), 'discussion'), 'in-progress');
     });
   });
 
