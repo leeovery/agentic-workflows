@@ -33,7 +33,7 @@ const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadRefr
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
-const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -219,6 +219,7 @@ Commands:
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
+  topic postpone <work-unit> <topic> --horizon "<horizon>"
   experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
@@ -336,6 +337,7 @@ Commands:
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
+  render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>
@@ -349,6 +351,7 @@ Commands:
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
   render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
+  render topic-receipt     <wu.discovery.topic> --verb postpone [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
@@ -1076,8 +1079,17 @@ function runTopic(call, argv) {
       respond(call, triageTopic(call.cwd, workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
       return;
     }
+    if (command === 'postpone') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, topic] = positional;
+      if (!workUnit || !topic || positional.length !== 2) {
+        throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
+      }
+      respond(call, postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|queue|absorb|requeue> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|postpone|queue|absorb|requeue> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;

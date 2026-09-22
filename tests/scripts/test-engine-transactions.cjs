@@ -676,7 +676,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|queue\|absorb\|requeue>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|queue\|absorb\|requeue>/);
   });
 
   it('flips a triaged stub to in-progress — the one exit from triaged', () => {

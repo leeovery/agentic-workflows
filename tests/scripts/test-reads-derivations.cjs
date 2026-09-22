@@ -1390,7 +1390,7 @@ describe('reads + derivations', () => {
     it('returns zero counts for an empty items array', () => {
       assert.deepStrictEqual(
         computeMapSummary([]),
-        { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 },
+        { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0, postponed: 0 },
       );
     });
 
@@ -1408,7 +1408,7 @@ describe('reads + derivations', () => {
       ];
       assert.deepStrictEqual(
         computeMapSummary(items),
-        { total: 9, decided: 1, in_flight: 1, ready: 2, fresh: 3, handled: 1, cancelled: 1 },
+        { total: 9, decided: 1, in_flight: 1, ready: 2, fresh: 3, handled: 1, cancelled: 1, postponed: 0 },
       );
     });
 
@@ -1642,8 +1642,8 @@ describe('reads + derivations', () => {
       assert.strictEqual(lifecyclePhrase('researching', 'in-progress'), outstandingResearchPhrase('in-progress'));
     });
 
-    it('CLOSED_LIFECYCLES names the two lifecycles that leave the board', () => {
-      assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'handled']);
+    it('CLOSED_LIFECYCLES names the lifecycles that leave the board', () => {
+      assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'handled', 'postponed']);
     });
   });
 

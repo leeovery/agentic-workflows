@@ -482,57 +482,68 @@ function assertExperimentTargets(manifest, segments, value) {
   }
 }
 
+// The holds a unit verb puts a phase item into: the field surface must never
+// be the permissive path around them, so a write onto one is refused with
+// the way out the hold's own verb names.
+const HELD_STATUSES = ['cancelled', 'postponed'];
+
 /**
- * The cancelled phase item a dot-path lands on or inside —
+ * The held phase item a dot-path lands on or inside —
  * `phases.<phase>.items.<topic>[.<field>…]` — or null.
  * @param {any} manifest @param {string[]} segments
- * @returns {{phase: string, topic: string}|null}
+ * @returns {{phase: string, topic: string, status: string}|null}
  */
-function cancelledItemAt(manifest, segments) {
+function heldItemAt(manifest, segments) {
   if (segments.length < 4 || segments[0] !== 'phases' || segments[2] !== 'items') return null;
   const [, phase, , topic] = segments;
   const item = getByPath(manifest, segments.slice(0, 4));
-  return item && typeof item === 'object' && item.status === 'cancelled' ? { phase, topic } : null;
+  return item && typeof item === 'object' && HELD_STATUSES.includes(item.status)
+    ? { phase, topic, status: item.status }
+    : null;
 }
 
 /**
- * The refusal every write onto a cancelled item makes, naming the reactivate
- * by the unit that frees it — `discovery` for a research or discussion item,
- * `specification` for a specification or plan; a phase outside the two
- * stages names the verb alone.
- * @param {string} workUnit @param {{phase: string, topic: string}} target
+ * The refusal every write onto a held item makes, naming the way out: the
+ * reactivate for a cancelled item, addressed by the unit that frees it —
+ * `discovery` for a research or discussion item, `specification` for a
+ * specification or plan; a phase outside the two stages names the verb
+ * alone — and the roadmap for a postponed one, whose way back is the pull.
+ * @param {string} workUnit @param {{phase: string, topic: string, status: string}} target
  */
-function refuseCancelled(workUnit, { phase, topic }) {
+function refuseHeld(workUnit, { phase, topic, status }) {
+  if (status === 'postponed') {
+    fail(`${phase} item "${topic}" is postponed — pull it forward from the roadmap instead`);
+  }
   const stage = Object.keys(UNIT_PHASES).find((s) => UNIT_PHASES[/** @type {keyof typeof UNIT_PHASES} */ (s)].includes(phase));
   const verb = stage ? `engine topic reactivate ${workUnit} ${stage} ${topic}` : 'engine topic reactivate';
   fail(`${phase} item "${topic}" is cancelled — reactivate it instead (${verb})`);
 }
 
 /**
- * A cancelled phase item takes no status write — every transition already
- * refuses one with "reactivate it instead", and the field surface must not
- * be the permissive path around them: a grouping analysis re-run over a
- * cancelled specification's freed sources can pick the cancelled item's
- * key, and a `status: proposed` landing there would merge onto its stash.
- * Read inside the lock, like the experiment targets.
+ * A held phase item takes no status write — every transition already refuses
+ * one, and the field surface must not be the permissive path around them: a
+ * grouping analysis re-run over a cancelled specification's freed sources
+ * can pick the cancelled item's key, and a `status: proposed` landing there
+ * would merge onto its stash. Read inside the lock, like the experiment
+ * targets.
  * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
 function assertNotCancelled(manifest, segments, workUnit) {
   // phases.<phase>.items.<topic>.status
   if (segments.length !== 5 || segments[4] !== 'status') return;
-  const target = cancelledItemAt(manifest, segments);
-  if (target) refuseCancelled(workUnit, target);
+  const target = heldItemAt(manifest, segments);
+  if (target) refuseHeld(workUnit, target);
 }
 
 /**
- * A cancelled phase item takes no delete either — the whole item or any
- * field of it: a reconcile's `delete items.{name}` over a cancelled
- * specification would erase the stash with the item.
+ * A held phase item takes no delete either — the whole item or any field of
+ * it: a reconcile's `delete items.{name}` over a cancelled specification
+ * would erase the stash with the item.
  * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
 function assertNotCancelledDelete(manifest, segments, workUnit) {
-  const target = cancelledItemAt(manifest, segments);
-  if (target) refuseCancelled(workUnit, target);
+  const target = heldItemAt(manifest, segments);
+  if (target) refuseHeld(workUnit, target);
 }
 
 /** @param {*} value */

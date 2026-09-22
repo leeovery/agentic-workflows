@@ -9,20 +9,21 @@
 
 const path = require('path');
 const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
   if (p.items && typeof p.items === 'object') {
     const keys = Object.keys(p.items);
     if (keys.length === 0) return null;
-    // Non-live statuses drop out of aggregation: cancelled/superseded/proposed
-    // and promoted alike — a promoted spec continues in its cross-cutting unit
-    // and must not mask the siblings' state (unfiltered, the label went
+    // Non-live statuses drop out of aggregation: cancelled/superseded/proposed,
+    // promoted and postponed alike — a promoted spec continues in its
+    // cross-cutting unit and a postponed topic waits on the roadmap, and
+    // neither must mask the siblings' state (unfiltered, the label went
     // insertion-order-dependent). `triaged` is pre-live: a stub holding parked
     // concerns on a topic no session has started — it must not flip the
     // phase's aggregate label.
-    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted', 'triaged'];
+    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted', 'triaged', 'postponed'];
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
       return NON_LIVE.includes(status) ? null : status;
@@ -317,12 +318,21 @@ function liveSeries(manifest, topic) {
 function cancelPlan(manifest, stage, name) {
   const items = liveUnitItems(manifest, stage, name);
   if (stage !== 'discovery') return { items, records: [], discards: [] };
-  const series = liveSeries(manifest, name);
-  const records = Object.entries((series && series.experiments) || {})
+  return { items, records: openRecords(manifest, name), discards: proposedGroupings(manifest, name) };
+}
+
+/**
+ * A topic's non-terminal experiment records, in register order — empty when
+ * the series is absent or a legacy per-series cancel closed it.
+ * @param {object} manifest @param {string} topic
+ * @returns {string[]}
+ */
+function openRecords(manifest, topic) {
+  const series = liveSeries(manifest, topic);
+  return Object.entries((series && series.experiments) || {})
     .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
     .map(([id]) => id)
     .sort(compareExperimentIds);
-  return { items, records, discards: proposedGroupings(manifest, name) };
 }
 
 /**
@@ -337,6 +347,163 @@ function proposedGroupings(manifest, discussion) {
   return sourcingSpecs(manifest, discussion)
     .filter(([, spec]) => spec.status === 'proposed')
     .map(([name]) => name);
+}
+
+/**
+ * The open records as the experiments a unit gate counts — a split is worked
+ * inside its parent, so `E2` with `E2.1` open is one experiment, named with
+ * its children (`E2, with E2.1` alone; `E1, E2 with E2.1` among others). A
+ * sub-record whose parent has closed stands as its own entry.
+ * @param {string[]} records  open ids in register order
+ * @returns {string[]}
+ */
+function openExperiments(records) {
+  const parents = records.filter(isParentExperimentId);
+  const orphans = records.filter((id) => !isParentExperimentId(id) && !parents.includes(id.split('.')[0]));
+  const families = [...parents, ...orphans]
+    .sort(compareExperimentIds)
+    .map((id) => ({ id, subs: records.filter((r) => r.startsWith(`${id}.`)) }));
+  const one = families.length === 1;
+  return families.map(({ id, subs }) => (subs.length === 0 ? id : `${id}${one ? ',' : ''} with ${subs.join(', ')}`));
+}
+
+// ---------------------------------------------------------------------------
+// The roadmap joins — derivations over the PROJECT manifest's `roadmap` node.
+// The item's lifecycle is the absence or presence of a join, never a stored
+// status, so every consumer asks these instead of reading the field.
+// ---------------------------------------------------------------------------
+
+/**
+ * The roadmap items on a project manifest — `{}` for an absent or malformed
+ * node, the same reading `roadmapState` makes.
+ * @param {object|null|undefined} project
+ * @returns {Record<string, Record<string, any>>}
+ */
+function roadmapItems(project) {
+  const roadmap = project && typeof project === 'object' ? project.roadmap : undefined;
+  if (!roadmap || typeof roadmap !== 'object' || Array.isArray(roadmap)) return {};
+  const items = roadmap.items;
+  return items && typeof items === 'object' && !Array.isArray(items) ? items : {};
+}
+
+/**
+ * The join, when the item carries one. A malformed `pulled_to` (not an
+ * object, no work_unit) reads as no join — the write side owns shape.
+ * @param {Record<string, any>} item
+ * @returns {{work_unit: string, topic?: string}|null}
+ */
+function itemJoin(item) {
+  const j = item.pulled_to;
+  if (j && typeof j === 'object' && !Array.isArray(j) && typeof j.work_unit === 'string' && j.work_unit !== '') {
+    return j;
+  }
+  return null;
+}
+
+/**
+ * @typedef {object} PostponeTarget
+ * @property {string} name   the item the postpone writes — the joined item's own name, or the topic's
+ * @property {Record<string, any>|undefined} item  what already sits there
+ * @property {boolean} joined  the item is joined to this topic, so the postpone re-waits it
+ */
+
+/**
+ * The roadmap item a postpone would write: the one joined to `{workUnit,
+ * topic}` — re-waited, whatever its name — or, when none is joined, the name
+ * a birth would take with whatever already sits on it (the clash). The one
+ * join the plan's lock, the gate's statement, and the verb all read.
+ * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
+ * @returns {PostponeTarget}
+ */
+function postponeTarget(project, workUnit, topic) {
+  const items = roadmapItems(project);
+  for (const [name, item] of Object.entries(items)) {
+    if (!item || typeof item !== 'object') continue;
+    const join = itemJoin(item);
+    if (join && join.work_unit === workUnit && join.topic === topic) return { name, item, joined: true };
+  }
+  return { name: topic, item: items[topic], joined: false };
+}
+
+/**
+ * The horizon a postponed topic waits under — the roadmap item whose
+ * `postponed_from` names it — or null when no item does.
+ * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
+ * @returns {string|null}
+ */
+function postponedHorizon(project, workUnit, topic) {
+  for (const item of Object.values(roadmapItems(project))) {
+    const from = item && typeof item === 'object' ? item.postponed_from : undefined;
+    if (from && typeof from === 'object' && from.work_unit === workUnit && from.topic === topic) {
+      return typeof item.horizon === 'string' ? item.horizon : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * The specifications holding a Discovery unit, as one clause — the subject
+ * both unit refusals share; each supplies its own recovery tail.
+ * @param {string[]} specs @param {(name: string) => string} [nameOf]
+ * @returns {string}
+ */
+function lockingSpecsPhrase(specs, nameOf = (n) => n) {
+  const named = specs.map((n) => `"${nameOf(n)}"`).join(', ');
+  return specs.length === 1
+    ? `the specification ${named} sources its discussion`
+    : `the specifications ${named} source its discussion`;
+}
+
+/**
+ * @typedef {object} PostponePlan
+ * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the postpone stashes
+ * @property {string[]} discards  the proposed groupings sourcing the discussion, deleted with it
+ * @property {{reason: string}[]} locks  what holds the postpone shut, in refusal order — empty when it is clear
+ */
+
+/**
+ * What a postpone takes and what holds it shut — the one reading the gate,
+ * the menu row, and the verb share. The experiment series is never touched:
+ * a live record locks instead, because abandoning it is the destructive act
+ * the postpone exists to avoid.
+ * @param {object} manifest  the epic's manifest
+ * @param {string} name
+ * @param {object|null|undefined} project  the project manifest — the roadmap side of the clash lock
+ * @returns {PostponePlan}
+ */
+function postponePlan(manifest, name, project) {
+  /** @type {{reason: string}[]} */
+  const locks = [];
+  const lifecycle = computeTopicLifecycle(manifest, name).lifecycle;
+  if (!discoveryUnitExists(manifest, name)) {
+    locks.push({ reason: `no topic "${name}" — nothing on the map and no research or discussion item of that name` });
+    return { items: [], discards: [], locks };
+  }
+  if (lifecycle === 'postponed') {
+    locks.push({ reason: `"${name}" is already postponed — it waits on the roadmap` });
+  }
+  if (lifecycle === 'cancelled') {
+    locks.push({ reason: `"${name}" is cancelled — reactivate it from the epic menu first` });
+  }
+  const specs = lockingSpecs(manifest, name);
+  if (specs.length > 0) {
+    locks.push({ reason: `postponing "${name}" is refused while ${lockingSpecsPhrase(specs)} — a topic past specification is past "not yet"` });
+  }
+  const records = openRecords(manifest, name);
+  if (records.length > 0) {
+    const open = openExperiments(records);
+    locks.push({
+      reason: `postponing "${name}" is refused while ${open.length === 1 ? 'an experiment is' : `${open.length} experiments are`} live (${open.join(', ')}) — conclude or abandon ${open.length === 1 ? 'it' : 'them'} first; a laboratory cannot run under a topic that has left the epic`,
+    });
+  }
+  const target = postponeTarget(project, manifest.name, name);
+  if (!target.joined && target.item !== undefined) {
+    const horizon = typeof target.item.horizon === 'string' ? target.item.horizon : '';
+    locks.push({
+      reason: `a roadmap item named "${name}"${horizon ? ` (horizon "${horizon}")` : ''} is not this topic's — rename or remove it on the roadmap first`,
+    });
+  }
+  return { items: liveUnitItems(manifest, 'discovery', name), discards: proposedGroupings(manifest, name), locks };
 }
 
 /**
@@ -786,12 +953,12 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   };
 }
 
-const TIER_RANK = { '✓': 0, '→': 1, '◐': 2, '○': 3, '⊙': 4, '⊘': 5 };
+const TIER_RANK = { '✓': 0, '→': 1, '◐': 2, '○': 3, '⊙': 4, '⊘': 5, '⊟': 6 };
 
 // Shared row comparator for the discovery map: tier rank first — decided
-// leads, then ready, in-flight, fresh, with handled/cancelled trailing — then
-// suggested execution order ascending (null orders sort last), then name as
-// final fallback.
+// leads, then ready, in-flight, fresh, with handled/cancelled/postponed
+// trailing — then suggested execution order ascending (null orders sort
+// last), then name as final fallback.
 function compareMapRows(a, b) {
   const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
   const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
@@ -802,12 +969,15 @@ function compareMapRows(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-// True when any live (non-cancelled, non-handled) map item lacks a suggested
-// execution order. Handled topics are non-actionable — they get no order, the
-// same as cancelled. Programmatic detection — the assignment of order values
-// stays with Claude.
+// The tiers a topic carries no suggested execution order under — off the
+// board (cancelled), non-actionable (handled), or waiting on the roadmap
+// (postponed); each stashes its order and gets none back until it returns.
+const UNORDERED_TIERS = ['⊘', '⊙', '⊟'];
+
+// True when any live map item lacks a suggested execution order.
+// Programmatic detection — the assignment of order values stays with Claude.
 function computeNeedsSequencing(mapItems) {
-  return mapItems.some(it => it.tier !== '⊘' && it.tier !== '⊙' && it.order == null);
+  return mapItems.some(it => !UNORDERED_TIERS.includes(it.tier) && it.order == null);
 }
 
 // `research_state` rides along on every result — the research item's raw
@@ -838,12 +1008,16 @@ function computeTopicLifecycle(manifest, topicName) {
     && !TERMINAL_STATUSES.includes(/** @type {string} */ (it.status));
   const reconcile_pending = flagLive(research) || flagLive(discussion);
 
-  // Stored markers win over name-matching, the cancel ahead of the dead end:
-  // a cancelled topic is off the board whatever its items say, a dead-ended
-  // one is terminal with no next action. Read only the item's own fields —
-  // never inspect siblings or provenance.
+  // Stored markers win over name-matching, the cancel ahead of the postpone
+  // ahead of the dead end: a cancelled topic is off the board whatever its
+  // items say, a postponed one has left the epic for the roadmap, a
+  // dead-ended one is terminal with no next action. Read only the item's own
+  // fields — never inspect siblings or provenance.
   if (discovery && discovery.cancelled === true) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
+  }
+  if (discovery && discovery.postponed === true) {
+    return { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   if (discovery && discovery.handled === true) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
@@ -882,6 +1056,11 @@ function computeTopicLifecycle(manifest, topicName) {
   if (attempted.includes('cancelled') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
+  // The same reading for the postpone, one rank down: the cancel is the
+  // stronger closure, so a unit holding both reads cancelled.
+  if (attempted.includes('postponed') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
+    return { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
+  }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
@@ -893,7 +1072,7 @@ function computeTopicLifecycle(manifest, topicName) {
 
 // The lifecycles a topic leaves the board under — no row, no action, and
 // research reopened beneath one names the closure, not the research.
-const CLOSED_LIFECYCLES = ['cancelled', 'handled'];
+const CLOSED_LIFECYCLES = ['cancelled', 'handled', 'postponed'];
 
 // Why a lifecycle stands in the way of a move — the map ops' refusals and
 // the phase-birth guard share it, so the engine and the epic menu's
@@ -912,6 +1091,7 @@ function lifecyclePhrase(lifecycle, researchState, routing) {
         : 'research has completed and discussion is queued';
     case 'decided': return 'discussion has concluded';
     case 'handled': return 'it is closed as a dead end and stays on the map as record';
+    case 'postponed': return 'it is postponed and waits on the roadmap';
     default: return 'it is cancelled and stays on the map as record'; // cancelled
   }
 }
@@ -948,13 +1128,14 @@ function computeNextAction(routing, lifecycle, researchState) {
     case 'decided':
     case 'cancelled':
     case 'handled':
+    case 'postponed':
     default:
       return null;
   }
 }
 
 function computeMapSummary(items) {
-  const counts = { total: items.length, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 };
+  const counts = { total: items.length, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0, postponed: 0 };
   for (const it of items) {
     switch (it.tier) {
       case '✓': counts.decided++; break;
@@ -963,6 +1144,7 @@ function computeMapSummary(items) {
       case '○': counts.fresh++; break;
       case '⊙': counts.handled++; break;
       case '⊘': counts.cancelled++; break;
+      case '⊟': counts.postponed++; break;
     }
   }
   return counts;
@@ -1109,6 +1291,14 @@ module.exports = {
   lockingSpecs,
   liveSeries,
   cancelPlan,
+  postponePlan,
+  openRecords,
+  openExperiments,
+  roadmapItems,
+  itemJoin,
+  postponeTarget,
+  postponedHorizon,
+  lockingSpecsPhrase,
   proposedGroupings,
   specReactivateLocks,
   reactivateLockPhrases,

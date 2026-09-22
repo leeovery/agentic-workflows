@@ -19,7 +19,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} DiscoveryMapRow
  * @property {string} name
- * @property {string} lifecycle   fresh|researching|ready_for_discussion|discussing|decided|handled|cancelled
+ * @property {string} lifecycle   fresh|researching|ready_for_discussion|discussing|decided|handled|cancelled|postponed
  * @property {string|null} [routing]
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
@@ -38,6 +38,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {number} fresh
  * @property {number} handled
  * @property {number} cancelled
+ * @property {number} postponed
  */
 
 /**
@@ -56,6 +57,7 @@ const BREAKDOWN = /** @type {const} */ ([
   ['fresh', 'fresh'],
   ['handled', 'dead-ended'],
   ['cancelled', 'cancelled'],
+  ['postponed', 'postponed'],
 ]);
 
 /** @param {DiscoveryMapSummary} summary */

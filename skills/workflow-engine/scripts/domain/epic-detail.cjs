@@ -13,6 +13,7 @@
 
 const path = require('path');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { loadProjectManifest } = require('./reads.cjs');
 const {
   phaseItems,
   outstandingResearch,
@@ -25,6 +26,9 @@ const {
   specIsStarted,
   specGroupsSources,
   lockingSpecs,
+  CLOSED_LIFECYCLES,
+  postponePlan,
+  postponedHorizon,
   specReactivateLocks,
   reactivateLockPhrases,
   deliveryStarted,
@@ -110,6 +114,12 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  */
 
 /**
+ * @typedef {object} PostponedTopic
+ * @property {string} name
+ * @property {string|null} horizon  the roadmap bucket it waits in — null when no item joins it
+ */
+
+/**
  * @typedef {object} CancellableUnit
  * @property {string} name
  * @property {UnitStage} stage
@@ -137,8 +147,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
- * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled`
- * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘`
+ * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled` | `postponed`
+ * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘` | `⊟`
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
@@ -158,6 +168,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {number} fresh
  * @property {number} handled
  * @property {number} cancelled
+ * @property {number} postponed
  */
 
 /**
@@ -175,6 +186,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {ItemRef[]} completed
  * @property {CancellableUnit[]} cancellable  every unit the cancel menu lists, locked ones included — topics in map order, then specifications in build order
  * @property {CancelledUnit[]} cancelled      every unit reading cancelled, the same order
+ * @property {CancellableUnit[]} postponable  every Discovery unit the postpone menu lists, locked ones included — map order
+ * @property {PostponedTopic[]} postponed     the topics that left for the roadmap, map order
  * @property {NextPhaseEntry[]} next_phase_ready
  * @property {string[]} unaccounted_discussions
  * @property {string[]} reopened_discussions
@@ -297,7 +310,9 @@ function cancellableUnits(manifest, discoveryMap, specItems) {
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
     const lifecycle = row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle;
-    if (lifecycle === 'cancelled') continue;
+    // A postponed unit is the roadmap's, not this menu's: its own remove is
+    // the door to "actually never".
+    if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
     if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
     const locked = discoveryLockReason(manifest, name);
     units.push({ name, stage: 'discovery', state: topicState(manifest, name, row), ...(locked ? { locked } : {}) });
@@ -332,6 +347,40 @@ function cancelledUnits(manifest, discoveryMap, specItems) {
     units.push({ name: s.name, stage: 'specification', restores: unitRestores(manifest, 'specification', s.name), ...(locked ? { locked } : {}) });
   }
   return units;
+}
+
+/**
+ * The postpone units: every Discovery unit not already postponed or
+ * cancelled, in map order — locked ones carrying the plan's first lock,
+ * never omitted. The Discovery stage alone postpones: a topic past
+ * specification is past "not yet".
+ * @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
+ * @returns {CancellableUnit[]}
+ */
+function postponableUnits(manifest, discoveryMap, project) {
+  /** @type {CancellableUnit[]} */
+  const units = [];
+  for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
+    const lifecycle = row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle;
+    if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
+    if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
+    const [lock] = postponePlan(manifest, name, project).locks;
+    units.push({ name, stage: 'discovery', state: topicState(manifest, name, row), ...(lock ? { locked: lock.reason } : {}) });
+  }
+  return units;
+}
+
+/**
+ * The postponed topics with the horizon each waits under — the roadmap
+ * joined by `postponed_from`, so the dashboard's compact line names where
+ * the topic went rather than only that it left.
+ * @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
+ * @returns {PostponedTopic[]}
+ */
+function postponedTopics(manifest, discoveryMap, project) {
+  return discoveryUnits(manifest, discoveryMap)
+    .filter(({ name, row }) => (row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle) === 'postponed')
+    .map(({ name }) => ({ name, horizon: postponedHorizon(project, manifest.name, name) }));
 }
 
 /**
@@ -583,13 +632,16 @@ function epicDetail(cwd, manifest) {
   // (not the zero-count shape) when the map is empty, the epic dashboard's cue
   // that there is no map to render.
   const builtMap = buildDiscoveryMap(manifest, path.join(cwd, '.workflows'));
+  // The postpone's other half lives on the project manifest: the roadmap
+  // item joined by `postponed_from` carries the horizon the topic waits in.
+  const project = loadProjectManifest(cwd);
   /** @type {MapRow[]} */
   const discoveryMap = builtMap.map;
   const mapSummary = discoveryMap.length > 0 ? builtMap.summary : null;
   let convergenceState = null;
   if (discoveryMap.length > 0) {
     const allSettled = discoveryMap.every(t =>
-      t.lifecycle === 'decided' || t.lifecycle === 'cancelled' || t.lifecycle === 'handled');
+      t.lifecycle === 'decided' || CLOSED_LIFECYCLES.includes(t.lifecycle));
     convergenceState = allSettled ? 'settled' : 'in-progress';
   }
 
@@ -602,6 +654,8 @@ function epicDetail(cwd, manifest) {
     completed: completedItems,
     cancellable: cancellableUnits(manifest, discoveryMap, specItems),
     cancelled: cancelledUnits(manifest, discoveryMap, specItems),
+    postponable: postponableUnits(manifest, discoveryMap, project),
+    postponed: postponedTopics(manifest, discoveryMap, project),
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,

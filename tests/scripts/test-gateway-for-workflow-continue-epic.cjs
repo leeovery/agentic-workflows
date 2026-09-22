@@ -1916,7 +1916,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|unblock-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });

@@ -84,17 +84,18 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
 }
 
 /**
- * topic complete / cancel / reactivate receipts. `complete` carries no
- * confirmation line — the calling flow owns its own conclusion display; it
- * renders the indexing advisory alone, empty without `--warn`. `cancel` and
- * `reactivate` confirm the unit by name, the reactivate naming the statuses
+ * topic complete / cancel / reactivate / postpone receipts. `complete`
+ * carries no confirmation line — the calling flow owns its own conclusion
+ * display; it renders the indexing advisory alone, empty without `--warn`.
+ * `cancel`, `postpone` and `reactivate` confirm the unit by name, the
+ * postpone naming the horizon it waits under and the reactivate the statuses
  * its items returned to (none for a never-started topic).
- * @param {'complete'|'cancel'|'reactivate'} verb
+ * @param {'complete'|'cancel'|'reactivate'|'postpone'} verb
  * @param {string} topic
- * @param {{warn?: boolean, restored?: {phase: string, status: string}[]}} [opts]
+ * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null}} [opts]
  * @returns {string}
  */
-function topicReceipt(verb, topic, { warn = false, restored = [] } = {}) {
+function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null } = {}) {
   const name = titlecase(topic);
   if (verb === 'complete') {
     return warn
@@ -105,6 +106,12 @@ function topicReceipt(verb, topic, { warn = false, restored = [] } = {}) {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. You can run knowledge remove manually later.') : null,
       confirmation(`Cancelled "${name}".`),
+    ]);
+  }
+  if (verb === 'postpone') {
+    return joined([
+      warn ? warningBlock('Knowledge removal warning', 'The topic is postponed. You can run knowledge remove manually later.') : null,
+      confirmation(`Postponed "${name}"${horizon ? ` → ${horizon}` : ''}.`),
     ]);
   }
   const returned = restored.length > 0

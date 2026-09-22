@@ -44,6 +44,7 @@ const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
  * @property {string} [summary]           add/edit: the value written
  * @property {string} [description]       add/edit: the value written
  * @property {string} [brief_path]        add: the brief pointer written
+ * @property {{work_unit: string, topic: string}} [prior]  add/set-prior: the epic the topic's prior record sits in
  * @property {boolean} [dismissed]        remove: name pushed onto the dismissed list
  * @property {boolean} [brief_removed]    remove: the topic's brief file was deleted
  * @property {string} [renamed_from]      rename: the old name
@@ -89,6 +90,23 @@ function mapItem(manifest, name) {
 }
 
 /**
+ * The address of an earlier epic's record for this topic — where a pull that
+ * landed somewhere other than the epic that postponed it reads the prior
+ * conversation from. Shape only; the epic and its topic are the caller's to
+ * resolve.
+ * @param {*} prior
+ * @returns {{work_unit: string, topic: string}}
+ */
+function validatePrior(prior) {
+  if (!prior || typeof prior !== 'object' || Array.isArray(prior)
+    || typeof prior.work_unit !== 'string' || prior.work_unit === ''
+    || typeof prior.topic !== 'string' || prior.topic === '') {
+    throw new Error(`invalid prior ${JSON.stringify(prior ?? null)} — must be {work_unit, topic}`);
+  }
+  return { work_unit: prior.work_unit, topic: prior.topic };
+}
+
+/**
  * Gate a destructive op (remove/rename/reroute) on the fresh lifecycle. The
  * derived lifecycle alone is not enough: status combinations outside the
  * lifecycle join (superseded research beside a parked discussion stub)
@@ -119,7 +137,9 @@ function assertFresh(manifest, name, verbPhrase) {
     ? 'reopen it to make it actionable again'
     : lifecycle === 'cancelled'
       ? 'reactivate it from the epic menu first'
-      : 'cancel from the epic menu instead';
+      : lifecycle === 'postponed'
+        ? 'pull it forward from the roadmap first'
+        : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
 }
 
@@ -168,24 +188,26 @@ function sequenceMap(cwd, workUnit, orders) {
 }
 
 /**
- * Add a new map item: `{routing, source, summary[, description][, brief_path]}`
+ * Add a new map item: `{routing, source, summary[, description][, brief_path][, prior]}`
  * — never a `status` field; map-item lifecycle is computed at render time, not
  * stored. `briefPath` records the topic's brief pointer with the row, as the
- * harvest's batch form does. `backfill` lands the item without any of them
- * (keys absent, not "") so the next epic entry's summary-backfill drafts them —
- * for topics whose artifacts already exist (absorb, pivot); it is mutually
- * exclusive with passing any of the three. Refuses an active duplicate, and a
- * dismissed name unless `forceDismissed` carries the user's confirmed re-add
- * decision (the entry is then pulled off the dismissed list so the analysis
- * treats the topic as live again). No git commit — the calling session's commit
- * cadence picks the change up.
+ * harvest's batch form does; `prior` records the earlier epic whose record
+ * this topic carries, which a pull of a postponed item landing elsewhere
+ * writes. `backfill` lands the item without summary, description or brief
+ * pointer (keys absent, not "") so the next epic entry's summary-backfill
+ * drafts them — for topics whose artifacts already exist (absorb, pivot); it
+ * is mutually exclusive with passing any of the three. Refuses an active
+ * duplicate, and a dismissed name unless `forceDismissed` carries the user's
+ * confirmed re-add decision (the entry is then pulled off the dismissed list
+ * so the analysis treats the topic as live again). No git commit — the calling
+ * session's commit cadence picks the change up.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
- * @param {{routing?: string, source?: string, summary?: string, description?: string, briefPath?: string, forceDismissed?: boolean, backfill?: boolean}} [fields]
+ * @param {{routing?: string, source?: string, summary?: string, description?: string, briefPath?: string, prior?: {work_unit: string, topic: string}, forceDismissed?: boolean, backfill?: boolean}} [fields]
  * @returns {MapOpResult}
  */
-function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, briefPath, forceDismissed = false, backfill = false } = {}) {
+function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, briefPath, prior, forceDismissed = false, backfill = false } = {}) {
   if (!routing || !VALID_ROUTINGS.includes(routing)) {
     throw new Error(`unknown routing ${JSON.stringify(routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
   }
@@ -195,6 +217,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
   if (briefPath !== undefined && (typeof briefPath !== 'string' || briefPath.trim() === '')) {
     throw new Error('--brief-path must be a non-empty string when present');
   }
+  const priorRef = prior === undefined ? undefined : validatePrior(prior);
   if (!backfill && summary === undefined) {
     throw new Error('--summary is required (or --backfill to leave it for summary-backfill)');
   }
@@ -227,6 +250,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
     if (summary !== undefined) item.summary = summary;
     if (description !== undefined) item.description = description;
     if (briefPath !== undefined) item.brief_path = briefPath;
+    if (priorRef !== undefined) item.prior = priorRef;
     discovery.items[name] = item;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -237,6 +261,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
     if (summary !== undefined) result.summary = summary;
     if (description !== undefined) result.description = description;
     if (briefPath !== undefined) result.brief_path = briefPath;
+    if (priorRef !== undefined) result.prior = priorRef;
     if (backfill) result.backfill = true;
     if (wasDismissed) result.undismissed = true;
     return result;
@@ -499,6 +524,31 @@ function renameItem(cwd, workUnit, oldName, newName) {
 }
 
 /**
+ * Record the earlier epic whose record a topic carries — the address a pull
+ * of a postponed item copies onto the receiving epic's row when it lands
+ * anywhere but the epic that postponed it. Allowed at any lifecycle: the
+ * bind that writes it runs after the topic is on the map and may run again.
+ * No git commit — the calling transaction stages the manifest.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} name
+ * @param {{work_unit: string, topic: string}} prior
+ * @returns {MapOpResult}
+ */
+function setPrior(cwd, workUnit, name, prior) {
+  const priorRef = validatePrior(prior);
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = mapItem(manifest, name);
+    item.prior = priorRef;
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    const { lifecycle } = computeTopicLifecycle(manifest, name);
+    return { work_unit: workUnit, name, op: 'set-prior', prior: priorRef, lifecycle, map_total: Object.keys(discoveryItems(manifest)).length };
+  });
+}
+
+/**
  * Set a fresh map item's `routing`. Fresh-only — routing is implicit once a
  * phase item exists. No git commit.
  * @param {string} cwd project root
@@ -543,6 +593,9 @@ function handleItem(cwd, workUnit, name) {
     if (lifecycle === 'cancelled') {
       throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
     }
+    if (lifecycle === 'postponed') {
+      throw new Error(`"${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
+    }
     const parked = ['research', 'discussion']
       .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'triaged'));
     if (parked.length > 0) {
@@ -573,6 +626,9 @@ function unhandleItem(cwd, workUnit, name) {
     if (lifecycle === 'cancelled') {
       throw new Error(`"${name}" can't be reopened — it's cancelled; reactivate it from the epic menu first`);
     }
+    if (lifecycle === 'postponed') {
+      throw new Error(`"${name}" can't be reopened — it's postponed; pull it forward from the roadmap first`);
+    }
     if (lifecycle !== 'handled') {
       throw new Error(`"${name}" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen`);
     }
@@ -584,4 +640,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem };
+module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem };

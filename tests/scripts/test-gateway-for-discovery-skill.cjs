@@ -389,7 +389,7 @@ describe('workflow-discovery discovery', () => {
     createManifest(dir, 'payments', { work_type: 'epic', phases: {} });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.map_summary, {
-      total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0,
+      total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0, postponed: 0,
     });
   });
 

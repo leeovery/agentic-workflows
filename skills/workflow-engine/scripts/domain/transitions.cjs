@@ -26,17 +26,19 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailWithKb, commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
-  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, deliveryStarted,
-  liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, lockingSpecsPhrase, deliveryStarted,
+  liveSeries, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
-const { revertJoins } = require('./roadmap.cjs');
+const { loadProjectManifest } = require('./reads.cjs');
+const { titlecase } = require('./conventions.cjs');
+const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
 
@@ -240,6 +242,8 @@ function startTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is already completed — reopen it instead`);
     } else if (existing && existing.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    } else if (existing && existing.status === 'postponed') {
+      throw new Error(postponedRefusal(phase, topic));
     } else if (existing && existing.status === 'superseded') {
       const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
@@ -281,6 +285,15 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {string} [note]       delivery form: set when committed is null
  * @property {string[]} [warnings] delivery form: the tail commit's failure detail
  */
+
+/**
+ * The refusal every hand transition makes over a postponed item: the topic
+ * left the epic whole and the pull is the one way back.
+ * @param {string} phase @param {string} topic
+ */
+function postponedRefusal(phase, topic) {
+  return `${phase} item "${topic}" is postponed — the topic waits on the roadmap; pull it forward from there instead`;
+}
 
 /**
  * A topic name usable in paths: non-empty, no separators, no traversal.
@@ -923,6 +936,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     }
+    if (item.status === 'postponed') {
+      throw new Error(postponedRefusal(phase, topic));
+    }
     if (item.status === 'superseded') {
       const by = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
@@ -1006,6 +1022,9 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    if (item.status === 'postponed') {
+      throw new Error(postponedRefusal(phase, topic));
     }
     if (item.status !== 'completed') {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
@@ -1118,6 +1137,9 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     }
+    if (item.status === 'postponed') {
+      throw new Error(postponedRefusal(phase, topic));
+    }
     if (item.status === 'promoted') {
       const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
@@ -1224,30 +1246,33 @@ function liveSpecHolds(manifest, except, n) {
 }
 
 /**
- * Mark the plan's items cancelled, each status stashed for the reactivate.
+ * Put a unit's live items into a hold — `cancelled` or `postponed` — each
+ * status stashed for the return.
  * @param {import('./derivations.cjs').CancelPlan['items']} items
+ * @param {'cancelled'|'postponed'} hold
  * @returns {CancelledItem[]}
  */
-function stashItems(items) {
+function stashItems(items, hold) {
   return items.map(({ phase, item }) => {
     item.previous_status = item.status;
-    item.status = 'cancelled';
+    item.status = hold;
     return { phase, previous_status: item.previous_status };
   });
 }
 
 /**
- * Restore a unit's cancelled items. A stash returns the status it holds; an
- * item cancelled with none — the per-item cancel of a status-less item
- * stashed nothing — returns to never-attempted, its status deleted.
+ * Restore a unit's held items. A stash returns the status it holds; an item
+ * held with none — the per-item cancel of a status-less item stashed nothing
+ * — returns to never-attempted, its status deleted.
  * @param {{phase: string, item: Record<string, any>}[]} items
+ * @param {'cancelled'|'postponed'} hold
  * @returns {RestoredItem[]}
  */
-function restoreItems(items) {
+function restoreItems(items, hold) {
   /** @type {RestoredItem[]} */
   const restored = [];
   for (const { phase, item } of items) {
-    if (item.status !== 'cancelled') continue;
+    if (item.status !== hold) continue;
     if (item.previous_status) {
       assertLegalWrite(phase, item.previous_status);
       item.status = item.previous_status;
@@ -1285,6 +1310,36 @@ function discardGroupings(manifest, names) {
   for (const name of names) delete manifest.phases.specification.items[name];
 }
 
+/**
+ * Drop the knowledge-base chunks of the items a hold took — the indexed
+ * phases alone, the artifact table being the one home for which those are.
+ * A held topic's conclusions are off the board, and retrieval must not
+ * surface them; the return re-indexes.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @param {{phase: string}[]} held @param {string[]} warnings
+ */
+function removeHeldChunks(cwd, workUnit, topic, held, warnings) {
+  for (const { phase } of held) {
+    if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)]) {
+      knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+    }
+  }
+}
+
+/**
+ * Re-index each restored `completed` artifact — the removal's mirror.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @param {RestoredItem[]} restored @param {string[]} warnings
+ */
+function indexRestored(cwd, workUnit, topic, restored, warnings) {
+  for (const { phase, status } of restored) {
+    const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
+    if (status === 'completed' && artifact) {
+      knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
+    }
+  }
+}
+
 /** @param {object} manifest @param {string} topic */
 function assertDiscoveryUnit(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
@@ -1303,16 +1358,17 @@ function assertDiscoveryUnit(manifest, topic) {
  */
 function cancelDiscoveryUnit(manifest, topic) {
   assertDiscoveryUnit(manifest, topic);
-  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle === 'cancelled') {
     throw new Error(`"${topic}" is already cancelled`);
+  }
+  if (lifecycle === 'postponed') {
+    throw new Error(`"${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
   const locking = lockingSpecs(manifest, topic);
   if (locking.length > 0) {
-    const named = locking.map((n) => `"${n}"`);
-    const clause = named.length === 1
-      ? `the specification ${named[0]} sources its discussion — cancel the specification first`
-      : `the specifications ${named.join(', ')} source its discussion — cancel them first`;
-    throw new Error(`cancelling "${topic}" is refused while ${clause}`);
+    const recovery = locking.length === 1 ? 'cancel the specification first' : 'cancel them first';
+    throw new Error(`cancelling "${topic}" is refused while ${lockingSpecsPhrase(locking)} — ${recovery}`);
   }
   const plan = cancelPlan(manifest, 'discovery', topic);
   const mapItem = itemOf(manifest, 'discovery', topic);
@@ -1326,7 +1382,7 @@ function cancelDiscoveryUnit(manifest, topic) {
     abandonRecords(series, plan.records, 'topic cancelled');
     settleItemStatus(series);
   }
-  const cancelled = stashItems(plan.items);
+  const cancelled = stashItems(plan.items, 'cancelled');
   discardGroupings(manifest, plan.discards);
   if (mapItem) {
     mapItem.cancelled = true;
@@ -1361,7 +1417,7 @@ function cancelSpecificationUnit(manifest, spec) {
   if (plan.items.length === 0) {
     throw new Error(`specification "${spec}" has nothing to cancel — it carries no status`);
   }
-  const cancelled = stashItems(plan.items);
+  const cancelled = stashItems(plan.items, 'cancelled');
   stashOrder(item);
   return { cancelled, discarded: [], abandoned: [], released_waits: [] };
 }
@@ -1392,13 +1448,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
 
   /** @type {string[]} */
   const warnings = [];
-  // Only the indexed phases have chunks to remove — the artifact table is
-  // the one home for which those are.
-  for (const { phase: p } of taken.cancelled) {
-    if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (p)]) {
-      knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', p, '--topic', topic], 'knowledge remove', warnings);
-    }
-  }
+  removeHeldChunks(cwd, workUnit, topic, taken.cancelled, warnings);
 
   for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
 
@@ -1415,7 +1465,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   // roadmap join reverted) and nothing else on disk — it runs from the epic
   // menu, beside sessions holding the unit's other topics.
   const cancelSpec = reverted.length > 0
-    ? [`.workflows/${workUnit}/manifest.json`, '.workflows/manifest.json']
+    ? [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC]
     : `.workflows/${workUnit}/manifest.json`;
   const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
@@ -1428,6 +1478,25 @@ function cancelTopic(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * Take a Discovery unit out of a hold — the shared body of the cancel's
+ * reactivate and the roadmap pull's return: the map row's marker cleared,
+ * every item carrying a stash restored, and the map order returned unless a
+ * live row took the number. The marker's field name is the hold's own, so
+ * one read serves both. Mutates the loaded manifest.
+ * @param {object} manifest @param {string} topic @param {'cancelled'|'postponed'} hold
+ * @returns {RestoredItem[]}
+ */
+function restoreDiscoveryUnit(manifest, topic, hold) {
+  const restored = restoreItems(unitItems(manifest, 'discovery', topic), hold);
+  const mapItem = itemOf(manifest, 'discovery', topic);
+  if (mapItem) {
+    delete mapItem[hold];
+    restoreOrder(mapItem, (n) => liveMapRowHolds(manifest, topic, n));
+  }
+  return restored;
+}
+
+/**
  * The Discovery unit's reactivate: clear the marker, restore every item
  * carrying a stash, and return the map order unless a live row took the
  * number. Mutates the loaded manifest.
@@ -1437,15 +1506,13 @@ function cancelTopic(cwd, workUnit, phase, topic) {
 function reactivateDiscoveryUnit(manifest, topic) {
   assertDiscoveryUnit(manifest, topic);
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle === 'postponed') {
+    throw new Error(`"${topic}" is postponed, not cancelled — pull it forward from the roadmap instead`);
+  }
   if (lifecycle !== 'cancelled') {
     throw new Error(`"${topic}" is not cancelled (lifecycle: ${lifecycle})`);
   }
-  const restored = restoreItems(unitItems(manifest, 'discovery', topic));
-  const mapItem = itemOf(manifest, 'discovery', topic);
-  if (mapItem) {
-    delete mapItem.cancelled;
-    restoreOrder(mapItem, (n) => liveMapRowHolds(manifest, topic, n));
-  }
+  const restored = restoreDiscoveryUnit(manifest, topic, 'cancelled');
   // A unit still reading cancelled after the restore would round-trip
   // through the reactivate menu forever; refuse instead, and nothing is saved.
   if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
@@ -1476,7 +1543,7 @@ function reactivateSpecificationUnit(manifest, spec) {
   }
   const discarded = [...new Set(sourceRows(item.sources).flatMap(([topic]) => proposedGroupings(manifest, topic)))];
   discardGroupings(manifest, discarded);
-  const restored = restoreItems(unitItems(manifest, 'specification', spec));
+  const restored = restoreItems(unitItems(manifest, 'specification', spec), 'cancelled');
   restoreOrder(item, (n) => liveSpecHolds(manifest, spec, n));
   return { restored, discarded };
 }
@@ -1504,12 +1571,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
 
   /** @type {string[]} */
   const warnings = [];
-  for (const { phase: p, status } of returned.restored) {
-    const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (p)];
-    if (status === 'completed' && artifact) {
-      knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
-    }
-  }
+  indexRestored(cwd, workUnit, topic, returned.restored, warnings);
 
   const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
   /** @type {TopicReactivateResult} */
@@ -1518,4 +1580,164 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, flagDownstream, releaseExperimentWaits, assertLegalTopicName };
+// ---------------------------------------------------------------------------
+// postpone — the Discovery unit's other exit. Cancel says "not doing this";
+// postpone says "doing this later": the topic leaves the epic whole, a
+// roadmap item is born or re-waits in the same transaction, nothing on disk
+// moves, and the pull is the way back. Epic-only, as cancel is. The
+// experiment series is never touched — a live record locks instead, because
+// abandoning it is the destructive act this exit exists to avoid.
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {object} TopicPostponeResult
+ * @property {string} topic
+ * @property {'postponed'} status
+ * @property {CancelledItem[]} postponed  the phase items the postpone stashed
+ * @property {string[]} discarded  proposed groupings deleted with their source
+ * @property {import('./roadmap.cjs').PostponeLanding} roadmap  the item that now waits for the topic
+ * @property {string|null} committed  short commit sha, or null when nothing was staged
+ * @property {string} [note]     set when committed is null
+ * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ */
+
+/**
+ * The topic's own files, as the roadmap writes a source: project-relative
+ * under `.workflows/`, and only those on disk — the pointers that carry the
+ * record's depth to whoever pulls the item back.
+ * @param {string} cwd @param {object} manifest @param {string} workUnit @param {string} topic
+ * @returns {string[]}
+ */
+function postponedSources(cwd, manifest, workUnit, topic) {
+  const row = itemOf(manifest, 'discovery', topic);
+  const brief = row && typeof row.brief_path === 'string' && row.brief_path.trim() !== '' ? row.brief_path : null;
+  return [
+    ...(brief ? [`${workUnit}/${brief}`] : []),
+    `${workUnit}/research/${topic}.md`,
+    `${workUnit}/discussion/${topic}.md`,
+  ].filter((rel) => fs.existsSync(path.join(cwd, '.workflows', rel)));
+}
+
+/**
+ * Postpone a topic: the Discovery unit into its hold, the roadmap item born
+ * or re-waited under the chosen horizon, and one confined commit over both
+ * manifests. In order: the epic manifest under its lock (the plan's first
+ * lock refuses before anything is written — the map row marked, every live
+ * item stashed, every proposed grouping over its discussion discarded), the
+ * stashed items' chunks removed, the calling session's own heartbeats
+ * released, then the project manifest under its own lock.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} topic
+ * @param {{horizon?: string}} opts  the roadmap bucket the topic waits in
+ * @returns {TopicPostponeResult}
+ */
+function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
+  if (typeof horizon !== 'string' || horizon.trim() === '') {
+    throw new Error('topic postpone: --horizon is required — the roadmap bucket the topic waits in');
+  }
+  const taken = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (manifest.work_type !== 'epic') {
+      throw new Error(`postpone is epic-only — "${workUnit}" is a ${manifest.work_type}, whose topic is the work unit; a pulled unit's "not now" is the work-unit cancel's revert`);
+    }
+    const plan = postponePlan(manifest, topic, loadProjectManifest(cwd));
+    if (plan.locks.length > 0) throw new Error(plan.locks[0].reason);
+
+    const row = itemOf(manifest, 'discovery', topic);
+    const summary = row && typeof row.summary === 'string' && row.summary.trim() !== '' ? row.summary : titlecase(topic);
+    const sources = postponedSources(cwd, manifest, workUnit, topic);
+    const postponed = stashItems(plan.items, 'postponed');
+    discardGroupings(manifest, plan.discards);
+    if (row) {
+      row.postponed = true;
+      stashOrder(row);
+    }
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { postponed, discarded: plan.discards, summary, sources };
+  });
+
+  /** @type {string[]} */
+  const warnings = [];
+  removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
+  for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
+
+  const roadmap = postponeToRoadmap(cwd, workUnit, topic, { horizon, summary: taken.summary, sources: taken.sources });
+
+  const outcome = commitTailWithKb(
+    cwd,
+    [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC],
+    `workflow(${workUnit}): postpone ${topic} → ${horizon}`,
+    warnings,
+  );
+  /** @type {TopicPostponeResult} */
+  const result = {
+    topic,
+    status: 'postponed',
+    postponed: taken.postponed,
+    discarded: taken.discarded,
+    roadmap,
+    committed: outcome.committed,
+    warnings,
+  };
+  noteCommitOutcome(result, outcome);
+  return result;
+}
+
+/**
+ * Return a postponed Discovery unit to its epic — the pull's half of the
+ * postpone, the mirror of reactivate under the pull's name: the marker
+ * cleared, every stash returned, each restored `completed` artifact
+ * re-indexed. One locked write and no commit — the pull's own transaction
+ * stages both manifests together.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @returns {{restored: RestoredItem[], warnings: string[]}}
+ */
+function restorePostponedUnit(cwd, workUnit, topic) {
+  const restored = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const out = restoreDiscoveryUnit(manifest, topic, 'postponed');
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return out;
+  });
+  /** @type {string[]} */
+  const warnings = [];
+  indexRestored(cwd, workUnit, topic, restored, warnings);
+  return { restored, warnings };
+}
+
+/**
+ * Turn a postponed Discovery unit's hold into a cancel — `roadmap remove`
+ * over the item the postpone put there, so "actually never" has one door.
+ * The marker and every stashed item read `cancelled`, each stash and the
+ * stashed map order kept for a later reactivate; the chunks left at the
+ * postpone. One locked write and no commit — the remove's own transaction
+ * stages both manifests together.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @param {string} item  the roadmap item being removed, for the orphan refusal
+ * @returns {CancelledItem[]}
+ */
+function cancelPostponedUnit(cwd, workUnit, topic, item) {
+  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'manifest.json'))) {
+    throw new Error(`"${item}" was postponed from work unit "${workUnit}", which no longer exists — the join is orphaned`);
+  }
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const row = itemOf(manifest, 'discovery', topic);
+    if (row && row.postponed === true) {
+      delete row.postponed;
+      row.cancelled = true;
+    }
+    const cancelled = unitItems(manifest, 'discovery', topic)
+      .filter(({ item: it }) => it.status === 'postponed')
+      .map(({ phase, item: it }) => {
+        it.status = 'cancelled';
+        return { phase, previous_status: it.previous_status };
+      });
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return cancelled;
+  });
+}
+
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };

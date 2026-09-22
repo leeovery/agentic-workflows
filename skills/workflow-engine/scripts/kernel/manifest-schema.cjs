@@ -43,12 +43,16 @@ const VALID_PHASE_STATUSES = {
   // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
   // undefined — the silent permissive path this table exists to prevent.
   discovery:      /** @type {string[]} */ ([]),
-  research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
+  // `postponed` is the Discovery unit's second terminal-for-now state: the
+  // topic left the epic for the roadmap whole, its status stashed, and the
+  // pull is the way back. Only the two conversations postpone — a topic past
+  // specification is past "not yet".
+  research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled', 'postponed'],
   // Derived bookkeeping over the topic's experiment records: the spawn opens
   // the item, the last record's terminal transition closes it — the user
   // never starts or completes it by hand.
   experiment:     ['in-progress', 'completed', 'cancelled'],
-  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
+  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
@@ -191,7 +195,7 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation, never flagged, never reverted. One vocabulary for every
 // consumer (transitions, derivations, the roadmap's cross-join flag).
-const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
+const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 
 // The project-level places with no work unit, named by identity alone:
 // `baseline` is the knowledge base's pseudo-identity for the project-level
