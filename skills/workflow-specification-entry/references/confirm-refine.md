@@ -26,15 +26,11 @@ All sources extracted:
 
 > A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

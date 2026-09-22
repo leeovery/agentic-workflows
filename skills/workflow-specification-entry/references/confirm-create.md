@@ -29,15 +29,11 @@ Sources:
 Output: .workflows/{work_unit}/specification/{topic}/specification.md
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -64,15 +60,11 @@ After completion:
   .workflows/{work_unit}/specification/{source-topic}/specification.md → marked as superseded
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

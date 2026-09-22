@@ -36,15 +36,11 @@ Previously extracted (for reference):
   • {discussion-name}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -64,15 +60,11 @@ All sources extracted:
   • {discussion-name}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -99,15 +91,11 @@ Previously extracted (for reference):
   • {discussion-name}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
 ```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
 
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
