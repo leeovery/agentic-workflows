@@ -132,6 +132,12 @@ The topic was cancelled inside its session, which rendered the receipt — no ba
 
 → Proceed to **G. Display and Menu**.
 
+#### If `outcome` is `postponed`
+
+The topic left for the roadmap inside its session, which rendered the receipt — no banner.
+
+→ Proceed to **G. Display and Menu**.
+
 #### Otherwise
 
 Render and emit the section verbatim:
