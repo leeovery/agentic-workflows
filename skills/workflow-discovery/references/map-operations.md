@@ -64,11 +64,11 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Reopen          | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
-| Postpone        | any except `cancelled`, `postponed` | `cancelled`, `postponed`                                   |
+| Postpone        | any except `handled`, `cancelled`, `postponed` | `handled`, `cancelled`, `postponed`             |
 
 `cancelled` and `postponed` are also disallowed for Remove because the discovery item is the record that the topic was raised and declined, or that it went to the roadmap. Remove is for mistakes and duplicates — a never-started topic that should not be on the map. Not doing a topic, started or not, is the epic menu's `a/cancel`: it keeps the row and can be reversed. Not doing it *yet* is Postpone.
 
-Postpone carries no pre-check beyond that row: its gate is the postpone confirm, which refuses a cancelled or already-postponed row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. Every other lifecycle postpones, a dead end included.
+Postpone carries no pre-check beyond that row: its gate is the postpone confirm, which refuses a cancelled, already-postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
 
 `fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 

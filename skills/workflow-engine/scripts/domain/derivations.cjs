@@ -518,6 +518,10 @@ function postponePlan(manifest, name, project, horizon) {
   if (lifecycle === 'cancelled') {
     locks.push({ reason: `"${name}" is cancelled — reactivate it from the epic menu first` });
   }
+  // A dead end has nothing to carry forward, so "later" is a contradiction.
+  if (lifecycle === 'handled') {
+    locks.push({ reason: `"${name}" is closed as a dead end — reopen it first` });
+  }
   const specs = lockingSpecs(manifest, name);
   if (specs.length > 0) {
     locks.push({ reason: `postponing "${name}" is refused while ${lockingSpecsPhrase(specs)} — a topic past specification is past "not yet"` });

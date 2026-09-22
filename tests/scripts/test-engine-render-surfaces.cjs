@@ -247,9 +247,11 @@ describe('postpone-gate', () => {
           auth: { routing: 'research', source: 'discovery' },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
+          dead: { routing: 'research', source: 'discovery', handled: true },
           locked: { routing: 'discussion', source: 'discovery' },
           busy: { routing: 'discussion', source: 'discovery' },
         } },
+        research: { items: { dead: { status: 'completed' } } },
         discussion: { items: {
           auth: { status: 'in-progress' },
           locked: { status: 'completed' },
@@ -267,6 +269,7 @@ describe('postpone-gate', () => {
     assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no research or discussion item of that name/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
+    assert.throws(() => gate('dead'), /render postpone-gate: "dead" is closed as a dead end — reopen it first/);
     assert.throws(() => gate('locked'), /render postpone-gate: postponing "locked" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"/);
     assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
     assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);

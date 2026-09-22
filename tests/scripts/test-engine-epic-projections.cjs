@@ -1114,7 +1114,7 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicCancelMenu(unitDetail()).display.includes('in session'), false, 'no presence, no cue');
   });
 
-  it('postpone-menu: every Discovery unit, locked rows keyless with their reason, a held unit cued; cancelled and postponed rows absent', () => {
+  it('postpone-menu: every Discovery unit, locked rows keyless with their reason — a dead end among them — a held unit cued; cancelled and postponed rows absent', () => {
     const presence = [{ phase: 'discussion', topic: 'billing', age_seconds: 30, held: true, session_id: 's1' }];
     const detail = detailFor(dir, 'p1', {
       work_type: 'epic',
@@ -1125,8 +1125,9 @@ describe('epic projections: selection sub-views', () => {
           'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
+          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
         } },
-        research: { items: { auth: { status: 'completed' } } },
+        research: { items: { auth: { status: 'completed' }, 'dead-lead': { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress' } } },
         specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } } } },
       },
@@ -1140,7 +1141,11 @@ describe('epic projections: selection sub-views', () => {
       '     past specification is past "not yet"',
       '  ├─ 1. Billing [discussing] · in session (last active 30s',
       '        ago)',
-      '  └─ 2. Data Export [fresh · routed to discussion]',
+      '  ├─ 2. Data Export [fresh · routed to discussion]',
+      // A dead end is the answer to its own question — the roadmap holds
+      // what is still to do, so it reopens before it can wait.
+      '  └─ Dead Lead [dead end] · "dead-lead" is closed as a dead end —',
+      '     reopen it first',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [

@@ -1116,7 +1116,7 @@ describe('reads + derivations', () => {
   describe('the postpone plan', () => {
     // A live topic with a proposed grouping over its discussion, a topic
     // under a started specification, one with a live record on its series,
-    // one already postponed, and one cancelled.
+    // one already postponed, one cancelled, and one closed as a dead end.
     function manifest() {
       return {
         name: 'pay',
@@ -1128,8 +1128,9 @@ describe('reads + derivations', () => {
             busy: { routing: 'discussion', source: 'discovery' },
             away: { routing: 'discussion', source: 'discovery', postponed: true },
             gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+            dead: { routing: 'research', source: 'discovery', handled: true },
           } },
-          research: { items: { auth: { status: 'completed' } } },
+          research: { items: { auth: { status: 'completed' }, dead: { status: 'completed' } } },
           discussion: { items: {
             auth: { status: 'in-progress' },
             timing: { status: 'completed' },
@@ -1159,12 +1160,15 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(plan.locks, []);
     });
 
-    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
+    it('locks, in refusal order: no such topic, already postponed, cancelled, a dead end, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
       const m = manifest();
       const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
       assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — nothing on the map and no research or discussion item of that name']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
       assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
+      // The roadmap holds what is still to do; a question already answered
+      // reopens before it can wait for a better moment.
+      assert.deepStrictEqual(reasons('dead'), ['"dead" is closed as a dead end — reopen it first']);
       assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
       assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
