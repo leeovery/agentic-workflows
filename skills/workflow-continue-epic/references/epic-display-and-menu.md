@@ -83,6 +83,10 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 → Proceed to **H. Postpone Topic**.
 
+#### If `action` is `pull_forward_topic`
+
+→ Proceed to **I. Pull Forward Topic**.
+
 #### Otherwise
 
 A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
@@ -346,3 +350,51 @@ Store the selected entry's `topic` as `{name}`. The horizon, the confirm, and th
 → Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
 
 → On return, return to **A. State Display and Menu**.
+
+---
+
+## I. Pull Forward Topic
+
+The postpone's return leg: this menu let the topic go, so this menu takes it back. Render the postponed-topics list and pick menu — one row per topic this epic postponed that still waits on the roadmap, the horizon it waits under on the row. A topic whose item another epic has since taken is not among them:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs pull-forward-menu {work_unit}
+```
+
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **A. State Display and Menu**.
+
+#### If the input matches no key
+
+Tell the user in one line that the input matched no option, then re-present the sub-view.
+
+→ Return to **I. Pull Forward Topic**.
+
+#### If user chose a numbered topic
+
+Store the selected entry's `topic` and its `(item: …)` value — the roadmap item the topic waits as, which the pull addresses. Run the return — one command restores the unit (the marker cleared, every stashed status returned, the map order back unless a live row took the number, each restored `completed` artifact re-indexed), re-records the join, and commits both manifests:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {item} --into {work_unit}
+```
+
+**If the response is `ok: false`:**
+
+Surface the engine's error verbatim in one line — nothing was written.
+
+→ Return to **A. State Display and Menu**.
+
+**Otherwise:**
+
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, which names the statuses the unit's items returned to — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status; a topic that had never been started comes back with none named:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb restore [--warn]
+```
+
+→ Return to **A. State Display and Menu**.

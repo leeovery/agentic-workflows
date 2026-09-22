@@ -4122,7 +4122,7 @@ function directEntryGate(cwd, { dotpath }) {
   const guidance = lifecycle === 'cancelled'
     ? 'Reactivate it from the epic menu (e/reactivate) — a cancelled topic carries no menu row.'
     : lifecycle === 'postponed'
-      ? 'Pull it forward from the roadmap — a postponed topic carries no menu row.'
+      ? 'Pull it forward from the epic menu (f/forward) — a postponed topic carries no menu row.'
       : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
   return blocker(`"${titlecase(topic)}" is already on the map — ${stands}`, guidance);
 }

@@ -6936,6 +6936,7 @@ describe('render direct-entry-gate', () => {
             gamma: { routing: 'discussion', source: 'discovery' },
             delta: { routing: 'research', source: 'discovery' },
             sigma: { routing: 'discussion', source: 'discovery', cancelled: true },
+            tau: { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
         research: { items: { gamma: { status: 'triaged' }, delta: { status: 'in-progress' } } },
@@ -6969,6 +6970,15 @@ describe('render direct-entry-gate', () => {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.sigma` });
       assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/, phase);
       assert.match(out, /DISPLAY: blocker guidance[\s\S]*Reactivate it from the epic menu \(e\/reactivate\) — a cancelled topic carries no menu row\./, phase);
+      assert.ok(!out.includes('Return to the epic menu'), phase);
+    }
+  });
+
+  it('a postponed row points at the pull forward — it carries no menu row either', () => {
+    for (const phase of ['discussion', 'research']) {
+      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
+      assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/, phase);
+      assert.match(out, /DISPLAY: blocker guidance[\s\S]*Pull it forward from the epic menu \(f\/forward\) — a postponed topic carries no menu row\./, phase);
       assert.ok(!out.includes('Return to the epic menu'), phase);
     }
   });
