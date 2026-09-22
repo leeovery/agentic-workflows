@@ -17,7 +17,7 @@ const path = require('path');
 const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost } = require('../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -2285,8 +2285,9 @@ function rerouteCandidates(cwd, { dotpath, file }) {
 // ---------------------------------------------------------------------------
 
 // A bare yes/no pair — no labels, because the question above them already
-// says what yes means (CONVENTIONS.md: Yes/no prompt).
-const YES_NO = [bareOption('y', 'yes'), bareOption('n', 'no')];
+// says what yes means (CONVENTIONS.md: Yes/no prompt). Composed per render,
+// as every option set is: a row records itself where it is built.
+const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
 
 // The map-operation family: op → the confirm question its gate asks. The
 // batch ops (a run of summary or description edits confirmed together) ask
@@ -2462,7 +2463,7 @@ function mapOpGate(cwd, { dotpath, op, file }) {
   for (const name of mapOpTargets(op, p)) assertMapOp(manifest, op, name);
   return [
     section('DISPLAY: map operation', 'emit verbatim as a code block, directly above the menu', body.join('\n')),
-    section('MENU: map operation gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: MAP_OP_QUESTIONS[op] })),
+    section('MENU: map operation gate', STOP_FOR_RESPONSE, menu('', yesNo(), { question: MAP_OP_QUESTIONS[op] })),
   ].join('\n');
 }
 
@@ -3068,7 +3069,7 @@ function checkpointFilesGate(cwd, { dotpath }) {
 // in a payload, numbered with the recommended side first, and Comment is the
 // exchange; the override line heads the menu when the task gate is auto or
 // bounded, since the stop is one auto never takes for the user.
-const FAILED_ROWS = [
+const failedRows = () => [
   cmdOption('r', 'retry', 'Run the executor again with the guidance above and anything you add'),
   promptOption('Comment', 'Ask about the failure, or steer the next attempt'),
 ];
@@ -3088,7 +3089,7 @@ function executorBlockGate(cwd, { dotpath, result, file }) {
   }
   if (result === 'failed') {
     if (file !== undefined) throw new Error('render executor-block-gate: --file belongs to --result blocked — a failure carries no sides');
-    return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', FAILED_ROWS, { question: 'How would you like to proceed?' }));
+    return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', failedRows(), { question: 'How would you like to proceed?' }));
   }
   if (!file) throw new Error('render executor-block-gate: --file <sides.json> is required with --result blocked');
   const item = itemOf(manifest, 'implementation', topic);
@@ -3450,7 +3451,7 @@ function correctionGate(cwd, { dotpath }) {
  */
 function analysisProceedGate(cwd, { dotpath }) {
   resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
-  return section('MENU: analysis proceed gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed with analysis?' }));
+  return section('MENU: analysis proceed gate', STOP_FOR_RESPONSE, menu('', yesNo(), { question: 'Proceed with analysis?' }));
 }
 
 // spec-confirm-gate — specification entry's consent before the handoff, the
@@ -5544,11 +5545,11 @@ function queryFailureGateSurface(_cwd, _args) {
 // The legacy research split's dialog gates, keyed by what each asks: themes
 // = the candidate theme list's early sanity gate, plan = the drafted plan's
 // apply consent, remove = the destructive theme-removal confirm.
-/** @type {Record<string, {question: string, options: string[]}>} */
+/** @type {Record<string, {question: string, options: () => string[]}>} */
 const LEGACY_SPLIT_GATES = {
   themes: {
     question: 'Proceed with these themes?',
-    options: [
+    options: () => [
       cmdOption('y', 'yes', 'Proceed to draft cache files'),
       cmdOption('a', 'abandon', 'Skip this source file'),
       promptOption('Redirect', 'Adjust the theme list (rename, merge two, split one, add, remove)'),
@@ -5556,7 +5557,7 @@ const LEGACY_SPLIT_GATES = {
   },
   plan: {
     question: 'Apply this plan?',
-    options: [
+    options: () => [
       cmdOption('y', 'yes', 'Apply this plan'),
       cmdOption('a', 'abandon', 'Skip this source file'),
       promptOption('Edit', 'Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.'),
@@ -5564,7 +5565,7 @@ const LEGACY_SPLIT_GATES = {
   },
   remove: {
     question: 'Remove the theme?',
-    options: [
+    options: () => [
       cmdOption('y', 'yes', 'Remove the theme and drop its content'),
       cmdOption('n', 'no', 'Back out'),
     ],
@@ -5579,7 +5580,7 @@ function legacySplitGateSurface(_cwd, { variant }) {
     throw new Error(`render legacy-split-gate: --variant must be one of ${LEGACY_SPLIT_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
   const gate = LEGACY_SPLIT_GATES[variant];
-  return section(`MENU: legacy split ${variant} gate`, STOP_FOR_RESPONSE, menu('', gate.options, { question: gate.question }));
+  return section(`MENU: legacy split ${variant} gate`, STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
 }
 
 // The legacy research split's dialog displays, keyed by what each shows:
@@ -6045,6 +6046,7 @@ const SURFACES = {
  * @returns {string}
  */
 function renderSurface(cwd, surface, args) {
+  openGate();
   const handler = SURFACES[surface];
   if (!handler) {
     throw new Error(`render: unknown surface "${surface}" (surfaces: ${Object.keys(SURFACES).join(', ')})`);
