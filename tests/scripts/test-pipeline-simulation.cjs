@@ -1684,6 +1684,20 @@ describe('pipeline simulation', () => {
     sim.run(['session', 'label-config', 'false']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
     assert.deepStrictEqual(hookVerbs(), { SessionEnd: ['engine.cjs" presence cleanup'] }, 'opting out leaves the presence sweep in place');
+    // The gate surface's opt-in shares that settings file and nothing else:
+    // the choice lands on the project manifest, the function-hooks flag in
+    // `env` beside the hooks, and opting out takes the key away again. Its
+    // consent gate is a static render.
+    const settingsEnv = () => JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8')).env;
+    sim.run(['gate-surface', 'config', 'true']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.gate_surface']), 'true');
+    assert.deepStrictEqual(settingsEnv(), { CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: '1' });
+    assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record gate-surface choice');
+    assert.match(sim.render(['gate-surface-gate'], { expect: 'content' }), /=== MENU: gate surface gate/);
+    sim.run(['gate-surface', 'config', 'false']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.gate_surface']), 'false');
+    assert.strictEqual(settingsEnv(), undefined, 'the flag goes, and the env block it alone filled with it');
+    assert.deepStrictEqual(hookVerbs(), { SessionEnd: ['engine.cjs" presence cleanup'] }, 'and the session hooks are untouched');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

@@ -224,6 +224,7 @@ describe('engine boot', () => {
       label_repaired: false,
       session_hooks_installed: false,
       worktree_include_installed: false,
+      gate_surface: 'prompt',
       baseline: 'none',
       walkthrough: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
