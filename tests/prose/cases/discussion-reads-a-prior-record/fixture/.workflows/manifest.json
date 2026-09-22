@@ -1,0 +1,34 @@
+{
+  "work_units": {
+    "search-relevance": {
+      "work_type": "epic"
+    },
+    "managed-search": {
+      "work_type": "epic"
+    }
+  },
+  "roadmap": {
+    "horizons": [
+      "v2"
+    ],
+    "items": {
+      "synonym-handling": {
+        "horizon": "v2",
+        "summary": "Replace the hand-maintained synonym and misspelling list.",
+        "origin": "postpone:search-relevance",
+        "postponed_from": {
+          "work_unit": "search-relevance",
+          "topic": "synonym-handling"
+        },
+        "sources": [
+          "search-relevance/discovery/briefs/synonym-handling.md",
+          "search-relevance/discussion/synonym-handling.md"
+        ],
+        "pulled_to": {
+          "work_unit": "managed-search",
+          "topic": "synonym-handling"
+        }
+      }
+    }
+  }
+}

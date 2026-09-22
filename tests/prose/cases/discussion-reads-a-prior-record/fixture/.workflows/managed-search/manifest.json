@@ -1,0 +1,22 @@
+{
+  "name": "managed-search",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Search for the managed search product",
+  "phases": {
+    "discovery": {
+      "items": {
+        "synonym-handling": {
+          "routing": "discussion",
+          "source": "roadmap",
+          "summary": "Replace the hand-maintained synonym and misspelling list.",
+          "prior": {
+            "work_unit": "search-relevance",
+            "topic": "synonym-handling"
+          }
+        }
+      }
+    }
+  }
+}

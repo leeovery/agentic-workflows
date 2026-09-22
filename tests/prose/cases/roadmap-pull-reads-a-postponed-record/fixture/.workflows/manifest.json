@@ -1,0 +1,44 @@
+{
+  "work_units": {
+    "search-relevance": {
+      "work_type": "epic"
+    }
+  },
+  "roadmap": {
+    "horizons": [
+      "v2",
+      "v3"
+    ],
+    "items": {
+      "synonym-handling": {
+        "horizon": "v2",
+        "summary": "Replace the hand-maintained synonym and misspelling list.",
+        "origin": "postpone:search-relevance",
+        "postponed_from": {
+          "work_unit": "search-relevance",
+          "topic": "synonym-handling"
+        },
+        "sources": [
+          "search-relevance/discovery/briefs/synonym-handling.md",
+          "search-relevance/discussion/synonym-handling.md"
+        ]
+      },
+      "query-understanding": {
+        "horizon": "v2",
+        "summary": "Understand what a shopper meant, not just what they typed",
+        "origin": "park:search-relevance",
+        "sources": [
+          "search-relevance/discovery/sessions/session-001.md"
+        ]
+      },
+      "personalised-ranking": {
+        "horizon": "v3",
+        "summary": "Rank on who is searching as well as what they searched for",
+        "origin": "park:search-relevance",
+        "sources": [
+          "search-relevance/discovery/sessions/session-001.md"
+        ]
+      }
+    }
+  }
+}
