@@ -1961,18 +1961,19 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
     sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'later'],
       /Invalid candidate status/);
-    sim.write(`.workflows/${wu}/discovery/briefs/epsilon.md`, [
-      '# Discovery Brief — Epsilon',
-      '',
-      'Drawn from the discovery-gap analysis, read out of alpha.md, beta.md.',
-      '',
-    ].join('\n'));
+    // Row first, brief second: the add is what refuses a duplicate name.
     sim.run(['discovery-map', 'add', wu, 'epsilon', 'discussion', '--summary', 'Epsilon summary',
       '--source', 'gap-analysis', '--brief-path', 'discovery/briefs/epsilon.md']);
     const epsilon = sim.manifest(wu).phases.discovery.items.epsilon;
     assert.strictEqual(epsilon.source, 'gap-analysis');
     assert.strictEqual(epsilon.brief_path, 'discovery/briefs/epsilon.md',
       'an approved gap candidate carries its brief pointer, as a harvested topic does');
+    sim.write(`.workflows/${wu}/discovery/briefs/epsilon.md`, [
+      '# Discovery Brief — Epsilon',
+      '',
+      'Drawn from the discovery-gap analysis, read out of alpha.md, beta.md.',
+      '',
+    ].join('\n'));
     sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']).trim(), 'false');
 
