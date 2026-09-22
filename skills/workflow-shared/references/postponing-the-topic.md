@@ -50,9 +50,9 @@ A label already on the map, or a new one in their own words — "under Next", "t
 
 **If `own`:**
 
-Commit anything this session has written and not yet committed, with the phase's own cadence commit — the postpone transaction writes the manifests alone, and the topic's record travels to the roadmap as pointers into files that must already be on record. Nothing to commit is fine.
+Commit anything this session has written and not yet committed, with the phase's own cadence commit — the postpone transaction writes the manifests alone, so the sitting that sent the topic away is committed with the rest of its record rather than left loose. Nothing to commit is fine.
 
-Fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands:
+Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"
@@ -126,7 +126,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {wor
 
 **If `own`:**
 
-The session's topic has left the epic, so the session ends with it. Invoke `/workflow-bridge {work_unit} {phase} none postponed`.
+Invoke `/workflow-bridge {work_unit} {phase} none postponed`.
 
 **Otherwise:**
 
