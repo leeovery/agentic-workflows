@@ -181,6 +181,10 @@ Merging a standalone feature into an epic already underway, as one of its topics
 **cancel**:
 Taking a piece of work, or one topic of an epic, out of active work while keeping its record. Reversible with reactivate.
 
+**postpone**:
+Sending one topic of an epic to the roadmap to be done later. The topic leaves whole — nothing deleted, nothing moved — and comes back when its item is pulled.
+_Avoid_: defer (the discussion map's word for a subtopic set aside)
+
 **reopen**:
 Stepping back into a finished phase to amend it. Whatever was built on it is marked *input moved* until that phase is entered and reconciles the change.
 
