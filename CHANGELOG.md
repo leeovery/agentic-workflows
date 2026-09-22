@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.77] - 2026-09-22
+
+🔧 Changed
+
+- Discovery no longer asks you to confirm or rename the work-unit name — it's derived from your description or a single inbox seed's filename, and a name collision derives another automatically instead of prompting.
+- New epic/discussion topic names are derived and re-derived on collision instead of being confirmed or asked from you.
+- Absorbing a feature into an epic uses the feature's own name as the topic automatically, deriving a fresh name on any clash instead of prompting for one.
+
+🗑️ Removed
+
+- Removed the name-confirmation and collision-retry gates from discovery, topic creation, and feature absorption (`name-gate`, `topic-collision-gate`, `absorb-name-gate` and their prompts) — naming now happens silently.
+
 ## [0.7.76] - 2026-09-21
 
 ✨ Added
