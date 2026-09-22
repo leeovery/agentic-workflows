@@ -302,7 +302,6 @@ Commands:
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json>
-  render topic-collision-gate
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
   render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
@@ -358,7 +357,6 @@ Commands:
   render pivot-continuation <wu>
   render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
-  render absorb-name-gate  <feature> --into <epic>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
   render archived-actions  --path <archived path>
@@ -372,7 +370,6 @@ Commands:
   render roadmap-harvest-gate
   render roadmap-parks-gate
   render roadmap-shape-gate
-  render name-gate [--variant collision]
   render shape-gate
   render synthesis-gate
   render query-failure-gate

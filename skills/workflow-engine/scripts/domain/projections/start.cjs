@@ -710,24 +710,6 @@ function absorbTargetMenu(md) {
 }
 
 /**
- * The absorb name-confirm gate, served by `render absorb-name-gate` — the
- * default topic name (the feature's own) offered before the collision check.
- * @param {ManageDetail} md @param {string} epic
- * @returns {string}
- */
-function absorbNameGate(md, epic) {
-  return labelled(
-    'MENU: absorb name gate',
-    "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Topic name in **${titlecase(epic)}**: **${md.work_unit}**`, [
-      cmdOption('y', 'yes', 'Use this name'),
-      cmdOption('b', 'back', 'Return'),
-      promptOption('Rename', 'Enter a different name (kebab-case)'),
-    ], { question: 'Is this name okay?' }),
-  );
-}
-
-/**
  * The absorb proceed gate, served by `render absorb-confirm-gate` beneath
  * the summary the calling prose renders — the transaction's consent.
  * @returns {string}
@@ -867,7 +849,6 @@ module.exports = {
   manageListView,
   manageUnitView,
   absorbTargetMenu,
-  absorbNameGate,
   absorbConfirmGate,
   planTopicsMenu,
   completedView,

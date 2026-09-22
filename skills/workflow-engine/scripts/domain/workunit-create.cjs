@@ -9,7 +9,8 @@
 //
 // Validation is complete before any mutation: a missing import fails the
 // whole call with `missing_imports` riding on the error so the calling flow
-// can re-prompt and re-run — nothing is on disk until every input is legal.
+// can re-prompt and re-run, and a name already taken refuses outright —
+// nothing is on disk until every input is legal.
 // The manifest write is the source of truth; the knowledge base is a derived
 // index (warn-don't-block); the scoped commit comes last.
 //
@@ -21,7 +22,6 @@ const fs = require('fs');
 const path = require('path');
 const {
   saveWorkUnitManifest,
-  loadWorkUnitManifest,
   withWorkUnitLock,
   readProjectManifest,
   writeProjectManifestAtomic,
@@ -74,7 +74,6 @@ function assertLegalWorkUnitName(workUnit) {
  * @typedef {object} WorkUnitCreateResult
  * @property {string} work_unit
  * @property {string} work_type
- * @property {boolean} created  false when the manifest already existed (reused as-is, never overwritten)
  * @property {{path: string}[]} imports  landed import entries (work-unit-relative)
  * @property {{path: string, source: string}[]} seeds  landed seed entries (work-unit-relative)
  * @property {string[]} skipped_imports  source paths rejected by filename normalisation
@@ -97,12 +96,11 @@ function pushEntry(manifest, field, value) {
 
 /**
  * The work-type commit: create the work unit (manifest + project-manifest
- * registration; an existing manifest is reused as-is), copy imports into
- * `imports/`, move inbox seeds
- * into `seeds/` (both manifest-tracked and KB-indexed, warn-don't-block),
- * install the session log verbatim as `session-001.md` (epic also gets the
- * `active_session` marker), and commit scoped to the work unit plus the
- * inbox when seeds moved out of it.
+ * registration; a name already taken refuses), copy imports into `imports/`,
+ * move inbox seeds into `seeds/` (both manifest-tracked and KB-indexed,
+ * warn-don't-block), install the session log verbatim as `session-001.md`
+ * (epic also gets the `active_session` marker), and commit scoped to the work
+ * unit and the project manifest, plus the inbox when seeds moved out of it.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} workType
@@ -120,6 +118,11 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     throw new Error(`Invalid work_type "${workType}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
   }
   assertLegalWorkUnitName(workUnit);
+
+  const wuDir = path.join(cwd, '.workflows', workUnit);
+  if (fs.existsSync(path.join(wuDir, 'manifest.json'))) {
+    throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
+  }
 
   /** @type {string|null} */
   let sessionLog = null;
@@ -142,30 +145,23 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     return item;
   });
 
-  const wuDir = path.join(cwd, '.workflows', workUnit);
-  const created = !fs.existsSync(path.join(wuDir, 'manifest.json'));
   // Read (and refuse corrupt JSON) before anything mutates; the registration
   // itself re-reads under the project lock after the work unit lands.
-  if (created) readProjectManifest(cwd);
+  readProjectManifest(cwd);
 
   // -- mutate: files + one manifest save under the work unit's lock, then the
   // -- project registration under its own lock, then KB, then the commit -----
   fs.mkdirSync(wuDir, { recursive: true });
   const { importMoves, seedMoves, skippedImports } = withWorkUnitLock(cwd, workUnit, () => {
     /** @type {Record<string, any>} */
-    const manifest = created
-      ? {
-          name: workUnit,
-          work_type: workType,
-          status: 'in-progress',
-          created: todayStamp(),
-          description,
-          phases: {},
-        }
-      : loadWorkUnitManifest(cwd, workUnit);
-    if (!created && manifest.work_type !== workType) {
-      throw new Error(`work unit "${workUnit}" already exists as ${manifest.work_type ?? 'an untyped unit'} — create cannot change a work type (pivot owns feature→epic)`);
-    }
+    const manifest = {
+      name: workUnit,
+      work_type: workType,
+      status: 'in-progress',
+      created: todayStamp(),
+      description,
+      phases: {},
+    };
 
     // Destination names, deduped against each directory and within the batch.
     const importsDir = path.join(wuDir, 'imports');
@@ -215,13 +211,11 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   });
   const sessionLogPath = sessionLog !== null ? `.workflows/${workUnit}/discovery/sessions/session-001.md` : null;
 
-  if (created) {
-    withProjectLock(cwd, () => {
-      const projectManifest = readProjectManifest(cwd);
-      ensureContainer(projectManifest, 'work_units', 'work_units')[workUnit] = { work_type: workType };
-      writeProjectManifestAtomic(cwd, projectManifest);
-    });
-  }
+  withProjectLock(cwd, () => {
+    const projectManifest = readProjectManifest(cwd);
+    ensureContainer(projectManifest, 'work_units', 'work_units')[workUnit] = { work_type: workType };
+    writeProjectManifestAtomic(cwd, projectManifest);
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -232,18 +226,16 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     knowledge(cwd, ['index', `.workflows/${workUnit}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
   }
 
-  // Seed removals ride along in the same commit as their new home, and a
-  // fresh creation's project-manifest registration lands with it too.
-  const pathspecs = [`.workflows/${workUnit}`];
+  // Seed removals ride along in the same commit as their new home, and the
+  // project-manifest registration lands with it too.
+  const pathspecs = [`.workflows/${workUnit}`, '.workflows/manifest.json'];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
-  if (created) pathspecs.push('.workflows/manifest.json');
   const outcome = commitTailWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
   const result = {
     work_unit: workUnit,
     work_type: workType,
-    created,
     imports: importMoves.map((move) => ({ path: `imports/${move.dest}` })),
     seeds: seedMoves.map((move) => ({
       path: `seeds/${move.dest}`,

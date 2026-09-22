@@ -979,25 +979,12 @@ describe('start projections: manage unit', () => {
     assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'ghost' }), /not found/);
   });
 
-  it('the absorb name and confirm gates render their consents and refuse out of place', () => {
+  it('the absorb confirm gate renders its consent and refuses out of place', () => {
     const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
     createManifest(dir, 'auth-flow', {
       phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
     });
     createManifest(dir, 'v1', { work_type: 'epic' });
-
-    assert.strictEqual(renderSurface(dir, 'absorb-name-gate', { dotpath: 'auth-flow', into: 'v1' }), [
-      "=== MENU: absorb name gate (emit verbatim as markdown, then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      'Topic name in **V1**: **auth-flow**',
-      '',
-      '**`◆ Is this name okay?`**',
-      '',
-      '**`y/yes`**  → Use this name',
-      '**`b/back`** → Return',
-      '**Rename** → Enter a different name (kebab-case)',
-      '',
-    ].join('\n'));
 
     assert.strictEqual(renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'auth-flow' }), [
       "=== MENU: absorb confirm gate (emit verbatim as markdown, then STOP for the user's response) ===",
@@ -1009,11 +996,6 @@ describe('start projections: manage unit', () => {
       '',
     ].join('\n'));
 
-    assert.throws(() => renderSurface(dir, 'absorb-name-gate', { dotpath: 'auth-flow' }),
-      /--into is required — the selected target epic/);
-    assert.throws(() => renderSurface(dir, 'absorb-name-gate', { dotpath: 'auth-flow', into: 'ghost' }),
-      /"ghost" is not an absorb target — available: v1/);
-    assert.throws(() => renderSurface(dir, 'absorb-name-gate', { dotpath: 'v1', into: 'v1' }), /not absorbable/);
     assert.throws(() => renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'v1' }), /not absorbable/);
     assert.throws(() => renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'ghost' }), /not found/);
   });
