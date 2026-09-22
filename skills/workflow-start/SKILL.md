@@ -199,7 +199,7 @@ Branch on the boot response's `gate_surface` — `prompt` means the choice was n
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The workflows can draw their gates as pressable rows above the prompt instead of printing them as text — the rows stay put while the transcript scrolls, and a click, the row's own key, or Enter answers. It turns on Claude Code's early-access function hooks for every plugin in this project's sessions, and the first session after you answer still sees text menus — settings are read at startup. You're asked once per project.
+> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time.
 ```
 
 Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim as markdown (not a code block):

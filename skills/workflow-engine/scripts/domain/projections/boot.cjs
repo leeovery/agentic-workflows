@@ -57,10 +57,10 @@ function gateSurfaceGate() {
   const body = menu(
     '',
     [
-      cmdOption('y', 'yes', 'Draw the gates above the prompt'),
-      cmdOption('n', 'no', 'Keep the gates as text menus'),
+      cmdOption('y', 'yes', 'Click a row or press its key; the menu stays put as you scroll'),
+      cmdOption('n', 'no', 'Keep menus as text in the conversation, as now'),
     ],
-    { question: 'Turn the gate surface on for this project?' },
+    { question: 'Show menus like this one as buttons above the prompt?' },
   );
   return section('MENU: gate surface gate', MENU_INSTRUCTION, body);
 }
