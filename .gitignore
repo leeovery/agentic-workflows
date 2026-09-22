@@ -9,3 +9,4 @@
 node_modules/
 .npm-cache/
 .workflows/.knowledge/store.msp
+skills/workflow-gates/types/
