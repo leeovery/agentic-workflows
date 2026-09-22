@@ -26,7 +26,7 @@
  *   `gateway.cjs {work_unit}`).
  */
 
-const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION } = require('./domain/projections/surfaces.cjs');
+const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
 
 const SECTION = {
   title:   `=== TITLE (${TITLE_INSTRUCTION}) ===`,
@@ -56,7 +56,7 @@ function displayBlock(body) {
 /** @param {string} body menu block, pre-rendered — empty renders no section: no gate, no marker */
 function menuBlock(body) {
   const menu = String(body).replace(/\n+$/, '');
-  return menu === '' ? '' : SECTION.menu + '\n' + menu + '\n';
+  return menu === '' ? '' : gateBlock('menu') + SECTION.menu + '\n' + menu + '\n';
 }
 
 // `key: value` lines for flat values; nested objects/arrays render as compact
@@ -76,6 +76,7 @@ function dataLines(obj) {
  */
 function runGateway(handlers, argv = process.argv.slice(2)) {
   const [first, ...rest] = argv;
+  openGate();
 
   let out;
   if (first === undefined) {
