@@ -189,7 +189,7 @@ Commands:
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map add <work-unit> <name> <research|discussion>
-                (--summary <text> [--description <text>] | --backfill)
+                (--summary <text> [--description <text>] [--brief-path <path>] | --backfill)
                 [--source <tag>] [--force-dismissed]
   discovery-map add-batch <work-unit> --file <topics.json>
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
@@ -683,13 +683,14 @@ function runDiscoveryMap(call, argv) {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
       if (!workUnit || positional.length !== 3 || (opts.summary === undefined && !flags.has('backfill'))) {
-        throw new Error(`Usage: engine discovery-map add <work-unit> <name> <${VALID_ROUTINGS.join('|')}> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]`);
+        throw new Error(`Usage: engine discovery-map add <work-unit> <name> <${VALID_ROUTINGS.join('|')}> (--summary <text> [--description <text>] [--brief-path <path>] | --backfill) [--source <tag>] [--force-dismissed]`);
       }
       respond(call, addItem(cwd, workUnit, positional[1], {
         routing: positional[2],
         source: opts.source,
         summary: opts.summary,
         description: opts.description,
+        briefPath: opts['brief-path'],
         forceDismissed: flags.has('force-dismissed'),
         backfill: flags.has('backfill'),
       }));

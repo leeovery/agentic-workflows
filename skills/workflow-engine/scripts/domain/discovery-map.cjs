@@ -43,6 +43,7 @@ const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
  * @property {string} lifecycle  the item's lifecycle after the op (pre-removal for remove)
  * @property {string} [summary]           add/edit: the value written
  * @property {string} [description]       add/edit: the value written
+ * @property {string} [brief_path]        add: the brief pointer written
  * @property {boolean} [dismissed]        remove: name pushed onto the dismissed list
  * @property {boolean} [brief_removed]    remove: the topic's brief file was deleted
  * @property {string} [renamed_from]      rename: the old name
@@ -167,28 +168,32 @@ function sequenceMap(cwd, workUnit, orders) {
 }
 
 /**
- * Add a new map item: `{routing, source, summary[, description]}` — never a
- * `status` field; map-item lifecycle is computed at render time, not stored.
- * `backfill` lands the item without summary/description (keys absent, not "")
- * so the next epic entry's summary-backfill drafts them — for topics whose
- * artifacts already exist (absorb, pivot); it is mutually exclusive with
- * passing either field. Refuses an active duplicate, and a dismissed name
- * unless `forceDismissed` carries the user's confirmed re-add decision (the
- * entry is then pulled off the dismissed list so the analysis treats the topic as
- * live again). No git commit — the calling session's commit cadence picks the
- * change up.
+ * Add a new map item: `{routing, source, summary[, description][, brief_path]}`
+ * — never a `status` field; map-item lifecycle is computed at render time, not
+ * stored. `briefPath` records the topic's brief pointer with the row, as the
+ * harvest's batch form does. `backfill` lands the item without any of them
+ * (keys absent, not "") so the next epic entry's summary-backfill drafts them —
+ * for topics whose artifacts already exist (absorb, pivot); it is mutually
+ * exclusive with passing any of the three. Refuses an active duplicate, and a
+ * dismissed name unless `forceDismissed` carries the user's confirmed re-add
+ * decision (the entry is then pulled off the dismissed list so the analysis
+ * treats the topic as live again). No git commit — the calling session's commit
+ * cadence picks the change up.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
- * @param {{routing?: string, source?: string, summary?: string, description?: string, forceDismissed?: boolean, backfill?: boolean}} [fields]
+ * @param {{routing?: string, source?: string, summary?: string, description?: string, briefPath?: string, forceDismissed?: boolean, backfill?: boolean}} [fields]
  * @returns {MapOpResult}
  */
-function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, forceDismissed = false, backfill = false } = {}) {
+function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, briefPath, forceDismissed = false, backfill = false } = {}) {
   if (!routing || !VALID_ROUTINGS.includes(routing)) {
     throw new Error(`unknown routing ${JSON.stringify(routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
   }
-  if (backfill && (summary !== undefined || description !== undefined)) {
-    throw new Error('--backfill lands the item without summary/description — drop the flag or the fields');
+  if (backfill && (summary !== undefined || description !== undefined || briefPath !== undefined)) {
+    throw new Error('--backfill lands the item without summary/description/brief-path — drop the flag or the fields');
+  }
+  if (briefPath !== undefined && (typeof briefPath !== 'string' || briefPath.trim() === '')) {
+    throw new Error('--brief-path must be a non-empty string when present');
   }
   if (!backfill && summary === undefined) {
     throw new Error('--summary is required (or --backfill to leave it for summary-backfill)');
@@ -221,6 +226,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
     const item = { routing, source };
     if (summary !== undefined) item.summary = summary;
     if (description !== undefined) item.description = description;
+    if (briefPath !== undefined) item.brief_path = briefPath;
     discovery.items[name] = item;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -230,6 +236,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
     const result = { work_unit: workUnit, name, op: 'add', routing, source, lifecycle, map_total: Object.keys(discovery.items).length };
     if (summary !== undefined) result.summary = summary;
     if (description !== undefined) result.description = description;
+    if (briefPath !== undefined) result.brief_path = briefPath;
     if (backfill) result.backfill = true;
     if (wasDismissed) result.undismissed = true;
     return result;
