@@ -4796,7 +4796,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, cross-cutting-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -6915,6 +6915,41 @@ describe('render — the adopted phase gates', () => {
     ].join('\n'));
   });
 
+  it('plan-format-gate --variant select: numbers the payload\'s rows, and never names a format itself', () => {
+    const file = writePayload(dir, 'formats.json', {
+      formats: [
+        { name: 'alpha', label: 'Alpha — the first sample format, with a long enough label that the surface has to wrap it under the label column.' },
+        { name: 'beta', label: 'Beta — the second.' },
+      ],
+    });
+    assert.strictEqual(renderSurface(dir, 'plan-format-gate', { variant: 'select', file }), [
+      "=== MENU: plan format select (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Select an output format:`**',
+      '',
+      '**`1`** → Alpha — the first sample format, with a long enough label',
+      `${NB(4)}that the surface has to wrap it under the label column.`,
+      '**`2`** → Beta — the second.',
+      '',
+    ].join('\n'));
+  });
+
+  it('plan-format-gate: refuses an unknown variant, a missing payload, and a row without a name or label', () => {
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'all' }),
+      /--variant must be select, got "all"/);
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select' }),
+      /--variant select requires --file <payload\.json>/);
+    const empty = writePayload(dir, 'empty.json', { formats: [] });
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: empty }),
+      /"formats" must be a non-empty array of \{name, label\}/);
+    const nameless = writePayload(dir, 'nameless.json', { formats: [{ label: 'Alpha — no name' }] });
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: nameless }),
+      /every format needs a non-empty "name" and "label"/);
+    const labelless = writePayload(dir, 'labelless.json', { formats: [{ name: 'alpha' }] });
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: labelless }),
+      /every format needs a non-empty "name" and "label"/);
+  });
+
   it('plan-review-gate: the loop\'s two gates, spec-review-gate\'s sibling', () => {
     const cont = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'continue' });
     assert.match(cont, /MENU: plan review continue gate/);
@@ -6974,6 +7009,73 @@ describe('render — the adopted phase gates', () => {
       /address must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'ghost' }),
       /work unit "ghost" not found/);
+  });
+});
+
+describe('render cross-cutting-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'cache-policy', {
+      work_type: 'cross-cutting',
+      phases: { specification: { items: { 'cache-policy': { status: 'in-progress' } } } },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('names the specs the payload judged relevant, above the continue-or-stop ask', () => {
+    writeManifest(dir, 'error-shape', {
+      work_type: 'cross-cutting',
+      phases: { specification: { items: { 'error-shape': { status: 'in-progress' } } } },
+    });
+    const file = writePayload(dir, 'units.json', { units: ['cache-policy', 'error-shape'] });
+    assert.strictEqual(renderSurface(dir, 'cross-cutting-gate', { file }), [
+      '=== DISPLAY: cross-cutting in progress (emit verbatim as a code block, directly above the menu) ===',
+      'Cross-cutting specifications still in progress:',
+      '  These may contain architectural decisions relevant to this',
+      '  plan.',
+      '',
+      '  • cache-policy',
+      '  • error-shape',
+      '',
+      "=== MENU: cross-cutting gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Proceed without these, or complete them first?`**',
+      '',
+      '**`c/continue`** → Plan without them',
+      '**`s/stop`**     → Complete them first',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing payload, an empty or malformed list, and a name the record does not hold', () => {
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', {}),
+      /--file <payload\.json> is required/);
+    const empty = writePayload(dir, 'empty.json', { units: [] });
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', { file: empty }),
+      /"units" is empty — the gate renders over the specs this plan must know about/);
+    const wrong = writePayload(dir, 'wrong.json', { units: 'cache-policy' });
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', { file: wrong }),
+      /"units" must be an array of strings/);
+    const ghost = writePayload(dir, 'ghost.json', { units: ['ghost'] });
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', { file: ghost }),
+      /"ghost" is not a cross-cutting work unit with a specification in progress/);
+  });
+
+  it('refuses a finished cross-cutting spec and a unit of another type', () => {
+    const file = writePayload(dir, 'units.json', { units: ['cache-policy'] });
+    writeManifest(dir, 'cache-policy', {
+      work_type: 'cross-cutting',
+      phases: { specification: { items: { 'cache-policy': { status: 'completed' } } } },
+    });
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', { file }),
+      /"cache-policy" is not a cross-cutting work unit with a specification in progress/);
+    writeManifest(dir, 'cache-policy', {
+      work_type: 'feature',
+      phases: { specification: { items: { 'cache-policy': { status: 'in-progress' } } } },
+    });
+    assert.throws(() => renderSurface(dir, 'cross-cutting-gate', { file }),
+      /"cache-policy" is not a cross-cutting work unit with a specification in progress/);
   });
 });
 

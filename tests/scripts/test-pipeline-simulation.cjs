@@ -499,6 +499,14 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // next plan opens on reads it back rather than being told (initialize-plan A).
   sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
   sim.render(['plan-format-gate'], { expect: 'content' });
+  // Declining that offer opens the catalogue (output-formats.md): which
+  // formats a project ships is the planning skill's to name, so the rows ride
+  // a payload and the surface numbers them in order.
+  const formats = sim.write(`.workflows/.cache/${wu}/planning/${topic}/format-offer.json`, {
+    formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
+  });
+  assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
+    /◆ Select an output format:[\s\S]*\*\*`1`\*\* → Sample Format/);
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
@@ -1115,6 +1123,29 @@ describe('pipeline simulation', () => {
     assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.ok(!hop.includes('d/done'), hop);
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
+  });
+
+  it('cross-cutting: a specification still being written stops a peer\'s planning entry', () => {
+    const cc = 'error-envelope';
+    sim.run(['workunit', 'create', cc, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, cc)]);
+    sim.run(['topic', 'start', cc, 'discussion', cc]);
+    sim.write(`.workflows/${cc}/discussion/${cc}.md`, `# Discussion — ${cc}\n`);
+    sim.run(['topic', 'complete', cc, 'discussion', cc]);
+    sim.run(['topic', 'start', cc, 'specification', cc]);
+
+    // The peer's planning entry stops over it (cross-cutting-context B):
+    // which specs bear on the plan is the session's read, so the names ride a
+    // payload, and the surface checks each against the record.
+    const peer = 'checkout-flow';
+    sim.run(['workunit', 'create', peer, 'feature', '--description', 'Checkout flow', '--session-log-file', sessionLog(sim, peer)]);
+    const units = sim.write(`.workflows/.cache/${peer}/planning/${peer}/cross-cutting.json`, { units: [cc] });
+    assert.match(sim.render(['cross-cutting-gate', '--file', units], { expect: 'content' }), /• error-envelope/);
+
+    // Once the spec lands there is nothing left to warn a plan about.
+    sim.write(`.workflows/${cc}/specification/${cc}/specification.md`, `# Spec — ${cc}\n`);
+    sim.run(['topic', 'complete', cc, 'specification', cc]);
+    sim.refuses(['render', 'cross-cutting-gate', '--file', units],
+      /"error-envelope" is not a cross-cutting work unit with a specification in progress/);
   });
 
   it('epic: map lifecycle, per-topic phases, grouping supersession, cancel/reactivate', () => {
