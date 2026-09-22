@@ -1,0 +1,8 @@
+{
+  "name": "workflow-gates",
+  "version": "0.1.0",
+  "description": "Draws the agentic-workflows engine's gates in the band above the prompt — pressable rows instead of a menu the model has to reproduce — and submits the press as the person's next message.",
+  "author": {
+    "name": "Lee Overy"
+  }
+}
