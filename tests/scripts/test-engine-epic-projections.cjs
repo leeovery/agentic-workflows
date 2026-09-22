@@ -491,6 +491,7 @@ describe('epic projections: menu', () => {
       in_progress: [{ name: 'auth-spec', phase: 'specification' }],
       completed: [{ name: 'reporting', phase: 'planning' }],
       cancellable: [{ name: 'auth-spec', stage: 'specification', state: 'in-progress' }],
+      postponable: [{ name: 'menu-admin', stage: 'discovery', state: 'decided' }],
       cancelled: [],
       next_phase_ready: [
         { name: 'billing-grouping', action: 'start_specification', label: 'grouping ready' },
@@ -538,6 +539,7 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
       '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
       `${NB(14)}externally`,
       '**`o/order`**     → Re-sequence the build order',
@@ -557,6 +559,7 @@ describe('epic projections: menu', () => {
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
+        ['p', 'postpone_topic', null, null],
         ['u', 'unblock_plan', null, null],
         ['o', 'resequence_build_order', null, null],
       ]
@@ -1253,6 +1256,29 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicCancelMenu(bare).display, 'No cancellable topics.\n');
   });
 
+  it('p/postpone shows whenever a Discovery unit exists, locked ones included, and withdraws when every topic has left', () => {
+    const options = (d) => epicMenu('v1', d).keys.filter((k) => k.action === 'postpone_topic').map((k) => k.label);
+    assert.deepStrictEqual(options(unitDetail()), ['Postpone a topic to the roadmap']);
+    // A locked unit keeps the option: the reason rides its row, and
+    // withdrawing the option would hide the reason with it.
+    const locked = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed', sources: { auth: { status: 'incorporated' } } } } },
+      },
+    });
+    assert.deepStrictEqual(options(locked), ['Postpone a topic to the roadmap']);
+    // A map whose every row has gone to the roadmap has nothing left to
+    // postpone — the empty state, and no option.
+    const away = detailFor(dir, 'v3', {
+      work_type: 'epic',
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.deepStrictEqual(options(away), []);
+    assert.strictEqual(epicPostponeMenu(away).display, 'No postponable topics.\n');
+  });
+
   it('cancel-menu: a triaged stub is cancellable with the topic, cued as parked', () => {
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
@@ -1776,6 +1802,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
     ].join('\n'));
     // With a map the discussion phase renders no item rows — the map row
     // carries the wait, so the key owes no blocked cue.
@@ -2086,6 +2113,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
     ].join('\n'));
     // The map row cues the same hold the struck row shows.
     assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),

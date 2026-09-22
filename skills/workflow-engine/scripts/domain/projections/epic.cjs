@@ -771,6 +771,9 @@ function commandOptions(workUnit, detail, hasMap) {
   if (detail.cancellable.length > 0) {
     opts.push({ key: 'a', word: 'cancel', action: 'cancel_topic', topic: null, route: null, label: 'Cancel a topic' });
   }
+  if (detail.postponable.length > 0) {
+    opts.push({ key: 'p', word: 'postpone', action: 'postpone_topic', topic: null, route: null, label: 'Postpone a topic to the roadmap' });
+  }
   if (detail.cancelled.length > 0) {
     opts.push({ key: 'e', word: 'reactivate', action: 'reactivate_topic', topic: null, route: null, label: 'Reactivate a cancelled topic' });
   }

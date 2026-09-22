@@ -79,6 +79,10 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 → Proceed to **F. Reactivate Topic**.
 
+#### If `action` is `postpone_topic`
+
+→ Proceed to **H. Postpone Topic**.
+
 #### Otherwise
 
 A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
@@ -310,3 +314,35 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 ```
 
 → Return to **A. State Display and Menu**.
+
+---
+
+## H. Postpone Topic
+
+Render the postponable-topics list and pick menu — one row per Discovery unit, the topic with its research, discussion, and experiments together. Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs postpone-menu {work_unit}
+```
+
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **A. State Display and Menu**.
+
+#### If the input matches no key
+
+A locked row's name is the usual case — the row carries its reason. Tell the user in one line: the reason from the row for a locked unit, or that the input matched no option; then re-present the sub-view.
+
+→ Return to **H. Postpone Topic**.
+
+#### If user chose a numbered topic
+
+Store the selected entry's `topic`. The horizon, the confirm, and the transaction are the shared door's.
+
+→ Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{topic}`, phase = `none`, topic = `none`.
+
+→ On return, return to **A. State Display and Menu**.
