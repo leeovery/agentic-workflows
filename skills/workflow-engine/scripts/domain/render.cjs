@@ -3110,6 +3110,21 @@ function analysisProceedGate(cwd, { dotpath }) {
   return section('MENU: analysis proceed gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed with analysis?' }));
 }
 
+// spec-confirm-gate — specification entry's consent before the handoff, the
+// one gate every route reaches: create, continue, refine, unify. What differs
+// between them — the verb, the sources, the supersessions, the output path —
+// is the flow's display above it; the ask is the same one.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function specConfirmGate(cwd, { dotpath }) {
+  resolveWorkUnit(cwd, dotpath, 'spec-confirm-gate');
+  return section('MENU: spec confirm gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed?' }));
+}
+
 // finding-announce — the surfacing protocol's opt-in gate: a background
 // agent's return announced as a count and a lane shape, never a preview.
 // The chrome is fixed; the payload carries only judgment content (the
@@ -5496,6 +5511,7 @@ const SURFACES = {
   'plan-review-gate': planReviewGate,
   'correction-gate': correctionGate,
   'analysis-proceed-gate': analysisProceedGate,
+  'spec-confirm-gate': specConfirmGate,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
   'resurface-gate': resurfaceGate,
