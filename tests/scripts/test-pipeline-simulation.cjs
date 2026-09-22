@@ -225,6 +225,60 @@ function auditState(dir, label) {
 }
 
 // ---------------------------------------------------------------------------
+// The gate payload
+// ---------------------------------------------------------------------------
+
+const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
+
+// The rows a MENU draws, read back out of the markdown: a code span is a key
+// the user types (an en dash in it makes it a span, which is typed rather
+// than pressed), bare bold before an arrow is a prompt row, and the glyphed
+// question is chrome.
+/** @param {string[]} lines @returns {{keys: string[], typed: string[]}} */
+function menuRows(lines) {
+  /** @type {string[]} */ const keys = [];
+  /** @type {string[]} */ const typed = [];
+  for (const line of lines) {
+    if (line.startsWith('**`◆ ')) continue;
+    const code = /^\*\*`([^`]+)`\*\*(?:\s*→|$)/.exec(line);
+    if (code) {
+      if (code[1].includes('–')) typed.push(code[1]);
+      else keys.push(code[1].split('/')[0]);
+      continue;
+    }
+    const prompt = /^\*\*([^*`]+)\*\*\s+→/.exec(line);
+    if (prompt) typed.push(prompt[1]);
+  }
+  return { keys, typed };
+}
+
+// With the gate surface announced, the same render states its menu as data
+// directly above the markdown. The payload has to be the rows the menu draws,
+// in order — a surface drawing the gate from it would otherwise offer a
+// different menu from the one the text carries.
+/** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @returns {void} */
+function auditGatePayload(sim, args, identity) {
+  const label = `render ${args.join(' ')} — gate payload`;
+  const env = { ...sim.envOf(identity), WORKFLOWS_GATE_SURFACE: '1' };
+  const lines = engine.run(['render', ...args], { cwd: sim.dir, env }).stdout.split('\n');
+
+  const menuAt = lines.findIndex((l) => l.startsWith('=== MENU'));
+  if (menuAt === -1) {
+    assert.ok(!lines.includes(GATE_MARKER), `[${label}] a response with no menu carries no gate`);
+    return;
+  }
+  assert.strictEqual(lines[menuAt - 2], GATE_MARKER, `[${label}] the payload does not sit directly above its menu`);
+
+  const gate = JSON.parse(lines[menuAt - 1]);
+  const end = lines.findIndex((l, i) => i > menuAt && l.startsWith('=== '));
+  const drawn = menuRows(lines.slice(menuAt + 1, end === -1 ? lines.length : end));
+  assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), drawn.keys,
+    `[${label}] the payload's keys are not the menu's`);
+  assert.deepStrictEqual(gate.typed.map((/** @type {{label: string}} */ t) => t.label), drawn.typed,
+    `[${label}] the payload's typed rows are not the menu's`);
+}
+
+// ---------------------------------------------------------------------------
 // Simulator
 // ---------------------------------------------------------------------------
 
@@ -386,6 +440,7 @@ class Sim {
     if (expect === 'empty') {
       assert.strictEqual(res.stdout.trim(), '', `[render ${args.join(' ')}] expected a pass (empty render)`);
     }
+    auditGatePayload(this, args, identity);
     return res.stdout;
   }
 

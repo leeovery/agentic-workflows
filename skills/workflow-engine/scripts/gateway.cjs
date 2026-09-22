@@ -24,6 +24,8 @@
  *   `gateway.cjs {work_unit}`).
  */
 
+const { openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
+
 const SECTION = {
   title:   '=== TITLE (emit verbatim as markdown — the view\'s chrome heading) ===',
   data:    '=== DATA (reason from this — never display or parse the sections below) ===',
@@ -51,7 +53,7 @@ function displayBlock(body) {
 
 /** @param {string} body menu block, pre-rendered */
 function menuBlock(body) {
-  return SECTION.menu + '\n' + String(body).replace(/\n+$/, '') + '\n';
+  return gateBlock('menu') + SECTION.menu + '\n' + String(body).replace(/\n+$/, '') + '\n';
 }
 
 // `key: value` lines for flat values; nested objects/arrays render as compact
@@ -71,6 +73,7 @@ function dataLines(obj) {
  */
 function runGateway(handlers, argv = process.argv.slice(2)) {
   const [first, ...rest] = argv;
+  openGate();
 
   let out;
   if (first === undefined) {

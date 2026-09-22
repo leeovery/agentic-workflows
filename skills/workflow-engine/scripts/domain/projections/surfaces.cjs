@@ -162,13 +162,119 @@ function alignOptions(lines, { width = displayWidth(), skip = 0 } = {}) {
   return out;
 }
 
+const GATE_SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
+
+const GATE_INSTRUCTION = 'json for a gate surface — never display';
+
+const TAIL_SEPARATOR = ' — ';
+
+// Appended after the whole label, tail included, so it comes off before the
+// head/tail split rather than after it.
+const RECOMMENDED_MARKER = ' (recommended)';
+
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, struck: boolean, recommended: boolean}} GateOption */
+/** @typedef {{label: string, description: string}} GateTyped */
+/** @typedef {{question: string|undefined, options: GateOption[], typed: GateTyped[]}} GateRows */
+
+// A render is synchronous, so one collection is enough: opened as the render
+// begins, taken at the first MENU.
+/** @type {GateRows|null} */
+let gateRows = null;
+
 /**
- * One `=== NAME (instruction) ===` demarcated section.
+ * Begin collecting this render's gate rows. A no-op while the gate surface is
+ * unannounced, which is what keeps default output byte-identical.
+ * @returns {void}
+ */
+function openGate() {
+  gateRows = process.env[GATE_SURFACE_ENV] === '1' ? { question: undefined, options: [], typed: [] } : null;
+}
+
+/**
+ * The GATE block for the MENU about to be emitted, `''` when nothing was
+ * collected. Taken once: a second menu in one response finds nothing, and a
+ * response with no menu drops what it gathered at the next render.
+ * @param {string} name  the gate's name, `MENU:` prefix already dropped
+ * @returns {string}
+ */
+function gateBlock(name) {
+  const rows = gateRows;
+  gateRows = null;
+  if (rows === null) return '';
+  const payload = JSON.stringify({
+    gate: name,
+    question: rows.question ?? '',
+    options: rows.options,
+    typed: rows.typed,
+  });
+  return `=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
+}
+
+/** Text without the engine's markup — the payload states no presentation. @param {string} text @returns {string} */
+function stripMarkup(text) {
+  return String(text).replace(/\*\*|~~|[`*]/g, '').trim();
+}
+
+/**
+ * A label split at its metadata tail, both halves stated as plain text.
+ * @param {string} label @returns {{head: string, tail: string|null}}
+ */
+function splitLabel(label) {
+  const at = label.indexOf(TAIL_SEPARATOR);
+  if (at === -1) return { head: stripMarkup(label), tail: null };
+  return { head: stripMarkup(label.slice(0, at)), tail: stripMarkup(label.slice(at + TAIL_SEPARATOR.length)) };
+}
+
+/**
+ * Record one pressable row — a single key the person can be offered.
+ * @param {string|number} key @param {string|null|undefined} word @param {string} label
+ * @returns {void}
+ */
+function recordOption(key, word, label) {
+  if (gateRows === null) return;
+  const text = String(label);
+  const recommended = text.includes(RECOMMENDED_MARKER);
+  const bare = recommended ? text.replaceAll(RECOMMENDED_MARKER, '') : text;
+  gateRows.options.push({
+    key: String(key),
+    word: word ?? null,
+    ...splitLabel(bare),
+    struck: text.includes('~~'),
+    recommended,
+  });
+}
+
+/**
+ * Record one typed row — a natural reply or a span of numbers, never a press.
+ * @param {string} label @param {string} description @returns {void}
+ */
+function recordTyped(label, description) {
+  if (gateRows === null) return;
+  gateRows.typed.push({ label: stripMarkup(label), description: stripMarkup(description) });
+}
+
+/** Record the gate's question; the first non-empty claim wins. @param {string} [text] @returns {void} */
+function recordQuestion(text) {
+  const ask = stripMarkup(text ?? '');
+  if (gateRows !== null && gateRows.question === undefined && ask) gateRows.question = ask;
+}
+
+// `MENU: task gate` → `task gate`; the gateway's unnamed `MENU` → `menu`.
+/** @param {string} name @returns {string} */
+function gateName(name) {
+  return name.replace(/^MENU:?\s*/, '') || 'menu';
+}
+
+/**
+ * One `=== NAME (instruction) ===` demarcated section. A MENU carries its
+ * gate payload immediately above it, so a surface drawing the gate never has
+ * to read the markdown back out.
  * @param {string} name @param {string} instruction @param {string} body
  * @returns {string}
  */
 function section(name, instruction, body) {
-  return `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
+  const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
+  return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
 }
 
 // The instructions for a DISPLAY that is the whole response: emitting it
@@ -221,6 +327,7 @@ function titleSection(text) {
 function menuFrame(lines, { glyphLabel = true, width, skip = 0 } = {}) {
   const body = alignOptions(lines, { width, skip });
   if (glyphLabel && body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
+    recordQuestion(body[0]);
     body[0] = `**\`${MENU_GLYPH} ${body[0]}\`**`;
   }
   consentAsks(body);
@@ -277,6 +384,7 @@ function isGlyphable(label) {
  * @returns {string}
  */
 function menu(label, options, { prompt, question } = {}) {
+  recordQuestion(question ?? label ?? '');
   const lines = label ? [label, ''] : [];
   // A yes/no gate whose label is a statement carries its ask separately: the
   // statement stays context, the short question takes the decision glyph.
@@ -287,7 +395,10 @@ function menu(label, options, { prompt, question } = {}) {
   // constant by convention, and skip is a prefix count by shape.
   const skip = lines.length;
   lines.push(...options);
-  if (prompt) lines.push('', prompt);
+  if (prompt) {
+    lines.push('', prompt);
+    recordQuestion(prompt);
+  }
   return menuFrame(lines, { glyphLabel: !question, skip });
 }
 
@@ -300,6 +411,7 @@ function menu(label, options, { prompt, question } = {}) {
  * @returns {string}
  */
 function cmdOption(key, word, label) {
+  recordOption(key, word, label);
   return `**\`${word ? `${key}/${word}` : key}\`** → ${label}`;
 }
 
@@ -312,6 +424,7 @@ function cmdOption(key, word, label) {
  * @returns {string}
  */
 function bareOption(key, word) {
+  recordOption(key, word, word);
   return `**\`${key}/${word}\`**`;
 }
 
@@ -323,6 +436,7 @@ function bareOption(key, word) {
  * @returns {string}
  */
 function promptOption(label, description) {
+  recordTyped(label, description);
   return `**${label}** → ${description}`;
 }
 
@@ -333,6 +447,7 @@ function promptOption(label, description) {
  * @returns {string}
  */
 function rangeOption(first, last, label) {
+  recordTyped(`${first}–${last}`, label);
   return `**\`${first}–${last}\`** → ${label}`;
 }
 
@@ -406,5 +521,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, openGate, gateBlock, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

@@ -60,6 +60,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 - `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown, directly above the display.
 - `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a plain code block — no language; any grammar eventually colours a stray word in uncontrolled prose. Labelled sections may name a colouring fence where the register calls for it — `properties` for blockers, `diff` for change content — or markdown where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
+- `=== GATE … ===` — for code, never for a person: one line of JSON stating the gate the `MENU` directly beneath it draws. Present only while `WORKFLOWS_GATE_SURFACE=1` is in the environment, so a session without a gate surface never sees it. Never displayed, never restated, and never a substitute for the `MENU` — a flow reads neither.
 
 **Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand; a hand-drawn display drifts where an engine render cannot. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries).
 
