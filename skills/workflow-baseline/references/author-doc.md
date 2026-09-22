@@ -43,25 +43,25 @@ Rules:
 
 ## B. Skim
 
-Summarise the doc in two or three sentences of prose — the verdict, and what it holds (how many observed claims, captured decisions, open questions). The full text stays on disk behind `v/view`; never dump it unasked.
+Write the skim to `.workflows/.cache/baseline/doc-skim.md` with the Write tool — two or three sentences of prose: the verdict, and what the doc holds (how many observed claims, captured decisions, open questions). The full text stays on disk behind `v/view`; never dump it unasked.
 
-Fetch the gate and emit its `MENU: baseline doc gate` section verbatim as markdown (not a code block):
+Then fetch the gate, emitting each section verbatim at its marked instruction — the skim first, then the landing menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-gate
+node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-gate --present .workflows/.cache/baseline/doc-skim.md
 ```
 
 **STOP.** Wait for user response.
 
 **If `view`:**
 
-Render the doc file verbatim as markdown, then re-fetch and emit the gate.
+Render the doc file verbatim as markdown, then re-fetch the gate as above.
 
 **STOP.** Wait for user response.
 
 **If the user adjusts:**
 
-Apply the changes to the doc, restate the summary, then re-fetch and emit the gate.
+Apply the changes to the doc, rewrite the skim, then re-fetch the gate as above.
 
 **STOP.** Wait for user response.
 

@@ -224,6 +224,10 @@ describe('the experiment surfaces', () => {
     });
   }
 
+  /** The design as the briefing tells it — what the approval gate leads with. */
+  const design = (body = 'We will count recovering sessions over one week.\n') =>
+    writePayload(dir, 'presented-design.md', body);
+
   it('renders the empty register with the none-yet line — no caller branch needed', () => {
     labWith({});
     const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
@@ -271,9 +275,14 @@ describe('the experiment surfaces', () => {
       /no experiment series for "ghost"/);
   });
 
-  it('renders the approval gate over a designed record — commands first, the prompt last', () => {
+  it('the approval gate leads with the design, then the menu — commands first, the prompt last', () => {
     labWith({ E1: { slug: 'window-placement', status: 'designed' } });
-    const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' });
+    const body = 'We will count recovering sessions over one week.\n\nFifteen percent or better and expansion leads.\n';
+    const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1', present: design(body) });
+    assert.ok(out.startsWith('=== DISPLAY: experiment design (emit verbatim as markdown) ===\n'
+      + '**Design for E1** — what it will do, and what each outcome triggers\n\n'
+      + body), out);
+    assert.ok(out.indexOf('DISPLAY: experiment design') < out.indexOf('MENU: experiment approval gate'));
     assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Approve E1's design\?/);
     const a = out.indexOf('**`y/yes`**');
@@ -291,17 +300,20 @@ describe('the experiment surfaces', () => {
       E1: { slug: 'window-placement', status: 'running' },
       'E1.1': { slug: 'single-monitor', status: 'designed' },
     });
-    const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1.1' });
+    const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1.1', present: design() });
+    assert.match(out, /\*\*Design for E1\.1\*\* — what it will do/);
     assert.match(out, /◆ Approve E1\.1's design\?/);
   });
 
-  it('refuses a missing id, an unknown id, and every status but designed', () => {
+  it('refuses a missing design, a missing id, an unknown id, and every status but designed', () => {
     labWith({ E1: { slug: 'window-placement', status: 'running' } });
-    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing' }),
-      /--id is required/);
-    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E9' }),
-      /no experiment E9/);
     assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' }),
+      /render experiment-approval-gate: --present <design\.md> is required/);
+    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', present: design() }),
+      /--id is required/);
+    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E9', present: design() }),
+      /no experiment E9/);
+    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1', present: design() }),
       /E1 is "running", not designed — the briefing confirm follows the written design/);
   });
 
@@ -984,10 +996,41 @@ describe('render resume-gate variants', () => {
     fs.writeFileSync(path.join(dir, '.workflows', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
   };
 
+  /** The spec-change read the plan variant leads with. */
+  const specChanges = (body = 'Specification unchanged since planning started.\n') =>
+    writePayload(dir, 'spec-changes.md', body);
+
+  it('plan leads with the spec-change read, byte-for-byte, then the resume menu', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    planFiles('pay', 'portal');
+    const body = 'The specification changed: **section 4** restructured, one cross-cutting spec is new.\n';
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: specChanges(body) });
+    assert.ok(out.startsWith('=== DISPLAY: spec change summary (emit verbatim as markdown) ===\n'
+      + '**Specification since planning started** — what the resumed plan would inherit\n\n'
+      + body), out);
+    assert.ok(out.indexOf('DISPLAY: spec change summary') < out.indexOf('MENU: resume gate'));
+  });
+
+  it('plan requires --present, and every other variant refuses it', () => {
+    writeManifest(dir, 'pay', { phases: {
+      planning: { items: { portal: { status: 'in-progress' } } },
+      review: { items: { portal: { status: 'in-progress' } } },
+      discussion: { items: { portal: { status: 'in-progress' } } },
+    } });
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' }),
+      /render resume-gate: --present <summary\.md> is required on the plan variant/);
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: 'gone.md' }),
+      /render resume-gate: presented file not found: gone\.md/);
+    for (const variant of ['review', 'scoping', 'session', undefined]) {
+      assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: variant === 'session' ? 'pay' : 'pay.review.portal', variant, present: specChanges() }),
+        /render resume-gate: --present only applies to the plan variant/);
+    }
+  });
+
   it('plan derives the position parenthetical from the planning item', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
     planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: specChanges() });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
     assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(unwrap(out)));
     assert.ok(/\*\*`r\/restart`\*\* +→ Erase all planning work for this topic and start fresh\. This deletes the planning file, authored tasks, and clears manifest state\. Other topics are unaffected\./.test(unwrap(out)));
@@ -996,7 +1039,7 @@ describe('render resume-gate variants', () => {
   it('plan omits the parenthetical when the position fields are absent', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
     planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: specChanges() });
     assert.ok(out.includes('Found existing plan for **Portal**.\n'));
     assert.ok(!out.includes('previously reached'));
   });
@@ -1004,7 +1047,7 @@ describe('render resume-gate variants', () => {
   it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
     planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: specChanges() });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
   });
 
@@ -1013,7 +1056,8 @@ describe('render resume-gate variants', () => {
     // crash between the two commits leaves an entry with nothing to continue,
     // and offering `continue` there sends the session at an empty directory.
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan', present: specChanges() });
+    assert.ok(out.startsWith('=== DISPLAY: spec change summary'), 'the read leads this branch too');
     assert.ok(out.includes("Found a planning entry for **Portal**, but the prior run's files are already cleared."));
     assert.ok(out.includes('r/restart'));
     assert.ok(!out.includes('c/continue'), 'there is nothing to continue');
@@ -3722,9 +3766,18 @@ describe('render author-task-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the authoring menu byte-exactly', () => {
-    const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command' });
+  const task = (body = '### Task pay-1-2: Wrap command\n\n**Do**: route the call sites through the wrapper.\n') =>
+    writePayload(dir, 'authored-task.md', body);
+
+  it('leads with the authored task, then renders the menu byte-exactly', () => {
+    const body = '### Task pay-1-2: Wrap command\n\n| Field | Value |\n| --- | --- |\n| id | pay-1-2 |\n';
+    const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command', present: task(body) });
     assert.strictEqual(out, [
+      '=== DISPLAY: authored task (emit verbatim as markdown) ===',
+      '**Authored task** — exactly as it will be written to the plan',
+      '',
+      body.trimEnd(),
+      '',
       '=== MENU: author task gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
@@ -3741,10 +3794,15 @@ describe('render author-task-gate', () => {
     ].join('\n'));
   });
 
-  it('validates the scalars loudly', () => {
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '0', total: '5', title: 'X' }), /--m must be a positive integer/);
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '1', title: 'X' }), /--total must be an integer/);
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2' }), /--title is required/);
+  it('validates the scalars loudly, and refuses without a task to present', () => {
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '0', total: '5', title: 'X', present: task() }), /--m must be a positive integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '1', title: 'X', present: task() }), /--total must be an integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', present: task() }), /--title is required/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', title: 'X' }),
+      /render author-task-gate: --present <task\.md> is required/);
+    const blank = writePayload(dir, 'blank-task.md', '\n  \n');
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', title: 'X', present: blank }),
+      /render author-task-gate: presented file is blank: blank-task\.md/);
   });
 });
 
@@ -4121,7 +4179,9 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
     const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
-    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
+    const authored = writePayload(dir, 'authored-task.md', '### Task pay-1-1: T\n');
+    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T', '--present', authored]).includes('**Task 1 of 2: T**'),
+      '--present must survive argv beside the scalars');
     const gate = run(['next-phase-gate', 'pay', '--prev', 'implementation', '--next', 'review']);
     assert.ok(gate.includes('Implementation completed for "Pay".') && gate.includes('Complete without review'), gate);
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
@@ -5079,8 +5139,42 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /the baseline is "native" — no assessment has been started/);
   });
 
+  it('the migration gate leads with the summary and draws the counts line from its flags', () => {
+    const summary = writePayload(dir, 'migration-summary.md', 'Restructured workflow directories and created manifest files.\n');
+    const counted = renderSurface(dir, 'migration-gate', { present: summary, migrations: '3', files: '12' });
+    assert.ok(counted.startsWith([
+      '=== DISPLAY: migration summary (emit verbatim as a code block) ===',
+      'Migrations Applied',
+      '',
+      'Restructured workflow directories and created manifest files.',
+      '',
+      '3 migration(s), 12 file(s) updated.',
+      '',
+    ].join('\n')), counted);
+    assert.ok(counted.indexOf('DISPLAY: migration summary') < counted.indexOf('MENU: migration gate'));
+    // Verification fixes only: the run changed no files, so there is no
+    // counts line to draw.
+    const uncounted = renderSurface(dir, 'migration-gate', { present: summary });
+    assert.ok(!uncounted.includes('migration(s)'), uncounted);
+    assert.ok(uncounted.includes('Restructured workflow directories and created manifest files.\n\n=== MENU: migration gate'), uncounted);
+  });
+
+  it('the migration gate refuses a bare call, a half-given pair, and a non-numeric count', () => {
+    const summary = writePayload(dir, 'migration-summary.md', 'Recovered a rerouted concern.\n');
+    assert.throws(() => renderSurface(dir, 'migration-gate', {}),
+      /render migration-gate: --present <summary\.md> is required/);
+    assert.throws(() => renderSurface(dir, 'migration-gate', { present: summary, migrations: '3' }),
+      /--migrations and --files are given together or not at all/);
+    assert.throws(() => renderSurface(dir, 'migration-gate', { present: summary, files: '12' }),
+      /--migrations and --files are given together or not at all/);
+    assert.throws(() => renderSurface(dir, 'migration-gate', { present: summary, migrations: 'three', files: '12' }),
+      /--migrations must be a non-negative integer, got "three"/);
+    assert.throws(() => renderSurface(dir, 'migration-gate', { present: summary, migrations: '3', files: '-1' }),
+      /--files must be a non-negative integer, got "-1"/);
+  });
+
   it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {
-    const migration = renderSurface(dir, 'migration-gate', {});
+    const migration = renderSurface(dir, 'migration-gate', { present: writePayload(dir, 'migration-summary.md', 'Applied.\n') });
     assert.match(migration, /=== MENU: migration gate/);
     assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
     assert.match(migration, /\*\*`y\/yes`\*\*\s+→ Proceed/);
@@ -5146,8 +5240,19 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', model: 'x' }), /belong to the reuse variant — the retry variant/);
   });
 
+  it('the doc gate leads with the skim, then its menu, and refuses a bare call', () => {
+    const body = 'The dispatcher is a polling pump over a flaky downstream. 14 observed claims, 3 decisions, 2 open questions.\n';
+    const out = renderSurface(dir, 'baseline-doc-gate', { present: writePayload(dir, 'doc-skim.md', body) });
+    assert.ok(out.startsWith('=== DISPLAY: doc skim (emit verbatim as markdown) ===\n'
+      + '**The area doc** — what it holds; the full text stays on disk\n\n'
+      + body), out);
+    assert.ok(out.indexOf('DISPLAY: doc skim') < out.indexOf('MENU: baseline doc gate'));
+    assert.throws(() => renderSurface(dir, 'baseline-doc-gate', {}),
+      /render baseline-doc-gate: --present <skim\.md> is required/);
+  });
+
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {
-    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`y\/yes`\*\*\s+→ Index and commit the doc/);
+    assert.match(renderSurface(dir, 'baseline-doc-gate', { present: writePayload(dir, 'doc-skim.md', 'A skim.\n') }), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`y\/yes`\*\*\s+→ Index and commit the doc/);
     writeBaseline({ status: 'in-progress', areas: { overview: 'researched' } });
     assert.throws(() => renderSurface(dir, 'baseline-manage-gate', {}), /not completed/);
     assert.throws(() => renderSurface(dir, 'baseline-doc-pick', {}), /not completed/);
@@ -5743,11 +5848,18 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
     assert.match(out, /\*\*Adjust\*\*.*move between horizons/);
   });
 
-  it('roadmap-shape-gate: the pull ceremony confirm', () => {
-    const shape = renderSurface(dir, 'roadmap-shape-gate', {});
+  it('roadmap-shape-gate: the session\'s read, then the pull ceremony confirm', () => {
+    const body = 'These three become one epic. 3 items stay waiting in mvp.\n';
+    const shape = renderSurface(dir, 'roadmap-shape-gate', { present: writePayload(dir, 'unit-shape.md', body) });
+    assert.ok(shape.startsWith('=== DISPLAY: unit shape (emit verbatim as markdown) ===\n'
+      + '**The shape** — how the pulled items become one unit, and what stays waiting\n\n'
+      + body), shape);
+    assert.ok(shape.indexOf('DISPLAY: unit shape') < shape.indexOf('MENU: roadmap shape gate'));
     assert.match(shape, /`◆ Shape it this way\?`/);
     assert.match(shape, /`y\/yes`.*Create it and carry on into it/);
     assert.ok(shape.includes(`**Adjust** → Tell me what to change (epic or feature, the\n${NB(9)}description)`), 'the Adjust label, wrapped');
+    assert.throws(() => renderSurface(dir, 'roadmap-shape-gate', {}),
+      /render roadmap-shape-gate: --present <shape\.md> is required/);
   });
 });
 
@@ -6699,14 +6811,21 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.planning\.<topic>/);
   });
 
-  it('correction-gate: derives the spec path, and serves completed units only', () => {
+  it('correction-gate: leads with the correction, derives the spec path, and serves completed units only', () => {
     writeManifest(dir, 'done', {
       work_type: 'feature',
       status: 'completed',
       phases: { specification: { items: { done: { status: 'completed' } } } },
     });
-    const out = renderSurface(dir, 'correction-gate', { dotpath: 'done.specification.done' });
+    const body = 'The spec says the export runs hourly; `grep -n cron src/export.js` shows nightly. Correct it to nightly.\n';
+    const present = writePayload(dir, 'proposed-correction.md', body);
+    const out = renderSurface(dir, 'correction-gate', { dotpath: 'done.specification.done', present });
     assert.strictEqual(out, [
+      '=== DISPLAY: proposed correction (emit verbatim as markdown) ===',
+      '**The correction** — what is wrong, the evidence, and what replaces it',
+      '',
+      body.trimEnd(),
+      '',
       "=== MENU: correction gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       'Correcting .workflows/done/specification/done/specification.md.',
@@ -6719,9 +6838,11 @@ describe('render — the adopted phase gates', () => {
       '',
     ].join('\n'));
 
-    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'pay.specification.checkout' }),
+    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'done.specification.done' }),
+      /render correction-gate: --present <correction\.md> is required/);
+    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'pay.specification.checkout', present }),
       /"pay" is "in-progress" — the corrigendum protocol serves completed work units/);
-    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'done.discussion.done' }),
+    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'done.discussion.done', present }),
       /address must be <work_unit>\.specification\.<topic>, got phase "discussion"/);
   });
 

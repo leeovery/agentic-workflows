@@ -518,6 +518,16 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
+  // Authoring presents through the gate: the task's own content is the
+  // payload, so presenting it and reaching the approval are one call
+  // (author-tasks.md E).
+  const authored = sim.write(`.workflows/.cache/${wu}/planning/${topic}/authored-task.md`,
+    `### Task ${topic}-1-1: Wrap the command\n`);
+  sim.refuses(['render', 'author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Wrap the command'],
+    /--present <task\.md> is required/);
+  const authorGate = sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Wrap the command', '--present', authored], { expect: 'content' });
+  assert.match(authorGate, /DISPLAY: authored task[\s\S]*Wrap the command[\s\S]*MENU: author task gate/,
+    'the authored task leads, the approval menu follows it');
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
   // The amendment resets a rejected row to pending only after the rewrite
   // validates (author-tasks C) — the mismatch that never settles stops at its
@@ -532,6 +542,19 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
   sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
   sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
+
+  // The resume gate carries the spec-change read: the plan variant presents it
+  // and reaches the menu in one call, and `--present` belongs to that variant
+  // alone (planning SKILL.md, spec-change-detection.md).
+  const specChanges = sim.write(`.workflows/.cache/${wu}/planning/${topic}/spec-changes.md`,
+    'Specification unchanged since planning started.\n');
+  sim.refuses(['render', 'resume-gate', `${wu}.planning.${topic}`, '--variant', 'plan'],
+    /--present <summary\.md> is required on the plan variant/);
+  sim.refuses(['render', 'resume-gate', `${wu}.review.${topic}`, '--variant', 'review', '--present', specChanges],
+    /--present only applies to the plan variant/);
+  const planResume = sim.render(['resume-gate', `${wu}.planning.${topic}`, '--variant', 'plan', '--present', specChanges], { expect: 'content' });
+  assert.match(planResume, /DISPLAY: spec change summary[\s\S]*unchanged since planning started[\s\S]*MENU: resume gate/,
+    'the spec-change read leads, the resume menu follows it');
 
   // The graph approval, then the review loop's two gates and the conclusion's
   // consent — each fetched where the flow displays it.
@@ -740,7 +763,12 @@ describe('pipeline simulation', () => {
       /Feature Completed/, 'pipeline completion renders the banner receipt');
     // A completed unit is the one state the corrigendum protocol edits — the
     // gate derives the spec path from the address it is given.
-    const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' });
+    const correction = sim.write(`.workflows/.cache/${wu}/specification/${wu}/proposed-correction.md`,
+      'The export runs nightly, not hourly.\n');
+    sim.refuses(['render', 'correction-gate', `${wu}.specification.${wu}`], /--present <correction\.md> is required/);
+    const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`, '--present', correction], { expect: 'content' });
+    assert.match(correctionScreen, /DISPLAY: proposed correction[\s\S]*nightly, not hourly[\s\S]*MENU: correction gate/,
+      'the proposed correction leads, the consent menu follows it');
     assert.match(correctionScreen, new RegExp(`Correcting \\.workflows/${wu}/specification/${wu}/specification\\.md\\.`));
     assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
@@ -2675,7 +2703,11 @@ describe('pipeline simulation', () => {
     // The static gate menus render like every menu — engine-served.
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
     assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
-    assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
+    const unitShape = sim.write('.workflows/.cache/roadmap/unit-shape.md',
+      'These two become one epic. 1 item stays waiting in launch.\n');
+    sim.refuses(['render', 'roadmap-shape-gate'], /--present <shape\.md> is required/);
+    assert.match(sim.render(['roadmap-shape-gate', '--present', unitShape], { expect: 'content' }),
+      /DISPLAY: unit shape[\s\S]*stays waiting in launch[\s\S]*MENU: roadmap shape gate/);
     assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
     assert.match(sim.render(['query-failure-gate'], { expect: 'content' }), /MENU: query failure gate/);
@@ -3554,7 +3586,14 @@ describe('pipeline simulation', () => {
     // the pause receipt, the doc list and completion receipt once every area
     // lands. A native verdict is a recorded state like any other: the offer
     // refuses over it, and the mid-flight surfaces read it as never started.
-    assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
+    const migrationSummary = sim.write('.workflows/.cache/migration-summary.md',
+      'Restructured workflow directories and created manifest files.\n');
+    sim.refuses(['render', 'migration-gate'], /--present <summary\.md> is required/);
+    assert.match(sim.render(['migration-gate', '--present', migrationSummary, '--migrations', '3', '--files', '12'], { expect: 'content' }),
+      /DISPLAY: migration summary[\s\S]*3 migration\(s\), 12 file\(s\) updated\.[\s\S]*Ready to continue\?/);
+    // Verification fixes only: no counts line to draw.
+    const uncounted = sim.render(['migration-gate', '--present', migrationSummary], { expect: 'content' });
+    assert.ok(!uncounted.includes('migration(s)'), 'the counts line rides the flags alone');
     assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /Use the existing configuration for this project\?[\s\S]*openai ·\s+text-embedding-3-small/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse'], { expect: 'content' }), /keyword-only/);
@@ -3620,7 +3659,11 @@ describe('pipeline simulation', () => {
       questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
     }));
     assert.match(sim.render(['baseline-round', '--file', '.workflows/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
-    assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
+    const docSkim = sim.write('.workflows/.cache/baseline/doc-skim.md',
+      'The dispatcher is a polling pump. 14 observed claims, 3 decisions, 2 open questions.\n');
+    sim.refuses(['render', 'baseline-doc-gate'], /--present <skim\.md> is required/);
+    assert.match(sim.render(['baseline-doc-gate', '--present', docSkim], { expect: 'content' }),
+      /DISPLAY: doc skim[\s\S]*14 observed claims[\s\S]*Land it\?/);
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
@@ -4071,8 +4114,12 @@ describe('pipeline simulation', () => {
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
     assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
       /Experiments — Timing \(1 experiment\)/);
-    assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'], { expect: 'content' }),
-      /Approve E1's design\?/);
+    const presentedDesign = sim.write(`.workflows/.cache/${wu}/experiment/timing/presented-design.md`,
+      'We will count recovering sessions over one week.\n');
+    sim.refuses(['render', 'experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'],
+      /--present <design\.md> is required/);
+    assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1', '--present', presentedDesign], { expect: 'content' }),
+      /DISPLAY: experiment design[\s\S]*recovering sessions over one week[\s\S]*Approve E1's design\?/);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
 

@@ -3,9 +3,9 @@ The prose should have taken this path:
 1. the entry's spec gate clears; the planning status reads in-progress
    and the handoff is the continuing variant — no late-context
    question, no cross-cutting sweep
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's
-   recorded baseline commit and reports it unchanged
+2. the process finds the planning entry; spec change detection diffs the
+   specification against the plan's recorded baseline commit and writes
+   the read, and the resume gate leads with it — unchanged
 3. on continue, session setup loads the format references and resets
    the gate modes; the specification is verified by listing it
 4. construction fast-paths: the existing structure is presented through

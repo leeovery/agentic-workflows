@@ -12,9 +12,10 @@ Expected path:
    completed, its source incorporated and nothing has moved beneath it;
    the planning status reads in-progress and the handoff is the
    continuing variant
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's recorded
-   baseline commit and reports it unchanged; the user continues
+2. the process finds the planning entry; spec change detection diffs the
+   specification against the plan's recorded baseline commit and writes
+   the read, and the resume gate leads with it — unchanged; the user
+   continues
 3. session setup loads the format references and resets the gate modes
    to `gated`; the specification is verified by listing it
 4. construction fast-paths: the existing structure is presented through

@@ -268,7 +268,7 @@ Commands:
   commit --inbox -m <message>
   commit --roadmap -m <message>
   commit --workflows -m <message>
-  render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
+  render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session] [--present <summary.md>]  (session: bare <wu>; --present on plan)
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
@@ -306,7 +306,7 @@ Commands:
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
   render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
   render experiment-register <wu.experiment.topic>
-  render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
+  render experiment-approval-gate <wu.experiment.topic> --id <E{n}> --present <design.md>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
@@ -319,14 +319,14 @@ Commands:
   render task-count-gate  <wu.planning.topic>
   render plan-format-gate
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
-  render correction-gate  <wu.specification.topic>
+  render correction-gate  <wu.specification.topic> --present <correction.md>
   render analysis-proceed-gate <wu>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
   render construction-gate <wu.phase.topic> --present <section.md>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
-  render author-task-gate <wu.planning.topic> --m N --total N --title STR
+  render author-task-gate <wu.planning.topic> --m N --total N --title STR --present <task.md>
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning>
@@ -369,7 +369,7 @@ Commands:
   render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
-  render roadmap-shape-gate
+  render roadmap-shape-gate --present <shape.md>
   render shape-gate
   render synthesis-gate
   render query-failure-gate
@@ -379,7 +379,7 @@ Commands:
   render baseline-receipt
   render baseline-scope-gate --file <payload.json>
   render baseline-round --file <payload.json>
-  render baseline-doc-gate
+  render baseline-doc-gate --present <skim.md>
   render baseline-manage-gate
   render baseline-doc-pick
   render baseline-offer-gate
@@ -387,7 +387,7 @@ Commands:
   render walkthrough-home
   render walkthrough-topics
   render walkthrough-topic --name <slug> [--menu-only]
-  render migration-gate
+  render migration-gate --present <summary.md> [--migrations N --files M]
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
   render legacy-split-gate --variant themes|plan|remove

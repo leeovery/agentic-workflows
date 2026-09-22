@@ -10,9 +10,10 @@ Expected path:
 
 1. the entry's specification gate renders empty; the planning status
    reads in-progress and the handoff is the continuing variant
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's recorded
-   baseline commit and reports it unchanged; the user continues
+2. the process finds the planning entry; spec change detection diffs the
+   specification against the plan's recorded baseline commit and writes
+   the read, and the resume gate leads with it — unchanged; the user
+   continues
 3. session setup resets the three gate modes to `gated`
 4. construction fast-paths: the existing structure is presented through
    the engine-rendered phase tree and confirmed, and with the position

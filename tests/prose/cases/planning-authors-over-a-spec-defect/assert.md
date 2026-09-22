@@ -8,9 +8,10 @@ Expected path:
 
 1. the entry's specification gate renders empty; the planning status
    reads in-progress and the handoff is the continuing variant
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's recorded
-   baseline commit and reports it unchanged; the user continues
+2. the process finds the planning entry; spec change detection diffs the
+   specification against the plan's recorded baseline commit and writes
+   the read, and the resume gate leads with it — unchanged; the user
+   continues
 3. session setup loads the format's about and authoring references and
    resets the three gate modes to `gated`; the specification is
    verified by listing it
@@ -69,8 +70,8 @@ Expected path:
     reaches the gate check: the staging subtree is read, found absent,
     and both task rows are registered `pending` in one batched write.
     `author_gate_mode` reads `gated`, so the approval loop runs
-14. the first task is presented in full from the detail file and its
-    gate is rendered through the engine at position 1 of 2. The walk
+14. the engine-rendered gate at position 1 of 2 leads with the first
+    task in full from the detail file. The walk
     **STOPS**. The user takes auto: this task and the remaining pending
     row are recorded `approved` and `author_gate_mode` is set to `auto`
     in one batched write

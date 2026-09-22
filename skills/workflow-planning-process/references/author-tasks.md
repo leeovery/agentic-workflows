@@ -177,18 +177,10 @@ Skip — **F. Revision Check** sweeps it into the amendment.
 
 #### If the row is `pending`
 
-Present the full task content:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-{task detail from task detail file}
-```
-
-Render the gate and emit the section verbatim:
+Write this task's full content from the task detail file to `.workflows/.cache/{work_unit}/planning/{topic}/authored-task.md` with the Write tool — that task's section alone, no framing sentence around it. Then fetch the gate, emitting each section verbatim at its marked instruction — the task first, then the approval menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}"
+node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}" --present .workflows/.cache/{work_unit}/planning/{topic}/authored-task.md
 ```
 
 **STOP.** Wait for user response.

@@ -83,23 +83,11 @@ Files were updated, or a migration handed over checks its code could not perform
 
    → Proceed to **Step 0.2**.
 
-3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):
-
-> *Output the next fenced block as a code block:*
-
-```
-Migrations Applied
-
-{your natural language summary}
-
-{N} migration(s), {M} file(s) updated.
-```
-
-5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim as markdown (not a code block):
+3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files. Write it to `.workflows/.cache/migration-summary.md` with the Write tool.
+4. The counts line comes from `migrations.output`: set `{N}` = the migration count and `{M}` = the file count and pass both flags below. Omit them when it reports no changes — verification fixes only. Fetch the gate, emitting each section verbatim at its marked instruction — the summary first, then the confirm menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
+node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate --present .workflows/.cache/migration-summary.md [--migrations {N} --files {M}]
 ```
 
 **STOP.** Wait for user response.

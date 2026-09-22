@@ -44,19 +44,17 @@ Cancellation removed the unit's chunks from the knowledge base, and reactivation
 
 #### If `completed`
 
-Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Present a large correction set as its shape — what moved, which sections, counts — with the full list available on request.
+Editing another work unit's record is never silent. Write the wrong claim, the evidence, and the proposed correction to `.workflows/.cache/{owning_work_unit}/specification/{topic}/proposed-correction.md` with the Write tool — a large set as its shape instead: what moved, which sections, counts, the full list behind `v/view`. Then fetch the gate, emitting each section verbatim at its marked instruction — the correction first, then the consent menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render correction-gate {owning_work_unit}.specification.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render correction-gate {owning_work_unit}.specification.{topic} --present .workflows/.cache/{owning_work_unit}/specification/{topic}/proposed-correction.md
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
 **If `view`:**
 
-Present the full correction list — each wrong claim, its evidence, and its proposed correction — then re-present the gate.
+Rewrite the file with the full list — each wrong claim, its evidence, and its proposed correction — and re-fetch the gate as above.
 
 **STOP.** Wait for user response.
 

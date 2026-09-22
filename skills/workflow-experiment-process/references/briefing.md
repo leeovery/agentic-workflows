@@ -6,12 +6,12 @@
 
 ## A. Present the Design
 
-Present the design conversationally in plain terms, as markdown paragraphs — never a file dump: what we'll do, what we expect and why, and what each outcome triggers ("if the rule reads X we do A; if Y, B"). State what the freeze means as part of the presentation: from approval, changes before results are visible are dated amendments re-confirmed with the user; once results are visible the design is frozen for good. The user's challenges are part of the method — changes fold into `{dir}/design.md` now, before the freeze, and the amended design is re-presented.
+Write the design to `.workflows/.cache/{work_unit}/experiment/{topic}/presented-design.md` with the Write tool — conversational plain terms as markdown paragraphs, never a file dump: what we'll do, what we expect and why, and what each outcome triggers ("if the rule reads X we do A; if Y, B"), closing on what the freeze means — from approval, changes before results are visible are dated amendments re-confirmed with the user; once results are visible the design is frozen for good. The user's challenges are part of the method: changes fold into `{dir}/design.md` before the freeze.
 
-Then fetch the gate and emit its MENU section verbatim per its marker:
+Then fetch the gate, emitting each section verbatim at its marked instruction — the design first, then the approval menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id} --present .workflows/.cache/{work_unit}/experiment/{topic}/presented-design.md
 ```
 
 **STOP.** Wait for user response.
@@ -37,7 +37,7 @@ The record moved beneath the session — a peer closed or cancelled it, and the 
 
 #### If amend
 
-Fold the changes into `{dir}/design.md` — the record is still `designed`, so the same gate serves the amended design.
+Fold the changes into `{dir}/design.md` — the record is still `designed`, so the same gate serves the amended design, rewritten and re-fetched.
 
 → Return to **A. Present the Design**.
 

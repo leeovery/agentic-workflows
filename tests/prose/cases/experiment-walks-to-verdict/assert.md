@@ -22,11 +22,11 @@ The prose should have taken this path:
    naming the log, the deterministic pass, and the sample — then
    records the step (`advance`, conceived → designed) and commits the
    design with the manifest
-5. the briefing presents the design conversationally in plain terms —
-   what will be done, what is expected and why, what each outcome
-   triggers, and what the freeze means — then fetches the approval
-   gate and emits its menu verbatim; the user approves, and the freeze
-   is recorded by the approve verb, never by advance, and committed
+5. the briefing writes the design in conversational plain terms — what
+   will be done, what is expected and why, what each outcome triggers,
+   and what the freeze means — and the approval gate leads with it,
+   the menu beneath; the user approves, and the freeze is recorded by
+   the approve verb, never by advance, and committed
 6. the run leg re-reads the record, finds it approved, records that
    measurement begins (advance, approved → running), and measures as
    designed: a deterministic count over `logs/search-sessions.log`,

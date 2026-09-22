@@ -86,7 +86,8 @@ function resolveAddress(cwd, dotpath, surface) {
 // resume-gate — the shared continue/restart gate over an in-progress phase
 // artifact. Address-backed; the artifact name is the phase segment. The
 // optional triage count comes from the caller's `topic queue` read and
-// rides as a scalar flag.
+// rides as a scalar flag. The `plan` variant carries the spec-change read as
+// `--present`, so presenting it and reaching the gate are one call.
 // ---------------------------------------------------------------------------
 
 const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
@@ -99,16 +100,22 @@ const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the us
  * revisit wording), `session` (bare work-unit address, the interrupted
  * discovery session).
  * @param {string} cwd
- * @param {{dotpath: string, triage?: string, variant?: string}} args
+ * @param {{dotpath: string, triage?: string, variant?: string, present?: string}} args
  * @returns {string}
  */
 function resumeGate(cwd, args) {
-  const { dotpath, triage, variant } = args;
+  const { dotpath, triage, variant, present } = args;
   if (variant !== undefined && !['plan', 'review', 'scoping', 'session'].includes(variant)) {
     throw new Error(`render resume-gate: --variant must be "plan", "review", "scoping", or "session", got "${variant}"`);
   }
   if (variant !== undefined && triage !== undefined) {
     throw new Error('render resume-gate: --triage only applies to the default variant');
+  }
+  if (variant === 'plan' && !present) {
+    throw new Error('render resume-gate: --present <summary.md> is required on the plan variant');
+  }
+  if (variant !== 'plan' && present !== undefined) {
+    throw new Error('render resume-gate: --present only applies to the plan variant');
   }
   if (variant === 'session') {
     const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'resume-gate');
@@ -128,14 +135,19 @@ function resumeGate(cwd, args) {
   const t = titlecase(topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
+    const changes = presentedSection(
+      'DISPLAY: spec change summary',
+      '**Specification since planning started** — what the resumed plan would inherit',
+      readMarkdownPayload(cwd, /** @type {string} */ (present), 'resume-gate'),
+    );
     // A restart deletes the planning directory first and the manifest entry
     // second. Between the two commits the entry survives a crash with nothing
     // left to continue — so the gate offers the restart alone.
     if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'planning', topic))) {
-      return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+      return [changes, section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
         `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
         [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
-      ));
+      ))].join('\n');
     }
     // Partial fill is a real state — define-phases advances `phase` and nulls
     // `task`; keep the known phase anchor rather than dropping the whole
@@ -147,13 +159,13 @@ function resumeGate(cwd, args) {
         ? ` (previously reached phase ${item.phase}, task ${item.task})`
         : ` (previously reached phase ${item.phase})`
       : '';
-    return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+    return [changes, section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
       `Found existing plan for **${t}**${pos}.`,
       [
         cmdOption('c', 'continue', 'Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.'),
         cmdOption('r', 'restart', 'Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.'),
       ],
-    ));
+    ))].join('\n');
   }
   if (variant === 'review') {
     const reviewItem = itemOf(manifest, 'review', topic) || {};
@@ -1511,6 +1523,7 @@ function constructionGate(cwd, { dotpath, present }) {
   if (!present) throw new Error('render construction-gate: --present <section.md> is required');
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'construction-gate');
   const proposed = presentedSection(
+    'DISPLAY: proposed section',
     '**Proposed section** — exactly as it will read in the specification',
     readMarkdownPayload(cwd, present, 'construction-gate'),
   );
@@ -1563,24 +1576,30 @@ function tasksOverview(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// author-task-gate — the planning task-authoring per-task menu. The task
-// detail itself is a verbatim file emission the flow owns; only the gate
-// renders here. Scalars ride as flags.
+// author-task-gate — the planning task-authoring per-task menu. The authored
+// task rides in as `--present`, so presenting it and reaching the gate are
+// one call: the task renders first, then the approval menu. Scalars ride as
+// flags.
 // ---------------------------------------------------------------------------
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, m?: string, total?: string, title?: string}} args
+ * @param {{dotpath: string, m?: string, total?: string, title?: string, present?: string}} args
  * @returns {string}
  */
-function authorTaskGate(cwd, { dotpath, m, total, title }) {
+function authorTaskGate(cwd, { dotpath, m, total, title, present }) {
+  if (!present) throw new Error('render author-task-gate: --present <task.md> is required');
   resolveAddress(cwd, dotpath, 'author-task-gate');
   const mN = parseInt(m || '', 10);
   const totalN = parseInt(total || '', 10);
   if (!Number.isInteger(mN) || mN < 1) throw new Error('render author-task-gate: --m must be a positive integer');
   if (!Number.isInteger(totalN) || totalN < mN) throw new Error('render author-task-gate: --total must be an integer ≥ --m');
   if (!isFilled(title)) throw new Error('render author-task-gate: --title is required');
-  return section(
+  return [presentedSection(
+    'DISPLAY: authored task',
+    '**Authored task** — exactly as it will be written to the plan',
+    readMarkdownPayload(cwd, present, 'author-task-gate'),
+  ), section(
     'MENU: author task gate',
     'emit verbatim as markdown, then STOP for the user\'s response',
     menu(`**Task ${mN} of ${totalN}: ${title}**`, [
@@ -1589,7 +1608,7 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
       promptOption('Tell me what to change', 'what to revise in this task'),
       promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
     ], { question: 'Write it to the plan?' }),
-  );
+  )].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -1692,13 +1711,19 @@ function readMarkdownPayload(cwd, file, surface) {
   return raw;
 }
 
+// A presentation emits as the form its content needs: markdown for artifact
+// prose, a code block where the content is drawn and its layout load-bearing.
+const PRESENT_AS_MARKDOWN = 'emit verbatim as markdown';
+const PRESENT_AS_CODE_BLOCK = 'emit verbatim as a code block';
+
 /**
  * The presentation a `--present` payload renders as: one framing line, then
- * the drafted content beneath it.
- * @param {string} framing @param {string} body @returns {string}
+ * the presented content beneath it.
+ * @param {string} label @param {string} framing @param {string} body @param {string} [form]
+ * @returns {string}
  */
-function presentedSection(framing, body) {
-  return section('DISPLAY: proposed section', 'emit verbatim as markdown', `${framing}\n\n${body}`);
+function presentedSection(label, framing, body, form = PRESENT_AS_MARKDOWN) {
+  return section(label, form, `${framing}\n\n${body}`);
 }
 
 /** @param {unknown} v @returns {v is string} */
@@ -2724,11 +2749,14 @@ function experimentRegisterSurface(cwd, { dotpath }) {
 }
 
 /**
+ * The briefing confirm, led by the design as the session told it. Presenting
+ * the design and reaching the freeze are one call.
  * @param {string} cwd
- * @param {{dotpath: string, id?: string}} args
+ * @param {{dotpath: string, id?: string, present?: string}} args
  * @returns {string}
  */
-function experimentApprovalGateSurface(cwd, { dotpath, id }) {
+function experimentApprovalGateSurface(cwd, { dotpath, id, present }) {
+  if (!present) throw new Error('render experiment-approval-gate: --present <design.md> is required');
   const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-approval-gate');
   if (!isFilled(id)) throw new Error('render experiment-approval-gate: --id is required (E1, E1.1, …)');
   const record = rows.find((r) => r.id === id);
@@ -2736,7 +2764,11 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
   if (record.status !== 'designed') {
     throw new Error(`render experiment-approval-gate: ${id} is "${record.status}", not designed — the briefing confirm follows the written design`);
   }
-  return experimentApprovalGate(/** @type {string} */ (id));
+  return [presentedSection(
+    'DISPLAY: experiment design',
+    `**Design for ${id}** — what it will do, and what each outcome triggers`,
+    readMarkdownPayload(cwd, present, 'experiment-approval-gate'),
+  ), experimentApprovalGate(/** @type {string} */ (id))].join('\n');
 }
 
 /**
@@ -3092,16 +3124,19 @@ function planReviewGate(cwd, { dotpath, variant }) {
 }
 
 // correction-gate — the consent stop before editing another work unit's
-// completed specification. The path is the address's own, derived here so the
-// gate can never name a file the correction protocol would not touch; the
-// owning unit must be completed, which is the one state the protocol edits.
+// completed specification. The proposed correction rides in as `--present`,
+// so presenting it and reaching the consent are one call. The path is the
+// address's own, derived here so the gate can never name a file the
+// correction protocol would not touch; the owning unit must be completed,
+// which is the one state the protocol edits.
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, present?: string}} args
  * @returns {string}
  */
-function correctionGate(cwd, { dotpath }) {
+function correctionGate(cwd, { dotpath, present }) {
+  if (!present) throw new Error('render correction-gate: --present <correction.md> is required');
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'correction-gate');
   if (phase !== 'specification') {
     throw new Error(`render correction-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
@@ -3110,7 +3145,11 @@ function correctionGate(cwd, { dotpath }) {
     throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
   }
   const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
-  return section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
+  return [presentedSection(
+    'DISPLAY: proposed correction',
+    '**The correction** — what is wrong, the evidence, and what replaces it',
+    readMarkdownPayload(cwd, present, 'correction-gate'),
+  ), section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
     `Correcting ${specPath}.`,
     [
       cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
@@ -3118,7 +3157,7 @@ function correctionGate(cwd, { dotpath }) {
       cmdOption('n', 'no', 'Leave the specification as-is'),
     ],
     { question: 'Apply the correction protocol?' },
-  ));
+  ))].join('\n');
 }
 
 // analysis-proceed-gate — specification entry's consent before the grouping
@@ -4980,9 +5019,18 @@ function roadmapParksGateSurface(_cwd, _args) {
   return section('MENU: roadmap parks gate', STOP_FOR_RESPONSE, roadmapParksGate());
 }
 
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function roadmapShapeGateSurface(_cwd, _args) {
-  return section('MENU: roadmap shape gate', STOP_FOR_RESPONSE, roadmapShapeGate());
+/**
+ * The pull's shape confirm, led by the session's read of the unit and the
+ * remainder — presenting the read and reaching the confirm are one call.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function roadmapShapeGateSurface(cwd, { present }) {
+  if (!present) throw new Error('render roadmap-shape-gate: --present <shape.md> is required');
+  return [presentedSection(
+    'DISPLAY: unit shape',
+    '**The shape** — how the pulled items become one unit, and what stays waiting',
+    readMarkdownPayload(cwd, present, 'roadmap-shape-gate'),
+  ), section('MENU: roadmap shape gate', STOP_FOR_RESPONSE, roadmapShapeGate())].join('\n');
 }
 
 // The cross-flow static gates — adopted engine-side as their files were
@@ -5260,9 +5308,19 @@ function baselineRoundSurface(cwd, { file }) {
   return baselineRound(payload);
 }
 
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function baselineDocGateSurface(_cwd, _args) {
-  return baselineDocGate();
+/**
+ * The doc-landing gate, led by the skim of what the area doc holds —
+ * presenting the skim and reaching the gate are one call. The full text stays
+ * on disk behind `v/view`.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function baselineDocGateSurface(cwd, { present }) {
+  if (!present) throw new Error('render baseline-doc-gate: --present <skim.md> is required');
+  return [presentedSection(
+    'DISPLAY: doc skim',
+    '**The area doc** — what it holds; the full text stays on disk',
+    readMarkdownPayload(cwd, present, 'baseline-doc-gate'),
+  ), baselineDocGate()].join('\n');
 }
 
 /** @param {string} cwd @param {object} _args @returns {string} */
@@ -5332,6 +5390,36 @@ function walkthroughTopicsSurface(_cwd, _args) {
  */
 function walkthroughTopicSurface(_cwd, args) {
   return walkthroughTopic(loadCard(args.name), Boolean(args['menu-only']));
+}
+
+/**
+ * workflow-start's migration confirm, led by the summary of what the run did.
+ * The summary is judgment prose and rides as `--present`; the header and the
+ * counts line are drawn here, the counts line omitted where the run changed
+ * no files and verification fixes are the whole of it.
+ * @param {string} cwd
+ * @param {Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function migrationGateSurface(cwd, { present, migrations, files }) {
+  if (!present) throw new Error('render migration-gate: --present <summary.md> is required');
+  if ((migrations === undefined) !== (files === undefined)) {
+    throw new Error('render migration-gate: --migrations and --files are given together or not at all');
+  }
+  const body = [readMarkdownPayload(cwd, present, 'migration-gate').replace(/\n+$/, '')];
+  if (migrations !== undefined) {
+    const n = parseInt(migrations, 10);
+    const m = parseInt(files || '', 10);
+    if (!Number.isInteger(n) || n < 0) throw new Error(`render migration-gate: --migrations must be a non-negative integer, got "${migrations}"`);
+    if (!Number.isInteger(m) || m < 0) throw new Error(`render migration-gate: --files must be a non-negative integer, got "${files}"`);
+    body.push(`${n} migration(s), ${m} file(s) updated.`);
+  }
+  return [presentedSection(
+    'DISPLAY: migration summary',
+    'Migrations Applied',
+    body.join('\n\n'),
+    PRESENT_AS_CODE_BLOCK,
+  ), migrationGate()].join('\n');
 }
 
 /**
@@ -5474,7 +5562,7 @@ const SURFACES = {
   'walkthrough-home': walkthroughHomeSurface,
   'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
-  'migration-gate': () => migrationGate(),
+  'migration-gate': migrationGateSurface,
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'legacy-split-gate': legacySplitGateSurface,

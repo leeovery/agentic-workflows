@@ -38,12 +38,12 @@ Resolve the selected number(s) through the `ITEMS` table and hold the item names
 
 Decide the unit's shape with the user. The default is **one epic** — several items become its rough topic shapes, and even one broad item usually opens into several. A **feature** fits only a single pulled item that reads as one coherent, single-topic build; infer its first phase (`discussion` when the material is decision-shaped, `research` when unknowns dominate) and hold it as `routing`.
 
-Compile a one-line `description` for the unit from the pulled items' summaries and the record. Then confirm the shape — state your read and why above the gate, **naming the remainder** so a partial pull is spoken at the moment of choice (*"3 items stay waiting in mvp"*); when the selection is a whole horizon, its name is the natural work-unit name:
+Compile a one-line `description` for the unit from the pulled items' summaries and the record. When the selection is a whole horizon, its name is the natural work-unit name.
 
-Fetch the gate and emit its section verbatim per its marker:
+Write your read of the shape to `.workflows/.cache/roadmap/unit-shape.md` with the Write tool — what these items become and why, **naming the remainder** so a partial pull is spoken at the moment of choice (*"3 items stay waiting in mvp"*). Then fetch the gate, emitting each section verbatim at its marked instruction — the read first, then the confirm menu:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate
+node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate --present .workflows/.cache/roadmap/unit-shape.md
 ```
 
 **STOP.** Wait for user response.
@@ -58,7 +58,7 @@ Load **[name-resolution.md](../../workflow-discovery/references/name-resolution.
 
 #### If adjust
 
-Apply the user's changes to the shape, framing, or pulled set, then re-render the gate.
+Apply the user's changes to the shape, framing, or pulled set — the rewritten read is re-fetched with the gate.
 
 → Return to **B. Shape the Unit**.
 

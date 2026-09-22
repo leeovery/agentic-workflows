@@ -20,19 +20,17 @@ Also check for new cross-cutting specification files that didn't exist at that c
 
 ## Reporting
 
+Write the read to `.workflows/.cache/{work_unit}/planning/{topic}/spec-changes.md` with the Write tool — the caller presents it at the resume gate.
+
 #### If no changes detected
 
-> *Output the next fenced block as a code block:*
-
-```
-Specification unchanged since planning started.
-```
+The file holds one line: `Specification unchanged since planning started.`
 
 → Return to caller.
 
 #### If changes detected
 
-Summarise the extent of changes:
+The file holds the extent of the changes:
 
 - **What files changed** (specification, cross-cutting specs, or both)
 - **Whether any cross-cutting specs are new** (didn't exist at the stored commit)

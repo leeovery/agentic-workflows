@@ -16,9 +16,10 @@ The prose should have taken this path:
    reset or the emptied heading removed — the topic is not completed,
    so either is within the addendum's instruction)
 3. the diff review shows the recovery, the summary describes it in
-   natural language, and the user continues at the confirm gate; the
-   migration commit lands carrying both the queue file and the
-   document change
+   natural language, and the confirm gate leads with that summary —
+   no file counts, the run having changed none — and the user
+   continues; the migration commit lands carrying both the queue file
+   and the document change
 4. the knowledge gate passes silently (the store is ready), the
    workflow overview renders the epic's state, and the walk stops at
    the overview menu without selecting anything
