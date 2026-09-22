@@ -97,7 +97,6 @@ describe('engine workunit create — happy path', () => {
       ok: true,
       work_unit: 'payments',
       work_type: 'epic',
-      created: true,
       imports: [{ path: 'imports/my-design-doc.md' }],
       seeds: [{ path: 'seeds/2026-06-01-smart-retry.md', source: 'inbox:idea' }],
       skipped_imports: [],
@@ -168,7 +167,6 @@ describe('engine workunit create — happy path', () => {
       ]);
 
       assert.strictEqual(res.ok, true);
-      assert.strictEqual(res.created, true);
       assert.strictEqual(res.work_type, workType);
       const m = readManifest(fix, wu);
       assert.strictEqual(m.work_type, workType);
@@ -217,40 +215,63 @@ describe('engine workunit create — the canonical on-disk documents', () => {
   });
 });
 
-describe('engine workunit create — existing manifest reuse', () => {
+describe('engine workunit create — a name already taken refuses', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('reuses an existing manifest as-is: created false, fields preserved, landing still runs', () => {
+  /** Land an existing work unit, committed, and answer the world's fingerprint. */
+  function existingUnit(workType) {
     writeFile(fix.project, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments',
-      work_type: 'epic',
+      work_type: workType,
       status: 'in-progress',
       created: '2026-01-01',
       description: 'Original description',
-      custom_field: 'keep me',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2) + '\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'existing unit']);
+    return {
+      head: shortHead(fix),
+      commits: commitCount(fix),
+      status: git(fix.project, ['status', '--porcelain']),
+      manifest: fs.readFileSync(path.join(fix.project, '.workflows/payments/manifest.json'), 'utf8'),
+    };
+  }
 
-    const res = engine(fix, createArgs('payments', 'epic', [
+  /** The refused call must leave the tree byte-identical to the world before it. */
+  function assertUnchanged(before) {
+    assert.strictEqual(shortHead(fix), before.head, 'a refused create landed a commit');
+    assert.strictEqual(commitCount(fix), before.commits);
+    assert.strictEqual(git(fix.project, ['status', '--porcelain']), before.status, 'a refused create dirtied the tree');
+    assert.strictEqual(
+      fs.readFileSync(path.join(fix.project, '.workflows/payments/manifest.json'), 'utf8'),
+      before.manifest, 'the existing manifest was rewritten');
+    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.inbox/bugs/2026-06-02--login-loop.md')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/seeds')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')));
+    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+  }
+
+  it('an existing same-type unit refuses with the clash named — nothing touched', () => {
+    const before = existingUnit('epic');
+    const err = engineFails(fix, createArgs('payments', 'epic', [
       '--seed', '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
     ]));
 
-    assert.strictEqual(res.created, false);
-    const m = readManifest(fix, 'payments');
-    // Never overwritten — the existing document survives untouched…
-    assert.strictEqual(m.description, 'Original description');
-    assert.strictEqual(m.created, '2026-01-01');
-    assert.strictEqual(m.custom_field, 'keep me');
-    assert.deepStrictEqual(m.phases.discovery.items, { 'auth-flow': { routing: 'research' } });
-    // …with the transaction's additions layered in.
-    assert.strictEqual(m.phases.discovery.active_session, '001');
-    assert.strictEqual(m.seeds.length, 1);
-    assert.strictEqual(m.seeds[0].source, 'inbox:bug');
-    // The reuse branch never registers — no project manifest is conjured.
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')));
-    assert.strictEqual(lastMessage(fix), 'discovery(payments): create work unit (epic)');
+    assert.match(err.error, /work unit "payments" already exists — pick a different name/);
+    assertUnchanged(before);
+  });
+
+  it('an existing different-type unit refuses the same way — create never re-types a unit', () => {
+    const before = existingUnit('feature');
+    const err = engineFails(fix, createArgs('payments', 'epic', [
+      '--seed', '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
+    ]));
+
+    assert.match(err.error, /work unit "payments" already exists — pick a different name/);
+    assertUnchanged(before);
   });
 });
 
@@ -350,19 +371,6 @@ describe('engine workunit create — import filename normalisation', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/shot-2.png'), 'utf8'), 'two\n');
   });
 
-  it('suffixes directory collisions — a re-import lands beside the first, never over it', () => {
-    writeFile(fix.project, 'notes/design.md', 'v1\n');
-    landImports(['notes/design.md']);
-    writeFile(fix.project, 'notes/design.md', 'v2\n');
-    writeFile(fix.project, `.workflows/.cache/payments/discovery/session-001.md`, SESSION_LOG);
-    const res = landImports(['notes/design.md']);
-
-    assert.strictEqual(res.created, false);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/design-2.md' }]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/design.md'), 'utf8'), 'v1\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/design-2.md'), 'utf8'), 'v2\n');
-    assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), ['imports/design.md', 'imports/design-2.md']);
-  });
 });
 
 describe('engine workunit create — seeds', () => {
@@ -514,7 +522,6 @@ describe('engine workunit create — validation', () => {
   it('creates without a session log — no sessions dir, no active_session, session_log null', () => {
     const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec', '--no-session-log']);
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.created, true);
     assert.strictEqual(res.session_log, null);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy/discovery')),
       'no discovery/sessions tree without a log');

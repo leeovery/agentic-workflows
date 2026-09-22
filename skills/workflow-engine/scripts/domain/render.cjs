@@ -22,7 +22,7 @@ const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
+const { absorbTargetMenu, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate } = require('./projections/start.cjs');
 const { archivedItem } = require('./inbox-set.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
@@ -2468,19 +2468,6 @@ function candidateGate(cwd, { dotpath, file }) {
   ], { question: 'Add this topic to the map?' }))].join('\n');
 }
 
-// topic-collision-gate — the shared topic-creation core's exit after a
-// proposed name collided with an active map item. Static: the rejection
-// itself was rendered by the validation, and this gate only asks what to do
-// about it.
-
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function topicCollisionGate(_cwd, _args) {
-  return section('MENU: topic collision gate', STOP_FOR_RESPONSE, menu('', [
-    cmdOption('c', 'cancel', 'Abandon creating this topic'),
-    promptOption('Pick another', 'Tell me a different name'),
-  ], { question: 'How would you like to proceed?' }));
-}
-
 // triage-closed-target — the reroute's stop over a target no future session
 // will surface. The address names the target and the surface derives its
 // lifecycle with the same join every other map consumer uses, so the two
@@ -4801,23 +4788,6 @@ function absorbTarget(cwd, args) {
   return absorbTargetMenu(md);
 }
 
-/** @param {string} cwd @param {{dotpath: string, into?: string}} args @returns {string} */
-function absorbNameGateSurface(cwd, args) {
-  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-name-gate');
-  const md = manageDetail(cwd, workUnit);
-  if (!md) throw new Error(`render absorb-name-gate: work unit "${workUnit}" not found`);
-  if (!md.absorb_available) {
-    throw new Error(`render absorb-name-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
-  }
-  if (!isFilled(args.into)) {
-    throw new Error('render absorb-name-gate: --into is required — the selected target epic');
-  }
-  if (!md.available_epics.includes(/** @type {string} */ (args.into))) {
-    throw new Error(`render absorb-name-gate: "${args.into}" is not an absorb target — available: ${md.available_epics.join(', ') || '(none)'}`);
-  }
-  return absorbNameGate(md, /** @type {string} */ (args.into));
-}
-
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function absorbConfirmGateSurface(cwd, args) {
   const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-confirm-gate');
@@ -4986,26 +4956,6 @@ function roadmapShapeGateSurface(_cwd, _args) {
 // The cross-flow static gates — adopted engine-side as their files were
 // touched (menus are engine-rendered, static sets included). Wording is
 // the gates' own; each is fetched at the exact point it displays.
-
-/**
- * Discovery's work-unit name confirm; `--variant collision` is the re-ask
- * after a name collided with an existing unit.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function nameGateSurface(_cwd, { variant }) {
-  if (variant !== undefined && variant !== 'collision') {
-    throw new Error('render name-gate: --variant takes "collision" (omit it for the confirm shape)');
-  }
-  const body = variant === 'collision'
-    ? menu('', [
-      promptOption('A different name', 'Tell me what to call it instead'),
-    ], { question: 'Choose a different name, or resume via /workflow-start.' })
-    : menu('', [
-      cmdOption('y', 'yes', 'Use this name'),
-      promptOption('A different name', 'Tell me what to call it instead'),
-    ], { question: 'Is this name okay?' });
-  return section('MENU: name gate', STOP_FOR_RESPONSE, body);
-}
 
 /** Discovery's work-type commit confirm — the shaping conversation's hinge. @param {string} _cwd @param {object} _args @returns {string} */
 function shapeGateSurface(_cwd, _args) {
@@ -5408,7 +5358,6 @@ const SURFACES = {
   'backlog-gate': backlogGate,
   'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
-  'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
   'closing-gate': closingGate,
@@ -5463,7 +5412,6 @@ const SURFACES = {
   'pivot-continuation': pivotContinuation,
   'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,
-  'absorb-name-gate': absorbNameGateSurface,
   'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
   'archived-actions': archivedActionsSurface,
@@ -5477,7 +5425,6 @@ const SURFACES = {
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
   'roadmap-shape-gate': roadmapShapeGateSurface,
-  'name-gate': nameGateSurface,
   'shape-gate': shapeGateSurface,
   'synthesis-gate': synthesisGateSurface,
   'query-failure-gate': queryFailureGateSurface,

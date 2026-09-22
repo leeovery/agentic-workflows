@@ -2662,8 +2662,6 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
     assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
     assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
-    assert.match(sim.render(['name-gate'], { expect: 'content' }), /MENU: name gate/);
-    assert.match(sim.render(['name-gate', '--variant', 'collision'], { expect: 'content' }), /Choose a different name/);
     assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
     assert.match(sim.render(['query-failure-gate'], { expect: 'content' }), /MENU: query failure gate/);
@@ -2821,8 +2819,6 @@ describe('pipeline simulation', () => {
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
 
     // The manage flow's absorb gates render from the pre-absorb state.
-    assert.match(sim.render(['absorb-name-gate', feat, '--into', epic], { expect: 'content' }),
-      /MENU: absorb name gate/, 'the name-confirm gate renders for an absorbable feature');
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
       /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
     assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
@@ -3510,7 +3506,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
 
-  it('guards hold mid-pipeline: shadow fields, empty segments, cross-type reuse, bad statuses', () => {
+  it('guards hold mid-pipeline: shadow fields, empty segments, a name already taken, bad statuses', () => {
     const wu = 'guarded';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Guard rails', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -3519,8 +3515,17 @@ describe('pipeline simulation', () => {
     sim.refuses(['manifest', 'set', `${wu}.`, 'field', 'x'], /empty segments/);
     sim.refuses(['manifest', 'set', `${wu}.discussion.${wu}`, 'status', 'concluded'], /Must be one of/);
     sim.refuses(['commit', '', '-m', 'nope'], /./);
-    sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--no-session-log'], /work type/);
     sim.refuses(['topic', 'start', wu, 'cooking', wu], /Invalid phase|unknown/);
+
+    // A taken name refuses whatever type the second call names, over an
+    // untouched world.
+    const takenManifest = JSON.stringify(sim.manifest(wu));
+    const head = git(sim.dir, ['rev-parse', 'HEAD']).trim();
+    const taken = /work unit "guarded" already exists — pick a different name/;
+    sim.refuses(['workunit', 'create', wu, 'feature', '--description', 'Again', '--no-session-log'], taken);
+    sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--no-session-log'], taken);
+    assert.strictEqual(JSON.stringify(sim.manifest(wu)), takenManifest, 'a refused create rewrote the manifest');
+    assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
     // the project manifest, `baseline` is the KB's project-baseline identity.
