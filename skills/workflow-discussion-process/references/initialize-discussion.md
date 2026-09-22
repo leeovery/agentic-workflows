@@ -12,6 +12,8 @@ The durable inputs live in the manifest and at fixed paths — read them here; t
 
 → Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
+→ Load **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+
 #### If `work_type` is not `epic`
 
 The carrier discovery left has two halves — read both. First the manifest `description`:
@@ -68,7 +70,7 @@ No completed research for this topic.
 
 ## C. Create and Register
 
-The inputs just read — the seed, the brief or carrier, and any completed research — are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
+The inputs just read — the seed, the brief or carrier, any prior record, and any completed research — are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):

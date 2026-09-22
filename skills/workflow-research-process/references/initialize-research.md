@@ -20,6 +20,8 @@ A restart — skip the reads; the session gathers context naturally.
 
 → Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
+→ Load **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+
 **If `work_type` is not `epic`:**
 
 The carrier discovery left has two halves — read both. First the manifest `description`:
