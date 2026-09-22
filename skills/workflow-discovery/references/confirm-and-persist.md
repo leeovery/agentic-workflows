@@ -58,7 +58,7 @@ Each verb validates and self-commits; record every landing under the log's **Edi
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
-**Pull-forward set** — one call per item (the map topic + its join, one commit each):
+**Pull-forward set** — one call per item (the map topic + its join, one commit each; over a topic this epic postponed, the verb restores that row instead and `--routing` names nothing):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}

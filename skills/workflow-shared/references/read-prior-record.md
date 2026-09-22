@@ -4,7 +4,7 @@
 
 ---
 
-A topic pulled onto this epic's map after another epic postponed it carries `prior` — the address of the topic it was there. That epic's brief, research, discussion, and undelivered concerns are this phase's inherited ground, read here as a durable input beside this topic's own carrier.
+A topic pulled onto this epic's map after another epic postponed it carries `prior` — the address of the topic it was in that epic. That epic's brief, research, discussion, and undelivered concerns are this phase's inherited ground, read here as a durable input beside this topic's own carrier.
 
 Caller passes `work_type`, `work_unit`, `topic`, `phase` (`research` or `discussion`).
 
