@@ -8,13 +8,13 @@ The assessment is complete. Show what exists and offer the ways back in.
 
 ## A. Display and Menu
 
-Fetch the doc list and emit its `DISPLAY: baseline progress` section verbatim as a code block:
+Fetch the doc list and emit its `DISPLAY: baseline progress` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
 ```
 
-Fetch the gate and emit its `MENU: baseline manage gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: baseline manage gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-manage-gate

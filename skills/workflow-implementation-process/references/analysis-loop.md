@@ -69,7 +69,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 
-Fetch and emit the `DISPLAY: cycle limit` section verbatim as a code block (a section is everything beneath its `===` marker — the marker line itself is never emitted):
+Fetch and emit the `DISPLAY: cycle limit` section verbatim per its marker (a section is everything beneath its `===` marker — the marker line itself is never emitted):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-limit {work_unit}.implementation.{topic}
@@ -77,7 +77,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-limit {work_
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `analysis`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-Fetch the cycle gate and emit its `MENU: cycle gate` section verbatim as markdown (not a code block):
+Fetch the cycle gate and emit its `MENU: cycle gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-gate
@@ -217,7 +217,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
    ```
 
-   An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+   An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim per its marker:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}

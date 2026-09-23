@@ -45,7 +45,7 @@ Rules:
 
 Summarise the doc in two or three sentences of prose — the verdict, and what it holds (how many observed claims, captured decisions, open questions). The full text stays on disk behind `v/view`; never dump it unasked.
 
-Fetch the gate and emit its `MENU: baseline doc gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-gate

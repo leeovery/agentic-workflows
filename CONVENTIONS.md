@@ -54,7 +54,7 @@ Report-class content — findings, review summaries, validation gaps and risks, 
 
 ### Engine Output Sections
 
-Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
+Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in demarcated sections. Each section marker carries its own handling instruction, and every call site defers to it — `Emit the call's MENU section verbatim per its marker.`, or `…sections verbatim per their markers` where one sentence emits several — never restating the form, for TITLE, DISPLAY and MENU alike: the marker is the one instruction for its section, and a restated copy is a second one that can disagree with it (lint check 21). The markers direct:
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
 - `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown, directly above the display.

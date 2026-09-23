@@ -96,7 +96,7 @@ Migrations Applied
 {N} migration(s), {M} file(s) updated.
 ```
 
-5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim as markdown (not a code block):
+5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
@@ -158,7 +158,7 @@ Branch on the boot response's `tmux_labels` — `prompt` means the session runs 
 > You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at its menu — putting the original name back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.
 ```
 
-Fetch the opt-in and emit its `MENU: label gate` section verbatim as markdown (not a code block):
+Fetch the opt-in and emit its `MENU: label gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
@@ -226,7 +226,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
 > This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the workflow-start menus.
 ```
 
-Fetch the offer and emit its `MENU: baseline offer` section verbatim as markdown (not a code block):
+Fetch the offer and emit its `MENU: baseline offer` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gate
