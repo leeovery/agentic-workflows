@@ -2,14 +2,15 @@
  * workflow-gates — the agentic-workflows engine's gates drawn above the
  * prompt instead of printed by the model.
  *
- * The engine states each gate as data beside the menu it composed. This
- * module announces itself so the engine collects it, arms the gate off the
- * Bash result that carried it, cuts the menu out of what the model reads, and
- * draws the rows in the band once the model's turn is over. A press picks its
- * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which the workflows' prose reads as the answer, or while
- * Claude works on anything else holds it until Claude finishes. What the band
- * shows is kept across a restart, so a conversation resumed where nothing has
+ * The engine states each gate as data beside the menu it composed. Where the
+ * project said yes to this, the module announces itself so the engine
+ * collects it; it arms the gate off the Bash result that carried it, cuts the
+ * menu out of what the model reads, and draws the rows in the band once the
+ * model's turn is over. A press picks its row's answer into the prompt box; a
+ * second press on that row sends it as the next message, which the workflows'
+ * prose reads as the answer, or while Claude works on anything else holds it
+ * until Claude finishes. In a session that announced, what the band shows
+ * is kept across a restart, so a conversation resumed where nothing has
  * happened since shows its gate again.
  *
  * Every path up to the cut fails open: the engine emits the menu regardless,
@@ -44,6 +45,9 @@ const ELEMENT = 'gate'
 
 /** Where a send leaves what it answered, for a mod that draws the sent row. */
 const SENT = '.workflows/.cache/.gates/sent.json'
+
+/** Where the workflows record the project's answer to turning this on. */
+const PROJECT_MANIFEST = '.workflows/manifest.json'
 
 /** The record that claims no send, which that mod draws nothing from. */
 const NOTHING_SENT = 'null'
@@ -156,6 +160,23 @@ function gateIn(
       STOP_NOTE,
       ...(after === -1 ? [''] : lines.slice(after)),
     ].join('\n'),
+  }
+}
+
+/**
+ * Whether the manifest of the project at `cwd` records a yes to this:
+ * `gate_surface` true among its defaults. A manifest missing or unreadable is
+ * no yes.
+ */
+async function isOptedIn($: EngineInterface, cwd: string): Promise<boolean> {
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${cwd}/${PROJECT_MANIFEST}`)) as {
+      defaults?: { gate_surface?: unknown }
+    } | null
+
+    return manifest?.defaults?.gate_surface === true
+  } catch {
+    return false
   }
 }
 
@@ -522,11 +543,14 @@ export const register: Register = on => {
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this. A fresh load
-  // comes back to a conversation this module has not followed, so the band
-  // is read back from the store, and bands kept past any resume are dropped.
+  // that asked for one, and every Bash child inherits this. The project's own
+  // answer decides, read as the session starts. A fresh load comes back to a
+  // conversation this module has not followed, so the band is read back from
+  // the store, and bands kept past any resume are dropped.
   on('session.start', async ($, e, next) => {
-    await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
+    if (await isOptedIn($, e.cwd)) {
+      await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
+    }
 
     owed = { ended: null }
     await readBack($, owing, takeBack)
