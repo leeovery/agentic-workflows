@@ -34,7 +34,7 @@ The prose should have taken this path:
    register being empty; the user concludes
 8. the completion the wait once blocked now passes: the register holds
    nothing open so no Open Threads section is written, the research
-   completes and indexes, the `--kb` commit closes it, presence clears,
+   completes and indexes, the conclusion commit closes it, presence clears,
    the sweep finds no leavings, the closing recap runs, and the walk
    stops at the bridge invocation
 

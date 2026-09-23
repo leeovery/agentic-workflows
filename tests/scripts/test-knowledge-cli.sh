@@ -1013,16 +1013,74 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 36: Check outputs not-ready when store is missing ---
-echo "Test 36: Check not-ready (missing store)"
+# --- Test 36: Check outputs buildable when the store is missing and a provider resolves ---
+echo "Test 36: Check buildable (missing store, provider resolves)"
 setup_project
 write_stub_config
 # Config exists but no store.msp.
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
-assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "outputs buildable" "buildable" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 36b: A missing store with no configuration anywhere is not-ready ---
+echo "Test 36b: Check not-ready (missing store, no system config)"
+setup_project
+write_keyword_config
+rm -rf "$HOME/.config/workflows"
+assert_eq "no configuration is no keyword-only choice" "not-ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+teardown_project
+
+# --- Test 36c: A system config that names no provider is a keyword-only choice ---
+echo "Test 36c: Check buildable (missing store, keyword-only system config)"
+setup_project
+write_keyword_config
+mkdir -p "$HOME/.config/workflows"
+echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
+assert_eq "keyword-only chosen at system level" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
+rm -rf "$HOME/.config/workflows"
+teardown_project
+
+# --- Test 36d: A project config that unsets the provider is a keyword-only choice ---
+echo "Test 36d: Check buildable (missing store, project pins keyword-only)"
+setup_project
+echo '{ "knowledge": { "provider": null } }' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+rm -rf "$HOME/.config/workflows"
+assert_eq "keyword-only chosen at project level" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
+teardown_project
+
+# --- Test 36e: A provider whose key cannot be resolved never reads buildable ---
+echo "Test 36e: Check not-ready (missing store, provider key unresolved)"
+setup_project
+write_keyword_config
+mkdir -p "$HOME/.config/workflows"
+echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$HOME/.config/workflows/config.json"
+assert_eq "an unresolved key is not keyword-only" "not-ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+# …and a write never degrades to keyword-only in its place: no store is created.
+create_work_unit "auth-flow" "feature" "Auth"
+create_discussion_file "auth-flow" "auth-flow"
+exit_code=0
+iout=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+assert_eq "single-file index refuses" "1" "$exit_code"
+assert_eq "names the unresolved key" "true" "$(echo "$iout" | grep -q 'no store is created without it' && echo true || echo false)"
+exit_code=0
+run_kb index >/dev/null 2>&1 || exit_code=$?
+assert_eq "bulk index refuses" "1" "$exit_code"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+rm -rf "$HOME/.config/workflows"
+teardown_project
+
+# --- Test 36f: The bulk index builds a missing store, empty when nothing is indexable ---
+echo "Test 36f: Bulk index builds the missing store"
+setup_project
+write_stub_config
+run_kb index >/dev/null 2>&1
+assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "metadata names the provider" "stub" \
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "check reads ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
 teardown_project
 
 # --- Test 37: Check outputs not-ready when store is corrupted ---
@@ -1923,6 +1981,19 @@ echo "rebuild" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
 assert_eq "empty-project rebuild aborts" "1" "$exit_code"
 assert_eq "uses new wording" "true" "$(echo "$output" | grep -qF 'No artifacts to index. Aborting rebuild' && echo true || echo false)"
 assert_eq "does not use stale wording" "false" "$(echo "$output" | grep -qF 'No completed artifacts' && echo true || echo false)"
+teardown_project
+
+# --- Test 63c: Rebuild refuses before anything is touched when the provider's key is unresolved ---
+echo "Test 63c: Rebuild refuses over an unresolved key"
+setup_project
+echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+echo 'store bytes' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+exit_code=0
+output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
+assert_eq "rebuild refuses" "1" "$exit_code"
+assert_eq "names the unresolved key" "true" "$(echo "$output" | grep -q 'could not be resolved' && echo true || echo false)"
+assert_eq "never reaches the prompt" "false" "$(echo "$output" | grep -q "Type 'rebuild' to confirm" && echo true || echo false)"
+assert_eq "store untouched" "store bytes" "$(cat "$TEST_ROOT/.workflows/.knowledge/store.msp")"
 teardown_project
 
 # ============================================================================
@@ -2933,12 +3004,20 @@ output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "keyword-only init exits 0" "0" "$exit_code"
 assert_eq "summary names keyword-only mode" "true" \
   "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
-assert_eq "project config is empty (no system provider to unset)" \
-  '{"knowledge":{}}' \
+assert_eq "project config pins provider null — the choice travels with the project" \
+  '{"knowledge":{"provider":null}}' \
   "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$TEST_ROOT/.workflows/.knowledge/config.json")"
 assert_eq "metadata provider is null" "null" \
   "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
+# Another checkout of the project: the committed config alone, no store,
+# and still no system config — the pinned choice rebuilds it keyword-only.
+rm -f "$TEST_ROOT/.workflows/.knowledge/store.msp" "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+assert_eq "a pinned project with no system config is buildable" "buildable" "$(run_kb check)"
+run_kb index >/dev/null 2>&1
+assert_eq "the rebuild is keyword-only" "null" \
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "and ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
 

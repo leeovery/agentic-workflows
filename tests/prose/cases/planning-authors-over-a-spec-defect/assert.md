@@ -52,8 +52,8 @@ Expected path:
     Corrigenda section the file did not have, stating the point the
     specification left open and recording the derivation, the
     specification is re-indexed with a single-file knowledge index, and
-    one scoped commit lands carrying `--topic specification/pay`,
-    `--kb` and `--sweep`. No gate renders for it and no scripted answer
+    one scoped commit lands carrying `--topic specification/pay`
+    and `--sweep`. No gate renders for it and no scripted answer
     is consumed
 11. one corrigendum landed, so the engine's spec corrections line is
     fetched with a count of 1 and emitted — one line, never a

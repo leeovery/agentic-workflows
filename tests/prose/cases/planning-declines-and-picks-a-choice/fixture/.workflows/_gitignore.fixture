@@ -7,3 +7,6 @@
 .commit-lock
 .commit-lock.breaking
 .knowledge/*.tmp
+.knowledge/store.msp
+.knowledge/metadata.json
+.knowledge/*.bak

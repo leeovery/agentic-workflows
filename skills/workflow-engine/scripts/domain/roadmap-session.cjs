@@ -31,7 +31,7 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, KB_DIR, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { planImports, copyImports, importEntry, isIndexableImport, assertLandableSources } = require('./import-landing.cjs');
@@ -39,19 +39,8 @@ const { ensureRoadmap } = require('./roadmap.cjs');
 
 const ROADMAP_DIR = '.workflows/.roadmap';
 
-/**
- * The pathspec for a KB-touching roadmap transaction: the roadmap dir, the
- * project manifest, and — exists-guarded, keyword-less projects may have no
- * store — the knowledge dir, whose index churn this transaction produced
- * (leaving it unstaged hands it to some later, unrelated commit).
- * @param {string} cwd
- * @returns {string[]}
- */
-function roadmapKbSpecs(cwd) {
-  const specs = [ROADMAP_DIR, PROJECT_MANIFEST_SPEC];
-  if (fs.existsSync(path.join(cwd, KB_DIR))) specs.push(KB_DIR);
-  return specs;
-}
+/** A roadmap transaction's commit scope: the roadmap dir and the project manifest. */
+const ROADMAP_SCOPE = [ROADMAP_DIR, PROJECT_MANIFEST_SPEC];
 
 /**
  * Open a product-road session: allocate the next session number from the
@@ -135,7 +124,7 @@ function closeRoadmapSession(cwd, { message }) {
   const warnings = [];
   knowledge(cwd, ['index', session.rel], `knowledge index (roadmap/sessions/session-${session.number}.md)`, warnings);
 
-  const outcome = commitTailPathspec(cwd, roadmapKbSpecs(cwd), message, warnings);
+  const outcome = commitTailPathspec(cwd, ROADMAP_SCOPE, message, warnings);
   /** @type {Record<string, any>} */
   const result = { session: session.number, session_log: session.rel, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -201,7 +190,7 @@ function importRoadmapFiles(cwd, paths) {
   };
   const outcome = commitTailPathspec(
     cwd,
-    roadmapKbSpecs(cwd),
+    ROADMAP_SCOPE,
     `roadmap: import ${moves.length} file${moves.length === 1 ? '' : 's'}`,
     warnings,
   );

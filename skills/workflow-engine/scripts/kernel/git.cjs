@@ -43,10 +43,11 @@ function indexBudgetMs() {
  * Run git and return stdout. Throws with git's stderr on a non-zero exit.
  * @param {string} cwd
  * @param {string[]} args
+ * @param {Record<string, string>} [env] variables layered over the process's own
  * @returns {string}
  */
-function git(cwd, args) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8' });
+function git(cwd, args, env) {
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', env: env && { ...process.env, ...env } });
   if (res.error) throw new Error(`git ${args[0]} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();
@@ -72,6 +73,15 @@ function tryGit(cwd, args) {
   const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: TRY_BUDGET_BYTES });
   if (res.error || res.status !== 0) return null;
   return res.stdout;
+}
+
+/**
+ * A listing's non-empty lines; a failed read has none.
+ * @param {string|null} out
+ * @returns {string[]}
+ */
+function outputLines(out) {
+  return (out || '').split('\n').filter(Boolean);
 }
 
 /** @param {string} message */
@@ -193,6 +203,56 @@ function commitPathspec(cwd, pathspec, message) {
 }
 
 /**
+ * Every path under the pathspecs that git tracks — in HEAD, the index, or
+ * both — sorted. None outside a repository or before its first commit.
+ * @param {string} cwd project root
+ * @param {string[]} specs
+ * @returns {string[]}
+ */
+function trackedPaths(cwd, specs) {
+  const listed = [
+    ...outputLines(tryGit(cwd, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...specs])),
+    ...outputLines(tryGit(cwd, ['ls-files', '--', ...specs])),
+  ];
+  return [...new Set(listed)].sort();
+}
+
+/**
+ * Stop tracking `paths`, leaving every file on disk: one commit records
+ * their removal from HEAD, and the index drops them. `git commit -- <paths>`
+ * cannot record this — a partial commit re-reads each named path from the
+ * working tree, and a file still on disk goes straight back in — so the
+ * commit is built from a scratch index holding HEAD without the paths. The
+ * real index is never committed from, so whatever else is staged in it
+ * stays staged and out of the commit.
+ * @param {string} cwd project root
+ * @param {string[]} paths
+ * @param {string} message
+ * @returns {string|null} the short commit sha, or null when HEAD tracks none of the paths
+ */
+function commitUntrack(cwd, paths, message) {
+  const inHead = outputLines(tryGit(cwd, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...paths]));
+  const inIndex = outputLines(tryGit(cwd, ['ls-files', '--', ...paths]));
+  /** @type {string|null} */
+  let committed = null;
+  if (inHead.length > 0) {
+    const rel = git(cwd, ['rev-parse', '--git-path', 'workflows-untrack.index']).trim();
+    const scratch = path.isAbsolute(rel) ? rel : path.join(cwd, rel);
+    const env = { GIT_INDEX_FILE: scratch };
+    try {
+      git(cwd, ['read-tree', 'HEAD'], env);
+      git(cwd, ['rm', '--cached', '-q', '--', ...inHead], env);
+      git(cwd, ['commit', '-q', '-m', message], env);
+    } finally {
+      fs.rmSync(scratch, { force: true });
+    }
+    committed = git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  }
+  if (inIndex.length > 0) gitIndexed(cwd, ['update-index', '--force-remove', '--', ...inIndex]);
+  return committed;
+}
+
+/**
  * Every path in the working tree that differs from HEAD — tracked
  * modifications and untracked, non-ignored files alike — project-relative.
  * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
@@ -223,4 +283,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, commitPathspec, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

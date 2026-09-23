@@ -47,7 +47,7 @@ The prose should have taken this path:
 7. the conclude gate renders and the user confirms; the completion the
    wait once blocked now passes — the engine accepts `topic complete`
    with empty warnings (the index rides inside the verb; no separate
-   call appears in any record) — and the conclusion commits `--kb`
+   call appears in any record) — and the conclusion commits
 8. presence clears with the close, the sweep finds no leavings, the
    closing recap runs, and the walk stops at the bridge invocation
 
@@ -77,4 +77,4 @@ still `completed` above an `abandoned` record with its reason — and
 the record's documents untouched; the stubbed review report in the
 topic's cache with its agent row closed. (The knowledge index rides
 inside `topic complete` and this fixture's store leaves no delta path
-— the verb's empty warnings and the `--kb` commit are its evidence.)
+— the verb's empty warnings and the conclusion commit are its evidence.)

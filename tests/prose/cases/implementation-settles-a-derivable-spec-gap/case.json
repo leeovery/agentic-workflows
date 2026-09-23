@@ -68,7 +68,6 @@
       "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
       "specification(pay): corrigendum from implementation/pay",
       "--topic specification/pay",
-      "--kb",
       "--sweep",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",

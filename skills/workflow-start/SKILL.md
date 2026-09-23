@@ -192,7 +192,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config fals
 
 ### Step 0.4: Knowledge Gate
 
-Branch on the boot response — run no further commands (the bulk `knowledge index` and `compact` already ran inside boot when the knowledge base was ready). If it carries `warnings`, surface them and continue — boot is complete.
+Branch on the boot response — run no further commands (the bulk `knowledge index` and `compact` already ran inside boot when the knowledge base was ready, the index building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
 
 #### If `knowledge` is `not-ready`
 

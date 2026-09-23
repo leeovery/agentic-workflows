@@ -56,7 +56,6 @@
       "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
       "specification(pay): corrigendum from planning/pay",
       "--topic specification/pay",
-      "--kb",
       "--sweep",
       "render spec-corrections --count 1",
       "staging.author-p1.tasks.",

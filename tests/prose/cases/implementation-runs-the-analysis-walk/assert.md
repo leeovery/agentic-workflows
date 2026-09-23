@@ -58,7 +58,7 @@ The prose should have taken this path:
     replaced in place, one dated corrigendum attributed to
     `implementation/pay` appended under a Corrigenda section the file did
     not have, the specification re-indexed with a single-file knowledge
-    index, and one scoped commit carrying --kb and --sweep. No menu is
+    index, and one scoped commit carrying --sweep. No menu is
     rendered for it, no question is asked, no scripted answer is
     consumed, and the specification item's status is never touched
 11. because the entry is record-settled it stages nothing: no third task

@@ -16,6 +16,16 @@ const { spawnSync } = require('child_process');
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 /**
+ * The knowledge directory holds one committed file, the project's
+ * `config.json` — the record that the project is set up. Everything else in
+ * it is derived and never committed; the store's files are the pair a new
+ * worktree is given a copy of.
+ */
+const KNOWLEDGE_DIR = '.workflows/.knowledge';
+const KNOWLEDGE_CONFIG = `${KNOWLEDGE_DIR}/config.json`;
+const STORE_FILES = [`${KNOWLEDGE_DIR}/store.msp`, `${KNOWLEDGE_DIR}/metadata.json`];
+
+/**
  * Phases whose completed artifact is knowledge-base indexed, with the artifact
  * path per topic. One table for every engine transaction that indexes or
  * re-indexes phase artifacts.
@@ -54,4 +64,4 @@ function knowledge(cwd, args, label, warnings) {
   return !failed;
 }
 
-module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS };
+module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, KNOWLEDGE_CONFIG, STORE_FILES };

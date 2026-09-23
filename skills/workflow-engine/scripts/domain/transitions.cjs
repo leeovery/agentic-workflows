@@ -26,7 +26,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
@@ -1466,7 +1466,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   const cancelSpec = reverted.length > 0
     ? [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC]
     : `.workflows/${workUnit}/manifest.json`;
-  const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
+  const outcome = commitTailPathspec(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
   const result = { topic, phase: stage, status: 'cancelled', ...taken, committed: outcome.committed, warnings };
   if (stage === 'discovery') result.roadmap_reverted = reverted;
@@ -1572,7 +1572,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const warnings = [];
   indexRestored(cwd, workUnit, topic, returned.restored, warnings);
 
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
+  const outcome = commitTailPathspec(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: stage, status: 'reactivated', ...returned, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -1664,7 +1664,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
   removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
 
-  const outcome = commitTailWithKb(
+  const outcome = commitTailPathspec(
     cwd,
     [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC],
     `workflow(${workUnit}): postpone ${topic} → ${horizon}`,

@@ -38,6 +38,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const cases = require('./cases.cjs');
 const { withFrozenClock } = require('./fake-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { STORE_FILES } = require('../../../skills/workflow-engine/scripts/domain/kb.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
 // share a machine, and a directory another process is still walking answers
@@ -645,7 +646,10 @@ function buildWorld(caseId) {
   // The harness's logs live inside the world but are not world state — a
   // walker staging broadly must never commit them. info/exclude keeps the
   // rule out of the working tree, so snapshots and deltas never see it.
-  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), `${ACTION_LOG}\n${WALK_LOG}\n${ASSERT_PROMPT}\n`);
+  // The knowledge store rides the same rule: a project ignores it, and a
+  // fixture whose recipe never booted carries no ignore rules of its own.
+  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'),
+    [ACTION_LOG, WALK_LOG, ASSERT_PROMPT, ...STORE_FILES].map((p) => `${p}\n`).join(''));
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
 
@@ -690,7 +694,7 @@ function buildWorld(caseId) {
     throw new Error(`knowledge setup failed in world:\nstdout: ${setup.stdout}\nstderr: ${setup.stderr}`);
   }
   git('add', '-A');
-  git('commit', '-q', '-m', 'chore(knowledge): initialise store');
+  git('commit', '-q', '-m', 'chore(knowledge): set up the knowledge base');
 
   // Last, after every commit: what a peer session left behind. The dirt
   // stands untracked because it was held back from the commits above;

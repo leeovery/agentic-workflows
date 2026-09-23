@@ -31,7 +31,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
@@ -419,7 +419,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   }
 
   const cacheSpec = purgeWorkUnitCache(cwd, feature);
-  const outcome = commitTailWithKb(
+  const outcome = commitTailPathspec(
     cwd,
     [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json', ...(cacheSpec ? [cacheSpec] : [])],
     `workflow(${feature}): absorb into ${into}`, warnings);

@@ -218,10 +218,10 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-onl
 
 ## E. Confirm and Continue
 
-The fresh store is uncommitted. Commit it:
+Setup wrote the project's knowledge config — the record that this project is set up. Commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(knowledge): initialise store"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(knowledge): set up the knowledge base"
 ```
 
 Then confirm, filling the placeholders from the mode just initialised:
@@ -272,15 +272,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs boot
 
 **If `knowledge` is `ready`:**
 
-Boot committed any store dirt the wizard left. If the response carries `warnings`, surface them. Confirm with the active settings from the wizard's summary:
+If the response carries `warnings`, surface them.
 
-> *Output the next fenced block as a code block:*
-
-```
-Knowledge base ready — {provider} · {model}.
-```
-
-→ Return to **[the skill](../SKILL.md)** for **Step 0.5**.
+→ Return to **E. Confirm and Continue**.
 
 **If `knowledge` is still `not-ready`:**
 

@@ -46,7 +46,7 @@ The prose should have taken this path:
    specification left open (never a quoted claim — the defect is an
    omission) and recording the derivation; the specification is
    re-indexed with a single-file knowledge index; and one scoped commit
-   lands carrying `--topic specification/pay`, `--kb` and `--sweep`. No
+   lands carrying `--topic specification/pay` and `--sweep`. No
    menu is rendered for it, no question is asked, and the specification
    item's status is never touched
 10. the reference answers `landed`, so the loop lands the answer on the

@@ -90,7 +90,7 @@ Expected path:
 16. the edited discussion is reindexed through the knowledge CLI; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
-    the sweep shape (`--topic discussion/pay --kb --sweep`)
+    the sweep shape (`--topic discussion/pay --sweep`)
 17. back in the choices the specification's content is composed from
     the pick and written, re-derived against the live document — the
     wording follows from the choice, so it lands without a second

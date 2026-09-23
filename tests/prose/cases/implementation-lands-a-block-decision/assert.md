@@ -60,7 +60,7 @@ The prose should have taken this path:
 11. the edited discussion is re-indexed through the knowledge CLI; the
     sources-stale step is **skipped** — single-topic work has no sibling
     specifications — and the resolution commits scoped to the discussion
-    with the sweep shape (`--topic discussion/pay --kb --sweep`)
+    with the sweep shape (`--topic discussion/pay --sweep`)
 12. the discussion now carries the decision, and that is the record that
     settles the specification: the correction route runs over this work
     unit's own specification from a downstream phase — status completed,
@@ -68,8 +68,7 @@ The prose should have taken this path:
     rule is added to the Capture Webhooks section that owns the ground,
     a dated corrigendum attributed to `implementation/pay` is appended
     citing the decision, the specification is re-indexed, and one scoped
-    commit lands carrying `--topic specification/pay`, `--kb` and
-    `--sweep`
+    commit lands carrying `--topic specification/pay` and `--sweep`
 13. the reference answers `landed`, so the loop lands the answer on the
     task in flight as an addition from the user: appended to the task's
     normalised content in session, with no plan write and no second gate

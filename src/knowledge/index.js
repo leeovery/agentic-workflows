@@ -544,22 +544,64 @@ function providerKeyUnresolved(cfg) {
   return !!(cfg && cfg.provider && config.PROVIDER_ENV_VARS[cfg.provider]);
 }
 
+const KEY_UNRESOLVED_OVER_STORE =
+  'the knowledge base fell back to keyword-only for this command.\n' +
+  "  The store's embeddings are intact. Do NOT run `knowledge rebuild` — that discards them.\n";
+const KEY_UNRESOLVED_NO_STORE = 'no store is created without it.\n';
+
 /**
  * Build the UserError shown when a keyed provider is configured but its key
- * is unresolvable. Points at the env var and the key-only setup detour, and
- * explicitly warns against `rebuild` (which would destroy embeddings).
+ * is unresolvable. Points at the env var and the key-only setup detour; over
+ * a store with embeddings it also warns against `rebuild` (which would
+ * destroy them).
+ * @param {object} cfg
+ * @param {string} [consequence] KEY_UNRESOLVED_OVER_STORE or KEY_UNRESOLVED_NO_STORE
  */
-function keyUnresolvedError(cfg) {
+function keyUnresolvedError(cfg, consequence = KEY_UNRESOLVED_OVER_STORE) {
   const envVar = config.PROVIDER_ENV_VARS[cfg.provider];
   const keySource = envVar ? `export ${envVar}=...` : 'set the provider API key';
   return new UserError(
     `Embedding provider "${cfg.provider}" is configured, but its API key could not be resolved — ` +
-      'the knowledge base fell back to keyword-only for this command.\n' +
-      "  The store's embeddings are intact. Do NOT run `knowledge rebuild` — that discards them.\n" +
+      consequence +
       '  Provide the key and retry:\n' +
       `    • ${keySource}            (session or CI), or\n` +
       '    • knowledge setup --key-only   (saves it to credentials.json)'
   );
+}
+
+/**
+ * The mode a store created now takes: full with a provider, keyword-only
+ * with none configured. A provider configured without a resolvable key
+ * refuses — a keyword-only store there would stand in for the embeddings
+ * the configuration asks for.
+ * @returns {'full'|'keyword-only'}
+ */
+function newStoreMode(cfg, provider) {
+  if (provider) return 'full';
+  if (providerKeyUnresolved(cfg)) throw keyUnresolvedError(cfg, KEY_UNRESOLVED_NO_STORE);
+  return 'keyword-only';
+}
+
+/**
+ * Whether this machine can build the store a set-up checkout lacks without
+ * a choice being made for it: a provider that resolves, or keyword-only
+ * chosen outright — a system config holding knowledge settings that name no
+ * provider, or a project config unsetting the provider. No configuration at
+ * all, or a provider whose key cannot be resolved, is never read as a
+ * keyword-only choice.
+ * @returns {boolean}
+ */
+function storeBuildable() {
+  try {
+    const cfg = config.loadConfig();
+    if (config.resolveProvider(cfg)) return true;
+    if (cfg.provider) return false;
+    const project = config.readConfigFile(config.projectConfigPath());
+    if (project && project.provider === null) return true;
+    return config.readConfigFile(config.systemConfigPath(), { sharedFile: true }) !== null;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Shared first line of every provider/model-mismatch error. It appeared four
@@ -776,7 +818,8 @@ function buildDocuments(artifact) {
  */
 function indexProvider(cfg, provider) {
   const mp = metadataPath();
-  return fs.existsSync(mp) ? resolveProviderState(store.readMetadata(mp), cfg, provider).provider : provider;
+  if (fs.existsSync(mp)) return resolveProviderState(store.readMetadata(mp), cfg, provider).provider;
+  return newStoreMode(cfg, provider) === 'full' ? provider : null;
 }
 
 /**
@@ -877,7 +920,8 @@ function identityOf(entry) {
 /**
  * Write into the store in one locked load and save: each built identity's
  * chunks replaced by its new documents, then every identity `retire` names
- * over the result removed. Nothing is saved when nothing changed.
+ * over the result removed. A store the checkout lacked is created and saved,
+ * empty or not; otherwise nothing is saved when nothing changed.
  * @param {{
  *   cfg: object,
  *   provider: object|null,
@@ -891,6 +935,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = asyn
   fs.mkdirSync(knowledgeDir(), { recursive: true });
   return store.withLock(lockFilePath(), async () => {
     assertStoreDimensions(provider);
+    const created = store.storeStamp(storePath()) === null;
     const db = await currentStore(snapshot, cfg, provider);
     for (const { artifact, docs } of built) {
       await store.removeByIdentity(db, identityOf(artifact));
@@ -898,7 +943,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = asyn
     }
     const retired = await retire(db);
     for (const entry of retired) await store.removeByIdentity(db, identityOf(entry));
-    if (built.length > 0 || retired.length > 0) {
+    if (created || built.length > 0 || retired.length > 0) {
       await store.saveStore(db, storePath());
       recordIndexed(cfg, provider);
     }
@@ -1399,6 +1444,22 @@ async function readStore() {
 }
 
 /**
+ * Write an empty store and fresh metadata in the mode a new store takes
+ * (see newStoreMode). The caller holds the store lock.
+ */
+async function writeEmptyStore(cfg, provider) {
+  const effective = newStoreMode(cfg, provider) === 'full' ? provider : null;
+  const dims = effective ? effective.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
+  await store.saveStore(await store.createStore(dims), storePath());
+  store.writeMetadata(metadataPath(), {
+    provider: effective ? cfg.provider : null,
+    model: effective ? effective.model() : null,
+    dimensions: effective ? effective.dimensions() : null,
+    last_indexed: null,
+  });
+}
+
+/**
  * Build and embed each planned artifact's documents. A failure fails its own
  * artifact alone.
  * @param {Array<{artifact: Artifact, state: 'new'|'changed'}>} planned
@@ -1457,11 +1518,12 @@ function reportIndex({ built, failures, retired, unchanged }) {
 }
 
 /**
- * Bring the store in line with the files (see planIndex). Everything new or
- * changed is built and embedded first; then, under the lock, the manifests
- * are read again — a topic retired mid-run leaves in the same run — and the
- * documents and the retirements land in one load and one save. Every file is
- * attempted; a failure is counted in the returned summary.
+ * Bring the store in line with the files (see planIndex), creating it first
+ * when the checkout has none. Everything new or changed is built and
+ * embedded first; then, under the lock, the manifests are read again — a
+ * topic retired mid-run leaves in the same run — and the documents and the
+ * retirements land in one load and one save. Every file is attempted; a
+ * failure is counted in the returned summary.
  * @returns {Promise<{new: number, changed: number, removed: number, unchanged: number, failed: number}>}
  */
 async function cmdIndexBulk(options, cfg, provider) {
@@ -1479,7 +1541,8 @@ async function cmdIndexBulk(options, cfg, provider) {
     ...plan.changed.map((artifact) => ({ artifact, state: 'changed' })),
   ], embedder);
 
-  const retired = built.length === 0 && plan.retired.length === 0 ? [] : await writeStore({
+  const inLine = snapshot.db !== null && built.length === 0 && plan.retired.length === 0;
+  const retired = inLine ? [] : await writeStore({
     cfg,
     provider: embedder,
     built,
@@ -1975,58 +2038,48 @@ async function cmdQuery(args, options, cfg, provider) {
 // ---------------------------------------------------------------------------
 
 async function cmdCheck(/* args, options, cfg, provider */) {
-  const kDir = knowledgeDir();
-  const configFile = path.join(kDir, 'config.json');
+  process.stdout.write(`${await readiness()}\n`);
+}
+
+/**
+ * `ready` — set up, and the store is loadable with its metadata;
+ * `buildable` — set up (the committed project config), no store on this
+ * checkout, and this machine's config says how to build one; `not-ready` —
+ * anything else.
+ * @returns {Promise<'ready'|'buildable'|'not-ready'>}
+ */
+async function readiness() {
+  const configFile = path.join(knowledgeDir(), 'config.json');
   const sp = storePath();
 
-  // Condition 1: directory exists.
-  if (!fs.existsSync(kDir)) {
-    process.stdout.write('not-ready\n');
-    return;
-  }
+  if (!fs.existsSync(configFile)) return 'not-ready';
 
-  // Condition 2: config.json exists.
-  if (!fs.existsSync(configFile)) {
-    process.stdout.write('not-ready\n');
-    return;
-  }
-
-  // Condition 2b: config.json parses and has the expected shape.
-  // Without this, a corrupted config would pass `check` and the user
-  // would only see the JSON parse error later on `index` or `query`,
-  // with no hint that the root cause is the config file itself.
+  // A corrupted config would otherwise pass `check`, and the user would only
+  // see the JSON parse error later on `index` or `query`, with no hint that
+  // the root cause is the config file itself.
   try {
     config.readConfigFile(configFile);
   } catch (err) {
     process.stderr.write(`config error: ${err.message}\n`);
-    process.stdout.write('not-ready\n');
-    return;
+    return 'not-ready';
   }
 
-  // Condition 3: store.msp exists and is loadable.
-  if (!fs.existsSync(sp)) {
-    process.stdout.write('not-ready\n');
-    return;
-  }
+  if (!fs.existsSync(sp)) return storeBuildable() ? 'buildable' : 'not-ready';
 
   try {
     await store.loadStore(sp);
   } catch (_) {
-    process.stdout.write('not-ready\n');
-    return;
+    return 'not-ready';
   }
 
-  // Condition 4: metadata.json exists. A store WITHOUT metadata is the
-  // partial state `query` refuses ("metadata.json missing but store exists")
-  // and that setup/setup-forms refuse toward rebuild — so `check` must not
-  // report it ready. Without this, boot's gate would pass and the failure
-  // would only surface later on the first query.
-  if (!fs.existsSync(metadataPath())) {
-    process.stdout.write('not-ready\n');
-    return;
-  }
+  // A store WITHOUT metadata is the partial state `query` refuses
+  // ("metadata.json missing but store exists") and that setup/setup-forms
+  // refuse toward rebuild — so `check` must not report it ready. Without
+  // this, boot's gate would pass and the failure would only surface later on
+  // the first query.
+  if (!fs.existsSync(metadataPath())) return 'not-ready';
 
-  process.stdout.write('ready\n');
+  return 'ready';
 }
 
 // ---------------------------------------------------------------------------
@@ -2174,6 +2227,10 @@ async function cmdRebuild(_args, options, cfg, provider) {
   const mp = metadataPath();
   const lp = lockFilePath();
 
+  // Refuse before anything is touched when the rebuilt store could not take
+  // the configured mode.
+  newStoreMode(cfg, provider);
+
   process.stderr.write(
     'Warning: This will delete the existing index and rebuild from scratch.\n' +
     'This is non-deterministic — the rebuilt index will differ from the original.\n' +
@@ -2224,20 +2281,9 @@ async function cmdRebuild(_args, options, cfg, provider) {
     if (fs.existsSync(sp)) fs.renameSync(sp, spBak);
     if (fs.existsSync(mp)) fs.renameSync(mp, mpBak);
 
-    // Write a sentinel empty store + keyword-only metadata so cmdCheck
-    // and concurrent invocations see a valid (empty) state. The bulk
-    // index below overwrites them.
-    const dims = provider
-      ? provider.dimensions()
-      : (cfg && cfg.dimensions) || KEYWORD_ONLY_DIMENSIONS;
-    const emptyDb = await store.createStore(dims);
-    await store.saveStore(emptyDb, sp);
-    store.writeMetadata(mp, {
-      provider: provider ? cfg.provider : null,
-      model: provider ? provider.model() : null,
-      dimensions: provider ? provider.dimensions() : null,
-      last_indexed: new Date().toISOString(),
-    });
+    // Write a sentinel empty store + metadata so cmdCheck and concurrent
+    // invocations see a valid (empty) state. The bulk index below fills it.
+    await writeEmptyStore(cfg, provider);
   });
   process.stdout.write('Deleted existing index.\n');
 

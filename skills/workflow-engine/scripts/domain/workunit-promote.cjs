@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
@@ -279,7 +279,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   knowledge(cwd, ['index', INDEXED_ARTIFACTS.specification(to, to)], `knowledge index (specification/${to})`, warnings);
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', topic], `knowledge remove (specification/${topic})`, warnings);
 
-  const outcome = commitTailWithKb(
+  const outcome = commitTailPathspec(
     cwd,
     [`.workflows/${workUnit}`, `.workflows/${to}`, '.workflows/manifest.json'],
     `spec(${workUnit}): promote ${topic} to cross-cutting work unit`, warnings);

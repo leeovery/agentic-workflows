@@ -65,7 +65,7 @@ The prose should have taken this path:
     left open (never a quoted claim — the defect is an omission) and
     recording the derivation; the specification is re-indexed with a
     single-file knowledge index; and one scoped commit lands carrying
-    --topic specification/pay, --kb and --sweep. No menu is rendered for
+    --topic specification/pay and --sweep. No menu is rendered for
     it, no question is asked, no scripted answer is consumed, and the
     specification item's status is never touched
 12. because the entry is settled by the corrigendum route it stages

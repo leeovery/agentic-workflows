@@ -51,7 +51,7 @@ Expected path:
 10. the edited discussion is re-indexed through the knowledge CLI; the
     sources-stale step is **skipped** — single-topic work has no
     sibling specifications — and the resolution commits scoped to the
-    discussion with the sweep shape (`--topic discussion/pay --kb
+    discussion with the sweep shape (`--topic discussion/pay
     --sweep`)
 11. the discussion now carries the decision, and that is the record
     that settles the specification: the correction route runs over this
@@ -62,7 +62,7 @@ Expected path:
     a dated corrigendum attributed to `planning/pay` is appended citing
     the decision the discussion now carries, the specification is
     re-indexed, and one scoped commit lands carrying `--topic
-    specification/pay`, `--kb` and `--sweep`
+    specification/pay` and `--sweep`
 12. the landing changed the specification, so the task designer is
     re-invoked through its amendment path with the correction as
     feedback; its second stubbed return carries the same two-task table

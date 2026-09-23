@@ -51,7 +51,7 @@ The prose should have taken this path:
     written into the file's `## Open Threads` — the label-refresh
     question, the tail-group size question, the tail-share measurement,
     the human-raters panel with its parked note — then `topic complete`,
-    the `--kb` commit, the sweep, the closing recap, the discussion
+    the conclusion commit, the sweep, the closing recap, the discussion
     signpost, and the bridge hand-off, where the walk stops
 
 Claims — the fold on resume is the behaviour under test:

@@ -10,24 +10,30 @@
 // error — migrations must never half-run silently. A run that recorded
 // migrations without changing a document leaves the tracking ledger as the
 // only dirt, and no reviewed commit follows a report of no changes, so boot
-// commits that line itself — this run's, or one an earlier boot stranded. The
-// knowledge base is a derived index: a failing `check` reports "not-ready"
-// (the caller's gate — boot never initialises anything itself; a not-ready
-// response additionally carries the system-config report so the gate can offer
-// setup without extra probes). A failing bulk index or compact is a warning,
-// never a block. Store dirt found when ready is committed (the post-setup
-// first boot, the bulk index's or compact's writes, or leftovers).
+// commits that line itself — this run's, or one an earlier boot stranded.
+//
+// The knowledge store is a derived index every checkout builds for itself,
+// never committed: boot stops git tracking whatever of it an earlier version
+// committed, and keeps the store listed in `.worktreeinclude` so a new
+// worktree starts with a copy. A project set up elsewhere (its committed
+// config) whose checkout has no store gets one built by the bulk index when
+// this machine's config says how — `check` answers `buildable`. Anything
+// else not-ready is the caller's gate: boot never sets a project up itself,
+// and a not-ready response carries the system-config report so the gate can
+// offer setup without extra probes. A failing bulk index or compact is a
+// warning, never a block.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git } = require('../kernel/git.cjs');
+const { git, trackedPaths } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
-const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
-const { knowledge: runKnowledge, spawnKnowledge } = require('./kb.cjs');
+const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
+const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR, KNOWLEDGE_CONFIG } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, SETTINGS_SPEC } = require('./session-label.cjs');
+const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 
@@ -83,12 +89,12 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing
  * @property {boolean} compacted
- * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (knowledge index, compaction, store commit, ledger commit, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (knowledge index, compaction, the store's untracking, ledger commit, the worktree include, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
+ * @property {boolean} worktree_include_installed this boot wrote the store's files into `.worktreeinclude`; false when it already listed them
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -271,42 +277,8 @@ function boot(cwd) {
     }
   }
 
-  const check = spawnKnowledge(cwd, ['check']);
-  const ready = !check.error && check.status === 0 && (check.stdout || '').trim() === 'ready';
-
-  const knowledge = ready ? 'ready' : 'not-ready';
-
-  let indexed = false;
-  let compacted = false;
-  if (ready) {
-    indexed = runKnowledge(cwd, ['index'], 'knowledge index', warnings);
-    compacted = runKnowledge(cwd, ['compact'], 'knowledge compact', warnings);
-  }
-
-  // Commit the knowledge-store dirt this boot found (a fresh store from the
-  // user's `knowledge setup` run — the restart's first boot — the bulk
-  // index's or compact's writes, or leftovers from an interrupted session).
-  // The store is a derived index and boot must stay usable, so a commit
-  // failure is a warning, never a block.
-  /** @type {string|null} */
-  let kbCommitted = null;
-  if (ready) {
-    try {
-      const status = fs.existsSync(path.join(cwd, KB_DIR))
-        ? git(cwd, ['status', '--porcelain', '--', KB_DIR])
-        : '';
-      if (status.trim() !== '') {
-        // Untracked store files mean this is their first commit — the boot
-        // right after `knowledge setup` created them.
-        const message = status.split('\n').some((l) => l.startsWith('??'))
-          ? 'chore(knowledge): initialise store'
-          : 'chore(knowledge): sync store';
-        kbCommitted = commitPathspecScoped(cwd, KB_DIR, message);
-      }
-    } catch (err) {
-      warnings.push(`knowledge store commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
+  untrackStore(cwd, warnings);
+  const { knowledge, indexed, compacted } = syncKnowledge(cwd, warnings);
 
   // The session hooks live in the project's settings, so every boot
   // re-syncs them: SessionEnd's `presence cleanup` for every project — a
@@ -331,17 +303,89 @@ function boot(cwd) {
     }
   }
 
+  const worktreeIncludeInstalled = installWorktreeInclude(cwd, warnings);
+
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), indexed, compacted, kb_committed: kbCommitted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.
-  if (!ready) result.system_config = detectSystemConfig();
+  if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return result;
+}
+
+/**
+ * Stop git tracking whatever an earlier version committed from the
+ * knowledge directory besides its config — the store, its metadata, a
+ * rebuild's backups: one confined commit records their removal and the
+ * files stay on disk. It runs before the migration commit that lands their
+ * ignore rules, and holds without it — the rules are live in the working
+ * tree from the moment the migration writes them. Nothing tracked, nothing
+ * done; a failure is a warning, and the next boot tries again.
+ * @param {string} cwd @param {string[]} warnings
+ */
+function untrackStore(cwd, warnings) {
+  try {
+    const derived = trackedPaths(cwd, [KNOWLEDGE_DIR]).filter((p) => p !== KNOWLEDGE_CONFIG);
+    if (derived.length > 0) commitUntrackScoped(cwd, derived, 'chore(knowledge): stop tracking the store');
+  } catch (err) {
+    warnings.push(`knowledge store untracking failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * `knowledge check`'s answer; a check that cannot run reads not-ready.
+ * @param {string} cwd
+ * @returns {'ready'|'buildable'|'not-ready'}
+ */
+function knowledgeState(cwd) {
+  const check = spawnKnowledge(cwd, ['check']);
+  if (check.error || check.status !== 0) return 'not-ready';
+  const answer = (check.stdout || '').trim();
+  return answer === 'ready' || answer === 'buildable' ? answer : 'not-ready';
+}
+
+/**
+ * The knowledge legs: the bulk index brings the store in line with the
+ * files — building it where the checkout has none and `check` found the
+ * config says how, then asking `check` again whether the build stood —
+ * and compact runs over a ready store. Each failing step is a warning.
+ * @param {string} cwd @param {string[]} warnings
+ * @returns {{knowledge: BootResult['knowledge'], indexed: boolean, compacted: boolean}}
+ */
+function syncKnowledge(cwd, warnings) {
+  const state = knowledgeState(cwd);
+  if (state === 'not-ready') return { knowledge: 'not-ready', indexed: false, compacted: false };
+  const indexed = runKnowledge(cwd, ['index'], 'knowledge index', warnings);
+  const knowledge = state === 'ready' || knowledgeState(cwd) === 'ready' ? 'ready' : 'not-ready';
+  const compacted = knowledge === 'ready' && runKnowledge(cwd, ['compact'], 'knowledge compact', warnings);
+  return { knowledge, indexed, compacted };
+}
+
+/**
+ * Keep the store listed in `.worktreeinclude` so a new worktree starts with
+ * a copy, committed confined when this boot wrote it. A file that cannot be
+ * written or committed is a warning, never a block.
+ * @param {string} cwd @param {string[]} warnings
+ * @returns {boolean} this boot wrote the file
+ */
+function installWorktreeInclude(cwd, warnings) {
+  const include = syncWorktreeInclude(cwd);
+  if (include.error) {
+    warnings.push(`worktree include not written: ${include.error}`);
+    return false;
+  }
+  if (!include.changed) return false;
+  try {
+    commitPathspecScoped(cwd, WORKTREE_INCLUDE, 'chore: copy the knowledge store into new worktrees');
+  } catch (err) {
+    warnings.push(`worktree include commit failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return true;
 }
 
 module.exports = { boot, detectSystemConfig };

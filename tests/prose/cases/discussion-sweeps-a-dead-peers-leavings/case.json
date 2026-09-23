@@ -49,13 +49,13 @@
     "calls_include": [
       "render conclude-gate search-relevance.discussion.behavioural-ranking",
       "topic complete search-relevance discussion behavioural-ranking",
-      "--topic discussion/behavioural-ranking --kb",
+      "complete behavioural-ranking discussion",
       "presence scan search-relevance",
       "--topic discussion/synonym-handling --sweep"
     ],
     "calls_in_order": [
       "topic complete search-relevance discussion behavioural-ranking",
-      "--topic discussion/behavioural-ranking --kb",
+      "complete behavioural-ranking discussion",
       "presence scan search-relevance",
       "--topic discussion/synonym-handling --sweep"
     ],

@@ -51,7 +51,7 @@
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "discussion(pay/pay):",
-      "--topic discussion/pay --kb --sweep",
+      "--topic discussion/pay --sweep",
       "manifest set pay.specification.pay review_cycle=1",
       "review_baseline_words=",
       "render spec-completion-gate pay.specification.pay --variant signoff",
@@ -63,7 +63,7 @@
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
-      "--topic discussion/pay --kb --sweep",
+      "--topic discussion/pay --sweep",
       "manifest set pay.specification.pay review_cycle=1",
       "topic complete pay specification pay"
     ],
