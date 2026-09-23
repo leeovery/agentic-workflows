@@ -7,7 +7,8 @@ The engine states each gate as data beside the menu it composed. This mod
 announces itself at the session's start so the engine collects that data, arms
 the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
-scrolls. Nothing in the workflows' prose changes.
+scrolls; while any screen but the terminal is attached, it leaves the menu as
+text so every screen shows it. Nothing in the workflows' prose changes.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which is what the workflows already read. Once a click
@@ -21,14 +22,17 @@ click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 
 Esc on the turn an answer started puts its gate back, dropping whatever that
-turn drew; so does a turn the person did not start — a background agent's
-report, a scheduled prompt — that ends without a gate of its own.
+turn drew, as long as no tool has run in it; once one has, the band stays
+empty, since the mod cannot tell a read from a write. A turn the person did
+not start — a background agent's report, a scheduled prompt — that ends
+without a gate of its own puts back the gate still waiting on them. A `/clear`
+takes the gate off the band.
 
-The engine emits the menu regardless, so a mod that is off, broken or absent
-leaves the text menu exactly as it was.
+The engine emits the menu regardless, so a mod that is off or absent leaves
+the text menu exactly as it was.
 
-The workflows' start menu asks once per project whether to turn this on, and
-records the answer; it is the only thing that does.
+`/workflow-start` asks once per project, before its start menu, whether to
+turn this on, and records the answer; it is the only thing that asks.
 
 ## Working on it
 

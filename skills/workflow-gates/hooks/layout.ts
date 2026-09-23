@@ -206,8 +206,8 @@ const paragraphs = (
         .flatMap(line => wrapRuns([{ ...style, text: line }], width))
 
 /**
- * The bar's two columns for a band this wide: the keys, and the labels beside
- * them. The bar has no frame, so the row is gutter, key, gap, label.
+ * The band's two columns at this width: the keys, and the labels beside
+ * them. The band has no frame, so a row is gutter, key, gap, label.
  */
 export function geometry(gate: Gate, columns: number) {
   const keyWidth = Math.max(

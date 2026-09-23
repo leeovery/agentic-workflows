@@ -4,7 +4,7 @@
  * row already picked, sends it; a click on a typed row only tells the person
  * how to answer it.
  *
- * Colours are theme keys, never values, so the bar resolves against the
+ * Colours are theme keys, never values, so the band resolves against the
  * person's theme — the ANSI themes included, where the palette is the
  * terminal's own and a raw colour would be ignored.
  */
