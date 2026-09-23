@@ -131,11 +131,21 @@ The map can change between staging and this write — a prior session's gate run
 
 Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes `gap-analysis`, extend it comma-joined. Record `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status resolved`; nothing is added to `tracker`.
 
+**If `postpone_after` is `true`:**
+
+The row is on the map under another path's provenance, so there is still a whole topic for the postpone to take.
+
+→ Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
+
+→ On return, return to **B. Gate Each Candidate**.
+
+**Otherwise:**
+
 → Return to **B. Gate Each Candidate**.
 
 **If refused as dismissed** (the user dismissed this name since staging):
 
-Honour the dismissal. Record the candidate `skipped` (same write as the skip arm) — the name is already on the dismissed list, no push needed.
+Honour the dismissal. Record the candidate `skipped` (same write as the skip arm) — the name is already on the dismissed list, no push needed. When `postpone_after` is `true`, tell the user in one line that the name was dismissed since staging, so nothing was postponed.
 
 → Return to **B. Gate Each Candidate**.
 
