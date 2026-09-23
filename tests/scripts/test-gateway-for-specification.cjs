@@ -220,6 +220,47 @@ describe('workflow-specification-entry discovery', () => {
     assert.deepStrictEqual(r.discussions, []);
   });
 
+  it('a lone postponed discussion is no discussion at all — the entry reads blocked-no-discussions', () => {
+    createManifest(dir, 'mvp', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { away: { routing: 'discussion', source: 'discovery', postponed: true } } },
+        discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
+      },
+    });
+    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.discussion_count, 0);
+    assert.strictEqual(r.current_state.has_discussions, false, 'a topic that left for the roadmap must not read as one still in progress');
+    assert.deepStrictEqual(r.discussions, []);
+    const view = spawnSync('node', [GATEWAY, 'view', 'mvp'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(view.status, 0, view.stderr);
+    assert.ok(view.stdout.includes('scenario: blocked-no-discussions'), view.stdout);
+  });
+
+  it('a postponed discussion drops out of the counts and the list beside a live one', () => {
+    createManifest(dir, 'mvp', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          away: { routing: 'discussion', source: 'discovery', postponed: true },
+          billing: { routing: 'discussion', source: 'discovery' },
+        } },
+        discussion: { items: {
+          away: { status: 'postponed', previous_status: 'completed' },
+          billing: { status: 'completed' },
+        } },
+      },
+    });
+    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
+    createFile(dir, '.workflows/mvp/discussion/billing.md', '# Discussion: Billing\n');
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.discussion_count, 1);
+    assert.strictEqual(r.current_state.completed_count, 1);
+    assert.deepStrictEqual(r.discussions.map((d) => d.name), ['billing']);
+    assert.ok(!format(r).includes('away'), format(r));
+  });
+
   it('detects valid cache from manifest checksum', () => {
     const crypto = require('crypto');
     const checksum = crypto.createHash('md5').update('# Auth').digest('hex');

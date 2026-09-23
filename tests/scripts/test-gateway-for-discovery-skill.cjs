@@ -627,7 +627,7 @@ describe('workflow-discovery format', () => {
 
   // --- map_summary line ---
 
-  it('map_summary line includes total and all six counts', () => {
+  it('map_summary line includes total and all seven counts, the postponed among them', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
@@ -635,12 +635,13 @@ describe('workflow-discovery format', () => {
           items: {
             'a': { status: 'in-progress', routing: 'research', source: 'discovery' },
             'b': { status: 'in-progress', routing: 'discussion', source: 'discovery' },
+            'c': { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
       },
     });
     const out = format(discover(dir, 'payments'));
-    assert.match(out, /map_summary: 2 topics — 0 decided, 0 in-flight, 0 ready, 2 fresh, 0 handled, 0 cancelled/);
+    assert.match(out, /map_summary: 3 topics — 0 decided, 0 in-flight, 0 ready, 2 fresh, 0 handled, 0 cancelled, 1 postponed\n/);
   });
 
   it('map_summary line for empty map reads "0 topics — ..."', () => {
@@ -828,7 +829,7 @@ describe('workflow-discovery format', () => {
     assert.strictEqual(out, [
       '=== DISCOVERY: payments ===',
       'description: Test: payments',
-      'map_summary: 0 topics — 0 decided, 0 in-flight, 0 ready, 0 fresh, 0 handled, 0 cancelled',
+      'map_summary: 0 topics — 0 decided, 0 in-flight, 0 ready, 0 fresh, 0 handled, 0 cancelled, 0 postponed',
       'discovery_map (0):',
       '  (empty)',
       'dismissed (0):',
@@ -865,7 +866,7 @@ describe('workflow-discovery format', () => {
     assert.strictEqual(out, [
       '=== DISCOVERY: payments ===',
       'description: Test: payments',
-      'map_summary: 2 topics — 0 decided, 1 in-flight, 0 ready, 1 fresh, 0 handled, 0 cancelled',
+      'map_summary: 2 topics — 0 decided, 1 in-flight, 0 ready, 1 fresh, 0 handled, 0 cancelled, 0 postponed',
       'discovery_map (2):',
       '  - ◐ auth-flow [researching] routing=research phase=research — OAuth vs sessions',
       '  - ○ billing [fresh] routing=discussion source=gap-analysis',

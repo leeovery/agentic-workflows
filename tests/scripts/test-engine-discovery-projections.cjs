@@ -287,7 +287,7 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a code block) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
-    assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled/);
+    assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled, 0 postponed/);
     assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware\n  │     ↳ Research complete · ready for discussion'));
   });
 

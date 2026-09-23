@@ -43,9 +43,10 @@ function discover(cwd, workUnit) {
     const specItemsList = phaseItems(m, 'specification');
 
     for (const item of discItemsList) {
-      // Cancelled is closed; triaged is pre-live (a stub of parked rerouted
-      // concerns, never discussed) — neither is a discussion to count.
-      if (item.status === 'cancelled' || item.status === 'triaged') continue;
+      // Cancelled is closed and postponed has left for the roadmap; triaged
+      // is pre-live (a stub of parked rerouted concerns, never discussed) —
+      // none of the three is a discussion to count.
+      if (item.status === 'cancelled' || item.status === 'postponed' || item.status === 'triaged') continue;
       discCount++;
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
