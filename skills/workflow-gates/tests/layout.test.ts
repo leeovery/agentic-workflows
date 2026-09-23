@@ -24,6 +24,8 @@ const optionOf = (over: Partial<Option> = {}): Option => ({
   word: null,
   head: 'Continue "Auth"',
   tail: null,
+  cue: null,
+  holder: null,
   detail: null,
   struck: false,
   recommended: false,
@@ -65,6 +67,24 @@ const read = (line: Line): string => {
 
 const rowsOf = (lines: Line[]) =>
   lines.filter((line): line is RowLine => line.kind === 'option' || line.kind === 'typed')
+
+const HOLDER = 'in session (last active 4m ago)'
+
+/** A row another session holds, its tail flagged. */
+const held = (over: Partial<Option> = {}) =>
+  optionOf({
+    tail: 'discussion',
+    cue: 'input moved',
+    holder: HOLDER,
+    struck: true,
+    ...over,
+  })
+
+/** A row's label runs, the padding that fills its column dropped. */
+const labelOf = (option: Option, columns = 120) =>
+  rowsOf(linesOf(gateOf({ options: [option] }), columns))
+    .flatMap(line => line.runs)
+    .filter(run => run.text.trim() !== '')
 
 describe('layout', () => {
   test('a row is pressed, and answers, by its word where it has one', () => {
@@ -220,18 +240,64 @@ describe('layout', () => {
     expect(line).toMatchObject({ kind: 'option', index: 0 })
 
     expect(line?.runs.slice(0, 3)).toEqual([
-      { text: 'Continue "Auth"', strikethrough: false },
+      { text: 'Continue "Auth"' },
       { text: ' — research', dim: true, italic: true },
       { text: ' (recommended)' },
     ])
   })
 
-  test('a struck row carries the strike on its head alone', () => {
-    const gate = gateOf({ options: [optionOf({ struck: true, tail: 'discussion' })] })
-    const [line] = rowsOf(linesOf(gate, 72))
+  test('a cue draws plain after a dot, so it reads as a flag on the tail', () => {
+    expect(labelOf(optionOf({ tail: 'discussion', cue: 'input moved' }))).toEqual([
+      { text: 'Continue "Auth"' },
+      { text: ' — discussion', dim: true, italic: true },
+      { text: ' · input moved' },
+    ])
+  })
 
-    expect(line?.runs[0]).toEqual({ text: 'Continue "Auth"', strikethrough: true })
-    expect(line?.runs[1]?.strikethrough).toBeUndefined()
+  test('a held row is struck from its head through its cue, its holder plain after the strike', () => {
+    expect(labelOf(held({ recommended: true }))).toEqual([
+      { text: 'Continue "Auth"', strikethrough: true },
+      { text: ' — discussion', dim: true, italic: true, strikethrough: true },
+      { text: ' · input moved', strikethrough: true },
+      { text: ` · ${HOLDER}` },
+      { text: ' (recommended)' },
+    ])
+  })
+
+  test('a held row with no tail strikes its head alone', () => {
+    expect(labelOf(held({ tail: null, cue: null }))).toEqual([
+      { text: 'Continue "Auth"', strikethrough: true },
+      { text: ` · ${HOLDER}` },
+    ])
+  })
+
+  test('a held row wrapped over lines keeps its strike to the cue and its holder out of it', () => {
+    const lines = rowsOf(linesOf(gateOf({ options: [held()] }), 32))
+    const said = (struck: boolean) =>
+      lines
+        .flatMap(line => line.runs)
+        .filter(run => (run.strikethrough === true) === struck)
+        .map(run => run.text)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    expect(lines.length).toBeGreaterThan(2)
+    expect(said(true)).toBe('Continue "Auth" — discussion · input moved')
+    expect(said(false)).toBe(`· ${HOLDER}`)
+  })
+
+  test('a bare yes/no row draws its key alone, no label beside it', () => {
+    const gate = gateOf({
+      options: [
+        optionOf({ key: 'y', word: 'yes', head: '' }),
+        optionOf({ key: 'n', word: 'no', head: '' }),
+      ],
+    })
+    const lines = rowsOf(linesOf(gate, 72))
+
+    expect(lines.map(read)).toEqual(['o0 yes', 'o1 no'])
+    expect(lines.flatMap(line => line.runs).every(run => run.text.trim() === '')).toBe(true)
   })
 
   test("a row's key is underlined where its word spells it", () => {
