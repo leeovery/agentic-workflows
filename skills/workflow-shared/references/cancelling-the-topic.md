@@ -6,8 +6,9 @@
 
 The caller provides `work_unit`, `topic`, and `phase` (the session's own). The user has said to cancel, or the conversation has agreed the topic is not worth pursuing. Cancel says one thing: we are not doing this topic.
 
-Three neighbours it is not:
+Four neighbours it is not:
 
+- **Postpone.** "Doing this later" — the topic leaves whole for the roadmap and comes back by the pull; that is the postponing door.
 - **A done-signal.** The work reached its end and the record stands — that is the phase's own conclusion.
 - **A sign-off that leaves the topic open.** Nothing is called off; commit what the session has written and end the turn.
 - **Research's dead end.** Research that ran and leaves the product nothing to carry forward under its own name concludes at its conclude gate as a dead end, and the topic stays on the map as the record that the question was answered.
