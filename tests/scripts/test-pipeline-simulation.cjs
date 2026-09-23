@@ -481,11 +481,9 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
 }
 
 function walkDeliveryPhases(sim, wu, topic, { sources }) {
-  // Specification. The entry confirms before the handoff, then the source
-  // gate holds engine-side: completion refuses while any row is still
-  // pending, then clears once every row incorporates.
+  // Specification. The source gate holds engine-side: completion refuses
+  // while any row is still pending, then clears once every row incorporates.
   label(sim, wu, 'specification', topic);
-  sim.render(['spec-confirm-gate', wu], { expect: 'content' });
   sim.run(['topic', 'start', wu, 'specification', topic]);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'pending']);
@@ -1665,30 +1663,40 @@ describe('pipeline simulation', () => {
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
-    sim.render(['spec-confirm-gate', wu], { expect: 'content' });
+    // The analysis reconciles its grouping into a proposed item, and the
+    // entry confirms the pick before the handoff starts it — the consult
+    // references, held in the analysis doc, ride as the payload.
+    const grouping = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.alpha`, fields: { status: 'proposed', 'sources.alpha.status': 'pending' } }]);
+    sim.run(['manifest', 'apply', wu, '--file', grouping]);
+    const consult = sim.write(`.workflows/.cache/${wu}/specification/alpha/consult.json`,
+      { consult: [{ name: 'beta', hint: 'the hand-off alpha owes' }] });
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.alpha`, '--variant', 'create', '--file', consult],
+      { expect: 'content' }), /Creating specification: Alpha\n\nSources:\n {2}• alpha\n\nConsult references \(read narrowly — do not extract\):\n {2}• beta — the hand-off alpha owes\n/);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
+    sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
     sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
-    // The unify route confirms through the same gate the create route took.
-    sim.render(['spec-confirm-gate', wu], { expect: 'content' });
-    sim.run(['topic', 'start', wu, 'specification', 'unified']);
-    sim.run(['manifest', 'set', `${wu}.specification.unified`,
-      'sources.alpha.status=pending', 'sources.beta.status=pending']);
-    // Birth rides the reconcile: the grouping's apply carries the order
-    // fields (bare numbers — the field surface refuses a quoted one), and a
-    // later regroup renumbers the whole live set through the same door.
-    // The reconcile carries the conditional stale delete the prose collects:
-    // a spec completed above, so `manifest exists` answers true and the
-    // apply clears the flag alongside the birth orders.
+    // Unify reconciles before its confirm: the proposed `unified` item with
+    // every completed discussion pending, and its birth order, ride one
+    // apply (bare numbers — the field surface refuses a quoted one); a later
+    // regroup renumbers the whole live set through the same door. The apply
+    // carries the conditional stale delete the prose collects: a spec
+    // completed above, so `manifest exists` answers true and the flag clears
+    // alongside the birth orders.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.specification`, 'build_order_stale']), 'true');
-    const birthOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
-      [{ op: 'set', path: `${wu}.specification.unified`, fields: { order: 1 } },
+    const birthOps = sim.write(`.workflows/.cache/${wu}/specification/unify-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.unified`,
+        fields: { status: 'proposed', 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending', order: 1 } },
        { op: 'set', path: `${wu}.specification.alpha`, fields: { order: 2 } },
        { op: 'delete', path: `${wu}.specification`, field: 'build_order_stale' }]);
     sim.run(['manifest', 'apply', wu, '--file', birthOps]);
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
     assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
       'the reconcile is the sequencing — its apply clears the flag');
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'unify'], { expect: 'content' }),
+      /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md → will be superseded\n/);
+    sim.run(['topic', 'start', wu, 'specification', 'unified']);
     const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
        { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
@@ -1780,10 +1788,18 @@ describe('pipeline simulation', () => {
     assert.ok(unifiedRow, 'staled spec stays actionable');
     assert.strictEqual(unifiedRow.verb, 'Continuing');
     assert.strictEqual(unifiedRow.stale, 1);
+    // The continue confirms the reconcile it is about to run, and refuses
+    // the refine the stale row rules out.
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'continue'], { expect: 'content' }),
+      /Sources re-decided since extraction \(reconcile\):\n {2}• beta \[stale\]\n\nPreviously extracted \(for reference\):\n {2}• alpha\n/);
+    sim.refuses(['render', 'spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'refine'],
+      /"unified" reads Continuing — the refine confirm does not serve it/);
     // Reconciliation: the advisory clears the flag at spec entry; the
-    // diff-guided re-extraction re-incorporates the row.
+    // diff-guided re-extraction re-incorporates the row, and the spec reads
+    // as a refine again.
     sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
+    sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'refine'], { expect: 'content' });
 
     // A BARE triage landing on the spec'd completed discussion takes the
     // same hop — no completed→in-progress transition skips it.

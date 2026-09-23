@@ -106,7 +106,7 @@ function sourceTag(src) {
   return reopened ? 'extracted, reopened' : 'extracted';
 }
 
-/** @param {SpecRow} row */
+/** @param {{status: string, pending: number, stale: number}} row */
 function rowVerb(row) {
   if (row.status === 'proposed') return 'Creating';
   if (row.status === 'completed' && row.pending === 0 && row.stale === 0) return 'Refining';
@@ -270,4 +270,4 @@ function specificationDetail(workUnit, result, opts = {}) {
   };
 }
 
-module.exports = { specificationDetail, sourceTag };
+module.exports = { specificationDetail, sourceTag, rowVerb };
