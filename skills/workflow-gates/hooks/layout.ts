@@ -14,6 +14,8 @@ export type Option = {
   word: string | null
   head: string
   tail: string | null
+  cue: string | null
+  holder: string | null
   detail: string | null
   struck: boolean
   recommended: boolean
@@ -85,6 +87,7 @@ const GAP = 2
 const MIN_LABEL = 8
 
 const TAIL_SEPARATOR = ' — '
+const NOTE_SEPARATOR = ' · '
 const RECOMMENDED = ' (recommended)'
 
 const IDLE_HINT =
@@ -246,13 +249,34 @@ function keyRuns(option: Option): Run[] {
   ].filter(run => run.text !== '')
 }
 
-const labelRuns = (option: Option): Run[] => [
-  { text: option.head, strikethrough: option.struck },
-  ...(option.tail === null
-    ? []
-    : [{ text: `${TAIL_SEPARATOR}${option.tail}`, dim: true, italic: true }]),
-  ...(option.recommended ? [{ text: RECOMMENDED }] : []),
-]
+/** A label part after its separator; nothing for a part the row lacks. */
+const partRuns = (
+  separator: string,
+  text: string | null,
+  style: Omit<Run, 'text'> = {},
+): Run[] => (text === null ? [] : [{ text: `${separator}${text}`, ...style }])
+
+/**
+ * A row's label by the text menu's grammar: the tail dim and italic after a
+ * dash, a cue plain after a dot so it reads as a flag, a held row struck from
+ * its head through its cue with the holder plain after the strike, and the
+ * recommendation last.
+ */
+function labelRuns(option: Option): Run[] {
+  const strike = option.struck ? { strikethrough: true } : {}
+
+  return [
+    { text: option.head, ...strike },
+    ...partRuns(TAIL_SEPARATOR, option.tail, {
+      ...strike,
+      dim: true,
+      italic: true,
+    }),
+    ...partRuns(NOTE_SEPARATOR, option.cue, strike),
+    ...partRuns(NOTE_SEPARATOR, option.holder),
+    ...(option.recommended ? [{ text: RECOMMENDED }] : []),
+  ]
+}
 
 /** The pressable rows and then the typed ones, each followed by its detail. */
 function rowLines(gate: Gate, columns: number): RowLine[] {
