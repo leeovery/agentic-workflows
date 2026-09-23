@@ -23,8 +23,12 @@ const {
   planTopicsMenu,
   completedView,
 } = require('../../skills/workflow-engine/scripts/domain/projections/start.cjs');
+const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { combinedInbox, workingSetDetail } = require('../../skills/workflow-engine/scripts/domain/inbox-set.cjs');
 const { manageDetail } = require('../../skills/workflow-engine/scripts/domain/workunit-manage.cjs');
+const { auditingRender } = require('./gate-audit.cjs');
+
+const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
@@ -179,7 +183,7 @@ describe('start projections: menu', () => {
     assert.deepStrictEqual(detail.features.work_units.find((u) => u.name === 'dark-mode').triage_phases, ['discussion']);
     assert.strictEqual(detail.features.work_units.find((u) => u.name === 'auth-flow').triage_phases, undefined);
     assert.strictEqual(detail.epics.work_units[0].triage_phases, undefined);
-    const labels = startMenu(detail).keys.map((k) => k.label);
+    const labels = startMenu(detail).keys.map((k) => drawLabel(k.label));
     assert.ok(labels.includes('Continue "Dark Mode" — *feature, discussion (in-progress)* · triage waiting'), labels.join('\n'));
     assert.ok(labels.includes('Continue "Quiz Competition V1" — *epic*'), labels.join('\n'));
   });
@@ -472,7 +476,6 @@ describe('start projections: archived store', () => {
   });
 
   it('the archived-actions and delete gates render over the selected item by its store path, and refuse a path the store does not hold', () => {
-    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
     createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-01--live-idea.md', '# Live Idea\n');
     const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md';
@@ -701,7 +704,7 @@ describe('start projections: baseline rows', () => {
     assert.ok(row, 'in-progress renders the resume row');
     assert.strictEqual(row.key, 'a');
     assert.strictEqual(row.route, '/workflow-baseline');
-    assert.strictEqual(row.label, 'Resume the baseline interview — *2 areas remaining*');
+    assert.strictEqual(drawLabel(row.label), 'Resume the baseline interview — *2 areas remaining*');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('a') < keys.indexOf('s'), 'the resume row precedes the start options');
 
@@ -715,16 +718,16 @@ describe('start projections: baseline rows', () => {
     const inProgress = emptyMenu(startDetail(dir));
     const row = inProgress.keys.find((k) => k.action === 'open_baseline');
     assert.ok(row);
-    assert.strictEqual(row.label, 'Resume the baseline interview — *1 area remaining*');
+    assert.strictEqual(drawLabel(row.label), 'Resume the baseline interview — *1 area remaining*');
 
     writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
     const completed = emptyMenu(startDetail(dir));
-    assert.strictEqual(completed.keys.find((k) => k.action === 'open_baseline').label, 'View or expand the project baseline');
+    assert.strictEqual(drawLabel(completed.keys.find((k) => k.action === 'open_baseline').label), 'View or expand the project baseline');
 
     // The empty state has no manage row, so a declined baseline rides here —
     // the only surface a work-free project renders.
     writeProjectBaseline(dir, { status: 'skipped' });
-    assert.strictEqual(emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_baseline').label, 'Start the project baseline assessment');
+    assert.strictEqual(drawLabel(emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_baseline').label), 'Start the project baseline assessment');
   });
 
   it('every status reaches the baseline from somewhere: empty state, populated menu, or manage', () => {
@@ -785,13 +788,13 @@ describe('start projections: roadmap rows', () => {
     assert.ok(row, 'the layer renders its row');
     assert.strictEqual(row.key, 'r');
     assert.strictEqual(row.route, '/workflow-roadmap open');
-    assert.strictEqual(row.label, 'Open the product roadmap');
+    assert.strictEqual(drawLabel(row.label), 'Open the product roadmap');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
 
     writeProjectRoadmap(dir, { ...MAP, active_session: '002' });
     const resumed = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
-    assert.strictEqual(resumed.label, 'Resume the product session — *roadmap, in progress*');
+    assert.strictEqual(drawLabel(resumed.label), 'Resume the product session — *roadmap, in progress*');
   });
 
   it('both menus carry the h/help row unconditionally — nothing about the project hides the teaching', () => {
@@ -831,7 +834,7 @@ describe('start projections: roadmap rows', () => {
     assert.match(overview, /^No work in flight\.\n\nA product session is open — resume it from the menu\.\n/);
     assert.ok(!overview.includes('No active work found'), 'the empty copy never renders above a resume row');
     const row = emptyMenu(detail).keys.find((k) => k.action === 'open_roadmap');
-    assert.strictEqual(row.label, 'Resume the product session — *roadmap, in progress*');
+    assert.strictEqual(drawLabel(row.label), 'Resume the product session — *roadmap, in progress*');
   });
 });
 
@@ -963,7 +966,6 @@ describe('start projections: manage unit', () => {
   });
 
   it('the absorb-target and plan-topics surfaces render the menus and refuse when their guards fail', () => {
-    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
     createManifest(dir, 'auth-flow', {
       phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
     });
@@ -980,7 +982,6 @@ describe('start projections: manage unit', () => {
   });
 
   it('the absorb confirm gate renders its consent and refuses out of place', () => {
-    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
     createManifest(dir, 'auth-flow', {
       phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
     });

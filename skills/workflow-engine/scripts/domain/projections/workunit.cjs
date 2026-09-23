@@ -224,7 +224,7 @@ function revisitPhasesSection(phases) {
     menuFrame([
       'Which phase would you like to revisit?',
       '',
-      ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — *completed*`)),
+      ...phases.map((phase, i) => cmdOption(String(i + 1), null, { head: titlecase(phase), tail: 'completed' })),
       cmdOption('b', 'back', 'Return to the previous menu'),
     ]),
   );

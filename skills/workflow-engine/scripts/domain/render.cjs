@@ -1410,7 +1410,7 @@ function incoherenceGate(cwd, args) {
         statement: `The gap needs the room. Reopening "${p.doc}" with it pauses this specification until the answer lands; the map offers two other homes.`,
         question: 'Reopen it?',
         rows: [
-          cmdOption('y', 'yes', `Reopen "${p.doc}" with the gap and pause here`),
+          cmdOption('y', 'yes', { head: `Reopen "${p.doc}" with the gap and pause here` }),
           cmdOption('t', 'topic', 'Open a new topic on the map for it — this specification waits for it to conclude'),
           cmdOption('r', 'roadmap', "Park it on the roadmap — outside this specification's scope"),
         ],
@@ -1697,7 +1697,7 @@ function recommendedMenuRows(sides, atMostOne) {
   if (multiline >= 0) throw new Error(`a side is one menu row — sides[${multiline}].summary must be a single line`);
   if (sides.filter((s) => s.recommended === true).length > 1) throw new Error(atMostOne);
   const ordered = [...sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
-  return ordered.map((s, i) => cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
+  return ordered.map((s, i) => cmdOption(String(i + 1), null, { head: s.summary, recommended: s.recommended === true }));
 }
 
 /**
@@ -2892,7 +2892,7 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
     if (!isFilled(dep.description)) {
       throw new Error(`render external-dependency-gate: "${name}" carries no description — the row has nothing to say`);
     }
-    return cmdOption(String(i + 1), null, `${titlecase(name)} — ${dep.description}`);
+    return cmdOption(String(i + 1), null, { head: `${titlecase(name)} — ${dep.description}` });
   });
   return section('MENU: dependency pick', STOP_FOR_RESPONSE, menu('', rows, { question: 'Which dependency has been satisfied?' }));
 }
@@ -3404,7 +3404,7 @@ function findingSettled(p, head, item, { view, batched }) {
   // one-keystroke decline records no reason, and an unreasoned decline is a
   // skip whatever the key is named.
   const gateMenu = (withView) => {
-    const options = [cmdOption('y', 'yes', applyLabel)];
+    const options = [cmdOption('y', 'yes', { head: applyLabel })];
     if (withView) options.push(cmdOption('v', 'view', 'Show the exact wording'));
     if (item.finding_gate_mode !== 'auto') {
       options.push(cmdOption('a', 'auto', 'Approve this and all remaining settled findings automatically'));
@@ -4396,7 +4396,7 @@ function codeGate(cwd, { dotpath }) {
         '',
         '**`◆ Proceed anyway?`**',
         '',
-        cmdOption('b', 'back', 'Leave that session to it (recommended)'),
+        cmdOption('b', 'back', { head: 'Leave that session to it', recommended: true }),
         cmdOption('y', 'yes', 'Enter anyway — two sessions on one code base'),
       ]),
     ),
@@ -4999,7 +4999,7 @@ function horizonPick(cwd, _args) {
   }
   const options = state.horizons.map((horizon, i) => {
     const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
-    return cmdOption(String(i + 1), null, `${horizon} — *${waiting} waiting*`);
+    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` });
   });
   options.push(cmdOption('n', 'new', 'A new horizon — name it'));
   return section('MENU: horizon pick', STOP_FOR_RESPONSE, menu('Which horizon?', options));

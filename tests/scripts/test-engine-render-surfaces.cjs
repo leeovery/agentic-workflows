@@ -9,7 +9,9 @@ const os = require('os');
 const path = require('path');
 
 const { DOTS, section, menuFrame, menu, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+const { auditingRender } = require('./gate-audit.cjs');
+
+const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
 
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
 // block to a markdown renderer) — goldens spell them explicitly.

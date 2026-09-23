@@ -74,12 +74,12 @@ function selectionSections(type, units, counts) {
   // its group owns the only `└─` in it.
   // Concerns queued on a single-topic unit cue its row and its option, as
   // the start menu's row carries it.
-  const cue = (/** @type {{triage_phases?: string[]}} */ u) => ((u.triage_phases || []).length > 0 ? ' · triage waiting' : '');
+  const triageCue = (/** @type {{triage_phases?: string[]}} */ u) => ((u.triage_phases || []).length > 0 ? 'triage waiting' : undefined);
   const rows = units.map((u, i) => ({
     title: `${i + 1}. ${titlecase(u.name)}`,
     body: [type === 'epic'
       ? ((u.active_phases || []).map(titlecase).join(', ') || '(no phases)')
-      : titlecaseLabel(u.phase_label || '') + cue(u)],
+      : titlecaseLabel(u.phase_label || '') + (triageCue(u) ? ` · ${triageCue(u)}` : '')],
   }));
   const disp = [
     `${units.length} ${cfg.plural} in progress`,
@@ -92,7 +92,7 @@ function selectionSections(type, units, counts) {
   units.forEach((u, i) => {
     menuLines.push(cmdOption(String(i + 1), null, type === 'epic'
       ? `Continue "${titlecase(u.name)}"`
-      : `Continue "${titlecase(u.name)}" — *${u.phase_label}*${cue(u)}`));
+      : { head: `Continue "${titlecase(u.name)}"`, tail: u.phase_label, cue: triageCue(u) }));
   });
   if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage));

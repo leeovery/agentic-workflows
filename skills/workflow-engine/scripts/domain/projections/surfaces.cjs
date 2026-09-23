@@ -175,9 +175,54 @@ const GATE_INSTRUCTION = 'json for a gate surface — never display';
 
 const TAIL_SEPARATOR = ' — ';
 
-// Appended after the whole label, tail included, so it comes off before the
-// head/tail split rather than after it.
+const NOTE_SEPARATOR = ' · ';
+
 const RECOMMENDED_MARKER = ' (recommended)';
+
+/**
+ * An option row's label in parts. The tail is the row's metadata, drawn
+ * italic after a dash; a cue notes the tail's state after a dot; a held row
+ * is one a live session occupies — drawn struck through, what holds it after
+ * the strike; a recommended row closes on the marker.
+ * @typedef {object} LabelParts
+ * @property {string} head
+ * @property {string} [tail]
+ * @property {string} [cue]
+ * @property {string} [held]
+ * @property {boolean} [recommended]
+ */
+
+// A plain string is the head alone, so it may carry none of the markup the
+// parts draw. Text the engine did not author passes as `{head}`, whatever it
+// contains.
+/** @typedef {string|LabelParts} OptionLabel */
+
+const INLINE_PARTS = [`${TAIL_SEPARATOR}*`, RECOMMENDED_MARKER, '~~'];
+
+/** @param {OptionLabel} label @returns {LabelParts} */
+function labelParts(label) {
+  if (typeof label === 'string') {
+    const inline = INLINE_PARTS.find((markup) => label.includes(markup));
+    if (inline !== undefined) {
+      throw new Error(`option label "${label}" draws "${inline.trim()}" inline — pass it as parts ({head, tail, cue, held, recommended})`);
+    }
+    return { head: label };
+  }
+  if (label.cue && !label.tail) {
+    throw new Error(`option label "${label.head}": a cue notes a tail — a row without one carries its note as the tail`);
+  }
+  return label;
+}
+
+/** The label as its row draws it. @param {OptionLabel} label @returns {string} */
+function drawLabel(label) {
+  const { head, tail, cue, held, recommended } = labelParts(label);
+  let text = head;
+  if (tail) text += `${TAIL_SEPARATOR}*${tail}*`;
+  if (cue) text += `${NOTE_SEPARATOR}${cue}`;
+  if (held) text = `~~${text}~~${NOTE_SEPARATOR}${held}`;
+  return recommended ? `${text}${RECOMMENDED_MARKER}` : text;
+}
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
@@ -218,15 +263,16 @@ function illustrate(compose) {
 
 /**
  * The GATE block for the MENU about to be emitted, `''` when nothing was
- * collected. Taken once: a second menu in one response finds nothing, and a
- * response with no menu drops what it gathered at the next render.
+ * collected or the menu composed neither a frame nor a row. Taken once: a
+ * second menu in one response finds nothing, and a response with no menu
+ * drops what it gathered at the next render.
  * @param {string} name  the gate's name, `MENU:` prefix already dropped
  * @returns {string}
  */
 function gateBlock(name) {
   const taken = collected;
   collected = null;
-  if (taken === null) return '';
+  if (taken === null || (taken.prose === null && taken.rows.size === 0)) return '';
   const payload = JSON.stringify({
     gate: name,
     question: taken.prose?.question ?? '',
@@ -237,40 +283,33 @@ function gateBlock(name) {
   return `=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
 }
 
-/** Text without the engine's markup — the payload states no presentation. @param {string} text @returns {string} */
+// A code span's content and an escaped character are literal text; every
+// other marker is presentation.
+const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+
+/** Prose without the engine's markup — the payload states no presentation. @param {string} text @returns {string} */
 function stripMarkup(text) {
-  return String(text).replace(/\*\*|~~|[`*]/g, '').trim();
+  return String(text).replace(MARKUP, (_, code, escaped) => code ?? escaped ?? '').trim();
 }
 
 /**
- * A label split at its metadata tail, both halves stated as plain text.
- * @param {string} label @returns {{head: string, tail: string|null}}
- */
-function splitLabel(label) {
-  const at = label.indexOf(TAIL_SEPARATOR);
-  if (at === -1) return { head: stripMarkup(label), tail: null };
-  return { head: stripMarkup(label.slice(0, at)), tail: stripMarkup(label.slice(at + TAIL_SEPARATOR.length)) };
-}
-
-/**
- * Record one pressable row — a single key the person can be offered.
+ * Record one pressable row — a single key the person can be offered. The
+ * tail states everything the row draws after its head.
  * @param {string} line  the row as drawn
- * @param {string|number} key @param {string|null|undefined} word @param {string} label
+ * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts
  * @returns {void}
  */
-function recordOption(line, key, word, label) {
+function recordOption(line, key, word, { head, tail, cue, held, recommended }) {
   if (collected === null) return;
-  const text = String(label);
-  const recommended = text.includes(RECOMMENDED_MARKER);
-  const bare = recommended ? text.replaceAll(RECOMMENDED_MARKER, '') : text;
   /** @type {GateOption} */
   const option = {
     key: String(key),
     word: word ?? null,
-    ...splitLabel(bare),
+    head,
+    tail: [tail, cue, held].filter(Boolean).join(NOTE_SEPARATOR) || null,
     detail: null,
-    struck: text.includes('~~'),
-    recommended,
+    struck: Boolean(held),
+    recommended: Boolean(recommended),
   };
   collected.rows.set(line, option);
   collected.options.push(option);
@@ -485,12 +524,12 @@ function menu(label, options, { prompt, question } = {}) {
  * (CONVENTIONS.md option grammar): key and word share one code span, the
  * arrow separates it from the label. The word is omitted for bare-key
  * options (numbered entries). Arrows are aligned by the enclosing frame.
- * @param {string} key @param {string | null | undefined} word @param {string} label
+ * @param {string} key @param {string | null | undefined} word @param {OptionLabel} label
  * @returns {string}
  */
 function cmdOption(key, word, label) {
-  const line = `**\`${word ? `${key}/${word}` : key}\`** → ${label}`;
-  recordOption(line, key, word, label);
+  const line = `**\`${word ? `${key}/${word}` : key}\`** → ${drawLabel(label)}`;
+  recordOption(line, key, word, labelParts(label));
   return line;
 }
 
@@ -504,7 +543,7 @@ function cmdOption(key, word, label) {
  */
 function bareOption(key, word) {
   const line = `**\`${key}/${word}\`**`;
-  recordOption(line, key, word, word);
+  recordOption(line, key, word, { head: '' });
   return line;
 }
 
@@ -617,5 +656,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, openGate, illustrate, gateBlock, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, openGate, illustrate, gateBlock, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
 

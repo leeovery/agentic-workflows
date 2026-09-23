@@ -226,7 +226,7 @@ function roadmapAddGate(state, horizon) {
 
   const options = [cmdOption('1', null, deliveryLabel)];
   if (waiting.length > 0) {
-    options.push(cmdOption('2', null, `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}`));
+    options.push(cmdOption('2', null, { head: `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}` }));
     options.push(cmdOption('3', null, 'Another horizon (name it)'));
   } else {
     options.push(cmdOption('2', null, 'Another horizon (name it)'));
