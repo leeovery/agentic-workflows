@@ -139,7 +139,7 @@ Append `{name}` to the caller's `tracker`.
 
 ## D. Write the Brief
 
-The topic's discovery brief — its read-in-full starting context at the next phase. Write `.workflows/{work_unit}/discovery/briefs/{name}.md` with the Write tool from the block's stored fields. It is a written artifact, not user output — write the file, do not render it. A gap analysis is not a conversation, so the brief carries no soft decisions and no rejected paths; it carries what the analysis knows. Empty sections get `(none)`.
+The topic's discovery brief — its read-in-full starting context at the next phase. Write `.workflows/{work_unit}/discovery/briefs/{name}.md` with the Write tool from the block's stored fields. It is a written artifact, not user output — write the file, do not render it. A gap analysis is not a conversation, so the brief carries no soft decisions and no rejected paths; it carries what the analysis knows. Empty sections get `(none)`. A block staged without `source_artifacts` names no artifacts: its opening line ends at "analysis" — never invent the list.
 
 ```markdown
 # Discovery Brief — {name:(titlecase)}
