@@ -119,23 +119,20 @@ describe('engine gate-surface config', () => {
     });
   });
 
-  it('opting out takes the flag back out, leaves its env siblings, and commits both', () => {
-    writeSettings({ env: { EDITOR: 'vim', [FLAG]: '1' } });
-    commitAll('settings');
+  it('opting out records the choice alone — the flag stays, and the manifest commits alone', () => {
+    config(true);
     const res = config(false);
     assert.deepStrictEqual(res, { ok: true, gate_surface: false });
     assert.strictEqual(projectManifest().defaults.gate_surface, false);
-    assert.deepStrictEqual(settings(), { env: { EDITOR: 'vim' } });
-    assert.deepStrictEqual(head(), {
-      subject: 'chore: record gate-surface choice',
-      files: ['.claude/settings.json', '.workflows/manifest.json'],
-    });
+    assert.deepStrictEqual(settings(), { env: { [FLAG]: '1' } }, 'the flag turns function hooks on for every plugin — never ours to remove');
+    assert.deepStrictEqual(head(), { subject: 'chore: record gate-surface choice', files: ['.workflows/manifest.json'] });
   });
 
-  it('an env block the flag alone filled goes with it', () => {
-    config(true);
-    config(false);
-    assert.deepStrictEqual(settings(), {});
+  it('declining never reads the settings file — one that does not parse is no warning', () => {
+    writeSettings('{not json');
+    const res = config(false);
+    assert.deepStrictEqual(res, { ok: true, gate_surface: false });
+    assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
   });
 
   it('declining on a project the flag never reached commits the manifest alone', () => {
@@ -208,8 +205,13 @@ process.stdout.write('---MIGRATIONS_RUN---\\n');
 process.stdout.write(JSON.stringify({ ran: 0, tracking: '.workflows/.state/migrations' }) + '\\n');
 `;
 
+// STUB_AFTER_COMPACT is a script `compact` leaves running as it returns —
+// a peer acting while boot is still under way.
 const STUB_KNOWLEDGE = `#!/usr/bin/env node
 'use strict';
+if (process.argv[2] === 'compact' && process.env.STUB_AFTER_COMPACT) {
+  require('child_process').spawn(process.execPath, ['-e', process.env.STUB_AFTER_COMPACT], { detached: true, stdio: 'ignore' }).unref();
+}
 process.stdout.write(process.argv[2] === 'check' ? 'ready\\n' : '');
 process.exit(0);
 `;
@@ -273,14 +275,35 @@ describe('engine boot gate surface', () => {
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'and no new dirt');
   });
 
-  it('a recorded `off` takes a flag added behind its back back out', () => {
+  it('a recorded `off` leaves the flag as it is — never ours to remove', () => {
     recordChoice(false);
     writeSettings({ env: { [FLAG]: '1', EDITOR: 'vim' }, hooks: SESSION_HOOKS });
-    commitAll('a flag by hand');
+    commitAll('a flag the project keeps');
     const res = boot();
     assert.strictEqual(res.gate_surface, 'off');
-    assert.deepStrictEqual(settings(), { env: { EDITOR: 'vim' }, hooks: SESSION_HOOKS });
-    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
+    assert.deepStrictEqual(res.warnings, []);
+    assert.deepStrictEqual(settings(), { env: { [FLAG]: '1', EDITOR: 'vim' }, hooks: SESSION_HOOKS });
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'a flag the project keeps', 'nothing of boot\'s landed');
+  });
+
+  it('a recorded `off` never adds the flag either', () => {
+    recordChoice(false);
+    const res = boot();
+    assert.strictEqual(res.gate_surface, 'off');
+    assert.deepStrictEqual(settings(), { hooks: SESSION_HOOKS });
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no dirt');
+  });
+
+  it('reads the choice inside the hold its sync takes — a yes recorded while boot waits for the lock is the one it acts on', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', '.project-lock'), '');
+    const peer = `setTimeout(() => {
+      const fs = require('fs');
+      fs.writeFileSync('.workflows/manifest.json', JSON.stringify({ defaults: { gate_surface: true } }));
+      fs.unlinkSync('.workflows/.project-lock');
+    }, 500);`;
+    const res = booter.ok(dir, ['boot'], { env: { STUB_AFTER_COMPACT: peer } });
+    assert.strictEqual(res.gate_surface, 'on');
+    assert.deepStrictEqual(settings(), { hooks: SESSION_HOOKS, env: { [FLAG]: '1' } });
   });
 
   it('both syncs moving in one boot make one commit that says so', () => {
@@ -295,7 +318,7 @@ describe('engine boot gate surface', () => {
     assert.deepStrictEqual(head(), { subject: 'chore: sync workflow project settings', files: ['.claude/settings.json'] });
   });
 
-  it('a settings file that does not parse is a warning under a recorded choice, never a block', () => {
+  it('a settings file that does not parse is a warning under a recorded `on`, never a block', () => {
     recordChoice(true);
     writeSettings('{not json');
     const res = boot();
@@ -303,6 +326,20 @@ describe('engine boot gate surface', () => {
     assert.strictEqual(res.gate_surface, 'on');
     assert.deepStrictEqual(res.warnings.filter((w) => w.startsWith('gate surface not synced: ')).length, 1);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
+  });
+
+  it('a settings commit git refuses is a warning, never a block — the flag is on disk', () => {
+    recordChoice(true);
+    const hooksDir = path.join(dir, '.git', 'hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    fs.writeFileSync(path.join(hooksDir, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const res = boot();
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.gate_surface, 'on');
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^project settings commit failed: /);
+    assert.deepStrictEqual(settings(), { hooks: SESSION_HOOKS, env: { [FLAG]: '1' } });
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'nothing landed');
   });
 });
 
