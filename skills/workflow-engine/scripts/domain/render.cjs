@@ -4965,10 +4965,10 @@ function roadmapAddGateSurface(cwd, args) {
 function horizonPick(cwd, _args) {
   const state = roadmapState(cwd);
   if (!state.exists) {
-    throw new Error('render horizon-pick: no roadmap on the project manifest — the park names its first horizon in prose');
+    throw new Error('render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose');
   }
   if (state.horizons.length === 0) {
-    throw new Error('render horizon-pick: the roadmap holds no horizons — the park names one in prose');
+    throw new Error('render horizon-pick: the roadmap holds no horizons — the caller names one in prose');
   }
   const options = state.horizons.map((horizon, i) => {
     const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;

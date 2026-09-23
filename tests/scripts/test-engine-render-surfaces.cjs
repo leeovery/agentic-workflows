@@ -4987,10 +4987,10 @@ describe('roadmap surfaces', () => {
 
   it('horizon-pick: refuses a never-born roadmap and one with no horizons', () => {
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
-      /render horizon-pick: no roadmap on the project manifest — the park names its first horizon in prose/);
+      /render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose/);
     writeRoadmap({ horizons: [], items: {} });
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
-      /render horizon-pick: the roadmap holds no horizons — the park names one in prose/);
+      /render horizon-pick: the roadmap holds no horizons — the caller names one in prose/);
   });
 
   it('park-gate: an existing horizon, no source', () => {
