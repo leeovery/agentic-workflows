@@ -18,6 +18,7 @@ import {
   linesOf,
   pad,
   questionLines,
+  startingRow,
   type Line,
   type Option,
   type Typed,
@@ -32,7 +33,8 @@ type Props =
     }
   | undefined
 
-type State = { cursor: number }
+/** The cursor, and the rows it indexes: another gate's rows start it afresh. */
+type State = { cursor: number; rows: string }
 
 /** The prompt's own border, so the rule reads as the gate's top edge. */
 const RULE = 'promptBorder'
@@ -49,8 +51,8 @@ const KEY_GAP = ' '.repeat(GAP)
 
 /**
  * What the listeners read, rather than what they closed over: they are
- * registered once, on the first draw, and a second gate in one turn redraws
- * this instance with new props.
+ * registered once, on the first draw, and a redraw can hand this instance
+ * another gate's rows.
  */
 let shown: { options: readonly Option[]; lines: readonly Line[]; top: number } =
   { options: [], lines: [], top: 0 }
@@ -67,11 +69,20 @@ export default function GateBoard(
   const columns = props?.columns ?? 0
 
   if (surface.state === undefined) {
-    surface.setState({ cursor: 0 })
     listen(surface)
   }
 
-  const cursor = Math.min(surface.state?.cursor ?? 0, options.length - 1)
+  const rows = JSON.stringify(options)
+  const state =
+    surface.state?.rows === rows
+      ? surface.state
+      : { cursor: startingRow(options), rows }
+
+  if (state !== surface.state) {
+    surface.setState(state)
+  }
+
+  const { cursor } = state
   const { keyWidth, labelWidth } = geometry(options, typed, columns)
   const lines = linesOf(options, typed, columns)
 
@@ -141,6 +152,14 @@ function listen(surface: ClientSurface<State>) {
     }
   }
 
+  const point = (cursor: number) => {
+    const state = surface.state
+
+    if (state !== undefined && state.cursor !== cursor) {
+      surface.setState({ ...state, cursor })
+    }
+  }
+
   surface.onKey(({ key }) => {
     const cursor = surface.state?.cursor
     const count = shown.options.length
@@ -150,9 +169,9 @@ function listen(surface: ClientSurface<State>) {
     }
 
     if (key === 'up') {
-      surface.setState({ cursor: (cursor - 1 + count) % count })
+      point((cursor - 1 + count) % count)
     } else if (key === 'down') {
-      surface.setState({ cursor: (cursor + 1) % count })
+      point((cursor + 1) % count)
     } else if (key === 'return') {
       answer(cursor)
     } else {
@@ -169,8 +188,8 @@ function listen(surface: ClientSurface<State>) {
 
     if (event.type === 'down') {
       answer(option)
-    } else if (event.type === 'move' && surface.state?.cursor !== option) {
-      surface.setState({ cursor: option })
+    } else if (event.type === 'move') {
+      point(option)
     }
   })
 }
