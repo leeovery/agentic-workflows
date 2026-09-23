@@ -19,10 +19,13 @@ has given the band the keyboard, the arrows move between rows, Enter or a row's
 own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
 plugin's; the mod leaves what it sent in `.workflows/.cache/.gates/sent.json`.
-Typing answers too: a key and Enter at the prompt, or Esc then Enter after a
-pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
-click on one says to type it in the prompt. The footer under the rows says
-which: how to answer, what is in the prompt, or where to type.
+A second plugin, `workflow-gates-rows` (`../workflow-gates-rows/`), reads that
+record to draw the row as the question and the answer, since no plugin can
+redraw the row of a prompt it submitted. Typing answers too: a key and Enter
+at the prompt, or Esc then Enter after a pick. Rows only typing can answer —
+Ask, Comment, a range — draw dim, and a click on one says to type it in the
+prompt. The footer under the rows says which: how to answer, what is in the
+prompt, or where to type.
 
 The band is never taller than the rows Claude Code gives it, so it never
 scrolls. A gate that fits shows whole: a rule, the statement and the question,
