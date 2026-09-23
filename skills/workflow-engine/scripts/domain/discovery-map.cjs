@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
-const { computeTopicLifecycle, phaseItems, lifecyclePhrase } = require('./derivations.cjs');
+const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -168,6 +168,13 @@ function sequenceMap(cwd, workUnit, orders) {
       }
       if (!Number.isInteger(order) || order < 1) {
         throw new Error(`order for "${topic}" must be a positive integer (got ${JSON.stringify(order)})`);
+      }
+      // A closed row's order is stashed as `previous_order` and returns with
+      // it; writing one beside the stash would put the row back in the
+      // sequence without bringing the topic back.
+      const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
+      if (CLOSED_LIFECYCLES.includes(lifecycle)) {
+        throw new Error(`"${topic}" takes no order — ${lifecyclePhrase(lifecycle, research_state)}`);
       }
     }
     for (const [topic, order] of entries) {

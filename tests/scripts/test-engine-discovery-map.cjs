@@ -94,6 +94,26 @@ describe('engine CLI: discovery-map sequence', () => {
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
+  it('rejects a row that has closed — its stashed order is what returns with it', () => {
+    const manifest = readManifest(dir);
+    Object.assign(manifest.phases.discovery.items, {
+      gone: { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 3 },
+      away: { routing: 'discussion', source: 'discovery', postponed: true, previous_order: 4 },
+      dead: { routing: 'discussion', source: 'discovery', handled: true },
+    });
+    manifest.phases.discussion = { items: { dead: { status: 'completed' } } };
+    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
+
+    assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'gone=2']).error,
+      /"gone" takes no order — it is cancelled and stays on the map as record/);
+    assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'away=2']).error,
+      /"away" takes no order — it is postponed and waits on the roadmap/);
+    assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'dead=2']).error,
+      /"dead" takes no order — it is closed as a dead end and stays on the map as record/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
+  });
+
   it('rejects bad orders and malformed assignments — loud and specific', () => {
     for (const pair of ['auth-flow=0', 'auth-flow=-1', 'auth-flow=abc', 'auth-flow=1.5', 'auth-flow']) {
       assert.match(runFail(dir, ['sequence', 'payments', pair]).error, /bad assignment/, pair);
