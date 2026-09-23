@@ -199,7 +199,7 @@ Branch on the boot response's `gate_surface` — `prompt` means the choice was n
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time by setting `gate_surface` to `false` in `.workflows/manifest.json`.
+> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time by setting `gate_surface` to `false` in `./.workflows/manifest.json`.
 ```
 
 Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim as markdown (not a code block):
@@ -222,10 +222,10 @@ If the command fails (`ok: false`), surface its error — the prompt returns at 
 
 On a clean success:
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a properties code block (```properties fence):*
 
 ```
-> Done. Exit Claude Code and start it again in this project, then run `/workflow-start`. The menus will show as buttons from then on.
+⚑ Exit Claude Code and start it again in this project, then run /workflow-start
 ```
 
 **STOP.** Do not proceed — terminal condition.
