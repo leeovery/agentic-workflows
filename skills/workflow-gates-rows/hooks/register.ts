@@ -1,4 +1,4 @@
-// A plugin of its own: the engine skips the mod's render hooks on rows it sent.
+// A plugin of its own: Claude Code skips the mod's render hooks on rows it sent.
 import type { EngineInterface, RenderPropsOf, Register } from 'claude-code'
 
 const SENDER = 'workflow-gates'
@@ -86,7 +86,7 @@ export const register: Register = on => {
       lines.set(e.requestId, line)
     }
 
-    // The drawing alone changes: the model reads the engine's framing, by design.
+    // The drawing alone changes: the model reads Claude Code's framing, by design.
     return next({ ...e, props: { ...e.props, text: line } })
   }).catch(($, e, next) => next(e))
 }
