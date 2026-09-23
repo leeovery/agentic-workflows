@@ -94,6 +94,7 @@ engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` tabl
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
+engine.project.epicMenuKeys(wu, detail)           // → the same keys, the menu never drawn (a gate over one entry)
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
 engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the stage units (Topics / Specifications); a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a specification whose sources are unavailable renders keyless with its reason, a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
