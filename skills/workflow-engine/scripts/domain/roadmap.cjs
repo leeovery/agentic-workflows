@@ -41,7 +41,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-const { itemJoin, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
+const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { TERMINAL_STATUSES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
@@ -559,21 +559,6 @@ function moveRoadmapItem(cwd, name, horizon) {
 }
 
 /**
- * The postpone this item carries, when it carries one — the epic row whose
- * removal is this removal's other half.
- * @param {Record<string, any>} item
- * @returns {{work_unit: string, topic: string}|null}
- */
-function itemPostponedFrom(item) {
-  const from = item.postponed_from;
-  return from && typeof from === 'object' && !Array.isArray(from)
-    && typeof from.work_unit === 'string' && from.work_unit !== ''
-    && typeof from.topic === 'string' && from.topic !== ''
-    ? from
-    : null;
-}
-
-/**
  * Delete an item. Refused on a pulled item (the epic-side cancel is the
  * path; its revert returns the item first). An item a postpone put here
  * takes the epic's row with it — "actually never" has one door, so the
@@ -923,9 +908,7 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
   if (typeof into !== 'string' || into === '') throw new Error('--into is required');
 
   // Validate the roadmap side before touching the epic's map.
-  const preflight = readProjectManifest(cwd);
-  const rm = preflight.roadmap;
-  const preItem = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  const preItem = roadmapItems(readProjectManifest(cwd))[name];
   if (!preItem || typeof preItem !== 'object') throw new Error(`no roadmap item "${name}"`);
   const preJoin = itemJoin(preItem);
   if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
@@ -1111,9 +1094,7 @@ function reaimJoins(cwd, fromUnit, { into, topic }) {
  * @returns {RoadmapOpResult}
  */
 function flagJoined(cwd, name) {
-  const project = readProjectManifest(cwd);
-  const rm = project.roadmap;
-  const item = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  const item = roadmapItems(readProjectManifest(cwd))[name];
   if (!item || typeof item !== 'object') throw new Error(`no roadmap item "${name}"`);
   const join = itemJoin(item);
   if (!join) throw new Error(`"${name}" is not joined to a work unit — a waiting item needs no flag; its record is read at the pull`);

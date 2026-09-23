@@ -1712,7 +1712,8 @@ function restorePostponedUnit(cwd, workUnit, topic) {
  * The marker and every stashed item read `cancelled`, each stash and the
  * stashed map order kept for a later reactivate; the chunks left at the
  * postpone. One locked write and no commit — the remove's own transaction
- * stages both manifests together.
+ * stages both manifests together. A unit holding no postpone refuses: the
+ * item's join is stale, and the remove must not report a cancel it never made.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @param {string} item  the roadmap item being removed, for the orphan refusal
  * @returns {CancelledItem[]}
@@ -1724,16 +1725,18 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const row = itemOf(manifest, 'discovery', topic);
-    if (row && row.postponed === true) {
+    const held = unitItems(manifest, 'discovery', topic).filter(({ item: it }) => it.status === 'postponed');
+    if ((!row || row.postponed !== true) && held.length === 0) {
+      throw new Error(`"${item}" was postponed from "${topic}" in work unit "${workUnit}", where nothing is postponed — the join is stale`);
+    }
+    if (row) {
       delete row.postponed;
       row.cancelled = true;
     }
-    const cancelled = unitItems(manifest, 'discovery', topic)
-      .filter(({ item: it }) => it.status === 'postponed')
-      .map(({ phase, item: it }) => {
-        it.status = 'cancelled';
-        return { phase, previous_status: it.previous_status };
-      });
+    const cancelled = held.map(({ phase, item: it }) => {
+      it.status = 'cancelled';
+      return { phase, previous_status: it.previous_status };
+    });
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return cancelled;
   });

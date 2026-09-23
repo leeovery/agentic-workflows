@@ -574,6 +574,21 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
   });
 
+  it('roadmap remove over a topic that holds no postpone refuses — the join is stale, not a cancel to make', () => {
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    // The epic's row came back by some other hand; the item still names it.
+    const m = epic();
+    delete m.phases.discovery.items.ordering.postponed;
+    m.phases.research.items.ordering.status = 'completed';
+    m.phases.discussion.items.ordering.status = 'in-progress';
+    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
+    const before = epicText();
+    assert.match(runFail(dir, ['remove', 'ordering']).error,
+      /"ordering" was postponed from "ordering" in work unit "mvp", where nothing is postponed — the join is stale/);
+    assert.strictEqual(epicText(), before, 'the epic is untouched');
+    assert.ok(readProject(dir).roadmap.items.ordering, 'and the item stands');
+  });
+
   it('roadmap remove of an item whose epic is gone refuses rather than orphaning the row', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     fs.rmSync(path.join(dir, '.workflows', 'mvp'), { recursive: true, force: true });

@@ -401,6 +401,22 @@ function itemJoin(item) {
 }
 
 /**
+ * The postpone an item carries, when it carries one — the epic and topic it
+ * left, or null for an absent or malformed field. The write side owns shape,
+ * as it does for the join.
+ * @param {Record<string, any>} item
+ * @returns {{work_unit: string, topic: string}|null}
+ */
+function itemPostponedFrom(item) {
+  const from = item.postponed_from;
+  return from && typeof from === 'object' && !Array.isArray(from)
+    && typeof from.work_unit === 'string' && from.work_unit !== ''
+    && typeof from.topic === 'string' && from.topic !== ''
+    ? from
+    : null;
+}
+
+/**
  * @typedef {object} PostponeTarget
  * @property {string} name   the item the postpone writes — the joined item's own name, or the topic's
  * @property {Record<string, any>|undefined} item  what already sits there
@@ -447,8 +463,8 @@ function postponeClashPhrase(name, item) {
  */
 function postponedHorizon(project, workUnit, topic) {
   for (const item of Object.values(roadmapItems(project))) {
-    const from = item && typeof item === 'object' ? item.postponed_from : undefined;
-    if (from && typeof from === 'object' && from.work_unit === workUnit && from.topic === topic) {
+    const from = item && typeof item === 'object' ? itemPostponedFrom(item) : null;
+    if (from && from.work_unit === workUnit && from.topic === topic) {
       return typeof item.horizon === 'string' ? item.horizon : null;
     }
   }
@@ -1324,10 +1340,10 @@ module.exports = {
   liveSeries,
   cancelPlan,
   postponePlan,
-  openRecords,
   openExperiments,
   roadmapItems,
   itemJoin,
+  itemPostponedFrom,
   postponeTarget,
   postponeClashPhrase,
   postponedHorizon,
