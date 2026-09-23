@@ -332,6 +332,44 @@ describe('topic-receipt — the postpone verb', () => {
   });
 });
 
+describe('topic-receipt — the restore verb', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  it('names the statuses the pull forward returned the unit to, the indexing advisory riding --warn', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' }, fresh: { routing: 'research', source: 'discovery' } } },
+        research: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore' }),
+      /Pulled "Auth" forward\. Restored research \[completed\] · discussion \[in-progress\]\.\n/);
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore', warn: '1' }),
+      /⚑ Knowledge indexing warning[\s\S]*Pulled "Auth" forward\./);
+    // A topic that never started comes back with nothing to name.
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.fresh', verb: 'restore' }),
+      /Pulled "Fresh" forward\.\n/);
+  });
+
+  it('refuses a topic still postponed, a non-Discovery address, and a dead name', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', postponed: true } } },
+        discussion: { items: { auth: { status: 'postponed', previous_status: 'in-progress' } } },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore' }),
+      /"auth" is still postponed — the pull forward has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'restore' }),
+      /--verb restore addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'restore' }),
+      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+  });
+});
+
 describe('topic-receipt — the unit addresses', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -360,7 +398,7 @@ describe('topic-receipt — the unit addresses', () => {
       /--verb reactivate addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.ghost', verb: 'cancel' }), /no specification item "ghost"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, cancel, reactivate, or postpone/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, cancel, reactivate, postpone, or restore/);
   });
 
   it('complete keeps its phase-item address', () => {
@@ -6898,6 +6936,7 @@ describe('render direct-entry-gate', () => {
             gamma: { routing: 'discussion', source: 'discovery' },
             delta: { routing: 'research', source: 'discovery' },
             sigma: { routing: 'discussion', source: 'discovery', cancelled: true },
+            tau: { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
         research: { items: { gamma: { status: 'triaged' }, delta: { status: 'in-progress' } } },
@@ -6931,6 +6970,15 @@ describe('render direct-entry-gate', () => {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.sigma` });
       assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/, phase);
       assert.match(out, /DISPLAY: blocker guidance[\s\S]*Reactivate it from the epic menu \(e\/reactivate\) — a cancelled topic carries no menu row\./, phase);
+      assert.ok(!out.includes('Return to the epic menu'), phase);
+    }
+  });
+
+  it('a postponed row points at the pull forward — it carries no menu row either', () => {
+    for (const phase of ['discussion', 'research']) {
+      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
+      assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/, phase);
+      assert.match(out, /DISPLAY: blocker guidance[\s\S]*Pull it forward from the epic menu \(f\/forward\) — a postponed topic carries no menu row\./, phase);
       assert.ok(!out.includes('Return to the epic menu'), phase);
     }
   });

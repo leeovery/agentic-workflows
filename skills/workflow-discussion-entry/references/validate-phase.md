@@ -48,7 +48,7 @@ Set source="continue".
 
 #### If status is `postponed`
 
-The topic waits on the roadmap — it returns by being pulled forward from there, never through entry. Tell the user in one line.
+The topic waits on the roadmap — it returns through the epic menu's `f/forward` row, never through entry. Tell the user in one line.
 
 **STOP.** Do not proceed — terminal condition.
 

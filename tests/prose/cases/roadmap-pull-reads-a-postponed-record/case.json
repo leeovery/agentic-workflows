@@ -1,0 +1,61 @@
+{
+  "origin": "topic-postpone design R6 — an item that used to be a topic carries a record its `sources` do not list: the epic it was in, that topic's brief, its research and discussion, and the concerns queued against it and never delivered. A pull that enumerates the record from `sources` alone births the epic blind to all of it, and nothing walked the read derived from the postpone's own address, or the backfill authored over what it finds while the earlier epic's files stay exactly where they are",
+  "entry": "workflow-roadmap",
+  "world": "claims",
+  "files": [
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-roadmap/references/pull.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md"
+  ],
+  "answers": [
+    "p — pull into delivery",
+    "1, 2 — synonym handling and query understanding",
+    "y — shape it as an epic, and call it managed-search"
+  ],
+  "conduct": "The user parked this work a year ago and the managed search product has finally landed, so they are here to start it. They want the expansion work and query understanding taken together — both sit in v2 and neither stands alone — and personalised ranking left where it is. They confirm the epic shape when it is proposed, naming the unit 'managed-search' themselves as they do, and stop as soon as the unit exists and the joins are shown.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "postponed_from",
+      "workunit create managed-search epic",
+      "roadmap pull",
+      "--into managed-search",
+      "render roadmap-view"
+    ],
+    "calls_in_order": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "write:.workflows/.cache/managed-search/discovery/session-001.md",
+      "workunit create managed-search epic",
+      "roadmap pull",
+      "render roadmap-view"
+    ],
+    "calls_exclude": [
+      "roadmap pull-forward",
+      "roadmap bind",
+      "topic start",
+      "topic triage",
+      "topic absorb",
+      "topic requeue",
+      "topic queue",
+      "topic postpone",
+      "topic reactivate",
+      "discovery-map",
+      "render name-gate",
+      "render resume-gate",
+      "roadmap session open",
+      "workflow-bridge",
+      "commit search-relevance"
+    ]
+  }
+}

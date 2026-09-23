@@ -1916,7 +1916,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|unblock-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -1944,6 +1944,25 @@ describe('workflow-continue-epic CLI dispatch', () => {
     });
     const out = run(['unblock-menu', 'v1']).stdout;
     assert.ok(out.includes('  1  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
+  });
+
+  it('pull-forward-menu emits the roadmap item on the key, in DATA, byte-exactly', () => {
+    const fs = require('fs');
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next'], items: {
+        'export-suite': { horizon: 'next', summary: 's', origin: 'harvest', postponed_from: { work_unit: 'v1', topic: 'away' } },
+      } },
+    }, null, 2));
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { away: { routing: 'discussion', source: 'roadmap', postponed: true } } },
+        discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
+      },
+    });
+    const out = run(['pull-forward-menu', 'v1']).stdout;
+    assert.ok(out.includes('  1  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
   });
 
   it('the view snapshot carries the build-order flag line', () => {

@@ -84,13 +84,13 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
 }
 
 /**
- * topic complete / cancel / reactivate / postpone receipts. `complete`
- * carries no confirmation line — the calling flow owns its own conclusion
- * display; it renders the indexing advisory alone, empty without `--warn`.
- * `cancel`, `postpone` and `reactivate` confirm the unit by name, the
- * postpone naming the horizon it waits under and the reactivate the statuses
- * its items returned to (none for a never-started topic).
- * @param {'complete'|'cancel'|'reactivate'|'postpone'} verb
+ * topic complete / cancel / reactivate / postpone / restore receipts.
+ * `complete` carries no confirmation line — the calling flow owns its own
+ * conclusion display; it renders the indexing advisory alone, empty without
+ * `--warn`. The rest confirm the unit by name: the postpone names the
+ * horizon it waits under, and the reactivate and the pull forward's restore
+ * the statuses their items returned to (none for a never-started topic).
+ * @param {'complete'|'cancel'|'reactivate'|'postpone'|'restore'} verb
  * @param {string} topic
  * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null}} [opts]
  * @returns {string}
@@ -119,7 +119,7 @@ function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null
     : '';
   return joined([
     warn ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.') : null,
-    confirmation(`Reactivated "${name}".${returned}`),
+    confirmation(verb === 'restore' ? `Pulled "${name}" forward.${returned}` : `Reactivated "${name}".${returned}`),
   ]);
 }
 

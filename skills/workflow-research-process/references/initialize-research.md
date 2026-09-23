@@ -20,6 +20,8 @@ A restart — skip the reads; the session gathers context naturally.
 
 → Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
+→ Load **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+
 **If `work_type` is not `epic`:**
 
 The carrier discovery left has two halves — read both. First the manifest `description`:
@@ -48,7 +50,7 @@ The inputs just read are inherited ground, not a list of questions to re-ask. Ex
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {topic}
    ```
-4. Seed the thread register — the questions the inputs leave open, judged: a question discovery already settled is inherited ground, not a thread; a question the seed, the carrier, or the brief leaves open is one. Origin `seed` for the seed material's and the carrier's questions, `brief` for the brief's, `user` for a question the interview or the launching conversation raised; a kebab slug per thread, the question as asked, `--parent` nesting a question under the top-level one it refines. When restarting (**A** was skipped), add nothing — threads enter from the conversation:
+4. Seed the thread register — the questions the inputs leave open, judged: a question discovery already settled is inherited ground, not a thread; a question the seed, the carrier, the brief, or a prior record leaves open is one. Origin `seed` for the seed material's and the carrier's questions, `brief` for the brief's and for a prior record's — its still-standing queued concerns included, the record carrying a brief's standing — `user` for a question the interview or the launching conversation raised; a kebab slug per thread, the question as asked, `--parent` nesting a question under the top-level one it refines. When restarting (**A** was skipped), add nothing — threads enter from the conversation:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {seed|brief|user} [--parent {slug}]
    ```

@@ -12,6 +12,8 @@ The durable inputs live in the manifest and at fixed paths — read them here; t
 
 → Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
+→ Load **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+
 #### If `work_type` is not `epic`
 
 The carrier discovery left has two halves — read both. First the manifest `description`:
@@ -68,7 +70,7 @@ No completed research for this topic.
 
 ## C. Create and Register
 
-The inputs just read — the seed, the brief or carrier, and any completed research — are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
+The inputs just read — the seed, the brief or carrier, any prior record, and any completed research — are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):
@@ -86,9 +88,9 @@ The inputs just read — the seed, the brief or carrier, and any completed resea
 
    Populate from the inputs read at **A**, any interview answers, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
-   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s) — under Context → References, so a later session can re-open what seeded this discussion.
+   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s), a prior record's files — under Context → References, so a later session can re-open what seeded this discussion.
 
-   Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
+   Either way, this topic's own triage queue is not a seeding source: its parked concerns enter as raises through the session loop's triage check, and pre-adding their titles to the map forces every fold into the wrong branch. A prior record's queue is not that: a concern read there whose ask still applies is an open question that record left, and seeds the map beside the brief's.
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash

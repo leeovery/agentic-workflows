@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 const {
-  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicUnblockMenu,
+  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
@@ -133,8 +133,8 @@ describe('epic projections: dashboard (map branch)', () => {
       '',
     ].join('\n'));
     assert.deepStrictEqual(detail.postponed, [
-      { name: 'data-export', horizon: 'next' },
-      { name: 'reporting', horizon: 'later' },
+      { name: 'data-export', horizon: 'next', item: 'data-export', waiting: true },
+      { name: 'reporting', horizon: 'later', item: 'reporting', waiting: true },
     ]);
     // Convergence never waits on a topic that has left the epic.
     assert.strictEqual(detail.convergence_state, 'in-progress');
@@ -170,7 +170,7 @@ describe('epic projections: dashboard (map branch)', () => {
       work_type: 'epic',
       phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
     });
-    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null }]);
+    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null, item: null, waiting: false }]);
     assert.ok(epicDashboard('pv3', detail).includes('  postponed: Data Export → no roadmap item'));
   });
 
@@ -492,6 +492,7 @@ describe('epic projections: menu', () => {
       completed: [{ name: 'reporting', phase: 'planning' }],
       cancellable: [{ name: 'auth-spec', stage: 'specification', state: 'in-progress' }],
       postponable: [{ name: 'menu-admin', stage: 'discovery', state: 'decided' }],
+      postponed: [],
       cancelled: [],
       next_phase_ready: [
         { name: 'billing-grouping', action: 'start_specification', label: 'grouping ready' },
@@ -1184,6 +1185,83 @@ describe('epic projections: selection sub-views', () => {
       '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.deepStrictEqual(epicPostponeMenu(locked).keys.map((k) => k.key), ['b'], 'locked rows take no key');
+  });
+
+  // The roadmap the pull-forward rows read: `away` waits under next as an
+  // item of another name (the topic was pulled once and renamed at the
+  // harvest), `gone-again` waits under later, and `taken` was pulled into
+  // another epic after it was postponed — it no longer waits.
+  function projectRoadmap(dir) {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next', 'later'], items: {
+        'export-suite': { horizon: 'next', summary: 's', origin: 'harvest', postponed_from: { work_unit: 'pf1', topic: 'away' } },
+        'gone-again': { horizon: 'later', summary: 's', origin: 'postpone:pf1', postponed_from: { work_unit: 'pf1', topic: 'gone-again' } },
+        taken: { horizon: 'later', summary: 's', origin: 'postpone:pf1', postponed_from: { work_unit: 'pf1', topic: 'taken' }, pulled_to: { work_unit: 'other-epic', topic: 'taken' } },
+      } },
+    }, null, 2));
+  }
+
+  const postponedEpic = {
+    work_type: 'epic',
+    phases: {
+      discovery: { items: {
+        billing: { routing: 'discussion', source: 'discovery', order: 1 },
+        away: { routing: 'discussion', source: 'roadmap', postponed: true, previous_order: 2 },
+        'gone-again': { routing: 'research', source: 'discovery', postponed: true },
+        taken: { routing: 'discussion', source: 'discovery', postponed: true },
+      } },
+      discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
+    },
+  };
+
+  it('pull-forward-menu: one row per waiting item, its horizon on the row, the item name on the key', () => {
+    projectRoadmap(dir);
+    const view = epicPullForwardMenu(detailFor(dir, 'pf1', postponedEpic));
+    assert.strictEqual(view.title, 'Postponed Topics');
+    assert.strictEqual(view.display, [
+      'Topics',
+      '  ├─ 1. Away [postponed] — next',
+      '  └─ 2. Gone Again [postponed] — later',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to pull forward?`**',
+      '',
+      '**`1`**      → Pull "Away" forward — *waiting under next*',
+      '**`2`**      → Pull "Gone Again" forward — *waiting under later*',
+      '**`b/back`** → Return to menu',
+    ].join('\n'));
+    // The item the pull forward addresses is the roadmap's own name, which
+    // a harvest rename can have moved away from the topic's.
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.item]),
+      [
+        ['1', 'pull-forward', 'away', 'discovery', 'export-suite'],
+        ['2', 'pull-forward', 'gone-again', 'discovery', 'gone-again'],
+        ['b', 'back', null, null, undefined],
+      ]
+    );
+  });
+
+  it('f/forward shows only while a postponed item still waits', () => {
+    projectRoadmap(dir);
+    const options = (d) => epicMenu('pf1', d).keys.filter((k) => k.action === 'pull_forward_topic').map((k) => k.label);
+    assert.deepStrictEqual(options(detailFor(dir, 'pf1', postponedEpic)), ['Pull a postponed topic back from the roadmap']);
+    // Nothing postponed, and a postponed topic whose item another epic has
+    // taken, both leave the menu without the row — and the sub-view empty.
+    const none = detailFor(dir, 'pf2', {
+      work_type: 'epic',
+      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery' } } } },
+    });
+    assert.deepStrictEqual(options(none), []);
+    const onlyTaken = detailFor(dir, 'pf3', {
+      work_type: 'epic',
+      phases: { discovery: { items: { taken: { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.deepStrictEqual(options(onlyTaken), []);
+    assert.strictEqual(epicPullForwardMenu(onlyTaken).display, 'No postponed topics waiting.\n');
   });
 
   it('reactivate-menu: every cancelled unit, each row naming what returns', () => {

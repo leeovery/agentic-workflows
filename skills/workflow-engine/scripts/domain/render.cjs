@@ -55,7 +55,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedHorizon, openExperiments,
+  postponePlan, postponeTarget, postponedItem, openExperiments,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -4122,7 +4122,7 @@ function directEntryGate(cwd, { dotpath }) {
   const guidance = lifecycle === 'cancelled'
     ? 'Reactivate it from the epic menu (e/reactivate) — a cancelled topic carries no menu row.'
     : lifecycle === 'postponed'
-      ? 'Pull it forward from the roadmap — a postponed topic carries no menu row.'
+      ? 'Pull it forward from the epic menu (f/forward) — a postponed topic carries no menu row.'
       : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
   return blocker(`"${titlecase(topic)}" is already on the map — ${stands}`, guidance);
 }
@@ -4664,9 +4664,33 @@ function unitCancelled(manifest, stage, name) {
 }
 
 /**
+ * The statuses a unit's live items stand at — what a reactivate or a pull
+ * forward returned them to.
+ * @param {object} manifest @param {'discovery'|'specification'} stage @param {string} name
+ */
+function unitStatuses(manifest, stage, name) {
+  return liveUnitItems(manifest, stage, name).map(({ phase, item }) => ({ phase, status: item.status }));
+}
+
+/**
+ * The Discovery unit a postpone-side receipt addresses, refused when the
+ * dotpath names another stage or no unit of the name.
+ * @param {object} manifest @param {string} phase @param {string} topic @param {string} verb
+ */
+function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
+  if (phase !== 'discovery') {
+    throw new Error(`render topic-receipt: --verb ${verb} addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
+  }
+  if (!discoveryUnitExists(manifest, topic)) {
+    throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+  }
+}
+
+/**
  * The topic receipts. `complete` addresses the phase item; `cancel`,
- * `reactivate` and `postpone` address the unit — `<wu>.discovery.<topic>` or
- * `<wu>.specification.<spec>` — and read its state after the verb ran.
+ * `reactivate`, `postpone` and `restore` address the unit —
+ * `<wu>.discovery.<topic>` or `<wu>.specification.<spec>` — and read its
+ * state after the verb ran.
  * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
@@ -4682,19 +4706,22 @@ function topicReceiptSurface(cwd, args) {
     return topicReceipt(verb, topic, { warn });
   }
   if (verb === 'postpone') {
-    if (phase !== 'discovery') {
-      throw new Error(`render topic-receipt: --verb postpone addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
-    }
-    if (!discoveryUnitExists(manifest, topic)) {
-      throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
-    }
+    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
     if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
       throw new Error(`render topic-receipt: "${topic}" is not postponed — the postpone has not run`);
     }
-    return topicReceipt(verb, topic, { warn, horizon: postponedHorizon(loadProjectManifest(cwd), workUnit, topic) });
+    const waiting = postponedItem(loadProjectManifest(cwd), workUnit, topic);
+    return topicReceipt(verb, topic, { warn, horizon: waiting ? waiting.horizon : null });
+  }
+  if (verb === 'restore') {
+    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
+    if (computeTopicLifecycle(manifest, topic).lifecycle === 'postponed') {
+      throw new Error(`render topic-receipt: "${topic}" is still postponed — the pull forward has not run`);
+    }
+    return topicReceipt(verb, topic, { warn, restored: unitStatuses(manifest, 'discovery', topic) });
   }
   if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be complete, cancel, reactivate, or postpone, got "${verb}"`);
+    throw new Error(`render topic-receipt: --verb must be complete, cancel, reactivate, postpone, or restore, got "${verb}"`);
   }
   if (!(phase in UNIT_PHASES)) {
     throw new Error(`render topic-receipt: --verb ${verb} addresses a unit — <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
@@ -4708,8 +4735,7 @@ function topicReceiptSurface(cwd, args) {
   if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
-  const restored = liveUnitItems(manifest, stage, topic).map(({ phase: p, item }) => ({ phase: p, status: item.status }));
-  return topicReceipt(verb, topic, { warn, restored });
+  return topicReceipt(verb, topic, { warn, restored: unitStatuses(manifest, stage, topic) });
 }
 
 /**

@@ -1,0 +1,57 @@
+{
+  "origin": "topic-postpone design R6 — the return is the pull, never the reactivate, and until now the epic menu that let a topic go offered no way to take it back: the user had to find the item on the product roadmap and pull it from there. Nothing walked the menu's return row, the sub-view over the topics still waiting, the roadmap verb's return branch reached from inside the epic, or the restore receipt that names what came back",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "f — pull a postponed topic back",
+    "1 — Synonym Handling"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs pull-forward-menu search-relevance",
+      "roadmap pull-forward synonym-handling --into search-relevance",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb restore"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs pull-forward-menu search-relevance",
+      "roadmap pull-forward synonym-handling --into search-relevance",
+      "render topic-receipt search-relevance.discovery.synonym-handling --verb restore",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "topic reactivate",
+      "gateway.cjs reactivate-menu",
+      "gateway.cjs postpone-menu",
+      "topic postpone",
+      "render postpone-gate",
+      "render cancel-gate",
+      "render horizon-pick",
+      "roadmap state",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs",
+      "discovery-map",
+      "manifest set search-relevance.discovery",
+      "topic start",
+      "build-order sequence"
+    ]
+  }
+}

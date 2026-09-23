@@ -9,11 +9,12 @@
 //   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–8, bridge)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 9)
-//   gateway.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
-//   gateway.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
-//   gateway.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
-//   gateway.cjs unblock-menu {work_unit}     → Unblock Plan sub-view (G)
-//   gateway.cjs postpone-menu {work_unit}    → Postpone Topic sub-view (H)
+//   gateway.cjs completed-menu {work_unit}     → Resume Completed sub-view (D)
+//   gateway.cjs cancel-menu {work_unit}        → Cancel Topic sub-view (E)
+//   gateway.cjs reactivate-menu {work_unit}    → Reactivate Topic sub-view (F)
+//   gateway.cjs unblock-menu {work_unit}       → Unblock Plan sub-view (G)
+//   gateway.cjs postpone-menu {work_unit}      → Postpone Topic sub-view (H)
+//   gateway.cjs pull-forward-menu {work_unit}  → Pull Forward Topic sub-view (I)
 //
 // Those calls are the whole legal surface: a verb without its work unit, an
 // unknown verb, or excess arguments is a usage error (stderr, exit 1) — never
@@ -326,6 +327,7 @@ function subView(workUnit, projection) {
   for (const k of view.keys) {
     let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.phase || '—'}  → ${k.route || '(internal)'}`;
     if (k.dep) line += `  (dep: ${k.dep})`;
+    if (k.item) line += `  (item: ${k.item})`;
     dataLines.push(line);
   }
 
@@ -337,7 +339,7 @@ function subView(workUnit, projection) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|unblock-menu) {work_unit}';
+const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}';
 
 /** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
 function usageError(message) {
@@ -365,6 +367,7 @@ if (require.main === module) {
     'cancel-menu': subViewHandler('cancel-menu', (name, d, opts) => engine.project.epicCancelMenu(d, opts)),
     'reactivate-menu': subViewHandler('reactivate-menu', (name, d, opts) => engine.project.epicReactivateMenu(d, opts)),
     'postpone-menu': subViewHandler('postpone-menu', (name, d, opts) => engine.project.epicPostponeMenu(d, opts)),
+    'pull-forward-menu': subViewHandler('pull-forward-menu', (name, d) => engine.project.epicPullForwardMenu(d)),
     'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
       ? usageError('in-session-gate takes a work unit and a menu key')
