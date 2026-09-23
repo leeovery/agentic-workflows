@@ -181,14 +181,14 @@ const RECOMMENDED_MARKER = ' (recommended)';
 
 /**
  * An option row's label in parts. The tail is the row's metadata, drawn
- * italic after a dash; a cue notes the tail's state after a dot; a held row
- * is one a live session occupies — drawn struck through, what holds it after
- * the strike; a recommended row closes on the marker.
+ * italic after a dash; a cue flags the tail's state, plain after a dot; a
+ * row with a holder is one a live session occupies — drawn struck through,
+ * the holder plain after the strike; a recommended row closes on the marker.
  * @typedef {object} LabelParts
  * @property {string} head
  * @property {string} [tail]
  * @property {string} [cue]
- * @property {string} [held]
+ * @property {string} [holder]
  * @property {boolean} [recommended]
  */
 
@@ -204,7 +204,7 @@ function labelParts(label) {
   if (typeof label === 'string') {
     const inline = INLINE_PARTS.find((markup) => label.includes(markup));
     if (inline !== undefined) {
-      throw new Error(`option label "${label}" draws "${inline.trim()}" inline — pass it as parts ({head, tail, cue, held, recommended})`);
+      throw new Error(`option label "${label}" draws "${inline.trim()}" inline — pass it as parts ({head, tail, cue, holder, recommended})`);
     }
     return { head: label };
   }
@@ -216,15 +216,15 @@ function labelParts(label) {
 
 /** The label as its row draws it. @param {OptionLabel} label @returns {string} */
 function drawLabel(label) {
-  const { head, tail, cue, held, recommended } = labelParts(label);
+  const { head, tail, cue, holder, recommended } = labelParts(label);
   let text = head;
   if (tail) text += `${TAIL_SEPARATOR}*${tail}*`;
   if (cue) text += `${NOTE_SEPARATOR}${cue}`;
-  if (held) text = `~~${text}~~${NOTE_SEPARATOR}${held}`;
+  if (holder) text = `~~${text}~~${NOTE_SEPARATOR}${holder}`;
   return recommended ? `${text}${RECOMMENDED_MARKER}` : text;
 }
 
-/** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {GateOption|GateTyped} GateRow */
 /** @typedef {{question: string, statement: string}} GateProse */
@@ -293,22 +293,24 @@ function stripMarkup(text) {
 }
 
 /**
- * Record one pressable row — a single key the person can be offered. The
- * tail states everything the row draws after its head.
+ * Record one pressable row — a single key the person can be offered, its
+ * label's parts as given.
  * @param {string} line  the row as drawn
  * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts
  * @returns {void}
  */
-function recordOption(line, key, word, { head, tail, cue, held, recommended }) {
+function recordOption(line, key, word, { head, tail, cue, holder, recommended }) {
   if (collected === null) return;
   /** @type {GateOption} */
   const option = {
     key: String(key),
     word: word ?? null,
     head,
-    tail: [tail, cue, held].filter(Boolean).join(NOTE_SEPARATOR) || null,
+    tail: tail || null,
+    cue: cue || null,
+    holder: holder || null,
     detail: null,
-    struck: Boolean(held),
+    struck: Boolean(holder),
     recommended: Boolean(recommended),
   };
   collected.rows.set(line, option);

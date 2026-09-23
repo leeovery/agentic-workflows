@@ -14,10 +14,13 @@ const NBSP = ' ';
 const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
 const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
 
-/** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
+const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|\*|[^`\\*~]+|[\s\S]/g;
+
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {{gate: string, question: string, statement: string, options: GateOption[], typed: GateTyped[]}} GatePayload */
-/** @typedef {{typed: boolean, name: string, text: string|null, struck: boolean, detail: string|null}} DrawnRow */
+/** @typedef {{typed: boolean, name: string, label: string|null, detail: string|null}} DrawnRow */
+/** @typedef {{text: string, struck: string, italic: string}} LabelReading */
 
 /**
  * Run an in-process render with the gate surface announced, the environment
@@ -56,25 +59,49 @@ function detailText(detail) {
 /** @param {string} line @returns {DrawnRow|null} */
 function drawnRow(line) {
   const code = /^\*\*`([^`]+)`\*\*(?:\s*→ (.*)|$)/.exec(line);
-  if (code) {
-    const label = code[2];
-    return { typed: code[1].includes('–'), name: code[1], text: label === undefined ? null : plainText(label), struck: label?.includes('~~') ?? false, detail: null };
-  }
+  if (code) return { typed: code[1].includes('–'), name: code[1], label: code[2] ?? null, detail: null };
   const prompt = /^\*\*([^*`]+)\*\*\s+→ (.*)$/.exec(line);
-  return prompt ? { typed: true, name: prompt[1], text: plainText(prompt[2]), struck: false, detail: null } : null;
+  return prompt ? { typed: true, name: prompt[1], label: prompt[2], detail: null } : null;
 }
 
-// Separators are presentation: a tail follows its head after a dash, a held
-// row's holder after a dot, and the payload states the words either way.
-/** @param {string|null} text */
-function words(text) {
-  return text === null ? null : text.replace(/ [—·] /g, ' | ');
+// The label the option grammar draws from a payload row's parts
+// (CONVENTIONS.md: Menus): the metadata tail italic after a dash, the cue
+// plain after a dot, the strike over the row up to its holder, the holder
+// plain after it, the recommendation last. Null for a bare key.
+/** @param {GateOption} o @returns {string|null} */
+function partsLabel(o) {
+  let label = o.head;
+  if (o.tail !== null) label += ` — *${o.tail}*`;
+  if (o.cue !== null) label += ` · ${o.cue}`;
+  if (o.holder !== null) label = `~~${label}~~ · ${o.holder}`;
+  if (o.recommended) label += ' (recommended)';
+  return label === '' ? null : label;
 }
 
-/** The label an option draws, rebuilt from its payload row; null for a bare key. @param {GateOption} o */
-function optionText(o) {
-  if (o.head === '' && o.tail === null) return null;
-  return plainText([o.head, o.tail].filter((part) => part !== null).join(' — ') + (o.recommended ? ' (recommended)' : ''));
+/**
+ * A label read three ways no wrap can disturb — its words, the words under
+ * its strike, the words in its italics — markers off and whitespace as one
+ * space, so a span a wrap closed and reopened reads whole.
+ * @param {string|null} label @returns {LabelReading|null}
+ */
+function readLabel(label) {
+  if (label === null) return null;
+  let text = '';
+  let struck = '';
+  let italic = '';
+  let inStrike = false;
+  let inItalic = false;
+  for (const [token, code, escaped] of label.matchAll(LABEL_TOKEN)) {
+    if (token === '~~') { inStrike = !inStrike; struck += ' '; continue; }
+    if (token === '*') { inItalic = !inItalic; italic += ' '; continue; }
+    if (token === '**') continue;
+    const chars = code ?? escaped ?? token;
+    text += chars;
+    if (inStrike) struck += chars;
+    if (inItalic) italic += chars;
+  }
+  const squash = (/** @type {string} */ s) => s.replace(/\s+/g, ' ').trim();
+  return { text: squash(text), struck: squash(struck), italic: squash(italic) };
 }
 
 // A row is an option or a typed row, in order and with its whole label; a
@@ -91,8 +118,8 @@ function assertPayloadDrawsMenu(gate, body, label) {
   for (const line of body) {
     if (line === MENU_RULE || line.trim() === '') { under = null; continue; }
     if (line.startsWith(NBSP)) {
-      assert.ok(under, `[${label}] "${line}" is indented as a continuation but follows no row`);
-      under.text = `${under.text} ${plainText(line)}`;
+      assert.ok(under?.label, `[${label}] "${line}" is indented as a continuation but follows no row`);
+      under.label = `${under.label} ${line.replace(/^ +/, '')}`;
       continue;
     }
     const glyphed = GLYPHED_LINE.exec(line);
@@ -119,9 +146,12 @@ function assertPayloadDrawsMenu(gate, body, label) {
   const typed = rows.filter((r) => r.typed);
   assert.deepStrictEqual(gate.options.map((o) => (o.word ? `${o.key}/${o.word}` : o.key)), keys.map((r) => r.name),
     `[${label}] the payload's keys are not the menu's`);
-  assert.deepStrictEqual(gate.options.map((o) => [words(optionText(o)), o.struck, detailText(o.detail)]), keys.map((r) => [words(r.text), r.struck, r.detail]),
-    `[${label}] the payload's option labels, strikes and details are not the menu's`);
-  assert.deepStrictEqual(gate.typed.map((t) => [t.label, plainText(t.description), detailText(t.detail)]), typed.map((r) => [r.name, r.text, r.detail]),
+  assert.deepStrictEqual(
+    gate.options.map((o) => [readLabel(partsLabel(o)), o.struck, detailText(o.detail)]),
+    keys.map((r) => [readLabel(r.label), Boolean(readLabel(r.label)?.struck), r.detail]),
+    `[${label}] the payload's option parts are not what the menu's rows draw — words, strike, italics, detail`);
+  assert.deepStrictEqual(gate.typed.map((t) => [t.label, plainText(t.description), detailText(t.detail)]),
+    typed.map((r) => [r.name, plainText(r.label ?? ''), r.detail]),
     `[${label}] the payload's typed rows are not the menu's`);
 }
 
