@@ -247,9 +247,11 @@ describe('postpone-gate', () => {
           auth: { routing: 'research', source: 'discovery' },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
+          dead: { routing: 'research', source: 'discovery', handled: true },
           locked: { routing: 'discussion', source: 'discovery' },
           busy: { routing: 'discussion', source: 'discovery' },
         } },
+        research: { items: { dead: { status: 'completed' } } },
         discussion: { items: {
           auth: { status: 'in-progress' },
           locked: { status: 'completed' },
@@ -267,6 +269,7 @@ describe('postpone-gate', () => {
     assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no research or discussion item of that name/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
+    assert.throws(() => gate('dead'), /render postpone-gate: "dead" is closed as a dead end — reopen it first/);
     assert.throws(() => gate('locked'), /render postpone-gate: postponing "locked" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"/);
     assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
     assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
@@ -4984,10 +4987,10 @@ describe('roadmap surfaces', () => {
 
   it('horizon-pick: refuses a never-born roadmap and one with no horizons', () => {
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
-      /render horizon-pick: no roadmap on the project manifest — the park names its first horizon in prose/);
+      /render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose/);
     writeRoadmap({ horizons: [], items: {} });
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
-      /render horizon-pick: the roadmap holds no horizons — the park names one in prose/);
+      /render horizon-pick: the roadmap holds no horizons — the caller names one in prose/);
   });
 
   it('park-gate: an existing horizon, no source', () => {
@@ -6286,7 +6289,7 @@ describe('render candidate-gate', () => {
     dotpath: 'pay', file: writePayload(dir, name, obj),
   });
 
-  it('renders the gated candidate byte-exactly — display then the four-way gate', () => {
+  it('renders the gated candidate byte-exactly — display then the five-way gate', () => {
     staged('gated');
     assert.strictEqual(render(), [
       '=== DISPLAY: candidate (emit verbatim as a code block) ===',
@@ -6298,13 +6301,16 @@ describe('render candidate-gate', () => {
       DOTS,
       '**`◆ Add this topic to the map?`**',
       '',
-      '**`y/yes`**   → Approve — the topic joins the map and its phase can',
-      `${NB(10)}start from the epic menu`,
-      '**`a/auto`**  → Approve this and all remaining candidates automatically',
-      '**`s/skip`**  → Skip and dismiss — the analysis never re-proposes this',
-      `${NB(10)}name`,
-      '**Comment** → Tell me what to change (routing, summary, or',
-      `${NB(10)}description)`,
+      '**`y/yes`**      → Approve — the topic joins the map and its phase can',
+      `${NB(13)}start from the epic menu`,
+      '**`a/auto`**     → Approve this and all remaining candidates',
+      `${NB(13)}automatically`,
+      '**`s/skip`**     → Skip and dismiss — the analysis never re-proposes',
+      `${NB(13)}this name`,
+      '**`p/postpone`** → Postpone — the topic joins the map with its brief',
+      `${NB(13)}and waits on the roadmap under a horizon you name`,
+      '**Comment**    → Tell me what to change (routing, summary, or',
+      `${NB(13)}description)`,
       '',
     ].join('\n'));
   });

@@ -6,7 +6,7 @@
 
 Presents the candidate topics gap-analysis staged, gates each per-topic before anything lands on the discovery map, and writes the approved ones. The analysis has already staged its genuinely-new candidates — content in the staging file, gate state in the manifest's `analysis_staging.discovery-gap-analysis` subtree, each candidate `pending`; the already-on-map and dismissed cases were resolved silently at stage time and never reach this gate.
 
-The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}` and gives it a discovery brief of its own; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it.
+The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}` and gives it a discovery brief of its own; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it; postponing writes it exactly as an approval does and then sends it to the roadmap, for a gap that is real but not this epic's to close.
 
 ## Parameters
 
@@ -65,6 +65,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### Otherwise
 
+Set `postpone_after` = `false`; the `postpone` arm below is the only thing that raises it, and it is raised for one candidate at a time.
+
 Write the candidate payload to `.workflows/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
 
 ```bash
@@ -101,6 +103,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 
 → Return to **B. Gate Each Candidate**.
 
+**If `postpone`:**
+
+The candidate is approved exactly as `yes` approves it, and then leaves for the roadmap. Set `postpone_after` = `true`.
+
+→ Proceed to **C. Write Approved Candidate**.
+
 **If comment:**
 
 Revise this block's `routing`, `summary`, or `description` in the staging file per the user's feedback (content edits only). The candidate stays `pending`.
@@ -123,11 +131,13 @@ The map can change between staging and this write — a prior session's gate run
 
 Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes `gap-analysis`, extend it comma-joined. Record `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status resolved`; nothing is added to `tracker`.
 
+The row is on the map under another path's provenance, so there is still a whole topic for the postpone to take: when `postpone_after` is `true`, load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none` and follow its instructions as written before returning.
+
 → Return to **B. Gate Each Candidate**.
 
 **If refused as dismissed** (the user dismissed this name since staging):
 
-Honour the dismissal. Record the candidate `skipped` (same write as the skip arm) — the name is already on the dismissed list, no push needed.
+Honour the dismissal. Record the candidate `skipped` (same write as the skip arm) — the name is already on the dismissed list, no push needed. When `postpone_after` is `true`, tell the user in one line that the name was dismissed since staging, so nothing was postponed.
 
 → Return to **B. Gate Each Candidate**.
 
@@ -158,5 +168,15 @@ Drawn from the discovery-gap analysis, read out of {source_artifacts}.
 
 {the questions the gap raises, as bullets — what the next phase has to settle}
 ```
+
+#### If `postpone_after` is `true`
+
+The row is on the map and its brief is written, so there is a whole topic for the postpone to take.
+
+→ Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
+
+→ On return, return to **B. Gate Each Candidate**.
+
+#### Otherwise
 
 → Return to **B. Gate Each Candidate**.

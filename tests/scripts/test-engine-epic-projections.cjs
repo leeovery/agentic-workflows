@@ -491,6 +491,7 @@ describe('epic projections: menu', () => {
       in_progress: [{ name: 'auth-spec', phase: 'specification' }],
       completed: [{ name: 'reporting', phase: 'planning' }],
       cancellable: [{ name: 'auth-spec', stage: 'specification', state: 'in-progress' }],
+      postponable: [{ name: 'menu-admin', stage: 'discovery', state: 'decided' }],
       cancelled: [],
       next_phase_ready: [
         { name: 'billing-grouping', action: 'start_specification', label: 'grouping ready' },
@@ -538,6 +539,7 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
       '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
       `${NB(14)}externally`,
       '**`o/order`**     → Re-sequence the build order',
@@ -557,6 +559,7 @@ describe('epic projections: menu', () => {
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
+        ['p', 'postpone_topic', null, null],
         ['u', 'unblock_plan', null, null],
         ['o', 'resequence_build_order', null, null],
       ]
@@ -1111,7 +1114,7 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicCancelMenu(unitDetail()).display.includes('in session'), false, 'no presence, no cue');
   });
 
-  it('postpone-menu: every Discovery unit, locked rows keyless with their reason, a held unit cued; cancelled and postponed rows absent', () => {
+  it('postpone-menu: every Discovery unit, locked rows keyless with their reason — a dead end among them — a held unit cued; cancelled and postponed rows absent', () => {
     const presence = [{ phase: 'discussion', topic: 'billing', age_seconds: 30, held: true, session_id: 's1' }];
     const detail = detailFor(dir, 'p1', {
       work_type: 'epic',
@@ -1122,8 +1125,9 @@ describe('epic projections: selection sub-views', () => {
           'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
+          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
         } },
-        research: { items: { auth: { status: 'completed' } } },
+        research: { items: { auth: { status: 'completed' }, 'dead-lead': { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress' } } },
         specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } } } },
       },
@@ -1137,7 +1141,11 @@ describe('epic projections: selection sub-views', () => {
       '     past specification is past "not yet"',
       '  ├─ 1. Billing [discussing] · in session (last active 30s',
       '        ago)',
-      '  └─ 2. Data Export [fresh · routed to discussion]',
+      '  ├─ 2. Data Export [fresh · routed to discussion]',
+      // A dead end is the answer to its own question — the roadmap holds
+      // what is still to do, so it reopens before it can wait.
+      '  └─ Dead Lead [dead end] · "dead-lead" is closed as a dead end —',
+      '     reopen it first',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -1251,6 +1259,29 @@ describe('epic projections: selection sub-views', () => {
     const bare = detailFor(dir, 'v3', { work_type: 'epic', phases: { planning: { items: { orphan: { status: 'completed' } } } } });
     assert.deepStrictEqual(options(bare), []);
     assert.strictEqual(epicCancelMenu(bare).display, 'No cancellable topics.\n');
+  });
+
+  it('p/postpone shows whenever a Discovery unit exists, locked ones included, and withdraws when every topic has left', () => {
+    const options = (d) => epicMenu('v1', d).keys.filter((k) => k.action === 'postpone_topic').map((k) => k.label);
+    assert.deepStrictEqual(options(unitDetail()), ['Postpone a topic to the roadmap']);
+    // A locked unit keeps the option: the reason rides its row, and
+    // withdrawing the option would hide the reason with it.
+    const locked = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed', sources: { auth: { status: 'incorporated' } } } } },
+      },
+    });
+    assert.deepStrictEqual(options(locked), ['Postpone a topic to the roadmap']);
+    // A map whose every row has gone to the roadmap has nothing left to
+    // postpone — the empty state, and no option.
+    const away = detailFor(dir, 'v3', {
+      work_type: 'epic',
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.deepStrictEqual(options(away), []);
+    assert.strictEqual(epicPostponeMenu(away).display, 'No postponable topics.\n');
   });
 
   it('cancel-menu: a triaged stub is cancellable with the topic, cued as parked', () => {
@@ -1776,6 +1807,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
     ].join('\n'));
     // With a map the discussion phase renders no item rows — the map row
     // carries the wait, so the key owes no blocked cue.
@@ -2086,6 +2118,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
+      '**`p/postpone`**  → Postpone a topic to the roadmap',
     ].join('\n'));
     // The map row cues the same hold the struck row shows.
     assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),

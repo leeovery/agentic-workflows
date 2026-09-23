@@ -130,7 +130,7 @@ A capability on the roadmap at the grain you would move around a real roadmap, w
 A named bucket on the roadmap, in the person's own staging words (launch, v1, someday). Their order is the meaning: first is next up.
 
 **park**:
-Putting a capability on the roadmap from the middle of another conversation by naming where it belongs ("that's a v2 thing"). The stated placement is what makes it a park rather than an inbox note.
+Putting a capability on the roadmap from the middle of another conversation by naming where it belongs ("that's a v2 thing"). The stated placement is what makes it a park rather than an inbox note. A capability surfacing as you talk, never a topic already on an epic's map — that is a postpone.
 
 **start work on**:
 Choosing roadmap items to build now. Several items usually become an epic, one becomes a feature, and the new piece of work is fenced to exactly those items while the rest wait.
@@ -180,6 +180,10 @@ Merging a standalone feature into an epic already underway, as one of its topics
 
 **cancel**:
 Taking a piece of work, or one topic of an epic, out of active work while keeping its record. Reversible with reactivate.
+
+**postpone**:
+Sending one topic of an epic to the roadmap to be done later. The topic leaves whole — nothing deleted, nothing moved — and comes back when you start work on its item.
+_Avoid_: defer (the discussion map's word for a subtopic set aside)
 
 **reopen**:
 Stepping back into a finished phase to amend it. Whatever was built on it is marked *input moved* until that phase is entered and reconciles the change.
