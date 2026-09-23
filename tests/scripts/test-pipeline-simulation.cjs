@@ -510,7 +510,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
   });
   assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
-    /◆ Select an output format:[\s\S]*\*\*`1`\*\* → Sample Format/);
+    /◆ Which output format\?[\s\S]*\*\*`1`\*\* → Sample Format/);
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);

@@ -1324,11 +1324,13 @@ describe('epic projections: selection sub-views', () => {
       '  └─ Auth [completed] · implementation started — fix forward',
       '',
     ].join('\n'));
-    // Every row locked: a statement stands where the question would, over
-    // back alone — a question with nothing to pick would be a lie.
+    // Every row locked: the statement says so and the ask is what next, over
+    // back alone — the pick question would offer a pick that is not there.
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       'Nothing can be cancelled right now — each row names what holds it.',
+      '',
+      '**`◆ What next?`**',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1592,6 +1594,8 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       'Nothing can be reactivated right now — each row names what holds it.',
+      '',
+      '**`◆ What next?`**',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));

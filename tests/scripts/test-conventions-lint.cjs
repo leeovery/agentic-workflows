@@ -925,34 +925,36 @@ function checkNoFrontmatterSessionEndHooks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 19 — a yes row asks a question. A menu block carrying a `y/yes` row
-// is a consent gate, and a consent gate asks on its diamond line: the block
-// holds a glyphed `**`◆ …`**` line and that line ends in `?`; an `n/no` row
-// answers a `y/yes` row, never a verb synonym — the shape the engine's menu
-// frame refuses (surfaces.cjs), held here for the prose-authored menus.
-// Anchored on the dot frame like checks 16/17 and closed by the fence or the
-// next frame, so a yes row outside a menu is never inspected.
+// Check 19 — every menu asks a question. A menu block holds a row to press,
+// and above its first row a glyphed `**`◆ …`**` line that ends in `?`; an
+// `n/no` row answers a `y/yes` row, never a verb synonym — the shape the
+// engine's menu frame refuses (surfaces.cjs), held here for the
+// prose-authored menus. Anchored on the dot frame like checks 16/17 and
+// closed by the fence or the next frame, so option grammar outside a menu is
+// never inspected.
 // ---------------------------------------------------------------------------
 
+const PRESSABLE_ROW = /^\*\*`(?!◆ )[^`]+`\*\*(?: +→ |$)/;
 const YES_ROW = /^\*\*`y\/yes`\*\*/;
 const NO_ROW = /^\*\*`n\/no`\*\*/;
-const GLYPHED_LINE = /^\*\*`◆ .*`\*\*$/;
+const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
 
-function checkYesAsksQuestion(files) {
+function checkMenusAsk(files) {
   const out = [];
   for (const file of files) {
     const lines = readLines(file);
     let block = null;
     const close = () => {
-      if (block && block.no && !block.yes) {
+      if (!block) return;
+      if (block.no && !block.yes) {
         out.push({ file, line: block.no, message: 'an n/no row without a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym' });
       }
-      if (block && block.yes) {
-        if (!block.glyph) {
-          out.push({ file, line: block.start, message: 'a y/yes row with no glyphed question — a consent gate asks on its diamond line (**`◆ …?`**)' });
-        } else if (!/\?`\*\*$/.test(block.glyph.text)) {
-          out.push({ file, line: block.glyph.line, message: `a y/yes row under a statement — the diamond line ends in "?" (found "${block.glyph.text}")` });
-        }
+      if (!block.row) {
+        out.push({ file, line: block.start, message: 'a menu with no row to press — a menu offers at least one key' });
+      } else if (!block.ask) {
+        out.push({ file, line: block.row, message: 'a menu with no glyphed question above its rows — every menu asks on its diamond line (**`◆ …?`**)' });
+      } else if (!block.ask.text.endsWith('?')) {
+        out.push({ file, line: block.ask.line, message: `a menu under a statement — the diamond line ends in "?" (found "${block.ask.text}")` });
       }
       block = null;
     };
@@ -960,7 +962,7 @@ function checkYesAsksQuestion(files) {
       const t = line.trim();
       if (t === MENU_FRAME) {
         close();
-        block = { start: i + 1, glyph: null, yes: false, no: 0 };
+        block = { start: i + 1, ask: null, row: 0, yes: false, no: 0 };
         return;
       }
       if (!block) return;
@@ -968,7 +970,9 @@ function checkYesAsksQuestion(files) {
         close();
         return;
       }
-      if (GLYPHED_LINE.test(t)) block.glyph = { line: i + 1, text: t };
+      const glyph = GLYPHED_LINE.exec(t);
+      if (glyph && !block.row && !block.ask) block.ask = { line: i + 1, text: glyph[1] };
+      if (PRESSABLE_ROW.test(t) && !block.row) block.row = i + 1;
       if (YES_ROW.test(t)) block.yes = true;
       if (NO_ROW.test(t) && !block.no) block.no = i + 1;
     });
@@ -998,7 +1002,7 @@ const CHECKS = [
   ['16: menu option alignment', checkMenuAlignment],
   ['17: conditional menu options', checkConditionalOptions],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
-  ['19: yes rows ask a question', checkYesAsksQuestion],
+  ['19: every menu asks a question', checkMenusAsk],
   ['20: footerless load directives', checkFooterlessLoads],
 ];
 
@@ -1574,47 +1578,61 @@ test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declarati
   });
 });
 
-test('check 19 (yes rows ask a question) — catches a statement or an unglyphed question over a y/yes row, permits glyphed questions and route menus', () => {
+test('check 19 (every menu asks a question) — catches a menu with no glyphed question above its rows, or no row, permits a glyphed question alone or beneath a statement', () => {
   withTemp((dir) => {
     const fence = (body) => `\`\`\`\n${MENU_FRAME}\n${body}\n\`\`\`\n`;
     const glyphed = write(dir, 'skills/x/glyphed.md', fence('**`◆ Proceed?`**\n\n**`y/yes`**\n**`n/no`**'));
     const split = write(dir, 'skills/x/split.md',
       fence('Cancelling **Auth Flow** will mark it as cancelled.\n\n**`◆ Cancel it?`**\n\n**`y/yes`** → Confirm cancellation\n**`n/no`**  → Return to menu'));
-    assert.strictEqual(checkYesAsksQuestion([glyphed, split]).length, 0, 'a glyphed question — alone, or split beneath a statement — is clean');
+    const route = write(dir, 'skills/x/route.md',
+      fence('Where this belongs.\n\n**`◆ Where should it go?`**\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
+    const pick = write(dir, 'skills/x/pick.md', fence('**`◆ Which topic?`**\n\n**`1`**      → Auth Flow\n**`b/back`** → Return to menu'));
+    assert.strictEqual(checkMenusAsk([glyphed, split, route, pick]).length, 0, 'a glyphed question — alone, or split beneath a statement — is clean, over any rows');
 
     const statement = write(dir, 'skills/x/statement.md', fence('**`◆ Cancel it.`**\n\n**`y/yes`**\n**`n/no`**'));
-    const v1 = checkYesAsksQuestion([statement]);
-    assert.strictEqual(v1.length, 1, 'a glyphed statement over a y/yes row is caught');
+    const v1 = checkMenusAsk([statement]);
+    assert.strictEqual(v1.length, 1, 'a glyphed statement over the rows is caught');
     assert.strictEqual(v1[0].line, 3);
-    assert.match(v1[0].message, /found "\*\*`◆ Cancel it\.`\*\*"/);
+    assert.match(v1[0].message, /found "Cancel it\."/);
 
     // A question the label cannot glyph (markup, a placeholder) is no diamond
     // line — the split is the fix.
     const plain = write(dir, 'skills/x/plain.md',
       fence('Project default format is **{format}**. Use the same format?\n\n**`y/yes`** → Use {format}\n**`n/no`**  → See all available formats'));
-    const v2 = checkYesAsksQuestion([plain]);
-    assert.strictEqual(v2.length, 1, 'an unglyphed question over a y/yes row is caught');
-    assert.strictEqual(v2[0].line, 2);
-    assert.match(v2[0].message, /no glyphed question/);
+    const v2 = checkMenusAsk([plain]);
+    assert.strictEqual(v2.length, 1, 'an unglyphed question over the rows is caught');
+    assert.strictEqual(v2[0].line, 5);
+    assert.match(v2[0].message, /no glyphed question above its rows/);
 
-    const labelless = write(dir, 'skills/x/labelless.md', fence('**`y/yes`** → Remove it\n**`n/no`**  → Back out'));
-    const v3 = checkYesAsksQuestion([labelless]);
-    assert.strictEqual(v3.length, 1, 'a y/yes row with no question is caught');
-    assert.strictEqual(v3[0].line, 2);
-    assert.match(v3[0].message, /no glyphed question/);
+    // A route menu asks too — a statement alone over its destinations is caught.
+    const bare = write(dir, 'skills/x/bare.md', fence('Where this belongs.\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
+    const v3 = checkMenusAsk([bare]);
+    assert.strictEqual(v3.length, 1, 'a statement over a route menu is caught');
+    assert.strictEqual(v3[0].line, 5);
 
-    // A route menu answers no yes — its statement stands.
-    const route = write(dir, 'skills/x/route.md', fence('Where this belongs.\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
-    assert.strictEqual(checkYesAsksQuestion([route]).length, 0, 'a statement over a route menu is clean');
+    const labelless = write(dir, 'skills/x/labelless.md', fence('**`1`** → Auth Flow\n**`2`** → Billing\n\nSelect an option:'));
+    const v4 = checkMenusAsk([labelless]);
+    assert.strictEqual(v4.length, 1, 'a trailing prompt line is no question');
+    assert.strictEqual(v4[0].line, 3);
+
+    const below = write(dir, 'skills/x/below.md', fence('**`1`** → Auth Flow\n\n**`◆ Which topic?`**'));
+    assert.strictEqual(checkMenusAsk([below]).length, 1, 'a question beneath the rows asks nothing');
+
+    const rowless = write(dir, 'skills/x/rowless.md', fence('**`◆ Anything else?`**\n\n**Comment** → Tell me what you think'));
+    const v5 = checkMenusAsk([rowless]);
+    assert.strictEqual(v5.length, 1, 'a menu with no row to press is caught');
+    assert.strictEqual(v5[0].line, 2);
+    assert.match(v5[0].message, /no row to press/);
+
     // An n/no row names its yes — a verb synonym beside it is caught.
     const synonym = write(dir, 'skills/x/synonym.md', fence('**`◆ Proceed?`**\n\n**`p/proceed`** → Carry on\n**`n/no`**      → Stop here'));
-    const v4 = checkYesAsksQuestion([synonym]);
-    assert.strictEqual(v4.length, 1, 'an n/no row without a y/yes row is caught');
-    assert.strictEqual(v4[0].line, 6);
-    assert.match(v4[0].message, /an n\/no row without a y\/yes row/);
+    const v6 = checkMenusAsk([synonym]);
+    assert.strictEqual(v6.length, 1, 'an n/no row without a y/yes row is caught');
+    assert.strictEqual(v6[0].line, 6);
+    assert.match(v6[0].message, /an n\/no row without a y\/yes row/);
 
     // Option grammar outside a menu is not a menu — no dot frame, no check.
     const prose = write(dir, 'skills/x/prose.md', '**`y/yes`** → the affirmative key\n');
-    assert.strictEqual(checkYesAsksQuestion([prose]).length, 0, 'a y/yes row outside a menu is never inspected');
+    assert.strictEqual(checkMenusAsk([prose]).length, 0, 'a row outside a menu is never inspected');
   });
 });

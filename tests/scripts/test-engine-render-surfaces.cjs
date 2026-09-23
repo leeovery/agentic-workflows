@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, menuFrame, menu, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
 
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
@@ -502,17 +502,29 @@ describe('the experiment surfaces', () => {
       /E1 is "running", not designed — the briefing confirm follows the written design/);
   });
 
-  it('renders the record picker over a populated series', () => {
-    labWith({ E1: { slug: 'window-placement', status: 'running' } });
-    const out = renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== MENU: experiment pick \(emit verbatim as markdown, then STOP for the user's response\) ===/);
-    assert.match(out, /Which experiment\? \(enter its id — E1, E2, …, or \*\*`b\/back`\*\*\)/);
+  it('renders the record picker byte-exactly — one row per live top-level record, keyed by its id, then back', () => {
+    labWith({
+      E1: { slug: 'window-placement', status: 'running' },
+      'E1.1': { slug: 'single-monitor', status: 'designed' },
+      E2: { slug: 'cold-start', status: 'concluded', verdict: 'held' },
+      E3: { slug: 'warm-cache', status: 'conceived' },
+    });
+    assert.strictEqual(renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }), [
+      "=== MENU: experiment pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Which experiment?`**',
+      '',
+      '**`E1`**     → window-placement — *running*',
+      '**`E3`**     → warm-cache — *conceived*',
+      '**`b/back`** → Leave without picking one',
+      '',
+    ].join('\n'));
   });
 
-  it('the picker keeps only the address guard — a wrong phase refuses', () => {
-    labWith({});
-    assert.match(renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }),
-      /MENU: experiment pick/);
+  it('the picker refuses a wrong phase and a series with nothing live to pick', () => {
+    labWith({ E1: { slug: 'window-placement', status: 'abandoned', reason: 'moot' } });
+    assert.throws(() => renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }),
+      /"timing"'s series holds no live experiments — there is nothing to pick/);
     assert.throws(() => renderSurface(dir, 'experiment-pick', { dotpath: 'lab.discussion.timing' }),
       /address must be <work_unit>\.experiment\.<topic>/);
   });
@@ -972,10 +984,11 @@ describe('surfaces primitives', () => {
 
   it('holds a projection-composed frame to the same rule — the check reads the composed lines', () => {
     const rows = ['**`y/yes`** → Proceed anyway', '**`b/back`** → Return to menu'];
-    const lines = menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '', ...rows], { glyphLabel: false }).split('\n');
-    assert.deepStrictEqual(lines.slice(0, 5), [DOTS, 'Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '']);
-    assert.throws(() => menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway.`**', '', ...rows], { glyphLabel: false }), /"Proceed anyway\." is not one/);
-    assert.throws(() => menuFrame(['Two topics sit ahead.', '', ...rows], { glyphLabel: false }), /no `◆ …\?` line stands above the rows/);
+    const lines = menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '', ...rows]).split('\n');
+    assert.deepStrictEqual(lines.slice(0, 5), [DOTS, 'Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', ''], 'a glyphed line makes the leading statement context');
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway.`**', '', ...rows]), /"Proceed anyway\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', ...rows]), /"Two topics sit ahead\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead:', ...rows]), /no `◆ …\?` line stands above the rows/);
   });
 
   it('refuses an n/no row without a y/yes row — a refusal answers yes, never a verb synonym', () => {
@@ -990,49 +1003,89 @@ describe('surfaces primitives', () => {
     );
   });
 
-  it('a statement label stands over a route menu — no y/yes row, no question owed', () => {
-    const out = menu('Where this belongs.', ['**`d/discussion`** → Discuss it', '**`r/research`** → Research it']);
-    assert.strictEqual(out.split('\n')[1], '**`◆ Where this belongs.`**');
+  it('every menu asks — a route menu under a statement is refused, and passes once a question rides beneath it', () => {
+    const rows = ['**`d/discussion`** → Discuss it', '**`r/research`** → Research it'];
+    assert.throws(() => menu('Where this belongs.', rows), /every menu asks a glyphed question — "Where this belongs\." is not one/);
+    assert.throws(() => menu('', rows), /no `◆ …\?` line stands above the rows/);
+    assert.throws(() => menu('', rows, { question: 'Which one' }), /"Which one" is not one/);
+    assert.deepStrictEqual(
+      menu('Where this belongs.', rows, { question: 'Where should it go?' }).split('\n').slice(1, 4),
+      ['Where this belongs.', '', '**`◆ Where should it go?`**'],
+    );
+  });
+
+  it('the question stands above the rows — one beneath them asks nothing', () => {
+    assert.throws(() => menuFrame(['**`1`** → A', '', '**`◆ Which one?`**']), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses a menu with no row to press — plain lines and prompt options alone are no menu', () => {
+    assert.throws(() => menu('Which one?', ['a plain line']), /no row to press/);
+    assert.throws(() => menu('Which one?', ['**Comment** → Tell me what you think']), /no row to press/);
+    assert.throws(() => menuFrame(['**`◆ Which one?`**']), /no row to press/);
+  });
+
+  it('every row builder makes a row to press — command, bare, and range options', () => {
+    assert.match(menu('Which one?', [cmdOption('1', null, 'A'), promptOption('Ask', 'Ask about it')]), /◆ Which one\?/);
+    assert.match(menu('Proceed?', [bareOption('y', 'yes'), bareOption('n', 'no')]), /◆ Proceed\?/);
+    assert.match(menu('Which items?', [rangeOption(1, 3, 'Select item(s)')]), /◆ Which items\?/);
   });
 
   it('menu appends an optional trailing prompt after a blank line', () => {
-    const out = menu('Pick one:', ['**`1`** → A'], { prompt: 'Select an option:' });
-    assert.ok(out.endsWith(['**`1`** → A', '', 'Select an option:'].join('\n')));
+    const out = menu('Which one?', ['**`1`** → A'], { prompt: 'Append a phase to override.' });
+    assert.ok(out.endsWith(['**`1`** → A', '', 'Append a phase to override.'].join('\n')));
   });
 
   it('aligns option arrows into one column, leaving non-option lines alone', () => {
-    const out = menu('Pick one:', ['**`c/continue`** → Carry on', '**`q`** → Quit', 'a plain line']);
+    const out = menu('Which one?', ['**`c/continue`** → Carry on', '**`q`** → Quit', 'a plain line']);
     const lines = out.split('\n');
     const arrows = lines.filter((l) => l.includes(' → ')).map((l) => l.indexOf(' → '));
     assert.strictEqual(new Set(arrows).size, 1, 'arrows share a column');
     assert.ok(lines.includes('a plain line'), 'non-option lines pass through untouched');
   });
 
+  // Every frame asks; its rows start three lines down, under the question.
+  const ASK = ['Which one?', ''];
+
   it('wraps a long option label under the label column with NBSP continuations', () => {
     const out = menuFrame([
+      ...ASK,
       '**`1`** → ' + 'alpha '.repeat(12).trim(),
       '**`i/discovery`** → Continue discovery',
     ], { width: 40 });
     const lines = out.split('\n');
     // column = 11 (i/discovery) → label column 14; every rendered line ≤ 40.
-    assert.strictEqual(lines[1], '**`1`**           → alpha alpha alpha alpha');
-    assert.strictEqual(lines[2], `${NB(14)}alpha alpha alpha alpha`);
-    assert.strictEqual(lines[3], `${NB(14)}alpha alpha alpha alpha`);
-    assert.strictEqual(lines[4], '**`i/discovery`** → Continue discovery');
+    assert.strictEqual(lines[3], '**`1`**           → alpha alpha alpha alpha');
+    assert.strictEqual(lines[4], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[5], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[6], '**`i/discovery`** → Continue discovery');
   });
 
   it('closes and reopens spans at a wrap break — every emitted line is self-contained markdown', () => {
     const out = menuFrame([
+      ...ASK,
       '**`1`** → Continue "Roles" — *implementation (Phase 5, Task roles-5-44)*',
       '**`i/discovery`** → Continue discovery',
     ], { width: 55 });
     const lines = out.split('\n');
-    assert.strictEqual(lines[1], '**`1`**           → Continue "Roles" — *implementation (Phase*');
-    assert.strictEqual(lines[2], `${NB(14)}*5, Task roles-5-44)*`);
+    assert.strictEqual(lines[3], '**`1`**           → Continue "Roles" — *implementation (Phase*');
+    assert.strictEqual(lines[4], `${NB(14)}*5, Task roles-5-44)*`);
+  });
+
+  it('an escaped marker is text, never a span — a break adds no closing marker', () => {
+    const out = menuFrame([...ASK, '**`1`** → Fix 2\\*3 so every one of the pipeline stages agrees'], { width: 40 });
+    const [first, ...continuations] = out.split('\n').slice(3);
+    assert.ok(continuations.length > 0, 'the label wraps');
+    for (const line of [first, ...continuations]) {
+      assert.ok(!/(^|[^\\])\*$/.test(line), `no closing marker at the break: ${line}`);
+    }
+    for (const line of continuations) {
+      assert.ok(!line.replace(/^ +/, '').startsWith('*'), `no reopened marker on the continuation: ${line}`);
+    }
   });
 
   it('a struck in-session row and a code span both survive the break balanced', () => {
     const struck = menuFrame([
+      ...ASK,
       '**`1`** → ~~Continue "Topic" — *discussion*~~ · in session (last active 2m ago)',
     ], { width: 55 });
     // the ~~…~~ closes before the break here; each line carries balanced markers
@@ -1040,15 +1093,17 @@ describe('surfaces primitives', () => {
       assert.strictEqual((line.match(/~~/g) || []).length % 2, 0, line);
     }
     const code = menuFrame([
+      ...ASK,
       '**`1`** → Run `one two three four five six seven` now',
     ], { width: 40 });
     const codeLines = code.split('\n');
-    assert.ok(codeLines[1].endsWith('`'), 'code span closes at the break');
-    assert.ok(codeLines[2].startsWith(NB(4) + '`'), 'and reopens on the continuation');
+    assert.ok(codeLines[3].endsWith('`'), 'code span closes at the break');
+    assert.ok(codeLines[4].startsWith(NB(4) + '`'), 'and reopens on the continuation');
   });
 
   it('keeps the line whole when the label budget falls below the floor', () => {
     const out = menuFrame([
+      ...ASK,
       '**`x/extraordinarily-wide-key-column`** → Continue',
       '**`1`** → A long label that would wrap at any sane width but must stay whole here',
     ], { width: 40 });
@@ -1057,11 +1112,12 @@ describe('surfaces primitives', () => {
 
   it('leaves a single oversized token whole rather than splitting markup', () => {
     const out = menuFrame([
+      ...ASK,
       '**`1`** → See supercalifragilistic-hyphenated-identifier-that-cannot-fit for details',
     ], { width: 40 });
     const lines = out.split('\n');
-    assert.strictEqual(lines[2], `${NB(4)}supercalifragilistic-hyphenated-identifier-that-cannot-fit`);
-    assert.strictEqual(lines[3], `${NB(4)}for details`);
+    assert.strictEqual(lines[4], `${NB(4)}supercalifragilistic-hyphenated-identifier-that-cannot-fit`);
+    assert.strictEqual(lines[5], `${NB(4)}for details`);
   });
 
   it('section wraps body in a named, instruction-carrying marker and strips trailing newlines', () => {
@@ -1072,12 +1128,12 @@ describe('surfaces primitives', () => {
     assert.strictEqual(callout(['first line', 'second line']), '  ⚑ first line\n    second line');
   });
 
-  it('menuFrame opens arbitrary lines with the canonical rule and does not close them', () => {
-    assert.strictEqual(menuFrame(['a', '', 'b']), [DOTS, '**`◆ a`**', '', 'b'].join('\n'));
+  it('menuFrame opens its lines with the canonical rule and does not close them', () => {
+    assert.strictEqual(menuFrame(['Which one?', '', '**`b`** → B']), [DOTS, '**`◆ Which one?`**', '', '**`b`** → B'].join('\n'));
   });
 
-  it('menuFrame glyphs only a leading short label — no blank beneath means no glyph', () => {
-    assert.strictEqual(menuFrame(['a', 'b']), [DOTS, 'a', 'b'].join('\n'));
+  it('menuFrame glyphs only a leading short label — no blank beneath means no glyph, so no question', () => {
+    assert.throws(() => menuFrame(['Which one?', '**`b`** → B']), /no `◆ …\?` line stands above the rows/);
   });
 
   it('callout wraps a string to the width with the flag gutter subtracted', () => {
@@ -1134,6 +1190,8 @@ describe('render resume-gate', () => {
       '=== MENU: resume gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       'Found existing discussion for **Auth Flow**.',
+      '',
+      '**`◆ How would you like to proceed?`**',
       '',
       '**`c/continue`** → Pick up where you left off',
       '**`r/restart`**  → Delete the discussion and start fresh',
@@ -1719,6 +1777,8 @@ describe('render reroute-offer', () => {
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
       'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `r discussion`).',
       '',
+      '**`◆ Where should it live?`**',
+      '',
       '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
       `${NB(12)}later`,
       '**`k/keep`**    → Keep it here as part of this topic',
@@ -1748,6 +1808,8 @@ describe('render reroute-offer', () => {
       "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
       "**behavioural-ranking** isn't on the map yet — rerouting creates it.",
       '',
+      '**`◆ Where should it live?`**',
+      '',
       '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
       `${NB(12)}later`,
       '**`k/keep`**    → Keep it here as part of this topic',
@@ -1768,6 +1830,8 @@ describe('render reroute-offer', () => {
       DOTS,
       '**Whether the pipeline can expose click windows** has grown into its own topic here.',
       'Rerouting creates **behavioural-ranking** on the map, landing research-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. `r discussion`).',
+      '',
+      '**`◆ Where should it live?`**',
       '',
       '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
       `${NB(12)}later`,
@@ -1815,7 +1879,9 @@ describe('render reroute-candidates', () => {
     assert.strictEqual(out, [
       "=== MENU: reroute candidates (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ Where should "Click-window feasibility" land?`**',
+      '**Click-window feasibility** belongs to a different topic, not this one.',
+      '',
+      '**`◆ Where should it land?`**',
       '',
       '**`1`**     → behavioural-ranking [decided]',
       '**`2`**     → relevance-measurement [fresh]',
@@ -5028,7 +5094,7 @@ describe('roadmap surfaces', () => {
     }, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
     assert.match(out, /^=== MENU: roadmap add gate/);
-    assert.match(out, /"mvp" is being built right now\. Where does this go\?/);
+    assert.match(out, /"mvp" is being built right now\.\n\n\*\*`◆ Where does this go\?`\*\*/);
     assert.match(out, /Into the work underway — a new topic in "mvp"/);
     assert.match(out, /`2`.*Another horizon/);
     assert.ok(!out.includes('On the roadmap in'), 'no waiting side-door into a fully-delivered horizon');
@@ -5037,9 +5103,20 @@ describe('roadmap surfaces', () => {
   it('roadmap-add-gate: a partly-composed horizon keeps the waiting option', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /"mvp" is partly being built\. Where does this go\?/);
+    assert.match(out, /"mvp" is partly being built\.\n\n\*\*`◆ Where does this go\?`\*\*/);
     assert.match(out, /On the roadmap in "mvp", waiting with its 1 other item/);
     assert.match(out, /`3`.*Another horizon/);
+  });
+
+  it('roadmap-add-gate: a long horizon name stays in the statement — the question keeps its glyph', () => {
+    writeRoadmap({
+      horizons: ['the long-awaited mobile launch'],
+      items: {
+        ordering: { horizon: 'the long-awaited mobile launch', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
+      },
+    }, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'the long-awaited mobile launch' });
+    assert.match(out, /"the long-awaited mobile launch" is being built right now\.\n\n\*\*`◆ Where does this go\?`\*\*/);
   });
 
   it('roadmap-add-gate: refuses an unknown horizon and one with no delivery', () => {
@@ -5357,7 +5434,20 @@ describe('baseline surfaces', () => {
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`◆ What would you like to do\?`\*\*[\s\S]*\*\*`e\/expand`\*\* → Add a new area, or deepen an existing one/);
     // The way out of the baseline is the surface it was entered from.
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
-    assert.match(renderSurface(dir, 'baseline-doc-pick', {}), /Which doc\? \(enter the area name, or \*\*`b\/back`\*\*\)/);
+  });
+
+  it('the doc pick numbers every area doc beneath its question, back last', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', payments: 'completed' } });
+    assert.strictEqual(renderSurface(dir, 'baseline-doc-pick', {}), [
+      "=== MENU: baseline doc pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Which doc?`**',
+      '',
+      '**`1`**      → overview.md',
+      '**`2`**      → payments.md',
+      '**`b/back`** → Return to the baseline menu',
+      '',
+    ].join('\n'));
   });
 });
 
@@ -5808,6 +5898,8 @@ describe('render off-topic-offer', () => {
       '· · · · · · · · · · · ·',
       "**Rate limiting on the public API** is beyond this topic's scope.",
       '',
+      '**`◆ Where should it go?`**',
+      '',
       '**`l/log`**    → Capture it as an idea in the inbox for later',
       '**`p/pivot`**  → Convert this work to an epic so it can hold the',
       `${NB(11)}concern as its own topic`,
@@ -5827,6 +5919,8 @@ describe('render off-topic-offer', () => {
       "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "**Audit logging** is beyond this topic's scope.",
+      '',
+      '**`◆ Where should it go?`**',
       '',
       '**`l/log`**    → Capture it as an idea in the inbox for later',
       '**`i/ignore`** → Note it in the research file and move on',
@@ -5855,6 +5949,8 @@ describe('render off-topic-offer', () => {
       "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "**Gift cards** is beyond this topic's scope.",
+      '',
+      '**`◆ Where should it go?`**',
       '',
       '**`l/log`**     → Capture it as an idea in the inbox for later',
       '**`r/roadmap`** → Put it on the product roadmap for a later release',
@@ -6496,11 +6592,13 @@ describe('render triage-closed-target', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the dead-end target byte-exactly — statement context, three destinations', () => {
+  it('renders the dead-end target byte-exactly — the statement, then the ask over three destinations', () => {
     assert.strictEqual(renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
       "=== MENU: closed target gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '"auth-flow" is closed as a dead end, so it won\'t pick up rerouted concerns.',
+      '',
+      '**`◆ Where should the concern land?`**',
       '',
       '**`o/open`**      → Reopen it and land the concern there — it returns',
       `${NB(14)}to its name-matched lifecycle and counts as open`,
@@ -6558,11 +6656,13 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     ].join('\n'));
   });
 
-  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — statement context, no glyph', () => {
+  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — the statement, then the ask', () => {
     assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '2' }), [
       "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       'There are still 2 background agents working.',
+      '',
+      '**`◆ Wait, or conclude now?`**',
       '',
       '**`w/wait`**    → Wait for results before concluding',
       '**`p/proceed`** → Conclude now (results will persist in cache for',
@@ -6576,6 +6676,8 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
       "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       'There is still 1 background agent working.',
+      '',
+      '**`◆ Wait, or conclude now?`**',
       '',
       '**`w/wait`**    → Wait for results before concluding',
       '**`p/proceed`** → Conclude now (results will persist in cache for',
@@ -6774,8 +6876,7 @@ describe('render — the adopted phase gates', () => {
     const unsourced = renderSurface(dir, 'summary-backfill-gate', {
       dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: ['auth-flow', 'legacy-bits'] }),
     });
-    assert.match(unsourced, /`◆ 2 topic\(s\) have no source file to draft from:`/);
-    assert.match(unsourced, /\n- Auth Flow\n- Legacy Bits\n\n/);
+    assert.match(unsourced, /\n2 topic\(s\) have no source file to draft from:\n\n- Auth Flow\n- Legacy Bits\n\n\*\*`◆ How do you want to handle them\?`\*\*\n\n/);
     assert.match(unwrap(unsourced), /\*\*`p\/provide`\*\* → Tell me the summary for each and I'll write it/);
     assert.match(unwrap(unsourced), /\*\*`l\/leave`\*\*\s+→ Leave them unset; this flow re-offers next time/);
   });
@@ -6966,7 +7067,7 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', { variant: 'select', file }), [
       "=== MENU: plan format select (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ Select an output format:`**',
+      '**`◆ Which output format?`**',
       '',
       '**`1`** → Alpha — the first sample format, with a long enough label',
       `${NB(4)}that the surface has to wrap it under the label column.`,
@@ -7066,7 +7167,7 @@ describe('render plan-context-gate', () => {
     assert.strictEqual(renderSurface(dir, 'plan-context-gate', { dotpath: dot }), [
       "=== MENU: plan context gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Any additional context since the specification was completed?',
+      '**`◆ Any new context since the specification was completed?`**',
       '',
       '**`c/continue`**  → Continue with the specification as-is',
       '**Add context** → Tell me the priorities, constraints, or new',
@@ -7094,7 +7195,7 @@ describe('render plan-context-gate', () => {
       phases: { planning: { items: { checkout: { status: null } } } },
     });
     assert.match(renderSurface(dir, 'plan-context-gate', { dotpath: dot }),
-      /Any additional context since the specification was completed\?/);
+      /◆ Any new context since the specification was completed\?/);
   });
 });
 
@@ -7280,13 +7381,15 @@ describe('render complexity-gate / first-phase-gate', () => {
       /"support-email" is a feature — the complexity check is the quick-fix's own/);
   });
 
-  it('first-phase-gate carries the read as a statement, never an ask, over the two routes', () => {
+  it('first-phase-gate carries the read as a statement above its question and the two routes', () => {
     writeManifest(dir, 'support-email', { work_type: 'feature' });
     const file = writePayload(dir, 'read.json', { read: "The concern is an open unknown — I'd start with research." });
     assert.strictEqual(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }), [
       "=== MENU: first phase gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       "The concern is an open unknown — I'd start with research.",
+      '',
+      '**`◆ Which phase first?`**',
       '',
       '**`r/research`**   → Explore feasibility and options first, no',
       `${NB(15)}decisions yet`,

@@ -439,36 +439,36 @@ describe('start projections: archived store', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('renders the archived list and select prompt', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+  it('the menu is the archived list — one numbered row per item, group-major, then back; no display beside it', () => {
     createFile(dir, '.workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md', '# Tidy Logs\n');
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-05-03--tricky.md', '# A title with **bold**\n');
     const detail = startDetail(dir);
     const v = archivedView(combinedInbox(detail.inbox.archived, { archived: true }));
     assert.strictEqual(v.data, [
-      'archived_count: 2',
+      'archived_count: 3',
       'ITEMS (n  type  date  slug  → path):',
       '  1  idea  2026-05-01  old-idea  → .workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md',
-      '  2  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md',
+      '  2  bug  2026-05-03  tricky  → .workflows/.inbox/.archived/bugs/2026-05-03--tricky.md',
+      '  3  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md',
     ].join('\n'));
-    assert.strictEqual(v.display, [
-      'Ideas',
-      '  └─ 1. Old Idea [2026-05-01]',
-      '',
-      'Quick Fixes',
-      '  └─ 2. Tidy Logs [2026-05-02]',
-      '',
-    ].join('\n'));
+    assert.strictEqual(v.display, undefined);
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select an item (enter number, or **`b/back`** to return):',
+      '**`◆ Which item?`**',
+      '',
+      '**`1`**      → Old Idea — *idea, 2026-05-01*',
+      '**`2`**      → A title with \\*\\*bold\\*\\* — *bug, 2026-05-03*',
+      '**`3`**      → Tidy Logs — *quick-fix, 2026-05-02*',
+      '**`b/back`** → Return to the inbox',
     ].join('\n'));
   });
 
-  it('renders the empty archived store with an empty menu', () => {
+  it('renders the empty archived store as a display and no menu', () => {
     const detail = startDetail(dir);
     const v = archivedView(combinedInbox(detail.inbox.archived, { archived: true }));
-    assert.ok(v.display.endsWith('No archived items.\n'));
-    assert.strictEqual(v.menu, '');
+    assert.strictEqual(v.display, 'No archived items.\n');
+    assert.strictEqual(v.menu, undefined);
   });
 
   it('the archived-actions and delete gates render over the selected item by its store path, and refuse a path the store does not hold', () => {
@@ -567,22 +567,26 @@ describe('start projections: working set', () => {
     ].join('\n'));
     assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
     assert.strictEqual(workingSetAddGate(ws), [
-      '=== DISPLAY: add candidates (emit verbatim as a code block) ===',
-      '  1. Smart Retry [idea] — 2026-06-03',
-      '',
       "=== MENU: add gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Add which? (enter number(s), comma-separated, or **`b/back`**)',
+      'Pick one, or several comma-separated.',
+      '',
+      '**`◆ Add which?`**',
+      '',
+      '**`1`**      → Smart Retry — *idea, 2026-06-03*',
+      '**`b/back`** → Return to the working set',
       '',
     ].join('\n'));
     assert.strictEqual(workingSetDropGate(ws), [
-      '=== DISPLAY: drop candidates (emit verbatim as a code block) ===',
-      '  1. Login Timeout [bug]',
-      '  2. Crash On Save [bug]',
-      '',
       "=== MENU: drop gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Drop which? (enter number(s), comma-separated, or **`b/back`**)',
+      'Pick one, or several comma-separated.',
+      '',
+      '**`◆ Drop which?`**',
+      '',
+      '**`1`**      → Login Timeout — *bug*',
+      '**`2`**      → Crash On Save — *bug*',
+      '**`b/back`** → Return to the working set',
       '',
     ].join('\n'));
   });
@@ -608,7 +612,7 @@ describe('start projections: working set', () => {
     assert.ok(v.data.includes('addable_count: 0'));
     assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
     assert.throws(() => workingSetAddGate(ws), /nothing addable/);
-    assert.ok(workingSetDropGate(ws).includes('DISPLAY: drop candidates'));
+    assert.ok(workingSetDropGate(ws).includes('**`1`**      → Smart Retry — *idea*'));
   });
 
   it('quick-fix set maps the quick-fix pre-seed', () => {
@@ -641,37 +645,32 @@ describe('start projections: manage list', () => {
       '  5  cross-cutting  caching',
       '  6  epic  quiz-competition-v1',
     ].join('\n'));
-    assert.strictEqual(v.display, [
-      'Features',
-      '  ├─ 1. Auth Flow',
-      '  └─ 2. Dark Mode',
-      '',
-      'Bugfixes',
-      '  └─ 3. Login Crash',
-      '',
-      'Quick Fixes',
-      '  └─ 4. Rename Api',
-      '',
-      'Cross-Cutting',
-      '  └─ 5. Caching',
-      '',
-      'Epics',
-      '  └─ 6. Quiz Competition V1',
-      '',
-    ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      '**`a/baseline`** → Start the project baseline assessment',
+      '**`◆ Which work unit?`**',
       '',
-      'Select a work unit (enter number, or **`b/back`** to return):',
+      '**`1`**          → Auth Flow — *feature*',
+      '**`2`**          → Dark Mode — *feature*',
+      '**`3`**          → Login Crash — *bugfix*',
+      '**`4`**          → Rename Api — *quick-fix*',
+      '**`5`**          → Caching — *cross-cutting*',
+      '**`6`**          → Quiz Competition V1 — *epic*',
+      '**`a/baseline`** → Start the project baseline assessment',
+      '**`b/back`**     → Return',
     ].join('\n'));
+    assert.strictEqual(v.display, undefined, 'the menu is the list — no display beside it');
   });
 
-  it('renders the empty case with an empty menu', () => {
+  it('with no units the menu still offers the baseline and back', () => {
     const v = manageListView(startDetail(dir));
-    assert.ok(v.display.endsWith('No active work units.\n'));
-    assert.strictEqual(v.menu, '');
     assert.deepStrictEqual(v.rows, []);
+    assert.strictEqual(v.menu, [
+      DOTS,
+      '**`◆ Which work unit?`**',
+      '',
+      '**`a/baseline`** → Start the project baseline assessment',
+      '**`b/back`**     → Return',
+    ].join('\n'));
   });
 
   it('labels the baseline option by status', () => {
@@ -864,6 +863,8 @@ describe('start projections: manage unit', () => {
       DOTS,
       '**Auth Flow** (feature)',
       '',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`p/pivot`**  → Convert to epic (enables multiple topics)',
       '**`c/cancel`** → Mark as cancelled',
       '**`b/back`**   → Return',
@@ -885,7 +886,7 @@ describe('start projections: manage unit', () => {
     assert.strictEqual(absorbTargetMenu(md), [
       "=== MENU: absorb target (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
-      '**`◆ Select a target epic:`**',
+      '**`◆ Which epic should absorb it?`**',
       '',
       '**`1`**      → V1',
       '**`2`**      → V2',
@@ -921,6 +922,8 @@ describe('start projections: manage unit', () => {
     assert.strictEqual(v.menu, [
       '· · · · · · · · · · · ·',
       '**Hotfix** (quick-fix)',
+      '',
+      '**`◆ What would you like to do?`**',
       '',
       '**`d/done`**      → Mark as completed',
       '**`v/view-plan`** → View the implementation plan',
@@ -1013,7 +1016,7 @@ describe('start projections: completed & cancelled', () => {
     return startDetail(d);
   }
 
-  it('renders both lists with continuous numbering and no filter line', () => {
+  it('the menu is the list — completed then cancelled, numbered continuously, each closing phase its tail; no filter line', () => {
     const v = completedView(closedFixture(dir));
     assert.strictEqual(v.data, [
       'filter: (none)',
@@ -1024,41 +1027,36 @@ describe('start projections: completed & cancelled', () => {
       '  2  completed  feature  done-feat  review',
       '  3  cancelled  bugfix  dropped  none',
     ].join('\n'));
-    assert.strictEqual(v.display, [
-      'Completed',
-      '  ├─ 1. Done Cc',
-      '  │   Completed after: specification',
-      '  └─ 2. Done Feat',
-      '      Completed after: review',
-      '',
-      'Cancelled',
-      '  └─ 3. Dropped',
-      '      Cancelled during: none',
-      '',
-    ].join('\n'));
+    assert.strictEqual(v.display, undefined, 'no display beside the list');
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select a work unit (enter number) for details, or **`b/back`** to return.',
+      '**`◆ Which work unit?`**',
+      '',
+      '**`1`**      → Done Cc — *completed after specification*',
+      '**`2`**      → Done Feat — *completed after review*',
+      '**`3`**      → Dropped — *cancelled during none*',
+      '**`b/back`** → Return',
     ].join('\n'));
   });
 
-  it('filters to one work type with the Showing line', () => {
+  it('filters to one work type with the Showing line above the question', () => {
     const v = completedView(closedFixture(dir), 'feature');
-    assert.strictEqual(v.display, [
+    assert.strictEqual(v.menu, [
+      DOTS,
       'Showing: Features',
       '',
-      'Completed',
-      '  └─ 1. Done Feat',
-      '      Completed after: review',
+      '**`◆ Which work unit?`**',
       '',
+      '**`1`**      → Done Feat — *completed after review*',
+      '**`b/back`** → Return',
     ].join('\n'));
     assert.ok(v.data.includes('filter: feature'));
   });
 
   it('a filter with no matches renders the empty display and no menu', () => {
     const v = completedView(closedFixture(dir), 'quick-fix');
-    assert.ok(v.display.endsWith('No completed or cancelled work units found.\n'));
-    assert.strictEqual(v.menu, '');
+    assert.strictEqual(v.display, 'No completed or cancelled work units found.\n');
+    assert.strictEqual(v.menu, undefined);
     assert.deepStrictEqual(v.rows, []);
   });
 
