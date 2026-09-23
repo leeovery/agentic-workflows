@@ -1030,11 +1030,6 @@ describe('surfaces primitives', () => {
     assert.match(menu('Which items?', [rangeOption(1, 3, 'Select item(s)')]), /◆ Which items\?/);
   });
 
-  it('menu appends an optional trailing prompt after a blank line', () => {
-    const out = menu('Which one?', ['**`1`** → A'], { prompt: 'Append a phase to override.' });
-    assert.ok(out.endsWith(['**`1`** → A', '', 'Append a phase to override.'].join('\n')));
-  });
-
   it('aligns option arrows into one column, leaving non-option lines alone', () => {
     const out = menu('Which one?', ['**`c/continue`** → Carry on', '**`q`** → Quit', 'a plain line']);
     const lines = out.split('\n');
@@ -1866,7 +1861,7 @@ describe('render reroute-candidates', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders numbered candidates, the new option, and the research recommendation byte-exactly', () => {
+  it('states the concern and the research recommendation above the question, the numbered candidates and the new option beneath it, byte-exactly', () => {
     const file = writePayload(dir, 'c.json', {
       concern: 'Click-window feasibility',
       landing_phase: 'research',
@@ -1879,15 +1874,13 @@ describe('render reroute-candidates', () => {
     assert.strictEqual(out, [
       "=== MENU: reroute candidates (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**Click-window feasibility** belongs to a different topic, not this one.',
+      "**Click-window feasibility** belongs to a different topic, not this one. It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
       '',
       '**`◆ Where should it land?`**',
       '',
       '**`1`**     → behavioural-ranking [decided]',
       '**`2`**     → relevance-measurement [fresh]',
       '**`n/new`** → Create a new topic for it',
-      '',
-      "It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
       '',
     ].join('\n'));
   });
