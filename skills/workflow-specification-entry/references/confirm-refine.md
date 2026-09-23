@@ -4,33 +4,13 @@
 
 ---
 
-**Consult references** — if the spec owes any (a `**Consult**` line in the consolidation-analysis doc, or a `consult_references` entry on the spec), append this block to the confirmation below, after the sources listing; omit it when there are none:
-
-> *Output the next fenced block as a code block:*
-
-```
-Consult references (read narrowly — do not extract):
-  • {ref-topic} — {slice hint}
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Refining specification: {Title Case Name}
-
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md [completed]
-
-All sources extracted:
-  • {discussion-name}
-```
-
-> A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.
+When the DATA lists `consult:` lines under the selected spec, write them to `.workflows/.cache/{work_unit}/specification/{topic}/consult.json` with the Write tool — `{"consult": [{"name": "…", "hint": "…"}]}`, one entry per line, `hint` the slice hint the line carries (left out when it carries none) — and pass the bracketed `--file`; otherwise leave it off.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} --variant refine [--file .workflows/.cache/{work_unit}/specification/{topic}/consult.json]
 ```
 
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

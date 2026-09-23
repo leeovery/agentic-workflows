@@ -4,61 +4,13 @@
 
 ---
 
-Unify folds every completed discussion into the unified spec as a full **source**, so any cross-grouping consult reference is absorbed by wholesale extraction. There is no separate consult-reference block on the unify path.
-
-"Existing specifications to incorporate" lists only materialized specs (status not `proposed`) — reconcile removed the other proposed items as deletes when the unified item was created, so only started/completed specs are superseded.
-
 ## A. Display Confirmation
 
-#### If existing specifications will be superseded
-
-> *Output the next fenced block as a code block:*
-
-```
-Creating specification: Unified
-
-Sources:
-  • {discussion-name}
-  • {discussion-name}
-  ...
-
-Existing specifications to incorporate:
-  • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
-  • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
-
-Output: .workflows/{work_unit}/specification/unified/specification.md
-```
-
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.unified --variant unify
 ```
 
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Response**.
-
-#### If no existing specifications
-
-> *Output the next fenced block as a code block:*
-
-```
-Creating specification: Unified
-
-Sources:
-  • {discussion-name}
-  • {discussion-name}
-  ...
-
-Output: .workflows/{work_unit}/specification/unified/specification.md
-```
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
-```
-
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -70,7 +22,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If `yes`
 
-**If existing specifications will be superseded:**
+**If the DATA lists an `in-progress` or `completed` specification:**
 
 → Load **[unify-with-incorporation.md](handoffs/unify-with-incorporation.md)** and follow its instructions as written.
 

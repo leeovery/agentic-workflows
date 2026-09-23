@@ -56,7 +56,10 @@ const {
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
+  sourcingSpecs, specIsStarted,
 } = require('./derivations.cjs');
+const { rowVerb } = require('./specification.cjs');
+const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 
@@ -3110,18 +3113,118 @@ function analysisProceedGate(cwd, { dotpath }) {
 }
 
 // spec-confirm-gate — specification entry's consent before the handoff, the
-// one gate every route reaches: create, continue, refine, unify. What differs
-// between them — the verb, the sources, the supersessions, the output path —
-// is the flow's display above it; the ask is the same one.
+// one gate every route reaches, with what the handoff is about to do drawn
+// above it. The variant is the route the entry took; the surface refuses one
+// the item's state does not bear, reading the verb through the entry menu's
+// own derivation. With no item yet, the create is the single-discussion path
+// and confirms the lone completed discussion. Consult references are
+// markdown-held — the analysis doc's slice hints — so they arrive as a
+// payload; a started specification's must be exactly the ones it declares.
+
+const SPEC_CONFIRM_VERBS = { create: 'Creating', continue: 'Continuing', refine: 'Refining', unify: 'Creating' };
+const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
+const REFINE_NOTE = 'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.';
+
+/**
+ * The item's source rows, status-less rows reading pending. A started
+ * specification leaves out a row whose discussion item is gone, as its
+ * overview row does.
+ * @param {object} manifest @param {Record<string, any>} item @param {string} status
+ * @returns {{name: string, status: string}[]}
+ */
+function specConfirmSources(manifest, item, status) {
+  return sourceRows(item.sources)
+    .map(([name, row]) => ({ name, status: row.status || 'pending' }))
+    .filter(({ name }) => status === 'proposed' || isFilled((itemOf(manifest, 'discussion', name) || {}).status));
+}
+
+/** @param {object} manifest @param {string} workUnit @param {string} topic @returns {{name: string, status: string}} */
+function loneCompletedDiscussion(manifest, workUnit, topic) {
+  const completed = phaseItems(manifest, 'discussion').filter((d) => d.status === 'completed');
+  if (completed.length !== 1) {
+    throw new Error(`render spec-confirm-gate: no specification "${topic}" — a create with no proposed grouping confirms the lone completed discussion, and "${workUnit}" has ${completed.length}`);
+  }
+  return { name: completed[0].name, status: 'pending' };
+}
+
+/**
+ * The consult rows as the payload gives them. `declared` is a started
+ * specification's own references — the payload must name exactly those —
+ * and null before its first session, when the analysis doc is their only
+ * record.
+ * @param {string} cwd @param {string|undefined} file @param {string[]|null} declared
+ * @returns {{name: string, hint: string}[]}
+ */
+function specConfirmConsult(cwd, file, declared) {
+  /** @type {{name: string, hint: string}[]} */
+  let rows = [];
+  if (file) {
+    const p = readJsonPayload(cwd, file, 'spec-confirm-gate');
+    if (!Array.isArray(p.consult) || p.consult.length === 0) {
+      throw new Error('render spec-confirm-gate: "consult" must be a non-empty array of {name, hint} — leave --file off when none are owed');
+    }
+    rows = p.consult.map((r, i) => {
+      if (!r || !isFilled(r.name)) throw new Error(`render spec-confirm-gate: consult[${i}] needs a non-empty "name"`);
+      if (r.hint !== undefined && typeof r.hint !== 'string') throw new Error(`render spec-confirm-gate: consult[${i}] "hint" must be a string`);
+      return { name: r.name, hint: r.hint || '' };
+    });
+  }
+  if (declared) {
+    const given = rows.map((r) => r.name);
+    if (given.length !== declared.length || !declared.every((n) => given.includes(n))) {
+      const has = declared.length > 0 ? `declares consult references [${declared.join(', ')}]` : 'declares no consult references';
+      throw new Error(`render spec-confirm-gate: the specification ${has}${file
+        ? ` and the payload names [${given.join(', ')}] — pass exactly the declared ones`
+        : ' — pass them via --file'}`);
+    }
+  }
+  return rows;
+}
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, variant?: string, file?: string}} args
  * @returns {string}
  */
-function specConfirmGate(cwd, { dotpath }) {
-  resolveWorkUnit(cwd, dotpath, 'spec-confirm-gate');
-  return section('MENU: spec confirm gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed?' }));
+function specConfirmGate(cwd, { dotpath, variant, file }) {
+  if (!isFilled(variant) || !Object.hasOwn(SPEC_CONFIRM_VERBS, variant)) {
+    throw new Error(`render spec-confirm-gate: --variant must be one of ${Object.keys(SPEC_CONFIRM_VERBS).join(', ')}, got "${variant}"`);
+  }
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'spec-confirm-gate');
+  if (phase !== 'specification') {
+    throw new Error(`render spec-confirm-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'specification', topic);
+  if (variant === 'unify' && (topic !== 'unified' || !item)) {
+    throw new Error(`render spec-confirm-gate: the unify confirm reads the "unified" item its reconcile wrote — "${topic}" ${item ? 'is not it' : 'has no item'}`);
+  }
+  const status = item ? item.status || 'in-progress' : 'proposed';
+  if (!SPEC_CONFIRMABLE.includes(status)) {
+    throw new Error(`render spec-confirm-gate: "${topic}" is ${status} — there is nothing to confirm`);
+  }
+  const rows = item ? specConfirmSources(manifest, item, status) : [loneCompletedDiscussion(manifest, workUnit, topic)];
+  const tally = (s) => rows.filter((r) => r.status === s).length;
+  const verb = rowVerb({ status, pending: tally('pending'), stale: tally('stale') });
+  if (verb !== SPEC_CONFIRM_VERBS[variant]) {
+    throw new Error(`render spec-confirm-gate: "${topic}" reads ${verb} — the ${variant} confirm does not serve it`);
+  }
+
+  // A fresh specification supersedes the started ones already extracting
+  // any of its sources.
+  const coverage = rows.map((r) => (status === 'proposed' ? sourcingSpecs(manifest, r.name) : [])
+    .filter(([, spec]) => specIsStarted(spec))
+    .map(([spec]) => spec));
+  const sources = rows.map((r, i) => ({ ...r, individual: coverage[i].length > 0 }));
+  const supersedes = [...new Set(coverage.flat())];
+  const consult = specConfirmConsult(cwd, file, item && status !== 'proposed' ? Object.keys(item.consult_references || {}) : null);
+
+  return [
+    section('DISPLAY: spec confirmation', 'emit verbatim as a code block, directly above the menu', specificationConfirmation({
+      variant: /** @type {'create'|'continue'|'refine'|'unify'} */ (variant),
+      verb, work_unit: workUnit, name: topic, status, sources, supersedes, consult,
+    })),
+    section('MENU: spec confirm gate', STOP_FOR_RESPONSE, menu(variant === 'refine' ? REFINE_NOTE : '', YES_NO, { question: 'Proceed?' })),
+  ].join('\n');
 }
 
 // finding-announce — the surfacing protocol's opt-in gate: a background
