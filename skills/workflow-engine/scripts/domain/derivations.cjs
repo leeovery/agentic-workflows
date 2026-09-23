@@ -338,8 +338,8 @@ function openRecords(manifest, topic) {
 /**
  * The proposed groupings sourcing a discussion — regenerable suggestions
  * the analysis writes for every unaccounted discussion, discarded whenever
- * the discussion stops being one: with its topic's cancel, or with the
- * reactivate of a specification that sources it.
+ * the discussion stops being one: with its topic's cancel or postpone, or
+ * with the reactivate of a specification that sources it.
  * @param {object} manifest @param {string} discussion
  * @returns {string[]}
  */
