@@ -6331,11 +6331,20 @@ describe('render dismissed-topics', () => {
     assert.match(out, /◆ Re-add any of these to the map\?/);
   });
 
-  it('refuses a work unit with nothing dismissed, and a non-bare address', () => {
-    assert.throws(() => withDismissed([]), /render dismissed-topics: "pay" has no dismissed topics/);
+  it('nothing dismissed answers the display alone — no menu, nothing to re-add', () => {
+    const empty = [
+      '=== DISPLAY: dismissed topics (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Dismissed Topics',
+      '',
+      '  (none)',
+      '',
+    ].join('\n');
+    assert.strictEqual(withDismissed([]), empty);
     writeManifest(dir, 'pay', { phases: {} });
-    assert.throws(() => renderSurface(dir, 'dismissed-topics', { dotpath: 'pay' }),
-      /render dismissed-topics: "pay" has no dismissed topics/);
+    assert.strictEqual(renderSurface(dir, 'dismissed-topics', { dotpath: 'pay' }), empty);
+  });
+
+  it('refuses a non-bare address and an unknown work unit', () => {
     assert.throws(() => renderSurface(dir, 'dismissed-topics', { dotpath: 'pay.discovery.auth' }),
       /address must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'dismissed-topics', { dotpath: 'ghost' }),

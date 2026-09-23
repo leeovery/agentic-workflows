@@ -2819,6 +2819,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
       'reactivation never silently re-joins');
 
+    // The discovery session's show-dismissed door over a map nothing has
+    // left: the display alone, no menu to stop at.
+    const noneDismissed = sim.render(['dismissed-topics', 'mvp'], { expect: 'content' });
+    assert.match(noneDismissed, /Dismissed Topics\n\n {2}\(none\)/);
+    assert.doesNotMatch(noneDismissed, /MENU/);
+
     // The un-pull for a never-started topic: removing the fresh map topic
     // hands the item back — and the dismissed name then needs the user's
     // confirmed re-add to pull forward again.
@@ -2831,9 +2837,10 @@ describe('pipeline simulation', () => {
     sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion'], /previously dismissed/);
     sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
     sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
-    // The discovery session's show-dismissed door reads the same list the
-    // re-add is refused against.
-    assert.match(sim.render(['dismissed-topics', 'mvp'], { expect: 'content' }), /• reporting/);
+    // The same door reads the list the re-add is refused against, and offers
+    // the re-add over it.
+    assert.match(sim.render(['dismissed-topics', 'mvp'], { expect: 'content' }),
+      /• reporting[\s\S]*MENU: dismissed topics/);
 
     // The render surfaces hold over the live state: the map view and the
     // add-to-joined-horizon gate.
