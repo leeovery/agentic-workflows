@@ -216,11 +216,13 @@ function auditState(dir, label) {
   }
 
   // Every navigation surface discovers and formats without throwing — the
-  // menus must render whatever state the pipeline is in.
+  // menus must render whatever state the pipeline is in. The head insert is
+  // never a gate; a continue skill's pick menu is its select step's.
   for (const [name, gw] of Object.entries(GATEWAYS)) {
     const result = gw.discover(dir);
     assert.ok(result && typeof result === 'object', ctx(`${name} gateway returned nothing`));
-    gw.format(result);
+    assert.doesNotMatch(gw.format(result), /^=== MENU/m, ctx(`${name} head insert carries a gate`));
+    if (gw.select) gw.select(result);
   }
 }
 
@@ -3769,13 +3771,19 @@ describe('pipeline simulation', () => {
       'probe: nothing owed — the satisfied classification');
     assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
 
-    // The defer batch the closing gates use: one uniform write settles the
-    // stragglers and answers with the map's convergence state once.
+    // The map gate over the user's signal: the defer gate is fetched where it
+    // is shown, the map above its consent; the batch its yes runs settles the
+    // stragglers in one uniform write and answers with the map's convergence
+    // state once — after which there is nothing left to defer.
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-a']);
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-b']);
+    const deferGate = sim.render(['defer-gate', `${wu}.discussion.alpha`], { expect: 'content' });
+    assert.ok(deferGate.indexOf('=== DISPLAY: discussion map') < deferGate.indexOf('=== MENU: defer gate'), 'the map, then the consent');
+    assert.match(deferGate, /There are still 2 subtopics not yet decided/);
     const deferredBatch = sim.run(['discussion-map', 'set', wu, 'alpha', 'edge-a=deferred', 'edge-b=deferred']);
     assert.deepStrictEqual(deferredBatch.set, { 'edge-a': 'deferred', 'edge-b': 'deferred' });
     assert.strictEqual(deferredBatch.all_decided, true, 'the batch response carries convergence — no follow-up read');
+    sim.refuses(['render', 'defer-gate', `${wu}.discussion.alpha`], /nothing on "alpha"'s map is undecided/);
 
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);

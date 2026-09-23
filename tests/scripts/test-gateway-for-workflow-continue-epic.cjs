@@ -5,7 +5,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover, format, formatScoped } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const { discover, format, select, formatScoped } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
 describe('workflow-continue-epic discovery', () => {
   let dir;
@@ -1466,7 +1466,7 @@ describe('workflow-continue-epic format (index dump)', () => {
     ].join('\n'));
   });
 
-  it('active, completed, and cancelled epics pin the full dump byte-exactly', () => {
+  it('active, completed, and cancelled epics pin the select step byte-exactly — the dump, then the pick list and its menu', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -1477,7 +1477,7 @@ describe('workflow-continue-epic format (index dump)', () => {
     createManifest(dir, 'v2', { work_type: 'epic' });
     createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed', phases: { review: { items: { a: { status: 'completed' } } } } });
     createManifest(dir, 'abandoned', { work_type: 'epic', status: 'cancelled', phases: { research: { items: { a: { status: 'completed' } } } } });
-    const out = format(discover(dir));
+    const out = select(discover(dir));
     assert.strictEqual(out, [
       '=== EPICS (2) ===',
       '  v1: research, discussion',
@@ -1486,7 +1486,7 @@ describe('workflow-continue-epic format (index dump)', () => {
       '  shipped (last phase: review)',
       '=== CANCELLED (1) ===',
       '  abandoned (last phase: research)',
-      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '=== DISPLAY: selection (emit verbatim as a code block) ===',
       '2 epic(s) in progress',
       '  ├─ 1. V1',
       '  │   Research, Discussion',
@@ -1495,7 +1495,7 @@ describe('workflow-continue-epic format (index dump)', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which epic would you like to continue?`**',
       '',
@@ -1505,6 +1505,8 @@ describe('workflow-continue-epic format (index dump)', () => {
       '**`m/manage`** → Manage an epic\'s lifecycle',
       '',
     ].join('\n'));
+    assert.strictEqual(format(discover(dir)), out.slice(0, out.indexOf('=== DISPLAY: selection')),
+      'the head insert is the dump alone — the pick list and its menu are the select step\'s');
   });
 
   it('carries no per-epic detail — the scoped dump and view verb own it', () => {
@@ -1916,7 +1918,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -1983,6 +1985,22 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
     assert.strictEqual(res.stdout, format(discover(dir)));
+  });
+
+  it('select answers the select step: the dump, then the pick list and its menu', () => {
+    epicFixture();
+    const res = run(['select']);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stderr, '');
+    assert.strictEqual(res.stdout, select(discover(dir)));
+    assert.match(res.stdout, /=== MENU: selection/);
+  });
+
+  it('select with positionals errors with usage', () => {
+    const res = run(['select', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
   it('bare positional still renders the scoped dump byte-identically', () => {
