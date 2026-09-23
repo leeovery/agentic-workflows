@@ -61,10 +61,6 @@ function readLines(file) {
   return fs.readFileSync(file, 'utf8').split('\n').map((l) => l.replace(/\r$/, ''));
 }
 
-function charLen(str) {
-  return [...str].length; // code-point count = character count for BMP glyphs
-}
-
 function rel(file) {
   return path.relative(REPO, file);
 }
@@ -194,32 +190,30 @@ function checkMarkers(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 3 — Menu dot frames: any line of spaced middle dots must be exactly
-// "· · · · · · · · · · · ·". Leading indentation (menus nested under list
-// items) is permitted; the dot pattern itself must be canonical.
+// Check 3 — Menus are engine-rendered, never authored in prose. A menu dot
+// rule (a line of three or more spaced middle dots) or a command-option row
+// (a code-span key alone on its line or ahead of the arrow, at the line's
+// start or after a list marker) is a menu drawn by hand, inside a fence or
+// out. A chrome marker's code span always holds a space and a key's never
+// does, and the `**term** → gloss` shape prose uses for definitions carries
+// no code span, so neither reads as a row.
 // ---------------------------------------------------------------------------
 
-function checkDotFrames(files) {
+const MENU_ROW = /^(?:[-*•] |\d+\. )?\*\*`[^`\s]+`\*\*(?: +→ |$)/;
+
+function isDotRule(t) {
+  return /^[· ]+$/.test(t) && (t.match(/·/g) || []).length >= 3;
+}
+
+function checkNoProseMenus(files) {
   const out = [];
   for (const file of files) {
-    const lines = readLines(file);
-    lines.forEach((line, i) => {
+    readLines(file).forEach((line, i) => {
       const t = line.trim();
-      if (!/^[· ]+$/.test(t)) return;
-      const dots = (t.match(/·/g) || []).length;
-      if (dots < 3) return; // a lone "·" is a bullet, not a frame
-      if (t !== MENU_FRAME) {
-        out.push({ file, line: i + 1, message: `menu dot frame must be exactly "${MENU_FRAME}"` });
-        return;
-      }
-      // The frame is one-sided: an opening rule above the menu, never a
-      // closing rule beneath it. A dot rule directly below option-grammar
-      // content or a trailing prompt is a closing rule.
-      let j = i - 1;
-      while (j >= 0 && lines[j].trim() === '') j -= 1;
-      const prev = j >= 0 ? lines[j].trim() : '';
-      if (/^\*\*.+?\*\*( +→ |$)/.test(prev) || /^Select an option/.test(prev) || /to return\):?$/.test(prev)) {
-        out.push({ file, line: i + 1, message: 'menus open with one dot rule — a closing rule is banned (output stops for the response)' });
+      if (isDotRule(t)) {
+        out.push({ file, line: i + 1, message: 'a menu dot rule in prose — menus are engine-rendered: build the menu in code and serve it from a render surface' });
+      } else if (MENU_ROW.test(t)) {
+        out.push({ file, line: i + 1, message: 'a menu option row in prose — menus are engine-rendered: build the menu in code and serve it from a render surface' });
       }
     });
   }
@@ -800,112 +794,13 @@ function checkBuriedInvoke(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Registry + reporting
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Checks 16 & 17 — Menu option alignment, and the conditional rows that make
-// alignment impossible to carry by hand.
-//
-// A menu block opens on a dot frame and closes at the fence that holds it.
-// Within it, every option line's arrow shares one column measured against the
-// RENDERED head — `**` and backticks are markup the renderer consumes, so
-// counting authored characters lands a mixed command/prompt block two columns
-// apart on screen (surfaces.cjs `renderedLen` names the same trap).
-//
-// Anchoring on the dot frame is what keeps these calibrated for zero false
-// positives: prose that happens to use the `**term** → gloss` shape outside a
-// menu (subtopic-state definitions, for one) is never a menu and never
-// inspected.
-// ---------------------------------------------------------------------------
-
-const OPTION_LINE = /^(\*\*.+?\*\*)( *)→ (.*)$/;
-
-// Rendered width of an option head: the markup the renderer consumes does not
-// occupy a column, and the padding sits outside it, so rendered pad === source pad.
-function renderedHeadLen(head) {
-  return charLen(head.replace(/\*\*/g, '').replace(/`/g, ''));
-}
-
-// Collect the menu blocks of one file: each is { start, options: [{n, head, pad}],
-// conditional: [line numbers of option rows guarded by an @if] }.
-function menuBlocks(lines) {
-  const blocks = [];
-  let block = null;
-  const close = () => {
-    if (block && block.options.length >= 2) blocks.push(block);
-    block = null;
-  };
-  lines.forEach((line, i) => {
-    const t = line.trim();
-    if (t === MENU_FRAME) {
-      close();
-      block = { start: i + 1, options: [], conditional: [], guarded: false };
-      return;
-    }
-    if (!block) return;
-    if (/^\s*```/.test(line)) {
-      close();
-      return;
-    }
-    if (/^\s*@if\(/.test(t)) {
-      block.guarded = true;
-      return;
-    }
-    if (/^\s*@(endif|else)\b/.test(t)) {
-      block.guarded = false;
-      return;
-    }
-    const m = OPTION_LINE.exec(t);
-    if (m) {
-      block.options.push({ n: i + 1, head: m[1], pad: m[2] });
-      if (block.guarded) block.conditional.push(i + 1);
-    }
-  });
-  close();
-  return blocks;
-}
-
-function checkMenuAlignment(files) {
-  const out = [];
-  for (const file of files) {
-    for (const block of menuBlocks(readLines(file))) {
-      const cols = block.options.map((o) => renderedHeadLen(o.head) + o.pad.length);
-      const column = Math.max(...cols);
-      block.options.forEach((o, i) => {
-        if (cols[i] === column) return;
-        out.push({
-          file,
-          line: o.n,
-          message: `menu arrow misaligned — rendered column ${cols[i]}, block column ${column} (pad outside the closing \`**\`, measured on the rendered head)`,
-        });
-      });
-    }
-  }
-  return out;
-}
-
-function checkConditionalOptions(files) {
-  const out = [];
-  for (const file of files) {
-    for (const block of menuBlocks(readLines(file))) {
-      for (const n of block.conditional) {
-        out.push({
-          file,
-          line: n,
-          message: 'menu option behind an @if — a runtime-varying option set is engine-rendered, never authored (hand-carried padding cannot follow it)',
-        });
-      }
-    }
-  }
-  return out;
-}
-
 // Check 18 — no skill frontmatter declares a SessionEnd hook. Claude Code
 // never fires one from skill frontmatter (other events do fire there), so a
 // declaration is dead plumbing that reads as cleanup nobody runs. Session-end
 // cleanup is the settings-level hook the engine installs in the project's
 // `.claude/settings.json`.
+// ---------------------------------------------------------------------------
+
 function checkNoFrontmatterSessionEndHooks(files) {
   const out = [];
   for (const file of files) {
@@ -925,68 +820,13 @@ function checkNoFrontmatterSessionEndHooks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 19 — every menu asks a question. A menu block holds a row to press,
-// and above its first row a glyphed `**`◆ …`**` line that ends in `?`; an
-// `n/no` row answers a `y/yes` row, never a verb synonym — the shape the
-// engine's menu frame refuses (surfaces.cjs), held here for the
-// prose-authored menus. Anchored on the dot frame like checks 16/17 and
-// closed by the fence or the next frame, so option grammar outside a menu is
-// never inspected.
-// ---------------------------------------------------------------------------
-
-const PRESSABLE_ROW = /^\*\*`(?!◆ )[^`]+`\*\*(?: +→ |$)/;
-const YES_ROW = /^\*\*`y\/yes`\*\*/;
-const NO_ROW = /^\*\*`n\/no`\*\*/;
-const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
-
-function checkMenusAsk(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    let block = null;
-    const close = () => {
-      if (!block) return;
-      if (block.no && !block.yes) {
-        out.push({ file, line: block.no, message: 'an n/no row without a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym' });
-      }
-      if (!block.row) {
-        out.push({ file, line: block.start, message: 'a menu with no row to press — a menu offers at least one key' });
-      } else if (!block.ask) {
-        out.push({ file, line: block.row, message: 'a menu with no glyphed question above its rows — every menu asks on its diamond line (**`◆ …?`**)' });
-      } else if (!block.ask.text.endsWith('?')) {
-        out.push({ file, line: block.ask.line, message: `a menu under a statement — the diamond line ends in "?" (found "${block.ask.text}")` });
-      }
-      block = null;
-    };
-    lines.forEach((line, i) => {
-      const t = line.trim();
-      if (t === MENU_FRAME) {
-        close();
-        block = { start: i + 1, ask: null, row: 0, yes: false, no: 0 };
-        return;
-      }
-      if (!block) return;
-      if (/^\s*```/.test(line)) {
-        close();
-        return;
-      }
-      const glyph = GLYPHED_LINE.exec(t);
-      if (glyph && !block.row && !block.ask) block.ask = { line: i + 1, text: glyph[1] };
-      if (PRESSABLE_ROW.test(t) && !block.row) block.row = i + 1;
-      if (YES_ROW.test(t)) block.yes = true;
-      if (NO_ROW.test(t) && !block.no) block.no = i + 1;
-    });
-    close();
-  }
-  return out;
-}
-
+// Registry + reporting
 // ---------------------------------------------------------------------------
 
 const CHECKS = [
   ['1: phase-title chrome (drawn borders retired)', checkBorders],
   ['2: step / sub-step chrome (drawn markers retired)', checkMarkers],
-  ['3: menu dot frames', checkDotFrames],
+  ['3: no menus in prose', checkNoProseMenus],
   ['4: banned STOP variants', checkBannedStop],
   ['5: banned navigation verbs', checkBannedNav],
   ['6: internal routing-target existence', checkRouting],
@@ -999,10 +839,7 @@ const CHECKS = [
   ['13: templated-fence ratchet (render-surfaces D4)', checkTemplatedRatchet],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
-  ['16: menu option alignment', checkMenuAlignment],
-  ['17: conditional menu options', checkConditionalOptions],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
-  ['19: every menu asks a question', checkMenusAsk],
   ['20: footerless load directives', checkFooterlessLoads],
 ];
 
@@ -1171,22 +1008,49 @@ test('check 2 (markers) — bans drawn markers, skips embedded dividers, pins ma
   });
 });
 
-test('check 3 (dot frames) — catches malformed patterns, permits nesting indent', () => {
+test('check 3 (no menus in prose) — catches dot rules and option rows anywhere, permits chrome, definitions, and key references', () => {
   withTemp((dir) => {
-    const short = write(dir, 'skills/x/a.md', Array(11).fill(DOT).join(' ') + '\n');
-    assert.strictEqual(checkDotFrames([short]).length, 1, '11-dot frame must be caught');
+    const menu = write(dir, 'skills/x/menu.md', [
+      '> *Output the next fenced block as markdown (not a code block):*',
+      '',
+      '```',
+      MENU_FRAME,
+      '**`◆ Proceed?`**',
+      '',
+      '**`y/yes`**      → Conclude',
+      '**`n/no`**',
+      '**Keep going** → Tell me what else to explore',
+      '```',
+      '',
+    ].join('\n'));
+    const v1 = checkNoProseMenus([menu]);
+    assert.deepStrictEqual(v1.map((v) => v.line), [4, 7, 8], 'the dot rule, a padded row, and a bare row are each caught — fenced or not');
+    assert.match(v1[0].message, /menu dot rule in prose/);
+    assert.match(v1[1].message, /menu option row in prose/);
 
-    const doubled = write(dir, 'skills/x/b.md', DOT + '  ' + DOT + '  ' + DOT + '  ' + DOT + '\n');
-    assert.strictEqual(checkDotFrames([doubled]).length, 1, 'double-spaced frame must be caught');
+    const loose = write(dir, 'skills/x/loose.md', [
+      '   ' + MENU_FRAME,
+      Array(11).fill(DOT).join(' '),
+      DOT + '  ' + DOT + '  ' + DOT,
+      '**`1`** → Auth Flow',
+      '- **`b/back`** → Return to menu',
+      '2. **`{N}`** → {Format Name}',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkNoProseMenus([loose]).length, 6, 'nested, malformed, and spaced-out rules and numbered, listed, or templated rows are caught');
 
-    const indented = write(dir, 'skills/x/c.md', '   ' + MENU_FRAME + '\n');
-    assert.strictEqual(checkDotFrames([indented]).length, 0, 'legitimately nested frame must pass');
-
-    const bullet = write(dir, 'skills/x/d.md', '  ' + DOT + ' advanced-features\n');
-    assert.strictEqual(checkDotFrames([bullet]).length, 0, 'a single bullet dot must not be flagged');
-
-    const good = write(dir, 'skills/x/e.md', MENU_FRAME + '\n');
-    assert.strictEqual(checkDotFrames([good]).length, 0, 'canonical frame must pass');
+    const prose = write(dir, 'skills/x/prose.md', [
+      '# **`■ Planning Overview`**',
+      '**`□ Construct Specification`**',
+      '**`▪ Extract Sources`**',
+      '**`◆ Proceed?`**',
+      '**pending** → Identified but not yet explored.',
+      '**`boot`** — the entry pipeline.',
+      'The `b/back` row returns to the menu; **`y/yes`** is the affirmative key.',
+      '  ' + DOT + ' advanced-features',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkNoProseMenus([prose]).length, 0, 'chrome markers, definitions, inline key references, and a bullet dot are not menus');
   });
 });
 
@@ -1501,57 +1365,6 @@ test('check 14 (buried invoke) — catches in-fence imperatives, permits pre-fen
   });
 });
 
-test('check 16 (menu alignment) — measures the rendered head, skips non-menu prose', () => {
-  withTemp((dir) => {
-    const good = write(dir, 'skills/x/good.md',
-      `\`\`\`\n${MENU_FRAME}\n**\`◆ Proceed?\`**\n\n**\`y/yes\`**      → Conclude\n**Keep going** → Tell me what else to explore\n\`\`\`\n`);
-    assert.strictEqual(checkMenuAlignment([good]).length, 0, 'a rendered-aligned mixed menu is clean');
-
-    // The trap: heads padded to equal SOURCE length render two columns apart.
-    const sourceAligned = write(dir, 'skills/x/src.md',
-      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`**    → Conclude\n**Keep going** → Tell me what else to explore\n\`\`\`\n`);
-    const srcV = checkMenuAlignment([sourceAligned]);
-    assert.strictEqual(srcV.length, 1, 'source-aligned mixed menu is caught');
-    assert.match(srcV[0].message, /rendered column 9, block column 11/);
-
-    const unpadded = write(dir, 'skills/x/flat.md',
-      `\`\`\`\n${MENU_FRAME}\n**\`l/log\`** → Capture it\n**\`i/ignore\`** → Move on\n\`\`\`\n`);
-    assert.strictEqual(checkMenuAlignment([unpadded]).length, 1, 'an unpadded block is caught');
-
-    // Option grammar outside a menu is not a menu — no dot frame, no check.
-    const prose = write(dir, 'skills/x/prose.md',
-      '**pending** → Identified but not yet explored.\n\n**exploring** → Actively being discussed.\n');
-    assert.strictEqual(checkMenuAlignment([prose]).length, 0, 'non-menu prose is never inspected');
-
-    // The fence closes the block: rows beyond it are not measured against it.
-    const twoBlocks = write(dir, 'skills/x/two.md',
-      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → A\n**\`n/no\`**  → B\n\`\`\`\n\ntext\n\n\`\`\`\n${MENU_FRAME}\n**\`a/approve\`** → C\n**\`v/view\`**    → D\n\`\`\`\n`);
-    assert.strictEqual(checkMenuAlignment([twoBlocks]).length, 0, 'each block aligns independently');
-
-    const single = write(dir, 'skills/x/one.md', `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → Only one\n\`\`\`\n`);
-    assert.strictEqual(checkMenuAlignment([single]).length, 0, 'a lone option has no column to share');
-  });
-});
-
-test('check 17 (conditional menu options) — catches @if-guarded rows, permits @if elsewhere', () => {
-  withTemp((dir) => {
-    const bad = write(dir, 'skills/x/cond.md',
-      `\`\`\`\n${MENU_FRAME}\n@if(has_donow)\n**\`d/do-now\`** → Apply now\n@endif\n**\`c/continue\`** → Proceed\n\`\`\`\n`);
-    const v = checkConditionalOptions([bad]);
-    assert.strictEqual(v.length, 1, 'the guarded row is caught');
-    assert.strictEqual(v[0].line, 4);
-
-    const good = write(dir, 'skills/x/plain.md',
-      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → A\n**\`n/no\`**  → B\n\`\`\`\n`);
-    assert.strictEqual(checkConditionalOptions([good]).length, 0, 'an unconditional menu is clean');
-
-    // @if belongs to templated displays — only option rows inside a menu are banned.
-    const display = write(dir, 'skills/x/display.md',
-      '```\nStatus:\n@if(has_plan)\n  Plan: {plan_status}\n@endif\n```\n');
-    assert.strictEqual(checkConditionalOptions([display]).length, 0, 'templated displays keep @if');
-  });
-});
-
 test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declaration, permits other events', () => {
   withTemp((dir) => {
     const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
@@ -1575,64 +1388,5 @@ test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declarati
     assert.strictEqual(v[0].file, sessionEnd);
     assert.strictEqual(v[0].line, 4);
     assert.match(v[0].message, /SessionEnd hook in skill frontmatter/);
-  });
-});
-
-test('check 19 (every menu asks a question) — catches a menu with no glyphed question above its rows, or no row, permits a glyphed question alone or beneath a statement', () => {
-  withTemp((dir) => {
-    const fence = (body) => `\`\`\`\n${MENU_FRAME}\n${body}\n\`\`\`\n`;
-    const glyphed = write(dir, 'skills/x/glyphed.md', fence('**`◆ Proceed?`**\n\n**`y/yes`**\n**`n/no`**'));
-    const split = write(dir, 'skills/x/split.md',
-      fence('Cancelling **Auth Flow** will mark it as cancelled.\n\n**`◆ Cancel it?`**\n\n**`y/yes`** → Confirm cancellation\n**`n/no`**  → Return to menu'));
-    const route = write(dir, 'skills/x/route.md',
-      fence('Where this belongs.\n\n**`◆ Where should it go?`**\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
-    const pick = write(dir, 'skills/x/pick.md', fence('**`◆ Which topic?`**\n\n**`1`**      → Auth Flow\n**`b/back`** → Return to menu'));
-    assert.strictEqual(checkMenusAsk([glyphed, split, route, pick]).length, 0, 'a glyphed question — alone, or split beneath a statement — is clean, over any rows');
-
-    const statement = write(dir, 'skills/x/statement.md', fence('**`◆ Cancel it.`**\n\n**`y/yes`**\n**`n/no`**'));
-    const v1 = checkMenusAsk([statement]);
-    assert.strictEqual(v1.length, 1, 'a glyphed statement over the rows is caught');
-    assert.strictEqual(v1[0].line, 3);
-    assert.match(v1[0].message, /found "Cancel it\."/);
-
-    // A question the label cannot glyph (markup, a placeholder) is no diamond
-    // line — the split is the fix.
-    const plain = write(dir, 'skills/x/plain.md',
-      fence('Project default format is **{format}**. Use the same format?\n\n**`y/yes`** → Use {format}\n**`n/no`**  → See all available formats'));
-    const v2 = checkMenusAsk([plain]);
-    assert.strictEqual(v2.length, 1, 'an unglyphed question over the rows is caught');
-    assert.strictEqual(v2[0].line, 5);
-    assert.match(v2[0].message, /no glyphed question above its rows/);
-
-    // A route menu asks too — a statement alone over its destinations is caught.
-    const bare = write(dir, 'skills/x/bare.md', fence('Where this belongs.\n\n**`d/discussion`** → Discuss it\n**`r/research`**   → Research it'));
-    const v3 = checkMenusAsk([bare]);
-    assert.strictEqual(v3.length, 1, 'a statement over a route menu is caught');
-    assert.strictEqual(v3[0].line, 5);
-
-    const labelless = write(dir, 'skills/x/labelless.md', fence('**`1`** → Auth Flow\n**`2`** → Billing\n\nSelect an option:'));
-    const v4 = checkMenusAsk([labelless]);
-    assert.strictEqual(v4.length, 1, 'a trailing prompt line is no question');
-    assert.strictEqual(v4[0].line, 3);
-
-    const below = write(dir, 'skills/x/below.md', fence('**`1`** → Auth Flow\n\n**`◆ Which topic?`**'));
-    assert.strictEqual(checkMenusAsk([below]).length, 1, 'a question beneath the rows asks nothing');
-
-    const rowless = write(dir, 'skills/x/rowless.md', fence('**`◆ Anything else?`**\n\n**Comment** → Tell me what you think'));
-    const v5 = checkMenusAsk([rowless]);
-    assert.strictEqual(v5.length, 1, 'a menu with no row to press is caught');
-    assert.strictEqual(v5[0].line, 2);
-    assert.match(v5[0].message, /no row to press/);
-
-    // An n/no row names its yes — a verb synonym beside it is caught.
-    const synonym = write(dir, 'skills/x/synonym.md', fence('**`◆ Proceed?`**\n\n**`p/proceed`** → Carry on\n**`n/no`**      → Stop here'));
-    const v6 = checkMenusAsk([synonym]);
-    assert.strictEqual(v6.length, 1, 'an n/no row without a y/yes row is caught');
-    assert.strictEqual(v6[0].line, 6);
-    assert.match(v6[0].message, /an n\/no row without a y\/yes row/);
-
-    // Option grammar outside a menu is not a menu — no dot frame, no check.
-    const prose = write(dir, 'skills/x/prose.md', '**`y/yes`** → the affirmative key\n');
-    assert.strictEqual(checkMenusAsk([prose]).length, 0, 'a row outside a menu is never inspected');
   });
 });
