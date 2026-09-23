@@ -23,12 +23,12 @@ node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path
 The response carries demarcated sections:
 
 - **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the set menu. Emit verbatim as markdown (not a code block). The `w/work` option renders only for a type-uniform set.
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
+- **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim per its marker. Never redraw, reflow, or trim it.
+- **MENU** — the set menu. Emit verbatim per its marker. The `w/work` option renders only for a type-uniform set.
 - **`DISPLAY: blocker`** — present only on a mixed-type set. Emit directly after the display, verbatim per its marker.
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section.
+Emit the TITLE section, then the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -86,7 +86,7 @@ Match each named item against the `ADDABLE` table — by title, or by the number
 
 #### Otherwise
 
-Fetch the add gate over the current set and emit its `MENU: add gate` section verbatim as markdown (not a code block):
+Fetch the add gate over the current set and emit its `MENU: add gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-start/scripts/gateway.cjs working-set-add-gate {path} [{path} …]
@@ -120,7 +120,7 @@ Resolve each named item against the working set by title or description. If any 
 
 #### Otherwise
 
-Fetch the drop gate over the current set and emit its `MENU: drop gate` section verbatim as markdown (not a code block):
+Fetch the drop gate over the current set and emit its `MENU: drop gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-start/scripts/gateway.cjs working-set-drop-gate {path} [{path} …]

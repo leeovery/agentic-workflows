@@ -17,11 +17,11 @@ node .claude/skills/workflow-start/scripts/gateway.cjs completed [{work_type_fil
 The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled units. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown.
-- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim as markdown (not a code block). Absent when nothing matches.
-- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim as a code block.
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker.
+- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim per its marker. Absent when nothing matches.
+- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown). A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 #### If `completed_count` and `cancelled_count` are both 0
 

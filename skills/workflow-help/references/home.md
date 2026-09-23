@@ -8,7 +8,7 @@ Where help opens: the walk, the reference cards, a question, and the way back to
 
 ## A. Display and Menu
 
-Fetch the home and emit its `TITLE` section verbatim as markdown, then its `MENU: walkthrough home` section verbatim as markdown (not a code block):
+Fetch the home and emit its `TITLE` and `MENU: walkthrough home` sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-home
