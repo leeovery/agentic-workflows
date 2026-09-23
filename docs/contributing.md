@@ -33,6 +33,9 @@ is to run them before every commit rather than at the end of a branch.
 | `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, knowledge CLI and build |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) |
+| `npm run typecheck:mod` | The gate mod's types against Claude Code's mod API declarations — owed for any change under `skills/workflow-gates*/` |
+| `npm run test:mod` | The gate mod's suite under `claude plugin test` — owed for any change under `skills/workflow-gates*/` |
+| `npm run mod:types` | Fetches those declarations into the gitignored `skills/workflow-gates/types/` — run once before the two above |
 
 **Never pipe a gate's output.** A pipe swallows the exit code, and a
 suite that aborts halfway then reads as green. Redirect to a file and
