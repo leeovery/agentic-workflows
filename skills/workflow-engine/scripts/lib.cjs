@@ -139,6 +139,7 @@ module.exports = {
     epicCompletedMenu: epicProjections.epicCompletedMenu,
     epicCancelMenu: epicProjections.epicCancelMenu,
     epicReactivateMenu: epicProjections.epicReactivateMenu,
+    epicPostponeMenu: epicProjections.epicPostponeMenu,
     epicUnblockMenu: epicProjections.epicUnblockMenu,
     discoveryMapView: discoveryProjections.discoveryMapView,
     discoverySynthesisView: discoveryProjections.discoverySynthesisView,

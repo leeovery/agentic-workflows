@@ -35,7 +35,7 @@ const {
 } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
-const { roadmapState } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
@@ -55,6 +55,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  postponePlan, postponeTarget, postponedHorizon, openExperiments,
 } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2380,6 +2381,9 @@ function assertMapOp(manifest, op, name) {
     if (lifecycle === 'cancelled') {
       throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
     }
+    if (lifecycle === 'postponed') {
+      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
+    }
     return;
   }
   if (op === 'reopen') {
@@ -2390,7 +2394,8 @@ function assertMapOp(manifest, op, name) {
   }
   if (lifecycle !== 'fresh') {
     const verb = { remove: 'removed', rename: 'renamed', reroute: 're-routed' }[op];
-    const recovery = lifecycle === 'cancelled' ? ' — reactivate it from the epic menu first' : '';
+    const recovery = lifecycle === 'cancelled' ? ' — reactivate it from the epic menu first'
+      : lifecycle === 'postponed' ? ' — pull it forward from the roadmap first' : '';
     throw new Error(`render map-op-gate: "${name}" can't be ${verb} — it's "${lifecycle}", not fresh${recovery}`);
   }
 }
@@ -3759,8 +3764,12 @@ function discoveryCancelStatement(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
     throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
   }
-  if (computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled') {
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle === 'cancelled') {
     throw new Error(`render cancel-gate: "${topic}" is already cancelled — the menu never offers it`);
+  }
+  if (lifecycle === 'postponed') {
+    throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
   const locking = lockingSpecs(manifest, topic);
   if (locking.length > 0) {
@@ -3780,29 +3789,22 @@ function discoveryCancelStatement(manifest, topic) {
     const one = experiments.length === 1;
     parts.push(`${experiments.length} open experiment${one ? '' : 's'} (${experiments.join(', ')}) end${one ? 's' : ''} abandoned on the register.`);
   }
-  const proposed = plan.discards.map((n) => `**${titlecase(n)}**`);
-  if (proposed.length > 0) {
-    parts.push(`The proposed grouping${proposed.length === 1 ? '' : 's'} ${listJoin(proposed)} ${proposed.length === 1 ? 'is' : 'are'} discarded — the next grouping analysis rebuilds from the new world.`);
-  }
+  const discarded = discardedGroupingsClause(plan.discards);
+  if (discarded) parts.push(discarded);
   return parts.join(' ');
 }
 
 /**
- * The open records as the experiments the gate counts — a split is worked
- * inside its parent, so `E2` with `E2.1` open is one experiment, named with
- * its children (`E2, with E2.1` alone; `E1, E2 with E2.1` among others). A
- * sub-record whose parent has closed stands as its own entry.
- * @param {string[]} records  open ids in register order
- * @returns {string[]}
+ * The proposed groupings a unit gate names as discarded, or '' when it
+ * discards none — the sentence the cancel and the postpone share.
+ * @param {string[]} discards
+ * @returns {string}
  */
-function openExperiments(records) {
-  const parents = records.filter(isParentExperimentId);
-  const orphans = records.filter((id) => !isParentExperimentId(id) && !parents.includes(id.split('.')[0]));
-  const families = [...parents, ...orphans]
-    .sort(compareExperimentIds)
-    .map((id) => ({ id, subs: records.filter((r) => r.startsWith(`${id}.`)) }));
-  const one = families.length === 1;
-  return families.map(({ id, subs }) => (subs.length === 0 ? id : `${id}${one ? ',' : ''} with ${subs.join(', ')}`));
+function discardedGroupingsClause(discards) {
+  if (discards.length === 0) return '';
+  const named = discards.map((n) => `**${titlecase(n)}**`);
+  const one = named.length === 1;
+  return `The proposed grouping${one ? '' : 's'} ${listJoin(named)} ${one ? 'is' : 'are'} discarded — the next grouping analysis rebuilds from the new world.`;
 }
 
 /**
@@ -3862,6 +3864,61 @@ function cancelGate(cwd, { dotpath }) {
       cmdOption('y', 'yes', 'Confirm cancellation'),
       cmdOption('n', 'no', 'Keep it'),
     ], { question: 'Cancel it?' }),
+  );
+}
+
+/**
+ * The postpone gate's statement in two halves: what goes — the map row alone
+ * for a never-started topic, otherwise the items by phase, with any proposed
+ * grouping discarded — and where it lands, in the park gate's shape.
+ * @param {string} workUnit @param {string} topic
+ * @param {import('./derivations.cjs').PostponePlan} plan @param {string} horizon
+ * @param {Record<string, any>|null} project  the project manifest, the gate's one read
+ * @returns {string}
+ */
+function postponeStatement(workUnit, topic, plan, horizon, project) {
+  const name = titlecase(topic);
+  const goes = plan.items.length === 0
+    ? `Postponing **${name}** sets it aside — nothing has started, so only the map row is marked.`
+    : `Postponing **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} postponed — its record stays on disk and comes back with the pull.`;
+  const roadmap = project && hasRoadmapNode(project) ? project.roadmap : null;
+  const horizons = roadmap && Array.isArray(roadmap.horizons) ? roadmap.horizons : [];
+  const target = postponeTarget(project, workUnit, topic);
+  const flag = roadmap && !horizons.includes(horizon) ? ' (new)' : '';
+  const lands = target.joined
+    ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
+    : `It waits on the roadmap under "${horizon}"${flag}, until it is pulled into work.`;
+  return [goes, discardedGroupingsClause(plan.discards), lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
+    .filter(Boolean).join(' ');
+}
+
+/**
+ * The postpone confirm over one Discovery unit — `<wu>.discovery.<topic>`,
+ * the horizon named. The statement says what goes and where it lands and
+ * stays context; the short question takes the glyph. A locked unit is
+ * refused with the plan's first lock, so it is met here rather than after
+ * the yes.
+ * @param {string} cwd
+ * @param {{dotpath: string, horizon?: string}} args
+ * @returns {string}
+ */
+function postponeGate(cwd, { dotpath, horizon }) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'postpone-gate');
+  if (phase !== 'discovery') {
+    throw new Error(`render postpone-gate: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
+  }
+  if (!isFilled(horizon)) throw new Error('render postpone-gate: --horizon is required');
+  const project = loadProjectManifest(cwd);
+  const plan = postponePlan(manifest, topic, project, horizon);
+  if (plan.locks.length > 0) throw new Error(`render postpone-gate: ${plan.locks[0].reason}`);
+  return section(
+    'MENU: postpone gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project), [
+      cmdOption('y', 'yes', 'Postpone it'),
+      cmdOption('n', 'no', 'Keep it here'),
+      promptOption('Comment', 'Tell me what to change (the horizon)'),
+    ], { question: 'Postpone it?' }),
   );
 }
 
@@ -4063,7 +4120,9 @@ function directEntryGate(cwd, { dotpath }) {
   const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
   const guidance = lifecycle === 'cancelled'
     ? 'Reactivate it from the epic menu (e/reactivate) — a cancelled topic carries no menu row.'
-    : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
+    : lifecycle === 'postponed'
+      ? 'Pull it forward from the roadmap — a postponed topic carries no menu row.'
+      : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
   return blocker(`"${titlecase(topic)}" is already on the map — ${stands}`, guidance);
 }
 
@@ -4604,13 +4663,13 @@ function unitCancelled(manifest, stage, name) {
 }
 
 /**
- * The topic receipts. `complete` addresses the phase item; `cancel` and
- * `reactivate` address the unit — `<wu>.discovery.<topic>` or
+ * The topic receipts. `complete` addresses the phase item; `cancel`,
+ * `reactivate` and `postpone` address the unit — `<wu>.discovery.<topic>` or
  * `<wu>.specification.<spec>` — and read its state after the verb ran.
  * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
-  const { phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
   const verb = args.verb;
   const warn = args.warn === '1';
   if (verb === 'complete') {
@@ -4621,8 +4680,20 @@ function topicReceiptSurface(cwd, args) {
     }
     return topicReceipt(verb, topic, { warn });
   }
+  if (verb === 'postpone') {
+    if (phase !== 'discovery') {
+      throw new Error(`render topic-receipt: --verb postpone addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
+    }
+    if (!discoveryUnitExists(manifest, topic)) {
+      throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+    }
+    if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
+      throw new Error(`render topic-receipt: "${topic}" is not postponed — the postpone has not run`);
+    }
+    return topicReceipt(verb, topic, { warn, horizon: postponedHorizon(loadProjectManifest(cwd), workUnit, topic) });
+  }
   if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be complete, cancel, or reactivate, got "${verb}"`);
+    throw new Error(`render topic-receipt: --verb must be complete, cancel, reactivate, or postpone, got "${verb}"`);
   }
   if (!(phase in UNIT_PHASES)) {
     throw new Error(`render topic-receipt: --verb ${verb} addresses a unit — <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
@@ -5392,6 +5463,7 @@ const SURFACES = {
   'code-gate': codeGate,
   'next-phase-gate': nextPhaseGate,
   'cancel-gate': cancelGate,
+  'postpone-gate': postponeGate,
   'epic-all-done-gate': epicAllDoneGate,
   'epic-soft-gate': epicSoftGate,
   'task-brief': taskBrief,

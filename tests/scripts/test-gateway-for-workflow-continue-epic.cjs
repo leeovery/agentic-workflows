@@ -1916,7 +1916,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|unblock-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -2140,7 +2140,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors without its work unit instead of rendering the first epic', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'unblock-menu']) {
       const res = run([verb]);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);
@@ -2169,6 +2169,27 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
   });
 
+  it("postpone-menu carries a held unit's in-session age from the presence scan — never the caller's own hold", () => {
+    const fs = require('fs');
+    epicFixture();
+    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+    const past = new Date(Date.now() - 120 * 1000);
+    fs.utimesSync(p, past, past);
+
+    const res = run(['postpone-menu', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
+    assert.ok(/Postpone "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n +/g, ' ')), res.stdout);
+    assert.ok(res.stdout.includes('  1  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+
+    const own = spawnSync('node', [GATEWAY, 'postpone-menu', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'peer' },
+    });
+    assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
+  });
+
   it("reactivate-menu carries a held unit's in-session age from the presence scan — the laboratory's hold counted with its topic", () => {
     const fs = require('fs');
     createManifest(dir, 'v1', {
@@ -2192,7 +2213,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors on excess positionals', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'unblock-menu']) {
       const res = run([verb, 'v1', 'extra']);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);

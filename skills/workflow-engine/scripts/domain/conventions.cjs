@@ -126,6 +126,7 @@ const DISCOVERY_GLYPH = {
   fresh: '○',
   handled: '⊙',
   cancelled: '⊘',
+  postponed: '⊖',
 };
 
 /** @param {string} tier */
@@ -162,6 +163,7 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
     case 'decided': label = 'decided'; break;
     case 'handled': label = 'dead end'; break;
     case 'cancelled': label = 'cancelled'; break;
+    case 'postponed': label = 'postponed'; break;
     default: label = routing ? `fresh · routed to ${routing}` : 'fresh';
   }
   if (Array.isArray(waits)) {

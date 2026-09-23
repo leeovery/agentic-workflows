@@ -543,6 +543,23 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: set and delete refuse a postponed item — the pull owns that path${NC}"
+setup_fixture
+create_wu postponed-item epic "Postponed"
+run_cli set postponed-item.discussion.shelved status postponed >/dev/null 2>&1
+assert_exit_code 1 "status write refused" set postponed-item.discussion.shelved status in-progress
+output=$(run_cli set postponed-item.discussion.shelved status in-progress || true)
+assert_contains "$output" 'is postponed — pull it forward from the roadmap instead' "refusal names the roadmap"
+assert_exit_code 1 "item delete refused" delete postponed-item.discussion items.shelved
+output=$(run_cli delete postponed-item.discussion items.shelved || true)
+assert_contains "$output" 'is postponed — pull it forward from the roadmap instead' "delete refusal names the roadmap too"
+output=$(run_cli_stdout get postponed-item.discussion.shelved status)
+assert_equals "$output" "postponed" "the item stays postponed"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
 create_wu valid-status feature "Valid"

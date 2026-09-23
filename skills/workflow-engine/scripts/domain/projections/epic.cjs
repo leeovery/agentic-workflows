@@ -204,8 +204,10 @@ function flaggedCallout(text) {
 
 /** @param {EpicDetail} detail */
 function mapStatusSuffix(detail) {
-  if (detail.convergence_state === 'settled') return ' · all decided';
   const s = detail.map_summary;
+  // "All decided" is the settled map's shorthand — but a topic that left for
+  // the roadmap was never decided, so the breakdown speaks for itself there.
+  if (detail.convergence_state === 'settled' && !(s && s.postponed > 0)) return ' · all decided';
   if (!s) return '';
   const parts = [];
   if (s.decided) parts.push(`${s.decided} decided`);
@@ -238,9 +240,9 @@ function arrivalCallouts(newArrivals) {
 // Discovery-map topic rows as kernel tree nodes. No tag column — the
 // lifecycle rides a `↳ state` line beneath the summary, so long titles never
 // stretch a shared column across the whole map.
-/** @param {EpicDetail} detail @param {Map<string, number>} heldAges topic → last-active age of the session holding it */
-function mapNodes(detail, heldAges) {
-  return detail.discovery_map.map((row) => {
+/** @param {MapRow[]} rows @param {Map<string, number>} heldAges topic → last-active age of the session holding it */
+function mapNodes(rows, heldAges) {
+  return rows.map((row) => {
     const body = [];
     if (row.summary) body.push(row.summary);
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
@@ -327,6 +329,20 @@ function displayRecommendation(detail) {
   return null;
 }
 
+/**
+ * The topics that left for the roadmap and the horizons they wait under —
+ * one compact line beneath the phases, the tree having dropped their rows.
+ * Null when nothing is postponed.
+ * @param {EpicDetail} detail
+ */
+function postponedLine(detail) {
+  if (detail.postponed.length === 0) return null;
+  const named = detail.postponed
+    .map((t) => `${titlecase(t.name)} → ${t.horizon ?? 'no roadmap item'}`)
+    .join(' · ');
+  return wrapWithPrefix(`postponed: ${named}`, { width: TREE_WIDTH, prefix: '  ' }).join('\n');
+}
+
 /** Plans-not-ready ⚑ block, or null when no plan is blocked. @param {EpicDetail} detail */
 function plansNotReadyBlock(detail) {
   const blocked = (detail.phases.planning || [])
@@ -358,6 +374,9 @@ function epicDashboard(workUnit, detail, opts = {}) {
   const newArrivals = opts.newArrivals || {};
   const heldAges = heldTopicAges(opts.presence);
   const hasMap = detail.discovery_map.length > 0;
+  // A postponed topic has left the epic for the roadmap: it drops out of the
+  // tree and its counts, and the compact line below names where it went.
+  const drawn = detail.discovery_map.filter((row) => row.lifecycle !== 'postponed');
   const phaseNames = Object.keys(detail.phases);
 
   // Brand-new epic — nothing started anywhere. Point at the one true door.
@@ -384,9 +403,10 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (material) block += material + '\n\n';
     const callouts = arrivalCallouts(newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
-    const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
-    block += treeHeader(`RESEARCH & DISCUSSION (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
-    block += renderTree(mapNodes(detail, heldAges), { width: TREE_WIDTH, gap: true });
+    block += treeHeader(`RESEARCH & DISCUSSION (${drawn.length} topic${drawn.length === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
+    // Every row postponed leaves the tree with nothing to draw — the map's
+    // own empty word, with the line below naming where the topics went.
+    block += drawn.length > 0 ? renderTree(mapNodes(drawn, heldAges), { width: TREE_WIDTH, gap: true }) : '  (empty)\n';
     stages.push(block);
   }
 
@@ -401,6 +421,9 @@ function epicDashboard(workUnit, detail, opts = {}) {
   }
 
   let out = stages.join('\n');
+
+  const postponed = postponedLine(detail);
+  if (postponed) out += '\n' + postponed + '\n';
 
   if (!hasMap) {
     const rec = displayRecommendation(detail);
@@ -1234,6 +1257,21 @@ function epicReactivateMenu(detail, opts = {}) {
 }
 
 /**
+ * Section H — the Postponable Topics list and pick menu: every Discovery
+ * unit, locked ones shown keyless with their reason, a unit a live session
+ * holds carrying its in-session age. No routes — the flow continues to its
+ * horizon step and its confirmation gate.
+ * @param {EpicDetail} detail
+ * @param {{presence?: PresenceRow[]}} [opts]
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
+ */
+function epicPostponeMenu(detail, opts = {}) {
+  const rows = detail.postponable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Postpone', detail: unit.state }, opts.presence));
+  return selectionSubView('Postponable Topics', 'No postponable topics.', 'Which topic would you like to postpone?', 'postpone', rows,
+    { allLocked: 'Nothing can be postponed right now — each row names what holds it.' });
+}
+
+/**
  * Section G — the blocked-plans list and pick menu, one row per blocking
  * dependency (a plan with two blockers gets two rows). The `topic` slot
  * carries the plan, the `dep` field the dependency topic to mark satisfied.
@@ -1259,4 +1297,4 @@ function epicUnblockMenu(detail) {
   return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };

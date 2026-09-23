@@ -5,10 +5,12 @@
 // unit, stored on the project manifest's `roadmap` node: an ordered
 // `horizons` list (user-named release labels; position carries the
 // semantics) and an `items` record of capability-grain chunks, each
-// `{horizon, summary, origin[, sources][, pulled_to]}` — never a status
-// field: item lifecycle is computed at render time by joining `pulled_to`
-// against the named work unit, the same trick the discovery map uses one
-// level down. "Waiting" is the absence of a join.
+// `{horizon, summary, origin[, sources][, pulled_to][, postponed_from]}` —
+// never a status field: item lifecycle is computed at render time by joining
+// `pulled_to` against the named work unit, the same trick the discovery map
+// uses one level down. "Waiting" is the absence of a join, and
+// `postponed_from` names the epic a waiting item left, so the removal and
+// the return can each find the row that waits for it.
 //
 // Authority splits at the pull (design/product-roadmap.md, decision 25):
 // left of it the map is loose — un-pulled items take every edit; right of it
@@ -39,28 +41,28 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
+const { TERMINAL_STATUSES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
 // valve, origin = the session's container), `inbox:{slug}` (groomed off the
-// backlog).
+// backlog), `postpone:{work_unit}` (a topic that left an epic for the
+// roadmap).
 /** @param {*} origin */
 function validateOrigin(origin) {
-  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+)$/.test(origin)) {
-    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{slug}`);
+  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+)$/.test(origin)) {
+    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{slug}, postpone:{work_unit}`);
   }
 }
 
-// Same structural rule work-unit and topic names live under: dots break the
-// field surface's dot-path addressing, slashes break paths. Applies to items
-// and horizons alike (both are manifest keys/labels). Name-shape conventions
-// beyond that (kebab-case) are the calling flow's job.
+// The same structural rule work-unit and topic names live under, applied to
+// items and horizons alike (both are manifest keys/labels). Name-shape
+// conventions beyond that (kebab-case) are the calling flow's job.
 /** @param {string} kind @param {*} name */
 function validateName(kind, name) {
-  if (typeof name !== 'string' || name === '' || /[./]/.test(name)) {
-    throw new Error(`"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`);
-  }
+  const illegal = illegalNameReason(kind, name);
+  if (illegal) throw new Error(illegal);
 }
 
 // Source pointers are provenance indexes into session logs — relative paths
@@ -93,6 +95,18 @@ function validatePosition(position, max) {
 }
 
 /**
+ * Whether the project manifest already carries a roadmap node — the reading
+ * every consumer shares, so "the roadmap is created with it" can never
+ * disagree with what the JIT birth does.
+ * @param {Record<string, any>|null|undefined} manifest
+ * @returns {boolean}
+ */
+function hasRoadmapNode(manifest) {
+  const roadmap = manifest && manifest.roadmap;
+  return Boolean(roadmap) && typeof roadmap === 'object' && !Array.isArray(roadmap);
+}
+
+/**
  * The roadmap node, created just-in-time. Malformed shapes are refused loud —
  * a scalar `roadmap`, an object `horizons`, an array `items` all name their
  * corruption instead of being silently rebuilt.
@@ -115,7 +129,7 @@ function ensureRoadmap(manifest) {
  * @returns {{horizons: string[], items: Record<string, any>}}
  */
 function requireRoadmap(manifest) {
-  if (!manifest.roadmap || typeof manifest.roadmap !== 'object' || Array.isArray(manifest.roadmap)) {
+  if (!hasRoadmapNode(manifest)) {
     throw new Error('no roadmap on the project manifest — nothing to operate on');
   }
   return ensureRoadmap(manifest);
@@ -132,20 +146,6 @@ function roadmapItem(roadmap, name) {
     throw new Error(`no roadmap item "${name}"`);
   }
   return item;
-}
-
-/**
- * The join, when the item carries one. A malformed `pulled_to` (not an
- * object, no work_unit) reads as no join — the write side owns shape.
- * @param {Record<string, any>} item
- * @returns {{work_unit: string, topic?: string}|null}
- */
-function itemJoin(item) {
-  const j = item.pulled_to;
-  if (j && typeof j === 'object' && !Array.isArray(j) && typeof j.work_unit === 'string' && j.work_unit !== '') {
-    return j;
-  }
-  return null;
 }
 
 /**
@@ -230,6 +230,9 @@ function deriveItemState(cwd, item) {
  * @property {string} [work_unit]
  * @property {string} [topic]
  * @property {string} [routing]
+ * @property {{work_unit: string, topic: string}} [prior]  bind / pull-forward: the epic the topic's prior record sits in
+ * @property {{work_unit: string, topic: string}} [epic_row_cancelled]  remove: the postponed row this removal cancelled
+ * @property {{phase: string, status: string|null}[]} [restored]  pull-forward: the postponed items the return brought back
  * @property {{phase: string, topic: string}[]} [flagged]
  * @property {string|null} [committed]  short sha, or null when nothing staged
  * @property {string} [note]            set when committed is null
@@ -285,8 +288,8 @@ function roadmapState(cwd) {
   } catch {
     return empty;
   }
+  if (!hasRoadmapNode(manifest)) return empty;
   const roadmap = manifest.roadmap;
-  if (!roadmap || typeof roadmap !== 'object' || Array.isArray(roadmap)) return empty;
   const activeSession = typeof roadmap.active_session === 'string' && roadmap.active_session !== ''
     ? roadmap.active_session
     : null;
@@ -350,18 +353,20 @@ function transactProject(cwd, fn) {
 }
 
 /**
- * Tail-commit the project manifest and stamp the result — the shared close
- * of every mutation. The state write has landed; a git failure degrades to
- * a warning and a pending note, never a failed verb.
+ * Tail-commit the project manifest — and a work unit's alongside it, for the
+ * mutations that reach across the boundary — and stamp the result: the shared
+ * close of every mutation. The state write has landed; a git failure degrades
+ * to a warning and a pending note, never a failed verb. `warnings` seeds the
+ * array where the mutation already gathered some (a knowledge sync).
  * @param {string} cwd @param {RoadmapOpResult} result @param {string} message
+ * @param {{workUnit?: string, warnings?: string[]}} [opts]
  * @returns {RoadmapOpResult}
  */
-function commitRoadmap(cwd, result, message) {
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, message, warnings);
+function commitRoadmap(cwd, result, message, { workUnit, warnings = [] } = {}) {
+  const spec = workUnit ? [PROJECT_MANIFEST_SPEC, `.workflows/${workUnit}/manifest.json`] : PROJECT_MANIFEST_SPEC;
+  const outcome = commitTailPathspec(cwd, spec, message, warnings);
   result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
+  if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -555,20 +560,38 @@ function moveRoadmapItem(cwd, name, horizon) {
 
 /**
  * Delete an item. Refused on a pulled item (the epic-side cancel is the
- * path; its revert returns the item first). No dismissed list — git history
- * and the session logs keep the story. Self-commits.
+ * path; its revert returns the item first). An item a postpone put here
+ * takes the epic's row with it — "actually never" has one door, so the
+ * marker and every stashed item flip to cancelled in the same transaction
+ * and one commit covers both manifests. No dismissed list — git history and
+ * the session logs keep the story. Self-commits.
  * @param {string} cwd @param {string} name
  * @returns {RoadmapOpResult}
  */
 function removeRoadmapItem(cwd, name) {
+  const preflight = roadmapItem(requireRoadmap(readProjectManifest(cwd)), name);
+  refuseJoined(preflight, name, 'removing');
+  const postponed = itemPostponedFrom(preflight);
+  // The epic's row is cancelled before the item is deleted: a crash between
+  // leaves a cancelled row and a removable item, never a live postponed row
+  // whose roadmap item has gone.
+  if (postponed) {
+    const { cancelPostponedUnit } = require('./transitions.cjs');
+    cancelPostponedUnit(cwd, postponed.work_unit, postponed.topic, name);
+  }
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     refuseJoined(item, name, 'removing');
     delete roadmap.items[name];
-    return { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
+    /** @type {RoadmapOpResult} */
+    const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
+    if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
+    return out;
   });
-  return commitRoadmap(cwd, result, `roadmap: remove ${name}`);
+  return postponed
+    ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit })
+    : commitRoadmap(cwd, result, `roadmap: remove ${name}`);
 }
 
 /**
@@ -815,9 +838,49 @@ function bindItem(cwd, name, { topic } = {}) {
       throw new Error(`no discovery item "${topic}" on "${join.work_unit}" — bind names a topic the harvest landed`);
     }
     item.pulled_to = { work_unit: join.work_unit, topic };
-    return { op: 'bind', name, work_unit: join.work_unit, topic };
+    // A topic that waited here after a postpone, landing in a different epic:
+    // the new row carries the prior record's address, which its research or
+    // discussion reads in full and relitigates. A return to the epic that
+    // postponed it needs none — the record is already that epic's.
+    const from = itemPostponedFrom(item);
+    const prior = from && from.work_unit !== join.work_unit ? from : null;
+    /** @type {RoadmapOpResult} */
+    const out = { op: 'bind', name, work_unit: join.work_unit, topic };
+    if (prior) out.prior = { work_unit: prior.work_unit, topic: prior.topic };
+    return out;
   });
-  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`);
+  if (result.prior) {
+    const { setPrior } = require('./discovery-map.cjs');
+    setPrior(cwd, /** @type {string} */ (result.work_unit), topic, result.prior);
+  }
+  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`,
+    result.prior ? { workUnit: result.work_unit } : {});
+}
+
+/**
+ * The pull's return leg over a topic this epic postponed: the Discovery unit
+ * restored, the join re-recorded, and `postponed_from` dropped — the topic is
+ * in flight again, and a later postpone sets it afresh. One commit stages
+ * both manifests, as the creating branch's does. The roadmap side goes first,
+ * the postpone's order mirrored: a refusal there leaves the unit postponed
+ * rather than restored into an epic the item never rejoined.
+ * @param {string} cwd @param {string} name @param {string} into @param {string} topic
+ * @returns {RoadmapOpResult}
+ */
+function returnPostponed(cwd, name, into, topic) {
+  const { restorePostponedUnit } = require('./transitions.cjs');
+  /** @type {RoadmapOpResult} */
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    item.pulled_to = { work_unit: into, topic };
+    delete item.postponed_from;
+    return { op: 'pull-forward', name, into, topic, state: 'in-flight' };
+  });
+  const returned = restorePostponedUnit(cwd, into, topic);
+  result.restored = returned.restored;
+  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`,
+    { workUnit: into, warnings: returned.warnings });
 }
 
 /**
@@ -830,18 +893,22 @@ function bindItem(cwd, name, { topic } = {}) {
  * through), then writes the join, then one commit staging both manifests.
  * Map item first, join second: a crash between leaves a visible, repairable
  * topic (pull + bind recovers), never a dangling join.
+ *
+ * An item this very epic postponed takes the **return** branch instead: the
+ * epic's own row is restored rather than a second one created — the marker
+ * cleared, every stash returned, each restored `completed` artifact
+ * re-indexed — and `--routing` names nothing, the row keeping its own. A
+ * postponed item landing in any other epic creates as usual, the new row
+ * carrying `prior` so its conversation reads the earlier record in full.
  * @param {string} cwd @param {string} name
  * @param {{into?: string, routing?: string, forceDismissed?: boolean}} [opts]
  * @returns {RoadmapOpResult}
  */
 function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = {}) {
   if (typeof into !== 'string' || into === '') throw new Error('--into is required');
-  if (typeof routing !== 'string' || routing === '') throw new Error('--routing is required');
 
   // Validate the roadmap side before touching the epic's map.
-  const preflight = readProjectManifest(cwd);
-  const rm = preflight.roadmap;
-  const preItem = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  const preItem = roadmapItems(readProjectManifest(cwd))[name];
   if (!preItem || typeof preItem !== 'object') throw new Error(`no roadmap item "${name}"`);
   const preJoin = itemJoin(preItem);
   if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
@@ -860,6 +927,14 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
   }
 
+  const from = itemPostponedFrom(preItem);
+  const mapItems = (unit.phases && unit.phases.discovery && unit.phases.discovery.items) || {};
+  const returning = from && from.work_unit === into && mapItems[from.topic]
+    && mapItems[from.topic].postponed === true ? from.topic : null;
+  if (returning) return returnPostponed(cwd, name, into, returning);
+
+  if (typeof routing !== 'string' || routing === '') throw new Error('--routing is required');
+
   // The discovery-map domain owns the map write: its lock, its name gates,
   // its dismissed-list discipline.
   const { addItem: addMapItem } = require('./discovery-map.cjs');
@@ -868,6 +943,7 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     source: 'roadmap',
     summary: typeof preItem.summary === 'string' ? preItem.summary : '',
     forceDismissed,
+    ...(from ? { prior: { work_unit: from.work_unit, topic: from.topic } } : {}),
   });
 
   /** @type {RoadmapOpResult} */
@@ -875,20 +951,12 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     item.pulled_to = { work_unit: into, topic: name };
-    return { op: 'pull-forward', name, into, topic: name, routing, state: 'in-flight' };
+    /** @type {RoadmapOpResult} */
+    const out = { op: 'pull-forward', name, into, topic: name, routing, state: 'in-flight' };
+    if (from) out.prior = { work_unit: from.work_unit, topic: from.topic };
+    return out;
   });
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitTailPathspec(
-    cwd,
-    [PROJECT_MANIFEST_SPEC, `.workflows/${into}/manifest.json`],
-    `roadmap: pull-forward ${name} into ${into}`,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  return result;
+  return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`, { workUnit: into });
 }
 
 /**
@@ -921,6 +989,63 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
     }
     if (reverted.length > 0) writeProjectManifestAtomic(cwd, manifest);
     return reverted;
+  });
+}
+
+/**
+ * @typedef {object} PostponeLanding
+ * @property {string} name          the item that now waits for the topic
+ * @property {string} horizon
+ * @property {boolean} born_map     the roadmap node was created with it
+ * @property {boolean} born_horizon the horizon was created with it
+ * @property {boolean} reverted_join  an item already joined to the topic was re-waited rather than born
+ */
+
+/**
+ * The postpone's roadmap half: the item that waits for the topic. An item
+ * joined to `{workUnit, topic}` **re-waits** — the join deleted, the chosen
+ * horizon taken, its own name and origin left as they were; otherwise one is
+ * **born** under the topic's name with origin `postpone:{workUnit}` — or
+ * refuses, when that name is taken: nothing on the roadmap is ever
+ * overwritten, and the plan's clash lock is read again here because the plan
+ * ran before the project lock was taken. Either way the item records
+ * `postponed_from` and gains the topic's files as sources, and the node and
+ * the horizon are created just-in-time. Runs under the project lock — nested
+ * inside the work unit's, the one place the two are held together, and the
+ * order every other cross-boundary verb keeps — and **no commit**: the
+ * postpone transaction stages the project manifest alongside the epic's.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @param {{horizon: string, summary: string, sources: string[]}} opts
+ * @returns {PostponeLanding}
+ */
+function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) {
+  validateName('horizon', horizon);
+  validateSummary(summary);
+  validateSources(sources);
+  return transactProject(cwd, (manifest) => {
+    const bornMap = !hasRoadmapNode(manifest);
+    const roadmap = ensureRoadmap(manifest);
+    const target = postponeTarget(manifest, workUnit, topic);
+    if (!target.joined) {
+      // Read again under the project lock: the plan's clash check ran before
+      // the epic write, and a name a peer took since must refuse, never overwrite.
+      if (target.item !== undefined) throw new Error(postponeClashPhrase(topic, target.item));
+      validateName('item', target.name);
+    }
+    const bornHorizon = ensureHorizon(roadmap, horizon);
+    if (!target.joined) {
+      roadmap.items[target.name] = { horizon, summary, origin: `postpone:${workUnit}` };
+    }
+    const item = roadmap.items[target.name];
+    if (target.joined) {
+      delete item.pulled_to;
+      item.horizon = horizon;
+    }
+    item.postponed_from = { work_unit: workUnit, topic };
+    const kept = Array.isArray(item.sources) ? item.sources.filter((/** @type {*} */ s) => typeof s === 'string') : [];
+    const merged = [...kept, ...sources.filter((s) => !kept.includes(s))];
+    if (merged.length > 0) item.sources = merged;
+    return { name: target.name, horizon, born_map: bornMap, born_horizon: bornHorizon, reverted_join: target.joined };
   });
 }
 
@@ -969,9 +1094,7 @@ function reaimJoins(cwd, fromUnit, { into, topic }) {
  * @returns {RoadmapOpResult}
  */
 function flagJoined(cwd, name) {
-  const project = readProjectManifest(cwd);
-  const rm = project.roadmap;
-  const item = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  const item = roadmapItems(readProjectManifest(cwd))[name];
   if (!item || typeof item !== 'object') throw new Error(`no roadmap item "${name}"`);
   const join = itemJoin(item);
   if (!join) throw new Error(`"${name}" is not joined to a work unit — a waiting item needs no flag; its record is read at the pull`);
@@ -1013,7 +1136,9 @@ function flagJoined(cwd, name) {
 
 module.exports = {
   roadmapState,
+  hasRoadmapNode,
   ensureRoadmap,
+  postponeToRoadmap,
   addRoadmapItem,
   addRoadmapItemsBatch,
   editRoadmapItem,

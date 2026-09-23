@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 const {
-  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicUnblockMenu,
+  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicUnblockMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
@@ -101,6 +101,78 @@ describe('epic projections: dashboard (map branch)', () => {
     '     └─ Phase 2, 3 task(s) completed',
     '',
   ].join('\n');
+
+  it('a postponed topic drops out of the tree and its counts, named with its horizon on one line beneath', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next', 'later'], items: {
+        'data-export': { horizon: 'next', summary: 's', origin: 'postpone:pv1', postponed_from: { work_unit: 'pv1', topic: 'data-export' } },
+        reporting: { horizon: 'later', summary: 's', origin: 'postpone:pv1', postponed_from: { work_unit: 'pv1', topic: 'reporting' } },
+      } },
+    }, null, 2));
+    const detail = detailFor(dir, 'pv1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          auth: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Auth flow' },
+          'data-export': { routing: 'discussion', source: 'discovery', postponed: true, previous_order: 2 },
+          reporting: { routing: 'discussion', source: 'discovery', postponed: true, previous_order: 3 },
+        } },
+        discussion: { items: { auth: { status: 'in-progress' }, reporting: { status: 'postponed', previous_status: 'completed' } } },
+      },
+    });
+    assert.strictEqual(epicDashboard('pv1', detail), [
+      '── DISCOVERY ────────────────────────────────────────────────────',
+      '',
+      'RESEARCH & DISCUSSION (1 topic · 1 in flight)',
+      '  └─ ◐ Auth',
+      '        Auth flow',
+      '        ↳ Discussing',
+      '',
+      '  postponed: Data Export → next · Reporting → later',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(detail.postponed, [
+      { name: 'data-export', horizon: 'next' },
+      { name: 'reporting', horizon: 'later' },
+    ]);
+    // Convergence never waits on a topic that has left the epic.
+    assert.strictEqual(detail.convergence_state, 'in-progress');
+    assert.strictEqual(detail.map_summary.postponed, 2);
+  });
+
+  it('a map whose every row is postponed draws an empty tree and never claims all decided', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next'], items: {
+        'data-export': { horizon: 'next', summary: 's', origin: 'postpone:pv2', postponed_from: { work_unit: 'pv2', topic: 'data-export' } },
+      } },
+    }, null, 2));
+    const detail = detailFor(dir, 'pv2', {
+      work_type: 'epic',
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.strictEqual(detail.convergence_state, 'settled');
+    assert.strictEqual(epicDashboard('pv2', detail), [
+      '── DISCOVERY ────────────────────────────────────────────────────',
+      '',
+      'RESEARCH & DISCUSSION (0 topics)',
+      '  (empty)',
+      '',
+      '  postponed: Data Export → next',
+      '',
+    ].join('\n'));
+  });
+
+  it('a postponed row whose roadmap item is gone says so rather than naming a horizon it lost', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ work_units: {} }, null, 2));
+    const detail = detailFor(dir, 'pv3', {
+      work_type: 'epic',
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null }]);
+    assert.ok(epicDashboard('pv3', detail).includes('  postponed: Data Export → no roadmap item'));
+  });
 
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
@@ -1037,6 +1109,73 @@ describe('epic projections: selection sub-views', () => {
       ]
     );
     assert.strictEqual(epicCancelMenu(unitDetail()).display.includes('in session'), false, 'no presence, no cue');
+  });
+
+  it('postpone-menu: every Discovery unit, locked rows keyless with their reason, a held unit cued; cancelled and postponed rows absent', () => {
+    const presence = [{ phase: 'discussion', topic: 'billing', age_seconds: 30, held: true, session_id: 's1' }];
+    const detail = detailFor(dir, 'p1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          auth: { routing: 'research', source: 'discovery', order: 1 },
+          billing: { routing: 'discussion', source: 'discovery', order: 2 },
+          'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
+          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+          away: { routing: 'discussion', source: 'discovery', postponed: true },
+        } },
+        research: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress' } } },
+        specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } } } },
+      },
+    });
+    const view = epicPostponeMenu(detail, { presence });
+    assert.strictEqual(view.title, 'Postponable Topics');
+    assert.strictEqual(view.display, [
+      'Topics',
+      '  ├─ Auth [decided] · postponing "auth" is refused while the',
+      '     specification "unified" sources its discussion — a topic',
+      '     past specification is past "not yet"',
+      '  ├─ 1. Billing [discussing] · in session (last active 30s',
+      '        ago)',
+      '  └─ 2. Data Export [fresh · routed to discussion]',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to postpone?`**',
+      '',
+      '**`1`**      → Postpone "Billing" — *discussing* · in session (last',
+      `${NB(9)}active 30s ago)`,
+      '**`2`**      → Postpone "Data Export" — *fresh · routed to discussion*',
+      '**`b/back`** → Return to menu',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
+      [
+        ['1', 'postpone', 'billing', 'discovery', null],
+        ['2', 'postpone', 'data-export', 'discovery', null],
+        ['b', 'back', null, null, null],
+      ]
+    );
+  });
+
+  it('postpone-menu: the empty state, and a set where every row is locked opens on a statement over back alone', () => {
+    const bare = detailFor(dir, 'p2', { work_type: 'epic', phases: { planning: { items: { orphan: { status: 'completed' } } } } });
+    assert.strictEqual(epicPostponeMenu(bare).display, 'No postponable topics.\n');
+    const locked = detailFor(dir, 'p3', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed', sources: { auth: { status: 'incorporated' } } } } },
+      },
+    });
+    assert.strictEqual(epicPostponeMenu(locked).rendered, [
+      '· · · · · · · · · · · ·',
+      'Nothing can be postponed right now — each row names what holds it.',
+      '',
+      '**`b/back`** → Return to menu',
+    ].join('\n'));
+    assert.deepStrictEqual(epicPostponeMenu(locked).keys.map((k) => k.key), ['b'], 'locked rows take no key');
   });
 
   it('reactivate-menu: every cancelled unit, each row naming what returns', () => {

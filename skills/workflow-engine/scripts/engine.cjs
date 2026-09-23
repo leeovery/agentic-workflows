@@ -30,10 +30,10 @@ const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = r
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
-const { VALID_ROUTINGS, VALID_THREAD_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
-const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -219,6 +219,7 @@ Commands:
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
+  topic postpone <work-unit> <topic> --horizon "<horizon>"
   experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
@@ -245,7 +246,7 @@ Commands:
   roadmap remove <name>
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
-  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]
+  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
   roadmap flag <name>
   roadmap session open --session-log-file <path>
   roadmap session close -m <message>
@@ -336,6 +337,7 @@ Commands:
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
+  render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>
@@ -349,6 +351,7 @@ Commands:
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
   render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
+  render topic-receipt     <wu.discovery.topic> --verb postpone [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
@@ -1076,8 +1079,17 @@ function runTopic(call, argv) {
       respond(call, triageTopic(call.cwd, workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
       return;
     }
+    if (command === 'postpone') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, topic] = positional;
+      if (!workUnit || !topic || positional.length !== 2) {
+        throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
+      }
+      respond(call, postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|queue|absorb|requeue> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|postpone|queue|absorb|requeue> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1418,8 +1430,10 @@ function runRoadmap(call, argv) {
       }
       respond(call, roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
-      if (positional.length !== 1 || !opts.into || !opts.routing) {
-        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]');
+      // `--routing` belongs to the creating branch: the return of a topic
+      // this epic postponed restores the row it already has, routing and all.
+      if (positional.length !== 1 || !opts.into) {
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)');
       }
       respond(call, roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,
@@ -1562,8 +1576,9 @@ const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: str
 
 // A topic whose item reads one of these is finished: nothing further a
 // session does to it is work on a live topic, so its commits release the slot
-// rather than hold it.
-const TERMINAL_TOPIC_STATUSES = ['completed', 'cancelled', 'superseded', 'promoted'];
+// rather than hold it. The schema's terminal set plus the conclusion — derived
+// so a status added there can never be missed here.
+const TERMINAL_TOPIC_STATUSES = ['completed', ...TERMINAL_STATUSES];
 
 /**
  * A phase item straight off disk, or null when there is none — a direct read,
