@@ -1,16 +1,19 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import {
+  IDLE,
   answerOf,
-  chromeRows,
+  footerRuns,
   geometry,
-  lineCount,
   linesOf,
   pad,
-  questionLines,
   startingRow,
   wrapRuns,
+  type Footer,
+  type Gate,
+  type Line,
   type Option,
+  type RowLine,
   type Typed,
 } from '../hooks/layout.ts'
 
@@ -21,14 +24,47 @@ const optionOf = (over: Partial<Option> = {}): Option => ({
   word: null,
   head: 'Continue "Auth"',
   tail: null,
+  detail: null,
   struck: false,
   recommended: false,
   ...over,
 })
 
-const TYPED: Typed[] = [
-  { label: 'Comment', description: 'Request changes (triggers a fix round)' },
-]
+const COMMENT: Typed = {
+  label: 'Comment',
+  description: 'Request changes (triggers a fix round)',
+  detail: null,
+}
+
+const gateOf = (over: Partial<Gate> = {}): Gate => ({
+  question: 'Approve this task?',
+  statement: '',
+  options: [optionOf({ key: 'y', word: 'yes', head: 'Commit' })],
+  typed: [],
+  ...over,
+})
+
+const textOf = (runs: readonly { text: string }[]) =>
+  runs.map(run => run.text).join('')
+
+/** A line as it reads: its kind's mark, then its text, trailing space trimmed. */
+const read = (line: Line): string => {
+  switch (line.kind) {
+    case 'rule':
+      return '─'
+    case 'blank':
+      return ''
+    case 'prose':
+      return `${line.glyph ? '◆' : ' '} ${textOf(line.runs)}`
+    case 'footer':
+      return `» ${textOf(line.runs)}`.trimEnd()
+    default:
+      return `${line.kind[0]}${line.index} ${textOf(line.key)}${textOf(line.runs)}`.trimEnd()
+  }
+}
+
+const rowsOf = (lines: Line[]) =>
+  lines.filter((line): line is RowLine => line.kind === 'option' || line.kind === 'typed')
 
 describe('layout', () => {
   test('a row is pressed, and answers, by its word where it has one', () => {
@@ -70,7 +106,7 @@ describe('layout', () => {
       20,
     )
 
-    expect(wrapped.map(line => line.map(run => run.text).join(''))).toEqual([
+    expect(wrapped.map(textOf)).toEqual([
       'Approve this and the',
       'remaining — in this',
       'phase',
@@ -95,29 +131,95 @@ describe('layout', () => {
   })
 
   test('the key column takes the widest key, pressable or typed', () => {
-    const options = [optionOf({ key: 'y', word: 'yes' })]
-
-    expect(geometry(options, TYPED, 60)).toEqual({
+    expect(geometry(gateOf({ typed: [COMMENT] }), 60)).toEqual({
       keyWidth: 'Comment'.length,
       labelWidth: 60 - 2 - 'Comment'.length - 2,
     })
   })
 
   test('a narrow band keeps a floor under the label column', () => {
-    expect(geometry([optionOf({ key: 'y', word: 'yes' })], [], 6).labelWidth).toBe(8)
+    expect(geometry(gateOf(), 6).labelWidth).toBe(8)
+  })
+
+  test('the band is the rule, the question, the rows and the footer, a blank between each', () => {
+    const gate = gateOf({ typed: [COMMENT] })
+
+    expect(linesOf(gate, 72).map(read)).toEqual([
+      '─',
+      '',
+      '◆ Approve this task?',
+      '',
+      'o0 yes      Commit',
+      't0 Comment  Request changes (triggers a fix round)',
+      '',
+      '» Click a row to choose · click it again to send · or just type',
+    ])
+  })
+
+  test('the statement stands above the question, its lines its own, the glyph on the question alone', () => {
+    const gate = gateOf({
+      statement: 'Found existing review for Auth.\nReview covered 2 of 5 tasks.',
+      question: 'Continue the review?',
+    })
+
+    expect(linesOf(gate, 72).map(read).slice(0, 7)).toEqual([
+      '─',
+      '',
+      '  Found existing review for Auth.',
+      '  Review covered 2 of 5 tasks.',
+      '',
+      '◆ Continue the review?',
+      '',
+    ])
+  })
+
+  test('a gate that asks nothing draws no question: the statement stands alone', () => {
+    const gate = gateOf({ statement: 'Found existing plan for Auth.', question: '' })
+
+    expect(linesOf(gate, 72).map(read).slice(0, 5)).toEqual([
+      '─',
+      '',
+      '  Found existing plan for Auth.',
+      '',
+      'o0 yes  Commit',
+    ])
+  })
+
+  test('with neither a statement nor a question, the rows sit under the rule', () => {
+    const gate = gateOf({ question: '' })
+
+    expect(linesOf(gate, 72).map(read).slice(0, 3)).toEqual(['─', '', 'o0 yes  Commit'])
+  })
+
+  test('a question too long for the band wraps past the glyph', () => {
+    const gate = gateOf({ question: 'Conclude this discussion and mark as completed?' })
+
+    expect(linesOf(gate, 32).map(read).slice(2, 5)).toEqual([
+      '◆ Conclude this discussion and',
+      '  mark as completed?',
+      '',
+    ])
+  })
+
+  test('the question is bold and the statement normal weight', () => {
+    const gate = gateOf({ statement: 'Context.', question: 'Proceed?' })
+    const prose = linesOf(gate, 72).flatMap(line => (line.kind === 'prose' ? [line.runs] : []))
+
+    expect(prose).toEqual([
+      [{ text: 'Context.' }],
+      [{ text: 'Proceed?', bold: true }],
+    ])
   })
 
   test('a row draws its head, its tail and its recommendation in one line', () => {
-    const lines = linesOf(
-      [optionOf({ key: 'y', word: 'yes', tail: 'research', recommended: true })],
-      [],
-      60,
-    )
+    const gate = gateOf({
+      options: [optionOf({ key: 'y', word: 'yes', tail: 'research', recommended: true })],
+    })
+    const [line] = rowsOf(linesOf(gate, 72))
 
-    expect(lines).toHaveLength(1)
-    expect(lines[0]).toMatchObject({ option: 0, key: 'yes' })
+    expect(line).toMatchObject({ kind: 'option', index: 0 })
 
-    expect(lines[0]?.runs.slice(0, 3)).toEqual([
+    expect(line?.runs.slice(0, 3)).toEqual([
       { text: 'Continue "Auth"', strikethrough: false },
       { text: ' — research', dim: true, italic: true },
       { text: ' (recommended)' },
@@ -125,54 +227,175 @@ describe('layout', () => {
   })
 
   test('a struck row carries the strike on its head alone', () => {
-    const [line] = linesOf([optionOf({ struck: true, tail: 'discussion' })], [], 60)
+    const gate = gateOf({ options: [optionOf({ struck: true, tail: 'discussion' })] })
+    const [line] = rowsOf(linesOf(gate, 72))
 
-    expect(line?.runs[0]).toEqual({
-      text: 'Continue "Auth"',
-      strikethrough: true,
-    })
-
+    expect(line?.runs[0]).toEqual({ text: 'Continue "Auth"', strikethrough: true })
     expect(line?.runs[1]?.strikethrough).toBeUndefined()
   })
 
-  test('a typed row belongs to no option, so nothing can press it', () => {
-    const lines = linesOf([optionOf()], TYPED, 60)
+  test("a row's key is underlined where its word spells it", () => {
+    const keyOf = (option: Option) =>
+      rowsOf(linesOf(gateOf({ options: [option] }), 72))[0]?.key.filter(
+        run => run.text.trim() !== '',
+      )
 
-    expect(lines.map(line => line.option)).toEqual([0, null])
-    expect(lines[1]?.key).toBe('Comment')
-  })
-
-  test("a wrapped label's continuations answer the row above them", () => {
-    const head = 'Approve this and the remaining tasks in this phase automatically'
-    const lines = linesOf([optionOf({ key: 'b', word: 'bounded', head })], [], 40)
-
-    expect(lines.length).toBeGreaterThan(1)
-    expect(lines.map(line => line.option)).toEqual(lines.map(() => 0))
-    expect(lines.map(line => line.key)).toEqual(['bounded', ...lines.slice(1).map(() => '')])
-  })
-
-  test('the rows the region needs are counted, never estimated', () => {
-    const options = [optionOf({ key: 'y', word: 'yes' }), optionOf({ key: '2' })]
-
-    expect(lineCount(options, TYPED, 60)).toBe(
-      linesOf(options, TYPED, 60).length,
-    )
-
-    expect(lineCount(options, TYPED, 60)).toBe(3)
-  })
-
-  test('the chrome is the rule, the question and the space under it', () => {
-    expect(chromeRows('Approve this task?', 60)).toBe(3)
-  })
-
-  test('a question too long for the band takes the rows it wraps onto', () => {
-    const question = 'Conclude this discussion and mark as completed?'
-
-    expect(questionLines(question, 30)).toEqual([
-      'Conclude this discussion and',
-      'mark as completed?',
+    expect(keyOf(optionOf({ key: 'y', word: 'yes' }))).toEqual([
+      { text: 'y', underline: true },
+      { text: 'es' },
     ])
 
-    expect(chromeRows(question, 30)).toBe(4)
+    expect(keyOf(optionOf({ key: 'e', word: 'reopen' })), 'the first time it appears').toEqual([
+      { text: 'r' },
+      { text: 'e', underline: true },
+      { text: 'open' },
+    ])
+
+    expect(keyOf(optionOf({ key: 'y', word: 'Yes' })), 'whatever its case').toEqual([
+      { text: 'Y', underline: true },
+      { text: 'es' },
+    ])
+  })
+
+  test('a key the word does not spell, and a bare number, draw with no underline', () => {
+    const keysOf = (options: Option[]) =>
+      rowsOf(linesOf(gateOf({ options }), 72)).map(line => line.key)
+
+    const keys = keysOf([optionOf({ key: 'x', word: 'yes' }), optionOf({ key: '2' })])
+
+    expect(keys.flat().some(run => run.underline === true)).toBe(false)
+    expect(keys.map(textOf).map(text => text.trim())).toEqual(['yes', '2'])
+  })
+
+  test('a typed row draws dim, and belongs to no option', () => {
+    const [line] = rowsOf(linesOf(gateOf({ options: [], typed: [COMMENT] }), 72))
+
+    expect(line).toMatchObject({ kind: 'typed', index: 0 })
+    expect(line?.key[0]).toEqual({ text: 'Comment', dim: true })
+    expect(line?.runs[0]).toEqual({ text: COMMENT.description, dim: true })
+  })
+
+  test("a wrapped label's continuations carry the row, the key on the first line alone", () => {
+    const head = 'Approve this and the remaining tasks in this phase automatically'
+    const gate = gateOf({ options: [optionOf({ key: 'b', word: 'bounded', head })] })
+    const lines = rowsOf(linesOf(gate, 40))
+
+    expect(lines.length).toBeGreaterThan(1)
+    expect(lines.map(line => line.index)).toEqual(lines.map(() => 0))
+    expect(lines.map(line => textOf(line.key).trim())).toEqual([
+      'bounded',
+      ...lines.slice(1).map(() => ''),
+    ])
+  })
+
+  test("a row's detail draws beneath it, dim, in the label column, its lines its own", () => {
+    const gate = gateOf({
+      options: [
+        optionOf({ key: '1', head: 'Analyze', detail: 'Groupings are found.\nNames are kept.' }),
+        optionOf({ key: '2', head: 'Unify' }),
+      ],
+    })
+    const lines = rowsOf(linesOf(gate, 72))
+
+    expect(lines.map(read)).toEqual([
+      'o0 1  Analyze',
+      'o0    Groupings are found.',
+      'o0    Names are kept.',
+      'o1 2  Unify',
+    ])
+
+    expect(lines[1]?.runs[0]).toEqual({ text: 'Groupings are found.', dim: true })
+  })
+
+  test('a detail too long for the label column wraps inside it', () => {
+    const detail = 'All discussions are analyzed for natural groupings and kept.'
+    const gate = gateOf({ options: [optionOf({ head: 'Analyze', detail })] })
+
+    expect(rowsOf(linesOf(gate, 30)).map(read)).toEqual([
+      'o0 1  Analyze',
+      'o0    All discussions are',
+      'o0    analyzed for natural',
+      'o0    groupings and kept.',
+    ])
+  })
+
+  test('every row line fills the band, so a background spans it', () => {
+    const gate = gateOf({ typed: [COMMENT] })
+    const width = (line: RowLine) => 2 + textOf(line.key).length + textOf(line.runs).length
+
+    expect(rowsOf(linesOf(gate, 72)).map(width)).toEqual([72, 72])
+  })
+
+  test('the footer says how to answer, what a pick put in the prompt, and how to answer a typed row', () => {
+    expect(footerRuns(IDLE)).toEqual([
+      { text: 'Click a row to choose · click it again to send · or just type', dim: true },
+    ])
+
+    expect(footerRuns({ kind: 'picked', answer: 'yes' })).toEqual([
+      { text: 'yes', bold: true },
+      { text: ' is in your prompt · click it again or Enter to send', dim: true },
+    ])
+
+    expect(footerRuns({ kind: 'typed', label: 'Comment' })).toEqual([
+      { text: 'Comment — press Esc, then type in the prompt', dim: true },
+    ])
+  })
+
+  test('a typed row is named as the engine labels it, whatever it says', () => {
+    expect(textOf(footerRuns({ kind: 'typed', label: 'Tell me what to change' }))).toBe(
+      'Tell me what to change — press Esc, then type in the prompt',
+    )
+  })
+
+  test('a range row asks for the numbers', () => {
+    expect(textOf(footerRuns({ kind: 'typed', label: '1–12' }))).toBe(
+      '1–12 — press Esc, then type the numbers in the prompt',
+    )
+  })
+
+  test('the footer holds the height of the tallest thing it can say, whatever it says', () => {
+    const range: Typed = { label: '1–12', description: 'Pick items', detail: null }
+    const gate = gateOf({
+      options: [optionOf({ key: 'y', word: 'yes' }), optionOf({ key: 'b', word: 'bounded' })],
+      typed: [COMMENT, range],
+    })
+
+    const said: Footer[] = [
+      IDLE,
+      { kind: 'picked', answer: 'yes' },
+      { kind: 'picked', answer: 'bounded' },
+      { kind: 'typed', label: 'Comment' },
+      { kind: 'typed', label: '1–12' },
+    ]
+
+    const natural = said.map(footer => wrapRuns(footerRuns(footer), 28).length)
+
+    expect(new Set(natural).size, 'at 30 columns the states wrap unevenly').toBeGreaterThan(1)
+
+    for (const columns of [30, 44, 72]) {
+      const heights = said.map(footer => linesOf(gate, columns, footer).length)
+
+      expect(new Set(heights).size, `${columns} columns`).toBe(1)
+    }
+  })
+
+  test('the footer wraps at the gutter, a short state leaving the rest of its slot empty', () => {
+    const gate = gateOf({ typed: [{ label: '1–12', description: 'Pick items', detail: null }] })
+    const footer = (said: Footer) =>
+      linesOf(gate, 30, said)
+        .filter(line => line.kind === 'footer')
+        .map(read)
+
+    expect(footer(IDLE)).toEqual([
+      '» Click a row to choose ·',
+      '» click it again to send · or',
+      '» just type',
+    ])
+
+    expect(footer({ kind: 'typed', label: '1–12' })).toEqual([
+      '» 1–12 — press Esc, then type',
+      '» the numbers in the prompt',
+      '»',
+    ])
   })
 })

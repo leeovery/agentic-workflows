@@ -7,10 +7,22 @@ The engine states each gate as data beside the menu it composed. This mod
 announces itself at the session's start so the engine collects that data, arms
 the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
-scrolls. A press — a click, the row's own key, or Enter on the cursor — arrives
-as the next message, which is what the workflows already read; it enters under
+scrolls. Nothing in the workflows' prose changes.
+
+A click on a row puts its answer in the prompt box; a second click on it sends
+it as the next message, which is what the workflows already read. Once a click
+has given the band the keyboard, the arrows move between rows, Enter or a row's
+own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
-plugin's. Nothing in the workflows' prose changes.
+plugin's; the mod leaves what it sent in `.workflows/.cache/.gates/sent.json`.
+Typing still answers: a key and Enter at the prompt, or Esc then Enter after a
+pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
+click on one says to type it in the prompt. The footer under the rows says
+which: how to answer, what is in the prompt, or where to type.
+
+Esc on the turn an answer started puts its gate back, dropping whatever that
+turn drew; so does a turn the person did not start — a background agent's
+report, a scheduled prompt — that ends without a gate of its own.
 
 The engine emits the menu regardless, so a mod that is off, broken or absent
 leaves the text menu exactly as it was.
