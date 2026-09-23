@@ -1,5 +1,11 @@
-import type { On, RenderElement, RenderInput, RenderSurface } from 'claude-code'
-import { describe, expect, test, tier } from 'claude-code/testing'
+import type {
+  On,
+  PromptOrigin,
+  RenderElement,
+  RenderInput,
+  RenderSurface,
+} from 'claude-code'
+import { describe, expect, test, tier, type Engine } from 'claude-code/testing'
 
 tier('user')
 
@@ -47,6 +53,34 @@ const OPTIONS = [
     tail: 'discussion',
     struck: true,
     recommended: false,
+  },
+]
+
+/** An epic menu: a topic another session holds above the one recommended. */
+const HELD_FIRST = [
+  {
+    key: '1',
+    word: null,
+    head: 'Continue "Auth"',
+    tail: 'discussion',
+    struck: true,
+    recommended: false,
+  },
+  {
+    key: '2',
+    word: null,
+    head: 'Start "Billing"',
+    tail: 'research',
+    struck: false,
+    recommended: false,
+  },
+  {
+    key: '3',
+    word: null,
+    head: 'Continue "Search"',
+    tail: 'specification',
+    struck: false,
+    recommended: true,
   },
 ]
 
@@ -99,6 +133,21 @@ const ENGINE_CALL = {
   command: 'node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate auth.implementation.auth-flow',
 }
 
+/** The same call made inside a subagent's loop. */
+const SUBAGENT_CALL = { ...ENGINE_CALL, agentId: 'a1' }
+
+/** The main conversation's turn ending with its answer given. */
+const TURN_END = {
+  answer: 'The gate is on screen.',
+  durationMs: 1200,
+  isAborted: false,
+  turnId: 't0',
+  reason: 'answer' as const,
+}
+
+/** How the engine stamps a prompt this mod submits: a press. */
+const PRESS: PromptOrigin = { kind: 'plugin', name: 'workflow-gates' }
+
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
   plugin: 'workflow-gates',
@@ -114,7 +163,9 @@ const MOUNT = {
  * what a Bash call answers, and the prompts the mod submits.
  *
  * `calls` is what the mod asked of it, in order; `submits: false` takes the
- * submission but never lands it, which is the submit that fails.
+ * submission but never lands it, which is the submit that fails. A submission
+ * enters as core answers one, under the origin it arrived with;
+ * `engineWrites` changes what the next Bash call answers.
  *
  * @param on the test's `on`
  * @param stdout what the engine wrote
@@ -131,11 +182,14 @@ function world(
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
 
+  let output = stdout
+
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.surfaces', () => ({ value: surfaces }))
   on('ui.render', () => BENEATH)
   on('ui.message', () => ({}))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
 
   on('ui.invalidate', () => {
     calls.push('invalidate')
@@ -157,14 +211,25 @@ function world(
       throw new Error('the prompt could not be sent')
     }
 
-    return { text: e.text }
+    return { text: e.text, origin: e.origin }
   })
 
   on('tool.call', { tool: 'Bash' }, () => ({
-    result: { stdout, stderr: '', interrupted: false },
+    result: { stdout: output, stderr: '', interrupted: false },
   }))
 
-  return { calls, submitted, written }
+  const engineWrites = (next: string) => {
+    output = next
+  }
+
+  return { calls, submitted, written, engineWrites }
+}
+
+/** A gate rendered in a main-conversation turn that has since ended. */
+async function presented($: Engine) {
+  await $.session.start(SESSION)
+  await $.tool.call(ENGINE_CALL)
+  await $.turn.complete(TURN_END)
 }
 
 /** The Bash result's own record, which is what the mod answers with. */
@@ -227,11 +292,74 @@ describe('register', () => {
     expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(announced())
   })
 
-  test('an armed gate draws its rows in the band, over what was there', async ($, on) => {
+  test("a subagent's gate stays text, and nothing is armed", async ($, on) => {
+    const { calls } = world(on, announced())
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(SUBAGENT_CALL))).toBe(announced())
+
+    await $.turn.complete(TURN_END)
+
+    expect(calls).toEqual([])
+    expect(await $.ui.render(DRAWING)).toEqual(BENEATH)
+  })
+
+  test('the gate waits for the turn to end before it draws', async ($, on) => {
+    const { calls } = world(on, announced())
+
+    await $.session.start(SESSION)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await $.tool.call(ENGINE_CALL)
+
+    expect(calls, 'nothing redraws while the model is still writing').toEqual([])
+
+    await ui.redraw()
+
+    expect(await ui.find({ type: 'Client', key: 'gate' })).toBeUndefined()
+
+    await $.turn.complete(TURN_END)
+
+    expect(calls).toEqual(['invalidate'])
+
+    await ui.redraw()
+
+    expect(await ui.find({ type: 'Client', key: 'gate' })).toBeDefined()
+
+    await ui.unmount()
+  })
+
+  test('an interrupted turn still leaves the person at the gate', async ($, on) => {
     world(on, announced())
 
     await $.session.start(SESSION)
     await $.tool.call(ENGINE_CALL)
+    await $.turn.complete({ ...TURN_END, reason: 'aborted', isAborted: true })
+
+    expect(await $.ui.render(DRAWING)).not.toEqual(BENEATH)
+  })
+
+  test("a subagent's turn ending draws nothing; the conversation's does", async ($, on) => {
+    const { calls } = world(on, announced())
+
+    await $.session.start(SESSION)
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete({ ...TURN_END, turnId: 't1', agentId: 'a1' })
+
+    expect(calls).toEqual([])
+    expect(await $.ui.render(DRAWING)).toEqual(BENEATH)
+
+    await $.turn.complete(TURN_END)
+
+    expect(await $.ui.render(DRAWING)).not.toEqual(BENEATH)
+  })
+
+  test('a drawn gate puts its rows in the band, over what was there', async ($, on) => {
+    world(on, announced())
+
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -261,8 +389,7 @@ describe('register', () => {
   test('the band yields to a survey', async ($, on) => {
     world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const drawn = await $.ui.render({
       ...DRAWING,
@@ -275,8 +402,7 @@ describe('register', () => {
   test('pressing a row submits its word, and the gate goes once it lands', async ($, on) => {
     const { calls, submitted } = world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -301,8 +427,7 @@ describe('register', () => {
   test('a submission that fails leaves the row there to press again', async ($, on) => {
     const { calls } = world(on, announced(), { submits: false })
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -321,11 +446,37 @@ describe('register', () => {
     await ui.unmount()
   })
 
+  test("the press enters as the person's own message", async ($, on) => {
+    world(on)
+
+    const entered = await $.prompt.submit({ text: 'yes', wait: false, origin: PRESS })
+
+    expect(entered, 'no origin, so no plugin framing').toStrictEqual({ text: 'yes' })
+  })
+
+  test('every other submission keeps the origin it arrived with', async ($, on) => {
+    world(on)
+
+    const others: PromptOrigin[] = [
+      { kind: 'composer' },
+      { kind: 'plugin', name: 'another-plugin' },
+      { kind: 'task-notification' },
+      { kind: 'peer' },
+      { kind: 'channel', server: 'slack' },
+    ]
+
+    for (const origin of others) {
+      expect(
+        await $.prompt.submit({ text: 'yes', wait: false, origin }),
+        origin.kind,
+      ).toStrictEqual({ text: 'yes', origin })
+    }
+  })
+
   test('the arrows move the cursor, and Enter takes the row it is on', async ($, on) => {
     const { submitted } = world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -337,11 +488,61 @@ describe('register', () => {
     await ui.unmount()
   })
 
+  test('Enter on arrival takes the recommended row, never a held one above it', async ($, on) => {
+    const { submitted } = world(on, announced(HELD_FIRST))
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(submitted).toEqual(['3'])
+
+    await ui.unmount()
+  })
+
+  test('a redraw of the same gate leaves the cursor where the person put it', async ($, on) => {
+    const { submitted } = world(on, announced(HELD_FIRST))
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'up', in: 'gate' })
+    await ui.redraw({ ...BAND, scroll: { offset: 4, bodyRows: 12 } })
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(submitted).toEqual(['2'])
+
+    await ui.unmount()
+  })
+
+  test("another gate on the same board starts the cursor by its own rows", async ($, on) => {
+    const { submitted, engineWrites } = world(on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'down', in: 'gate' })
+
+    engineWrites(announced(HELD_FIRST))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+    await ui.redraw()
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(submitted).toEqual(['3'])
+
+    await ui.unmount()
+  })
+
   test("a row's own key presses it, and one with no word answers as its key", async ($, on) => {
     const { submitted } = world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -355,8 +556,7 @@ describe('register', () => {
   test('a click lands on the row under it, wrapped lines included', async ($, on) => {
     const { submitted } = world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -370,8 +570,7 @@ describe('register', () => {
   test('a post naming no row of the gate on screen submits nothing', async ($, on) => {
     const { submitted } = world(on, announced())
 
-    await $.session.start(SESSION)
-    await $.tool.call(ENGINE_CALL)
+    await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
@@ -385,9 +584,19 @@ describe('register', () => {
   test('the turn that answers the gate takes it off the band', async ($, on) => {
     world(on, announced())
 
+    await presented($)
+    await $.turn.start({ text: 'yes', turnId: 't1' })
+
+    expect(await $.ui.render(DRAWING)).toEqual(BENEATH)
+  })
+
+  test('a gate still armed when a turn begins never draws', async ($, on) => {
+    world(on, announced())
+
     await $.session.start(SESSION)
     await $.tool.call(ENGINE_CALL)
     await $.turn.start({ text: 'yes', turnId: 't1' })
+    await $.turn.complete({ ...TURN_END, turnId: 't1' })
 
     expect(await $.ui.render(DRAWING)).toEqual(BENEATH)
   })

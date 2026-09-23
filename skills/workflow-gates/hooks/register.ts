@@ -5,8 +5,9 @@
  * The engine states each gate as data beside the menu it composed. This
  * module announces itself so the engine collects it, arms the gate off the
  * Bash result that carried it, cuts the menu out of what the model reads, and
- * draws the rows in the band; the press comes back as the person's next
- * message, which is what the workflows' prose already reads.
+ * draws the rows in the band once the model's turn is over; the press comes
+ * back as the person's own next message, which is what the workflows' prose
+ * already reads.
  *
  * Every path fails open: the engine emits the menu regardless, so a hook that
  * throws, overruns or never loads leaves the text menu exactly as it was.
@@ -29,6 +30,9 @@ const SECTION_MARKER = '=== '
 /** The `Client`'s key: what `ui.message` matches the board's posts on. */
 const ELEMENT = 'gate'
 
+/** This plugin's name, as the engine stamps it on the prompts it submits. */
+const PLUGIN = 'workflow-gates'
+
 const STOP_NOTE =
   "The options are on screen. The user's choice, or anything they type, arrives as their next message."
 
@@ -38,8 +42,11 @@ type Gate = {
   typed: Typed[]
 }
 
-/** The gate on screen, armed by its own render and cleared by the next turn. */
-let gate: Gate | null = null
+/** The gate a render armed, waiting on the end of the turn that rendered it. */
+let armed: Gate | null = null
+
+/** The gate on the band, from that turn's end to the next turn or a press. */
+let drawn: Gate | null = null
 
 /**
  * The gate a Bash result carried, and that result's stdout with the payload
@@ -91,6 +98,9 @@ function gateIn(stdout: string): { gate: Gate; stdout: string } | null {
   }
 }
 
+/** Whether an event is the conversation's own, not a subagent's loop. */
+const inConversation = (e: { agentId?: string }) => e.agentId === undefined
+
 /** The answer a post names, or null when it names no row of the gate. */
 function answerIn(open: Gate | null, data: unknown): string | null {
   const said = (data as { answer?: unknown } | null)?.answer
@@ -112,6 +122,11 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    // A press answers the conversation: a subagent reads its menu as text.
+    if (!inConversation(e)) {
+      return next(e)
+    }
+
     const result = await next(e)
 
     if (result.deny !== undefined || result.isError === true) {
@@ -130,14 +145,24 @@ export const register: Register = on => {
       return result
     }
 
-    gate = cut.gate
-    $.ui.invalidate('ui.render')
+    armed = cut.gate
 
     return { result: { ...record, stdout: cut.stdout } }
   }).catch(($, e, next) => next(e))
 
+  // Drawn at the turn's end, once what the rows choose between is on screen.
+  on('turn.complete', ($, e, next) => {
+    if (armed !== null && inConversation(e)) {
+      drawn = armed
+      armed = null
+      $.ui.invalidate('ui.render')
+    }
+
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const open = gate
+    const open = drawn
 
     if (open === null || e.props.hasSurvey || e.surface !== 'terminal') {
       return next(e)
@@ -181,7 +206,7 @@ export const register: Register = on => {
   // comes off the band only once the answer is in — a submit that fails
   // reaches this hook's `.catch`, and the row is still there to press again.
   on('ui.message', { element: ELEMENT }, async ($, e, next) => {
-    const answer = answerIn(gate, e.data)
+    const answer = answerIn(drawn, e.data)
 
     if (answer === null) {
       return next(e)
@@ -189,19 +214,32 @@ export const register: Register = on => {
 
     await $.prompt.submit({ text: answer })
 
-    if (gate !== null) {
-      gate = null
+    if (drawn !== null) {
+      drawn = null
       $.ui.invalidate('ui.render')
     }
 
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  // A press is the person's own choice: no origin, so it enters as theirs.
+  on(
+    'prompt.submit',
+    { origin: { kind: 'plugin', name: PLUGIN } },
+    async ($, e, next) => {
+      const { origin: _, ...entered } = await next(e)
+
+      return entered
+    },
+  ).catch(($, e, next) => next(e))
+
   // A gate lives from its render to the turn that answers it; a gate the
   // conversation re-presents is armed again by its own render.
   on('turn.start', ($, e, next) => {
-    if (gate !== null) {
-      gate = null
+    armed = null
+
+    if (drawn !== null) {
+      drawn = null
       $.ui.invalidate('ui.render')
     }
 
