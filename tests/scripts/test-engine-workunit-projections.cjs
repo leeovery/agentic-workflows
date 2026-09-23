@@ -523,10 +523,10 @@ describe('workunit projections: data body', () => {
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
-      'ACTIONS (key  action  topic  → route):',
-      '  y  continue  auth-flow  → /workflow-specification-entry feature auth-flow',
-      '  r  revisit  auth-flow  → (internal)',
-      '  1  revisit_phase  auth-flow  → /workflow-discussion-entry feature auth-flow',
+      'ACTIONS (key  word  action  topic  → route):',
+      '  y  yes  continue  auth-flow  → /workflow-specification-entry feature auth-flow',
+      '  r  revisit  revisit  auth-flow  → (internal)',
+      '  1  —  revisit_phase  auth-flow  → /workflow-discussion-entry feature auth-flow',
     ].join('\n'));
   });
 
@@ -544,8 +544,8 @@ describe('workunit projections: data body', () => {
       'reconcile_pending: (none)',
       'triage_waiting: (none)',
       'revisit_available: false',
-      'ACTIONS (key  action  topic  → route):',
-      '  y  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
+      'ACTIONS (key  word  action  topic  → route):',
+      '  y  yes  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
     ].join('\n'));
   });
 
@@ -570,12 +570,12 @@ describe('workunit projections: data body', () => {
       'reconcile_pending: (none)',
       'triage_waiting: (none)',
       'revisit_available: true',
-      'ACTIONS (key  action  topic  → route):',
-      '  y  finalise  hotfix-logs  → (internal)',
-      '  r  revisit  hotfix-logs  → (internal)',
-      '  1  revisit_phase  hotfix-logs  → /workflow-scoping-entry quick-fix hotfix-logs',
-      '  2  revisit_phase  hotfix-logs  → /workflow-implementation-entry quick-fix hotfix-logs',
-      '  3  revisit_phase  hotfix-logs  → /workflow-review-entry quick-fix hotfix-logs',
+      'ACTIONS (key  word  action  topic  → route):',
+      '  y  yes  finalise  hotfix-logs  → (internal)',
+      '  r  revisit  revisit  hotfix-logs  → (internal)',
+      '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-entry quick-fix hotfix-logs',
+      '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-entry quick-fix hotfix-logs',
+      '  3  —  revisit_phase  hotfix-logs  → /workflow-review-entry quick-fix hotfix-logs',
     ].join('\n'));
   });
 });

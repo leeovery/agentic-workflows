@@ -1843,7 +1843,8 @@ describe('pipeline simulation', () => {
       'external_dependencies.alpha.state=unresolved']);
     // Implementation entry's two dependency stops, and the planning-side
     // approval over the resolutions the plan recorded.
-    sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'blocking'], { expect: 'content' });
+    assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'blocking',
+      '--blocking', 'alpha'], { expect: 'content' }), /Alpha\n {2}├─ Needs alpha shipped\n {2}└─ No plan exists[\s\S]*MENU: blocking dependencies gate/);
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'pick',
       '--blocking', 'alpha'], { expect: 'content' }), /\*\*`1`\*\* → Alpha — Needs alpha shipped/);
     sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
@@ -2973,10 +2974,11 @@ describe('pipeline simulation', () => {
       /• reporting[\s\S]*MENU: dismissed topics/);
 
     // The render surfaces hold over the live state: the map view and the
-    // add-to-joined-horizon gate.
+    // add-to-joined-horizon gate, whose DATA names the unit its delivery row
+    // pulls into — the `--into` a `d/delivery` answer takes.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /DISPLAY: roadmap/);
     assert.match(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }),
-      /MENU: roadmap add gate/);
+      /^=== DATA [^\n]*\nwork_units: mvp\n\n=== MENU: roadmap add gate[\s\S]*\*\*`d\/delivery`\*\*/);
     sim.render(['roadmap-session-receipt'], { expect: 'empty' });
     // The static gate menus render like every menu — engine-served.
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
@@ -3049,6 +3051,15 @@ describe('pipeline simulation', () => {
       '--summary', 'operators refund a batch of orders'], { expect: 'content' });
     assert.ok(!second.includes('(new)'), 'a horizon the map holds is not flagged new');
     assert.ok(!second.includes('The roadmap is created with it.'), 'the map exists by now');
+
+    // The pick numbers the horizons in the order `roadmap state` answers
+    // them — the order a numbered answer resolves against.
+    sim.run(['roadmap', 'add', 'bulk-refunds', '--horizon', 'someday',
+      '--summary', 'operators refund a batch of orders', '--origin', `park:${wu}`]);
+    const { horizons } = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(horizons, ['next', 'someday']);
+    const pick = sim.render(['horizon-pick'], { expect: 'content' });
+    horizons.forEach((h, i) => assert.match(pick, new RegExp(`\\*\\*\`${i + 1}\`\\*\\*\\s+→ ${h} — \\*1 waiting\\*`)));
   });
 
   it('roadmap: work-unit cancel reverts every join into the unit', () => {
