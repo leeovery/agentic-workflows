@@ -88,16 +88,24 @@ No dispatch.
 
 ## C. Sweep
 
-The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, knowledge-store dirt. Check for leavings:
+The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, knowledge-store dirt, and the brief each approved candidate landed. Check for leavings:
 
 ```bash
-git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/manifest.json .workflows/.knowledge
+git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/discovery/briefs .workflows/{work_unit}/manifest.json .workflows/.knowledge
 ```
 
 #### If the tree is dirty
 
+No single scope carries both the bookkeeping and the briefs, so each takes its own confined commit:
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
+```
+
+Run the second only when the gate approved a candidate — `new_arrivals.gap_analysis` holds a name — so a peer discovery session's half-written briefs are never swept up:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --discovery -m "discovery({work_unit}): analysis run briefs"
 ```
 
 → Proceed to **D. Return**.

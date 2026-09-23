@@ -6,7 +6,7 @@
 
 Presents the candidate topics gap-analysis staged, gates each per-topic before anything lands on the discovery map, and writes the approved ones. The analysis has already staged its genuinely-new candidates — content in the staging file, gate state in the manifest's `analysis_staging.discovery-gap-analysis` subtree, each candidate `pending`; the already-on-map and dismissed cases were resolved silently at stage time and never reach this gate.
 
-The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}`; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it.
+The gate is the boot-time review surface — it runs before the dashboard. Approving a candidate writes it to `phases.discovery.items.{name}` and gives it a discovery brief of its own; skipping it adds the name to `phases.discovery.dismissed[]` so the analysis won't re-propose it.
 
 ## Parameters
 
@@ -109,10 +109,10 @@ Revise this block's `routing`, `summary`, or `description` in the staging file p
 
 ## C. Write Approved Candidate
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section per its marker. Then write the discovery item from the block's stored fields:
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section per its marker. Then write the discovery item from the block's stored fields, pointing at the brief **D** writes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}"
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}" --brief-path "discovery/briefs/{name}.md"
 ```
 
 #### If the response is `ok: false`
@@ -134,5 +134,29 @@ Honour the dismissal. Record the candidate `skipped` (same write as the skip arm
 #### Otherwise
 
 Append `{name}` to the caller's `tracker`.
+
+→ Proceed to **D. Write the Brief**.
+
+## D. Write the Brief
+
+The topic's discovery brief — its read-in-full starting context at the next phase. Write `.workflows/{work_unit}/discovery/briefs/{name}.md` with the Write tool from the block's stored fields. It is a written artifact, not user output — write the file, do not render it. A gap analysis is not a conversation, so the brief carries no soft decisions and no rejected paths; it carries what the analysis knows. Empty sections get `(none)`. A block staged without `source_artifacts` names no artifacts: its opening line ends at "analysis" — never invent the list.
+
+```markdown
+# Discovery Brief — {name:(titlecase)}
+
+Drawn from the discovery-gap analysis, read out of {source_artifacts}.
+
+## The gap
+
+{description — the paragraphs the block stores, verbatim}
+
+## Why it matters
+
+{one or two sentences: the gap type in plain words, and what the epic loses if the topic is never taken up — written from the description, never invented}
+
+## Open questions
+
+{the questions the gap raises, as bullets — what the next phase has to settle}
+```
 
 → Return to **B. Gate Each Candidate**.

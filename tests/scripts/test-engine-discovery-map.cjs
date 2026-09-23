@@ -189,6 +189,24 @@ describe('engine CLI: discovery-map operations', () => {
       });
     });
 
+    it('--brief-path records the brief pointer on the row, echoed in the response', () => {
+      const res = runOk(dir, ['add', 'payments', 'menu-management', 'discussion', '--summary', 's',
+        '--description', 'the gap', '--source', 'gap-analysis', '--brief-path', 'discovery/briefs/menu-management.md']);
+      assert.strictEqual(res.brief_path, 'discovery/briefs/menu-management.md');
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.items['menu-management'], {
+        routing: 'discussion', source: 'gap-analysis', summary: 's', description: 'the gap',
+        brief_path: 'discovery/briefs/menu-management.md',
+      });
+    });
+
+    it('refuses an empty --brief-path rather than writing a pointer to nowhere', () => {
+      const before = JSON.stringify(readManifest(dir));
+      assert.match(
+        runFail(dir, ['add', 'payments', 'menu-management', 'research', '--summary', 's', '--brief-path', '  ']).error,
+        /--brief-path must be a non-empty string when present/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
     it('creates the discovery scaffolding on a manifest with no discovery phase', () => {
       createManifest(dir, 'bare', { work_type: 'epic', phases: {} });
       const res = runOk(dir, ['add', 'bare', 'first-topic', 'research', '--summary', 's']);
@@ -248,13 +266,12 @@ describe('engine CLI: discovery-map operations', () => {
       });
     });
 
-    it('--backfill is mutually exclusive with --summary/--description', () => {
-      assert.match(
-        runFail(dir, ['add', 'payments', 'x', 'research', '--summary', 's', '--backfill']).error,
-        /--backfill lands the item without summary\/description/);
-      assert.match(
-        runFail(dir, ['add', 'payments', 'x', 'research', '--description', 'd', '--backfill']).error,
-        /--backfill lands the item without summary\/description/);
+    it('--backfill is mutually exclusive with --summary/--description/--brief-path', () => {
+      for (const field of [['--summary', 's'], ['--description', 'd'], ['--brief-path', 'discovery/briefs/x.md']]) {
+        assert.match(
+          runFail(dir, ['add', 'payments', 'x', 'research', ...field, '--backfill']).error,
+          /--backfill lands the item without summary\/description\/brief-path/, field[0]);
+      }
     });
 
     it('refuses names that break manifest addressing', () => {

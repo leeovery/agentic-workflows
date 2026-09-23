@@ -54,6 +54,8 @@ There is no pressure toward completeness. Two topics is fine; twenty is fine. Th
 
 Before the topics are saved, discovery writes a **brief** for each one: a per-topic view projected out of the whole conversation, with three sections — the soft decisions reached and why, the paths rejected and why, and the open questions carried forward. Each topic's downstream research or discussion phase reads its brief in full as its starting context.
 
+A topic the epic's self-healing analysis adds later gets a brief too, written the moment you approve it — shaped from the gap rather than a conversation: what the gap is, which artifacts it was read out of, what the epic loses if nobody takes it up, and the questions it leaves open.
+
 Briefs are why an epic's wide, expensive conversation is not wasted on its narrow phases. The rejected paths especially — with the reasons attached — mean a downstream phase inherits the thinking instead of re-deriving it and re-walking the same dead ends. A brief is regenerable, never a record; the durable record is the session log, and a brief can always be re-projected from it. One safety behaviour matters here: if a brief is written or regenerated *after* downstream work on that topic has already begun, discovery does not overwrite that work — it flags the downstream phase to reconcile the change next time it runs. Soft thinking can prompt hardened thinking to re-examine itself; it can never silently overwrite it.
 
 ## Returning to an epic

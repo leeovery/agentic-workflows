@@ -17,9 +17,10 @@ The prose should have taken this path:
    per-candidate menu itself
 5. candidate 1, signal-freshness-contract, renders with its routing and
    summary; the user approves; the candidate is recorded `approved` and
-   the topic is written to the map with `gap-analysis` provenance and the
-   staged block's own summary and description, its name joining the
-   new-arrivals tracker
+   the topic is written to the map with `gap-analysis` provenance, the
+   staged block's own summary and description, and a brief pointer;
+   the brief itself is then written under `discovery/briefs/`, and the
+   name joins the new-arrivals tracker
 6. the gate returns to the next `pending` block on its own — no menu
    between candidates. Candidate 2, search-analytics-dashboard, renders
    and the user skips: the candidate is recorded `skipped` and the name
@@ -30,10 +31,11 @@ The prose should have taken this path:
    candidate blocks — a reuse boot never re-derived a full topic list —
    and the stamp records a checksum over the completed research and both
    completed discussions
-9. the sweep finds the tree dirty (the cache file and the manifest —
-   on this reuse boot the staged candidates file was never rewritten)
-   and commits the bookkeeping; the dispatch then re-runs the epic
-   gateway so the caller sees the new item
+9. the sweep finds the tree dirty (the cache file, the manifest, and the
+   new brief — on this reuse boot the staged candidates file was never
+   rewritten) and lands both leavings: the bookkeeping in the state
+   scope, the brief in the discovery scope. The dispatch then re-runs
+   the epic gateway so the caller sees the new item
 10. the refreshed output reports the map unsequenced — the new item
     carries no order — so the map sequencing step fires and records a
     contiguous 1..4 in one call (which topic leads is the model's
@@ -46,10 +48,14 @@ The prose should have taken this path:
 Further claims:
 
 - the discovery map holds four items; signal-freshness-contract carries
-  `source: gap-analysis`, `routing: discussion`, and the summary and
-  description the staged block held — not a re-derivation
+  `source: gap-analysis`, `routing: discussion`, the summary and
+  description the staged block held — not a re-derivation — and a
+  `brief_path` pointing at a brief on disk, which holds the gap, why it
+  matters, and its open questions, and no other section
+- search-analytics-dashboard has no brief: a skipped candidate writes
+  nothing
 - no phase item was started for signal-freshness-contract: it is a fresh
-  map topic, nothing more
+  map topic with a brief, nothing more
 - search-analytics-dashboard appears nowhere on the map, and its name is
   the only entry on the dismissed list
 - the `analysis_staging.discovery-gap-analysis` subtree is gone — the
@@ -61,12 +67,12 @@ Further claims:
 - the three harvested map items keep their harvest summaries and
   descriptions; the two discussion documents and the research document
   are untouched, and no topic's status changed
-- git history holds the analysis bookkeeping commit; the sequencing
-  commits itself, so the two are distinct
+- git history holds the analysis bookkeeping commit and the brief commit
+  separately; the sequencing commits itself, so the three are distinct
 
 EXPECTED WORLD — the fixture plus: `signal-freshness-contract` on the
-discovery map with gap-analysis provenance and an order within a
-contiguous 1..4; `search-analytics-dashboard` on the discovery phase's
+discovery map with gap-analysis provenance, a brief pointer and a brief
+file of its own, and an order within a contiguous 1..4; `search-analytics-dashboard` on the discovery phase's
 dismissed list and nowhere else; no `analysis_staging.discovery-gap-analysis` subtree; a
 rewritten `.state/discovery-gap-analysis.md` naming the staged
 candidates, with `gap_analysis_cache` stamped over the current input

@@ -1,11 +1,11 @@
 'use strict';
 
-// A gap-analysis gate caught mid-walk. Both discussions concluded and the
-// relevance-measurement research completed after the last stamp, so the
-// cache reads stale; a prior boot staged two candidates and the session
-// died before the gate walked either — both rows still `pending`,
-// gate_mode `gated`. The next boot must reuse that staging rather than
-// re-run the analysis, and walk straight into candidate 1.
+// One gap candidate staged and never walked. Both discussions concluded
+// and the relevance-measurement research completed after the last stamp,
+// so the cache reads stale; the staged block carries the artifacts the gap
+// was read out of and its type, which is what the approval's brief is
+// written from. The next boot reuses the staging, walks the one candidate,
+// and the approval must leave a brief behind.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -42,12 +42,6 @@ module.exports = {
       'comparable across runs. Interleaving win-rate answers a different',
       'question and needs live traffic.',
       '',
-      '## Judgment Collection',
-      '',
-      'Click-derived labels are free and plentiful; a small graded set',
-      'guards regressions. A hybrid is the pattern that keeps recurring',
-      'for teams this size.',
-      '',
       '## Signal Timeliness',
       '',
       'Every metric here reads the same aggregates ranking reads, so how',
@@ -66,8 +60,8 @@ module.exports = {
     h.engine('commit', WU, '--topic', 'research/relevance-measurement', '-m',
       `research(${WU}): complete relevance-measurement research`);
 
-    // The interrupted gate's leavings: the staged candidate content plus
-    // the manifest rows that make both `pending` under a `gated` mode.
+    // The staged candidate, as the analysis leaves it: content in the
+    // staging file, the row `pending` under a `gated` mode.
     h.write(`.workflows/${WU}/.state/discovery-gap-analysis-candidates.md`, [
       '## signal-freshness-contract',
       'summary: Settle what signal freshness every consumer of the events pipeline can rely on.',
@@ -87,24 +81,11 @@ module.exports = {
       'source_artifacts: behavioural-ranking.md, synonym-handling.md, relevance-measurement.md',
       'gap_type: integration',
       '',
-      '## search-analytics-dashboard',
-      'summary: Give merchandisers a dashboard over the relevance metrics.',
-      'description: |',
-      '  Both discussions and the measurement research assume somebody reads',
-      '  the resulting numbers, and none of them says who or through what. A',
-      '  merchandiser-facing view over the metric set is the shape the gap',
-      '  suggests.',
-      'routing: discussion',
-      'source: gap-analysis',
-      'source_artifacts: behavioural-ranking.md, synonym-handling.md, relevance-measurement.md',
-      'gap_type: emergent',
-      '',
     ].join('\n'));
     h.engine('manifest', 'set', `${WU}.discovery`,
       'analysis_staging.discovery-gap-analysis.gate_mode=gated',
-      'analysis_staging.discovery-gap-analysis.candidates.signal-freshness-contract.status=pending',
-      'analysis_staging.discovery-gap-analysis.candidates.search-analytics-dashboard.status=pending');
+      'analysis_staging.discovery-gap-analysis.candidates.signal-freshness-contract.status=pending');
     h.engine('commit', WU, '-m',
-      `discovery(${WU}): stage gap analysis candidates`);
+      `discovery(${WU}): stage gap analysis candidate`);
   },
 };

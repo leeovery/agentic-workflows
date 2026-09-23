@@ -15,15 +15,3 @@ routing: discussion
 source: gap-analysis
 source_artifacts: behavioural-ranking.md, synonym-handling.md, relevance-measurement.md
 gap_type: integration
-
-## search-analytics-dashboard
-summary: Give merchandisers a dashboard over the relevance metrics.
-description: |
-  Both discussions and the measurement research assume somebody reads
-  the resulting numbers, and none of them says who or through what. A
-  merchandiser-facing view over the metric set is the shape the gap
-  suggests.
-routing: discussion
-source: gap-analysis
-source_artifacts: behavioural-ranking.md, synonym-handling.md, relevance-measurement.md
-gap_type: emergent
