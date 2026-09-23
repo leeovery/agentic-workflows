@@ -154,12 +154,20 @@ gates themselves.**
   `stdout`, never on the command string; it cuts the MENU only while
   `$.session.surfaces()` includes the terminal (the band is
   terminal-only), and passes through on desktop, web and headless runs.
-- **R6 — a gate lives from its render to the next `turn.start`.** Every
-  gate is re-armed by its own render (the fetch-at-emission rule), so a
-  free-text question that re-presents the gate redraws it, and an answer
-  of any kind clears it when the turn begins. No `prompt.submit` hook. A
-  press awaits `$.prompt.submit` before clearing, so a rejected submit
-  leaves the rows on screen to press again.
+  A subagent's Bash call (`agentId` set) passes through untouched: a press
+  can only answer the conversation.
+- **R6 — a gate is armed by its render, drawn at the turn's end, and gone
+  at the next `turn.start`.** The render arms it; the main conversation's
+  `turn.complete` draws it, so the display the model is still streaming
+  lands before the rows it chooses between (a live run showed the band up
+  seconds ahead of an epic tree). Every gate is re-armed by its own
+  render (the fetch-at-emission rule), so a free-text question that
+  re-presents the gate redraws it, and an answer of any kind clears it
+  when the turn begins. A press awaits `$.prompt.submit` before clearing,
+  so a rejected submit leaves the rows on screen to press again; a
+  `prompt.submit` hook on the mod's own submissions leaves the origin out
+  of its answer, so the press enters as the person's own message rather
+  than wrapped as a plugin's.
 - **R7 — chrome is `bar`, and only `bar`.** No frame; a full-width rule in
   `promptBorder`; the `◆` question in `permission`; rows with a two-cell
   gutter (`▌` on the selected row) and `userMessageBackground` beneath it;
@@ -172,8 +180,10 @@ gates themselves.**
   after a click or ctrl+x tab. Long labels wrap on word boundaries; the
   region is exactly as tall as the tree, hook and board sharing one wrap,
   the chrome's height derived from the wrapped question rather than fixed.
-  The board's listeners read module state, not their closure, so a second
-  gate armed inside one turn presses the new rows.
+  The cursor starts on the `recommended` row, else the first row not
+  struck, else the first — Enter on arrival never picks a held topic. The
+  board's listeners read module state, not their closure, and new rows
+  reset the cursor by the same rule.
 - **R8 — the mod lives at `skills/workflow-gates/`** (`.claude-plugin/
   plugin.json`, `hooks/hooks.json`, `hooks/register.ts`, `hooks/board.ts`,
   `hooks/layout.ts`, `tests/`, `tsconfig.json`, `README.md`). agntc copies
@@ -185,10 +195,15 @@ gates themselves.**
   manifest's `defaults.gate_surface` boolean; absent means never asked.
   `engine boot` reports `gate_surface` (`on`/`off`/`prompt`) and
   `workflow-start` Step 0.4 asks once, straight after the session-labels
-  question, through `render gate-surface-gate`: the signpost says the flag
-  turns on Claude Code's early-access function hooks for every plugin in
-  this project's sessions, and that the first session after the answer
-  still sees text menus. `engine gate-surface config <true|false>` records
+  question, through `render gate-surface-gate`, in plain words: the
+  signpost says menus are where a decision is the person's, that Claude
+  Mods can draw them as buttons, and how to turn it off
+  (`gate_surface: false` in `./.workflows/manifest.json`); the question
+  points at the menu on screen. A clean `yes` ends the session on one red
+  line telling the person to exit and start Claude Code again — settings
+  are read at startup, so the answering session can never draw the
+  buttons; a failed record or a warning carries on as text.
+  `engine gate-surface config <true|false>` records
   the choice, syncs `.claude/settings.json`
   `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` (`"1"` on true, the key removed
   on false, an emptied `env` block with it, every other key untouched;
@@ -308,3 +323,9 @@ gates themselves.**
   engine payload (findings 14–15 found by the simulation's audit), the mod
   (findings 16–20 against the 2.1.280 declarations), the opt-in. Spike
   assets deleted at the close.
+- 2026-09-23 — first live run in a remote-free copy of fumi: the mod
+  loaded from the project's skills directory on the settings flag alone.
+  The run moved R6 (draw at the turn's end; the press enters as the
+  person's own), R7 (the cursor starts on the recommended row), R5 (a
+  subagent's call passes through) and R9 (plain-words opt-in, a clean
+  yes ends the session on a restart line).
