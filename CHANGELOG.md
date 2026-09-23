@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.78] - 2026-09-23
+
+✨ Added
+- Postpone a topic to the roadmap — send an epic topic to a later release instead of cancelling it, and pull it forward again whenever you're ready.
+- A pull-forward menu on the epic dashboard brings a postponed topic back into the epic that sent it away, restoring it exactly as it left.
+- An approved gap-analysis candidate now gets its own discovery brief automatically, and can be postponed straight to the roadmap from the same gate.
+- A topic pulled from the roadmap into a new epic now reads its prior epic's brief, research, discussion, and queued concerns as inherited context.
+
+🔧 Changed
+- Discovery map operations, the epic menu, and every phase's session now recognise "postpone" alongside remove, cancel, and reactivate, with matching guidance when an operation is blocked by a postponed topic.
+- The epic dashboard drops postponed topics from the map tree and shows them instead in a compact summary line naming their horizon.
+- `roadmap remove` on an item born from a postponed topic now cancels that topic's row in the same transaction, closing the loop for "actually never."
+
 ## [0.7.77] - 2026-09-22
 
 🔧 Changed
