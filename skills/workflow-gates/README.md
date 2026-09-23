@@ -8,8 +8,9 @@ announces itself at the session's start so the engine collects that data, arms
 the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
 scrolls. A press — a click, the row's own key, or Enter on the cursor — arrives
-as the person's next message, which is what the workflows already read. Nothing
-in the workflows' prose changes.
+as the next message, which is what the workflows already read; it enters under
+the plugin's name, framed for the model and labelled in the transcript as the
+plugin's. Nothing in the workflows' prose changes.
 
 The engine emits the menu regardless, so a mod that is off, broken or absent
 leaves the text menu exactly as it was.

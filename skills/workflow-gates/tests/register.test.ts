@@ -1,10 +1,4 @@
-import type {
-  On,
-  PromptOrigin,
-  RenderElement,
-  RenderInput,
-  RenderSurface,
-} from 'claude-code'
+import type { On, RenderElement, RenderInput, RenderSurface } from 'claude-code'
 import { describe, expect, test, tier, type Engine } from 'claude-code/testing'
 
 tier('user')
@@ -144,9 +138,6 @@ const TURN_END = {
   turnId: 't0',
   reason: 'answer' as const,
 }
-
-/** How the engine stamps a prompt this mod submits: a press. */
-const PRESS: PromptOrigin = { kind: 'plugin', name: 'workflow-gates' }
 
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
@@ -444,33 +435,6 @@ describe('register', () => {
     expect(await ui.find({ type: 'Client', key: 'gate' })).toBeDefined()
 
     await ui.unmount()
-  })
-
-  test("the press enters as the person's own message", async ($, on) => {
-    world(on)
-
-    const entered = await $.prompt.submit({ text: 'yes', wait: false, origin: PRESS })
-
-    expect(entered, 'no origin, so no plugin framing').toStrictEqual({ text: 'yes' })
-  })
-
-  test('every other submission keeps the origin it arrived with', async ($, on) => {
-    world(on)
-
-    const others: PromptOrigin[] = [
-      { kind: 'composer' },
-      { kind: 'plugin', name: 'another-plugin' },
-      { kind: 'task-notification' },
-      { kind: 'peer' },
-      { kind: 'channel', server: 'slack' },
-    ]
-
-    for (const origin of others) {
-      expect(
-        await $.prompt.submit({ text: 'yes', wait: false, origin }),
-        origin.kind,
-      ).toStrictEqual({ text: 'yes', origin })
-    }
   })
 
   test('the arrows move the cursor, and Enter takes the row it is on', async ($, on) => {
