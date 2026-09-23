@@ -230,9 +230,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     });
   });
 
-  it('a kill the walk answered for itself is a real delta — only the value the harness wrote is stripped', () => {
-    // A case about the gate-surface question turns it on; the label kill
-    // beside it is still the harness's and still goes.
+  it('a killed default holding any other value is a real delta — only the value the harness wrote is stripped', () => {
+    // `gate_surface` reads `true`, which materialise never writes, so it
+    // stays; `tmux_labels` still reads the harness's `false`, so it goes.
     const tree = new Map([[worlds.PROJECT_MANIFEST, Buffer.from(JSON.stringify({
       work_units: {},
       defaults: { tmux_labels: false, gate_surface: true },

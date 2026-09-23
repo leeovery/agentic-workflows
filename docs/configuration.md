@@ -28,17 +28,15 @@ If you work inside tmux, the first `/workflow-start` in a project asks once whet
 
 Whatever you answer, the workflows keep a small session-end hook in the project's Claude settings, which tidies up after a finished session — clearing the markers that tell other sessions a topic is in use, and restoring your tmux name if you opted in. Opting in adds a second hook that puts the label back when you resume a session. You may see them appear in `.claude/settings.json` after your first start.
 
-## The gate surface
+## Buttons above the prompt
 
-The first `/workflow-start` in a project also asks once whether the workflows may draw their gates as pressable rows in the band above the prompt, instead of printing each menu into the transcript. Turned on, the rows stay put while the transcript scrolls and a click, the row's own key, or Enter answers; turned off, every gate is the text menu it always was. You answer once per project.
+The first `/workflow-start` in a project also asks once whether the workflows may show their menus as buttons above the prompt, instead of printing each menu into the transcript. Turned on, the buttons stay put while the transcript scrolls. A click on a row picks it, putting its answer in the prompt box; a second click on that row, or Enter, sends it, and Claude Code shows the sent answer as the plugin's message. Typing an answer still works. While any screen but the terminal is attached, such as Remote Control, menus stay text. Pressing Esc once Claude has started working on your answer, or running `/clear`, leaves no buttons until the next menu. Turned off, every menu is the text it always was. You answer once per project.
 
-Saying yes writes `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` block of the project's `.claude/settings.json` — the switch for Claude Code's function hooks, which are early access, and which the flag turns on for every plugin in this project's sessions. Claude Code reads settings when a session starts, so the session you answer in still sees text menus; the next one has the rows. Changing your mind later is one command, and it puts the flag back either way:
+Saying yes writes `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` block of the project's `.claude/settings.json` — the switch for Claude Code's function hooks, which are early access, and which the flag turns on for every plugin in this project's sessions. Claude Code reads settings only when it starts, so a yes ends that session with an instruction to restart; the next session has the buttons.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
-```
+To turn the buttons off, set `gate_surface` to `false` in `./.workflows/manifest.json`; it takes effect at the next session start. The flag stays in the settings file, since other plugins may rely on it.
 
-Nothing else depends on the answer: the engine emits every menu as text regardless, so a gate surface that is off, absent or broken leaves the menus exactly as they were.
+Nothing else depends on the answer: the engine emits every menu as text regardless, so buttons that are off, absent or broken leave the menus exactly as they were.
 
 ## Handing over the gates
 
