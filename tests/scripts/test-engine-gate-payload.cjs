@@ -15,8 +15,9 @@ const { spawnSync } = require('child_process');
 
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { GATE_MARKER, auditGate } = require('./gate-audit.cjs');
-const { openGate, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { GATE_MARKER, announced, auditGate } = require('./gate-audit.cjs');
+const { openGate, gateBlock, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { menuBlock } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
 const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' };
 
@@ -53,15 +54,10 @@ function runGateway(dir, gateway, args, env = {}) {
  * @param {() => string} compose  the menu body @returns {object}
  */
 function collect(compose) {
-  const was = process.env.WORKFLOWS_GATE_SURFACE;
-  process.env.WORKFLOWS_GATE_SURFACE = '1';
-  try {
+  return announced(() => {
     openGate();
     return gateOf(section('MENU: builder', 'emit verbatim as markdown', compose()));
-  } finally {
-    if (was === undefined) delete process.env.WORKFLOWS_GATE_SURFACE;
-    else process.env.WORKFLOWS_GATE_SURFACE = was;
-  }
+  });
 }
 
 /** An implementation topic sitting at its task gate. @param {string} dir @param {object} [item] */
@@ -172,7 +168,7 @@ describe('gate payload — a render surface', () => {
     assert.strictEqual(gateOf(out), null);
   });
 
-  it('a bare-key row records its word as its own head', () => {
+  it('a labelled key row states its label as its head', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
       phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
@@ -184,7 +180,18 @@ describe('gate payload — a render surface', () => {
     assert.deepStrictEqual(gate.options[0], { key: 'y', word: 'yes', head: 'Confirm cancellation', tail: null, detail: null, struck: false, recommended: false });
   });
 
-  it('a metadata tail is split off the head, its italics gone', () => {
+  it('a bare key row states no label — its word is the key the person presses, never a head', () => {
+    createManifest(dir, 'auth', {});
+    const gate = gateOf(output(dir, ['render', 'analysis-proceed-gate', 'auth'], { env: ANNOUNCED }));
+
+    assert.strictEqual(gate.question, 'Proceed with analysis?');
+    assert.deepStrictEqual(gate.options, [
+      { key: 'y', word: 'yes', head: '', tail: null, detail: null, struck: false, recommended: false },
+      { key: 'n', word: 'no', head: '', tail: null, detail: null, struck: false, recommended: false },
+    ]);
+  });
+
+  it('a metadata tail is stated apart from the head, its italics gone', () => {
     createManifest(dir, 'auth', {
       next_phase: 'planning',
       completed_phases: ['discovery', 'discussion', 'specification'],
@@ -488,5 +495,101 @@ describe('gate payload — a row\'s detail', () => {
     assert.strictEqual(gate.options[0].detail, 'What one does.');
     assert.strictEqual(gate.question, 'Select an option:');
     assert.strictEqual(gate.statement, '');
+  });
+});
+
+describe('gate payload — a row built from parts', () => {
+  it('each part draws where the row always drew it; the payload keeps the head and the flags, and everything after the head as the tail', () => {
+    /** @type {string[]} */
+    let rows = [];
+    const gate = collect(() => {
+      rows = [
+        cmdOption('1', null, { head: 'Continue "Auth"', tail: 'research', cue: 'triage waiting', recommended: true }),
+        cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', held: 'in session (last active 4m ago)' }),
+        cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'triage waiting' }),
+        cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
+      ];
+      return menu('Pick one.', rows);
+    });
+
+    assert.deepStrictEqual(rows, [
+      '**`1`** → Continue "Auth" — *research* · triage waiting (recommended)',
+      '**`2`** → ~~Continue "Auth" — *discussion*~~ · in session (last active 4m ago)',
+      '**`3`** → Start research for "Billing" — *triage waiting*',
+      '**`s/spec`** → Analyze / regroup discussions',
+    ]);
+    assert.deepStrictEqual(gate.options, [
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research · triage waiting', detail: null, struck: false, recommended: true },
+      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion · in session (last active 4m ago)', detail: null, struck: true, recommended: false },
+      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'triage waiting', detail: null, struck: false, recommended: false },
+      { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, detail: null, struck: false, recommended: false },
+    ]);
+  });
+
+  it('a held row with no tail states its holder as what follows the head', () => {
+    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, { head: 'Start research for "Billing"', held: 'in session (last active 1m ago)' })]));
+
+    assert.deepStrictEqual(gate.options[0],
+      { key: '1', word: null, head: 'Start research for "Billing"', tail: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
+  });
+
+  it('a string label drawing a part inline is refused — the parts are the only way in', () => {
+    assert.throws(() => cmdOption('1', null, 'Continue "Auth" — *research*'), /draws "— \*" inline/);
+    assert.throws(() => cmdOption('b', 'back', 'Return to menu (recommended)'), /draws "\(recommended\)" inline/);
+    assert.throws(() => cmdOption('1', null, '~~Continue "Auth"~~ · in session'), /draws "~~" inline/);
+  });
+
+  it('a cue notes a tail, so a row without one is refused', () => {
+    assert.throws(() => cmdOption('1', null, { head: 'Start research for "Billing"', cue: 'triage waiting' }), /a cue notes a tail/);
+  });
+
+  it('text the engine did not author passes as a head, whatever it contains', () => {
+    const summary = 'Keep the old flow (recommended) — *for now*';
+    const gate = collect(() => menu('Which one?', [cmdOption('1', null, { head: summary })]));
+
+    assert.strictEqual(gate.options[0].head, summary);
+    assert.strictEqual(gate.options[0].recommended, false);
+  });
+});
+
+describe('gate payload — escaped text', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('a title the engine escaped reads as its own characters, and its markup as text', () => {
+    const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--user-id.md';
+    createFile(dir, archived, '# Fix user_id in *auth* [draft]\n');
+
+    const actions = gateOf(output(dir, ['render', 'archived-actions', '--path', archived], { env: ANNOUNCED }));
+    assert.strictEqual(actions.statement, 'Selected: Fix user_id in *auth* [draft] (idea, archived)');
+
+    const remove = gateOf(output(dir, ['render', 'archived-delete-gate', '--path', archived], { env: ANNOUNCED }));
+    assert.strictEqual(remove.statement, 'Permanently deleting "Fix user_id in *auth* [draft]" removes the file from the repo and cannot be undone.');
+  });
+
+  it('a code span keeps its content as written', () => {
+    const gate = collect(() => menu('Run `a_b*c` to release it.', [cmdOption('1', null, 'One')], { question: 'Proceed?' }));
+
+    assert.strictEqual(gate.statement, 'Run a_b*c to release it.');
+  });
+});
+
+describe('gate payload — a menu that draws nothing', () => {
+  it('states no gate', () => {
+    const out = announced(() => {
+      openGate();
+      return menuBlock('');
+    });
+
+    assert.ok(!out.includes(GATE_MARKER), out);
+    assert.strictEqual(auditGate(out, 'empty menu'), null);
+  });
+
+  it('a render that composed no frame and no row takes nothing', () => {
+    assert.strictEqual(announced(() => {
+      openGate();
+      return gateBlock('menu');
+    }), '');
   });
 });
