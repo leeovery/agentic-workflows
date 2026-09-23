@@ -139,11 +139,11 @@ describe('gate payload — a render surface', () => {
       question: 'Approve this task?',
       statement: '',
       options: [
-        { key: 'y', word: 'yes', head: 'Commit and continue to next task', tail: null, detail: null, struck: false, recommended: false },
-        { key: 'a', word: 'auto', head: 'Approve this and all remaining tasks automatically', tail: null, detail: null, struck: false, recommended: false },
-        { key: 'b', word: 'bounded', head: 'Approve this and the remaining tasks in this phase automatically', tail: null, detail: null, struck: false, recommended: false },
-        { key: 't', word: 'technical', head: "Retell the result from the code's perspective", tail: null, detail: null, struck: false, recommended: false },
-        { key: 's', word: 'show', head: 'Show the result as diagrams', tail: null, detail: null, struck: false, recommended: false },
+        { key: 'y', word: 'yes', head: 'Commit and continue to next task', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+        { key: 'a', word: 'auto', head: 'Approve this and all remaining tasks automatically', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+        { key: 'b', word: 'bounded', head: 'Approve this and the remaining tasks in this phase automatically', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+        { key: 't', word: 'technical', head: "Retell the result from the code's perspective", tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+        { key: 's', word: 'show', head: 'Show the result as diagrams', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       ],
       typed: [
         { label: 'Ask', description: "Ask questions about the implementation (doesn't approve or reject)", detail: null },
@@ -177,7 +177,7 @@ describe('gate payload — a render surface', () => {
 
     assert.strictEqual(gate.gate, 'cancel gate');
     assert.strictEqual(gate.question, 'Cancel it?');
-    assert.deepStrictEqual(gate.options[0], { key: 'y', word: 'yes', head: 'Confirm cancellation', tail: null, detail: null, struck: false, recommended: false });
+    assert.deepStrictEqual(gate.options[0], { key: 'y', word: 'yes', head: 'Confirm cancellation', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false });
   });
 
   it('a bare key row states no label — its word is the key the person presses, never a head', () => {
@@ -186,8 +186,8 @@ describe('gate payload — a render surface', () => {
 
     assert.strictEqual(gate.question, 'Proceed with analysis?');
     assert.deepStrictEqual(gate.options, [
-      { key: 'y', word: 'yes', head: '', tail: null, detail: null, struck: false, recommended: false },
-      { key: 'n', word: 'no', head: '', tail: null, detail: null, struck: false, recommended: false },
+      { key: 'y', word: 'yes', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: 'n', word: 'no', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
 
@@ -203,8 +203,8 @@ describe('gate payload — a render surface', () => {
     const gate = gateOf(output(dir, ['render', 'revisit-phases', 'auth'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.gate, 'revisit phases');
-    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Discussion', tail: 'completed', detail: null, struck: false, recommended: false });
-    assert.deepStrictEqual(gate.options.at(-1), { key: 'b', word: 'back', head: 'Return to the previous menu', tail: null, detail: null, struck: false, recommended: false });
+    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Discussion', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
+    assert.deepStrictEqual(gate.options.at(-1), { key: 'b', word: 'back', head: 'Return to the previous menu', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false });
   });
 
   it('each render starts from nothing — neither a menu before it nor a menu-less one leaks rows in', () => {
@@ -357,7 +357,7 @@ describe('gate payload — a gateway menu', () => {
       question: 'What would you like to do?',
       statement: '',
       options: [
-        { key: 'b', word: 'back', head: 'Return', tail: null, detail: null, struck: false, recommended: false },
+        { key: 'b', word: 'back', head: 'Return', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       ],
       typed: [
         { label: '1–2', description: 'Select item(s) to work on (comma-separated for several)', detail: null },
@@ -371,21 +371,21 @@ describe('gate payload — a gateway menu', () => {
 
     assert.strictEqual(gate.question, 'What would you like to do?');
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'feature, ready for discussion', detail: null, struck: false, recommended: false });
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'feature, ready for discussion', cue: null, holder: null, detail: null, struck: false, recommended: false });
     assert.deepStrictEqual(gate.typed, []);
   });
 
-  it('a struck row and a recommended row carry their flags, and neither marker survives into the text', () => {
+  it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
     seedHeldEpic(dir);
     const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
 
     assert.strictEqual(gate.gate, 'menu');
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', detail: null, struck: false, recommended: true });
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: null, holder: null, detail: null, struck: false, recommended: true });
     assert.deepStrictEqual(gate.options[1],
-      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion · in session (last active 4m ago)', detail: null, struck: true, recommended: false });
-    assert.ok(gate.options.every((o) => !`${o.head}${o.tail}`.includes('recommended')), JSON.stringify(gate.options));
-    assert.ok(gate.options.every((o) => !`${o.head}${o.tail}`.includes('~~')), JSON.stringify(gate.options));
+      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: null, holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false });
+    const texts = gate.options.map((/** @type {{head: string, tail: string|null, holder: string|null}} */ o) => `${o.head}${o.tail}${o.holder}`);
+    assert.ok(texts.every((t) => !t.includes('recommended') && !t.includes('~~')), JSON.stringify(gate.options));
   });
 
   it('the GATE sits directly above the MENU and after every other section', () => {
@@ -431,7 +431,7 @@ describe('gate payload — a gateway menu', () => {
     assert.strictEqual(gate.question, 'Select an option:');
     assert.strictEqual(gate.statement, '');
     assert.deepStrictEqual(gate.options[0], {
-      key: '1', word: null, head: 'Analyze for groupings', tail: null,
+      key: '1', word: null, head: 'Analyze for groupings', tail: null, cue: null, holder: null,
       detail: 'All discussions are analyzed for natural groupings. Existing specification names are preserved. You can provide guidance in the next step.',
       struck: false, recommended: true,
     });
@@ -499,13 +499,13 @@ describe('gate payload — a row\'s detail', () => {
 });
 
 describe('gate payload — a row built from parts', () => {
-  it('each part draws where the row always drew it; the payload keeps the head and the flags, and everything after the head as the tail', () => {
+  it('each part draws where the row always drew it, and reaches the payload as given', () => {
     /** @type {string[]} */
     let rows = [];
     const gate = collect(() => {
       rows = [
         cmdOption('1', null, { head: 'Continue "Auth"', tail: 'research', cue: 'triage waiting', recommended: true }),
-        cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', held: 'in session (last active 4m ago)' }),
+        cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
         cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'triage waiting' }),
         cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
       ];
@@ -514,23 +514,23 @@ describe('gate payload — a row built from parts', () => {
 
     assert.deepStrictEqual(rows, [
       '**`1`** → Continue "Auth" — *research* · triage waiting (recommended)',
-      '**`2`** → ~~Continue "Auth" — *discussion*~~ · in session (last active 4m ago)',
+      '**`2`** → ~~Continue "Auth" — *discussion* · input moved~~ · in session (last active 4m ago)',
       '**`3`** → Start research for "Billing" — *triage waiting*',
       '**`s/spec`** → Analyze / regroup discussions',
     ]);
     assert.deepStrictEqual(gate.options, [
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research · triage waiting', detail: null, struck: false, recommended: true },
-      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion · in session (last active 4m ago)', detail: null, struck: true, recommended: false },
-      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'triage waiting', detail: null, struck: false, recommended: false },
-      { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, detail: null, struck: false, recommended: false },
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: 'triage waiting', holder: null, detail: null, struck: false, recommended: true },
+      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false },
+      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'triage waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
 
-  it('a held row with no tail states its holder as what follows the head', () => {
-    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, { head: 'Start research for "Billing"', held: 'in session (last active 1m ago)' })]));
+  it('a held row with no tail states its holder alone', () => {
+    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, { head: 'Start research for "Billing"', holder: 'in session (last active 1m ago)' })]));
 
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Start research for "Billing"', tail: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
+      { key: '1', word: null, head: 'Start research for "Billing"', tail: null, cue: null, holder: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
   });
 
   it('a string label drawing a part inline is refused — the parts are the only way in', () => {
@@ -591,5 +591,44 @@ describe('gate payload — a menu that draws nothing', () => {
       openGate();
       return gateBlock('menu');
     }), '');
+  });
+});
+
+describe('gate payload — the audit', () => {
+  /** A held row with a tail and a cue, rendered announced. */
+  const heldRow = () => announced(() => {
+    openGate();
+    return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one.', [
+      cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
+    ]));
+  });
+
+  /**
+   * The response with its first option's payload row rewritten, the menu left as drawn.
+   * @param {string} out @param {(o: Record<string, unknown>) => void} change
+   */
+  const tampered = (out, change) => {
+    const lines = out.split('\n');
+    const at = lines.indexOf(GATE_MARKER) + 1;
+    const gate = JSON.parse(lines[at]);
+    change(gate.options[0]);
+    lines[at] = JSON.stringify(gate);
+    return lines.join('\n');
+  };
+
+  it('reads every part against the line the menu drew — its words, its strike, its italics', () => {
+    const out = heldRow();
+    assert.ok(auditGate(out, 'as drawn'));
+
+    /** @type {[string, (o: Record<string, unknown>) => void][]} */
+    const drifts = [
+      ['a cue stated as tail', (o) => { o.tail = 'discussion · input moved'; o.cue = null; }],
+      ['a holder stated as tail', (o) => { o.tail = 'discussion · input moved · in session (last active 4m ago)'; o.cue = null; o.holder = null; }],
+      ['a strike the row does not state', (o) => { o.struck = false; }],
+      ['a cue the row does not draw', (o) => { o.cue = 'triage waiting'; }],
+    ];
+    for (const [what, change] of drifts) {
+      assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);
+    }
   });
 });
