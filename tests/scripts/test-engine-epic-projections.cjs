@@ -164,6 +164,16 @@ describe('epic projections: dashboard (map branch)', () => {
     ].join('\n'));
   });
 
+  it('a postponed row whose roadmap item is gone says so rather than naming a horizon it lost', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ work_units: {} }, null, 2));
+    const detail = detailFor(dir, 'pv3', {
+      work_type: 'epic',
+      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+    });
+    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null }]);
+    assert.ok(epicDashboard('pv3', detail).includes('  postponed: Data Export → no roadmap item'));
+  });
+
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
       newArrivals: { gap_analysis: ['menu-admin'] },

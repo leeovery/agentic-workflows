@@ -21,7 +21,7 @@ const {
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  postponePlan, postponeTarget, postponedHorizon,
+  postponePlan, postponeTarget, postponeClashPhrase, postponedHorizon,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1185,6 +1185,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
       assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
       assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
+    });
+
+    it('the clash phrase names the horizon it has, and stands without one', () => {
+      assert.strictEqual(postponeClashPhrase('auth', { horizon: 'next' }),
+        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first');
+      assert.strictEqual(postponeClashPhrase('auth', {}),
+        'a roadmap item named "auth" is not this topic\'s — rename or remove it on the roadmap first');
     });
 
     it('postponedHorizon joins the roadmap by postponed_from, null when nothing does', () => {

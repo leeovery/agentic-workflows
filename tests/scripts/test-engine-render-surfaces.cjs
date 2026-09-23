@@ -6094,6 +6094,7 @@ describe('render map-op-gate', () => {
             'dead-end': { routing: 'research', source: 'discovery', handled: true },
             'in-flight': { routing: 'discussion', source: 'discovery' },
             gone: { routing: 'discussion', source: 'discovery', cancelled: true },
+            away: { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
         discussion: { items: { 'in-flight': { status: 'in-progress' } } },
@@ -6224,6 +6225,21 @@ describe('render map-op-gate', () => {
     assert.throws(() => render('close', { name: 'gone' }, 'c4.json'),
       /"gone" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first/);
     assert.throws(() => render('remove', { name: 'in-flight' }, 'c5.json'), /not fresh$/, 'a live row carries no reactivate clause');
+  });
+
+  it('a postponed row names its way back — the pull — on every op it refuses', () => {
+    assert.throws(() => render('remove', { name: 'away' }, 'p1.json'),
+      /"away" can't be removed — it's "postponed", not fresh — pull it forward from the roadmap first/);
+    assert.throws(() => render('rename', { name: 'away', new_name: 'x' }, 'p2.json'),
+      /"away" can't be renamed — it's "postponed", not fresh — pull it forward from the roadmap first/);
+    assert.throws(() => render('reroute', { name: 'away', from: 'discussion', to: 'research' }, 'p3.json'),
+      /"away" can't be re-routed — it's "postponed", not fresh — pull it forward from the roadmap first/);
+    assert.throws(() => render('close', { name: 'away' }, 'p4.json'),
+      /"away" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first/);
+    assert.throws(() => render('reopen', { name: 'away' }, 'p5.json'),
+      /"away" can't be reopened — it's "postponed", not closed as a dead end/);
+    assert.match(render('edit-summary', { items: [{ name: 'away', summary: 'Still editable' }] }, 'p6.json'),
+      /Updating 1 summary\(ies\):/);
   });
 
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {

@@ -636,6 +636,24 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(err.error, /"fresh-topic" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first/);
     });
 
+    it('a postponed topic names the pull on every destructive op, writing nothing', () => {
+      const m = readManifest(dir);
+      m.phases.discovery.items['postponed-topic'] = { routing: 'discussion', source: 'discovery', postponed: true };
+      m.phases.discussion.items['postponed-topic'] = { status: 'postponed', previous_status: 'completed' };
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      const before = JSON.stringify(readManifest(dir));
+
+      for (const [verb, args] of [
+        ['removed', ['remove', 'payments', 'postponed-topic']],
+        ['renamed', ['rename', 'payments', 'postponed-topic', 'anything-else']],
+        ['re-routed', ['reroute', 'payments', 'postponed-topic', 'research']],
+      ]) {
+        assert.match(runFail(dir, args).error,
+          new RegExp(`"postponed-topic" can't be ${verb} — it is postponed and waits on the roadmap; pull it forward from the roadmap first`), verb);
+      }
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
     it('names superseded research honestly in the refusal — never as completed', () => {
       const m = readManifest(dir);
       m.phases.research.items['ready-topic'].status = 'superseded';
@@ -670,6 +688,15 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(err.error, /"handled-topic" can't be closed as a dead end — it's already closed/);
     });
 
+    it('refuses a postponed item, pointing at the pull', () => {
+      const m = readManifest(dir);
+      m.phases.discovery.items['fresh-topic'].postponed = true;
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      assert.match(runFail(dir, ['handle', 'payments', 'fresh-topic']).error,
+        /"fresh-topic" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first/);
+      assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['fresh-topic'], false, 'nothing written');
+    });
+
     it('refuses a cancelled item, pointing at its reactivation', () => {
       const err = runFail(dir, ['handle', 'payments', 'cancelled-topic']);
       assert.match(err.error, /it's cancelled; reactivate it from the epic menu first/);
@@ -702,6 +729,15 @@ describe('engine CLI: discovery-map operations', () => {
       }
     });
 
+    it('refuses a postponed dead end — the pull, not the reopen', () => {
+      const m = readManifest(dir);
+      m.phases.discovery.items['handled-topic'].postponed = true;
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      assert.match(runFail(dir, ['unhandle', 'payments', 'handled-topic']).error,
+        /"handled-topic" can't be reopened — it's postponed; pull it forward from the roadmap first/);
+      assert.strictEqual(readManifest(dir).phases.discovery.items['handled-topic'].handled, true, 'nothing written');
+    });
+
     it('refuses a cancelled item — a marker over the dead end included — toward the reactivate', () => {
       assert.match(runFail(dir, ['unhandle', 'payments', 'cancelled-topic']).error,
         /"cancelled-topic" can't be reopened — it's cancelled; reactivate it from the epic menu first/);
@@ -723,6 +759,27 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(runFail(dir, ['handle', 'payments']).error, /Usage: engine discovery-map handle/);
       // An unquoted payload spills into positionals — refused, not truncated.
       assert.match(runFail(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'two', 'words']).error, /Usage: engine discovery-map edit/);
+    });
+  });
+
+  // `set-prior` has no CLI verb — the roadmap's bind calls it after its own
+  // map check, so its guards are only reachable from here.
+  describe('set-prior', () => {
+    const { setPrior } = require('../../skills/workflow-engine/scripts/domain/discovery-map.cjs');
+
+    it('records the prior record\'s address on the row', () => {
+      const res = setPrior(dir, 'payments', 'fresh-topic', { work_unit: 'mvp', topic: 'ordering' });
+      assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].prior, { work_unit: 'mvp', topic: 'ordering' });
+    });
+
+    it('refuses a name the map does not hold and a malformed prior', () => {
+      assert.throws(() => setPrior(dir, 'payments', 'ghost', { work_unit: 'mvp', topic: 'ordering' }),
+        /no discovery item "ghost"/);
+      for (const prior of [null, 'mvp/ordering', { work_unit: 'mvp' }, { work_unit: '', topic: 'ordering' }, { work_unit: 'mvp', topic: '' }]) {
+        assert.throws(() => setPrior(dir, 'payments', 'fresh-topic', prior), /must be \{work_unit, topic\}/);
+      }
+      assert.strictEqual('prior' in readManifest(dir).phases.discovery.items['fresh-topic'], false);
     });
   });
 

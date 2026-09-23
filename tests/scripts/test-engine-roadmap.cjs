@@ -114,9 +114,12 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
-  it('accepts park: and inbox: origins with non-empty tails', () => {
+  it('accepts park:, inbox: and postpone: origins with non-empty tails', () => {
     runOk(dir, ['add', 'a', '--horizon', 'v1', '--summary', 's', '--origin', 'park:mvp']);
     runOk(dir, ['add', 'b', '--horizon', 'v1', '--summary', 's', '--origin', 'inbox:2026-08-01--gift-cards']);
+    runOk(dir, ['add', 'c', '--horizon', 'v1', '--summary', 's', '--origin', 'postpone:mvp']);
+    assert.strictEqual(readProject(dir).roadmap.items.c.origin, 'postpone:mvp');
+    assert.match(runFail(dir, ['add', 'd', '--horizon', 'v1', '--summary', 's', '--origin', 'postpone:']).error, /unknown origin/);
   });
 
   it('add-batch lands the whole set under one commit, JIT horizons in entry order', () => {
@@ -365,6 +368,13 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     assert.ok(staged.includes('.workflows/mvp/manifest.json'), 'epic manifest staged');
   });
 
+  it('pull-forward requires --routing on the creating branch — only the return names nothing', () => {
+    assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp']).error, /--routing is required/);
+    assert.strictEqual(
+      JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.loyalty,
+      undefined, 'nothing lands on the map');
+  });
+
   it('pull-forward refuses a non-epic, a joined item, and an occupied topic name', () => {
     createManifest(dir, 'small', { work_type: 'feature', status: 'in-progress' });
     assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'small', '--routing', 'discussion']).error, /is a feature/);
@@ -544,8 +554,14 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /"ordering" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
     engineFails(['topic', 'reactivate', 'mvp', 'discovery', 'ordering'],
       /"ordering" is postponed, not cancelled — pull it forward from the roadmap instead/);
-    engineFails(['topic', 'start', 'mvp', 'discussion', 'ordering'],
-      /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);
+    for (const args of [
+      ['topic', 'start', 'mvp', 'discussion', 'ordering'],
+      ['topic', 'complete', 'mvp', 'discussion', 'ordering'],
+      ['topic', 'reopen', 'mvp', 'discussion', 'ordering'],
+      ['topic', 'supersede', 'mvp', 'discussion', 'ordering', '--by', 'menus'],
+    ]) {
+      engineFails(args, /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);
+    }
     engineFails(['manifest', 'set', 'mvp.discussion.ordering', 'status', 'in-progress'],
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
@@ -616,6 +632,34 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual('postponed_from' in item, false, 'the item is in flight again — a later postpone re-sets it');
     const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('.workflows/manifest.json') && staged.includes('.workflows/mvp/manifest.json'));
+  });
+
+  it('a return whose re-index fails still lands, carrying the failure as a warning', () => {
+    const stub = stubbedEngine();
+    stub.ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const res = stub.ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp'], { env: { STUB_KNOWLEDGE_EXIT: '1' } });
+    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
+    assert.deepStrictEqual(res.warnings, ['knowledge index failed: kb exploded']);
+    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the state write stands; the index is derived');
+  });
+
+  it('the re-wait merges into the sources the item already carries — never a duplicate', () => {
+    runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
+      '--source', '.roadmap/sessions/session-001.md', '--source', 'mvp/research/ordering.md']);
+    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
+    assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
+      '.roadmap/sessions/session-001.md',
+      'mvp/research/ordering.md',
+      'mvp/discovery/briefs/ordering.md',
+      'mvp/discussion/ordering.md',
+    ]);
+  });
+
+  it('refuses a call that names no topic', () => {
+    engineFails(['topic', 'postpone', 'mvp'], /Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"/);
+    engineFails(['topic', 'postpone', 'mvp', 'ordering', 'extra', '--horizon', 'next'], /Usage: engine topic postpone/);
   });
 
   it('pull-forward into another epic creates as usual and carries prior onto the new row', () => {
