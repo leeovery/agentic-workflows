@@ -30,7 +30,7 @@ const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = r
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
-const { VALID_ROUTINGS, VALID_THREAD_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
@@ -1576,8 +1576,9 @@ const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: str
 
 // A topic whose item reads one of these is finished: nothing further a
 // session does to it is work on a live topic, so its commits release the slot
-// rather than hold it.
-const TERMINAL_TOPIC_STATUSES = ['completed', 'cancelled', 'superseded', 'promoted'];
+// rather than hold it. The schema's terminal set plus the conclusion — derived
+// so a status added there can never be missed here.
+const TERMINAL_TOPIC_STATUSES = ['completed', ...TERMINAL_STATUSES];
 
 /**
  * A phase item straight off disk, or null when there is none — a direct read,

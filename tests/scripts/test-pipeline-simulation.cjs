@@ -2398,6 +2398,29 @@ describe('pipeline simulation', () => {
     assert.strictEqual(peerRow.session_id, peer.id);
   });
 
+  it('a postpone releases its own holds too, and a peer\'s next commit over the hold clears rather than beats', () => {
+    const wu = 'putsoff';
+    mappedEpic(sim, wu, ['alpha']);
+    const peer = sim.session('peer-session', 1);
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
+    peer.run(['topic', 'start', wu, 'research', 'alpha']);
+
+    const taken = sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
+    assert.deepStrictEqual(taken.postponed, [
+      { phase: 'research', previous_status: 'in-progress' },
+      { phase: 'discussion', previous_status: 'in-progress' },
+    ]);
+    const after = sim.run(['presence', 'scan', wu]);
+    assert.strictEqual(presenceRow(after, 'discussion', 'alpha'), undefined, 'the caller\'s own hold leaves with the topic');
+    assert.strictEqual(presenceRow(after, 'research', 'alpha').held, true, 'a postpone never evicts another session');
+
+    // The peer's own cadence commit meets a topic that has left: postponed is
+    // terminal, so the commit releases the slot instead of re-taking it.
+    peer.run(['commit', wu, '-m', `research(${wu}): last words`, '--topic', 'research/alpha']);
+    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, []);
+  });
+
   it('a specification cancel releases the calling session\'s specification and planning holds', () => {
     const wu = 'cutsplan';
     mappedEpic(sim, wu, ['gamma']);
