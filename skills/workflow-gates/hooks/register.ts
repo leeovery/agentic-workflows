@@ -9,10 +9,16 @@
  * row's answer into the prompt box; a second press on that row sends it as the
  * next message, which is what the workflows' prose already reads.
  *
- * Every path fails open: the engine emits the menu regardless, so a hook that
- * throws, overruns or never loads leaves the text menu exactly as it was.
+ * Every path up to the cut fails open: the engine emits the menu regardless,
+ * so a module that never loads, or a cut that throws or overruns, leaves the
+ * text menu exactly as it was.
  */
-import type { EngineInterface, PromptOrigin, Register } from 'claude-code'
+import type {
+  AgentLoop,
+  EngineInterface,
+  PromptOrigin,
+  Register,
+} from 'claude-code'
 
 import { answerOf, linesOf, type Gate, type Option } from './layout.ts'
 
@@ -27,16 +33,52 @@ const ELEMENT = 'gate'
 /** Where a send leaves what it answered, for a mod that draws the sent row. */
 const SENT = '.workflows/.cache/.gates/sent.json'
 
+/** The record that claims no send, which that mod draws nothing from. */
+const NOTHING_SENT = 'null'
+
 const STOP_NOTE =
-  "The options are on screen. The user's choice, or anything they type, arrives as their next message."
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
 
 /**
- * The gate a Bash result carried, and that result's stdout with the payload
- * cut and the menu replaced by the instruction to stop; null where the output
- * states no gate, or states one with no pressable row (an archived inbox view
- * is a menu of prose alone, and stays text).
+ * What the band holds of the conversation's gates. A turn's start clears
+ * all of it but the gate that turn answers; the conversation's end, all.
  */
-function gateIn(stdout: string): { gate: Gate; stdout: string } | null {
+type Band = {
+  /** The gate a render armed, waiting on the end of its turn. */
+  armed: Gate | null
+  /** The gate on the band, from a turn's end to the next turn's start. */
+  drawn: Gate | null
+  /** The answer a press put in the prompt box: a press on its row sends it. */
+  picked: string | null
+  /**
+   * Whether the submission that opens the next turn is the person's; a turn
+   * no submission opened counts as theirs.
+   */
+  isOpenedByPerson: boolean
+  /** The gate on the band when the running turn began, and who began it. */
+  answering: { gate: Gate; isPersons: boolean } | null
+  /** Whether the running turn has called a tool. */
+  hasCalledTool: boolean
+}
+
+const emptyBand = (): Band => ({
+  armed: null,
+  drawn: null,
+  picked: null,
+  isOpenedByPerson: true,
+  answering: null,
+  hasCalledTool: false,
+})
+
+/**
+ * The gate a Bash result's stdout states directly above its menu, and that
+ * stdout with the payload taken out, which is this module's input alone:
+ * `text` keeps the menu as the engine wrote it, `cut` puts the instruction to
+ * stop in its place. Null where the stdout states no gate.
+ */
+function gateIn(
+  stdout: string,
+): { gate: Gate; text: string; cut: string } | null {
   if (!stdout.includes(GATE_MARKER)) {
     return null
   }
@@ -56,19 +98,16 @@ function gateIn(stdout: string): { gate: Gate; stdout: string } | null {
   }
 
   const { gate: name, ...gate } = JSON.parse(payload) as Gate & { gate: string }
-
-  if (gate.options.length === 0) {
-    return null
-  }
-
+  const before = lines.slice(0, at)
   const after = lines.findIndex(
     (line, n) => n > at + 2 && line.startsWith(SECTION_MARKER),
   )
 
   return {
     gate,
-    stdout: [
-      ...lines.slice(0, at),
+    text: [...before, ...lines.slice(at + 2)].join('\n'),
+    cut: [
+      ...before,
       `=== MENU: ${name} (drawn above the prompt — do NOT emit it; stop and wait) ===`,
       STOP_NOTE,
       ...(after === -1 ? [''] : lines.slice(after)),
@@ -77,7 +116,28 @@ function gateIn(stdout: string): { gate: Gate; stdout: string } | null {
 }
 
 /** Whether an event is the conversation's own, not a subagent's loop. */
-const inConversation = (e: { agentId?: string }) => e.agentId === undefined
+const inConversation = (e: AgentLoop) => e.agentId === undefined
+
+/**
+ * Whether the band takes a gate a Bash call stated: the conversation's own
+ * call, not a subagent's; a row to press (an archived inbox view is a menu of
+ * prose alone, and stays text); and the terminal the session's only screen,
+ * since the band is the terminal's and any other screen shows the menu as
+ * text alone.
+ */
+async function isForBand(
+  $: EngineInterface,
+  e: AgentLoop,
+  gate: Gate,
+): Promise<boolean> {
+  if (!inConversation(e) || gate.options.length === 0) {
+    return false
+  }
+
+  const surfaces = await $.session.surfaces()
+
+  return surfaces.length === 1 && surfaces[0] === 'terminal'
+}
 
 /**
  * Whether a submission is the person's: their Enter at the prompt, their
@@ -108,10 +168,12 @@ async function pick($: EngineInterface, answer: string): Promise<boolean> {
 
 /**
  * Sends a row as the next message, the box cleared and the send recorded; a
- * send that fails puts the answer back in the box, where the pick says it is.
+ * send that fails or is dropped puts the answer back in the box, where the
+ * pick says it is, and leaves no send recorded.
  */
 async function send($: EngineInterface, gate: Gate, option: Option) {
   const answer = answerOf(option)
+  let isSent = false
 
   await $.prompt.fill({ text: '', mode: 'replace' })
 
@@ -121,48 +183,39 @@ async function send($: EngineInterface, gate: Gate, option: Option) {
       JSON.stringify({ answer, question: gate.question, label: option.head }),
     )
     // Framed for the model and labelled on screen as this plugin's, by design.
-    await $.prompt.submit({ text: answer })
-  } catch (error) {
-    await $.prompt.fill({ text: answer, mode: 'replace' })
+    const { drop } = await $.prompt.submit({ text: answer })
 
-    throw error
+    isSent = drop === undefined
+  } finally {
+    if (!isSent) {
+      await $.prompt.fill({ text: answer, mode: 'replace' })
+      await $.fs.write(SENT, NOTHING_SENT)
+    }
   }
 }
 
 export const register: Register = on => {
-  /** The gate a render armed, waiting on the end of its turn. */
-  let armed: Gate | null = null
-
-  /** The gate on the band, from a turn's end to the next turn's start. */
-  let drawn: Gate | null = null
-
-  /** The answer a press put in the prompt box: a press on its row sends it. */
-  let picked: string | null = null
+  let band = emptyBand()
 
   /** Whether a send is under way, so a press meanwhile cannot send twice. */
   let isSending = false
 
   /**
-   * Whether the submission that opens the next turn is the person's; a turn
-   * no submission opened counts as theirs.
-   */
-  let isOpenedByPerson = true
-
-  /** The gate on the band when the running turn began, and who began it. */
-  let answering: { gate: Gate; isPersons: boolean } | null = null
-
-  /**
-   * The gate the band shows once the conversation's turn ends. An Esc takes
-   * the answer back: whatever the turn rendered is dropped and the gate it
-   * began over returns. Otherwise the gate it rendered, or with none, the one
-   * it began over where the person never answered it.
+   * The gate the band shows once the conversation's turn ends: the gate it
+   * rendered, or with none, the one it began over where the person never
+   * answered it. An Esc drops what the turn rendered and takes the answer
+   * back, its gate returning, until the turn calls a tool, which may already
+   * have acted on the answer: a read and a write look alike from here.
    */
   const gateAtTurnEnd = (isInterrupted: boolean): Gate | null => {
+    const { armed, answering, hasCalledTool } = band
+    const unanswered = answering?.isPersons === false ? answering.gate : null
+
     if (isInterrupted) {
-      return answering?.gate ?? null
+      return hasCalledTool ? unanswered : (answering?.gate ?? null)
     }
 
-    return armed ?? (answering?.isPersons === false ? answering.gate : null)
+    return armed ?? unanswered
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
@@ -173,12 +226,24 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    // A press answers the conversation: a subagent reads its menu as text.
-    if (!inConversation(e)) {
-      return next(e)
+  // A /clear or a resume goes on in this process as another conversation,
+  // which no gate of this one answers.
+  on('session.end', ($, e, next) => {
+    band = emptyBand()
+    $.ui.invalidate('ui.render')
+
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', ($, e, next) => {
+    if (inConversation(e)) {
+      band.hasCalledTool = true
     }
 
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
 
     if (result.deny !== undefined || result.isError === true) {
@@ -186,20 +251,21 @@ export const register: Register = on => {
     }
 
     const record = result.result
-    const cut = gateIn(record.stdout)
+    const stated = gateIn(record.stdout)
 
-    if (cut === null) {
+    if (stated === null) {
       return result
     }
 
-    // The band is the terminal's: elsewhere the model prints the menu.
-    if (!(await $.session.surfaces()).includes('terminal')) {
-      return result
+    const isArmed = await isForBand($, e, stated.gate)
+
+    if (isArmed) {
+      band.armed = stated.gate
     }
 
-    armed = cut.gate
-
-    return { result: { ...record, stdout: cut.stdout } }
+    return {
+      result: { ...record, stdout: isArmed ? stated.cut : stated.text },
+    }
   }).catch(($, e, next) => next(e))
 
   // Drawn at the turn's end, once what the rows choose between is on screen.
@@ -207,11 +273,11 @@ export const register: Register = on => {
     if (inConversation(e)) {
       const gate = gateAtTurnEnd(e.isAborted)
 
-      armed = null
-      answering = null
+      band.armed = null
+      band.answering = null
 
       if (gate !== null) {
-        drawn = gate
+        band.drawn = gate
         $.ui.invalidate('ui.render')
       }
     }
@@ -220,7 +286,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const gate = drawn
+    const gate = band.drawn
 
     if (gate === null || e.props.hasSurvey || e.surface !== 'terminal') {
       return next(e)
@@ -243,7 +309,7 @@ export const register: Register = on => {
             module: './board.ts',
             width: columns,
             height: linesOf(gate, columns).length,
-            props: { gate, picked, columns },
+            props: { gate, picked: band.picked, columns },
           }),
           beneath,
         ],
@@ -255,9 +321,10 @@ export const register: Register = on => {
 
   // The board has no `$`: a press posts here, and this picks its row or, on
   // the row already picked, sends it. The turn a send opens takes the gate
-  // off the band; a send that fails leaves the row there to press again.
+  // off the band; a send that fails or is dropped leaves the row there to
+  // press again.
   on('ui.message', { element: ELEMENT }, async ($, e, next) => {
-    const gate = drawn
+    const gate = band.drawn
     const option = gate === null || isSending ? null : optionIn(gate, e.data)
 
     if (gate === null || option === null) {
@@ -266,7 +333,7 @@ export const register: Register = on => {
 
     const answer = answerOf(option)
 
-    if (answer === picked) {
+    if (answer === band.picked) {
       isSending = true
 
       try {
@@ -275,7 +342,7 @@ export const register: Register = on => {
         isSending = false
       }
     } else if (await pick($, answer)) {
-      picked = answer
+      band.picked = answer
       $.ui.invalidate('ui.render')
     }
 
@@ -286,7 +353,7 @@ export const register: Register = on => {
   // over a running turn joins it.
   on('prompt.submit', ($, e, next) => {
     if (e.turnId === undefined) {
-      isOpenedByPerson = isPersons(e.origin, $.plugin.name)
+      band.isOpenedByPerson = isPersons(e.origin, $.plugin.name)
     }
 
     return next(e)
@@ -296,14 +363,15 @@ export const register: Register = on => {
   // to put back; a gate the conversation re-presents is armed again by its
   // own render.
   on('turn.start', ($, e, next) => {
-    answering =
-      drawn === null ? null : { gate: drawn, isPersons: isOpenedByPerson }
-    isOpenedByPerson = true
-    armed = null
-    picked = null
+    const { drawn, isOpenedByPerson } = band
+
+    band = {
+      ...emptyBand(),
+      answering:
+        drawn === null ? null : { gate: drawn, isPersons: isOpenedByPerson },
+    }
 
     if (drawn !== null) {
-      drawn = null
       $.ui.invalidate('ui.render')
     }
 
