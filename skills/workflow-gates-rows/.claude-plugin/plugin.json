@@ -1,0 +1,8 @@
+{
+  "name": "workflow-gates-rows",
+  "version": "0.1.0",
+  "description": "Draws the transcript row of an answer the workflow-gates mod sent as the question it answered and the answer, instead of the engine's framing.",
+  "author": {
+    "name": "Lee Overy"
+  }
+}
