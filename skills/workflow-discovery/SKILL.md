@@ -176,7 +176,7 @@ The authoritative resume signal (`active_session`) is a manifest field, read via
 
 If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5, no `pull_continuation` from a roadmap pull), set it now: `session_number` = `next_session_number`. When `macro_continuation` or `pull_continuation` is set, the creating flow already installed `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
 
-`map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
+`map-operations.md` re-invokes discovery on entry because it validates against post-mutation state.
 
 → Proceed to **Step 8**.
 

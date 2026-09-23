@@ -2479,8 +2479,8 @@ function candidateGate(cwd, { dotpath, file }) {
 
 // dismissed-topics — the names removed from the map, and the re-add offer
 // the session loop opens over them. The list is the display and the menu is
-// the ask: a re-add names topics and their routing, never one row. An empty
-// list refuses — the loop returns before the fetch.
+// the ask: a re-add names topics and their routing, never one row. With
+// nothing dismissed there is nothing to re-add, so the display stands alone.
 
 /**
  * @param {string} cwd
@@ -2488,15 +2488,16 @@ function candidateGate(cwd, { dotpath, file }) {
  * @returns {string}
  */
 function dismissedTopics(cwd, { dotpath }) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'dismissed-topics');
-  const names = ((manifest.phases || {}).discovery || {}).dismissed;
-  if (!Array.isArray(names) || names.length === 0) {
-    throw new Error(`render dismissed-topics: "${workUnit}" has no dismissed topics`);
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'dismissed-topics');
+  const dismissed = ((manifest.phases || {}).discovery || {}).dismissed;
+  const names = Array.isArray(dismissed) ? dismissed : [];
+  const heading = ['Dismissed Topics', ''];
+  if (names.length === 0) {
+    return section('DISPLAY: dismissed topics', CONTINUE_INSTRUCTION, [...heading, ...indentedBody(['(none)'])].join('\n'));
   }
   return [
     section('DISPLAY: dismissed topics', 'emit verbatim as a code block, directly above the menu', [
-      'Dismissed Topics',
-      '',
+      ...heading,
       ...names.flatMap((name) => bulletRow(name)),
     ].join('\n')),
     section('MENU: dismissed topics', STOP_FOR_RESPONSE, menu('', [
