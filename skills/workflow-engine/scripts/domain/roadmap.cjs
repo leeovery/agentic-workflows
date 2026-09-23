@@ -1008,7 +1008,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * **born** under the topic's name with origin `postpone:{workUnit}` — or
  * refuses, when that name is taken: nothing on the roadmap is ever
  * overwritten, and the plan's clash lock is read again here because the plan
- * ran before the epic manifest was written. Either way the item records
+ * ran before the project lock was taken. Either way the item records
  * `postponed_from` and gains the topic's files as sources, and the node and
  * the horizon are created just-in-time. Runs under the project lock — nested
  * inside the work unit's, the one place the two are held together, and the
