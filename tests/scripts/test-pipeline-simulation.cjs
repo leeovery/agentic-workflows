@@ -3906,7 +3906,9 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /2 area\(s\) documented/);
     assert.match(sim.render(['baseline-receipt'], { expect: 'content' }), /Baseline complete — 2 area\(s\)/);
     assert.match(sim.render(['baseline-manage-gate'], { expect: 'content' }), /What would you like to do\?/);
-    assert.match(sim.render(['baseline-doc-pick'], { expect: 'content' }), /Which doc\?/);
+    const docPick = sim.render(['baseline-doc-pick'], { expect: 'content' });
+    assert.match(docPick, /DOCS \(key {2}area\):\n {2}1 {2}overview\n {2}2 {2}dispatcher\n/);
+    assert.match(docPick, /Which doc\?/);
 
     // The walkthrough is the project's other one-time record, and the same
     // shape: refuse anything but the two answers, write once, and stay
