@@ -5436,9 +5436,14 @@ describe('baseline surfaces', () => {
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
   });
 
-  it('the doc pick numbers every area doc beneath its question, back last', () => {
+  it('the doc pick numbers every area doc beneath its question, back last, each number\'s area on its DATA row', () => {
     writeBaseline({ status: 'completed', areas: { overview: 'completed', payments: 'completed' } });
     assert.strictEqual(renderSurface(dir, 'baseline-doc-pick', {}), [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      'DOCS (key  area):',
+      '  1  overview',
+      '  2  payments',
+      '',
       "=== MENU: baseline doc pick (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which doc?`**',
