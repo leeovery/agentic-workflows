@@ -29,36 +29,41 @@ The prose should have taken this path:
    exists, the file is created from the template, and its Context carries
    the substance of what was read rather than a pointer to it — what the
    earlier epic settled about the expansion source, with its files listed
-   under References. Initial subtopics land on the map as pending, and
-   the queued concern's own title is not among them: a queued concern
-   enters as a raise, never as a map seed
-8. one initialisation commit closes the setup, and the session opens.
+   under References
+8. the initial subtopics land on the map as `pending`, and the ground the
+   queued concern holds open — what the expansion service actually reads,
+   given the stream it was promised will not exist — is among them: a
+   concern the record left queued and whose point still stands is one of
+   that record's open questions, and seeds the map as the brief's
+   questions would. The seeding is the whole of it — no raise arms
+   anything, and a state the session's own opening turn moves is its own
+   call, never the concern's
+9. one initialisation commit closes the setup, and the session opens.
    Its triage check reads this topic's own queue, which is empty
-9. the first turn raises the concern the earlier epic left queued — the
-   expansion decision rests on a live signal stream the sibling topic
-   settled will never be built — as an opener: the shopper's situation
-   first, where it came from in a clause, a position with one reason, and
-   a close that says what reply moves things on. The ground it reopens is
-   armed on the Discussion Map before the raise goes out, and the walk
-   stops there with the turn unanswered
+10. the first turn is the session's own opening on the material it just
+    read — not a raise, and not the queue entry read out — and the walk
+    stops there with the turn unanswered
 
 Further claims:
 
-- the raise is an opener, not the entry read out: the queue file's three
-  weighed shapes, its rejected option, and its day-of-lag costing stay
-  back. They are the depth that enters as responses once the user replies
+- the queued concern arrives as a question, not as mail: nothing composes
+  a raise from it, no offer or agenda is rendered, and the queue file's
+  depth — its three weighed shapes, its rejected option, its day-of-lag
+  costing — is not transcribed into this topic's document. That entry
+  stays the prior epic's
 - the prior record enters as ground to argue with, not as settled fact —
   nothing in the new discussion records the expansion source as already
-  decided, and the raise treats the earlier decision as the thing on the
-  table
+  decided, and the freshness question stands open on the map rather than
+  inherited closed
 - the queue file stays where it sits, in the earlier epic. No absorb
   runs, no requeue, no triage landing — the concern is read from the
-  prior epic and answered here, and the earlier epic's copy is its record
+  prior epic and carried here as an open question, and the earlier
+  epic's copy is its record
 - the earlier epic's manifest is untouched: `synonym-handling` still
   reads postponed there, its stash intact, and its map row still carries
   the postpone marker
-- the user is asked nothing before the raise, and no agents are
-  dispatched
+- the user is asked nothing before the session's first turn, and no
+  agents are dispatched
 
 EXPECTED WORLD — from two epics and one pulled-forward topic:
 
@@ -66,14 +71,14 @@ EXPECTED WORLD — from two epics and one pulled-forward topic:
   `.workflows/managed-search/discussion/synonym-handling.md` whose
   Context reflects the earlier epic's record — the retired hand list,
   behaviour-driven expansion, and the freshness question the queued
-  concern reopens — with no decisions recorded yet; its References name
-  the prior epic's brief and discussion; the topic's own triage queue is
-  empty
+  concern holds open — with no decisions recorded yet; its References
+  name the prior epic's brief and discussion; the topic's own triage
+  queue is empty
 - the `managed-search` manifest holding one discussion item,
-  `synonym-handling`, in progress, its subtopics pending and recognisably
-  drawn from the prior record, one of them armed to exploring by the
-  raise; `brief_incorporated: true` on its discovery item, whose `prior`
-  pointer is unchanged
+  `synonym-handling`, in progress, its subtopics seeded `pending` and
+  recognisably drawn from the prior record, the queued concern's ground
+  among them and nothing armed by a raise; `brief_incorporated: true` on
+  its discovery item, whose `prior` pointer is unchanged
 - every file under `.workflows/search-relevance/` byte-identical to the
   fixture — the brief, the two discussion files, the session log, and the
   queued concern still in its triage directory

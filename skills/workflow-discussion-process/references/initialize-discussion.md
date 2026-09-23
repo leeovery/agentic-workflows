@@ -88,9 +88,9 @@ The inputs just read — the seed, the brief or carrier, any prior record, and a
 
    Populate from the inputs read at **A**, any interview answers, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
-   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s) — under Context → References, so a later session can re-open what seeded this discussion.
+   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s), a prior record's files — under Context → References, so a later session can re-open what seeded this discussion.
 
-   Either way, no triage queue is a seeding source — this topic's or a prior record's: parked concerns enter as raises, through the session loop's triage check or the prior record's own judgment, and pre-adding their titles to the map forces every fold into the wrong branch.
+   Either way, this topic's own triage queue is not a seeding source: its parked concerns enter as raises through the session loop's triage check, and pre-adding their titles to the map forces every fold into the wrong branch. A prior record's queue is not that: a concern read there whose ask still applies is an open question that record left, and seeds the map beside the brief's.
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash

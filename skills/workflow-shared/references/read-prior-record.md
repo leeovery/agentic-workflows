@@ -47,11 +47,12 @@ The prior epic's files are its record: read them, never edit, drain, or move the
 
 ## B. The Queued Concerns
 
-Each triage file read at **A** is a concern another topic routed to the topic that waited, never delivered. Judge each against the record just read and against what this phase is here to do: does its ask still apply?
+Each triage file read at **A** is a concern another topic routed to the topic that waited, and it waited there with it. Here it is part of the record, not mail this session delivers: nothing is raised from it, folded, or absorbed. Judge each against the record just read and against what this phase is here to do: does its ask still apply?
 
-**A concern whose ask still applies** is raised in this session as an opener. This record is the session's own ground, so a concern against what it settled opens the session rather than waiting for a break in it, and several are walked one at a time.
+**A concern whose ask still applies** is an open question the record left, with exactly a brief's standing. It enters this phase's own material at initialisation, beside the brief's own questions:
 
-Raise and fold each as **C. Raise One Concern** and **D. Fold** in **[rerouted-concerns.md](rerouted-concerns.md)** prescribe — the entry as the brief, its depth entering as responses, the Discussion Map armed before a discussion's raise, the outcome written by the `{phase}` branch of the fold — composing the raise with source = `reroute` and origin = `{prior_unit}/{prior_topic}`. The queue's own machinery has nothing to act on here: no offer, no requeue, no absorb, and no `remaining` to route on.
+- `discussion` — a `pending` subtopic on the Discussion Map.
+- `research` — an open thread on the register, origin `brief`.
 
 **A concern whose ask no longer applies** — the record answers it, or the ground it stood on is gone — takes one line in this phase's opening context, beside what the record left: the discussion's **Context** section, whose **References** name the prior files; the research file's **Starting Point**.
 

@@ -1,5 +1,5 @@
 {
-  "origin": "topic-postpone design R6 — a topic pulled into a different epic arrives as a fresh topic pointing at the record it left behind, and nothing walked what its first phase does with that pointer: reading the prior epic's brief, discussion and undelivered concerns in full without moving, draining or absorbing any of them, seeding this topic's own document from what it found, and raising the concern that still applies as an opener rather than inheriting the decision it questions",
+  "origin": "topic-postpone design R6 — a topic pulled into a different epic arrives as a fresh topic pointing at the record it left behind, and nothing walked what its first phase does with that pointer: reading the prior epic's brief, discussion and undelivered concerns in full without moving, draining or absorbing any of them, seeding this topic's own document from what it found, and taking the concern that still stands as one of that record's open questions — a pending subtopic on this topic's map — rather than as mail to raise and deliver",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -30,9 +30,7 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
-    "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/composing-a-raise.md",
-    "skills/workflow-shared/references/making-it-land.md"
+    "skills/workflow-shared/references/landing-shared-files.md"
   ],
   "invariants": {
     "engine_before_write": true,
@@ -42,16 +40,15 @@
       "manifest set managed-search.discovery.synonym-handling brief_incorporated true",
       "topic start managed-search discussion synonym-handling",
       "discussion-map add managed-search synonym-handling",
-      "discussion(managed-search): initialize synonym-handling discussion",
-      "discussion-map set managed-search synonym-handling"
+      "discussion(managed-search): initialize synonym-handling discussion"
     ],
     "calls_in_order": [
       "manifest get managed-search.discovery.synonym-handling brief_path",
       "manifest get managed-search.discovery.synonym-handling prior",
       "topic start managed-search discussion synonym-handling",
       "write:.workflows/managed-search/discussion/synonym-handling.md",
-      "discussion(managed-search): initialize synonym-handling discussion",
-      "discussion-map set managed-search synonym-handling"
+      "discussion-map add managed-search synonym-handling",
+      "discussion(managed-search): initialize synonym-handling discussion"
     ],
     "calls_exclude": [
       "topic queue search-relevance",
