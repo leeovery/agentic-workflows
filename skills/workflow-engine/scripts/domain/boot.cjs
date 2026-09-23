@@ -26,8 +26,8 @@ const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
-const { gateSurfaceStatus, syncGateSurfaceFlag } = require('./gate-surface.cjs');
+const { labelConfigStatus, labelsEnabled, repairSessionLabels, syncSessionHooks } = require('./session-label.cjs');
+const { enableFunctionHooks, gateSurfaceStatus } = require('./gate-surface.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
@@ -89,7 +89,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {'on'|'off'|'prompt'} gate_surface gate-surface opt-in state — `prompt` means never asked, workflow-start's one-time prompt; a recorded choice is re-synced into `.claude/settings.json` on every boot
+ * @property {'on'|'off'|'prompt'} gate_surface gate-surface opt-in state — `prompt` means never asked, workflow-start's one-time prompt; under `on` every boot puts the function-hooks flag back into `.claude/settings.json` if it went
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -333,18 +333,22 @@ function boot(cwd) {
   // exits — with `session cleanup` and SessionStart's `session resume`
   // while labels are on. A checkout that predates the hooks, or lost them
   // to a hand edit, gets them back here. The gate surface's flag lives in
-  // the same file and re-syncs the same way, but only against a recorded
-  // choice: it turns function hooks on for every plugin in the project, so
-  // one a never-asked project carries is not ours to remove. The file is
-  // written either way, and the commit failing is a warning, never a block.
-  const gateSurface = gateSurfaceStatus(cwd);
+  // the same file and comes back the same way under a recorded `true`
+  // alone: it turns function hooks on for every plugin in the project, so
+  // it is never ours to remove. The file is written either way, and the
+  // commit failing is a warning, never a block.
+  //
   // The opt-in reads and the writes share one hold: a `label-config` or
   // `gate-surface config` landing between them would have this boot strip
   // what it just installed. The commit stays outside the lock.
-  const synced = withProjectLock(cwd, () => ({
-    hooks: syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }),
-    gate: gateSurface === 'prompt' ? { changed: false } : syncGateSurfaceFlag(cwd, gateSurface === 'on'),
-  }));
+  const synced = withProjectLock(cwd, () => {
+    const gateSurface = gateSurfaceStatus(cwd);
+    return {
+      gateSurface,
+      hooks: syncSessionHooks(cwd, { session: labelsEnabled(cwd), presence: true }),
+      gate: gateSurface === 'on' ? enableFunctionHooks(cwd) : { changed: false },
+    };
+  });
   if (synced.hooks.error) warnings.push(`session hooks not installed: ${synced.hooks.error}`);
   if (synced.gate.error) warnings.push(`gate surface not synced: ${synced.gate.error}`);
   const sessionHooksInstalled = synced.hooks.changed;
@@ -358,7 +362,7 @@ function boot(cwd) {
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface, baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: synced.gateSurface, baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
