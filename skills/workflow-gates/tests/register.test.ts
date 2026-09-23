@@ -156,9 +156,12 @@ const MENU_SECTION = [
 
 const DRAWN_MENU = [
   '=== MENU: task gate (drawn above the prompt — do NOT emit it; stop and wait) ===',
-  "The options are on screen. The user's choice, or anything they type, arrives as their next message.",
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row.",
   '',
 ]
+
+/** The menu as the engine wrote it, the payload taken out. */
+const TEXT_MENU = [...RESULT_SECTION, ...MENU_SECTION].join('\n')
 
 const IDLE_FOOTER =
   'Click a row to choose · click it again to send · or just type'
@@ -198,6 +201,19 @@ const ENGINE_CALL = {
 /** The same call made inside a subagent's loop. */
 const SUBAGENT_CALL = { ...ENGINE_CALL, agentId: 'a1' }
 
+/** A call that only reads. */
+const READ_CALL = { tool: 'Read' as const, file_path: '/work/README.md' }
+
+/** The same read made inside a subagent's loop. */
+const SUBAGENT_READ = { ...READ_CALL, agentId: 'a1' }
+
+/** The session ending for a /clear, which goes on in the same process. */
+const CLEARED = {
+  reason: 'clear' as const,
+  sessionId: 's0',
+  resume: { id: 's0' },
+}
+
 /** The main conversation's turn ending with its answer given. */
 const TURN_END = {
   answer: 'The gate is on screen.',
@@ -227,10 +243,10 @@ const MOUNT = {
  *
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
- * which is the submit that fails; `disk` holds each write a second on its
- * clock. A submission made while idle resolves once the turn it opens has
- * started, as core's does; `engineWrites` changes what the next Bash call
- * answers.
+ * which is the submit that fails, and `drops` refuses it with that reason;
+ * `disk` holds each write a second on its clock. A submission made while
+ * idle resolves once the turn it opens has started, as core's does;
+ * `engineWrites` changes what the next Bash call answers.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
@@ -246,10 +262,17 @@ function world(
     surfaces?: readonly RenderSurface[]
     fills?: boolean
     submits?: boolean
+    drops?: string
     disk?: MockClock
   } = {},
 ) {
-  const { surfaces = ['terminal'], fills = true, submits = true, disk } = options
+  const {
+    surfaces = ['terminal'],
+    fills = true,
+    submits = true,
+    drops,
+    disk,
+  } = options
 
   const calls: string[] = []
   const filled: string[] = []
@@ -261,6 +284,7 @@ function world(
   let turns = 0
 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.surfaces', () => ({ value: surfaces }))
   on('ui.render', () => BENEATH)
   on('ui.message', () => ({}))
@@ -303,6 +327,10 @@ function world(
       throw new Error('the prompt could not be sent')
     }
 
+    if (drops !== undefined) {
+      return { drop: drops }
+    }
+
     if (e.turnId === undefined) {
       turns += 1
       await engine.turn.start({ text: e.text, turnId: `t${turns}` })
@@ -313,6 +341,19 @@ function world(
 
   on('tool.call', { tool: 'Bash' }, () => ({
     result: { stdout: output, stderr: '', interrupted: false },
+  }))
+
+  on('tool.call', { tool: 'Read' }, ($, e) => ({
+    result: {
+      type: 'text' as const,
+      file: {
+        filePath: e.file_path,
+        content: '',
+        numLines: 0,
+        startLine: 1,
+        totalLines: 0,
+      },
+    },
   }))
 
   const engineWrites = (next: string) => {
@@ -340,6 +381,41 @@ function sentIn(files: Map<string, string>): unknown {
   expect(path.endsWith(SENT), `${path} is the send record`).toBe(true)
 
   return JSON.parse(text)
+}
+
+/**
+ * A plugin above the mod that leaves, in `trace.json`, how each of the mod's
+ * `tool.call` hooks settled: one that failed reads `caught`.
+ */
+const OBSERVED = {
+  plugins: [
+    {
+      name: 'observer',
+      tier: 'prepend' as const,
+      register(on: On) {
+        on('tool.call', async ($, e, next) => {
+          const result = await next(e)
+          const outcomes = next.trace
+            .filter(link => link.plugin === 'workflow-gates')
+            .map(link => link.outcome)
+
+          await $.fs.write('trace.json', JSON.stringify(outcomes))
+
+          return result
+        })
+      },
+    },
+  ],
+}
+
+/** How the mod's hooks settle when none of them fails. */
+const PASSED = ['returned']
+
+/** How the mod's `tool.call` hooks settled, as the observer left it. */
+function outcomesIn(files: Map<string, string>): unknown {
+  const [, text] = [...files].find(([path]) => path.endsWith('trace.json')) ?? []
+
+  return JSON.parse(text ?? 'null')
 }
 
 /** The Bash result's own record, which is what the mod answers with. */
@@ -447,38 +523,104 @@ describe('register', () => {
     expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(plain)
   })
 
-  test('a menu with no pressable row stays text', async ($, on) => {
-    world($, on, announced({ options: [] }))
-
-    await $.session.start(SESSION)
-
-    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(
-      announced({ options: [] }),
+  test('a payload not directly above its menu states no gate, and passes through', async ($, on) => {
+    const apart = announced().replace(
+      `\n${MENU_SECTION[0]}`,
+      `\n\n${MENU_SECTION[0]}`,
     )
-  })
-
-  test('with no terminal attached the model prints the menu itself', async ($, on) => {
-    world($, on, announced(), { surfaces: ['vscode'] })
+    world($, on, apart)
 
     await $.session.start(SESSION)
 
-    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(announced())
+    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(apart)
 
     await $.turn.complete(TURN_END)
 
     expect(await isDrawn($)).toBe(false)
   })
 
-  test("a subagent's gate stays text, and nothing is armed", async ($, on) => {
+  test('a menu with no pressable row stays text, the payload taken out', async ($, on) => {
+    world($, on, announced({ options: [] }))
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('with no terminal attached the menu stays text, the payload taken out', async ($, on) => {
+    world($, on, announced(), { surfaces: ['vscode'] })
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('with another screen attached beside the terminal the menu stays text, so every screen shows it', async ($, on) => {
+    world($, on, announced(), { surfaces: ['terminal', 'mobile'] })
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($), 'the terminal draws no band for it').toBe(false)
+  })
+
+  test("a subagent's gate stays text, the payload taken out, and nothing is armed", async ($, on) => {
     const { calls } = world($, on, announced())
 
     await $.session.start(SESSION)
 
-    expect(stdoutOf(await $.tool.call(SUBAGENT_CALL))).toBe(announced())
+    expect(stdoutOf(await $.tool.call(SUBAGENT_CALL))).toBe(TEXT_MENU)
 
     await $.turn.complete(TURN_END)
 
     expect(calls).toEqual([])
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a refused call passes through untouched, the hook never failing over it', OBSERVED, async ($, on) => {
+    const refused = { deny: 'Bash is not allowed here' }
+
+    on('tool.call', { tool: 'Bash' }, () => refused)
+    const { files } = world($, on, announced())
+
+    await $.session.start(SESSION)
+
+    expect(await $.tool.call(ENGINE_CALL)).toEqual(refused)
+    expect(outcomesIn(files)).toEqual(PASSED)
+
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('an errored call passes through untouched, the hook never failing over it', OBSERVED, async ($, on) => {
+    const errored = {
+      isError: true as const,
+      result: 'Exit code 1',
+      text: 'Exit code 1',
+    }
+
+    on('tool.call', { tool: 'Bash' }, () => errored)
+    const { files } = world($, on, announced())
+
+    await $.session.start(SESSION)
+
+    expect(await $.tool.call(ENGINE_CALL)).toEqual(errored)
+    expect(outcomesIn(files)).toEqual(PASSED)
+
+    await $.turn.complete(TURN_END)
+
     expect(await isDrawn($)).toBe(false)
   })
 
@@ -720,6 +862,16 @@ describe('register', () => {
     expect(drawn).toEqual(BENEATH)
   })
 
+  test('the band draws on the terminal alone', async ($, on) => {
+    world($, on, announced())
+
+    await presented($)
+
+    expect(await $.ui.render({ ...DRAWING, surface: 'desktop' })).toEqual(
+      BENEATH,
+    )
+  })
+
   test('a click picks: the answer goes in the prompt box and its row is marked, nothing sent', async ($, on) => {
     const { calls, filled, submitted } = world($, on, announced())
 
@@ -862,7 +1014,9 @@ describe('register', () => {
   })
 
   test('a send that fails puts the answer back in the box, so the pick holds and a press retries', async ($, on) => {
-    const { filled, submitted } = world($, on, announced(), { submits: false })
+    const { files, filled, submitted } = world($, on, announced(), {
+      submits: false,
+    })
 
     await presented($)
 
@@ -873,6 +1027,7 @@ describe('register', () => {
 
     expect(submitted).toEqual(['yes'])
     expect(filled, 'picked, cleared to send, put back').toEqual(['yes', '', 'yes'])
+    expect(sentIn(files), 'no send is left recorded').toBeNull()
     expect(await ui.find({ type: 'Client', key: 'gate' })).toBeDefined()
     expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
     expect(await footerOf(ui)).toBe(
@@ -883,6 +1038,30 @@ describe('register', () => {
 
     expect(submitted).toEqual(['yes', 'yes'])
     expect(filled.at(-1)).toBe('yes')
+
+    await ui.unmount()
+  })
+
+  test('a send a hook drops is no send: the answer goes back in the box and no send is left recorded', async ($, on) => {
+    const { files, filled, submitted } = world($, on, announced(), {
+      drops: 'held by another plugin',
+    })
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'return', in: 'gate' })
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(submitted).toEqual(['yes'])
+    expect(filled, 'picked, cleared to send, put back').toEqual(['yes', '', 'yes'])
+    expect(sentIn(files)).toBeNull()
+    expect(await backgroundOf(ui, COMMIT), 'the pick holds').toBe('diffAddedDimmed')
+
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(submitted, 'a press retries').toEqual(['yes', 'yes'])
 
     await ui.unmount()
   })
@@ -923,6 +1102,29 @@ describe('register', () => {
     await ui.key({ key: 'return', in: 'gate' })
 
     expect(filled).toEqual(['2'])
+
+    await ui.unmount()
+  })
+
+  test('the arrows wrap round the rows', async ($, on) => {
+    const { filled } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'up', in: 'gate' })
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(filled, 'up from the first row lands on the last').toEqual(['2'])
+
+    await ui.key({ key: 'down', in: 'gate' })
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(filled, 'down from the last row lands on the first').toEqual([
+      '2',
+      'yes',
+    ])
 
     await ui.unmount()
   })
@@ -996,6 +1198,21 @@ describe('register', () => {
     await ui.unmount()
   })
 
+  test("a row's own key picks it where the key column shows a word, wherever the cursor is", async ($, on) => {
+    const { filled } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await ui.key({ key: 'down', in: 'gate' })
+    await ui.key({ key: 'y', in: 'gate' })
+
+    expect(filled, 'the y of yes').toEqual(['yes'])
+
+    await ui.unmount()
+  })
+
   test('a click lands on the row under it: the second row sits on the sixth line', async ($, on) => {
     const { filled } = world($, on, announced())
 
@@ -1006,6 +1223,23 @@ describe('register', () => {
     await ui.pointer({ type: 'down', x: 4, y: 5, button: 'left', in: 'gate' })
 
     expect(filled).toEqual(['2'])
+
+    await ui.unmount()
+  })
+
+  test('the button coming up after a click does nothing more: a click picks once, never sends', async ($, on) => {
+    const { filled, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+    const y = await lineOf(ui, COMMIT)
+
+    await ui.pointer({ type: 'down', x: 4, y, button: 'left', in: 'gate' })
+    await ui.pointer({ type: 'up', x: 4, y, button: 'left', in: 'gate' })
+
+    expect(filled).toEqual(['yes'])
+    expect(submitted).toEqual([])
 
     await ui.unmount()
   })
@@ -1062,6 +1296,12 @@ describe('register', () => {
     await click(ui, COMMIT)
 
     calls.length = 0
+
+    await hover(ui, COMMENT.description)
+
+    expect(await footerOf(ui), 'resting on it says nothing').toMatch(
+      /^yes is in your prompt/,
+    )
 
     await click(ui, COMMENT.description)
 
@@ -1132,6 +1372,37 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
+  test('a /clear takes the gate off the band, leaving no row of it to press', async ($, on) => {
+    const { calls } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await click(ui, COMMIT)
+
+    calls.length = 0
+
+    await $.session.end(CLEARED)
+
+    expect(calls).toEqual(['invalidate'])
+    expect(await ui.find({ type: 'Client', key: 'gate' })).toBeUndefined()
+    expect(await isDrawn($)).toBe(false)
+
+    await ui.unmount()
+  })
+
+  test('a background turn after a /clear brings back no gate from before it', async ($, on) => {
+    world($, on, announced())
+
+    await presented($)
+    await $.session.end(CLEARED)
+    await submitFrom($, { kind: 'task-notification' })
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
   test('an Esc on the turn a press opened puts its gate back, unpicked', async ($, on) => {
     world($, on, announced())
 
@@ -1166,7 +1437,7 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(true)
   })
 
-  test('an Esc after the answer rendered the next gate drops it and puts the answered one back', async ($, on) => {
+  test('an Esc after the answer rendered the next gate leaves the band empty', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1177,12 +1448,40 @@ describe('register', () => {
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(INTERRUPTED)
 
-    const ui = await $.ui.mount(MOUNT)
+    expect(await isDrawn($), 'neither the answered gate nor the half-rendered one').toBe(false)
+  })
 
-    expect(await lineOf(ui, COMMIT), 'the gate the person answered').toBeGreaterThan(0)
-    expect(await lineOf(ui, 'Start "Billing"'), 'not the one half-rendered').toBe(-1)
+  test('an Esc once the answer called any tool, a read as much as a write, leaves the band empty', async ($, on) => {
+    world($, on, announced())
 
-    await ui.unmount()
+    await presented($)
+    await submitFrom($, { kind: 'composer' }, 'yes')
+    await $.tool.call(READ_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test("an Esc after a subagent's tool call alone still puts the answered gate back", async ($, on) => {
+    world($, on, announced())
+
+    await presented($)
+    await submitFrom($, { kind: 'composer' }, 'yes')
+    await $.tool.call(SUBAGENT_READ)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('an Esc on a turn the person did not start brings back the gate they never answered, whatever it called', async ($, on) => {
+    world($, on, announced())
+
+    await presented($)
+    await submitFrom($, { kind: 'task-notification' })
+    await $.tool.call(READ_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(await isDrawn($)).toBe(true)
   })
 
   test('a turn the person did not start, ending with no gate, puts the gate back', async ($, on) => {
