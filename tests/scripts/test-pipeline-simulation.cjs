@@ -63,6 +63,7 @@ const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
+const { auditGate } = require('./gate-audit.cjs');
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -228,54 +229,12 @@ function auditState(dir, label) {
 // The gate payload
 // ---------------------------------------------------------------------------
 
-const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
-
-// The rows a MENU draws, read back out of the markdown: a code span is a key
-// the user types (an en dash in it makes it a span, which is typed rather
-// than pressed), bare bold before an arrow is a prompt row, and the glyphed
-// question is chrome.
-/** @param {string[]} lines @returns {{keys: string[], typed: string[]}} */
-function menuRows(lines) {
-  /** @type {string[]} */ const keys = [];
-  /** @type {string[]} */ const typed = [];
-  for (const line of lines) {
-    if (line.startsWith('**`◆ ')) continue;
-    const code = /^\*\*`([^`]+)`\*\*(?:\s*→|$)/.exec(line);
-    if (code) {
-      if (code[1].includes('–')) typed.push(code[1]);
-      else keys.push(code[1].split('/')[0]);
-      continue;
-    }
-    const prompt = /^\*\*([^*`]+)\*\*\s+→/.exec(line);
-    if (prompt) typed.push(prompt[1]);
-  }
-  return { keys, typed };
-}
-
 // With the gate surface announced, the same render states its menu as data
-// directly above the markdown. The payload has to be the rows the menu draws,
-// in order — a surface drawing the gate from it would otherwise offer a
-// different menu from the one the text carries.
+// directly above the markdown, and that data has to be the whole menu.
 /** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @returns {void} */
 function auditGatePayload(sim, args, identity) {
-  const label = `render ${args.join(' ')} — gate payload`;
   const env = { ...sim.envOf(identity), WORKFLOWS_GATE_SURFACE: '1' };
-  const lines = engine.run(['render', ...args], { cwd: sim.dir, env }).stdout.split('\n');
-
-  const menuAt = lines.findIndex((l) => l.startsWith('=== MENU'));
-  if (menuAt === -1) {
-    assert.ok(!lines.includes(GATE_MARKER), `[${label}] a response with no menu carries no gate`);
-    return;
-  }
-  assert.strictEqual(lines[menuAt - 2], GATE_MARKER, `[${label}] the payload does not sit directly above its menu`);
-
-  const gate = JSON.parse(lines[menuAt - 1]);
-  const end = lines.findIndex((l, i) => i > menuAt && l.startsWith('=== '));
-  const drawn = menuRows(lines.slice(menuAt + 1, end === -1 ? lines.length : end));
-  assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), drawn.keys,
-    `[${label}] the payload's keys are not the menu's`);
-  assert.deepStrictEqual(gate.typed.map((/** @type {{label: string}} */ t) => t.label), drawn.typed,
-    `[${label}] the payload's typed rows are not the menu's`);
+  auditGate(engine.run(['render', ...args], { cwd: sim.dir, env }).stdout, `render ${args.join(' ')} — gate payload`);
 }
 
 // ---------------------------------------------------------------------------
@@ -3830,6 +3789,8 @@ describe('pipeline simulation', () => {
     // shape: refuse anything but the two answers, write once, and stay
     // recorded. Its screens are content, so they render at any state.
     assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
+    // Screen 2 draws the start menu as its sample; the gate it stops at is its own.
+    assert.match(sim.render(['walkthrough-screen', '--screen', '2', '--from', 'help'], { expect: 'content' }), /n\/next/);
     assert.match(sim.render(['walkthrough-home'], { expect: 'content' }), /What would you like to do\?/);
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
     sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
