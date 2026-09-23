@@ -920,15 +920,15 @@ function markHeldEntries(numbered, held, codeHeld = []) {
   }
 }
 
+/** @typedef {{presence?: PresenceRow[], codeHeld?: (PresenceRow & {work_unit: string})[]}} MenuOpts */
+
 /**
- * Section C — the interactive menu. `keys` carries the machine action keys
- * (skills route on these); `rendered` is the dotted-gate markdown block.
- * @param {string} workUnit
- * @param {EpicDetail} detail
- * @param {{presence?: PresenceRow[], codeHeld?: (PresenceRow & {work_unit: string})[]}} [opts]
- * @returns {{keys: MenuKey[], rendered: string}}
+ * Section C's entries, keyed and ordered: the numbered rows (recommendation
+ * leading) and the command options after them.
+ * @param {string} workUnit @param {EpicDetail} detail @param {MenuOpts} opts
+ * @returns {{numbered: MenuKey[], options: MenuKey[]}}
  */
-function epicMenu(workUnit, detail, opts = {}) {
+function menuEntries(workUnit, detail, opts) {
   const hasMap = detail.discovery_map.length > 0;
   const held = heldSessions(opts.presence);
 
@@ -988,7 +988,28 @@ function epicMenu(workUnit, detail, opts = {}) {
   }
 
   numbered.forEach((e, i) => { e.key = String(i + 1); });
+  return { numbered, options };
+}
 
+/**
+ * The machine action keys Section C offers, in menu order, without drawing
+ * the menu — a gate over one entry reads these and stops at its own.
+ * @param {string} workUnit @param {EpicDetail} detail @param {MenuOpts} [opts]
+ * @returns {MenuKey[]}
+ */
+function epicMenuKeys(workUnit, detail, opts = {}) {
+  const { numbered, options } = menuEntries(workUnit, detail, opts);
+  return [...numbered, ...options];
+}
+
+/**
+ * Section C — the interactive menu. `keys` carries the machine action keys
+ * (skills route on these); `rendered` is the dotted-gate markdown block.
+ * @param {string} workUnit @param {EpicDetail} detail @param {MenuOpts} [opts]
+ * @returns {{keys: MenuKey[], rendered: string}}
+ */
+function epicMenu(workUnit, detail, opts = {}) {
+  const { numbered, options } = menuEntries(workUnit, detail, opts);
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
     // The word names what holds the row: `code session` for the checkout's
@@ -1328,4 +1349,4 @@ function epicUnblockMenu(detail) {
   return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };
+module.exports = { epicDashboard, epicKey, epicMenu, epicMenuKeys, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };

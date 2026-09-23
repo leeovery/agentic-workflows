@@ -14,7 +14,7 @@
 
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { menuFrame, cmdOption, bulletRow } = require('./surfaces.cjs');
+const { menuFrame, cmdOption, bulletRow, optionDetail } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -33,7 +33,6 @@ const { menuFrame, cmdOption, bulletRow } = require('./surfaces.cjs');
 
 const TITLE = 'Specification Overview';
 
-// Meta-option description wrap budget — matches the shipped menu examples.
 // Meta-option description wrap budget: the tree width less the 3-space
 // indent (and a column of margin).
 const DESC_WIDTH = TREE_WIDTH - 4;
@@ -267,9 +266,9 @@ function specificationDisplay(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
-/** Meta-option description lines: 3-space indent, italic — the menu metadata register. @param {string} text */
+/** A meta option's description at the menu's description width. @param {string} text */
 function descLines(text) {
-  return wrap(text, DESC_WIDTH).map((seg) => `   *${seg}*`);
+  return optionDetail(text, DESC_WIDTH);
 }
 
 /** @param {SpecRow} row @param {'groupings'|'specs-menu'} scenario */
