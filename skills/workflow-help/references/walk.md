@@ -16,7 +16,7 @@ Eight screens, one at a time, each ending on its own menu. `screen` starts at 1.
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-screen --screen {screen} --from {origin}
 ```
 
-Emit the response's sections in the order they arrive, each per its own marker: the `TITLE` verbatim as markdown, each `DISPLAY: walkthrough prose` section verbatim as markdown (not a code block), each `DISPLAY: walkthrough diagram` section verbatim as a code block, then the `MENU: walkthrough screen` section verbatim as markdown (not a code block). Prose and diagram sections alternate and repeat — emit each where it arrives, in the form its own marker names.
+Emit the response's sections in the order they arrive, each verbatim per its marker: the `TITLE`, each `DISPLAY: walkthrough prose` and `DISPLAY: walkthrough diagram` section, then the `MENU: walkthrough screen` section. Prose and diagram sections alternate and repeat — emit each where it arrives.
 
 **STOP.** Wait for user response.
 
@@ -100,7 +100,7 @@ The menu alone — never the whole screen again:
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-screen --screen {screen} --from {origin} --menu-only
 ```
 
-Emit the `MENU: walkthrough screen` section verbatim as markdown (not a code block).
+Emit the `MENU: walkthrough screen` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

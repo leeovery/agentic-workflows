@@ -76,13 +76,13 @@ Write the candidate list to `.workflows/.cache/{work_unit}/legacy-split/{current
 {"source": "{current_source}", "themes": [{"kebab_name": "…", "summary": "…"}]}
 ```
 
-Fetch the display and emit its `DISPLAY: legacy split candidates` section verbatim as markdown (not a code block):
+Fetch the display and emit its `DISPLAY: legacy split candidates` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant candidates --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/candidates.json
 ```
 
-Fetch the gate and emit its `MENU: legacy split themes gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: legacy split themes gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant themes
@@ -180,13 +180,13 @@ For each theme in `plan.json`, read the cache file, count paragraphs (blank-line
 {"source": "{current_source}", "work_unit": "{work_unit}", "themes": [{"kebab_name": "…", "summary": "…", "paragraph_count": 3, "content_preview": "…"}]}
 ```
 
-Fetch the display and emit its `DISPLAY: legacy split plan` section verbatim as a code block:
+Fetch the display and emit its `DISPLAY: legacy split plan` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant plan --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/plan-display.json
 ```
 
-Fetch the gate and emit its `MENU: legacy split plan gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: legacy split plan gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant plan
@@ -250,7 +250,7 @@ Write the errors to `.workflows/.cache/{work_unit}/legacy-split/{current_source}
 {"source": "{current_source}", "errors": ["…"]}
 ```
 
-Fetch the display and emit its `DISPLAY: legacy split errors` section verbatim as a code block:
+Fetch the display and emit its `DISPLAY: legacy split errors` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant errors --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/errors.json
@@ -396,7 +396,7 @@ User specifies `theme_name`. Confirm before destructive removal:
 > Removing "{theme_name}" drops its drafted content — gone unless another theme has already reabsorbed it.
 ```
 
-Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove

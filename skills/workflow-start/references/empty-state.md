@@ -17,11 +17,11 @@ node .claude/skills/workflow-start/scripts/gateway.cjs view
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: state flags, counts, and the `ACTIONS` table — one line per menu key, `key  action  work_unit  → route`, with `(pre_seed: …)` markers on start-new entries. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the empty-state overview. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the start menu. Emit verbatim as markdown (not a code block).
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
+- **DISPLAY** — the empty-state overview. Emit verbatim per its marker. Never redraw, reflow, or trim it.
+- **MENU** — the start menu. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the signpost blockquote below, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE and DISPLAY sections verbatim per their markers, then the signpost blockquote below, then the MENU section verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 > *Output the next fenced block as markdown (not a code block):*
 

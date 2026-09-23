@@ -27,7 +27,7 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 > The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: no workflow runs until it is initialised. Your machine already has a system configuration this project can reuse.
 ```
 
-Fetch the gate and emit its `MENU: knowledge reuse gate` section verbatim as markdown (not a code block). When `system_config` names a provider, pass it — and its model when one is named:
+Fetch the gate and emit its `MENU: knowledge reuse gate` section verbatim per its marker. When `system_config` names a provider, pass it — and its model when one is named:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant reuse --provider {system_config.provider} --model {system_config.model}
@@ -55,7 +55,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
 
 A per-project deviation never touches the system-wide configuration. Keyword-only is the per-project mode; a different *provider* is a system-wide decision — the wizard's job.
 
-Fetch the gate and emit its `MENU: knowledge deviate gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: knowledge deviate gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant deviate
@@ -83,7 +83,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 > Pick how this project's knowledge base should search. OpenAI needs an API key — stored in your terminal, never pasted here. Keyword-only needs no key and can be upgraded anytime.
 ```
 
-Fetch the gate and emit its `MENU: knowledge mode gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: knowledge mode gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant mode
@@ -182,7 +182,7 @@ this chat — run this in your terminal, then come back:
 > Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.
 ```
 
-Fetch the gate and emit its `MENU: knowledge retry gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: knowledge retry gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant retry

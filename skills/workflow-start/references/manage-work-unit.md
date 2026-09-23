@@ -17,10 +17,10 @@ node .claude/skills/workflow-start/scripts/gateway.cjs manage
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: `unit_count`, the project `baseline` status, and the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the menu.
-- **MENU** — the work units as a numbered pick list, then the baseline and back rows. Emit verbatim as markdown (not a code block).
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the menu.
+- **MENU** — the work units as a numbered pick list, then the baseline and back rows. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown), then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the MENU section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **STOP.** Wait for user response.
 
@@ -51,7 +51,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs manage {selected.name}
 The response carries demarcated sections:
 
 - **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_plan`, `absorb_available`, …), `available_epics`, `planning_topics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
-- **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim as markdown (not a code block) at this section's gate below.
+- **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim per its marker at this section's gate below.
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -12,7 +12,7 @@ The cards, read one at a time: what a word means, where it is met, and what to d
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topics
 ```
 
-Read the `DATA` section to reason from — its `CARDS` table gives one `key  name` row per card, and the `name` is the slug the card is fetched by. Never display that section, and never take a slug from a menu label: a card's title does not determine it. Then emit the `TITLE` section verbatim as markdown and the `MENU: walkthrough topics` section verbatim as markdown (not a code block).
+Read the `DATA` section to reason from — its `CARDS` table gives one `key  name` row per card, and the `name` is the slug the card is fetched by. Never display that section, and never take a slug from a menu label: a card's title does not determine it. Then emit the `TITLE` and `MENU: walkthrough topics` sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -42,7 +42,7 @@ Answer it per **[answering-how-it-works.md](../../workflow-shared/references/ans
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug}
 ```
 
-Emit the response's sections in the order they arrive, each per its own marker: the `TITLE` verbatim as markdown, each `DISPLAY: walkthrough prose` section verbatim as markdown (not a code block), each `DISPLAY: walkthrough diagram` section verbatim as a code block. Then fetch the card's menu:
+Emit the response's sections in the order they arrive, each verbatim per its marker: the `TITLE`, then each `DISPLAY: walkthrough prose` and `DISPLAY: walkthrough diagram` section. Then fetch the card's menu:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug} --menu-only
@@ -72,7 +72,7 @@ Answer it per **[answering-how-it-works.md](../../workflow-shared/references/ans
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug} --menu-only
 ```
 
-Emit the `MENU: walkthrough card` section verbatim as markdown (not a code block).
+Emit the `MENU: walkthrough card` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

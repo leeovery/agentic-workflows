@@ -29,11 +29,11 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 The output is one snapshot in four demarcated sections:
 
 - **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` / `(code session: …)` markers. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
+- **DISPLAY** — the dashboard and key. Emit verbatim per its marker. Never redraw, reflow, or trim it.
+- **MENU** — the selection menu. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **STOP.** Wait for user response.
 
@@ -161,7 +161,7 @@ Render the completed-topics list and pick menu:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs completed-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -185,7 +185,7 @@ Render the cancellable-topics list and pick menu — one row per unit, a topic (
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -247,7 +247,7 @@ Render the cancelled-topics list and pick menu — one row per cancelled unit, e
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs reactivate-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -295,7 +295,7 @@ A dep-blocked plan carries no implementation row — this is its escape hatch. R
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs unblock-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 

@@ -59,7 +59,7 @@ Read `=== DATA` to reason from (never display it) — a per-name flag row for ea
 - `legal_horizon=false` — the release word itself carries a dot or slash ("v1.5"). Respell it with the user's blessing at the gate ("v1-5", "v15") and re-run — the persist refuses it as written.
 - `new_horizon=true` — informational: the horizon will be created at persist, in the file's order.
 
-Emit the `=== DISPLAY` section verbatim **as a code block** — the proposed items over the existing roadmap, so the full picture is visible.
+Emit the `=== DISPLAY` section verbatim per its marker — the proposed items over the existing roadmap, so the full picture is visible.
 
 Then fetch the gate and emit its section verbatim per its marker:
 
