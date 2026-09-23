@@ -58,6 +58,7 @@
       "roadmap state",
       "render horizon-pick",
       "render postpone-gate search-relevance.discovery.behavioural-ranking",
+      "agent scan search-relevance discussion behavioural-ranking",
       "topic postpone search-relevance behavioural-ranking",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance"

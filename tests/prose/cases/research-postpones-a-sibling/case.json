@@ -57,6 +57,7 @@
       "render backlog-gate",
       "roadmap add",
       "workflow-roadmap/scripts/gateway.cjs",
+      "agent scan",
       "agent incorporate",
       "topic postpone search-relevance synonym-handling",
       "topic cancel",
