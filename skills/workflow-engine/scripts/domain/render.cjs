@@ -2258,13 +2258,13 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     return cmdOption(String(i + 1), null, `${c.name} [${discoveryLifecycleLabel(c.lifecycle, c.routing, c.research_state)}]`);
   });
   options.push(cmdOption('n', 'new', 'Create a new topic for it'));
-  const prompt = p.landing_phase === 'research'
+  const recommendation = p.landing_phase === 'research'
     ? 'It reads as an open question — I\'d land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).'
     : 'It reads as a decision to make — I\'d land it discussion-side. Reply with an option, appending a phase to override (e.g. `1 research`).';
   return section(
     'MENU: reroute candidates',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`**${p.concern}** belongs to a different topic, not this one.`, options, { question: 'Where should it land?', prompt }),
+    menu(`**${p.concern}** belongs to a different topic, not this one. ${recommendation}`, options, { question: 'Where should it land?' }),
   );
 }
 

@@ -298,26 +298,21 @@ function glyphed(text) {
 }
 
 /**
- * Framed menu for the common shape: contextual label, blank line, options,
- * optional trailing prompt line separated by a blank line. A label that is
- * itself a short plain question carries the decision glyph; any other label
- * is a statement, and the ask rides `question` beneath it — the statement
- * stays context, the question takes the glyph.
+ * Framed menu for the common shape: contextual label, blank line, options.
+ * A label that is itself a short plain question carries the decision glyph;
+ * any other label is a statement, and the ask rides `question` beneath it —
+ * the statement stays context, the question takes the glyph.
  * @param {string} label @param {string[]} options
- * @param {{prompt?: string, question?: string}} [opts]
+ * @param {{question?: string}} [opts]
  * @returns {string}
  */
-function menu(label, options, { prompt, question } = {}) {
+function menu(label, options, { question } = {}) {
   const lines = label ? [label, ''] : [];
   if (question) lines.push(glyphed(question), '');
   // Everything above the options is head chrome — never scanned for the
   // arrow column, so a label quoting model text cannot shift the options.
-  // The trailing prompt line IS scanned: it stays an engine-authored
-  // constant by convention, and skip is a prefix count by shape.
   const skip = lines.length;
-  lines.push(...options);
-  if (prompt) lines.push('', prompt);
-  return menuFrame(lines, { skip });
+  return menuFrame([...lines, ...options], { skip });
 }
 
 /**
