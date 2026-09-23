@@ -14,7 +14,7 @@ const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kerne
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { section, menu, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
 
@@ -1112,11 +1112,11 @@ function groupOf(row) {
  * two columns off it, the shape every engine list shares. Picker rows are
  * list rows: the `[tag]` rides inline rather than columnising, matching the
  * inbox pickup. When rows exist but every one is locked, the menu opens on
- * `allLocked` — a statement in the question's place, the rows carrying
- * their reasons — over `b/back` alone.
+ * `allLocked` — a statement, the rows carrying their reasons — and asks
+ * what next over `b/back` alone.
  * @param {string} title     the view's chrome heading (TITLE section)
  * @param {string} empty     the display's stand-in when there are no rows
- * @param {string} question  the pick menu's first line
+ * @param {string} question  the pick menu's question
  * @param {string} action    the numbered entries' action key
  * @param {SubViewRow[]} rows  display order; grouped by contiguous `group` runs
  * @param {{allLocked?: string}} [opts]
@@ -1153,17 +1153,13 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
   });
   const statement = rows.length > 0 && keys.length === 0 ? allLocked : undefined;
   keys.push(backKey());
-
-  const menuLines = [statement ?? question, ''];
-  for (const k of keys) {
-    menuLines.push(cmdOption(k.key, k.word, k.label));
-  }
+  const options = keys.map((k) => cmdOption(k.key, k.word, k.label));
 
   return {
     keys,
     title,
     display: (rows.length ? displayLines.join('\n') : empty) + '\n',
-    rendered: menuFrame(menuLines, { glyphLabel: statement === undefined }),
+    rendered: statement ? menu(statement, options, { question: 'What next?' }) : menu(question, options),
   };
 }
 

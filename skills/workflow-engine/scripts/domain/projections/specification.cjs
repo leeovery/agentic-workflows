@@ -370,7 +370,7 @@ function specificationMenu(detail) {
     });
   }
 
-  const lines = [];
+  const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
     lines.push(cmdOption(e.key, null, e.label));
     if (e.desc) lines.push(...e.desc);
@@ -378,7 +378,6 @@ function specificationMenu(detail) {
   for (const o of options) {
     lines.push(cmdOption(o.key, o.word, o.label));
   }
-  lines.push('', 'Select an option:');
 
   return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }

@@ -107,15 +107,15 @@ engine.project.startMenu(detail)                  // → { keys, rendered } — 
 engine.project.emptyOverview(detail)              // → empty-state overview block
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies
-engine.project.archivedView(items)                // → { data, display, menu } — archived store snapshot bodies
+engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
 engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
-engine.project.workingSetAddGate(ws)              // → add-candidates display + add-gate menu — the gateway working-set-add-gate verb
-engine.project.workingSetDropGate(ws)             // → drop-candidates display + drop-gate menu — the gateway working-set-drop-gate verb
-engine.project.manageListView(detail)             // → { data, display, menu, rows } — manage selection snapshot
+engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb
+engine.project.workingSetDropGate(ws)             // → MENU: drop gate, the set's items as its rows — the gateway working-set-drop-gate verb
+engine.project.manageListView(detail)             // → { data, menu, rows } — manage selection snapshot, the units as the menu's rows
 engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
 engine.project.planTopicsMenu(md)                 // → MENU: plan topics — the render plan-topics surface
-engine.project.completedView(detail, filter)      // → { data, display, menu, rows } — completed & cancelled snapshot
+engine.project.completedView(detail, filter)      // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing matches
 engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)

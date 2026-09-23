@@ -94,6 +94,7 @@ function resolveAddress(cwd, dotpath, surface) {
 // ---------------------------------------------------------------------------
 
 const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const RESUME_QUESTION = 'How would you like to proceed?';
 
 /**
  * The resume-menu family. The default renders the shared phase-resume menu;
@@ -126,6 +127,7 @@ function resumeGate(cwd, args) {
         cmdOption('c', 'continue', 'Pick up where you left off'),
         cmdOption('r', 'restart', 'Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)'),
       ],
+      { question: RESUME_QUESTION },
     ));
   }
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
@@ -139,6 +141,7 @@ function resumeGate(cwd, args) {
       return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
         `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
         [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
+        { question: RESUME_QUESTION },
       ));
     }
     // Partial fill is a real state — define-phases advances `phase` and nulls
@@ -157,6 +160,7 @@ function resumeGate(cwd, args) {
         cmdOption('c', 'continue', 'Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.'),
         cmdOption('r', 'restart', 'Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.'),
       ],
+      { question: RESUME_QUESTION },
     ));
   }
   if (variant === 'review') {
@@ -172,13 +176,14 @@ function resumeGate(cwd, args) {
           cmdOption('c', 'continue', `Review the ${unreviewed} unreviewed tasks`),
           cmdOption('r', 'restart', `Delete review, re-review all ${completed} tasks`),
         ],
+        { question: RESUME_QUESTION },
       ));
     }
     const label = `Found existing review for **${t}**.` + (reviewed !== null ? `\nAll ${completed} tasks have been reviewed.` : '');
     return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(label, [
       cmdOption('c', 'continue', 'Continue from current review state'),
       cmdOption('r', 'restart', 'Delete review, start fresh'),
-    ]));
+    ], { question: RESUME_QUESTION }));
   }
   if (variant === 'scoping') {
     return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
@@ -187,6 +192,7 @@ function resumeGate(cwd, args) {
         cmdOption('c', 'continue', 'Adjust the existing spec and plan'),
         cmdOption('r', 'restart', 'Erase the spec, plan, and task files, then rescope from scratch'),
       ],
+      { question: RESUME_QUESTION },
     ));
   }
   const parts = [];
@@ -208,7 +214,7 @@ function resumeGate(cwd, args) {
     menu(`Found existing ${phase} for **${titlecase(topic)}**.`, [
       cmdOption('c', 'continue', 'Pick up where you left off'),
       cmdOption('r', 'restart', `Delete the ${phase} and start fresh`),
-    ]),
+    ], { question: RESUME_QUESTION }),
   ));
   return parts.join('\n');
 }
@@ -1966,7 +1972,7 @@ function rerouteOffer(cwd, { dotpath, file }) {
     menu(label, [
       cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
       cmdOption('k', 'keep', 'Keep it here as part of this topic'),
-    ]),
+    ], { question: 'Where should it live?' }),
   );
 }
 
@@ -2101,9 +2107,8 @@ function perspectiveOffer(cwd, { dotpath, file }) {
 // epic and feature sessions alike: the shape is one gate, and the count is
 // the session's own (this session's dispatches, an earlier session's dead
 // rows already closed), so it rides as a scalar flag rather than being
-// re-derived. A statement-headed route menu — the opening line reports what
-// is still running, and there is no yes to answer — so it stays context
-// rather than flickering into a glyphed label as the count changes.
+// re-derived. The opening line reports what is still running; the ask
+// beneath it is fixed.
 
 /**
  * @param {string} cwd
@@ -2119,12 +2124,14 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
   }
-  return section('MENU: in-flight agents gate', STOP_FOR_RESPONSE, menuFrame([
+  return section('MENU: in-flight agents gate', STOP_FOR_RESPONSE, menu(
     n === 1 ? 'There is still 1 background agent working.' : `There are still ${n} background agents working.`,
-    '',
-    cmdOption('w', 'wait', 'Wait for results before concluding'),
-    cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
-  ], { glyphLabel: false }));
+    [
+      cmdOption('w', 'wait', 'Wait for results before concluding'),
+      cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
+    ],
+    { question: 'Wait, or conclude now?' },
+  ));
 }
 
 // review-findings-gate — the discussion conclusion's drain offer over a
@@ -2194,7 +2201,7 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
   return section(
     'MENU: off-topic offer',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`**${p.concern}** is beyond this topic's scope.`, options),
+    menu(`**${p.concern}** is beyond this topic's scope.`, options, { question: 'Where should it go?' }),
   );
 }
 
@@ -2257,7 +2264,7 @@ function rerouteCandidates(cwd, { dotpath, file }) {
   return section(
     'MENU: reroute candidates',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Where should "${p.concern}" land?`, options, { prompt }),
+    menu(`**${p.concern}** belongs to a different topic, not this one.`, options, { question: 'Where should it land?', prompt }),
   );
 }
 
@@ -2538,9 +2545,8 @@ function dismissedTopics(cwd, { dotpath }) {
 // triage-closed-target — the reroute's stop over a target no future session
 // will surface. The address names the target and the surface derives its
 // lifecycle with the same join every other map consumer uses, so the two
-// closed states cannot drift apart in the wording. A statement-headed route
-// menu: three destinations, no yes to answer, so the statement stays
-// context rather than flickering into a glyphed label as the name shortens.
+// closed states cannot drift apart in the wording. The statement names the
+// closed target; the ask beneath it is fixed.
 
 /**
  * @param {string} cwd
@@ -2566,13 +2572,11 @@ function triageClosedTarget(cwd, { dotpath }) {
   const reopen = lifecycle === 'handled'
     ? 'Reopen it and land the concern there — it returns to its name-matched lifecycle and counts as open again'
     : 'Reactivate it and land the concern there — the topic returns to its previous state and counts as open again';
-  return section('MENU: closed target gate', STOP_FOR_RESPONSE, menuFrame([
-    `"${topic}" is ${closed}, so it won't pick up rerouted concerns.`,
-    '',
+  return section('MENU: closed target gate', STOP_FOR_RESPONSE, menu(`"${topic}" is ${closed}, so it won't pick up rerouted concerns.`, [
     cmdOption('o', 'open', reopen),
     cmdOption('e', 'elsewhere', 'Pick a different target'),
     cmdOption('d', 'drop', 'Drop the reroute; the concern stays with the current topic'),
-  ], { glyphLabel: false }));
+  ], { question: 'Where should the concern land?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -2748,6 +2752,11 @@ function resolveExperiment(cwd, dotpath, surface) {
   return { workUnit, topic, rows };
 }
 
+/** The series' live top-level records, id order. @param {import('./projections/experiment.cjs').SeriesRow[]} rows */
+function liveExperiments(rows) {
+  return rows.filter((r) => isParentExperimentId(r.id) && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
+}
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
@@ -2776,14 +2785,19 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
 
 /**
  * The record picker — the several-live-records path, rendered directly
- * beneath the register it picks from.
+ * beneath the register it picks from. Refuses a series with no live
+ * top-level record — the pick has nothing to offer.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function experimentPickSurface(cwd, { dotpath }) {
-  resolveExperiment(cwd, dotpath, 'experiment-pick');
-  return experimentPick();
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-pick');
+  const live = liveExperiments(rows);
+  if (live.length === 0) {
+    throw new Error(`render experiment-pick: "${topic}"'s series holds no live experiments — there is nothing to pick`);
+  }
+  return experimentPick(live);
 }
 
 /**
@@ -2797,7 +2811,7 @@ function experimentPickSurface(cwd, { dotpath }) {
  */
 function experimentNextGateSurface(cwd, { dotpath }) {
   const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
-  const live = rows.filter((r) => isParentExperimentId(r.id) && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
+  const live = liveExperiments(rows);
   if (live.length === 0) {
     throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the bridge exit follows a finished series`);
   }
@@ -2891,15 +2905,12 @@ function summaryBackfillGate(cwd, { dotpath, variant, file }) {
   if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
     throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
   }
-  return section('MENU: unsourced topics gate', STOP_FOR_RESPONSE, menuFrame([
-    `${p.names.length} topic(s) have no source file to draft from:`,
-    '',
-    ...p.names.map((n) => `- ${titlecase(n)}`),
-    '',
+  const unsourced = [`${p.names.length} topic(s) have no source file to draft from:`, '', ...p.names.map((n) => `- ${titlecase(n)}`)];
+  return section('MENU: unsourced topics gate', STOP_FOR_RESPONSE, menu(unsourced.join('\n'), [
     cmdOption('p', 'provide', "Tell me the summary for each and I'll write it"),
     cmdOption('d', 'dismiss', 'Write a minimal name-derived summary noting the missing source, so this stops re-prompting'),
     cmdOption('l', 'leave', 'Leave them unset; this flow re-offers next time'),
-  ]));
+  ], { question: 'How do you want to handle them?' }));
 }
 
 /**
@@ -3091,7 +3102,7 @@ function planContextGate(cwd, { dotpath }) {
   if (isFilled(status)) {
     throw new Error(`render plan-context-gate: planning item "${topic}" is ${status} — the context offer opens a fresh plan`);
   }
-  return section('MENU: plan context gate', STOP_FOR_RESPONSE, menu('Any additional context since the specification was completed?', [
+  return section('MENU: plan context gate', STOP_FOR_RESPONSE, menu('Any new context since the specification was completed?', [
     cmdOption('c', 'continue', 'Continue with the specification as-is'),
     promptOption('Add context', 'Tell me the priorities, constraints, or new considerations'),
   ]));
@@ -3206,7 +3217,7 @@ function planFormatSelect(cwd, file) {
       throw new Error('render plan-format-gate: every format needs a non-empty "name" and "label"');
     }
   }
-  return section('MENU: plan format select', STOP_FOR_RESPONSE, menu('Select an output format:',
+  return section('MENU: plan format select', STOP_FOR_RESPONSE, menu('Which output format?',
     formats.map((f, i) => cmdOption(String(i + 1), null, f.label))));
 }
 
@@ -3267,7 +3278,7 @@ function planReviewGate(cwd, { dotpath, variant }) {
 // unit that is not a quick-fix, or one already promoted, is a gate over
 // nothing. The second is the onward route a promotion opens — research or
 // discussion, offered only to the types that have the choice, the read that
-// leans one way the session's own and a statement rather than an ask.
+// leans one way the session's own and a statement above the fixed ask.
 
 /**
  * @param {string} cwd
@@ -3320,12 +3331,10 @@ function firstPhaseGate(cwd, { dotpath, file }) {
   if (/\n/.test(read)) {
     throw new Error('render first-phase-gate: "read" must be a single line — it becomes the menu\'s statement label');
   }
-  return section('MENU: first phase gate', STOP_FOR_RESPONSE, menuFrame([
-    read,
-    '',
+  return section('MENU: first phase gate', STOP_FOR_RESPONSE, menu(read, [
     cmdOption('r', 'research', 'Explore feasibility and options first, no decisions yet'),
     cmdOption('d', 'discussion', 'Ready to discuss and make decisions'),
-  ], { glyphLabel: false, skip: 2 }));
+  ], { question: 'Which phase first?' }));
 }
 
 // correction-gate — the consent stop before editing another work unit's
@@ -4401,7 +4410,7 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
       '',
       cmdOption('y', 'yes', 'Proceed anyway'),
       cmdOption('b', 'back', 'Return to menu'),
-    ], { glyphLabel: false }),
+    ]),
   );
 }
 
@@ -5734,7 +5743,7 @@ function baselineDocPickSurface(cwd, _args) {
   if (d.status !== 'completed') {
     throw new Error(`render baseline-doc-pick: the baseline is "${d.status}", not completed`);
   }
-  return baselineDocPick();
+  return baselineDocPick(d);
 }
 
 // ---------------------------------------------------------------------------

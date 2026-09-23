@@ -14,7 +14,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
-const { menuFrame, cmdOption } = require('./surfaces.cjs');
+const { menu, menuFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -151,15 +151,11 @@ function workUnitMenu(type, unit) {
   if (unit.finalising || revisitable.length > 0) {
     const options = [cmdOption('y', 'yes', keys[0].label)];
     if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
-    // The statement is context above an explicit question — suppress the
-    // frame's label glyph or a short work-unit name earns a second diamond.
-    rendered = menuFrame([
+    rendered = menu(
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.triage_phases || []).length > 0 ? ' · triage waiting' : ''}.`,
-      '',
-      '**`◆ Proceed?`**',
-      '',
-      ...options,
-    ], { glyphLabel: false });
+      options,
+      { question: 'Proceed?' },
+    );
   }
 
   return { keys, rendered };

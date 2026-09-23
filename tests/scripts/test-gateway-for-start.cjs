@@ -548,13 +548,9 @@ describe('workflow-start sub-view sections', () => {
 
   it('every list sub-view carries its heading as TITLE, above a display that opens on the list', () => {
     createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
-    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
-    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
 
     for (const [args, title, firstDisplayLine] of /** @type {[string[], string, string][]} */ ([
       [['inbox'], 'Inbox', 'Bugs'],
-      [['manage'], 'Manage', 'Features'],
-      [['completed'], 'Completed & Cancelled', 'Completed'],
       [['working-set', '.workflows/.inbox/bugs/2026-06-01--login-timeout.md'], 'Working Set (1 item)', '  └─ Login Timeout [bug]'],
     ])) {
       const out = run(args);
@@ -564,6 +560,27 @@ describe('workflow-start sub-view sections', () => {
       assert.strictEqual(display.split('\n')[0], firstDisplayLine, `${args[0]}: ${out}`);
       assert.ok(!display.startsWith(title), `${args[0]} redraws its heading inside the fence: ${out}`);
     }
+  });
+
+  it('a pick sub-view lists its rows in the menu alone — TITLE then MENU, the display only when there is nothing to pick', () => {
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
+    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+
+    for (const [args, title, firstRow] of /** @type {[string[], string, string][]} */ ([
+      [['archived'], 'Archived', '**`1`**      → Old Idea — *idea, 2026-05-01*'],
+      [['manage'], 'Manage', '**`1`**          → Auth Flow — *feature*'],
+      [['completed'], 'Completed & Cancelled', '**`1`**      → Done Feat — *completed after review*'],
+    ])) {
+      const out = run(args);
+      assert.ok(out.includes(`=== TITLE (emit verbatim as markdown — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU (emit verbatim as markdown) ===\n`), `${args[0]}: ${out}`);
+      assert.ok(!out.includes('=== DISPLAY'), `${args[0]} draws a display beside its list: ${out}`);
+      assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
+    }
+
+    const empty = run(['completed', 'bugfix']);
+    assert.ok(empty.includes('=== DISPLAY (emit verbatim as a code block) ===\nNo completed or cancelled work units found.\n'), empty);
+    assert.ok(!empty.includes('=== MENU'), empty);
   });
 
   it('the view snapshot carries the baseline status in DATA and the resume row while in-progress', () => {
@@ -626,11 +643,11 @@ describe('workflow-start sub-view sections', () => {
       'the snapshot carries no gate sections');
 
     const add = run(['working-set-add-gate', ...set]);
-    assert.ok(add.includes('DISPLAY: add candidates') && add.includes('MENU: add gate'), add);
-    assert.ok(add.includes('Smart Retry [idea]'), 'candidates computed fresh from the same paths');
+    assert.ok(add.startsWith('=== MENU: add gate') && !add.includes('DISPLAY'), add);
+    assert.ok(add.includes('Smart Retry — *idea, 2026-06-02*'), 'candidates computed fresh from the same paths');
 
     const drop = run(['working-set-drop-gate', ...set]);
-    assert.ok(drop.includes('DISPLAY: drop candidates') && drop.includes('MENU: drop gate'), drop);
-    assert.ok(drop.includes('Login Timeout [bug]'), drop);
+    assert.ok(drop.startsWith('=== MENU: drop gate') && !drop.includes('DISPLAY'), drop);
+    assert.ok(drop.includes('Login Timeout — *bug*'), drop);
   });
 });

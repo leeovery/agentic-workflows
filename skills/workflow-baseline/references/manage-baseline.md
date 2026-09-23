@@ -44,7 +44,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-pick
 
 → Return to **A. Display and Menu**.
 
-**If the user names an area:**
+**If the user picked a doc:**
 
 Render the chosen `.workflows/.baseline/{area}.md` verbatim as markdown.
 

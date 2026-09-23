@@ -324,9 +324,9 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. A label-less selection menu carries the prompt as a trailing `Select an option:` line after the options instead — never both. Verb-based labels for selection menus.
+Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. **Every menu asks a question.** The question opens the options: the question, a blank line, then the options — always; the blank line is what marks the question as the menu's label. The ask is never a trailing `Select an option:` line after the options. Verb-based labels for selection menus.
 
-**The label carries the decision glyph.** A short plain label (≤60 characters, no markup, no template placeholders) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
+**The question carries the decision glyph.** A short plain question (≤60 characters, ending in `?`, no markup, no template placeholders) is wrapped as `**`◆ Question?`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). Anything the menu needs to say first — a longer line, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling — is a statement: it stays plain prose above the question, a blank line between, because markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`, whose menu frame refuses a menu with no glyphed question above its rows and a menu with no row to press; prose-authored menus mirror it by hand.
 
 **A yes/no gate asks its question.** When a menu's answer is yes/no (or yes/skip, yes/back — consent shapes), its glyphed label is a short question: `**`◆ Proceed?`**`, `**`◆ Mark it completed?`**`. The affirmative key is `y/yes`, never a verb synonym (proceed, approve, continue); the alternative keeps its honest verb where it names a destination (later, skip, back, keep — `proceed` on a reloop gate, where yes runs another cycle and the alternative moves on) and is `n/no` only for plain refusal. The rule holds in both directions: wherever a `y/yes` row exists, the diamond line is a glyphed question — the engine's menu frame refuses a `y/yes` row under anything else and an `n/no` row without its `y/yes`, whether the menu was grouped by `menu()` or composed by a projection, and the conventions lint (check 19) holds prose-authored menus to the same rule. When the situation needs explaining first, split it — the statement stays as plain prose context, a blank line, then the glyphed question, so the diamond rides the ask rather than the information:
 
@@ -340,7 +340,7 @@ Cancelling **Data Export** takes it off the board — nothing has started, so on
 **`n/no`**  → Return to menu
 ```
 
-Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu. The same statement/question split serves any menu whose opening needs both guidance and an ask — a conversational instruction line, a blank line, then the glyphed question (the working-set menu's shape).
+Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. The split serves every menu, not only consent gates: a route menu (several destinations, no yes to answer — the off-topic reroute family, the resume continue/restart gates) keeps its statement as context and asks beneath it (`**`◆ Where should it go?`**`, `**`◆ How would you like to proceed?`**`), and a conversational instruction line takes the statement's place where the opening needs guidance (the working-set menu's shape).
 
 **Options state their consequences.** A label says what choosing it does — a terse clause, weight scaled to the effect; a terminal or hard-to-reverse consequence is always named plainly, never softened into a display preference.
 
@@ -372,18 +372,19 @@ Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Te
 **Keep going** → Tell me what else to explore
 ```
 
-**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same format as command options so the menu has a unified visual style:
+**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same format as command options so the menu has a unified visual style, and the way back is a row of its own — never folded into the question or a prompt line:
 
 ```
 · · · · · · · · · · · ·
-**`1`** → Create "Auth Flow" — *completed spec, no plan*
-**`2`** → Continue "Data Model" — *plan in-progress*
-**`3`** → Review "Billing" — *plan completed*
+**`◆ Which topic?`**
 
-Select an option (enter number):
+**`1`**      → Create "Auth Flow" — *completed spec, no plan*
+**`2`**      → Continue "Data Model" — *plan in-progress*
+**`3`**      → Review "Billing" — *plan completed*
+**`b/back`** → Return to menu
 ```
 
-**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or ` — sub-detail`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display and reference it from a short prompt below, but this should be rare.
+**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or ` — sub-detail`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display above the menu that takes the pick, but this should be rare.
 
 **Yes/no prompt:**
 
