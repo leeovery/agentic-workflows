@@ -7,19 +7,42 @@
 
 const assert = require('node:assert');
 
+const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
 const MENU_RULE = '· · · · · · · · · · · ·';
 const NBSP = ' ';
 const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
+const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {{gate: string, question: string, statement: string, options: GateOption[], typed: GateTyped[]}} GatePayload */
-/** @typedef {{typed: boolean, name: string, text: string|null, detail: string|null}} DrawnRow */
+/** @typedef {{typed: boolean, name: string, text: string|null, struck: boolean, detail: string|null}} DrawnRow */
 
-/** Menu text as the payload states it: markup off, whitespace as one space. @param {string} text */
+/**
+ * Run an in-process render with the gate surface announced, the environment
+ * put back as it was.
+ * @template T @param {() => T} render @returns {T}
+ */
+function announced(render) {
+  const was = process.env[SURFACE_ENV];
+  process.env[SURFACE_ENV] = '1';
+  try {
+    return render();
+  } finally {
+    if (was === undefined) delete process.env[SURFACE_ENV];
+    else process.env[SURFACE_ENV] = was;
+  }
+}
+
+/**
+ * Menu text as the payload states it: a code span's content and an escaped
+ * character stay as text, every other marker comes off, whitespace runs as
+ * one space.
+ * @param {string} text
+ */
 function plainText(text) {
-  return text.replace(/\*\*|~~|[`*]/g, '').replace(/\s+/g, ' ').trim();
+  return text.replace(MARKUP, (_, code, escaped) => code ?? escaped ?? '').replace(/\s+/g, ' ').trim();
 }
 
 /** A payload detail as text — its line breaks are layout the MENU cannot show. @param {string|null} detail */
@@ -33,14 +56,24 @@ function detailText(detail) {
 /** @param {string} line @returns {DrawnRow|null} */
 function drawnRow(line) {
   const code = /^\*\*`([^`]+)`\*\*(?:\s*→ (.*)|$)/.exec(line);
-  if (code) return { typed: code[1].includes('–'), name: code[1], text: code[2] === undefined ? null : plainText(code[2]), detail: null };
+  if (code) {
+    const label = code[2];
+    return { typed: code[1].includes('–'), name: code[1], text: label === undefined ? null : plainText(label), struck: label?.includes('~~') ?? false, detail: null };
+  }
   const prompt = /^\*\*([^*`]+)\*\*\s+→ (.*)$/.exec(line);
-  return prompt ? { typed: true, name: prompt[1], text: plainText(prompt[2]), detail: null } : null;
+  return prompt ? { typed: true, name: prompt[1], text: plainText(prompt[2]), struck: false, detail: null } : null;
+}
+
+// Separators are presentation: a tail follows its head after a dash, a held
+// row's holder after a dot, and the payload states the words either way.
+/** @param {string|null} text */
+function words(text) {
+  return text === null ? null : text.replace(/ [—·] /g, ' | ');
 }
 
 /** The label an option draws, rebuilt from its payload row; null for a bare key. @param {GateOption} o */
 function optionText(o) {
-  if (o.head === o.word && o.tail === null) return null;
+  if (o.head === '' && o.tail === null) return null;
   return plainText([o.head, o.tail].filter((part) => part !== null).join(' — ') + (o.recommended ? ' (recommended)' : ''));
 }
 
@@ -86,8 +119,8 @@ function assertPayloadDrawsMenu(gate, body, label) {
   const typed = rows.filter((r) => r.typed);
   assert.deepStrictEqual(gate.options.map((o) => (o.word ? `${o.key}/${o.word}` : o.key)), keys.map((r) => r.name),
     `[${label}] the payload's keys are not the menu's`);
-  assert.deepStrictEqual(gate.options.map((o) => [optionText(o), detailText(o.detail)]), keys.map((r) => [r.text, r.detail]),
-    `[${label}] the payload's option labels and details are not the menu's`);
+  assert.deepStrictEqual(gate.options.map((o) => [words(optionText(o)), o.struck, detailText(o.detail)]), keys.map((r) => [words(r.text), r.struck, r.detail]),
+    `[${label}] the payload's option labels, strikes and details are not the menu's`);
   assert.deepStrictEqual(gate.typed.map((t) => [t.label, plainText(t.description), detailText(t.detail)]), typed.map((r) => [r.name, r.text, r.detail]),
     `[${label}] the payload's typed rows are not the menu's`);
 }
@@ -95,7 +128,8 @@ function assertPayloadDrawsMenu(gate, body, label) {
 /**
  * The GATE payload in an announced response, held against its MENU: it sits
  * directly above the first MENU and states the whole of it. Null when the
- * response carries no menu, which then carries no gate either.
+ * response carries no menu, which then carries no gate either, and when the
+ * menu draws nothing, which leaves nothing to state.
  * @param {string} out  the response's stdout
  * @param {string} label  what the assertion messages name
  * @returns {GatePayload|null}
@@ -107,11 +141,31 @@ function auditGate(out, label) {
     assert.ok(!lines.includes(GATE_MARKER), `[${label}] a response with no menu carries no gate`);
     return null;
   }
-  assert.strictEqual(lines[menuAt - 2], GATE_MARKER, `[${label}] the payload does not sit directly above its menu`);
-  const gate = JSON.parse(lines[menuAt - 1]);
   const end = lines.findIndex((l, i) => i > menuAt && l.startsWith('=== '));
-  assertPayloadDrawsMenu(gate, lines.slice(menuAt + 1, end === -1 ? lines.length : end), label);
+  const body = lines.slice(menuAt + 1, end === -1 ? lines.length : end);
+  if (lines[menuAt - 2] !== GATE_MARKER) {
+    assert.ok(!lines.includes(GATE_MARKER), `[${label}] the payload does not sit directly above its menu`);
+    assert.ok(body.every((l) => l === MENU_RULE || l.trim() === ''), `[${label}] a menu that draws rows or prose carries no payload`);
+    return null;
+  }
+  const gate = JSON.parse(lines[menuAt - 1]);
+  assertPayloadDrawsMenu(gate, body, label);
   return gate;
 }
 
-module.exports = { GATE_MARKER, auditGate };
+/**
+ * A render-surface caller that audits as it renders: every render that draws
+ * a menu is drawn again with the gate surface announced, and its payload held
+ * against that menu.
+ * @param {(dir: string, surface: string, args: object) => string} renderSurface
+ * @returns {(dir: string, surface: string, args: object) => string}
+ */
+function auditingRender(renderSurface) {
+  return (dir, surface, args) => {
+    const out = renderSurface(dir, surface, args);
+    if (out.includes('=== MENU')) auditGate(announced(() => renderSurface(dir, surface, args)), `render ${surface}`);
+    return out;
+  };
+}
+
+module.exports = { GATE_MARKER, announced, auditGate, auditingRender };

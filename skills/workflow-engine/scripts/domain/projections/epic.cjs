@@ -14,7 +14,7 @@ const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kerne
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { section, menu, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { section, menu, menuFrame, cmdOption, labelParts, callout } = require('./surfaces.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
 
@@ -26,6 +26,8 @@ const { buildOrderLive } = require('../build-order.cjs');
 /** @typedef {import('../epic-detail.cjs').ItemRef} ItemRef */
 /** @typedef {import('../epic-detail.cjs').UnitStage} UnitStage */
 /** @typedef {import('../epic-detail.cjs').CancelledUnit} CancelledUnit */
+/** @typedef {import('./surfaces.cjs').LabelParts} LabelParts */
+/** @typedef {import('./surfaces.cjs').OptionLabel} OptionLabel */
 
 /**
  * @typedef {object} NewArrivals
@@ -39,7 +41,7 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {string} action          machine action key — skills route on this, never the label
  * @property {string|null} topic
  * @property {string|null} route      skill invocation, or null for internal flows
- * @property {string} label
+ * @property {OptionLabel} label
  * @property {boolean} [recommended]
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
@@ -290,9 +292,15 @@ function heldTopicAges(presence) {
   return heldAgesIn(presence, SOURCE_PHASES);
 }
 
+/** A held row's in-session note, undefined for a row nobody holds. @param {number|undefined} age */
+function inSessionNote(age) {
+  return age === undefined ? undefined : `in session (last active ${fmtAge(age)} ago)`;
+}
+
 /** The in-session cue a held row carries after its state. @param {number|undefined} age */
 function inSessionCue(age) {
-  return age === undefined ? '' : ` · in session (last active ${fmtAge(age)} ago)`;
+  const note = inSessionNote(age);
+  return note === undefined ? '' : ` · ${note}`;
 }
 
 /** First-matching recommendation for the no-map dashboard, or null. @param {EpicDetail} detail */
@@ -541,51 +549,48 @@ function topicRoute(action, workUnit, topic) {
 }
 
 // The triage cue rides every row shape: the bare start rows carry it as
-// their italic tail; a row that already has a tail appends it after, the
-// way continueLabel appends `· input moved`.
-/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [triageParked] */
+// their tail; a row that already has a tail carries it as the tail's cue,
+// the way continueLabel cues `input moved`.
+/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [triageParked] @returns {LabelParts} */
 function discoveryEntryLabel(action, name, researchState, triageParked) {
   const t = titlecase(name);
-  const cue = triageParked ? ' · triage waiting' : '';
+  const cue = triageParked ? 'triage waiting' : undefined;
   switch (action) {
-    case 'start_research': return triageParked ? `Start research for "${t}" — *triage waiting*` : `Start research for "${t}"`;
-    case 'start_discussion': return triageParked ? `Start discussion for "${t}" — *triage waiting*` : `Start discussion for "${t}"`;
-    case 'continue_research': return `Continue "${t}" — *research*${cue}`;
-    case 'continue_discussion': return `Continue "${t}" — *discussion*${cue}`;
+    case 'start_research': return { head: `Start research for "${t}"`, tail: cue };
+    case 'start_discussion': return { head: `Start discussion for "${t}"`, tail: cue };
+    case 'continue_research': return { head: `Continue "${t}"`, tail: 'research', cue };
+    case 'continue_discussion': return { head: `Continue "${t}"`, tail: 'discussion', cue };
     // start_discussion_after_research — superseded research is named as such,
     // never as completed (same rule as discoveryLifecycleLabel).
-    default: return (researchState === 'superseded'
-      ? `Start discussion for "${t}" — *research superseded*`
-      : `Start discussion for "${t}" — *research completed*`) + cue;
+    default: return {
+      head: `Start discussion for "${t}"`,
+      tail: researchState === 'superseded' ? 'research superseded' : 'research completed',
+      cue,
+    };
   }
 }
 
-/** @param {string} phase @param {PhaseEntry} item */
+/** @param {string} phase @param {PhaseEntry} item @returns {LabelParts} */
 function continueLabel(phase, item) {
-  const t = titlecase(item.name);
-  let label;
-  if (phase === 'implementation' && item.current_phase != null) {
-    if (item.current_task) {
-      label = `Continue "${t}" — *implementation (Phase ${item.current_phase}, Task ${item.current_task})*`;
-    } else {
-      const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
-      label = `Continue "${t}" — *implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)*`;
-    }
-  } else {
-    label = `Continue "${t}" — *${phase} [in-progress]*`;
-  }
-  return item.reconcile_needed !== undefined ? `${label} · input moved` : label;
+  const cue = item.reconcile_needed !== undefined ? 'input moved' : undefined;
+  return { head: `Continue "${titlecase(item.name)}"`, tail: continueTail(phase, item), cue };
 }
 
-/** @param {NextPhaseEntry} n @param {boolean} [srcFlagged]  the entry's source item carries a live reconcile flag */
+/** @param {string} phase @param {PhaseEntry} item @returns {string} */
+function continueTail(phase, item) {
+  if (phase !== 'implementation' || item.current_phase == null) return `${phase} [in-progress]`;
+  if (item.current_task) return `implementation (Phase ${item.current_phase}, Task ${item.current_task})`;
+  const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
+  return `implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
+}
+
+/** @param {NextPhaseEntry} n @param {boolean} [srcFlagged]  the entry's source item carries a live reconcile flag @returns {LabelParts} */
 function startVerbLabel(n, srcFlagged) {
   const t = titlecase(n.name);
-  const cue = srcFlagged ? ' · input moved' : '';
-  if (n.action === 'start_implementation') {
-    return `Start implementation of "${t}" — *${n.label}*${cue}`;
-  }
-  const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)];
-  return `Start ${phase} for "${t}" — *${n.label}*${cue}`;
+  const head = n.action === 'start_implementation'
+    ? `Start implementation of "${t}"`
+    : `Start ${ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)]} for "${t}"`;
+  return { head, tail: n.label, cue: srcFlagged ? 'input moved' : undefined };
 }
 
 // A row's triage tail speaks for its own phase's queue — a research row
@@ -640,7 +645,7 @@ function experimentEntries(workUnit, detail) {
       action: 'continue_experiment',
       topic: item.name,
       route: topicRoute('continue_experiment', workUnit, item.name),
-      label: `Enter the laboratory for "${titlecase(item.name)}" — *${live.length} experiment${live.length === 1 ? '' : 's'} queued*`,
+      label: { head: `Enter the laboratory for "${titlecase(item.name)}"`, tail: `${live.length} experiment${live.length === 1 ? '' : 's'} queued` },
     });
   }
   return out;
@@ -730,7 +735,7 @@ function commandOptions(workUnit, detail, hasMap) {
     opts.push({
       key: 's', word: 'spec', action: 'analyze_discussions', topic: null,
       route: `/workflow-specification-entry epic ${workUnit}`,
-      label: `Analyze / regroup discussions — *${desc}*`,
+      label: { head: 'Analyze / regroup discussions', tail: desc },
     });
   }
   // Discovery is reachable in EVERY map state: with a map it refines the
@@ -1018,13 +1023,11 @@ function epicMenu(workUnit, detail, opts = {}) {
     const holder = e.code_session
       ? `code session${e.session_holder ? ` in ${e.session_holder.work_unit}/${e.session_holder.topic}` : ''}`
       : 'in session';
-    const label = e.in_session
-      ? `~~${e.label}~~ · ${holder} (last active ${fmtAge(e.session_age ?? 0)} ago)`
-      : e.label;
-    lines.push(cmdOption(e.key, null, `${label}${e.recommended ? ' (recommended)' : ''}`));
+    const held = e.in_session ? `${holder} (last active ${fmtAge(e.session_age ?? 0)} ago)` : undefined;
+    lines.push(cmdOption(e.key, null, { ...labelParts(e.label), held, recommended: e.recommended }));
   }
   for (const o of options) {
-    lines.push(cmdOption(o.key, o.word, `${o.label}${o.recommended ? ' (recommended)' : ''}`));
+    lines.push(cmdOption(o.key, o.word, { ...labelParts(o.label), recommended: o.recommended }));
   }
 
   return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
@@ -1070,7 +1073,7 @@ function epicInSessionGate(workUnit, entry) {
       '',
       '**`◆ Proceed anyway?`**',
       '',
-      cmdOption('b', 'back', 'Return to menu (recommended)'),
+      cmdOption('b', 'back', { head: 'Return to menu', recommended: true }),
       cmdOption('y', 'yes', 'Proceed anyway'),
     ]),
   );
@@ -1090,7 +1093,7 @@ function epicInSessionGate(workUnit, entry) {
  * @property {string|null} topic
  * @property {string|null} phase
  * @property {string|null} route      skill invocation, or null when the flow continues internally
- * @property {string} label
+ * @property {OptionLabel} label
  * @property {string} [dep]           unblock rows — the dependency topic to mark satisfied
  * @property {string} [item]          pull-forward rows — the roadmap item the topic waits as
  */
@@ -1110,7 +1113,7 @@ function epicInSessionGate(workUnit, entry) {
  * A pickable row carries its pick-menu label; a locked row carries the
  * reason it cannot be picked instead — rendered keyless with the reason,
  * no menu option.
- * @typedef {SubViewRowBase & ({label: string, locked?: undefined} | {locked: string, label?: undefined})} SubViewRow
+ * @typedef {SubViewRowBase & ({label: OptionLabel, locked?: undefined} | {locked: string, label?: undefined})} SubViewRow
  */
 
 /** The back option every sub-view menu closes with. @returns {SubViewKey} */
@@ -1207,7 +1210,7 @@ function epicCompletedMenu(workUnit, detail) {
       phase: item.phase,
       topic: item.name,
       row: title({ label: titlecase(item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
-      label: `Resume "${titlecase(item.name)}" — *${item.phase}*${flagged ? ' · input moved' : ''}`,
+      label: { head: `Resume "${titlecase(item.name)}"`, tail: item.phase, cue: flagged ? 'input moved' : undefined },
       route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
     };
   });
@@ -1235,12 +1238,12 @@ const UNIT_PRESENCE_PHASES = { discovery: ['research', 'discussion', 'experiment
  * @returns {SubViewRow}
  */
 function unitRow(unit, { tag, tail = '', verb, detail }, presence) {
-  const cue = inSessionCue(heldAgesIn(presence, UNIT_PRESENCE_PHASES[unit.stage]).get(unit.name));
+  const age = heldAgesIn(presence, UNIT_PRESENCE_PHASES[unit.stage]).get(unit.name);
   const name = titlecase(unit.name);
-  const base = { phase: unit.stage, group: UNIT_GROUP[unit.stage], topic: unit.name, row: `${title({ label: name, tag })}${tail}${cue}`, route: null };
+  const base = { phase: unit.stage, group: UNIT_GROUP[unit.stage], topic: unit.name, row: `${title({ label: name, tag })}${tail}${inSessionCue(age)}`, route: null };
   return unit.locked !== undefined
     ? { ...base, locked: unit.locked }
-    : { ...base, label: `${verb} "${name}" — *${detail}*${cue}` };
+    : { ...base, label: { head: `${verb} "${name}"`, tail: detail, cue: inSessionNote(age) } };
 }
 
 /**
@@ -1341,7 +1344,7 @@ function epicUnblockMenu(detail) {
         topic: item.name,
         dep: dep.topic,
         row: `${title({ label: titlecase(item.name) })} — blocked by ${depRef(dep)} (${dep.reason})`,
-        label: `Unblock "${titlecase(item.name)}" — *mark ${depRef(dep)} satisfied externally*`,
+        label: { head: `Unblock "${titlecase(item.name)}"`, tail: `mark ${depRef(dep)} satisfied externally` },
         route: null,
       });
     }

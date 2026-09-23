@@ -14,7 +14,9 @@
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation gateway (start, continue-*, bridge) discovers AND
-//     formats the state without throwing.
+//     formats the state without throwing,
+//   - every menu a gateway draws, and every menu a render draws, states
+//     itself whole in its gate payload once the gate surface is announced.
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
 //
@@ -57,13 +59,15 @@ const GATEWAYS = {
   crosscutting: require(path.join(ROOT, 'skills/workflow-continue-cross-cutting/scripts/gateway.cjs')),
 };
 const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
-const { auditGate } = require('./gate-audit.cjs');
+const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+const { announced, auditGate } = require('./gate-audit.cjs');
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -217,19 +221,53 @@ function auditState(dir, label) {
   }
 
   // Every navigation surface discovers and formats without throwing — the
-  // menus must render whatever state the pipeline is in. The head insert is
-  // never a gate; a continue skill's pick menu is its select step's.
+  // menus must render whatever state the pipeline is in — and, announced,
+  // states each menu it draws, its pick list and its views alike, as the
+  // gate beside it. The head insert is never a gate; a continue skill's pick
+  // menu is its select step's.
   for (const [name, gw] of Object.entries(GATEWAYS)) {
     const result = gw.discover(dir);
     assert.ok(result && typeof result === 'object', ctx(`${name} gateway returned nothing`));
     assert.doesNotMatch(gw.format(result), /^=== MENU/m, ctx(`${name} head insert carries a gate`));
-    if (gw.select) gw.select(result);
+    if (gw.select) {
+      gw.select(result);
+      auditGate(announcedRender(() => gw.select(result)), `${label} — ${name} select`);
+    }
+    for (const view of VIEW_MENUS[name](result)) {
+      auditGate(announcedRender(() => LIB.gateway.menuBlock(view())), `${label} — ${name} view`);
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
 // The gate payload
 // ---------------------------------------------------------------------------
+
+// The menus each gateway's `view` verb draws over the same discovery: the
+// start menu (the empty state's when there is no work), every epic's menu,
+// every linear unit's proceed/revisit menu.
+/** @param {string} type @returns {(result: any) => (() => string)[]} */
+function linearViewMenus(type) {
+  return (result) => LIB.detail.unitsOf(LIB.detail.typeConfig(type), result)
+    .map((/** @type {any} */ unit) => () => LIB.project.workUnitMenu(type, unit).rendered);
+}
+/** @type {Record<string, (result: any) => (() => string)[]>} */
+const VIEW_MENUS = {
+  start: (result) => [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result)).rendered],
+  epic: (result) => result.epics.map((/** @type {any} */ e) => () => LIB.project.epicMenu(e.name, e.detail).rendered),
+  feature: linearViewMenus('feature'),
+  bugfix: linearViewMenus('bugfix'),
+  quickfix: linearViewMenus('quick-fix'),
+  crosscutting: linearViewMenus('cross-cutting'),
+};
+
+/** One gateway render with the gate surface announced, collected from its start. @param {() => string} render */
+function announcedRender(render) {
+  return announced(() => {
+    openGate();
+    return render();
+  });
+}
 
 // With the gate surface announced, the same render states its menu as data
 // directly above the markdown, and that data has to be the whole menu.
@@ -894,7 +932,7 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2']);
     const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
-      .filter((k) => k.topic === topic).map((k) => [k.action, k.label]);
+      .filter((k) => k.topic === topic).map((k) => [k.action, drawLabel(k.label)]);
 
     // A research-side concern parks on alpha before any discussion exists —
     // the research is alpha's own row, and the discussion is held for it at
@@ -1064,7 +1102,7 @@ describe('pipeline simulation', () => {
     // The reopened investigation's rows say what waits — the start menu
     // entry and the bugfix pipeline row — and the drain retires the cue.
     const startRow = () => startMenu(GATEWAYS.start.discover(sim.dir)).keys
-      .find((k) => k.label.startsWith('Continue "Crash Fix"')).label;
+      .map((k) => drawLabel(k.label)).find((label) => label.startsWith('Continue "Crash Fix"'));
     const bugfixUnit = () => GATEWAYS.bugfix.discover(sim.dir).bugfixes.find((u) => u.name === wu);
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · triage waiting');
     assert.deepStrictEqual(bugfixUnit().triage_phases, ['investigation']);
@@ -1415,8 +1453,8 @@ describe('pipeline simulation', () => {
     // The cue follows the queue, not the status: the reopened item is
     // in-progress with no stub to read, yet its rows say what waits — and
     // the fold retires the cue.
-    const betaRow = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
-      .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label;
+    const betaRow = () => drawLabel(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label);
     assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · triage waiting');
     assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
       /Discussing · triage waiting/);
@@ -4372,7 +4410,7 @@ describe('pipeline simulation', () => {
       [['1', 'timing'], ['2', 'layout']]);
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
     assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-entry epic ${wu} timing$`));
-    assert.match(expEntries[0].label, /1 experiment queued/);
+    assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
     // Both waiting conversations refuse to conclude while their evidence is

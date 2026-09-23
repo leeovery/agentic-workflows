@@ -227,7 +227,7 @@ function roadmapAddGate(state, horizon) {
 
   const options = [cmdOption('d', 'delivery', deliveryLabel)];
   if (waiting.length > 0) {
-    options.push(cmdOption('w', 'waiting', `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}`));
+    options.push(cmdOption('w', 'waiting', { head: `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}` }));
   }
   options.push(cmdOption('h', 'horizon', 'Another horizon (name it)'));
   options.push(promptOption('Ask', 'Talk it through first'));

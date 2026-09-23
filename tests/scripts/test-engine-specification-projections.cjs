@@ -13,6 +13,7 @@ const { specificationDetail, discoverySpec, specConfirmation } = require('../../
 const {
   specificationDisplay, specificationMenu, specificationCompletedMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/specification.cjs');
+const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
@@ -851,7 +852,7 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(sourceTag({ name: 'a', status: 'incorporated', discussion_status: 'cancelled' }), 'extracted');
     const menu = specificationMenu(detail);
     const entry = menu.keys.find((k) => k.topic === 'moved-spec');
-    assert.strictEqual(entry.label, 'Continue "Moved Spec" — *1 new source(s) to extract, 1 stale source(s) to reconcile*');
+    assert.strictEqual(drawLabel(entry.label), 'Continue "Moved Spec" — *1 new source(s) to extract, 1 stale source(s) to reconcile*');
   });
 
   it('specs-menu with the record open: analyze withheld, the reopened-source row renders blocked', () => {
