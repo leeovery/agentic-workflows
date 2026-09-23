@@ -583,6 +583,14 @@ describe('workflow-start sub-view sections', () => {
     assert.ok(!empty.includes('=== MENU'), empty);
   });
 
+  it('an empty inbox answers its display and no gate — the flow returns without a pick', () => {
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    const out = run(['inbox']);
+    assert.ok(out.includes('inbox_count: 0\n'), out);
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ===\nNo inbox items.\n'), out);
+    assert.ok(!out.includes('=== MENU'), out);
+  });
+
   it('the view snapshot carries the baseline status in DATA and the resume row while in-progress', () => {
     createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
 

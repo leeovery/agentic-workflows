@@ -8,7 +8,7 @@ Auto-proceed path — only one completed discussion exists, so no selection menu
 
 ## Display
 
-Re-run the scoped snapshot — the emission draws from this response, never a carried one:
+Render the scoped snapshot:
 
 ```bash
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}

@@ -5804,8 +5804,8 @@ function walkthroughTopicsSurface(_cwd, _args) {
 
 /**
  * One reference card, addressed by the slug the topics menu's DATA table
- * gives for the number the reader pressed. `--menu-only` serves the return
- * from a question, as it does on a screen.
+ * gives for the number the reader pressed. `--menu-only` serves the card's
+ * menu alone, fetched by the help flow where it shows it.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughTopicSurface(_cwd, args) {

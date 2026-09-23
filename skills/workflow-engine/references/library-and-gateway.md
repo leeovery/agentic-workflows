@@ -106,7 +106,7 @@ engine.project.startOverview(detail)              // → Workflow Overview displ
 engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options
 engine.project.emptyOverview(detail)              // → empty-state overview block
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
-engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies
+engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
 engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
 engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb

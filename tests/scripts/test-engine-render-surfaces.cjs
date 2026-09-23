@@ -5705,9 +5705,9 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
   });
 
-  it('a card is its heading, its content in file order, then the menu every card wears', () => {
+  it('a card is its heading, then its content in file order — no gate; --menu-only is the menu every card wears', () => {
     const out = renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
-    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough card']);
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose']);
     assert.ok(out.startsWith([
       "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
       `# **\`■ Help · ${cardTitle(1)}\`**`,
@@ -5725,7 +5725,7 @@ describe('walkthrough surfaces', () => {
       cursor = at;
     }
 
-    assert.strictEqual(menuOf(out), [
+    assert.strictEqual(renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': '1' }), [
       "=== MENU: walkthrough card (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
@@ -5737,13 +5737,15 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
   });
 
-  it('every card renders, and --menu-only is the keys back exactly as they stood', () => {
+  it('every card renders without a gate, and every card wears the same menu', () => {
+    const menus = new Set();
     for (const slug of SLUGS) {
-      const full = renderSurface(dir, 'walkthrough-topic', { name: slug });
+      assert.ok(!markers(renderSurface(dir, 'walkthrough-topic', { name: slug })).some((m) => m.startsWith('MENU')), slug);
       const menuOnly = renderSurface(dir, 'walkthrough-topic', { name: slug, 'menu-only': '1' });
-      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough card']);
-      assert.strictEqual(menuOnly, menuOf(full), slug);
+      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough card'], slug);
+      menus.add(menuOnly);
     }
+    assert.strictEqual(menus.size, 1);
   });
 
   it('refuses a missing or unknown card, naming the ones there are', () => {
