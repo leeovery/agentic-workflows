@@ -296,8 +296,7 @@ function inSessionGate(workUnit, key) {
   const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
     .filter((r) => !engine.presence.ownsRow(r));
   const codeHeld = engine.presence.heldCodeSessions(process.cwd());
-  const menu = engine.project.epicMenu(e.name, e.detail, { presence, codeHeld });
-  const entry = menu.keys.find((k) => k.key === key);
+  const entry = engine.project.epicMenuKeys(e.name, e.detail, { presence, codeHeld }).find((k) => k.key === key);
   if (!entry) {
     return engine.gateway.dataBlock({ work_unit: e.name, error: `no menu entry with key "${key}"` });
   }
