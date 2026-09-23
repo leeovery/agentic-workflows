@@ -225,7 +225,13 @@ On a clean success:
 > *Output the next fenced block as a properties code block (```properties fence):*
 
 ```
-⚑ Exit Claude Code and start it again in this project, then run /workflow-start
+⚑ Restart Claude Code to turn the buttons on
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Your choice is saved in this project's Claude settings, and Claude Code only reads those when it starts. Exit Claude Code, start it again in this project, then run `/workflow-start`.
 ```
 
 **STOP.** Do not proceed — terminal condition.
