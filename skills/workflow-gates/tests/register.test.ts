@@ -51,6 +51,7 @@ const SENT = '/.workflows/.cache/.gates/sent.json'
 
 const COMMIT = 'Commit and continue to next task'
 const AUTH = 'Continue "Auth"'
+const HOLDER = 'in session (last active 4m ago)'
 
 const OPTIONS = [
   {
@@ -58,6 +59,8 @@ const OPTIONS = [
     word: 'yes',
     head: COMMIT,
     tail: null,
+    cue: null,
+    holder: null,
     detail: null,
     struck: false,
     recommended: true,
@@ -66,7 +69,9 @@ const OPTIONS = [
     key: '2',
     word: null,
     head: AUTH,
-    tail: 'discussion',
+    tail: 'research',
+    cue: null,
+    holder: HOLDER,
     detail: null,
     struck: true,
     recommended: false,
@@ -80,6 +85,8 @@ const HELD_FIRST = [
     word: null,
     head: AUTH,
     tail: 'discussion',
+    cue: null,
+    holder: HOLDER,
     detail: null,
     struck: true,
     recommended: false,
@@ -89,6 +96,8 @@ const HELD_FIRST = [
     word: null,
     head: 'Start "Billing"',
     tail: 'research',
+    cue: null,
+    holder: null,
     detail: null,
     struck: false,
     recommended: false,
@@ -98,6 +107,8 @@ const HELD_FIRST = [
     word: null,
     head: 'Continue "Search"',
     tail: 'specification',
+    cue: null,
+    holder: null,
     detail: null,
     struck: false,
     recommended: true,
@@ -113,6 +124,8 @@ const DETAILED = [
     word: null,
     head: 'Analyze for groupings',
     tail: null,
+    cue: null,
+    holder: null,
     detail: ANALYZE_DETAIL,
     struck: false,
     recommended: true,
@@ -122,6 +135,8 @@ const DETAILED = [
     word: 'back',
     head: 'Return to the previous menu',
     tail: null,
+    cue: null,
+    holder: null,
     detail: null,
     struck: false,
     recommended: false,
@@ -699,7 +714,7 @@ describe('register', () => {
       '◆ Approve this task?',
       '',
       `▌ yes      ${COMMIT} (recommended)`,
-      `  2        ${AUTH} — discussion`,
+      `  2        ${AUTH} — research · ${HOLDER}`,
       `  Comment  ${COMMENT.description}`,
       '',
       `  ${IDLE_FOOTER}`,
@@ -712,6 +727,11 @@ describe('register', () => {
     expect(await runOf(ui, AUTH), 'a held row is struck').toMatchObject({
       props: { strikethrough: true },
     })
+
+    expect(
+      (await runOf(ui, HOLDER))?.props.strikethrough,
+      'what holds it stands after the strike',
+    ).toBeUndefined()
 
     expect(await runOf(ui, IDLE_FOOTER), 'the footer is dim').toMatchObject({
       props: { dimColor: true },
