@@ -81,7 +81,7 @@ Propose research-vs-discussion — the concerns that triggered promotion are the
 - **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
 - **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns.
 
-Write your read and its one reason to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool — `{"read": "The concern is an open unknown — I'd start with research."}` — then render the choice:
+Write your one-line read and its reason to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool — e.g. `{"read": "The concern is an open unknown — I'd start with research."}` — then render the choice:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
