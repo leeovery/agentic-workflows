@@ -50,6 +50,18 @@ const RECOMMENDED = ' (recommended)'
 /** What a row shows in its key column, and what pressing it answers with. */
 export const answerOf = (option: Option) => option.word ?? option.key
 
+/**
+ * The row the cursor starts on, so Enter on arrival takes what the engine
+ * recommends: that row, else the first not struck through, else the first.
+ */
+export function startingRow(options: readonly Option[]): number {
+  const recommended = options.findIndex(option => option.recommended)
+
+  return recommended !== -1
+    ? recommended
+    : Math.max(0, options.findIndex(option => !option.struck))
+}
+
 /** Fills a line out to `width`, so a selected row's background spans it. */
 export function pad(runs: readonly Run[], width: number): Run[] {
   const short = width - runs.reduce((cells, run) => cells + run.text.length, 0)
