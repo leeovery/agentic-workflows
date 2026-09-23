@@ -23,12 +23,10 @@ const MENU_GLYPH = '◆';
 
 // Option lines align their arrows into one column. The padding is measured
 // against the widest key in the same block, never against the terminal, so
-// the column itself is stable at any width — which is why prose may carry it
-// by hand. The label after the arrow is the half that consults the terminal:
-// a long label wraps at the display width with continuations aligned under
-// the label column, so the key column and the label column never bleed into
-// one another. Prose menus can't know the width, so theirs stay on one
-// authored line and soft-wrap (CONVENTIONS.md: Menus).
+// the column itself is stable at any width. The label after the arrow is the
+// half that consults the terminal: a long label wraps at the display width
+// with continuations aligned under the label column, so the key column and
+// the label column never bleed into one another (CONVENTIONS.md: Menus).
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
 // Continuation indents are non-breaking spaces — menus are markdown-emitted,
