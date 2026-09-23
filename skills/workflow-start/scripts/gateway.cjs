@@ -135,16 +135,21 @@ function inboxView() {
   ].join('\n');
 }
 
-// The archived store snapshot: the combined archived list, numbered, plus the
-// select prompt.
+// The archived store snapshot: the combined archived list as a numbered pick
+// menu — or the empty display when nothing is archived.
 function archivedView() {
   const detail = discover(process.cwd());
   const v = engine.project.archivedView(engine.detail.combinedInbox(detail.inbox.archived, { archived: true }));
+  return pickSnapshot(v, 'Archived');
+}
+
+// A pick snapshot: DATA and TITLE, then the menu that lists the rows — or,
+// with no rows, the display that says so.
+function pickSnapshot(v, title) {
   return [
     engine.gateway.dataBlock(v.data),
-    engine.gateway.titleBlock('Archived'),
-    engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu),
+    engine.gateway.titleBlock(title),
+    v.menu ? engine.gateway.menuBlock(v.menu) : engine.gateway.displayBlock(v.display),
   ].join('\n');
 }
 
@@ -207,7 +212,6 @@ function manageView(workUnit) {
     return [
       engine.gateway.dataBlock(v.data),
       engine.gateway.titleBlock('Manage'),
-      engine.gateway.displayBlock(v.display),
       engine.gateway.menuBlock(v.menu),
     ].join('\n');
   }
@@ -230,12 +234,7 @@ function completedView(filter) {
   } catch (err) {
     return engine.gateway.dataBlock({ error: err.message });
   }
-  return [
-    engine.gateway.dataBlock(v.data),
-    engine.gateway.titleBlock('Completed & Cancelled'),
-    engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu),
-  ].join('\n');
+  return pickSnapshot(v, 'Completed & Cancelled');
 }
 
 if (require.main === module) {

@@ -250,7 +250,7 @@ function pivotContinuationMenu(workUnit) {
     menu(`**${name}** converted from feature to epic.`, [
       cmdOption('c', 'continue', `Continue ${name} as epic`),
       cmdOption('b', 'back', 'Return to previous view'),
-    ]),
+    ], { question: 'What next?' }),
   );
 }
 
@@ -267,7 +267,7 @@ function absorbContinuationMenu(feature, epic) {
     menu(`**${titlecase(feature)}** absorbed into **${name}**.`, [
       cmdOption('c', 'continue', `Continue ${name} as epic`),
       cmdOption('b', 'back', 'Return to previous view'),
-    ]),
+    ], { question: 'What next?' }),
   );
 }
 

@@ -717,6 +717,8 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`1`**           → Start "Auth Flow" — *2 ready discussion(s)*',
       '**`2`**           → Continue "Data Spec" — *1 source(s) pending*',
       `${NB(14)}*extraction, 1 consult ref(s) pending*`,
@@ -728,8 +730,6 @@ describe('specification projections: menu goldens', () => {
       '   *specification names are preserved. You can provide guidance*',
       '   *in the next step.*',
       '**`c/completed`** → Manage completed specifications — *1 completed*',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -761,12 +761,12 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`1`** → Start "Only Grp" — *2 ready discussion(s)*',
       '**`2`** → Re-analyze groupings',
       '   *Current groupings are discarded and rebuilt. You can provide*',
       '   *guidance in the next step.*',
-      '',
-      'Select an option:',
     ].join('\n'));
   });
 
@@ -796,6 +796,8 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`1`**           → Analyze for groupings (recommended)',
       '   *All discussions are analyzed for natural groupings. Existing*',
       '   *specification names are preserved. You can provide guidance*',
@@ -804,8 +806,6 @@ describe('specification projections: menu goldens', () => {
       '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract,*',
       `${NB(14)}*1 consult ref(s) pending*`,
       '**`c/completed`** → Manage completed specifications — *1 completed*',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -874,10 +874,10 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`1`** → Continue "A Spec" — blocked by A (reopened)',
       '**`2`** → Continue "B Spec" — *in-progress*',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -907,10 +907,10 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detail);
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
       '**`1`** → Start "A Grp" — blocked by A, D (reopened)',
       '**`2`** → Start "B Grp" — *2 ready discussion(s)*',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
