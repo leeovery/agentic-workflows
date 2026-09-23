@@ -8,6 +8,7 @@ import {
   linesOf,
   pad,
   questionLines,
+  startingRow,
   wrapRuns,
   type Option,
   type Typed,
@@ -33,6 +34,31 @@ describe('layout', () => {
   test('a row is pressed, and answers, by its word where it has one', () => {
     expect(answerOf(optionOf({ key: 'y', word: 'yes' }))).toBe('yes')
     expect(answerOf(optionOf({ key: '2' }))).toBe('2')
+  })
+
+  test('the cursor starts on the recommended row, wherever it sits', () => {
+    const options = [
+      optionOf({ key: '1', struck: true }),
+      optionOf({ key: '2' }),
+      optionOf({ key: '3', recommended: true }),
+    ]
+
+    expect(startingRow(options)).toBe(2)
+  })
+
+  test('with none recommended, the cursor starts on the first row not struck', () => {
+    const options = [optionOf({ key: '1', struck: true }), optionOf({ key: '2' })]
+
+    expect(startingRow(options)).toBe(1)
+  })
+
+  test('with every row struck and none recommended, the cursor starts on the first', () => {
+    const options = [
+      optionOf({ key: '1', struck: true }),
+      optionOf({ key: '2', struck: true }),
+    ]
+
+    expect(startingRow(options)).toBe(0)
   })
 
   test('wrapping breaks on words and keeps each run styled', () => {
