@@ -1,6 +1,8 @@
 /**
- * The gate's surface module: its own keys and pointer, no `$`, answering by
- * posting the pressed row back to the hooks module.
+ * The gate's surface module: its own keys and pointer, no `$`. A press posts
+ * the row back to the hooks module, which picks it into the prompt or, on the
+ * row already picked, sends it; a click on a typed row only tells the person
+ * how to answer it.
  *
  * Colours are theme keys, never values, so the bar resolves against the
  * person's theme — the ANSI themes included, where the palette is the
@@ -9,187 +11,213 @@
 import type { ClientSurface, RenderElement } from 'claude-code'
 
 import {
-  GAP,
   GLYPH_COLUMN,
   GUTTER,
+  IDLE,
   answerOf,
-  chromeRows,
-  geometry,
   linesOf,
-  pad,
-  questionLines,
   startingRow,
+  type Footer,
+  type Gate,
   type Line,
-  type Option,
-  type Typed,
+  type RowLine,
+  type Run,
 } from './layout.ts'
 
-type Props =
-  | {
-      question: string
-      options: Option[]
-      typed: Typed[]
-      columns: number
-    }
-  | undefined
+type Props = { gate: Gate; picked: string | null; columns: number }
 
-/** The cursor, and the rows it indexes: another gate's rows start it afresh. */
-type State = { cursor: number; rows: string }
+/**
+ * The cursor, the typed row whose hint the footer shows, and the rows they
+ * belong to: another gate's rows start both afresh.
+ */
+type State = { cursor: number; hint: string | null; rows: string }
 
 /** The prompt's own border, so the rule reads as the gate's top edge. */
 const RULE = 'promptBorder'
 /** The blue-violet the prompt and its dialogs already ask in. */
 const ACCENT = 'permission'
-const SELECTED = 'userMessageBackground'
+const HOVERED = 'selectionBg'
+const PICKED = 'diffAddedDimmed'
 
 const GLYPH = '◆'.padEnd(GLYPH_COLUMN)
 const NO_GLYPH = ' '.repeat(GLYPH_COLUMN)
 const RULE_CELL = '─'
 const CURSOR = '▌'.padEnd(GUTTER)
 const NO_CURSOR = ' '.repeat(GUTTER)
-const KEY_GAP = ' '.repeat(GAP)
 
 /**
  * What the listeners read, rather than what they closed over: they are
  * registered once, on the first draw, and a redraw can hand this instance
  * another gate's rows.
  */
-let shown: { options: readonly Option[]; lines: readonly Line[]; top: number } =
-  { options: [], lines: [], top: 0 }
+let shown: { gate: Gate; lines: readonly Line[] } = {
+  gate: { question: '', statement: '', options: [], typed: [] },
+  lines: [],
+}
+
+/** The footer follows the last click: a typed row's hint, else the pick. */
+const footerOf = (hint: string | null, picked: string | null): Footer =>
+  hint !== null
+    ? { kind: 'typed', label: hint }
+    : picked !== null
+      ? { kind: 'picked', answer: picked }
+      : IDLE
 
 export default function GateBoard(
-  props: Props,
+  { gate, picked, columns }: Props,
   surface: ClientSurface<State>,
 ): RenderElement {
   const { Box, Text } = surface.elements
-
-  const question = props?.question ?? ''
-  const options = props?.options ?? []
-  const typed = props?.typed ?? []
-  const columns = props?.columns ?? 0
 
   if (surface.state === undefined) {
     listen(surface)
   }
 
-  const rows = JSON.stringify(options)
+  const rows = JSON.stringify(gate.options)
   const state =
     surface.state?.rows === rows
       ? surface.state
-      : { cursor: startingRow(options), rows }
+      : { cursor: startingRow(gate.options), hint: null, rows }
 
   if (state !== surface.state) {
     surface.setState(state)
   }
 
-  const { cursor } = state
-  const { keyWidth, labelWidth } = geometry(options, typed, columns)
-  const lines = linesOf(options, typed, columns)
+  const lines = linesOf(gate, columns, footerOf(state.hint, picked))
+  const pickedRow = gate.options.findIndex(
+    option => answerOf(option) === picked,
+  )
 
-  shown = { options, lines, top: chromeRows(question, columns) }
+  shown = { gate, lines }
 
-  const row = (line: Line) => {
-    const isTyped = line.option === null
-    const isSelected = !isTyped && line.option === cursor
-    const backgroundColor = isSelected ? SELECTED : undefined
+  const styled = (run: Run, color?: string, backgroundColor?: string) =>
+    Text({
+      color,
+      backgroundColor,
+      bold: run.bold,
+      dimColor: run.dim,
+      italic: run.italic,
+      strikethrough: run.strikethrough,
+      underline: run.underline,
+      children: run.text,
+    })
+
+  const row = (line: RowLine) => {
+    const isOption = line.kind === 'option'
+    const isCursor = isOption && line.index === state.cursor
+    const backgroundColor =
+      isOption && line.index === pickedRow
+        ? PICKED
+        : isCursor
+          ? HOVERED
+          : undefined
 
     return Text({
       children: [
         Text({
           color: ACCENT,
           backgroundColor,
-          children: isSelected ? CURSOR : NO_CURSOR,
+          children: isCursor ? CURSOR : NO_CURSOR,
         }),
-        Text({
-          color: isTyped ? undefined : ACCENT,
-          dimColor: isTyped,
-          backgroundColor,
-          children: line.key.padEnd(keyWidth),
-        }),
-        Text({ backgroundColor, children: KEY_GAP }),
-        ...pad(line.runs, labelWidth).map(run =>
-          Text({
-            dimColor: run.dim,
-            italic: run.italic,
-            strikethrough: run.strikethrough,
-            backgroundColor,
-            children: run.text,
-          }),
+        ...line.key.map(run =>
+          styled(run, isOption ? ACCENT : undefined, backgroundColor),
         ),
+        ...line.runs.map(run => styled(run, undefined, backgroundColor)),
       ],
     })
   }
 
-  return Box({
-    flexDirection: 'column',
-    children: [
-      Text({ color: RULE, children: RULE_CELL.repeat(Math.max(1, columns)) }),
-      ...questionLines(question, columns).map((line, n) =>
-        Text({
+  const draw = (line: Line): RenderElement => {
+    switch (line.kind) {
+      case 'rule':
+        return Text({
+          color: RULE,
+          children: RULE_CELL.repeat(Math.max(1, columns)),
+        })
+      case 'blank':
+        return Text({ children: ' ' })
+      case 'prose':
+        return Text({
           children: [
-            Text({
-              color: ACCENT,
-              bold: true,
-              children: n === 0 ? GLYPH : NO_GLYPH,
-            }),
-            Text({ bold: true, children: line }),
+            line.glyph
+              ? Text({ color: ACCENT, bold: true, children: GLYPH })
+              : Text({ children: NO_GLYPH }),
+            ...line.runs.map(run => styled(run)),
           ],
-        }),
-      ),
-      Text({ children: ' ' }),
-      ...lines.map(row),
-    ],
-  })
+        })
+      case 'footer':
+        return Text({
+          children: [
+            Text({ children: NO_CURSOR }),
+            ...line.runs.map(run => styled(run)),
+          ],
+        })
+      default:
+        return row(line)
+    }
+  }
+
+  return Box({ flexDirection: 'column', children: lines.map(draw) })
 }
 
-/** Keys while the band has the focus, and the pointer over the rows. */
+/**
+ * Keys while the band has the focus, and the pointer over the rows: both move
+ * the cursor and press a row; a click on a typed row shows its hint.
+ */
 function listen(surface: ClientSurface<State>) {
-  const answer = (index: number) => {
-    const option = shown.options[index]
+  const update = (state: State, change: Partial<State>) => {
+    const next = { ...state, ...change }
+
+    if (next.cursor !== state.cursor || next.hint !== state.hint) {
+      surface.setState(next)
+    }
+  }
+
+  const press = (state: State, index: number) => {
+    const option = shown.gate.options[index]
 
     if (option !== undefined) {
+      update(state, { cursor: index, hint: null })
       surface.post({ answer: answerOf(option) })
     }
   }
 
-  const point = (cursor: number) => {
-    const state = surface.state
-
-    if (state !== undefined && state.cursor !== cursor) {
-      surface.setState({ ...state, cursor })
-    }
-  }
-
   surface.onKey(({ key }) => {
-    const cursor = surface.state?.cursor
-    const count = shown.options.length
+    const state = surface.state
+    const count = shown.gate.options.length
 
-    if (cursor === undefined || count === 0) {
+    if (state === undefined || count === 0) {
       return
     }
 
     if (key === 'up') {
-      point((cursor - 1 + count) % count)
+      update(state, { cursor: (state.cursor - 1 + count) % count })
     } else if (key === 'down') {
-      point((cursor + 1) % count)
+      update(state, { cursor: (state.cursor + 1) % count })
     } else if (key === 'return') {
-      answer(cursor)
+      press(state, state.cursor)
     } else {
-      answer(shown.options.findIndex(option => option.key === key))
+      press(
+        state,
+        shown.gate.options.findIndex(option => option.key === key),
+      )
     }
   })
 
   surface.onPointer(event => {
-    const option = shown.lines[event.y - shown.top]?.option
+    const state = surface.state
+    const line = shown.lines[event.y]
 
-    if (option === undefined || option === null) {
+    if (state === undefined || line === undefined) {
       return
     }
 
-    if (event.type === 'down') {
-      answer(option)
-    } else if (event.type === 'move') {
-      point(option)
+    if (line.kind === 'option' && event.type === 'down') {
+      press(state, line.index)
+    } else if (line.kind === 'option' && event.type === 'move') {
+      update(state, { cursor: line.index })
+    } else if (line.kind === 'typed' && event.type === 'down') {
+      update(state, { hint: shown.gate.typed[line.index]?.label ?? null })
     }
   })
 }

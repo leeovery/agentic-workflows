@@ -1,8 +1,8 @@
 /**
  * The gate's geometry and text shaping, shared by the hooks module and the
- * board: the hook sizes the `Client`'s region from it, the board draws into
- * that region with it. Any drift between the two is dead space under the last
- * row, or rows the pointer cannot reach.
+ * board: the band is one list of lines, which the hook counts to size the
+ * `Client`'s region and the board draws line for line. Any drift between the
+ * two is dead space under the last row, or rows the pointer cannot reach.
  *
  * The engine states every gate as data, so nothing here parses markdown: a
  * row arrives already split into what it is and what it says about itself.
@@ -14,38 +14,88 @@ export type Option = {
   word: string | null
   head: string
   tail: string | null
+  detail: string | null
   struck: boolean
   recommended: boolean
 }
 
 /** One row of the payload a span or a natural reply can only answer. */
-export type Typed = { label: string; description: string }
+export type Typed = {
+  label: string
+  description: string
+  detail: string | null
+}
+
+/** A gate as the engine states it, less its name. */
+export type Gate = {
+  question: string
+  statement: string
+  options: Option[]
+  typed: Typed[]
+}
 
 /** A run of a drawn line under one style. */
 export type Run = {
   text: string
+  bold?: boolean
   dim?: boolean
   italic?: boolean
   strikethrough?: boolean
+  underline?: boolean
 }
 
 /**
- * One drawn line: which option it answers (`null` for a typed row), what its
- * key column shows (empty where a label wrapped), and the label's runs.
+ * What the footer says: how to answer, what a pick put in the prompt, or how
+ * to answer the typed row last clicked.
  */
-export type Line = { option: number | null; key: string; runs: Run[] }
+export type Footer =
+  | { kind: 'idle' }
+  | { kind: 'picked'; answer: string }
+  | { kind: 'typed'; label: string }
 
-/** The selection gutter, and the space between the key column and the label. */
+/**
+ * A line of a row: its wrapped label or its detail, each carrying the row so
+ * a pointer lands on any of them. The key column, filled on the first line
+ * alone, and the label are padded out so a background spans the band.
+ */
+export type RowLine = {
+  kind: 'option' | 'typed'
+  index: number
+  key: Run[]
+  runs: Run[]
+}
+
+/** One line of the band, top to bottom. */
+export type Line =
+  | { kind: 'rule' }
+  | { kind: 'blank' }
+  | { kind: 'prose'; glyph: boolean; runs: Run[] }
+  | RowLine
+  | { kind: 'footer'; runs: Run[] }
+
+/** The cursor's gutter, where the footer also sits. */
 export const GUTTER = 2
-export const GAP = 2
 
-/** The `◆ ` the question opens with, and the indent a wrapped one keeps. */
+/** The `◆ ` the question opens with; the statement lines up past it. */
 export const GLYPH_COLUMN = 2
 
+export const IDLE: Footer = { kind: 'idle' }
+
+const GAP = 2
 const MIN_LABEL = 8
 
 const TAIL_SEPARATOR = ' — '
 const RECOMMENDED = ' (recommended)'
+
+const IDLE_HINT =
+  'Click a row to choose · click it again to send · or just type'
+const PICKED_HINT = ' is in your prompt · click it again or Enter to send'
+
+/** A typed row's label that is a span of numbers, as the engine writes one. */
+const RANGE = /^\d+–\d+$/
+
+const RULE: Line = { kind: 'rule' }
+const BLANK: Line = { kind: 'blank' }
 
 /** What a row shows in its key column, and what pressing it answers with. */
 export const answerOf = (option: Option) => option.word ?? option.key
@@ -62,7 +112,7 @@ export function startingRow(options: readonly Option[]): number {
     : Math.max(0, options.findIndex(option => !option.struck))
 }
 
-/** Fills a line out to `width`, so a selected row's background spans it. */
+/** Fills a line out to `width`, so a background spans it. */
 export function pad(runs: readonly Run[], width: number): Run[] {
   const short = width - runs.reduce((cells, run) => cells + run.text.length, 0)
 
@@ -143,19 +193,27 @@ export function wrapRuns(runs: readonly Run[], width: number): Run[][] {
   return lines
 }
 
+/** Text whose lines are its own, each wrapped to `width`; none for no text. */
+const paragraphs = (
+  text: string,
+  width: number,
+  style: Omit<Run, 'text'> = {},
+) =>
+  text === ''
+    ? []
+    : text
+        .split('\n')
+        .flatMap(line => wrapRuns([{ ...style, text: line }], width))
+
 /**
  * The bar's two columns for a band this wide: the keys, and the labels beside
  * them. The bar has no frame, so the row is gutter, key, gap, label.
  */
-export function geometry(
-  options: readonly Option[],
-  typed: readonly Typed[],
-  columns: number,
-) {
+export function geometry(gate: Gate, columns: number) {
   const keyWidth = Math.max(
     1,
-    ...options.map(option => answerOf(option).length),
-    ...typed.map(row => row.label.length),
+    ...gate.options.map(option => answerOf(option).length),
+    ...gate.typed.map(row => row.label.length),
   )
 
   return {
@@ -164,7 +222,31 @@ export function geometry(
   }
 }
 
-const runsOfOption = (option: Option): Run[] => [
+/**
+ * The key column's runs: the word with the row's key underlined where the
+ * word spells it, as a menu marks its accelerator; a bare key as it is.
+ */
+function keyRuns(option: Option): Run[] {
+  const shown = answerOf(option)
+  const at =
+    option.word === null
+      ? -1
+      : shown.toLowerCase().indexOf(option.key.toLowerCase())
+
+  if (at === -1) {
+    return [{ text: shown }]
+  }
+
+  const end = at + option.key.length
+
+  return [
+    { text: shown.slice(0, at) },
+    { text: shown.slice(at, end), underline: true },
+    { text: shown.slice(end) },
+  ].filter(run => run.text !== '')
+}
+
+const labelRuns = (option: Option): Run[] => [
   { text: option.head, strikethrough: option.struck },
   ...(option.tail === null
     ? []
@@ -172,48 +254,129 @@ const runsOfOption = (option: Option): Run[] => [
   ...(option.recommended ? [{ text: RECOMMENDED }] : []),
 ]
 
-/**
- * Every line the gate draws, in order, wrapped to the band: the pressable
- * rows and then the typed ones, each label's continuations carrying the
- * option they belong to so a pointer can land on them.
- */
-export function linesOf(
-  options: readonly Option[],
-  typed: readonly Typed[],
-  columns: number,
-): Line[] {
-  const { labelWidth } = geometry(options, typed, columns)
+/** The pressable rows and then the typed ones, each followed by its detail. */
+function rowLines(gate: Gate, columns: number): RowLine[] {
+  const { keyWidth, labelWidth } = geometry(gate, columns)
 
-  const linesOfRow = (option: number | null, key: string, runs: Run[]) =>
-    wrapRuns(runs, labelWidth).map((wrapped, n) => ({
-      option,
-      key: n === 0 ? key : '',
-      runs: wrapped,
+  const linesOfRow = (
+    kind: RowLine['kind'],
+    index: number,
+    key: Run[],
+    label: Run[],
+    detail: string | null,
+  ): RowLine[] =>
+    [
+      ...wrapRuns(label, labelWidth),
+      ...paragraphs(detail ?? '', labelWidth, { dim: true }),
+    ].map((runs, n) => ({
+      kind,
+      index,
+      key: pad(n === 0 ? key : [], keyWidth + GAP),
+      runs: pad(runs, labelWidth),
     }))
 
   return [
-    ...options.flatMap((option, index) =>
-      linesOfRow(index, answerOf(option), runsOfOption(option)),
+    ...gate.options.flatMap((option, index) =>
+      linesOfRow(
+        'option',
+        index,
+        keyRuns(option),
+        labelRuns(option),
+        option.detail,
+      ),
     ),
-    ...typed.flatMap(row =>
-      linesOfRow(null, row.label, [{ text: row.description, dim: true }]),
+    ...gate.typed.flatMap((row, index) =>
+      linesOfRow(
+        'typed',
+        index,
+        [{ text: row.label, dim: true }],
+        [{ text: row.description, dim: true }],
+        row.detail,
+      ),
     ),
   ]
 }
 
-/** How many lines the rows take: what the hook adds to the chrome. */
-export const lineCount = (
-  options: readonly Option[],
-  typed: readonly Typed[],
-  columns: number,
-) => linesOf(options, typed, columns).length
+// A click leaves the keys with the band; only the person can hand them back.
+const typedHint = (label: string) =>
+  RANGE.test(label)
+    ? `${label} — press Esc, then type the numbers in the prompt`
+    : `${label} — press Esc, then type in the prompt`
 
-/** The question, wrapped to the room the glyph leaves it. */
-export const questionLines = (question: string, columns: number) =>
-  wrapRuns([{ text: question }], columns - GLYPH_COLUMN).map(line =>
-    line.map(run => run.text).join(''),
+/** The footer's words: dim, the pick named in bold. */
+export function footerRuns(footer: Footer): Run[] {
+  switch (footer.kind) {
+    case 'idle':
+      return [{ text: IDLE_HINT, dim: true }]
+    case 'picked':
+      return [
+        { text: footer.answer, bold: true },
+        { text: PICKED_HINT, dim: true },
+      ]
+    case 'typed':
+      return [{ text: typedHint(footer.label), dim: true }]
+  }
+}
+
+const footerLines = (footer: Footer, columns: number) =>
+  wrapRuns(footerRuns(footer), columns - GUTTER)
+
+/**
+ * The footer, in a slot as tall as the tallest thing it can say for this
+ * gate, so a click never moves the rows above it.
+ */
+function footerSlot(gate: Gate, footer: Footer, columns: number): Line[] {
+  const states: Footer[] = [
+    IDLE,
+    ...gate.options.map(option => ({
+      kind: 'picked' as const,
+      answer: answerOf(option),
+    })),
+    ...gate.typed.map(row => ({ kind: 'typed' as const, label: row.label })),
+  ]
+
+  const rows = Math.max(
+    ...states.map(state => footerLines(state, columns).length),
   )
+  const said = footerLines(footer, columns)
 
-/** The rows above the first option: the rule, the question, the space. */
-export const chromeRows = (question: string, columns: number) =>
-  2 + questionLines(question, columns).length
+  return Array.from({ length: rows }, (_, n) => ({
+    kind: 'footer',
+    runs: said[n] ?? [],
+  }))
+}
+
+/** Lines standing as a block: a blank under them, nothing at all for none. */
+const block = (lines: Line[]): Line[] =>
+  lines.length === 0 ? [] : [...lines, BLANK]
+
+/**
+ * Every line the band draws for a gate, top to bottom: the rule, the
+ * statement, the question (none when the gate asks nothing), the rows and
+ * the footer, a blank between each. How many there are is the region's height
+ * whatever the footer says.
+ */
+export function linesOf(
+  gate: Gate,
+  columns: number,
+  footer: Footer = IDLE,
+): Line[] {
+  const width = columns - GLYPH_COLUMN
+  const statement = paragraphs(gate.statement, width)
+  const question = paragraphs(gate.question, width, { bold: true })
+  const prose = (runs: Run[], glyph: boolean): Line => ({
+    kind: 'prose',
+    glyph,
+    runs,
+  })
+
+  return [
+    RULE,
+    BLANK,
+    ...block(statement.map(runs => prose(runs, false))),
+    ...block(question.map((runs, n) => prose(runs, n === 0))),
+    ...rowLines(gate, columns),
+    BLANK,
+    ...footerSlot(gate, footer, columns),
+  ]
+}
