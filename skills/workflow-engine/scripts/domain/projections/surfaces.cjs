@@ -204,6 +204,19 @@ function titleSection(text) {
   return section('TITLE', TITLE_INSTRUCTION, `# **\`■ ${text}\`**`);
 }
 
+// The reasoning surface beside a render (CONVENTIONS.md: Engine Output
+// Sections) — the flow decides from it, the user never sees it.
+const DATA_INSTRUCTION = 'reason from this — never display or parse the sections below';
+
+/**
+ * A DATA section carrying `lines`.
+ * @param {string[]} lines
+ * @returns {string}
+ */
+function dataSection(lines) {
+  return section('DATA', DATA_INSTRUCTION, lines.join('\n'));
+}
+
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
@@ -422,5 +435,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

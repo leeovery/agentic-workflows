@@ -9,7 +9,7 @@
 
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
@@ -188,7 +188,8 @@ function baselineManageGate() {
 }
 
 /**
- * The doc picker under manage's view — one numbered row per area doc.
+ * The doc picker under manage's view — one numbered row per area doc, each
+ * number's area on the DATA row the flow resolves the pick through.
  * @param {BaselineState} d
  * @returns {string}
  */
@@ -197,7 +198,10 @@ function baselineDocPick(d) {
     ...d.areas.map((a, i) => cmdOption(String(i + 1), null, `${a.name}.md`)),
     cmdOption('b', 'back', 'Return to the baseline menu'),
   ]);
-  return section('MENU: baseline doc pick', MENU_INSTRUCTION, body);
+  return [
+    dataSection(['DOCS (key  area):', ...d.areas.map((a, i) => `  ${i + 1}  ${a.name}`)]),
+    section('MENU: baseline doc pick', MENU_INSTRUCTION, body),
+  ].join('\n');
 }
 
 /**

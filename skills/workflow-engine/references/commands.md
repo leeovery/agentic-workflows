@@ -453,7 +453,7 @@ engine render baseline-scope-gate --file <payload.json>           # the scope co
 engine render baseline-round --file <payload.json>                # one interview round: payload {area, questions: [{text, candidates?}]} (1-4 questions, up to 4 candidates each), rendered numbered + lettered over a researched area
 engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static yes/view/adjust menu
 engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only
-engine render baseline-doc-pick                                   # manage's doc picker — one numbered row per area doc, then back; completed only
+engine render baseline-doc-pick                                   # manage's doc picker — one numbered row per area doc, then back; the DATA table (`DOCS (key  area):`, `  N  <area>` per row) carries each number's area, and the pick resolves through it; completed only
 engine render baseline-offer-gate                                 # workflow-start's Step 0.5 offer menu; refuses once any status is recorded — a native verdict included
 engine render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
                                                                   # one screen of the walk: TITLE, the content file's prose (markdown) and diagrams (fenced) in file order, then the menu — whose rows follow the screen's position and the origin the walk was entered from; --menu-only emits the menu alone, the return from a question
