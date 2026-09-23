@@ -14,7 +14,7 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 **STOP.** Wait for user response.
 
-Match the user's input to its `ACTIONS` entry by `key`.
+Match the user's input to its `ACTIONS` entry by `key` or `word`.
 
 #### If `action` is `refine_spec`
 

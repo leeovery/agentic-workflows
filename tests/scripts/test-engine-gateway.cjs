@@ -267,6 +267,81 @@ describe('a context-refresh recovery fetches no gate', () => {
   }
 });
 
+// A menu's answer resolves from DATA, never from the menu's text: a pressed
+// row may send only its word, or its key where it has none. Every gateway
+// view whose menu an `ACTIONS` table routes is run over a world where each
+// offers its rows, and every row it offers must name an entry by both.
+describe('an ACTIONS table resolves every row its MENU offers', () => {
+  const SKILLS = path.join(__dirname, '../../skills');
+  const CALLS = [
+    ['workflow-start', ['view']],
+    ['workflow-start', ['manage', 'live-feature']],
+    ['workflow-continue-epic', ['view', 'live-epic']],
+    ['workflow-continue-epic', ['completed-menu', 'live-epic']],
+    ['workflow-continue-epic', ['cancel-menu', 'live-epic']],
+    ['workflow-continue-feature', ['view', 'live-feature']],
+    ['workflow-specification-entry', ['completed-menu', 'live-epic']],
+    ['workflow-roadmap', ['view']],
+  ];
+
+  /** @param {string} out @param {string} marker @returns {string} */
+  function sectionOf(out, marker) {
+    const at = out.indexOf(`=== ${marker}`);
+    if (at === -1) return '';
+    const body = out.slice(out.indexOf('\n', at) + 1);
+    const end = body.search(/^=== /m);
+    return end === -1 ? body : body.slice(0, end);
+  }
+
+  let dir;
+  beforeEach(() => {
+    dir = setupFixture();
+    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+      baseline: { status: 'in-progress', areas: {} },
+      roadmap: { horizons: ['mvp'], items: { loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' } } },
+    }));
+    createManifest(dir, 'live-epic', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { kitchen: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' }, billing: { status: 'completed' } } },
+        specification: { items: { billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } } } },
+      },
+    });
+    createFile(dir, '.workflows/live-epic/specification/billing/specification.md', '# Billing\n');
+    createManifest(dir, 'live-feature', {
+      phases: {
+        research: { items: { 'live-feature': { status: 'completed' } } },
+        discussion: { items: { 'live-feature': { status: 'in-progress' } } },
+      },
+    });
+    createManifest(dir, 'done-feature', { status: 'completed', phases: { discussion: { items: { 'done-feature': { status: 'completed' } } } } });
+    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  for (const [skill, argv] of CALLS) {
+    it(`${skill} ${argv.join(' ')}: every row resolves by its key and its word`, () => {
+      const res = spawnSync('node', [path.join(SKILLS, skill, 'scripts/gateway.cjs'), ...argv], { cwd: dir, encoding: 'utf8' });
+      assert.strictEqual(res.status, 0, res.stderr);
+      const heads = [...sectionOf(res.stdout, 'MENU').matchAll(/^\*\*`(?!◆ )([^`]+)`\*\*/gm)].map((m) => m[1]);
+      assert.ok(heads.length > 0, `the world offers no row — the check would pass vacuously:\n${res.stdout}`);
+      const lines = sectionOf(res.stdout, 'DATA').split('\n');
+      const start = lines.findIndex((l) => l.startsWith('ACTIONS (key  word  '));
+      assert.ok(start !== -1, `no ACTIONS table leading with key and word:\n${res.stdout}`);
+      const entries = [];
+      for (const line of lines.slice(start + 1)) {
+        if (!line.startsWith('  ')) break;
+        entries.push(line.trim().split('  '));
+      }
+      for (const head of heads) {
+        const [key, word = '—'] = head.split(/\/(.*)/s);
+        assert.ok(entries.some(([k, w]) => k === key && w === word), `row \`${head}\` names no ACTIONS entry by key "${key}" and word "${word}":\n${res.stdout}`);
+      }
+    });
+  }
+});
+
 describe('lib: ring aggregation', () => {
   it('exposes kernel render, domain conventions, and the gateway', () => {
     assert.strictEqual(typeof lib.render.renderTree, 'function');

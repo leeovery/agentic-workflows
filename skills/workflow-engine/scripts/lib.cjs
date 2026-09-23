@@ -48,6 +48,7 @@ const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const specificationProjections = require('./domain/projections/specification.cjs');
 const selectionProjections = require('./domain/projections/selection.cjs');
+const surfaces = require('./domain/projections/surfaces.cjs');
 
 module.exports = {
   render,
@@ -128,6 +129,7 @@ module.exports = {
   },
   project: {
     titlecase: conventions.titlecase,
+    actionsTable: surfaces.actionsTable,
     workUnitTitle: workunitProjections.workUnitTitle,
     discoveryTitle: discoveryProjections.discoveryTitle,
     SPEC_TITLE: specificationProjections.SPEC_TITLE,

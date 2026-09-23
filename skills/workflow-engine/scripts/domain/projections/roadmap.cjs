@@ -208,9 +208,10 @@ function roadmapPullSetView(state) {
  * fully in delivery takes the strict two-way menu (into the epic / another
  * horizon — no waiting side-door into a release that is now an epic); one
  * still holding waiting members keeps the three-way (waiting beside them is
- * how a release is composed).
+ * how a release is composed). `units` names the work units the delivery
+ * row pulls into.
  * @param {RoadmapState} state @param {string} horizon
- * @returns {string}
+ * @returns {{units: string[], menu: string}}
  */
 function roadmapAddGate(state, horizon) {
   const members = state.items.filter((r) => r.horizon === horizon);
@@ -224,19 +225,17 @@ function roadmapAddGate(state, horizon) {
     ? `Into the work underway — a new topic in "${units[0]}"`
     : 'Into the work underway — a new topic in one of its work units (name which)';
 
-  const options = [cmdOption('1', null, deliveryLabel)];
+  const options = [cmdOption('d', 'delivery', deliveryLabel)];
   if (waiting.length > 0) {
-    options.push(cmdOption('2', null, `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}`));
-    options.push(cmdOption('3', null, 'Another horizon (name it)'));
-  } else {
-    options.push(cmdOption('2', null, 'Another horizon (name it)'));
+    options.push(cmdOption('w', 'waiting', `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}`));
   }
+  options.push(cmdOption('h', 'horizon', 'Another horizon (name it)'));
   options.push(promptOption('Ask', 'Talk it through first'));
 
   const statement = waiting.length > 0
     ? `"${horizon}" is partly being built.`
     : `"${horizon}" is being built right now.`;
-  return menu(statement, options, { question: 'Where does this go?' });
+  return { units, menu: menu(statement, options, { question: 'Where does this go?' }) };
 }
 
 /**
