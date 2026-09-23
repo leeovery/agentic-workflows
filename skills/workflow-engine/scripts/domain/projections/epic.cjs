@@ -1023,8 +1023,11 @@ function epicMenu(workUnit, detail, opts = {}) {
     const holder = e.code_session
       ? `code session${e.session_holder ? ` in ${e.session_holder.work_unit}/${e.session_holder.topic}` : ''}`
       : 'in session';
-    const held = e.in_session ? `${holder} (last active ${fmtAge(e.session_age ?? 0)} ago)` : undefined;
-    lines.push(cmdOption(e.key, null, { ...labelParts(e.label), held, recommended: e.recommended }));
+    lines.push(cmdOption(e.key, null, {
+      ...labelParts(e.label),
+      holder: e.in_session ? `${holder} (last active ${fmtAge(e.session_age ?? 0)} ago)` : undefined,
+      recommended: e.recommended,
+    }));
   }
   for (const o of options) {
     lines.push(cmdOption(o.key, o.word, { ...labelParts(o.label), recommended: o.recommended }));
