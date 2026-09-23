@@ -341,8 +341,8 @@ A locked row's name is the usual case — the row carries its reason. Tell the u
 
 #### If user chose a numbered topic
 
-Store the selected entry's `topic`. The horizon, the confirm, and the transaction are the shared door's.
+Store the selected entry's `topic` as `{name}`. The horizon, the confirm, and the transaction are the shared door's.
 
-→ Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{topic}`, phase = `none`, topic = `none`.
+→ Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
 
 → On return, return to **A. State Display and Menu**.
