@@ -5,7 +5,14 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { withRetry, UserError, AuthError } = require('../../src/knowledge/index');
+const {
+  withRetry,
+  isPermanentError,
+  UserError,
+  AuthError,
+  InvalidRequestError,
+  ConfigError,
+} = require('../../src/knowledge/index');
 
 describe('withRetry', () => {
   it('succeeds on first attempt', async () => {
@@ -129,5 +136,47 @@ describe('withRetry', () => {
       (err) => err instanceof AuthError && /bad key/.test(err.message)
     );
     assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry InvalidRequestError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new InvalidRequestError('HTTP 400'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof InvalidRequestError
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry ConfigError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new ConfigError('expected width 2'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof ConfigError
+    );
+    assert.strictEqual(calls, 1);
+  });
+});
+
+describe('isPermanentError', () => {
+  it('reads validation, key, request, config, and programming errors as permanent', () => {
+    for (const err of [
+      new UserError('bad input'),
+      new AuthError('bad key'),
+      new InvalidRequestError('HTTP 413'),
+      new ConfigError('expected width 2'),
+      new TypeError('typo'),
+      new ReferenceError('missing'),
+      new SyntaxError('bad'),
+      new RangeError('out'),
+    ]) {
+      assert.strictEqual(isPermanentError(err), true, err.name);
+    }
+  });
+
+  it('reads a plain Error — rate limit, server error, network — as transient', () => {
+    for (const message of ['rate limit exceeded (HTTP 429)', 'embedding request failed (HTTP 503)', 'network error: ECONNRESET']) {
+      assert.strictEqual(isPermanentError(new Error(message)), false, message);
+    }
+    assert.strictEqual(isPermanentError(undefined), false);
   });
 });

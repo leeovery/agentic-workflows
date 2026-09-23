@@ -117,7 +117,7 @@ describe('engine workunit pivot — happy path', () => {
     assert.ok(menu.includes("=== MENU: pivot continuation (emit verbatim as markdown, then STOP for the user's response) ==="), menu);
     assert.ok(menu.includes('**Auth Flow** converted from feature to epic.'), menu);
     const advisory = stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. Indexing can be retried later\./);
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\./);
     assert.strictEqual(
       stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']),
       '', 'no --warn, no advisory — an empty receipt');

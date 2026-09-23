@@ -166,3 +166,50 @@ describe('buildProgressClock — significance weighting', () => {
     assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0);
   });
 });
+
+// The one prune rule compact removes by and the bulk index skips by.
+describe('pruneTest', () => {
+  const { pruneTest } = require('../../skills/workflow-knowledge/scripts/knowledge.cjs');
+  // S0 3 and a 0.95 floor: a unit two completions behind has R(2,3) ≈ 0.931 —
+  // below the floor; one behind has R(1,3) ≈ 0.965 — above it.
+  const cfg = { decay_prune_below: 0.95, decay_base_stability: 3 };
+  const units = [
+    { name: 'buried', status: 'completed', completed_at: '2024-01-01', work_type: 'feature' },
+    { name: 'recent', status: 'completed', completed_at: '2024-06-01', work_type: 'feature' },
+    { name: 'frontier', status: 'completed', completed_at: '2024-12-01', work_type: 'feature' },
+    { name: 'active', status: 'in-progress', work_type: 'feature' },
+  ];
+
+  it('prunes a unit below the floor, non-spec phases only', () => {
+    const { floor, prunes } = pruneTest(cfg, units);
+    assert.strictEqual(floor, 0.95);
+    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'seeds', 'discovery', 'analysis']) {
+      assert.strictEqual(prunes('buried', phase), true, phase);
+    }
+    assert.strictEqual(prunes('buried', 'specification'), false, 'specifications never decay');
+  });
+
+  it('keeps a unit above the floor, the frontier, an in-progress unit, and an unknown one', () => {
+    const { prunes } = pruneTest(cfg, units);
+    for (const unit of ['recent', 'frontier', 'active', 'unlisted']) {
+      assert.strictEqual(prunes(unit, 'discussion'), false, unit);
+    }
+  });
+
+  it('is null when decay_prune_below is false', () => {
+    assert.strictEqual(pruneTest({ ...cfg, decay_prune_below: false }, units), null);
+  });
+
+  it('falls back to the default floor', () => {
+    assert.strictEqual(pruneTest({}, units).floor, 0.05);
+  });
+
+  for (const bad of [-0.5, 1.5, '0.5', NaN]) {
+    it(`refuses decay_prune_below ${JSON.stringify(bad)}`, () => {
+      assert.throws(
+        () => pruneTest({ decay_prune_below: bad }, units),
+        (err) => err.name === 'UserError' && /Invalid decay_prune_below/.test(err.message)
+      );
+    });
+  }
+});

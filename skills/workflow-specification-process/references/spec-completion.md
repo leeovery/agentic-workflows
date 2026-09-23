@@ -174,7 +174,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
    ```
    ⚑ Knowledge removal warning
      {warning}
-     The spec is superseded. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
+     The spec is superseded. The next start removes its chunks from the knowledge base.
    ```
 
 2. Inform the user which topics were updated

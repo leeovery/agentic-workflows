@@ -571,7 +571,6 @@ async function runProjectInitStep(rl) {
       model: provider && cfg.model ? cfg.model : null,
       dimensions: provider ? dims : null,
       last_indexed: null,
-      pending: [],
     });
     process.stdout.write(`  metadata.json written\n`);
   }
@@ -589,14 +588,19 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
 
   process.stdout.write('\nInitial indexing\n');
   process.stdout.write('----------------\n');
+  // Indexing failures don't fail setup — the project is initialised, and the
+  // bulk index at every start retries what did not index.
   try {
-    await cmdIndexBulk(options || {}, cfg, provider);
+    const summary = await cmdIndexBulk(options || {}, cfg, provider);
+    if (summary.failed > 0) {
+      process.stderr.write(
+        `\n${summary.failed} artifact(s) failed to index — the next start retries them.\n`
+      );
+    }
   } catch (err) {
-    // Indexing failures don't abort setup — the project is initialised
-    // and the pending queue retains any partial state.
     process.stderr.write(
       `\nInitial indexing hit an error: ${err.message}\n` +
-      'Project is initialised; run `knowledge index` later to retry.\n'
+      'The project is initialised; the next start retries the indexing.\n'
     );
   }
 }

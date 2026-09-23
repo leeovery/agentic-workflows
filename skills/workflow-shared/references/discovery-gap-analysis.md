@@ -186,6 +186,6 @@ Stamp the manifest's gap_analysis_cache — one command checksums the completed 
 node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} gap-analysis
 ```
 
-If the response carries `warnings`, surface them to the user but do not abort — the cache file is already on disk and the manifest is updated; indexing retries on the next analysis re-run.
+If the response carries `warnings`, surface them to the user but do not abort — the cache file is already on disk and the manifest is updated; the next start retries the indexing.
 
 → Return to caller.

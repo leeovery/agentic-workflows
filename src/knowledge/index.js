@@ -1,17 +1,18 @@
 // Knowledge CLI entry point.
 //
 // Dispatches commands to their handlers, resolving config and provider
-// once at startup. Phase 3 implements: index, query, check. Other
-// commands dispatch with a "not yet implemented" error until Phase 4.
+// once at startup.
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
-const { OpenAIProvider, AuthError } = require('./providers/openai');
+const { OpenAIProvider } = require('./providers/openai');
+const { AuthError, InvalidRequestError, ConfigError } = require('./providers/openai-engine');
 const config = require('./config');
 const setup = require('./setup');
 const setupForms = require('./setup-forms');
@@ -33,6 +34,8 @@ const BASELINE_IDENTITY = 'baseline';
 // reserved-pseudo-identity carve-out: chunks carry `roadmap` for both
 // work_unit and work_type, and the engine reserves the name.
 const ROADMAP_IDENTITY = 'roadmap';
+
+const RESERVED_IDENTITIES = new Set([BASELINE_IDENTITY, ROADMAP_IDENTITY]);
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
 // derivation (topic = basename, no subdirectories). specification (nested under
@@ -79,8 +82,6 @@ function resolveEngineJs() {
 }
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
-const PENDING_CATCHUP_LIMIT = 5;
-const PENDING_MAX_ATTEMPTS = 10;
 
 // Default dimensions when creating a store in keyword-only mode.
 // The store schema requires a dimension parameter, but keyword-only docs
@@ -95,11 +96,6 @@ let stubUpgradeWarned = false;
 // UserError — marker class for user-visible validation failures. Thrown at
 // input-validation sites (bad path, provider mismatch, missing chunking
 // config, etc.) where the error message is actionable advice for the user.
-//
-// Two behavioural contracts:
-//   1. withRetry does not retry UserError (same treatment as programming
-//      errors — retry would waste backoff budget on a permanent failure).
-//   2. The top-level main().catch prints the message alone, no stack trace.
 // ---------------------------------------------------------------------------
 
 class UserError extends Error {
@@ -107,6 +103,28 @@ class UserError extends Error {
     super(message);
     this.name = 'UserError';
   }
+}
+
+// Failures that repeat identically on every attempt: input validation, a
+// provider refusing the key or the request, a provider configuration the
+// model contradicts, and programming errors.
+const PERMANENT_ERRORS = [
+  UserError,
+  AuthError,
+  InvalidRequestError,
+  ConfigError,
+  TypeError,
+  ReferenceError,
+  SyntaxError,
+  RangeError,
+];
+
+/**
+ * Whether a failure is permanent — no retry can change its outcome.
+ * @param {unknown} err
+ */
+function isPermanentError(err) {
+  return PERMANENT_ERRORS.some((type) => err instanceof type);
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +206,7 @@ function buildOptions(flags, boosts) {
 const USAGE = `Usage: knowledge <command> [options]
 
 Commands:
-  index     Index a file or all pending artifacts
+  index     Index a file, or with no file bring the store in line with every artifact
   query     Search the knowledge base
   check     Check if the knowledge base is ready
   status    Show knowledge base status
@@ -241,14 +259,13 @@ function lockFilePath() {
 }
 
 // Resolve a stored or relative artifact path against the PROJECT ROOT, never
-// process.cwd(). Every artifact path that flows through the store — pending-
-// queue entries, manifest-discovered imports/seeds/analysis/discovery files,
+// process.cwd(). Every artifact path that flows through the store — chunk
+// source files, manifest-discovered imports/seeds/analysis/discovery files,
 // and the source path handed to a single-file index — is recorded relative to
 // the project root. Resolving them against cwd breaks every KB command
-// invoked from a subdirectory: the pending queue evicts live items as "no
-// longer exists" and bulk discovery silently skips unindexed artifacts.
-// path.resolve short-circuits on an already-absolute input, so paths the
-// engine returns absolute (manifest `resolve`) pass through unchanged.
+// invoked from a subdirectory: bulk discovery skips live artifacts and the
+// sync reads every chunk's source as deleted. path.resolve short-circuits on
+// an already-absolute input, so absolute paths pass through unchanged.
 function resolveArtifactPath(p) {
   return path.resolve(config.findProjectRoot(), p);
 }
@@ -275,20 +292,7 @@ async function withRetry(fn, opts) {
     try {
       return await fn();
     } catch (err) {
-      // Don't retry programming errors — retrying a TypeError just burns
-      // 7s of backoff before the stack trace reaches the user.
-      // Also don't retry UserError or AuthError: validation failures and
-      // bad/expired API keys will fail identically on every retry.
-      if (
-        err instanceof UserError ||
-        err instanceof AuthError ||
-        err instanceof TypeError ||
-        err instanceof ReferenceError ||
-        err instanceof SyntaxError ||
-        err instanceof RangeError
-      ) {
-        throw err;
-      }
+      if (isPermanentError(err)) throw err;
       lastErr = err;
       if (attempt < maxAttempts - 1) {
         const delay = backoff[attempt] || backoff[backoff.length - 1];
@@ -641,8 +645,9 @@ function resolveProviderState(metadata, cfg, provider) {
 
 async function cmdIndex(args, options, cfg, provider) {
   if (args.length === 0) {
-    // Bulk index mode — discover and index all missing completed artifacts.
-    return cmdIndexBulk(options, cfg, provider);
+    const summary = await cmdIndexBulk(options, cfg, provider);
+    if (summary.failed > 0) process.exitCode = 1;
+    return;
   }
 
   const sourceFile = args[0];
@@ -659,7 +664,6 @@ async function cmdIndex(args, options, cfg, provider) {
   // Derive identity from path.
   const identity = deriveIdentity(sourceFile);
 
-  // Index with retry wrapper.
   let chunkCount;
   try {
     chunkCount = await withRetry(
@@ -667,34 +671,22 @@ async function cmdIndex(args, options, cfg, provider) {
       { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
     );
   } catch (err) {
-    // Permanent failures (validation UserError, bad/expired key AuthError,
-    // programming errors) will fail identically on every retry — surface them
-    // now with a non-zero exit rather than clogging the pending queue. Only a
-    // TRANSIENT failure that exhausted its retries (network, lock timeout,
-    // store I/O) is queued for automatic retry on the next index call — the
-    // same durability contract cmdIndexBulk gives, which phase-completion (the
-    // primary single-file caller) previously never got.
-    const isPermanent =
-      err instanceof UserError ||
-      err instanceof AuthError ||
-      err instanceof TypeError ||
-      err instanceof ReferenceError ||
-      err instanceof SyntaxError ||
-      err instanceof RangeError;
-    if (isPermanent) throw err;
-
-    await addToPendingQueue(sourceFile, err.message);
     process.stderr.write(
-      `Failed to index ${sourceFile} after 3 attempts: ${err.message}. Added to pending queue.\n`
+      `Failed to index ${sourceFile}: ${err.message}\nThe next start will retry it.\n`
     );
-    if (err.stack) process.stderr.write(err.stack + '\n');
-    return;
+    process.exit(1);
   }
 
   process.stdout.write(`Indexed ${chunkCount} chunks from ${sourceFile}\n`);
+}
 
-  // After successful single-file index, catch up pending queue (up to 5).
-  await processPendingQueue(cfg, provider, PENDING_CATCHUP_LIMIT);
+/**
+ * The sha256 of an artifact's content — what a chunk records as its
+ * `source_hash`, and what the sync compares against the file on disk.
+ * @param {string} content
+ */
+function contentHash(content) {
+  return crypto.createHash('sha256').update(content).digest('hex');
 }
 
 /**
@@ -726,8 +718,8 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   const chunkConfig = JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
 
   // Read and chunk the source file. Anchor at the project root so a source
-  // path recorded relative to the project (bulk discovery, pending queue)
-  // reads correctly regardless of the invoking cwd.
+  // path recorded relative to the project (bulk discovery) reads correctly
+  // regardless of the invoking cwd.
   const absSource = resolveArtifactPath(sourceFile);
   const content = fs.readFileSync(absSource, 'utf8');
   const chunks = chunker.chunk(content, chunkConfig);
@@ -763,9 +755,6 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
 
   if (metadataExists) {
     metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending)) {
-      metadata.pending = [];
-    }
   }
 
   // Determine effective mode (full vs keyword-only).
@@ -810,6 +799,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // provenance shown in query headers and the recency signal. `last_indexed`
   // (set below) stays wall-clock; that one genuinely means "store last built".
   const docTimestamp = fs.statSync(absSource).mtimeMs;
+  const sourceHash = contentHash(content);
   const confidence = chunkConfig.confidence || 'medium';
   const docs = chunks.map((chunk, idx) => {
     const seq = String(idx + 1).padStart(3, '0');
@@ -822,6 +812,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
       topic: identity.topic,
       confidence,
       source_file: sourceFile,
+      source_hash: sourceHash,
       timestamp: docTimestamp,
     };
     if (embeddings) {
@@ -867,26 +858,18 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
 
     await store.saveStore(db, sp);
 
-    // Re-read metadata inside the lock to avoid clobbering concurrent
-    // pending-queue mutations (addToPendingQueue runs under the same
-    // lock, but an earlier addToPendingQueue may have committed between
-    // our pre-lock load at line ~376 and this write).
+    // Provider, model, and dimensions never change once set, so an existing
+    // record keeps them and takes the new timestamp alone.
     const freshMeta = fs.existsSync(mp) ? store.readMetadata(mp) : null;
-
     if (!freshMeta) {
-      const newMeta = {
+      store.writeMetadata(mp, {
         provider: effectiveProvider ? cfg.provider : null,
         model: effectiveProvider ? effectiveProvider.model() : null,
         dimensions: effectiveProvider ? effectiveProvider.dimensions() : null,
         last_indexed: new Date().toISOString(),
-        pending: [],
-      };
-      store.writeMetadata(mp, newMeta);
+      });
     } else {
-      // Preserve provider/model/dimensions (never change once set) and
-      // preserve the FRESHEST pending[] from disk.
       freshMeta.last_indexed = new Date().toISOString();
-      if (!Array.isArray(freshMeta.pending)) freshMeta.pending = [];
       store.writeMetadata(mp, freshMeta);
     }
   });
@@ -895,7 +878,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
 }
 
 // ---------------------------------------------------------------------------
-// Bulk index — discover and index all missing completed artifacts
+// Bulk index — bring the store in line with the files
 // ---------------------------------------------------------------------------
 
 /**
@@ -914,26 +897,40 @@ function runManifest(args) {
 }
 
 /**
+ * What a failed manifest read says — the engine's stderr when it spoke.
+ * @param {any} err
+ */
+function manifestErrorDetail(err) {
+  return err && err.stderr ? String(err.stderr).trim() : err.message;
+}
+
+/**
  * Surface real manifest-read failures (corrupt JSON, broken paths, etc.).
  * Expected misses are no longer thrown — `get` returns empty stdout + exit 0
  * for missing work units / fields, so callers detect them by checking output.
  */
 function reportUnexpectedManifestError(context, err) {
-  const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
-  process.stderr.write(`Warning: manifest read failed in ${context}: ${msg}\n`);
+  process.stderr.write(`Warning: manifest read failed in ${context}: ${manifestErrorDetail(err)}\n`);
 }
 
 /**
  * Read every work unit's full manifest via a single `manifest list` spawn.
- * Returns an array of manifests, or [] on any failure (warned, non-fatal) or a
- * non-array payload. Callers that need both the discovered artifacts AND the
- * manifest tree (cmdStatus) fetch once and share, rather than listing twice.
+ * Throws when the read fails; a non-array payload reads as no work units.
+ */
+function readWorkUnits() {
+  const parsed = JSON.parse(runManifest(['list']));
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+/**
+ * readWorkUnits for callers that degrade on a failed read: [] and a warning.
+ * Callers that need both the discovered artifacts AND the manifest tree
+ * (cmdStatus) fetch once and share, rather than listing twice.
  * @param {string} context  label for the failure warning
  */
 function listWorkUnits(context) {
   try {
-    const parsed = JSON.parse(runManifest(['list']));
-    return Array.isArray(parsed) ? parsed : [];
+    return readWorkUnits();
   } catch (err) {
     reportUnexpectedManifestError(context, err);
     return [];
@@ -941,19 +938,15 @@ function listWorkUnits(context) {
 }
 
 /**
- * Check if chunks exist for the given identity triple.
+ * The names the project manifest registers as work units, or null when it
+ * registers none — the engine then lists work units by scanning the
+ * directory, so an empty registry says nothing about which units exist.
+ * Throws when the read fails.
  */
-async function isIndexed(db, workUnit, phase, topic) {
-  const res = await store.searchFulltext(db, {
-    term: '',
-    where: {
-      work_unit: { eq: workUnit },
-      phase: { eq: phase },
-      topic: { eq: topic },
-    },
-    limit: 1,
-  });
-  return res.length > 0;
+function readRegistry() {
+  const raw = runManifest(['get', 'project.work_units']).trim();
+  const names = raw === '' ? [] : Object.keys(JSON.parse(raw) || {});
+  return names.length > 0 ? new Set(names) : null;
 }
 
 // Per-topic artifact path shapes, keyed by phase. The shapes are static, so a
@@ -1143,334 +1136,224 @@ function discoverArtifacts(workUnits) {
   return items;
 }
 
-async function cmdIndexBulk(options, cfg, provider) {
-  let artifacts = discoverArtifacts();
+// Statuses under which the engine removes a per-topic item's chunks — its
+// `knowledge remove` call sites: supersede, topic cancel, topic postpone,
+// and specification promote.
+const RETIRED_ITEM_STATUSES = new Set(['superseded', 'cancelled', 'postponed', 'promoted']);
 
-  // --work-unit scopes the bulk walk to a single unit. This is the lifecycle
-  // re-index path (reactivate / pivot): the same artifact set the engine's old
-  // per-artifact walk covered, indexed in ONE spawn instead of one per file.
-  if (options && options.workUnit) {
-    artifacts = artifacts.filter((a) => a.workUnit === options.workUnit);
+/**
+ * @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function identityKey(workUnit, phase, topic) {
+  return `${workUnit}/${phase}/${topic}`;
+}
+
+/**
+ * Chunks grouped by identity: the source file they were indexed from, the
+ * source hashes they carry (undefined for a chunk indexed before hashes were
+ * recorded), and how many there are.
+ * @param {Array<{work_unit: string, phase: string, topic: string, source_file: string, source_hash?: string}>} chunks
+ * @returns {Map<string, {workUnit: string, phase: string, topic: string, file: string, hashes: Set<string|undefined>, chunks: number}>}
+ */
+function identitiesOf(chunks) {
+  const byKey = new Map();
+  for (const c of chunks) {
+    const key = identityKey(c.work_unit, c.phase, c.topic);
+    if (!byKey.has(key)) {
+      byKey.set(key, { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), chunks: 0 });
+    }
+    const entry = byKey.get(key);
+    entry.hashes.add(c.source_hash);
+    entry.chunks += 1;
   }
+  return byKey;
+}
 
-  const kDir = knowledgeDir();
+/**
+ * Sort discovered artifacts against the store: `fresh` has no chunks,
+ * `changed` has chunks indexed from other content (or from content whose hash
+ * was never recorded), `unchanged` matches the file on disk.
+ * @param {Array<{file: string, workUnit: string, phase: string, topic: string}>} artifacts
+ * @param {Map<string, {hashes: Set<string|undefined>}>} indexed
+ */
+function classifyArtifacts(artifacts, indexed) {
+  const out = { fresh: [], changed: [], unchanged: [] };
+  for (const artifact of artifacts) {
+    const entry = indexed.get(identityKey(artifact.workUnit, artifact.phase, artifact.topic));
+    if (!entry) {
+      out.fresh.push(artifact);
+      continue;
+    }
+    const hash = contentHash(fs.readFileSync(resolveArtifactPath(artifact.file), 'utf8'));
+    const current = entry.hashes.size === 1 && entry.hashes.has(hash);
+    out[current ? 'unchanged' : 'changed'].push(artifact);
+  }
+  return out;
+}
+
+/**
+ * Split artifacts into those compact leaves in the store and those it prunes
+ * — the sync never re-embeds a pruned one.
+ * @template {{workUnit: string, phase: string}} T
+ * @param {T[]} artifacts
+ * @param {ReturnType<typeof pruneTest>} pruning
+ * @returns {{kept: T[], pruned: T[]}}
+ */
+function splitPruned(artifacts, pruning) {
+  const out = { kept: [], pruned: [] };
+  for (const a of artifacts) {
+    out[pruning && pruning.prunes(a.workUnit, a.phase) ? 'pruned' : 'kept'].push(a);
+  }
+  return out;
+}
+
+/**
+ * Whether a recorded source path lands outside this project — a chunk indexed
+ * by absolute path from another checkout.
+ * @param {string} file
+ */
+function outsideProject(file) {
+  const rel = path.relative(config.findProjectRoot(), resolveArtifactPath(file));
+  return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
+}
+
+/**
+ * Why an indexed identity no longer belongs in the store, or null while it
+ * may. Only positive knowledge removes: the source file gone from disk, the
+ * work unit unregistered or cancelled, the per-topic item gone or retired. A
+ * source outside the project and a work unit whose manifest could not be read
+ * are evidence of nothing, and the project-level identities answer to their
+ * files alone.
+ * @param {{workUnit: string, phase: string, topic: string, file: string}} entry
+ * @param {Map<string, any>} units  work-unit manifests by name
+ * @param {Set<string>|null} registry
+ */
+function retiredReason(entry, units, registry) {
+  if (outsideProject(entry.file)) return null;
+  if (!fs.existsSync(resolveArtifactPath(entry.file))) return 'source deleted';
+  if (RESERVED_IDENTITIES.has(entry.workUnit)) return null;
+  if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
+  const unit = units.get(entry.workUnit);
+  if (!unit) return null;
+  if (unit.status === 'cancelled') return 'work unit cancelled';
+  if (!ARTIFACT_PATHS[entry.phase]) return null;
+  const items = (unit.phases && unit.phases[entry.phase] && unit.phases[entry.phase].items) || {};
+  const item = items[entry.topic];
+  if (!item) return `no ${entry.phase} item`;
+  return RETIRED_ITEM_STATUSES.has(item.status) ? `${entry.phase} ${item.status}` : null;
+}
+
+/**
+ * Remove every listed identity's chunks in one locked store write.
+ * @param {Array<{workUnit: string, phase: string, topic: string}>} identities
+ */
+async function removeIdentities(identities) {
   const sp = storePath();
-  const mp = metadataPath();
-
-  // Ensure knowledge directory exists.
-  if (!fs.existsSync(kDir)) {
-    fs.mkdirSync(kDir, { recursive: true });
-  }
-
-  // Preflight: if a prior store exists, validate the current config's
-  // provider/model/dimensions match what the store was built with. Without
-  // this check, a config change (e.g. 128-dim stub → 1536-dim OpenAI) that
-  // triggers bulk index would short-circuit at the isIndexed() step for
-  // every file and report "Indexed 0 files. N already indexed." as though
-  // everything were fine — while the stored embeddings are still at the old
-  // dimensions. resolveProviderState throws a UserError with the "Run
-  // `knowledge rebuild`" hint, same as `query` surfaces on mismatch.
-  if (fs.existsSync(mp)) {
-    const meta = store.readMetadata(mp);
-    resolveProviderState(meta, cfg, provider);
-  }
-
-  // Load existing store to check what's already indexed.
-  let db = null;
-  if (fs.existsSync(sp)) {
-    db = await store.loadStore(sp);
-  }
-
-  let totalNew = 0;
-  let totalChunks = 0;
-  let skipped = 0;
-
-  for (const item of artifacts) {
-    // Check if already indexed.
-    if (db) {
-      const indexed = await isIndexed(db, item.workUnit, item.phase, item.topic);
-      if (indexed) {
-        skipped++;
-        continue;
-      }
-    }
-
-    // Index with retry.
-    try {
-      const identity = { workUnit: item.workUnit, phase: item.phase, topic: item.topic };
-      const count = await withRetry(
-        () => indexSingleFile(item.file, identity, cfg, provider),
-        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-      );
-      process.stdout.write(`Indexing ${item.file}... ${count} chunks\n`);
-      totalNew++;
-      totalChunks += count;
-      // No db reload here. discoverArtifacts yields one entry per identity
-      // (imports/seeds deduped, phase topics distinct), so indexing this file
-      // can never flip a LATER item's isIndexed answer — every isIndexed check
-      // is against a different identity. Reloading the store each file was one
-      // full load per file that never changed an outcome.
-    } catch (err) {
-      // All retries exhausted — add to pending queue. Write the stack to
-      // stderr so debugging does not depend on users capturing it later.
-      // Skip the stack for UserError and AuthError — both are user-config
-      // failures (validation / bad API key) where the message line alone
-      // is the actionable signal.
-      await addToPendingQueue(item.file, err.message);
-      process.stderr.write(
-        `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
-      );
-      const isUserFacing = err instanceof UserError || err instanceof AuthError;
-      if (err.stack && !isUserFacing) process.stderr.write(err.stack + '\n');
-    }
-  }
-
-  // In bulk mode, process entire pending queue (no limit).
-  await processPendingQueue(cfg, provider, Infinity);
-
-  process.stdout.write(
-    `Indexed ${totalNew} files (${totalChunks} chunks). ${skipped} already indexed.\n`
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Pending queue helpers
-// ---------------------------------------------------------------------------
-
-// Both pending-queue helpers are async and lock-protected to avoid
-// read-modify-write races with concurrent index/bulk operations.
-
-async function addToPendingQueue(file, errorMsg) {
-  const mp = metadataPath();
-  const kDir = knowledgeDir();
-  const lp = lockFilePath();
-  if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
-
-  await store.withLock(lp, async () => {
-    let metadata;
-    if (fs.existsSync(mp)) {
-      metadata = store.readMetadata(mp);
-    } else {
-      // First-ever failure before any successful index — create a minimal
-      // metadata file so failure tracking doesn't silently drop entries.
-      metadata = {
-        provider: null,
-        model: null,
-        dimensions: null,
-        last_indexed: null,
-        pending: [],
-      };
-    }
-    if (!Array.isArray(metadata.pending)) metadata.pending = [];
-
-    const existing = metadata.pending.findIndex((p) => p.file === file);
-    const base = { file, failed_at: new Date().toISOString(), error: errorMsg };
-    if (existing >= 0) {
-      const prior = metadata.pending[existing];
-      metadata.pending[existing] = { ...base, attempts: (prior.attempts || 1) + 1 };
-    } else {
-      metadata.pending.push({ ...base, attempts: 1 });
-    }
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-async function removePendingItem(file) {
-  const mp = metadataPath();
-  const lp = lockFilePath();
-  if (!fs.existsSync(mp)) return;
-
-  await store.withLock(lp, async () => {
-    if (!fs.existsSync(mp)) return;
-    const metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending)) return;
-    metadata.pending = metadata.pending.filter((p) => p.file !== file);
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-// IMPORTANT: The store lock is NOT reentrant. processPendingQueue calls
-// indexSingleFile (acquires lock) and removePendingItem (acquires lock)
-// from inside this function — each call must happen with no lock held
-// at entry. Never wrap a call to processPendingQueue in withLock —
-// doing so would cause a same-process deadlock.
-async function processPendingQueue(cfg, provider, limit) {
-  const mp = metadataPath();
-  if (!fs.existsSync(mp)) return;
-
-  const metadata = store.readMetadata(mp);
-  if (!Array.isArray(metadata.pending) || metadata.pending.length === 0) return;
-
-  const toProcess = metadata.pending.slice(0, limit);
-
-  for (const item of toProcess) {
-    if ((item.attempts || 0) >= PENDING_MAX_ATTEMPTS) {
-      // Permanent failure — evict so the queue doesn't grow forever.
-      process.stderr.write(
-        `Pending item ${item.file} exceeded ${PENDING_MAX_ATTEMPTS} attempts — evicting. Last error: ${item.error}\n`
-      );
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    const absFile = resolveArtifactPath(item.file);
-    if (!fs.existsSync(absFile)) {
-      // File no longer exists — remove from queue. Anchored at the project
-      // root so a pending entry (stored relative to the project) is not
-      // wrongly evicted when the CLI runs from a subdirectory.
-      process.stderr.write(`Pending item ${item.file} no longer exists. Removing from queue.\n`);
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    let identity;
-    try {
-      identity = deriveIdentity(item.file);
-    } catch (_) {
-      // Can't derive identity — remove from queue.
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    try {
-      await withRetry(
-        () => indexSingleFile(item.file, identity, cfg, provider),
-        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-      );
-      await removePendingItem(item.file);
-    } catch (err) {
-      // Still failing — bump attempts so eviction eventually fires.
-      await addToPendingQueue(item.file, err.message);
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Pending removal queue — mirrors the pending-index queue but for failed
-// `knowledge remove` calls (lock timeout, store I/O error). Without this,
-// a cancelled/superseded/promoted work unit's stale chunks persist in the
-// store until the user manually retries.
-// ---------------------------------------------------------------------------
-
-const REMOVAL_MAX_ATTEMPTS = 10;
-
-function removalKey(r) {
-  return `${r.workUnit}|${r.phase || ''}|${r.topic || ''}`;
-}
-
-async function addPendingRemoval(opts, errorMsg) {
-  const mp = metadataPath();
-  const kDir = knowledgeDir();
-  const lp = lockFilePath();
-  if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
-
-  await store.withLock(lp, async () => {
-    let metadata;
-    if (fs.existsSync(mp)) {
-      metadata = store.readMetadata(mp);
-    } else {
-      metadata = {
-        provider: null,
-        model: null,
-        dimensions: null,
-        last_indexed: null,
-        pending: [],
-        pending_removals: [],
-      };
-    }
-    if (!Array.isArray(metadata.pending_removals)) metadata.pending_removals = [];
-
-    const key = removalKey(opts);
-    const existing = metadata.pending_removals.findIndex((r) => removalKey(r) === key);
-    const base = {
-      workUnit: opts.workUnit,
-      phase: opts.phase || null,
-      topic: opts.topic || null,
-      queued_at: new Date().toISOString(),
-      error: errorMsg,
-    };
-    if (existing >= 0) {
-      const prior = metadata.pending_removals[existing];
-      metadata.pending_removals[existing] = { ...base, attempts: (prior.attempts || 0) + 1 };
-    } else {
-      metadata.pending_removals.push({ ...base, attempts: 1 });
-    }
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-async function removePendingRemoval(opts) {
-  const mp = metadataPath();
-  const lp = lockFilePath();
-  if (!fs.existsSync(mp)) return;
-
-  await store.withLock(lp, async () => {
-    if (!fs.existsSync(mp)) return;
-    const metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending_removals)) return;
-    const key = removalKey(opts);
-    metadata.pending_removals = metadata.pending_removals.filter((r) => removalKey(r) !== key);
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-// Lock semantics mirror processPendingQueue: never call while holding the
-// store lock — each queued retry acquires the lock itself.
-async function processPendingRemovals() {
-  const mp = metadataPath();
-  if (!fs.existsSync(mp)) return;
-
-  const metadata = store.readMetadata(mp);
-  if (!Array.isArray(metadata.pending_removals) || metadata.pending_removals.length === 0) return;
-
-  const toProcess = metadata.pending_removals.slice();
-
-  for (const item of toProcess) {
-    if ((item.attempts || 0) >= REMOVAL_MAX_ATTEMPTS) {
-      process.stderr.write(
-        `Pending removal for ${removalKey(item)} exceeded ${REMOVAL_MAX_ATTEMPTS} attempts — evicting.\n`
-      );
-      await removePendingRemoval(item);
-      continue;
-    }
-
-    try {
-      await performRemoval({ workUnit: item.workUnit, phase: item.phase, topic: item.topic });
-      process.stderr.write(`Drained pending removal for ${removalKey(item)}.\n`);
-      await removePendingRemoval(item);
-    } catch (err) {
-      // Still failing — bump attempts so we eventually evict.
-      try {
-        await addPendingRemoval(
-          { workUnit: item.workUnit, phase: item.phase, topic: item.topic },
-          err.message
-        );
-      } catch (_) {
-        // Metadata write failed — the next invocation will retry.
-      }
-    }
-  }
-}
-
-// Perform the actual remove-by-filter operation under the store lock.
-// Extracted from cmdRemove so the pending-removal queue can invoke it
-// without re-running the CLI layer (argument parsing, exit codes).
-async function performRemoval(opts) {
-  const sp = storePath();
-  const lp = lockFilePath();
-
-  if (!fs.existsSync(sp)) return 0;
-
-  let removed = 0;
-  await store.withLock(lp, async () => {
+  await store.withLock(lockFilePath(), async () => {
     const db = await store.loadStore(sp);
-    const where = { work_unit: { eq: opts.workUnit } };
-    if (opts.phase) where.phase = { eq: opts.phase };
-    if (opts.topic) where.topic = { eq: opts.topic };
-    removed = await store.removeByFilter(db, where);
+    for (const { workUnit, phase, topic } of identities) {
+      await store.removeByIdentity(db, { work_unit: workUnit, phase, topic });
+    }
     await store.saveStore(db, sp);
   });
-  return removed;
+}
+
+/**
+ * The manifest list and the registry the sync decides from. A failed read
+ * aborts the sync — it is not evidence that anything is gone.
+ */
+function readSyncManifests() {
+  try {
+    return { workUnits: readWorkUnits(), registry: readRegistry() };
+  } catch (err) {
+    throw new Error(`manifest read failed: ${manifestErrorDetail(err)}`);
+  }
+}
+
+/**
+ * What the sync does to the store: the discovered artifacts sorted into
+ * fresh, changed, and unchanged — bar those compact prunes — and the indexed
+ * identities to retire, each with its reason. A scope confines both to one
+ * work unit.
+ * @param {{scope: string|null, workUnits: Array<any>, registry: Set<string>|null, cfg: object}} inputs
+ */
+async function planSync({ scope, workUnits, registry, cfg }) {
+  const inScope = (workUnit) => !scope || workUnit === scope;
+  const sp = storePath();
+  const chunks = fs.existsSync(sp) ? await store.searchAllFulltext(await store.loadStore(sp)) : [];
+  const indexed = new Map([...identitiesOf(chunks)].filter(([, entry]) => inScope(entry.workUnit)));
+  const artifacts = discoverArtifacts(workUnits).filter((a) => inScope(a.workUnit));
+
+  const discovered = new Set(artifacts.map((a) => identityKey(a.workUnit, a.phase, a.topic)));
+  const units = new Map(workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+  const retired = [...indexed]
+    .filter(([key]) => !discovered.has(key))
+    .map(([, entry]) => ({ ...entry, reason: retiredReason(entry, units, registry) }))
+    .filter((entry) => entry.reason);
+
+  const { kept } = splitPruned(artifacts, pruneTest(cfg, workUnits));
+  return { ...classifyArtifacts(kept, indexed), retired };
+}
+
+/**
+ * Index one artifact, reporting the outcome on stdout or stderr. Resolves
+ * false when it failed.
+ * @param {{file: string, workUnit: string, phase: string, topic: string}} artifact
+ * @param {'new'|'changed'} state
+ */
+async function indexArtifact(artifact, state, cfg, provider) {
+  const identity = { workUnit: artifact.workUnit, phase: artifact.phase, topic: artifact.topic };
+  try {
+    const count = await withRetry(
+      () => indexSingleFile(artifact.file, identity, cfg, provider),
+      { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+    );
+    process.stdout.write(`Indexed ${artifact.file} — ${count} chunks (${state})\n`);
+    return true;
+  } catch (err) {
+    process.stderr.write(`Failed to index ${artifact.file}: ${err.message}\n`);
+    return false;
+  }
+}
+
+/**
+ * Bring the store in line with the files (see planSync). Every file is
+ * attempted; a failure is counted in the returned summary.
+ * @returns {Promise<{new: number, changed: number, removed: number, unchanged: number, failed: number}>}
+ */
+async function cmdIndexBulk(options, cfg, provider) {
+  const { workUnits, registry } = readSyncManifests();
+
+  // A provider/model change since the store was built must surface here:
+  // otherwise every unchanged file would skip and the run would report the
+  // store in line while its vectors are the old width.
+  const mp = metadataPath();
+  if (fs.existsSync(mp)) {
+    resolveProviderState(store.readMetadata(mp), cfg, provider);
+  }
+
+  const plan = await planSync({ scope: options && options.workUnit, workUnits, registry, cfg });
+  const summary = { new: 0, changed: 0, removed: plan.retired.length, unchanged: plan.unchanged.length, failed: 0 };
+
+  if (plan.retired.length > 0) {
+    await removeIdentities(plan.retired);
+    for (const entry of plan.retired) {
+      process.stdout.write(`Removed ${entry.file} — ${entry.chunks} chunks (${entry.reason})\n`);
+    }
+  }
+
+  for (const [state, artifacts] of [['new', plan.fresh], ['changed', plan.changed]]) {
+    for (const artifact of artifacts) {
+      if (await indexArtifact(artifact, state, cfg, provider)) summary[state] += 1;
+      else summary.failed += 1;
+    }
+  }
+
+  const failed = summary.failed > 0 ? `, ${summary.failed} failed` : '';
+  process.stdout.write(
+    `${summary.new} new, ${summary.changed} changed, ${summary.removed} removed, ${summary.unchanged} unchanged${failed}.\n`
+  );
+  return summary;
 }
 
 // ---------------------------------------------------------------------------
@@ -1638,15 +1521,15 @@ function resolveDecayWeights(cfg) {
  *   from config by the caller). Omitted → plain unit-count.
  */
 function getProgressClock(weights) {
-  let units;
-  try {
-    units = JSON.parse(runManifest(['list']));
-  } catch (err) {
-    reportUnexpectedManifestError('getProgressClock:list', err);
-    return new Map();
-  }
-  if (!Array.isArray(units)) return new Map();
-  const completed = units
+  return progressClockOf(listWorkUnits('getProgressClock:list'), weights);
+}
+
+/**
+ * The progress clock over an already-read manifest list.
+ * @param {Array<object>} workUnits @param {Object<string, number>} [weights]
+ */
+function progressClockOf(workUnits, weights) {
+  const completed = workUnits
     .filter((u) => u && u.name && u.status === 'completed')
     .map((u) => ({
       name: u.name,
@@ -1671,6 +1554,40 @@ function retrievability(progressElapsed, stability) {
   if (p === 0) return 1;
   const s = stability > 0 ? stability : DEFAULT_BASE_STABILITY;
   return Math.pow(DECAY_BASE, p / s);
+}
+
+/** @param {object} cfg */
+function resolveStability(cfg) {
+  return cfg && Number.isFinite(cfg.decay_base_stability)
+    ? cfg.decay_base_stability
+    : config.DEFAULTS.decay_base_stability;
+}
+
+/**
+ * Compact's prune test: a unit's non-spec chunks are pruned once its
+ * retrievability has decayed below `decay_prune_below`. A unit the progress
+ * clock has not moved past — in progress, undateable, the frontier — never
+ * is, and specifications never decay. Null when `decay_prune_below` is false.
+ * @param {object} cfg
+ * @param {Array<object>} workUnits  the manifest list the clock is built from
+ * @returns {{floor: number, prunes: (workUnit: string, phase: string) => boolean} | null}
+ */
+function pruneTest(cfg, workUnits) {
+  const floor = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
+  if (floor === false) return null;
+  if (typeof floor !== 'number' || !Number.isFinite(floor) || floor < 0 || floor > 1) {
+    throw new UserError(`Invalid decay_prune_below: ${JSON.stringify(floor)}. Expected false or a number in [0, 1].`);
+  }
+  const stability = resolveStability(cfg);
+  const clock = progressClockOf(workUnits, resolveDecayWeights(cfg));
+  return {
+    floor,
+    prunes: (workUnit, phase) => {
+      if (phase === 'specification') return false;
+      const elapsed = clock.get(workUnit) || 0;
+      return elapsed > 0 && retrievability(elapsed, stability) < floor;
+    },
+  };
 }
 
 // CLI boost field → store schema field. Kebab-case on the CLI surface,
@@ -1889,10 +1806,7 @@ async function cmdQuery(args, options, cfg, provider) {
   // down-rank by retrievability + user --boost directives. The clock is derived
   // once from the manifest; on failure it's empty → progressElapsed 0 → no decay.
   const progressClock = getProgressClock(resolveDecayWeights(cfg));
-  const stability =
-    cfg && Number.isFinite(cfg.decay_base_stability)
-      ? cfg.decay_base_stability
-      : config.DEFAULTS.decay_base_stability;
+  const stability = resolveStability(cfg);
   const merged = Array.from(allResults.values()).map((r) =>
     Object.assign({}, r, { progressElapsed: progressClock.get(r.work_unit) || 0 })
   );
@@ -1988,7 +1902,6 @@ async function cmdCheck(/* args, options, cfg, provider */) {
 // ---------------------------------------------------------------------------
 
 async function cmdStatus() {
-  const kDir = knowledgeDir();
   const sp = storePath();
   const mp = metadataPath();
   const out = [];
@@ -2007,7 +1920,7 @@ async function cmdStatus() {
   const db = await store.loadStore(sp);
   const allChunks = await store.searchAllFulltext(db);
 
-  // 1. Index summary.
+  // Index summary.
   out.push(`Total chunks: ${allChunks.length}`);
 
   const byWu = {};
@@ -2043,11 +1956,14 @@ async function cmdStatus() {
     }
   }
 
-  // 2. Last indexed + 3. Store health.
+  // Last indexed + store health.
   out.push('');
   const stat = fs.statSync(sp);
   const sizeKb = (stat.size / 1024).toFixed(1);
   out.push(`Store size: ${sizeKb} KB`);
+
+  let cfg;
+  try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
 
   if (fs.existsSync(mp)) {
     const metadata = store.readMetadata(mp);
@@ -2062,28 +1978,7 @@ async function cmdStatus() {
       out.push('Mode: Keyword-only');
     }
 
-    // 4. Pending items.
-    if (Array.isArray(metadata.pending) && metadata.pending.length > 0) {
-      out.push('');
-      out.push(`Pending items: ${metadata.pending.length}`);
-      for (const p of metadata.pending) {
-        const a = p.attempts || 1;
-        out.push(`  ${p.file} — ${p.error} (attempt ${a}/${PENDING_MAX_ATTEMPTS}, ${p.failed_at})`);
-      }
-    }
-
-    // 4b. Pending removals.
-    if (Array.isArray(metadata.pending_removals) && metadata.pending_removals.length > 0) {
-      out.push('');
-      out.push(`Pending removals: ${metadata.pending_removals.length}`);
-      for (const r of metadata.pending_removals) {
-        out.push(`  ${removalKey(r)} — ${r.error} (attempt ${r.attempts || 1}/${REMOVAL_MAX_ATTEMPTS})`);
-      }
-    }
-
-    // 6. Provider mismatch warning.
-    let cfg;
-    try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
+    // Provider mismatch warning.
     if (cfg) {
       const cfgProvider = config.resolveProvider(cfg);
       if (metadata.provider && cfgProvider) {
@@ -2095,7 +1990,7 @@ async function cmdStatus() {
         }
       }
 
-      // 10. Stub-to-full upgrade note.
+      // Stub-to-full upgrade note.
       if ((metadata.provider === null || metadata.provider === undefined) && cfgProvider) {
         out.push('');
         out.push('NOTE: Keyword-only mode but embedding provider configured. Run `knowledge rebuild` for full hybrid search.');
@@ -2105,7 +2000,7 @@ async function cmdStatus() {
     out.push('Metadata: missing (run `knowledge rebuild` to fix)');
   }
 
-  // 7. Orphan detection — source files that no longer exist.
+  // Orphan detection — source files that no longer exist.
   // Resolve relative to the project root (found by walking up from cwd)
   // rather than cwd directly, so status invoked from a subdirectory
   // does not mark every chunk as orphaned.
@@ -2127,34 +2022,41 @@ async function cmdStatus() {
     }
   }
 
-  // The manifest tree is read ONCE and shared by both the unindexed-artifact
-  // discovery (8) and the manifest-knowledge consistency checks (9). Before,
-  // each listed independently — two `manifest list` spawns per status call.
+  // The manifest tree is read ONCE and shared by both the artifact
+  // classification and the manifest-knowledge consistency checks.
   const workUnits = listWorkUnits('cmdStatus:list');
 
-  // 8. Unindexed artifacts.
+  let pruning = null;
   try {
-    const artifacts = discoverArtifacts(workUnits);
-    const unindexed = [];
-    for (const a of artifacts) {
-      const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic);
-      if (!indexed) unindexed.push(a.file);
-    }
-    if (unindexed.length > 0) {
+    pruning = pruneTest(cfg, workUnits);
+  } catch (err) {
+    out.push('');
+    out.push(`WARNING: ${err.message}`);
+  }
+
+  // Artifacts the store is behind on — never indexed, or changed since — and
+  // those compact prunes below the decay floor, which are neither.
+  try {
+    const { kept, pruned } = splitPruned(discoverArtifacts(workUnits), pruning);
+    const { fresh, changed } = classifyArtifacts(kept, identitiesOf(allChunks));
+    for (const [label, artifacts] of [
+      ['Unindexed completed artifacts', fresh],
+      ['Changed since indexing', changed],
+      ['Pruned below the decay floor', pruned],
+    ]) {
+      if (artifacts.length === 0) continue;
       out.push('');
-      out.push(`Unindexed completed artifacts: ${unindexed.length}`);
-      for (const f of unindexed) {
-        out.push(`  ${f}`);
+      out.push(`${label}: ${artifacts.length}`);
+      for (const a of artifacts) {
+        out.push(`  ${a.file}`);
       }
     }
   } catch (err) {
     // Discovery may fail if no manifest — surface so user can tell.
-    process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
+    process.stderr.write(`Warning: artifact discovery failed: ${err.message}\n`);
   }
 
-  // 9. Manifest-knowledge consistency. Reuses the shared manifest tree (read
-  // once above) rather than shelling out per spec topic — status was O(specs)
-  // processes before, which meant ~5s on 50-spec repos.
+  // Manifest-knowledge consistency, over the shared manifest tree.
   const consistency = [];
   const manifestByName = new Map();
   for (const m of workUnits) if (m && m.name) manifestByName.set(m.name, m);
@@ -2256,23 +2158,19 @@ async function cmdRebuild(_args, options, cfg, provider) {
       : (cfg && cfg.dimensions) || KEYWORD_ONLY_DIMENSIONS;
     const emptyDb = await store.createStore(dims);
     await store.saveStore(emptyDb, sp);
-    // pending[] resets to empty and pending_removals is deliberately dropped:
-    // rebuild reindexes every artifact from scratch, so a queued index retry
-    // is redundant and a queued removal targets chunks that no longer exist in
-    // the fresh store. Both queues are meaningless against the rebuilt index.
     store.writeMetadata(mp, {
       provider: provider ? cfg.provider : null,
       model: provider ? provider.model() : null,
       dimensions: provider ? provider.dimensions() : null,
       last_indexed: new Date().toISOString(),
-      pending: [],
     });
   });
   process.stdout.write('Deleted existing index.\n');
 
+  let summary;
   try {
     // Run bulk index (acquires the lock per-file internally).
-    await cmdIndexBulk(options, cfg, provider);
+    summary = await cmdIndexBulk(options, cfg, provider);
   } catch (err) {
     // Roll back to the pre-rebuild state. Best-effort: if the rollback
     // itself fails (disk full, permission change), we surface both errors
@@ -2301,9 +2199,11 @@ async function cmdRebuild(_args, options, cfg, provider) {
     throw err;
   }
 
-  // Bulk index succeeded — discard the backup.
+  // The rebuilt index stands — a file that failed to index is one the next
+  // start's sync retries — so the backup goes.
   if (fs.existsSync(spBak)) fs.unlinkSync(spBak);
   if (fs.existsSync(mpBak)) fs.unlinkSync(mpBak);
+  if (summary.failed > 0) process.exitCode = 1;
 }
 
 /**
@@ -2365,23 +2265,14 @@ async function cmdRemove(_args, options) {
   // `remove --work-unit <typo>` silently succeeds with "Removed 0 chunks"
   // — a fat-finger is indistinguishable from a real no-op. The registry
   // is authoritative (migration 031 backfills it from the filesystem),
-  // so a miss here means the caller has the wrong name.
-  //
-  // This check lives in cmdRemove only, not performRemoval — the pending-
-  // removal queue's drain path may legitimately target a WU that has since
-  // been removed from the registry (e.g. after absorption), and the stored
-  // chunks can still be cleaned up even when the WU entry is gone.
-  // Registry presence determines whether this is a "named WU" remove (the
-  // common path) or an "orphan-chunk cleanup" remove (the escape hatch
-  // when chunks linger after absorption / manual registry mutation). On
-  // registry-not-found, fall through to a store probe — if the store has
-  // chunks for this WU we treat it as an orphan cleanup and proceed; if
-  // not, surface the typo error.
+  // so a miss here means the caller has the wrong name — unless the store
+  // still holds chunks for the name (after absorption or a manual registry
+  // edit), which makes it an orphan-chunk cleanup instead.
   // Baseline and roadmap are file-based, project-level, and never in the
   // work-unit registry — the registry probe below would misreport a
   // legitimate remove as an orphan cleanup. Skip straight to removal.
   let isOrphanCleanup = false;
-  const projectEntry = options.workUnit === BASELINE_IDENTITY || options.workUnit === ROADMAP_IDENTITY
+  const projectEntry = RESERVED_IDENTITIES.has(options.workUnit)
     ? options.workUnit
     : runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
   if (projectEntry === '') {
@@ -2389,10 +2280,7 @@ async function cmdRemove(_args, options) {
     let storeMatch = 0;
     if (fs.existsSync(sp)) {
       const db = await store.loadStore(sp);
-      const where = { work_unit: { eq: options.workUnit } };
-      if (options.phase) where.phase = { eq: options.phase };
-      if (options.topic) where.topic = { eq: options.topic };
-      storeMatch = await store.countByFilter(db, where);
+      storeMatch = await store.countByFilter(db, removeFilter(options));
     }
     if (storeMatch === 0) {
       throw new UserError(
@@ -2413,42 +2301,26 @@ async function cmdRemove(_args, options) {
   const desc = formatRemoveDesc(options) + (isOrphanCleanup ? ' (orphan cleanup)' : '');
 
   // --dry-run is observational only: count what would be removed, touch
-  // nothing on disk. Don't drain the pending-removal queue either — that
-  // would be a real side effect.
+  // nothing on disk.
   if (options.dryRun) {
     if (!fs.existsSync(sp)) {
       process.stdout.write(`Would remove 0 chunks for ${desc} (store not initialised)\n`);
       return;
     }
     const db = await store.loadStore(sp);
-    const where = { work_unit: { eq: options.workUnit } };
-    if (options.phase) where.phase = { eq: options.phase };
-    if (options.topic) where.topic = { eq: options.topic };
-    const count = await store.countByFilter(db, where);
+    const count = await store.countByFilter(db, removeFilter(options));
     process.stdout.write(`Would remove ${count} chunks for ${desc}\n`);
     return;
   }
 
-  // Drain any previously-failed removals first so stale chunks from earlier
-  // cancellations/supersessions don't linger just because the store was
-  // briefly locked.
-  await processPendingRemovals();
-
-  if (!fs.existsSync(sp)) {
-    process.stdout.write(`Removed 0 chunks for ${desc}\n`);
-    return;
-  }
-
+  let removed;
   try {
-    const removed = await performRemoval(options);
-    process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
+    removed = await performRemoval(options);
   } catch (err) {
-    await addPendingRemoval(options, err.message);
-    process.stderr.write(
-      `Removal of ${desc} failed (${err.message}). Queued for automatic retry on next remove/compact.\n`
-    );
+    process.stderr.write(`Removal of ${desc} failed: ${err.message}\n`);
     process.exit(1);
   }
+  process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
 }
 
 function formatRemoveDesc(options) {
@@ -2457,38 +2329,53 @@ function formatRemoveDesc(options) {
   return `${options.workUnit} (all phases)`;
 }
 
+/**
+ * The where-clause a remove's options name.
+ * @param {{workUnit: string, phase?: string|null, topic?: string|null}} opts
+ */
+function removeFilter(opts) {
+  const where = { work_unit: { eq: opts.workUnit } };
+  if (opts.phase) where.phase = { eq: opts.phase };
+  if (opts.topic) where.topic = { eq: opts.topic };
+  return where;
+}
+
+/**
+ * Remove every chunk the options name under the store lock. Returns the
+ * count removed — 0 when no store exists yet.
+ * @param {{workUnit: string, phase?: string|null, topic?: string|null}} opts
+ */
+async function performRemoval(opts) {
+  const sp = storePath();
+  if (!fs.existsSync(sp)) return 0;
+
+  let removed = 0;
+  await store.withLock(lockFilePath(), async () => {
+    const db = await store.loadStore(sp);
+    removed = await store.removeByFilter(db, removeFilter(opts));
+    await store.saveStore(db, sp);
+  });
+  return removed;
+}
+
 // ---------------------------------------------------------------------------
 // Compact command
 // ---------------------------------------------------------------------------
 
 async function cmdCompact(_args, options, cfg) {
-  // Drain any previously-failed removals first.
-  await processPendingRemovals();
-
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Decay is progress-based now (idea #33). `compact` is a pure storage
-  // backstop: it prunes a unit's non-spec chunks only once their retrievability
-  // R has fallen below decay_prune_below — by then they're already unreachable
-  // in ranking, so removal is hygiene, not a relevance call. false disables
+  // Decay is progress-based (idea #33). `compact` is a pure storage backstop:
+  // it prunes a unit's non-spec chunks only once their retrievability R has
+  // fallen below decay_prune_below — by then they're already unreachable in
+  // ranking, so removal is hygiene, not a relevance call. false disables
   // pruning entirely; relevance still decays live in query ranking.
-  const rawPrune = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
-  if (rawPrune === false) {
+  const pruning = pruneTest(cfg, listWorkUnits('cmdCompact:list'));
+  if (!pruning) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
-  if (typeof rawPrune !== 'number' || !Number.isFinite(rawPrune) || rawPrune < 0 || rawPrune > 1) {
-    process.stderr.write(
-      `Invalid decay_prune_below: ${JSON.stringify(rawPrune)}. Expected false or a number in [0, 1].\n`
-    );
-    process.exit(1);
-  }
-  const pruneBelow = rawPrune;
-  const stability =
-    cfg && Number.isFinite(cfg.decay_base_stability)
-      ? cfg.decay_base_stability
-      : config.DEFAULTS.decay_base_stability;
 
   if (!fs.existsSync(sp)) return;
 
@@ -2497,11 +2384,6 @@ async function cmdCompact(_args, options, cfg) {
   // Discover unique work units in the store by searching for all docs.
   const allResults = await store.searchAllFulltext(db);
   if (allResults.length === 0) return;
-
-  // Progress clock: how far the project has moved past each unit. A unit
-  // absent from the clock (in-progress / undateable) has progressElapsed 0 →
-  // R = 1 → never pruned.
-  const progressClock = getProgressClock(resolveDecayWeights(cfg));
 
   // Group by work unit.
   const byWorkUnit = {};
@@ -2515,13 +2397,7 @@ async function cmdCompact(_args, options, cfg) {
   const toRemoveIds = [];
 
   for (const [wu, chunks] of Object.entries(byWorkUnit)) {
-    const progressElapsed = progressClock.get(wu) || 0;
-    if (progressElapsed === 0) continue; // frontier / in-progress — keep
-    const R = retrievability(progressElapsed, stability);
-    if (R >= pruneBelow) continue; // still reachable in ranking — keep
-
-    // Buried below the floor — prune non-spec chunks only (specs never decay).
-    const candidates = chunks.filter((c) => c.phase !== 'specification');
+    const candidates = chunks.filter((c) => pruning.prunes(wu, c.phase));
     if (candidates.length === 0) continue;
 
     const phases = new Set(candidates.map((c) => c.phase));
@@ -2538,7 +2414,7 @@ async function cmdCompact(_args, options, cfg) {
 
   if (options.dryRun) {
     const out = [];
-    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
+    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruning.floor})`);
     for (const r of removals) {
       out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
     }
@@ -2563,7 +2439,7 @@ async function cmdCompact(_args, options, cfg) {
   });
 
   const out = [];
-  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
+  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruning.floor})`);
   for (const r of removals) {
     out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
   }
@@ -2625,8 +2501,11 @@ module.exports = {
   deriveIdentity,
   resolveProviderState,
   withRetry,
+  isPermanentError,
   UserError,
   AuthError,
+  InvalidRequestError,
+  ConfigError,
   main,
   cmdIndexBulk,
   discoverArtifacts,
@@ -2646,6 +2525,7 @@ module.exports = {
   buildProgressClock,
   getProgressClock,
   retrievability,
+  pruneTest,
   rerank,
   resolveSimilarityThreshold,
 };

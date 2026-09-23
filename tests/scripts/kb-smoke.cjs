@@ -113,7 +113,6 @@ async function main() {
     model: 'stub',
     dimensions: DIMS,
     last_indexed: new Date().toISOString(),
-    pending: [],
   });
   const meta = readMetadata(metaPath);
   check('metadata round-trip', meta.provider === 'stub' && meta.dimensions === DIMS);

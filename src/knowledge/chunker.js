@@ -12,12 +12,16 @@
 // matters and resolves ambiguity between `keep_whole_below` (whole-file
 // gate) and `special_sections` (split-time behaviour).
 //
+// Every chunk is at most MAX_CHUNK_CHARS. A piece over the budget splits at
+// the next heading level present inside it, level by level; a piece with no
+// heading left inside splits into paragraph groups, then lines, then slices
+// of a single line — packed greedily back up to the budget at each of those
+// tiers, and never inside a fenced block that fits on its own.
+//
 // Content preservation invariant — "no lossy compression anywhere in the
-// pipeline": every emitted chunk's content
-// must be a verbatim substring of the post-frontmatter source. The
-// implementation tracks source line ranges on sections and slices from
-// the source when merging, rather than concatenating with a synthetic
-// separator — which would violate the invariant.
+// pipeline": every emitted chunk's content must be a verbatim substring of
+// the post-frontmatter source. Chunks are sliced from the source by offset,
+// never assembled by concatenating strings with a synthetic separator.
 //
 // One deliberate exception: whitespace-free runs longer than
 // MAX_TOKEN_LENGTH are split with a space (see capTokenRuns). Orama's
@@ -29,10 +33,14 @@
 
 const FENCE_RE = /^\s*(```+|~~~+)/;
 const FRONTMATTER_DELIM = /^---\s*$/;
+const HEADING_RE = /^(#{1,6})\s+(.*)$/;
 
 // Maximum length of a single whitespace-free run allowed into a chunk.
 const MAX_TOKEN_LENGTH = 2048;
 const LONG_RUN_RE = new RegExp(`\\S{${MAX_TOKEN_LENGTH + 1},}`, 'g');
+
+// ≈3.5k tokens of English prose — under half the 8192-token embedding input limit, leaving room for code and non-Latin text, which tokenise denser.
+const MAX_CHUNK_CHARS = 16000;
 
 /**
  * Split any whitespace-free run longer than MAX_TOKEN_LENGTH into
@@ -70,7 +78,6 @@ function chunk(markdown, config) {
   const {
     primary_level: primaryLevel = 2,
     fallback_level: fallbackLevel = 3,
-    max_lines: maxLines = 200,
     keep_whole_below: keepWholeBelow = 50,
     special_sections: specialSections = {},
     strip_frontmatter: stripFrontmatter = true,
@@ -84,46 +91,31 @@ function chunk(markdown, config) {
   //    whitespace-free runs before any content can reach the tokenizer.
   //    Applied to the body (not per-chunk) so every return path below is
   //    covered; only spaces are inserted, so line structure — and with it
-  //    heading/fence parsing and all line counts — is unchanged.
+  //    heading/fence parsing — is unchanged.
   const body = capTokenRuns(
     stripFrontmatter ? stripOpeningFrontmatter(normalised) : normalised
   );
 
   if (body.trim() === '') return [];
 
-  const lines = body.split('\n');
+  const doc = parseDocument(body);
+  const fit = (piece) => fitToBudget(doc, piece, skipEmptySections);
+  const whole = { startLine: 0, endLine: doc.lines.length - 1, headed: false };
 
-  // 2. Whole-file gate: below keep_whole_below lines returns whole file as
-  //    a single chunk. Do NOT proceed to heading parsing or special_sections.
-  if (lines.length < keepWholeBelow) {
-    return [{ content: rtrim(body) }];
-  }
+  // 2. Whole-file gate: below keep_whole_below lines the file is one piece.
+  //    Do NOT proceed to heading parsing or special_sections.
+  if (doc.lines.length < keepWholeBelow) return fit(whole);
 
-  // 3. Parse into headings, tracking fenced code blocks so headings inside
-  //    them do not trigger splits.
-  const headings = parseHeadings(lines);
-
-  if (headings.length === 0) {
-    return [{ content: rtrim(body) }];
-  }
-
-  // Fallback chain for missing headings: primary -> fallback -> whole file.
-  const hasPrimary = headings.some((h) => h.level === primaryLevel);
-  const hasFallback = headings.some((h) => h.level === fallbackLevel);
-
-  let splitLevel;
-  if (hasPrimary) {
-    splitLevel = primaryLevel;
-  } else if (hasFallback) {
-    splitLevel = fallbackLevel;
-  } else {
-    return [{ content: rtrim(body) }];
-  }
+  // 3. Split level: primary -> fallback -> whole file.
+  const splitLevel = [primaryLevel, fallbackLevel].find((level) =>
+    doc.headings.some((h) => h.level === level)
+  );
+  if (splitLevel === undefined) return fit(whole);
 
   // 4. Build sections at splitLevel with source line ranges. Content before
   //    the first splitLevel heading (typically an H1 title + intro) becomes
   //    the first section, with the H1 line used as its heading text.
-  const sections = buildSections(lines, headings, splitLevel);
+  const sections = buildSections(doc.lines, doc.headings, splitLevel);
 
   // 5. Expand sections by applying sub-level special_sections rules. Any
   //    heading inside a regular section whose text matches a special_sections
@@ -133,89 +125,25 @@ function chunk(markdown, config) {
   //    happens — "Discussion Map as H2" stays one chunk.
   const items = expandSubLevelSpecials(
     sections,
-    lines,
+    doc.lines,
     splitLevel,
     specialSections,
-    headings
+    doc.headings
   );
 
-  // 6. Apply special_sections segment rules (merge-up / skip), then
-  //    generate chunk content by slicing from the source line array. This
-  //    is how the verbatim invariant is maintained: chunks are never
-  //    assembled by concatenating strings with injected separators.
-  const segments = [];
-  for (const item of items) {
-    if (item.action === 'skip') continue;
-
-    if (item.action === 'merge-up') {
-      if (segments.length === 0) {
-        // First-section merge-up: promote to its own chunk.
-        segments.push({
-          action: 'regular',
-          startLine: item.startLine,
-          endLine: item.endLine,
-          heading: item.heading,
-          headingLine: item.headingLine,
-        });
-      } else {
-        // Extend the previous segment's end line. The merged chunk is a
-        // contiguous source slice from prev.startLine to item.endLine, so
-        // the verbatim invariant holds even if the sections are separated
-        // by blank lines, code blocks, or other content in the source.
-        const prev = segments[segments.length - 1];
-        prev.endLine = item.endLine;
-      }
-      continue;
-    }
-
-    segments.push({
-      action: item.action || 'regular',
-      startLine: item.startLine,
-      endLine: item.endLine,
-      heading: item.heading,
-      headingLine: item.headingLine,
-    });
-  }
-
-  // 7. Generate chunks from segments.
-  const chunks = [];
-  for (const seg of segments) {
-    const text = rtrim(lines.slice(seg.startLine, seg.endLine + 1).join('\n'));
-    const sectionLike = {
-      heading: seg.heading,
-      headingLine: seg.headingLine,
-      text,
-    };
-
-    if (skipEmptySections && isEmptySection(sectionLike)) continue;
-
-    // Size fallback only applies to regular sections. own-chunk sections
-    // stay whole regardless of size — "always its own chunk" is
-    // interpreted as literal one chunk, so a large Discussion Map stays
-    // intact even if it exceeds max_lines. This is a deliberate design
-    // choice: special_sections are semantic units the user has marked as
-    // atomic, and splitting them would defeat the purpose.
-    const segLines = text.split('\n');
-    if (seg.action === 'regular' && segLines.length > maxLines) {
-      const subs = splitAtFallback(sectionLike, fallbackLevel);
-      for (const sub of subs) {
-        if (skipEmptySections && isEmptySection(sub)) continue;
-        chunks.push({ content: sub.text });
-      }
-    } else {
-      chunks.push({ content: text });
-    }
-  }
-
-  return chunks;
+  // 6. Apply special_sections segment rules (merge-up / skip), then fit each
+  //    segment to the budget.
+  return buildSegments(items, doc.lines)
+    .filter((seg) => !(skipEmptySections && isEmptyPiece(doc, seg)))
+    .flatMap(fit);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function rtrim(s) {
-  return s.replace(/\s+$/, '');
+function isBlank(line) {
+  return line.trim() === '';
 }
 
 /**
@@ -238,49 +166,71 @@ function stripOpeningFrontmatter(markdown) {
 }
 
 /**
- * Parse markdown lines into a list of heading descriptors, tracking fenced
- * code blocks so headings inside them are ignored. Returns an array of
- * { level, text, line } entries in document order.
+ * Scan markdown lines for headings and fenced code blocks. Headings inside a
+ * fence are ignored. Returns the headings as { level, text, line } in
+ * document order, and each fence's opening line mapped to its closing line
+ * (an unclosed fence runs to the last line).
  */
-function parseHeadings(lines) {
+function scanStructure(lines) {
   const headings = [];
-  let inFence = false;
-  let fenceMarker = '';
+  const fenceClose = new Map();
+  let openedAt = -1;
+  let marker = '';
 
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    const fenceMatch = FENCE_RE.exec(line);
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0]; // ` or ~
-      if (!inFence) {
-        inFence = true;
-        fenceMarker = marker;
-      } else if (marker === fenceMarker) {
-        inFence = false;
-        fenceMarker = '';
+    const fence = FENCE_RE.exec(lines[i]);
+    if (fence) {
+      if (openedAt < 0) {
+        openedAt = i;
+        marker = fence[1][0];
+      } else if (fence[1][0] === marker) {
+        fenceClose.set(openedAt, i);
+        openedAt = -1;
       }
       continue;
     }
-    if (inFence) continue;
+    if (openedAt >= 0) continue;
 
-    const headingMatch = /^(#{1,6})\s+(.*)$/.exec(line);
-    if (headingMatch) {
-      headings.push({
-        level: headingMatch[1].length,
-        text: headingMatch[2].trim(),
-        line: i,
-      });
+    const heading = HEADING_RE.exec(lines[i]);
+    if (heading) {
+      headings.push({ level: heading[1].length, text: heading[2].trim(), line: i });
     }
   }
+  if (openedAt >= 0) fenceClose.set(openedAt, lines.length - 1);
 
-  return headings;
+  return { headings, fenceClose };
+}
+
+/**
+ * The body as lines plus the offsets that turn any line range — or any
+ * character span — back into a verbatim, right-trimmed slice of the body.
+ */
+function parseDocument(body) {
+  const lines = body.split('\n');
+  const offsets = [0];
+  for (const line of lines) offsets.push(offsets[offsets.length - 1] + line.length + 1);
+  const { headings, fenceClose } = scanStructure(lines);
+
+  const trimmedEnd = (from, to) => {
+    let end = to;
+    while (end > from && /\s/.test(body[end - 1])) end -= 1;
+    return end;
+  };
+
+  return {
+    lines,
+    headings,
+    fenceEnd: (line) => (fenceClose.has(line) ? fenceClose.get(line) : line),
+    lineStart: (line) => offsets[line],
+    lineSpan: (start, end) => ({ from: offsets[start], to: offsets[end + 1] - 1 }),
+    size: ({ from, to }) => trimmedEnd(from, to) - from,
+    content: ({ from, to }) => body.slice(from, trimmedEnd(from, to)),
+  };
 }
 
 /**
  * Build a flat list of sections split at `splitLevel`. Each section carries
- * its source line range ({ startLine, endLine }) so the main loop can slice
- * from the original line array when generating chunk content — this is how
- * the verbatim invariant is maintained through merge-up operations.
+ * its source line range ({ startLine, endLine }).
  *
  * Content before the first splitLevel heading — typically an H1 title and
  * any intro text — becomes the first section. The H1 line is recorded as
@@ -298,16 +248,13 @@ function buildSections(lines, headings, splitLevel) {
 
   // Leading pre-split content (H1 + intro, or just intro if no H1).
   if (firstSplitLine > 0) {
-    const preLines = lines.slice(0, firstSplitLine);
     const h1 = headings.find((h) => h.level === 1 && h.line < firstSplitLine);
-    const text = rtrim(preLines.join('\n'));
-    if (text.trim() !== '') {
+    if (lines.slice(0, firstSplitLine).some((line) => !isBlank(line))) {
       sections.push({
         heading: h1 ? h1.text : '',
         headingLine: h1 ? lines[h1.line] : '',
         startLine: 0,
         endLine: firstSplitLine - 1,
-        text,
       });
     }
   }
@@ -316,13 +263,11 @@ function buildSections(lines, headings, splitLevel) {
     const start = splitIndices[i];
     const end =
       i + 1 < splitIndices.length ? splitIndices[i + 1] - 1 : lines.length - 1;
-    const headingText = /^#+\s+(.*)$/.exec(lines[start])[1].trim();
     sections.push({
-      heading: headingText,
+      heading: HEADING_RE.exec(lines[start])[2].trim(),
       headingLine: lines[start],
       startLine: start,
       endLine: end,
-      text: rtrim(lines.slice(start, end + 1).join('\n')),
     });
   }
 
@@ -465,66 +410,177 @@ function expandSubLevelSpecials(
 }
 
 /**
- * Split an oversized section once at `fallbackLevel`. The original section's
- * heading and any content before the first fallbackLevel heading form the
- * first sub-section. No recursion — oversized sub-sections are returned as
- * they are and reported by `knowledge status` (Phase 4). This matches the
- * flat fallback chain in design doc finding #9: H2 → H3 → whole file.
+ * Apply the segment actions — `skip` drops an item, `merge-up` extends the
+ * previous segment to the item's end (a first-section merge-up stands as its
+ * own segment) — and reduce each survivor to its line range plus whether
+ * that range opens on its own heading line.
  */
-function splitAtFallback(section, fallbackLevel) {
-  const lines = section.text.split('\n');
-  const headings = parseHeadings(lines);
-  const subIndices = headings
-    .filter((h) => h.level === fallbackLevel)
-    .map((h) => h.line);
-
-  if (subIndices.length === 0) {
-    return [section];
-  }
-
-  const subs = [];
-
-  const firstSub = subIndices[0];
-  if (firstSub > 0) {
-    const preLines = lines.slice(0, firstSub);
-    const text = rtrim(preLines.join('\n'));
-    if (text.trim() !== '') {
-      subs.push({
-        heading: section.heading,
-        headingLine: section.headingLine,
-        text,
-      });
+function buildSegments(items, lines) {
+  const segments = [];
+  for (const item of items) {
+    if (item.action === 'skip') continue;
+    if (item.action === 'merge-up' && segments.length > 0) {
+      segments[segments.length - 1].endLine = item.endLine;
+      continue;
     }
-  }
-
-  for (let i = 0; i < subIndices.length; i += 1) {
-    const start = subIndices[i];
-    const end = i + 1 < subIndices.length ? subIndices[i + 1] : lines.length;
-    const sliceLines = lines.slice(start, end);
-    const headingText = /^#+\s+(.*)$/.exec(lines[start])[1].trim();
-    subs.push({
-      heading: headingText,
-      headingLine: lines[start],
-      text: rtrim(sliceLines.join('\n')),
+    segments.push({
+      startLine: item.startLine,
+      endLine: item.endLine,
+      headed: Boolean(item.headingLine) && lines[item.startLine] === item.headingLine,
     });
   }
+  return segments;
+}
 
+/**
+ * A piece is empty when nothing but whitespace follows its own heading line.
+ * Used to drop pieces that sub-level extraction and heading splits leave
+ * behind (e.g. `## Parent` with no intro text before the first sub-section).
+ */
+function isEmptyPiece(doc, piece) {
+  const bodyStart = piece.headed ? piece.startLine + 1 : piece.startLine;
+  for (let i = bodyStart; i <= piece.endLine; i += 1) {
+    if (!isBlank(doc.lines[i])) return false;
+  }
+  return true;
+}
+
+/**
+ * The chunk a span yields — none when it holds only whitespace.
+ */
+function chunksOf(doc, span) {
+  const content = doc.content(span);
+  return content.trim() === '' ? [] : [{ content }];
+}
+
+/**
+ * Emit a piece whole while it fits the budget; otherwise split it at the
+ * next heading level inside it and fit each sub-piece, or — with no heading
+ * left inside — pack it by paragraphs, lines, and line slices.
+ */
+function fitToBudget(doc, piece, skipEmpty) {
+  const span = doc.lineSpan(piece.startLine, piece.endLine);
+  if (doc.size(span) <= MAX_CHUNK_CHARS) return chunksOf(doc, span);
+
+  const subs = splitAtNextHeadingLevel(doc, piece);
+  if (subs === null) return packTier(doc, { start: piece.startLine, end: piece.endLine }, 0);
+  return subs
+    .filter((sub) => !(skipEmpty && isEmptyPiece(doc, sub)))
+    .flatMap((sub) => fitToBudget(doc, sub, skipEmpty));
+}
+
+/**
+ * Split a piece at every heading of the shallowest level found after its
+ * first line. Text before the first of those headings stays with the
+ * piece's own opening line as the first sub-piece. Null when no heading
+ * follows the first line.
+ */
+function splitAtNextHeadingLevel(doc, piece) {
+  const inner = doc.headings.filter(
+    (h) => h.line > piece.startLine && h.line <= piece.endLine
+  );
+  if (inner.length === 0) return null;
+
+  const level = Math.min(...inner.map((h) => h.level));
+  const cuts = inner.filter((h) => h.level === level).map((h) => h.line);
+  const subs = [{ startLine: piece.startLine, endLine: cuts[0] - 1, headed: piece.headed }];
+  cuts.forEach((line, i) => {
+    const endLine = i + 1 < cuts.length ? cuts[i + 1] - 1 : piece.endLine;
+    subs.push({ startLine: line, endLine, headed: true });
+  });
   return subs;
 }
 
 /**
- * A section is empty if, after removing any leading heading line, the
- * remaining text has no non-whitespace content. Used to drop pieces that
- * sub-level extraction leaves behind (e.g. `## Parent` with no intro text
- * before the first extracted sub-section).
+ * Blank-line-separated paragraphs; a fenced block never breaks a paragraph.
  */
-function isEmptySection(section) {
-  if (!section || typeof section.text !== 'string') return true;
-  const lines = section.text.split('\n');
-  const bodyStart =
-    section.headingLine && lines[0] === section.headingLine ? 1 : 0;
-  const body = lines.slice(bodyStart).join('\n');
-  return body.trim() === '';
+function paragraphs(doc, { start, end }) {
+  const atoms = [];
+  let i = start;
+  while (i <= end) {
+    if (isBlank(doc.lines[i])) {
+      i += 1;
+      continue;
+    }
+    const first = i;
+    while (i <= end && !isBlank(doc.lines[i])) {
+      i = Math.min(doc.fenceEnd(i), end) + 1;
+    }
+    atoms.push({ start: first, end: i - 1 });
+  }
+  return atoms;
 }
 
-module.exports = { chunk, MAX_TOKEN_LENGTH };
+/**
+ * Non-blank lines, each fenced block held together as one atom.
+ */
+function fencedLines(doc, { start, end }) {
+  const atoms = [];
+  for (let i = start; i <= end; i += 1) {
+    if (isBlank(doc.lines[i])) continue;
+    const last = Math.min(doc.fenceEnd(i), end);
+    atoms.push({ start: i, end: last });
+    i = last;
+  }
+  return atoms;
+}
+
+/**
+ * Non-blank lines, fences included.
+ */
+function singleLines(doc, { start, end }) {
+  const atoms = [];
+  for (let i = start; i <= end; i += 1) {
+    if (!isBlank(doc.lines[i])) atoms.push({ start: i, end: i });
+  }
+  return atoms;
+}
+
+const PACKING_TIERS = [paragraphs, fencedLines, singleLines];
+
+/**
+ * Pack a range's atoms at the given tier greedily into chunks within the
+ * budget — each chunk the source slice from its first atom to its last. An
+ * atom over the budget on its own is packed at the next tier; past the last
+ * tier it is a single line, sliced.
+ */
+function packTier(doc, range, tier) {
+  if (tier === PACKING_TIERS.length) return sliceLine(doc, range.start);
+
+  const chunks = [];
+  let open = null;
+  const flush = () => {
+    if (open) chunks.push(...chunksOf(doc, doc.lineSpan(open.start, open.end)));
+    open = null;
+  };
+
+  for (const atom of PACKING_TIERS[tier](doc, range)) {
+    if (open && doc.size(doc.lineSpan(open.start, atom.end)) <= MAX_CHUNK_CHARS) {
+      open.end = atom.end;
+      continue;
+    }
+    flush();
+    if (doc.size(doc.lineSpan(atom.start, atom.end)) <= MAX_CHUNK_CHARS) {
+      open = { start: atom.start, end: atom.end };
+    } else {
+      chunks.push(...packTier(doc, atom, tier + 1));
+    }
+  }
+  flush();
+  return chunks;
+}
+
+/**
+ * Cut one over-budget line into consecutive slices of at most the budget.
+ */
+function sliceLine(doc, line) {
+  const from = doc.lineStart(line);
+  const length = doc.lines[line].length;
+  const chunks = [];
+  for (let at = 0; at < length; at += MAX_CHUNK_CHARS) {
+    chunks.push(...chunksOf(doc, { from: from + at, to: from + Math.min(at + MAX_CHUNK_CHARS, length) }));
+  }
+  return chunks;
+}
+
+module.exports = { chunk, MAX_TOKEN_LENGTH, MAX_CHUNK_CHARS };

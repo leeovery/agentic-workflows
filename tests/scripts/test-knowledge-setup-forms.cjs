@@ -244,3 +244,45 @@ describe('runFromSystem refusals', () => {
     assert.ok(!fs.existsSync(path.join(project, '.workflows', '.knowledge')));
   });
 });
+
+describe('runInitialIndexStep', () => {
+  const setup = require('../../src/knowledge/setup.js');
+  let savedExitCode;
+  let stderr;
+  let restoreWrites;
+
+  beforeEach(() => {
+    savedExitCode = process.exitCode;
+    process.exitCode = undefined;
+    stderr = '';
+    const writeOut = process.stdout.write;
+    const writeErr = process.stderr.write;
+    process.stdout.write = () => true;
+    process.stderr.write = (chunk) => { stderr += chunk; return true; };
+    restoreWrites = () => { process.stdout.write = writeOut; process.stderr.write = writeErr; };
+  });
+
+  afterEach(() => {
+    restoreWrites();
+    process.exitCode = savedExitCode;
+  });
+
+  it('a clean initial index says nothing more', async () => {
+    await setup.runInitialIndexStep(async () => ({ new: 2, changed: 0, removed: 0, unchanged: 0, failed: 0 }), {});
+    assert.strictEqual(process.exitCode, undefined);
+    assert.strictEqual(stderr, '');
+  });
+
+  it('artifacts that failed to index are counted, and setup still succeeds', async () => {
+    await setup.runInitialIndexStep(async () => ({ new: 1, changed: 0, removed: 0, unchanged: 0, failed: 2 }), {});
+    assert.strictEqual(process.exitCode, undefined);
+    assert.strictEqual(stderr, '\n2 artifact(s) failed to index — the next start retries them.\n');
+  });
+
+  it('an initial index that throws is reported, and setup still succeeds', async () => {
+    await setup.runInitialIndexStep(async () => { throw new Error('manifest read failed: boom'); }, {});
+    assert.strictEqual(process.exitCode, undefined);
+    assert.match(stderr, /Initial indexing hit an error: manifest read failed: boom/);
+    assert.match(stderr, /The project is initialised; the next start retries the indexing\./);
+  });
+});

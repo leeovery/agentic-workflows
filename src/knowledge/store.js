@@ -1,9 +1,5 @@
-// Knowledge base store — thin wrapper around Orama.
-//
-// This module grows across Phase 1 tasks:
-//   1-3 (this file)     create, insert, remove-by-identity, fulltext search
-//   1-4 (next)          vector search, hybrid search
-//   1-5                 save/load via MsgPack
+// Knowledge base store — thin wrapper around Orama: create, insert,
+// remove, fulltext/vector/hybrid search, and save/load via MsgPack.
 //
 // All search functions return results in a normalised shape (see
 // `normaliseHit` below) so callers (CLI, tests) never touch Orama's
@@ -26,6 +22,11 @@ const SCHEMA_FIELDS = [
   'source_file',
   'timestamp',
 ];
+
+// Carried on a document and persisted with it, but outside the schema — a
+// schema string field is full-text indexed, and a hash must never match a
+// search term.
+const STORED_FIELDS = ['source_hash'];
 
 /**
  * Build the Orama schema. The vector dimensionality comes from the
@@ -93,6 +94,9 @@ async function insertDocument(db, doc) {
 
   const payload = {};
   for (const f of SCHEMA_FIELDS) payload[f] = doc[f];
+  for (const f of STORED_FIELDS) {
+    if (doc[f] !== undefined) payload[f] = doc[f];
+  }
 
   if ('embedding' in doc) {
     if (doc.embedding === null) {
@@ -133,7 +137,7 @@ const FILTERED_QUERY_LIMIT = 1_000_000;
 
 /**
  * Enumerate every document in the store, paged via offset+limit until
- * exhausted. Used by status, compact, and any caller that needs a
+ * exhausted. Used by status, the bulk sync, and any caller that needs a
  * complete unfiltered view. Filtered enumerations should call Orama's
  * `where` directly with an unbounded limit (see findInternalIdsByIdentity).
  */
@@ -245,6 +249,7 @@ function normaliseHit(hit) {
     topic: d.topic,
     confidence: d.confidence,
     source_file: d.source_file,
+    source_hash: d.source_hash,
     timestamp: d.timestamp,
     score: hit.score,
   };
@@ -472,36 +477,24 @@ async function withLock(lockPath, fn) {
 }
 
 // ---------------------------------------------------------------------------
-// Metadata — sidecar JSON file tracking provider/model/dimensions and
-// indexing state. Created on first index by Task 3-3; this module only
-// provides the read/write primitives.
+// Metadata — sidecar JSON file tracking provider/model/dimensions and the
+// last index time. Created on first index; this module only provides the
+// read/write primitives.
 // ---------------------------------------------------------------------------
 
-const METADATA_FIELDS = [
-  'provider', 'model', 'dimensions', 'last_indexed', 'pending', 'pending_removals',
-];
+const METADATA_FIELDS = ['provider', 'model', 'dimensions', 'last_indexed'];
 
 function writeMetadata(metadataPath, data) {
   if (!metadataPath) throw new Error('writeMetadata: metadataPath is required');
   if (data == null || typeof data !== 'object') {
     throw new Error('writeMetadata: data must be an object');
   }
-  // Every call writes the full schema — no partial updates. Missing
-  // fields are normalised to explicit null so keyword-only mode round-
-  // trips as { provider: null, model: null, dimensions: null }.
-  //
-  // IMPORTANT: every persisted field must be listed here. A missing field
-  // silently strips across writes and every downstream feature using that
-  // field stops working (see deferred-issue #18 pending_removals, which
-  // shipped broken because this whitelist was not updated).
-  const full = {
-    provider: data.provider === undefined ? null : data.provider,
-    model: data.model === undefined ? null : data.model,
-    dimensions: data.dimensions === undefined ? null : data.dimensions,
-    last_indexed: data.last_indexed === undefined ? null : data.last_indexed,
-    pending: Array.isArray(data.pending) ? data.pending : [],
-    pending_removals: Array.isArray(data.pending_removals) ? data.pending_removals : [],
-  };
+  // Every call writes exactly METADATA_FIELDS — no partial updates, and any
+  // other key on `data` is dropped. Missing fields are normalised to explicit
+  // null so keyword-only mode round-trips as
+  // { provider: null, model: null, dimensions: null }.
+  const full = {};
+  for (const f of METADATA_FIELDS) full[f] = data[f] === undefined ? null : data[f];
   const tmp = metadataPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, metadataPath);
@@ -529,6 +522,7 @@ function readMetadata(metadataPath) {
 
 module.exports = {
   SCHEMA_FIELDS,
+  STORED_FIELDS,
   METADATA_FIELDS,
   buildSchema,
   createStore,

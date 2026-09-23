@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the knowledge-base door — the ONLY place the engine spawns the
 // knowledge CLI. `spawnKnowledge` is the raw spawn for callers that branch on
-// the result themselves (boot's check/compact); `knowledge` layers the
+// the result themselves (boot's check); `knowledge` layers the
 // warn-don't-block contract every engine transaction shares. The knowledge
 // base is a derived index: its failures are recorded as warnings on the
 // caller's result, never thrown.
@@ -40,6 +40,7 @@ function spawnKnowledge(cwd, args) {
 /**
  * Spawn the knowledge CLI; on failure push a warning instead of throwing.
  * @param {string} cwd @param {string[]} args @param {string} label @param {string[]} warnings
+ * @returns {boolean} whether the command succeeded
  */
 function knowledge(cwd, args, label, warnings) {
   const res = spawnKnowledge(cwd, args);
@@ -50,6 +51,7 @@ function knowledge(cwd, args, label, warnings) {
       : (res.stderr || res.stdout || `exit ${res.status}`).trim();
     warnings.push(`${label} failed: ${detail}`);
   }
+  return !failed;
 }
 
 module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS };

@@ -1537,7 +1537,8 @@ function runAgent(call, argv) {
 
 // ---------------------------------------------------------------------------
 // boot — the entry pipeline: migrations (hard error on failure), knowledge
-// check (failure reports not-ready), compact when ready (warn-don't-block).
+// check (failure reports not-ready), bulk index then compact when ready
+// (warn-don't-block).
 // ---------------------------------------------------------------------------
 
 function runBoot(call) {

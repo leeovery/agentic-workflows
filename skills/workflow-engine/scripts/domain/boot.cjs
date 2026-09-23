@@ -2,8 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the boot pipeline — the sequential entry checks Step 0 needs,
-// collapsed into one call: run migrations, probe the knowledge base, compact
-// when ready.
+// collapsed into one call: run migrations, probe the knowledge base, and when
+// it is ready run the bulk index — the store brought in line with the
+// files — then compact it.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. A run that recorded
@@ -13,9 +14,9 @@
 // knowledge base is a derived index: a failing `check` reports "not-ready"
 // (the caller's gate — boot never initialises anything itself; a not-ready
 // response additionally carries the system-config report so the gate can offer
-// setup without extra probes). A failing `compact` is a warning, never a
-// block. Store dirt found when ready is committed (the post-setup first boot,
-// compact churn, or leftovers).
+// setup without extra probes). A failing bulk index or compact is a warning,
+// never a block. Store dirt found when ready is committed (the post-setup
+// first boot, the bulk index's or compact's writes, or leftovers).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -25,7 +26,7 @@ const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
-const { spawnKnowledge } = require('./kb.cjs');
+const { knowledge: runKnowledge, spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, SETTINGS_SPEC } = require('./session-label.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
@@ -80,10 +81,11 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @typedef {object} BootResult
  * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
  * @property {'ready'|'not-ready'} knowledge
+ * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit, ledger commit, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (knowledge index, compaction, store commit, ledger commit, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
@@ -274,24 +276,18 @@ function boot(cwd) {
 
   const knowledge = ready ? 'ready' : 'not-ready';
 
+  let indexed = false;
   let compacted = false;
   if (ready) {
-    const compact = spawnKnowledge(cwd, ['compact']);
-    if (compact.error || compact.status !== 0) {
-      const detail = compact.error
-        ? compact.error.message
-        : (compact.stderr || compact.stdout || `exit ${compact.status}`).trim();
-      warnings.push(`knowledge compact failed: ${detail}`);
-    } else {
-      compacted = true;
-    }
+    indexed = runKnowledge(cwd, ['index'], 'knowledge index', warnings);
+    compacted = runKnowledge(cwd, ['compact'], 'knowledge compact', warnings);
   }
 
   // Commit the knowledge-store dirt this boot found (a fresh store from the
-  // user's `knowledge setup` run — the restart's first boot — compact churn,
-  // or leftovers from an interrupted session). The store is a derived index
-  // and boot must stay usable, so a commit failure is a warning, never a
-  // block.
+  // user's `knowledge setup` run — the restart's first boot — the bulk
+  // index's or compact's writes, or leftovers from an interrupted session).
+  // The store is a derived index and boot must stay usable, so a commit
+  // failure is a warning, never a block.
   /** @type {string|null} */
   let kbCommitted = null;
   if (ready) {
@@ -304,7 +300,7 @@ function boot(cwd) {
         // right after `knowledge setup` created them.
         const message = status.split('\n').some((l) => l.startsWith('??'))
           ? 'chore(knowledge): initialise store'
-          : 'chore(knowledge): compact store';
+          : 'chore(knowledge): sync store';
         kbCommitted = commitPathspecScoped(cwd, KB_DIR, message);
       }
     } catch (err) {
@@ -337,7 +333,7 @@ function boot(cwd) {
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), indexed, compacted, kb_committed: kbCommitted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

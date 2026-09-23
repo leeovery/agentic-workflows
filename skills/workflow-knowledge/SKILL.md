@@ -165,13 +165,13 @@ Skills branch on the stdout string, not the exit code. Used in Step 0 of entry-p
 # Single artifact (used by phase-completion steps)
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/artifact.md>
 
-# Bulk catch-up (no args — finds all unindexed completed artifacts)
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index
+# Bulk index (no file — brings the store in line with the files)
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index [--work-unit <wu>]
 ```
 
 - **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension — a non-markdown import is refused by name. For the gap-analysis cache, the path is `.workflows/{work_unit}/.state/discovery-gap-analysis.md`; the phase is `analysis` and the topic is `gap-analysis`. For baseline docs, the path is `.workflows/.baseline/{topic}.md`; the work unit and phase are both `baseline` (removal is `remove --work-unit baseline [--phase baseline --topic <t>]`). For roadmap material, the paths are `.workflows/.roadmap/sessions/session-NNN.md` (work unit `roadmap`, phase `roadmap`, topic = session basename) and `.workflows/.roadmap/imports/{name}.md` (work unit `roadmap`, phase `imports`); removal is `remove --work-unit roadmap [--phase … --topic …]`.
-- **Without args**: discovers every completed artifact across all work units and indexes anything missing. Used by setup and manual catch-up.
-- Failures are retried (exponential backoff). Files that still fail are pushed to a pending queue and retried on the next `index` call.
+- **Without a file**: the bulk index. Every chunk records the sha256 of the content it was indexed from; the bulk index compares that against each discovered artifact (completed phase artifacts, the markdown `imports[]` and `seeds[]` entries, gap-analysis caches, epic discovery sessions, roadmap sessions and imports, baseline docs) and indexes the ones with no chunks (`new`) or with chunks from other content (`changed` — a chunk with no recorded hash counts as changed); the rest are `unchanged`. It skips the non-spec artifacts `compact` prunes, so it never re-embeds them. It then removes the chunks of identities positively known to be gone: a source file inside the project no longer on disk, a work unit absent from a non-empty registry or cancelled, and a research/discussion/investigation/specification item absent from its manifest or `superseded`, `cancelled`, `postponed`, or `promoted`. An `in-progress` item (a reopened topic) keeps its chunks; baseline and roadmap chunks go only with their files; a work unit whose manifest cannot be read keeps its chunks. `--work-unit <wu>` confines both halves to one unit. Output is a line per file acted on, then `N new, N changed, N removed, N unchanged.` (`, N failed` when any failed). Run by `engine boot` at every start, by setup, and by the lifecycle re-index.
+- Transient failures (network, rate limit, server error, lock, store I/O) are retried with exponential backoff; a rejected request (HTTP 400/413/422), a bad key, or a provider configuration the model contradicts fails at once. A file that still fails exits non-zero — the single-file form says the next start retries it; the bulk index attempts every file, names each failure on stderr, and exits non-zero at the end. A manifest the bulk index cannot read aborts it before anything is removed.
 - Exits non-zero if the file doesn't exist, the path can't be parsed, or the path names a non-markdown import.
 
 Typically invoked by processing skills at phase completion — not queried by Claude during a phase.
@@ -192,7 +192,7 @@ Removes chunks matching the given filter. Granularity:
 
 Used when a spec is superseded or promoted, when a work unit is cancelled, or when catching up after a manifest change. `--topic` requires `--phase`. `--dry-run` counts what the filter matches and reports it without touching the store.
 
-Output: `Removed N chunks for {scope}`. Exits non-zero on usage errors.
+Output: `Removed N chunks for {scope}`. Exits non-zero on usage errors and when the removal fails.
 
 ---
 
@@ -202,7 +202,7 @@ Output: `Removed N chunks for {scope}`. Exits non-zero on usage errors.
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs status
 ```
 
-Human-readable report of the store's state: chunk counts by work unit, phase, and work type; last-indexed timestamp; provider info; pending queue; provider-mismatch warnings; orphan detection; unindexed completed artifacts; manifest-knowledge consistency checks. Not used in skill automation — intended for debugging and user inspection.
+Human-readable report of the store's state: chunk counts by work unit, phase, and work type; last-indexed timestamp; provider info; provider-mismatch warnings; orphan detection; completed artifacts not yet indexed, artifacts changed since they were indexed, and artifacts pruned below the decay floor (never counted as unindexed or changed); manifest-knowledge consistency checks. Not used in skill automation — intended for debugging and user inspection.
 
 ---
 
@@ -211,13 +211,13 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 - **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), the markdown entries on each work unit's `imports[]` and `seeds[]` arrays, epic discovery session logs (`discovery/sessions/session-NNN.md`), any present gap-analysis caches (`.state/discovery-gap-analysis.md`), the roadmap sessions and markdown imports (`.workflows/.roadmap/`), and the project baseline docs (`.workflows/.baseline/*.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
 - **`compact [--dry-run]`** — storage backstop. Removes a work unit's non-spec chunks once their retrievability `R` has decayed below `decay_prune_below` — i.e. once enough later work has completed that they're effectively unreachable in query ranking. Decay is progress-based (how much work completed after the unit, weighted by work type), not wall-clock; specifications are exempt; `false` disables it. `--dry-run` previews without deleting.
 
-Skills do not call these directly during normal operation. Users run them manually.
+Skills do not call these directly. `engine boot` runs the bulk `knowledge index` and then `compact` at every start; `rebuild` is the user's.
 
 ---
 
 ## `setup` — initialise the knowledge base
 
-Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts. Config resolves defaults ← system ← project; `null` unsets a key. Setup writes provider identity only — the tuning keys `similarity_threshold` (the vector leg's cosine floor, 0.3), `decay_prune_below` (0.05; `false` disables), `decay_base_stability` (5) and `decay_weights` (per work type) are honoured as overrides in either file and never written. Two surfaces: an interactive wizard (no flags) and non-interactive forms (flag-dispatched) that skills can run.
+Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts. An artifact that fails to index does not fail setup: the output names how many failed, and the bulk `knowledge index` at the next start retries them. Config resolves defaults ← system ← project; `null` unsets a key. Setup writes provider identity only — the tuning keys `similarity_threshold` (the vector leg's cosine floor, 0.3), `decay_prune_below` (0.05; `false` disables), `decay_base_stability` (5) and `decay_weights` (per work type) are honoured as overrides in either file and never written. Two surfaces: an interactive wizard (no flags) and non-interactive forms (flag-dispatched) that skills can run.
 
 **The API key never passes through a flag, a chat, or stdout.** There is deliberately no `--key` flag — any setup invocation carrying one is refused (argv lands in shell history and process listings). Keys resolve from the provider env var (`$OPENAI_API_KEY` — wins) or `~/.config/workflows/credentials.json` (mode 0600, written by `--key-only` or the wizard). Setup output names active settings only (provider · model), never key material.
 
@@ -231,14 +231,14 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider op
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only [--provider <id>]
 ```
 
-- **`--from-system`** — reuse the existing system config: resolve the key (env → credentials; providerless configs need none), validate provider configs with one test embed, create the project store, bulk-index existing artifacts, print the active-settings summary. Refuses clearly when the system config is missing/invalid or the openai key is unresolvable (the message names the env var and the `--key-only` remedy).
+- **`--from-system`** — reuse the existing system config: resolve the key (env → credentials; providerless configs need none), validate provider configs with one test embed, create the project store, bulk-index the existing artifacts, print the active-settings summary. Refuses clearly when the system config is missing/invalid or the openai key is unresolvable (the message names the env var and the `--key-only` remedy).
 - **`--keyword-only`** — project-level keyword-only init: project config, empty store, provider-null metadata. Never touches the system config — when the system layer names a provider, the project config pins `provider: null` so this project genuinely runs keyword-only. Idempotent; partial states fill in; a store without metadata refuses toward `knowledge rebuild`.
 - **`--provider ...`** — write the system config from flags (validation embed first — a broken provider never lands on disk), then proceed as `--from-system`. Every system-config write rewrites the `knowledge` key whole — provider identity only, so a tuning override set there (`similarity_threshold`, `decay_prune_below`) does not carry across a provider change; other subsystems' top-level keys (e.g. `session`) are preserved. `openai` requires a resolvable key; `openai-compatible` allows keyless endpoints and requires `--dimensions` (must match the model's native output).
 - **`--key-only`** — the terminal detour: a masked readline prompt for the key alone (TTY-required; non-TTY aborts), written to `credentials.json` (mode 0600), then exit. `--provider` selects which provider the key is stored under (default `openai`).
 
 ### Interactive wizard
 
-`setup` with no flags runs the guided wizard — **human-only**, prompts throughout via readline; non-TTY invocations abort with `knowledge setup requires an interactive terminal`. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
+`setup` with no flags runs the guided wizard — **human-only**, prompts throughout via readline; non-TTY invocations abort with `knowledge setup requires an interactive terminal`. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only indexes what is new or changed.
 
 The provider menu offers `openai` (cloud, requires an API key), `openai-compatible` (any local/self-hosted OpenAI-compatible `/v1/embeddings` endpoint — LM Studio, Ollama, vLLM, LiteLLM), or `skip` (keyword-only). For `openai-compatible`, the wizard collects `base_url` (required), `model`, and `dimensions`; the API key is **optional** (press Enter to omit for open servers) and is stored only in `credentials.json` — there is no env-var override. `base_url` is consumed only under the `openai-compatible` provider and ignored under `openai`. Configured dimensions must match the local model's native output; the validation embed fails loudly on a mismatch.
 
@@ -247,6 +247,6 @@ The provider menu offers `openai` (cloud, requires an API key), `openai-compatib
 ## Exit codes
 
 - `0` — success, or `check` reporting either state
-- Non-zero — usage error, file not found, unparseable path, lock contention exceeded, or unrecoverable provider mismatch
+- Non-zero — usage error, file not found, unparseable path, lock contention exceeded, unrecoverable provider mismatch, or an index or remove that failed (for the bulk index, any file that failed)
 
 `query` with zero results exits `0` and prints `[0 results]`. `check` exits `0` for both `ready` and `not-ready`. Both semantics are intentional — skills branch on output, not on the exit code.
