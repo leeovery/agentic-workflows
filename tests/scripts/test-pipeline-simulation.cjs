@@ -1071,6 +1071,12 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
     // Scoping's format step fetches the same offer planning does.
     assert.match(sim.render(['plan-format-gate'], { expect: 'content' }), /Use the same format\?/);
+    // Declining it opens the same catalogue, its offer written under scoping's own cache.
+    const formats = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/format-offer.json`, {
+      formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
+    });
+    assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
+      /\*\*`1`\*\* → Sample Format/);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', `spec_commit=${baseline.committed}`,
       'task_list_gate_mode=auto', 'author_gate_mode=auto',
