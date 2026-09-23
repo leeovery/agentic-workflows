@@ -121,7 +121,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases and the menus between them, restoring the original name on exit and bringing the label back when you resume a session.
-- **Gates you can press.** Opt in per project and every menu is drawn as pressable rows above the prompt, where they stay put while the transcript scrolls — a click, the row's own key, or Enter answers.
+- **Gates you can press.** Opt in per project and every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation
