@@ -53,7 +53,7 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive (Remove, Rename, Change routing, Postpone) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
+**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
@@ -64,11 +64,10 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Reopen          | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
-| Postpone        | any except `handled`, `cancelled`, `postponed` | `handled`, `cancelled`, `postponed`             |
 
 `cancelled` and `postponed` are also disallowed for Remove because the discovery item is the record that the topic was raised and declined, or that it went to the roadmap. Remove is for mistakes and duplicates — a never-started topic that should not be on the map. Not doing a topic, started or not, is the epic menu's `a/cancel`: it keeps the row and can be reversed. Not doing it *yet* is Postpone.
 
-Postpone carries no pre-check beyond that row: its gate is the postpone confirm, which refuses a cancelled, already-postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
+Postpone takes no pre-check at all: its gate is the postpone confirm, which refuses a cancelled, postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
 
 `fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 
