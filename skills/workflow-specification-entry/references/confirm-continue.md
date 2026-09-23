@@ -4,98 +4,15 @@
 
 ---
 
-**Consult references** — if the selected grouping owes any (a `**Consult**` line in the consolidation-analysis doc, or a `consult_references` entry on the spec), append this block to the confirmation below, after the sources listing; omit it when there are none:
-
-> *Output the next fenced block as a code block:*
-
-```
-Consult references (read narrowly — do not extract):
-  • {ref-topic} — {slice hint}
-```
-
 ## A. Display Confirmation
 
-#### If spec is in-progress with pending or stale sources
-
-Omit either sources block when the spec has none of that status:
-
-> *Output the next fenced block as a code block:*
-
-```
-Continuing specification: {Title Case Name}
-
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md [in-progress]
-
-Sources to extract:
-  • {discussion-name} [pending]
-
-Sources re-decided since extraction (reconcile):
-  • {discussion-name} [stale]
-
-Previously extracted (for reference):
-  • {discussion-name}
-```
+When the DATA lists `consult:` lines under the selected spec, write them to `.workflows/.cache/{work_unit}/specification/{topic}/consult.json` with the Write tool — `{"consult": [{"name": "…", "hint": "…"}]}`, one entry per line, `hint` the slice hint the line carries (left out when it carries none) — and pass the bracketed `--file`; otherwise leave it off.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} --variant continue [--file .workflows/.cache/{work_unit}/specification/{topic}/consult.json]
 ```
 
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Response**.
-
-#### If spec is in-progress with all sources extracted and none stale
-
-> *Output the next fenced block as a code block:*
-
-```
-Continuing specification: {Title Case Name}
-
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md [in-progress]
-
-All sources extracted:
-  • {discussion-name}
-  • {discussion-name}
-```
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
-```
-
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Response**.
-
-#### If spec is completed with pending or stale sources
-
-Omit either sources block when the spec has none of that status:
-
-> *Output the next fenced block as a code block:*
-
-```
-Continuing specification: {Title Case Name}
-
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md [completed]
-
-New sources to extract:
-  • {discussion-name} [pending]
-
-Sources re-decided since extraction (reconcile):
-  • {discussion-name} [stale]
-
-Previously extracted (for reference):
-  • {discussion-name}
-```
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}
-```
-
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
