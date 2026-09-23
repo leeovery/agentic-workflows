@@ -64,7 +64,9 @@ same need and is retired by this design.
   naming the clash; the roadmap's rename or remove resolves it. The clash
   is read twice — in the plan, before the epic writes, and again under the
   project lock at the landing — so a name a peer takes between the two
-  refuses rather than overwrites.
+  refuses rather than overwrites. The landing runs inside the work unit's
+  lock before the epic manifest is saved, so a refusal on the roadmap side
+  — an illegal horizon name, the clash — writes nothing on the epic.
 - **R4 — The horizon is the person's.** Named in the instruction → that
   one. Unnamed with horizons on the map → `horizon-pick`. Unnamed with no
   map → a name in prose, and the map is born with it. The backlogging
@@ -84,10 +86,13 @@ same need and is retired by this design.
   full at initialisation through the shared `read-prior-record.md` —
   brief, research file, discussion file, and both triage queues'
   undelivered concerns — as a durable input beside the brief, and
-  relitigates everything: a queued concern whose ask still applies is
-  raised as an opener through the existing raise and fold, one that no
-  longer applies takes a line in the phase's opening context, and no
-  tracking field records the read because the record is frozen. The pull
+  relitigates everything. The old queue is read as record, never as mail:
+  a concern whose ask still applies enters as an open question the way a
+  brief's do — a pending subtopic on the discussion map, an open thread on
+  the research register — and one that no longer applies takes a line in
+  the phase's opening context; nothing is copied, raised through the
+  mailbox machinery, or absorbed, and no tracking field records the read
+  because the record is frozen. The pull
   itself reads the same set at `pull.md`'s record read, derived from
   `postponed_from`, never enumerated from `sources`. The prior epic's
   files are its record and are never drained, edited, or moved by the
@@ -109,7 +114,8 @@ same need and is retired by this design.
   a topic that has left the epic, and abandoning it is the destructive
   act this design avoids. A dead-ended (`handled`) topic refuses too: it
   has nothing to carry forward, so "later" is a contradiction — reopen
-  it first.
+  it first. The horizon's legality is a lock as well, so a name the
+  roadmap could not hold (`v2.1`) is refused at the confirm.
 - **R9 — Presence is a cue, never a lock.** A unit a live session holds
   shows its in-session age on the menu row and in the gate; cancel's
   ruling, reused.
@@ -157,12 +163,14 @@ groupings it discards, and every lock: a started specification over the
 discussion, a non-terminal experiment record, a row already postponed or
 cancelled, a roadmap name clash — the one derivation the gate, the menu,
 and the verb share, built on cancel's `liveUnitItems`, `specIsStarted`,
-and `proposedGroupings`. On a clear plan it writes the epic manifest
-(marker, stashes, discards), removes the stashed `completed` artifacts'
-chunks, writes the project manifest (the item born or re-waited, the
-horizon and the map born JIT, `postponed_from`, the sources extended),
-releases the calling session's own presence rows on the topic, and lands
-one confined commit over both manifests. Its response names the items
+and `proposedGroupings`. On a clear plan it mutates the epic manifest in
+memory (marker, stashes, discards), lands the roadmap side under the
+project lock nested inside the work unit's (the item born or re-waited,
+the horizon and the map born JIT, `postponed_from`, the sources
+extended), then saves the epic manifest — a roadmap-side refusal leaves
+the epic untouched — and after the lock removes the stashed `completed`
+artifacts' chunks, releases the calling session's own presence rows on
+the topic, and lands one confined commit over both manifests. Its response names the items
 stashed by phase, the discards, and the roadmap side — `{name, horizon,
 born_map, born_horizon, reverted_join}`.
 
@@ -366,6 +374,15 @@ opens.
 
 ## Log
 
+- 2026-09-23 — Review pass, eight dimensions, before the hand review.
+  The stranding on a bad horizon closed by validating at the gate and
+  landing the roadmap side before the epic save; the prior record's
+  queued concerns re-ruled as open questions in the record, not mail (the
+  mailbox machinery is never involved); the sequencer refuses a closed
+  row; every non-live status list, the commit door's terminal list, and
+  the specification entry's filter learned `postponed`; the glyph moved
+  into the circle family (`⊖`); the cancel door gained its off-ramp to
+  postpone; the roadmap's remove relays the epic row it cancels.
 - 2026-09-22 — Built as PR1 #1273 (the gap brief) and stack #1281
   (#1273 → #1280 engine → #1285 doors → #1288 return), each slice one
   agent, each reviewed against the tree before the next opened. Settled
