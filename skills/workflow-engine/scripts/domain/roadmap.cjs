@@ -98,7 +98,7 @@ function validatePosition(position, max) {
  * Whether the project manifest already carries a roadmap node — the reading
  * every consumer shares, so "the roadmap is created with it" can never
  * disagree with what the JIT birth does.
- * @param {Record<string, any>} manifest
+ * @param {Record<string, any>|null|undefined} manifest
  * @returns {boolean}
  */
 function hasRoadmapNode(manifest) {
@@ -1136,6 +1136,7 @@ function flagJoined(cwd, name) {
 
 module.exports = {
   roadmapState,
+  hasRoadmapNode,
   ensureRoadmap,
   postponeToRoadmap,
   addRoadmapItem,

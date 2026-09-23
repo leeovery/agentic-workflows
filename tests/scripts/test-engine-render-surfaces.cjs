@@ -206,7 +206,7 @@ describe('postpone-gate', () => {
     assert.match(out, /MENU: postpone gate/);
     assert.match(unwrap(out), /Postponing \*\*Data Export\*\* sets it aside — nothing has started, so only the map row is marked\. It waits on the roadmap under "next", until it is pulled into work\. The roadmap is created with it\./);
     assert.match(out, /◆ Postpone it\?/);
-    assert.match(out, /\*\*`y\/yes`\*\*   → Confirm/);
+    assert.match(out, /\*\*`y\/yes`\*\*   → Postpone it/);
     assert.match(out, /\*\*`n\/no`\*\*    → Keep it here/);
     assert.match(out, /\*\*Comment\*\* → Tell me what to change \(the horizon\)/);
     assert.ok(!out.includes('(new)'), 'the map\'s own birth already says the horizon is new');

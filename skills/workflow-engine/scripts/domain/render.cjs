@@ -35,7 +35,7 @@ const {
 } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
-const { roadmapState } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
@@ -3871,22 +3871,24 @@ function cancelGate(cwd, { dotpath }) {
  * The postpone gate's statement in two halves: what goes — the map row alone
  * for a never-started topic, otherwise the items by phase, with any proposed
  * grouping discarded — and where it lands, in the park gate's shape.
- * @param {string} cwd @param {object} manifest @param {string} workUnit @param {string} topic
+ * @param {string} workUnit @param {string} topic
  * @param {import('./derivations.cjs').PostponePlan} plan @param {string} horizon
+ * @param {Record<string, any>|null} project  the project manifest, the gate's one read
  * @returns {string}
  */
-function postponeStatement(cwd, manifest, workUnit, topic, plan, horizon) {
+function postponeStatement(workUnit, topic, plan, horizon, project) {
   const name = titlecase(topic);
   const goes = plan.items.length === 0
     ? `Postponing **${name}** sets it aside — nothing has started, so only the map row is marked.`
     : `Postponing **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} postponed — its record stays on disk and comes back with the pull.`;
-  const state = roadmapState(cwd);
-  const target = postponeTarget(loadProjectManifest(cwd), workUnit, topic);
-  const flag = state.exists && !state.horizons.includes(horizon) ? ' (new)' : '';
+  const roadmap = project && hasRoadmapNode(project) ? project.roadmap : null;
+  const horizons = roadmap && Array.isArray(roadmap.horizons) ? roadmap.horizons : [];
+  const target = postponeTarget(project, workUnit, topic);
+  const flag = roadmap && !horizons.includes(horizon) ? ' (new)' : '';
   const lands = target.joined
     ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
     : `It waits on the roadmap under "${horizon}"${flag}, until it is pulled into work.`;
-  return [goes, discardedGroupingsClause(plan.discards), lands, ...(state.exists ? [] : ['The roadmap is created with it.'])]
+  return [goes, discardedGroupingsClause(plan.discards), lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
     .filter(Boolean).join(' ');
 }
 
@@ -3906,13 +3908,14 @@ function postponeGate(cwd, { dotpath, horizon }) {
     throw new Error(`render postpone-gate: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
   if (!isFilled(horizon)) throw new Error('render postpone-gate: --horizon is required');
-  const plan = postponePlan(manifest, topic, loadProjectManifest(cwd), horizon);
+  const project = loadProjectManifest(cwd);
+  const plan = postponePlan(manifest, topic, project, horizon);
   if (plan.locks.length > 0) throw new Error(`render postpone-gate: ${plan.locks[0].reason}`);
   return section(
     'MENU: postpone gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(postponeStatement(cwd, manifest, workUnit, topic, plan, /** @type {string} */ (horizon)), [
-      cmdOption('y', 'yes', 'Confirm'),
+    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project), [
+      cmdOption('y', 'yes', 'Postpone it'),
       cmdOption('n', 'no', 'Keep it here'),
       promptOption('Comment', 'Tell me what to change (the horizon)'),
     ], { question: 'Postpone it?' }),
