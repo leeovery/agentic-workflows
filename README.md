@@ -101,11 +101,11 @@ Plans write tasks to the format you choose behind one adapter contract: **Tick**
 
 ## The product roadmap
 
-Above the work units sits a product layer for the conversations that are not yet a piece of work: horizons you name in your own release language, capability-grain items with pointers back to the thinking, and a **pull** that births a work unit already fenced to the slice you chose. Ideas surfacing mid-work park there with one confirmed line ("that's a v2 thing"), everything unpulled stays visibly waiting, and cancelling delivery hands the item straight back. [The product roadmap](docs/roadmap.md) has the full account.
+Above the work units sits a product layer for the conversations that are not yet a piece of work: horizons you name in your own release language, capability-grain items with pointers back to the thinking, and a **pull** that births a work unit already fenced to the slice you chose. Ideas surfacing mid-work park there with one confirmed line ("that's a v2 thing"), a topic that belongs to a later release is postponed there whole, everything unpulled stays visibly waiting, and cancelling delivery hands the item straight back. [The product roadmap](docs/roadmap.md) has the full account.
 
 ## When work changes shape
 
-A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan. Reopening has teeth too: reopen anything a later phase was built on and that phase is flagged to reconcile — cued on every menu, routed back to instead of past, and never read as done while the flag is live.
+A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. A topic wanted later rather than never is postponed onto the roadmap whole. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan. Reopening has teeth too: reopen anything a later phase was built on and that phase is flagged to reconcile — cued on every menu, routed back to instead of past, and never read as done while the flag is live.
 
 ---
 

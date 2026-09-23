@@ -6,11 +6,13 @@ It has two parts. **Items** are capabilities at the grain you would move around 
 
 ## How it comes into being
 
-There is no setup ceremony. The roadmap is born the first time something lands on it, and that happens two ways.
+There is no setup ceremony. The roadmap is born the first time something lands on it, and that happens three ways.
 
 The deliberate way: you start a conversation from `/workflow-start` and it turns out to be about the product rather than a nameable piece of work. Discovery recognises that read, confirms it with you, and the conversation simply continues at product altitude — nothing is lost, and no work unit is created. You talk; the system listens for the staging language you use ("for launch we just need…", "once we have revenue…"); and when you say *lay it out*, it proposes the items and horizons it heard, you adjust, and the sorted map persists. The whole session is recorded, so every item carries a pointer into the actual thinking that shaped it.
 
 The incidental way: mid-way through some other conversation — shaping a feature, deep in an epic's discovery, arguing a discussion — a capability surfaces and you place it on the timeline yourself: *"that's a v2 thing."* That is a **park**: one confirmed line and it is on the roadmap, in the horizon you named, and the conversation moves on. The stated placement is what distinguishes a park from an [inbox capture](capture-and-inbox.md) — an unplaced "we should do X sometime" stays an inbox note, because a wrong horizon reads like a decision someone made. Saying so is the whole of it, from any phase: researching, specifying, planning, building or reviewing, "put that on the roadmap under Next" parks it and the conversation carries on where it stopped. And when your words leave the home open — "backlog that for later" — you are asked which backlog rather than guessed at, because only you know whether it is next or someday.
+
+The third way is a topic leaving a piece of work: mid-epic, a topic that turns out to belong to a later release is postponed onto the roadmap rather than cancelled, and where there is no roadmap yet it is created with that item, under the horizon you name.
 
 ## The pull
 
