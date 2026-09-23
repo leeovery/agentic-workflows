@@ -3053,14 +3053,15 @@ function taskCountGate(cwd, { dotpath }) {
 // that finished is worse than no warning at all.
 
 /**
- * The cross-cutting work units whose specification is still in progress.
+ * The cross-cutting work units whose specification reads `status`.
  * @param {string} cwd
+ * @param {string} status
  * @returns {string[]}
  */
-function openCrossCuttingSpecs(cwd) {
+function crossCuttingSpecs(cwd, status) {
   return loadAllManifests(cwd)
     .filter((m) => m.work_type === 'cross-cutting'
-      && phaseItems(m, 'specification').some((item) => item.status === 'in-progress'))
+      && phaseItems(m, 'specification').some((item) => item.status === status))
     .map((m) => String(m.name));
 }
 
@@ -3075,7 +3076,7 @@ function crossCuttingGate(cwd, { file }) {
   if (units.length === 0) {
     throw new Error('render cross-cutting-gate: "units" is empty — the gate renders over the specs this plan must know about');
   }
-  const open = openCrossCuttingSpecs(cwd);
+  const open = crossCuttingSpecs(cwd, 'in-progress');
   for (const unit of units) {
     if (!open.includes(unit)) {
       throw new Error(`render cross-cutting-gate: "${unit}" is not a cross-cutting work unit with a specification in progress`);
@@ -3093,6 +3094,39 @@ function crossCuttingGate(cwd, { file }) {
       cmdOption('s', 'stop', 'Complete them first'),
     ])),
   ].join('\n');
+}
+
+// cross-cutting-references — the completed cross-cutting specifications the
+// plan will reference. Which of them bear on the plan, and what each decides
+// that matters here, is the session's read, so the rows arrive as a payload;
+// whether a name is a cross-cutting unit whose specification completed is
+// state, so the surface checks it — a reference to an unfinished spec would
+// hand the plan decisions nobody has settled.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function crossCuttingReferences(cwd, { file }) {
+  if (!file) throw new Error('render cross-cutting-references: --file <payload.json> is required');
+  const { units } = readJsonPayload(cwd, file, 'cross-cutting-references');
+  if (!Array.isArray(units) || units.length === 0) {
+    throw new Error('render cross-cutting-references: "units" must be a non-empty array of {name, summary}');
+  }
+  const completed = crossCuttingSpecs(cwd, 'completed');
+  for (const unit of units) {
+    if (!unit || !isFilled(unit.name) || !isFilled(unit.summary)) {
+      throw new Error('render cross-cutting-references: every unit needs a non-empty "name" and "summary"');
+    }
+    if (!completed.includes(unit.name)) {
+      throw new Error(`render cross-cutting-references: "${unit.name}" is not a cross-cutting work unit with a completed specification`);
+    }
+  }
+  return section('DISPLAY: cross-cutting references', 'emit verbatim as a code block', [
+    'Cross-cutting specifications to reference:',
+    ...units.flatMap((unit) => bulletRow(`${unit.name}: ${unit.summary}`)),
+  ].join('\n'));
 }
 
 // plan-format-gate — the plan's format offer in its two moments. Bare, it is
@@ -5699,6 +5733,7 @@ const SURFACES = {
   'dependency-approval-gate': dependencyApprovalGate,
   'task-count-gate': taskCountGate,
   'cross-cutting-gate': crossCuttingGate,
+  'cross-cutting-references': crossCuttingReferences,
   'plan-format-gate': planFormatGate,
   'plan-review-gate': planReviewGate,
   'correction-gate': correctionGate,

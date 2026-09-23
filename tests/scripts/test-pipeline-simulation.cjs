@@ -1131,7 +1131,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
   });
 
-  it('cross-cutting: a specification still being written stops a peer\'s planning entry', () => {
+  it('cross-cutting: a specification still being written stops a peer\'s planning entry; a completed one is referenced', () => {
     const cc = 'error-envelope';
     sim.run(['workunit', 'create', cc, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, cc)]);
     sim.run(['topic', 'start', cc, 'discussion', cc]);
@@ -1146,12 +1146,21 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', peer, 'feature', '--description', 'Checkout flow', '--session-log-file', sessionLog(sim, peer)]);
     const units = sim.write(`.workflows/.cache/${peer}/planning/${peer}/cross-cutting.json`, { units: [cc] });
     assert.match(sim.render(['cross-cutting-gate', '--file', units], { expect: 'content' }), /• error-envelope/);
+    // An unfinished spec is never offered as a reference (cross-cutting-context D).
+    const refs = sim.write(`.workflows/.cache/${peer}/planning/${peer}/cross-cutting-references.json`, {
+      units: [{ name: cc, summary: 'Every error leaves in one envelope.' }],
+    });
+    sim.refuses(['render', 'cross-cutting-references', '--file', refs],
+      /"error-envelope" is not a cross-cutting work unit with a completed specification/);
 
-    // Once the spec lands there is nothing left to warn a plan about.
+    // Once the spec lands there is nothing left to warn a plan about — the
+    // knowledge query surfaces it, and the plan references it instead.
     sim.write(`.workflows/${cc}/specification/${cc}/specification.md`, `# Spec — ${cc}\n`);
     sim.run(['topic', 'complete', cc, 'specification', cc]);
     sim.refuses(['render', 'cross-cutting-gate', '--file', units],
       /"error-envelope" is not a cross-cutting work unit with a specification in progress/);
+    assert.match(sim.render(['cross-cutting-references', '--file', refs], { expect: 'content' }),
+      /• error-envelope: Every error leaves in one envelope\./);
   });
 
   it('epic: map lifecycle, per-topic phases, grouping supersession, cancel/reactivate', () => {
