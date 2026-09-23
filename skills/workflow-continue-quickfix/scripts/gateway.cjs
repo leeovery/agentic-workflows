@@ -7,12 +7,13 @@
 // output.
 //
 //   gateway.cjs               → labelled dump, all active quick-fixes (head insert)
+//   gateway.cjs select        → the dump, then the pick list and its menu (Step 3)
 //   gateway.cjs view {work_unit}
-//                               → DATA + DISPLAY + MENU snapshot (Step 5),
-//                                 plus the deferred revisit-phase menu when
-//                                 earlier phases can be revisited
+//                               → DATA + TITLE + DISPLAY snapshot (Step 5), with
+//                                 the proceed/revisit MENU when there is
+//                                 anything to revisit or finalise
 //
-// Those two calls are the whole legal surface: an unknown verb, a bare
+// Those three calls are the whole legal surface: an unknown verb, a bare
 // positional, or excess arguments is a usage error (stderr, exit 1) — never
 // a silent index render.
 // ---------------------------------------------------------------------------
@@ -26,8 +27,14 @@ function discover(cwd) {
 }
 
 function format(result) {
+  return engine.detail.workUnitIndex(TYPE, result);
+}
+
+// The select step's snapshot: the dump its validation reads, then the pick
+// list and the menu that takes the pick.
+function select(result) {
   const units = engine.detail.unitsOf(engine.detail.typeConfig(TYPE), result);
-  return engine.detail.workUnitIndex(TYPE, result)
+  return format(result)
     + engine.project.selectionSections(TYPE, units, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
@@ -46,10 +53,10 @@ function view(workUnit) {
     engine.gateway.titleBlock(engine.project.workUnitTitle(unit)),
     engine.gateway.displayBlock(engine.project.workUnitStatus(TYPE, unit)),
     engine.gateway.menuBlock(menu.rendered),
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}';
+const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs view {work_unit}';
 
 /** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
 function usageError(message) {
@@ -63,6 +70,9 @@ if (require.main === module) {
     index: (...rest) => (rest.length > 0
       ? usageError('index takes no arguments')
       : format(discover(process.cwd()))),
+    select: (...rest) => (rest.length > 0
+      ? usageError('select takes no arguments')
+      : select(discover(process.cwd()))),
     view: (workUnit, ...rest) => (!workUnit || rest.length > 0
       ? usageError('view takes exactly one work unit')
       : view(workUnit)),
@@ -70,4 +80,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format };
+module.exports = { discover, format, select };

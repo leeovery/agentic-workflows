@@ -151,7 +151,6 @@ module.exports = {
     roadmapPullSetView: roadmapProjections.roadmapPullSetView,
     roadmapHomeMenu: roadmapProjections.roadmapHomeMenu,
     discussionMap: discussionProjections.discussionMap,
-    discussionDeferGate: discussionProjections.discussionDeferGate,
     startOverview: startProjections.startOverview,
     startMenu: startProjections.startMenu,
     emptyOverview: startProjections.emptyOverview,

@@ -219,7 +219,7 @@ Run the map call:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so. First match wins.
+Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted. First match wins.
 
 #### If `all_decided` is true
 
@@ -235,7 +235,13 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 #### If `all_decided` is false and this entry is the user's signal
 
-Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
+Fetch the defer gate — the map, then the consent to set aside what it still holds undecided:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render defer-gate {work_unit}.discussion.{topic}
+```
+
+Emit its sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
