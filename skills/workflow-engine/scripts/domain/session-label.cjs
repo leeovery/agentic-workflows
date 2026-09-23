@@ -21,10 +21,11 @@
 // flow. (A bad argument from an opted-in call site still fails loudly —
 // that is an authoring bug, not an environment condition.)
 //
-// Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
-// means never asked, which is what workflow-start's one-time prompt keys on
-// (boot reports it via `labelConfigStatus`); a prose-test world stamps
-// `false` so a walk never labels the terminal the suite runs in.
+// Opt-in is the project manifest's `defaults.tmux_labels` boolean, a
+// project opt-in (`project-opt-in.cjs`) — absent means never asked, which
+// is what workflow-start's one-time prompt keys on (boot reports it via
+// `labelConfigStatus`); a prose-test world stamps `false` so a walk never
+// labels the terminal the suite runs in.
 //
 // The hooks live in the project's committed `.claude/settings.json`, where
 // the engine installs them (a SessionEnd hook declared in skill frontmatter
@@ -63,10 +64,9 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
-const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { SETTINGS_SPEC, isObject, readProjectSettings, writeProjectSettings } = require('./settings.cjs');
+const { optInStatus, optInValue, recordOptIn } = require('./project-opt-in.cjs');
+const { isObject, readProjectSettings, writeProjectSettings } = require('./settings.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -79,37 +79,21 @@ const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
 const HOOK_MARKS = wantedByEvent({ session: true, presence: true }).flatMap((e) => e.commands.map(hookMark));
 
-/**
- * The opt-in for this project — `defaults.tmux_labels` when it is a
- * boolean; null when never asked, or when the project manifest is absent,
- * unreadable, or carries no defaults.
- * @param {string} cwd @returns {boolean|null}
- */
-function resolveEnabled(cwd) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
-    const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.tmux_labels : undefined;
-    if (typeof v === 'boolean') return v;
-  } catch { /* no project manifest */ }
-  return null;
-}
+/** @type {import('./project-opt-in.cjs').ProjectOptIn} */
+const LABELS = {
+  key: 'tmux_labels',
+  sync: (cwd, value) => syncSessionHooks(cwd, { session: value, presence: true }),
+  unsynced: 'session hooks not synced',
+  message: 'chore: record session-label choice',
+};
 
 /**
- * Record the opt-in as the project manifest's `defaults.tmux_labels`,
- * every other key preserved — under the project lock, the manifest's own
- * atomic write. A manifest that does not parse refuses loudly through the
- * kernel read: silently replacing it would drop every registered work unit.
- * @param {string} cwd @param {boolean} value
- * @returns {{tmux_labels: boolean}}
+ * Whether labels are on for this project — `defaults.tmux_labels` recorded
+ * `true`.
+ * @param {string} cwd @returns {boolean}
  */
-function setLabelConfig(cwd, value) {
-  withProjectLock(cwd, () => {
-    const manifest = readProjectManifest(cwd);
-    const defaults = isObject(manifest.defaults) ? manifest.defaults : {};
-    manifest.defaults = { ...defaults, tmux_labels: value };
-    writeProjectManifestAtomic(cwd, manifest);
-  });
-  return { tmux_labels: value };
+function labelsEnabled(cwd) {
+  return optInValue(cwd, LABELS.key) === true;
 }
 
 /** The mark a hook of ours carries, or null for a foreign one. @param {unknown} hook */
@@ -201,26 +185,13 @@ function syncSessionHooks(cwd, want) {
 }
 
 /**
- * workflow-start's one-time answer: record the opt-in, sync the session
- * hooks to match (`presence cleanup` stays whatever the answer), and commit
- * the two together, confined. The choice is recorded either way: a settings
- * file the sync could not read, or a commit git refused, comes back as a
- * warning — boot re-syncs, and the state is saved.
+ * workflow-start's one-time answer, recorded and committed confined, the
+ * session hooks synced to match — `presence cleanup` stays whatever the
+ * answer.
  * @param {string} cwd @param {boolean} value
- * @returns {{tmux_labels: boolean, warnings?: string[]}}
  */
 function recordLabelChoice(cwd, value) {
-  setLabelConfig(cwd, value);
-  /** @type {string[]} */
-  const warnings = [];
-  const specs = [PROJECT_MANIFEST_SPEC];
-  // Sequential with setLabelConfig's own hold, never nested: the lock is a
-  // file lock, not reentrant.
-  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: value, presence: true }));
-  if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
-  if (sync.changed) specs.push(SETTINGS_SPEC);
-  commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
-  return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
+  return recordOptIn(cwd, LABELS, value);
 }
 
 /**
@@ -232,10 +203,7 @@ function recordLabelChoice(cwd, value) {
  */
 function labelConfigStatus(cwd) {
   if (!process.env.TMUX) return 'no-tmux';
-  const v = resolveEnabled(cwd);
-  if (v === true) return 'on';
-  if (v === false) return 'off';
-  return 'prompt';
+  return optInStatus(cwd, LABELS.key);
 }
 
 /**
@@ -469,7 +437,7 @@ function liveSessions(socket) {
  * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
  */
 function applySessionLabel(cwd, name, phase, topic) {
-  if (resolveEnabled(cwd) !== true) return { labelled: false, reason: 'disabled' };
+  if (!labelsEnabled(cwd)) return { labelled: false, reason: 'disabled' };
   if (phase !== undefined && !VALID_PHASES.includes(phase)) {
     throw new Error(`unknown phase "${phase}" — one of ${VALID_PHASES.join('|')}`);
   }
@@ -641,7 +609,7 @@ function restoreSessionLabel(cwd, sessionId) {
  */
 function repairSessionLabels(cwd) {
   prunePositions(cwd);
-  if (resolveEnabled(cwd) !== true) return { repaired: false };
+  if (!labelsEnabled(cwd)) return { repaired: false };
   /** @type {ReturnType<typeof tmuxContext>} */
   let ctx = null;
   try { ctx = tmuxContext(); } catch { /* tmux errored */ }
@@ -676,5 +644,5 @@ function repairSessionLabels(cwd) {
 
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
-  resolveEnabled, labelConfigStatus, syncSessionHooks, recordLabelChoice,
+  labelsEnabled, labelConfigStatus, syncSessionHooks, recordLabelChoice,
 };

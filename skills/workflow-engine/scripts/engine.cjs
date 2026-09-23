@@ -992,8 +992,8 @@ function runSession(call, argv) {
 
 /**
  * `gate-surface config <true|false>` — workflow-start's one-time answer to
- * the gate-surface prompt: the choice on the project manifest, the function-
- * hooks flag in the project's settings, both committed confined.
+ * the gate-surface prompt: the choice on the project manifest and, on a yes,
+ * the function-hooks flag in the project's settings, committed confined.
  * @param {Call} call @param {string[]} argv
  */
 function runGateSurface(call, argv) {
