@@ -19,7 +19,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/workflow-engine/scripts/domain/roadmap.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture: cleanup, ok, refuses, stubbedEngine, knowledgeCalls } = harness;
+const { git, cleanupFixture: cleanup, ok, output, refuses, stubbedEngine, knowledgeCalls } = harness;
 
 /** A temp-dir git repo with an empty project manifest committed. */
 function setupGitFixture() {
@@ -418,7 +418,8 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
   const engineFails = (/** @type {string[]} */ args, /** @type {RegExp} */ p) => refuses(dir, args, p);
-  const epic = () => JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+  const epicText = () => fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8');
+  const epic = () => JSON.parse(epicText());
 
   it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
@@ -483,17 +484,44 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(readProject(dir).roadmap.items.ordering, undefined, 'no second item is born under the topic name');
   });
 
-  it('a name clash refuses the whole transaction — nothing on either manifest moves', () => {
+  it('a name clash seeded between the gate and the verb refuses the whole transaction — nothing on either manifest moves', () => {
+    output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'next']);
     runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'somebody else\'s', '--origin', 'harvest']);
-    const before = [projectManifestText(dir), fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')];
+    const before = [projectManifestText(dir), epicText()];
     engineFails(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next'],
       /a roadmap item named "ordering" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
-    assert.deepStrictEqual([projectManifestText(dir), fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')], before);
+    assert.deepStrictEqual([projectManifestText(dir), epicText()], before);
   });
 
-  it('the landing refuses a name a peer took between the plan and the write — a birth never overwrites', () => {
-    // The verb's plan reads the roadmap under the work-unit lock, before the
-    // epic manifest is written; this item lands in the window after it.
+  it('an illegal horizon refuses at the gate and at the verb, and the epic never moves', () => {
+    const stub = stubbedEngine();
+    const before = epicText();
+    assert.throws(() => output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'v2.1']));
+    assert.match(stub.refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
+      /"v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
+    assert.strictEqual(epicText(), before, 'the hold is never written');
+    assert.deepStrictEqual(knowledgeCalls(dir), [], 'and no chunk is removed for a topic that stayed');
+  });
+
+  it('a refusal at the landing leaves the epic manifest unsaved and its chunks in place', () => {
+    // The roadmap side lands inside the work-unit lock, before the epic is
+    // saved: a malformed node refuses there, with the hold written in memory
+    // alone. Seeded here because the race it stands in for — a peer taking
+    // the name in the window — no CLI sequence can reach.
+    const project = readProject(dir);
+    project.roadmap = { horizons: {}, items: {} };
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(project, null, 2));
+    const stub = stubbedEngine();
+    const before = epicText();
+    assert.match(stub.refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
+      /roadmap\.horizons is malformed/);
+    assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
+    assert.deepStrictEqual(knowledgeCalls(dir), []);
+  });
+
+  it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
+    // The verb's plan reads the roadmap before the project lock is taken;
+    // this item lands in the window after it.
     runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'somebody else\'s', '--origin', 'harvest']);
     const before = projectManifestText(dir);
     assert.throws(

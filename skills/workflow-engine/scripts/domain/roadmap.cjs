@@ -42,7 +42,7 @@ const {
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { itemJoin, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
-const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
@@ -56,15 +56,13 @@ function validateOrigin(origin) {
   }
 }
 
-// Same structural rule work-unit and topic names live under: dots break the
-// field surface's dot-path addressing, slashes break paths. Applies to items
-// and horizons alike (both are manifest keys/labels). Name-shape conventions
-// beyond that (kebab-case) are the calling flow's job.
+// The same structural rule work-unit and topic names live under, applied to
+// items and horizons alike (both are manifest keys/labels). Name-shape
+// conventions beyond that (kebab-case) are the calling flow's job.
 /** @param {string} kind @param {*} name */
 function validateName(kind, name) {
-  if (typeof name !== 'string' || name === '' || /[./]/.test(name)) {
-    throw new Error(`"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`);
-  }
+  const illegal = illegalNameReason(kind, name);
+  if (illegal) throw new Error(illegal);
 }
 
 // Source pointers are provenance indexes into session logs — relative paths
@@ -878,21 +876,24 @@ function bindItem(cwd, name, { topic } = {}) {
  * The pull's return leg over a topic this epic postponed: the Discovery unit
  * restored, the join re-recorded, and `postponed_from` dropped — the topic is
  * in flight again, and a later postpone sets it afresh. One commit stages
- * both manifests, as the creating branch's does.
+ * both manifests, as the creating branch's does. The roadmap side goes first,
+ * the postpone's order mirrored: a refusal there leaves the unit postponed
+ * rather than restored into an epic the item never rejoined.
  * @param {string} cwd @param {string} name @param {string} into @param {string} topic
  * @returns {RoadmapOpResult}
  */
 function returnPostponed(cwd, name, into, topic) {
   const { restorePostponedUnit } = require('./transitions.cjs');
-  const returned = restorePostponedUnit(cwd, into, topic);
   /** @type {RoadmapOpResult} */
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     item.pulled_to = { work_unit: into, topic };
     delete item.postponed_from;
-    return { op: 'pull-forward', name, into, topic, state: 'in-flight', restored: returned.restored };
+    return { op: 'pull-forward', name, into, topic, state: 'in-flight' };
   });
+  const returned = restorePostponedUnit(cwd, into, topic);
+  result.restored = returned.restored;
   return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`,
     { workUnit: into, warnings: returned.warnings });
 }
@@ -1026,9 +1027,10 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * overwritten, and the plan's clash lock is read again here because the plan
  * ran before the epic manifest was written. Either way the item records
  * `postponed_from` and gains the topic's files as sources, and the node and
- * the horizon are created just-in-time. Runs under the project lock, **no
- * commit** — the postpone transaction stages the project manifest alongside
- * the epic's.
+ * the horizon are created just-in-time. Runs under the project lock — nested
+ * inside the work unit's, the one place the two are held together, and the
+ * order every other cross-boundary verb keeps — and **no commit**: the
+ * postpone transaction stages the project manifest alongside the epic's.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @param {{horizon: string, summary: string, sources: string[]}} opts
  * @returns {PostponeLanding}

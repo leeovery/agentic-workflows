@@ -132,6 +132,21 @@ function isPlainName(name) {
   return name !== '' && name.trim() === name && !/[\x00-\x1f\x7f\\/.]/.test(name);
 }
 
+/**
+ * Why a manifest key or label is illegal, or null when it is fine: dots break
+ * the field surface's dot-path addressing, slashes break paths. One sentence,
+ * two readers — the roadmap's validators throw it, the postpone's plan carries
+ * it as a lock, so a refusal at the gate and a refusal at the write say the
+ * same thing.
+ * @param {string} kind @param {*} name
+ * @returns {string|null}
+ */
+function illegalNameReason(kind, name) {
+  return typeof name !== 'string' || name === '' || /[./]/.test(name)
+    ? `"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`
+    : null;
+}
+
 /** @param {string} origin */
 function isThreadOrigin(origin) {
   if (typeof origin !== 'string') return false;
@@ -222,6 +237,7 @@ module.exports = {
   compareExperimentIds,
   KEBAB_SLUG_PATTERN,
   isPlainName,
+  illegalNameReason,
   VALID_THREAD_STATUSES,
   isThreadOrigin,
   IMPORT_PHASES,

@@ -25,7 +25,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const {
@@ -36,7 +36,6 @@ const {
   liveSeries, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
-const { loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
@@ -1621,11 +1620,12 @@ function postponedSources(cwd, manifest, workUnit, topic) {
 /**
  * Postpone a topic: the Discovery unit into its hold, the roadmap item born
  * or re-waited under the chosen horizon, and one confined commit over both
- * manifests. In order: the epic manifest under its lock (the plan's first
- * lock refuses before anything is written — the map row marked, every live
- * item stashed, every proposed grouping over its discussion discarded), the
- * stashed items' chunks removed, the calling session's own heartbeats
- * released, then the project manifest under its own lock.
+ * manifests. All of it under the work unit's lock, the project lock nested
+ * inside it: the plan refuses before anything is written, the manifest is
+ * mutated in memory, the roadmap lands, and only then is the epic saved — so
+ * a project-side refusal (the clash re-read at the landing) leaves the topic
+ * where it was rather than postponed with nowhere to wait. The chunks and the
+ * heartbeats follow the write, as every transition's do.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -1641,7 +1641,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
     if (manifest.work_type !== 'epic') {
       throw new Error(`postpone is epic-only — "${workUnit}" is a ${manifest.work_type}, whose topic is the work unit; a pulled unit's "not now" is the work-unit cancel's revert`);
     }
-    const plan = postponePlan(manifest, topic, loadProjectManifest(cwd));
+    const plan = postponePlan(manifest, topic, readProjectManifest(cwd), horizon);
     if (plan.locks.length > 0) throw new Error(plan.locks[0].reason);
 
     const row = itemOf(manifest, 'discovery', topic);
@@ -1654,16 +1654,15 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
       stashOrder(row);
     }
 
+    const roadmap = postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources });
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { postponed, discarded: plan.discards, summary, sources };
+    return { postponed, discarded: plan.discards, roadmap };
   });
 
   /** @type {string[]} */
   const warnings = [];
   removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
-
-  const roadmap = postponeToRoadmap(cwd, workUnit, topic, { horizon, summary: taken.summary, sources: taken.sources });
 
   const outcome = commitTailWithKb(
     cwd,
@@ -1677,7 +1676,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
     status: 'postponed',
     postponed: taken.postponed,
     discarded: taken.discarded,
-    roadmap,
+    roadmap: taken.roadmap,
     committed: outcome.committed,
     warnings,
   };

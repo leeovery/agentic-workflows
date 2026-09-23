@@ -1159,15 +1159,23 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(plan.locks, []);
     });
 
-    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, a roadmap clash', () => {
+    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
       const m = manifest();
-      const reasons = (name, proj = null) => postponePlan(m, name, proj).locks.map((l) => l.reason);
+      const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
       assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — nothing on the map and no research or discussion item of that name']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
       assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
       assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
       assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
+      // The horizon is read here, before the epic moves — a name the roadmap
+      // could not take would otherwise refuse at the landing.
+      assert.deepStrictEqual(reasons('auth', null, 'v2.1'), ['"v2.1" is not a legal horizon name — dots and slashes break manifest addressing']);
+      assert.deepStrictEqual(reasons('auth', project, 'v2.1'), [
+        '"v2.1" is not a legal horizon name — dots and slashes break manifest addressing',
+        'a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first',
+      ]);
+      assert.deepStrictEqual(reasons('auth', null, 'v2'), [], 'a legal horizon locks nothing, and the menu asks with none');
     });
 
     it('an item joined to the topic is its own — the re-wait arm, never a clash', () => {

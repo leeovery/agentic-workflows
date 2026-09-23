@@ -3906,7 +3906,7 @@ function postponeGate(cwd, { dotpath, horizon }) {
     throw new Error(`render postpone-gate: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
   if (!isFilled(horizon)) throw new Error('render postpone-gate: --horizon is required');
-  const plan = postponePlan(manifest, topic, loadProjectManifest(cwd));
+  const plan = postponePlan(manifest, topic, loadProjectManifest(cwd), horizon);
   if (plan.locks.length > 0) throw new Error(`render postpone-gate: ${plan.locks[0].reason}`);
   return section(
     'MENU: postpone gate',

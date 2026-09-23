@@ -272,8 +272,12 @@ describe('postpone-gate', () => {
     assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
   });
 
-  it('refuses a dead address, a non-Discovery address, and a missing horizon', () => {
+  it('refuses a dead address, a non-Discovery address, a missing horizon, and one the roadmap could not name', () => {
     writeManifest(dir, 'pay', LIVE);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: 'v2.1' }),
+      /render postpone-gate: "v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: 'v2/1' }),
+      /render postpone-gate: "v2\/1" is not a legal horizon name — dots and slashes break manifest addressing/);
     assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discussion.auth', horizon: 'mvp' }),
       /render postpone-gate: address must be <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'ghost.discovery.auth', horizon: 'mvp' }),

@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -479,13 +479,16 @@ function lockingSpecsPhrase(specs, nameOf = (n) => n) {
  * What a postpone takes and what holds it shut — the one reading the gate,
  * the menu row, and the verb share. The experiment series is never touched:
  * a live record locks instead, because abandoning it is the destructive act
- * the postpone exists to avoid.
+ * the postpone exists to avoid. Both roadmap-side inputs are read here, before
+ * anything is written: a horizon the roadmap could not name would otherwise
+ * refuse at the landing, with the epic already postponed and no item waiting.
  * @param {object} manifest  the epic's manifest
  * @param {string} name
  * @param {object|null|undefined} project  the project manifest — the roadmap side of the clash lock
+ * @param {string} [horizon]  the bucket the topic waits in — checked when the caller has one (the menu has not picked yet)
  * @returns {PostponePlan}
  */
-function postponePlan(manifest, name, project) {
+function postponePlan(manifest, name, project, horizon) {
   /** @type {{reason: string}[]} */
   const locks = [];
   if (!discoveryUnitExists(manifest, name)) {
@@ -509,6 +512,10 @@ function postponePlan(manifest, name, project) {
     locks.push({
       reason: `postponing "${name}" is refused while ${open.length === 1 ? 'an experiment is' : `${open.length} experiments are`} live (${open.join(', ')}) — conclude or abandon ${open.length === 1 ? 'it' : 'them'} first; a laboratory cannot run under a topic that has left the epic`,
     });
+  }
+  const illegalHorizon = horizon === undefined ? null : illegalNameReason('horizon', horizon);
+  if (illegalHorizon) {
+    locks.push({ reason: illegalHorizon });
   }
   const target = postponeTarget(project, manifest.name, name);
   if (!target.joined && target.item !== undefined) {
