@@ -2,8 +2,12 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 
 const {
   runGateway,
@@ -115,12 +119,56 @@ describe('gateway: output sections', () => {
     assert.strictEqual(menuBlock('MENU'), SECTION.menu + '\nMENU\n');
   });
 
+  it('an empty menu is no gate — menuBlock renders no section, not an empty marker', () => {
+    assert.strictEqual(menuBlock(''), '');
+    assert.strictEqual(menuBlock('\n\n'), '');
+  });
+
   it('sections compose into one demarcated stdout payload', () => {
     const out = [dataBlock({ k: 1 }), displayBlock('D'), menuBlock('M')].join('\n');
     const idx = (s) => out.indexOf(s);
     assert.ok(idx(SECTION.data) < idx(SECTION.display));
     assert.ok(idx(SECTION.display) < idx(SECTION.menu));
   });
+});
+
+// A MENU is a live gate at the call that returns it. The `!` insert runs as
+// the skill loads, before any step shows anything, so a gate it carried would
+// be one no step ever shows — every insert the skills declare is run over a
+// world holding active and closed work of every type.
+describe('gateway: a head-of-skill insert is never a gate', () => {
+  const SKILLS = path.join(__dirname, '../../skills');
+  const INSERT = /^!`node \.claude\/skills\/(.+?)`$/gm;
+  const inserts = fs.readdirSync(SKILLS).flatMap((skill) => {
+    const file = path.join(SKILLS, skill, 'SKILL.md');
+    if (!fs.existsSync(file)) return [];
+    return [...fs.readFileSync(file, 'utf8').matchAll(INSERT)].map((m) => ({ skill, argv: m[1].split(' ') }));
+  });
+
+  let dir;
+  beforeEach(() => {
+    dir = setupFixture();
+    const items = (phase, name, status) => ({ [phase]: { items: { [name]: { status } } } });
+    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'scoping'], ['cross-cutting', 'discussion']]) {
+      createManifest(dir, `live-${type}`, { work_type: type, phases: items(phase, type === 'epic' ? 'auth' : `live-${type}`, 'in-progress') });
+      createManifest(dir, `done-${type}`, { work_type: type, status: 'completed', phases: items(phase, type === 'epic' ? 'auth' : `done-${type}`, 'completed') });
+    }
+    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('finds the inserts it guards', () => {
+    assert.ok(inserts.length > 0, 'no head insert found — the scan would pass vacuously');
+  });
+
+  for (const { skill, argv } of inserts) {
+    it(`${skill}: the insert answers without a MENU section`, () => {
+      const res = spawnSync('node', [path.join(SKILLS, argv[0]), ...argv.slice(1)], { cwd: dir, encoding: 'utf8' });
+      assert.strictEqual(res.status, 0, res.stderr);
+      assert.ok(res.stdout.trim().length > 0, 'the insert answered nothing');
+      assert.doesNotMatch(res.stdout, /^=== MENU/m);
+    });
+  }
 });
 
 describe('lib: ring aggregation', () => {

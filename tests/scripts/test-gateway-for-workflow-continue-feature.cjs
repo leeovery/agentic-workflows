@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-continue-feature/scripts/gateway.cjs');
+const { discover, format, select } = require('../../skills/workflow-continue-feature/scripts/gateway.cjs');
 
 describe('workflow-continue-feature discovery', () => {
   let dir;
@@ -240,7 +240,7 @@ describe('workflow-continue-feature format', () => {
     ].join('\n'));
   });
 
-  it('active, completed, and cancelled features pin the full dump byte-exactly', () => {
+  it('active, completed, and cancelled features pin the select step byte-exactly — the dump, then the pick list and its menu', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -254,7 +254,7 @@ describe('workflow-continue-feature format', () => {
     });
     createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { items: { stopped: { status: 'completed' } } } } });
-    const out = format(discover(dir));
+    const out = select(discover(dir));
     assert.strictEqual(out, [
       '=== FEATURES (2) ===',
       '  auth: specification (in-progress)',
@@ -263,7 +263,7 @@ describe('workflow-continue-feature format', () => {
       '  done-feat (last phase: review)',
       '=== CANCELLED (1) ===',
       '  stopped (last phase: specification)',
-      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '=== DISPLAY: selection (emit verbatim as a code block) ===',
       '2 feature(s) in progress',
       '  ├─ 1. Auth',
       '  │   Specification (In-Progress)',
@@ -272,7 +272,7 @@ describe('workflow-continue-feature format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which feature would you like to continue?`**',
       '',
@@ -282,6 +282,8 @@ describe('workflow-continue-feature format', () => {
       '**`m/manage`** → Manage a feature\'s lifecycle',
       '',
     ].join('\n'));
+    assert.strictEqual(format(discover(dir)), out.slice(0, out.indexOf('=== DISPLAY: selection')),
+      'the head insert is the dump alone — the pick list and its menu are the select step\'s');
   });
 
   it('shows (last phase: none) for a closed feature with nothing completed', () => {
@@ -310,7 +312,7 @@ describe('workflow-continue-feature format', () => {
 
 describe('workflow-continue-feature CLI dispatch', () => {
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-feature/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs view {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -328,14 +330,35 @@ describe('workflow-continue-feature CLI dispatch', () => {
     assert.strictEqual(res.stdout, format(discover(dir)));
   });
 
-  it('view {work_unit} still answers the sectioned snapshot', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const res = run(['view', 'auth']);
+  it('view {work_unit} answers the sectioned snapshot — a MENU section only when there is something to revisit', () => {
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { 'auth': { status: 'in-progress' } } } } });
+    const first = run(['view', 'auth']);
+    assert.strictEqual(first.status, 0);
+    assert.strictEqual(first.stderr, '');
+    assert.ok(first.stdout.includes('=== DATA'));
+    assert.ok(first.stdout.includes('=== DISPLAY'));
+    assert.ok(!first.stdout.includes('=== MENU'), 'nothing to revisit or finalise — no gate, so no MENU section');
+
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { 'auth': { status: 'completed' } } }, specification: { items: { 'auth': { status: 'in-progress' } } } } });
+    const later = run(['view', 'auth']);
+    assert.strictEqual(later.status, 0);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+  });
+
+  it('select answers the select step: the dump, then the pick list and its menu', () => {
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { 'auth': { status: 'in-progress' } } } } });
+    const res = run(['select']);
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
-    assert.ok(res.stdout.includes('=== DATA'));
-    assert.ok(res.stdout.includes('=== DISPLAY'));
-    assert.ok(res.stdout.includes('=== MENU'));
+    assert.strictEqual(res.stdout, select(discover(dir)));
+    assert.match(res.stdout, /=== MENU: selection/);
+  });
+
+  it('select with positionals errors with usage', () => {
+    const res = run(['select', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
   it('a bare positional errors instead of rendering the index', () => {

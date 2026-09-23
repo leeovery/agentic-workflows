@@ -1721,6 +1721,57 @@ describe('render research-conclude-gate', () => {
   });
 });
 
+describe('render defer-gate', () => {
+  let dir;
+  const withSubtopics = (subtopics) => writeManifest(dir, 'pay', {
+    phases: {
+      research: { items: { checkout: { status: 'completed' } } },
+      discussion: { items: { checkout: { status: 'in-progress', subtopics } } },
+    },
+  });
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('draws the map, then the consent over what it holds undecided', () => {
+    withSubtopics({
+      'token-refresh': { status: 'exploring', parent: null },
+      'session-storage': { status: 'decided', parent: null },
+    });
+    assert.strictEqual(renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }), [
+      '=== DISPLAY: discussion map (emit verbatim as a code block) ===',
+      'Discussion Map — Checkout (2 subtopics — 1 decided · 1 exploring)',
+      '  ├─ ✓ Session Storage    [decided]',
+      '  └─ ◐ Token Refresh      [exploring]',
+      "=== MENU: defer gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 subtopic not yet decided — shown on the map above.',
+      '',
+      '**`◆ Defer and conclude?`**',
+      '',
+      '**`y/yes`** → Defer it and move toward concluding',
+      '**`n/no`**  → Continue discussing',
+      '',
+    ].join('\n'));
+  });
+
+  it('counts every subtopic still open', () => {
+    withSubtopics({ a: { status: 'pending', parent: null }, b: { status: 'converging', parent: null } });
+    const out = renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' });
+    assert.match(out, /There are still 2 subtopics not yet decided — shown on the map above\./);
+    assert.match(out, /Defer them and move toward concluding/);
+  });
+
+  it('refuses a settled map, another phase, and a topic with no discussion', () => {
+    withSubtopics({ a: { status: 'decided', parent: null }, b: { status: 'deferred', parent: null } });
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }),
+      /render defer-gate: nothing on "checkout"'s map is undecided — there is nothing to defer/);
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.research.checkout' }),
+      /render defer-gate: address must be <wu>\.discussion\.<topic> — the map is the discussion's; got phase "research"/);
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.ghost' }),
+      /render defer-gate: no discussion item "ghost" — no map to defer from/);
+  });
+});
+
 describe('render research-threads', () => {
   let dir;
   beforeEach(() => {
@@ -4092,7 +4143,7 @@ describe('selection projection', () => {
       [{ name: 'crash', phase_label: 'specification (in-progress)' }, { name: 'leak', phase_label: 'investigation (in-progress)' }],
       { completed: 1, cancelled: 1 });
     assert.strictEqual(out, [
-      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '=== DISPLAY: selection (emit verbatim as a code block) ===',
       '2 bugfix(es) in progress',
       '  ├─ 1. Crash',
       '  │   Specification (In-Progress)',
@@ -4101,7 +4152,7 @@ describe('selection projection', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
@@ -4907,7 +4958,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 

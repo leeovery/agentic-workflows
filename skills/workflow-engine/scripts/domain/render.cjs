@@ -5,8 +5,8 @@
 // values come from the manifest (JSON state only — markdown artifacts are
 // never parsed), judgment content arrives as a validated JSON payload file,
 // and each surface returns demarcated sections the calling flow emits
-// verbatim at its prescribed moment. Gate-mode branching renders inside the
-// surface: the caller never chooses between gated and auto output.
+// verbatim beneath the call that fetched them. Gate-mode branching renders
+// inside the surface: the caller never chooses between gated and auto output.
 //
 // Surfaces read; they never write — with one exception. `code-gate`'s empty
 // path beats the addressed topic, because claiming the code slot and reading
@@ -37,6 +37,8 @@ const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_
 const { METADATA_FILE } = require('./kb.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
+const { mapState } = require('./discussion-map.cjs');
+const { discussionDeferGate } = require('./projections/discussion-map.cjs');
 const { latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
@@ -2719,6 +2721,29 @@ function closingGate(cwd, { dotpath, variant, reason }) {
   }
   const g = gate();
   return section(g.name, STOP_FOR_RESPONSE, menu(g.label, g.options, { question: g.question }));
+}
+
+// defer-gate — the discussion close's consent to set aside what the map still
+// holds undecided, over the map that shows it. Fetched where the user's own
+// signal meets an unsettled map; a settled map is never asked, so it refuses.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function deferGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'defer-gate');
+  if (phase !== 'discussion') {
+    throw new Error(`render defer-gate: address must be <wu>.discussion.<topic> — the map is the discussion's; got phase "${phase}"`);
+  }
+  if (!itemOf(manifest, 'discussion', topic)) {
+    throw new Error(`render defer-gate: no discussion item "${topic}" — no map to defer from`);
+  }
+  if (mapState(manifest, topic).unresolved.length === 0) {
+    throw new Error(`render defer-gate: nothing on "${topic}"'s map is undecided — there is nothing to defer`);
+  }
+  return discussionDeferGate(topic, manifest);
 }
 
 // ---------------------------------------------------------------------------
@@ -5869,6 +5894,7 @@ const SURFACES = {
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
   'closing-gate': closingGate,
+  'defer-gate': deferGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
