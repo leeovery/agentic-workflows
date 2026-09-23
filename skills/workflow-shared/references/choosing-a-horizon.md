@@ -38,6 +38,12 @@ The user names one instead: ask in prose which horizon it belongs to — a name 
 
 → Return to caller.
 
+**Otherwise:**
+
+The user named a horizon in words rather than picking a row — a label already on the map, or a new one. That is `{horizon}`.
+
+→ Return to caller.
+
 #### Otherwise
 
 There is no roadmap yet, or it holds no horizons, so there is nothing to pick from. Ask in prose which horizon it belongs to, in the user's own staging words — launch, v1, someday.

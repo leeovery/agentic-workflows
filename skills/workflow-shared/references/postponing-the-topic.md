@@ -60,7 +60,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render postpone-gate {wor
 
 #### If the call refuses
 
-The unit cannot be postponed, and the refusal names what holds it — a started specification sourcing its discussion, a live experiment record, a roadmap item already holding the name. Surface the engine's error verbatim in one line; nothing was written.
+The unit cannot be postponed, and the refusal names what holds it — a started specification sourcing its discussion, a live experiment record, a dead-ended row (reopen it first), a roadmap item already holding the name. Surface the engine's error verbatim in one line; nothing was written.
 
 → Return to caller.
 
