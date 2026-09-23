@@ -170,7 +170,7 @@ describe('epic projections: dashboard (map branch)', () => {
       work_type: 'epic',
       phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
     });
-    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null }]);
+    assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null, item: null, waiting: false }]);
     assert.ok(epicDashboard('pv3', detail).includes('  postponed: Data Export → no roadmap item'));
   });
 
