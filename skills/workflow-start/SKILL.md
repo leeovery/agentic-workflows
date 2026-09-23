@@ -210,6 +210,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
 
 **STOP.** Wait for user response.
 
+**If `no`:**
+
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config false
+```
+
+→ Proceed to **Step 0.5**.
+
 **If `yes`:**
 
 Record the choice:
@@ -218,9 +228,19 @@ Record the choice:
 node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
 ```
 
-If the command fails (`ok: false`), surface its error — the prompt returns at a future start once the project manifest is fixed — and proceed to **Step 0.5**. If it succeeds carrying `warnings`, surface them — the choice is recorded; the settings file or the commit will be re-tried at the next start — and proceed to **Step 0.5**.
+**If the response is `ok: false`:**
 
-On a clean success:
+Surface its error — the prompt returns at a future start once the project manifest is fixed.
+
+→ Proceed to **Step 0.5**.
+
+**If the response carries `warnings`:**
+
+Surface them — the choice is recorded, and the next start re-syncs the settings file.
+
+→ Proceed to **Step 0.5**.
+
+**Otherwise:**
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
@@ -235,16 +255,6 @@ On a clean success:
 ```
 
 **STOP.** Do not proceed — terminal condition.
-
-**If `no`:**
-
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the settings file or the commit will be re-tried at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config false
-```
-
-→ Proceed to **Step 0.5**.
 
 #### Otherwise
 
