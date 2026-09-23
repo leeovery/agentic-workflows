@@ -257,6 +257,14 @@ describe('workflow-continue-quickfix CLI dispatch', () => {
     assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
+  it('view for an unknown name answers the not-found terminal display, no gate', () => {
+    const res = run(['view', 'ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.match(res.stdout, /error: no active quick-fix with this name/);
+    assert.match(res.stdout, /=== DISPLAY: not found [^\n]*\nNo active quick-fix named "ghost" found\./);
+    assert.doesNotMatch(res.stdout, /^=== MENU/m);
+  });
+
   it('a bare positional errors instead of rendering the index', () => {
     createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
     const res = run(['rename-api']);

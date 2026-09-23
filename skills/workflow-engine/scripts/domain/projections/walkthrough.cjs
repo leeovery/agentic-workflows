@@ -281,8 +281,9 @@ function walkthroughTopics() {
 }
 
 /**
- * One reference card: its heading, its content in file order, its menu.
- * `menuOnly` serves the return from a question, as a screen's does.
+ * One reference card: its heading and its content in file order — or, with
+ * `menuOnly`, the card's menu alone. A card is also shown mid-conversation,
+ * where it carries no gate, so its menu is fetched apart.
  * @param {Card} card @param {boolean} menuOnly
  * @returns {string}
  */
@@ -291,7 +292,6 @@ function walkthroughTopic(card, menuOnly) {
   return [
     titleSection(`Help · ${card.title}`),
     ...chunkSections(card.chunks),
-    cardMenu(),
   ].join('\n');
 }
 

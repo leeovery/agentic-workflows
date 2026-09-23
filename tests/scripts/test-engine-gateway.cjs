@@ -171,6 +171,61 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
   }
 });
 
+// A context-refresh recovery reads state and announces the position; the gate
+// the flow resumes at is fetched by the step that shows it, once the position
+// is confirmed. Every command a recovery names — a full `node .claude/skills/…`
+// call, or an `engine render` shorthand — is run over a world holding each
+// phase's item at the placeholder address.
+describe('a context-refresh recovery fetches no gate', () => {
+  const SKILLS = path.join(__dirname, '../../skills');
+  const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
+  const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
+    const file = path.join(SKILLS, skill, 'SKILL.md');
+    if (!fs.existsSync(file)) return [];
+    const text = fs.readFileSync(file, 'utf8');
+    const at = text.indexOf('\n## Resuming After Context Refresh\n');
+    if (at === -1) return [];
+    const section = text.slice(at, text.indexOf('\n---\n', at));
+    return [...section.matchAll(COMMAND)].map((m) => ({ skill, command: m[0].trim() }));
+  });
+
+  let dir;
+  beforeEach(() => {
+    dir = setupFixture();
+    createFile(dir, '.workflows/manifest.json', JSON.stringify({ baseline: { status: 'in-progress', areas: {} } }));
+    createManifest(dir, 'wu', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { t: { status: 'in-progress' } } },
+        experiment: { items: { t: { status: 'in-progress', experiments: {} } } },
+        discussion: { items: { t: { status: 'in-progress' } } },
+        specification: { items: { t: { status: 'in-progress', finding_gate_mode: 'gated' } } },
+        planning: { items: { t: { status: 'in-progress' } } },
+        implementation: { items: { t: { status: 'in-progress' } } },
+      },
+    });
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('finds the recoveries it guards', () => {
+    assert.ok(recoveries.length > 0, 'no recovery command found — the scan would pass vacuously');
+  });
+
+  for (const { skill, command } of recoveries) {
+    it(`${skill}: \`${command}\` answers without a MENU section`, () => {
+      const argv = command
+        .replace(/^engine render /, 'node .claude/skills/workflow-engine/scripts/engine.cjs render ')
+        .replaceAll('{work_unit}', 'wu')
+        .replaceAll('{topic}', 't')
+        .split(' ');
+      const script = path.join(SKILLS, argv[1].replace('.claude/skills/', ''));
+      const res = spawnSync('node', [script, ...argv.slice(2)], { cwd: dir, encoding: 'utf8' });
+      assert.strictEqual(res.status, 0, res.stderr);
+      assert.doesNotMatch(res.stdout, /^=== MENU/m);
+    });
+  }
+});
+
 describe('lib: ring aggregation', () => {
   it('exposes kernel render, domain conventions, and the gateway', () => {
     assert.strictEqual(typeof lib.render.renderTree, 'function');

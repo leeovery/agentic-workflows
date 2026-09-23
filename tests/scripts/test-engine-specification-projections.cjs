@@ -1120,18 +1120,21 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('=== MENU'));
   });
 
-  it('no-arg and positional forms emit the thin state line, not sectioned output', () => {
+  it('the no-arg form emits the thin state line, not sectioned output', () => {
     groupingsFixture(dir);
-    const noArg = run([]);
-    const scoped = run(['v1']);
-    for (const out of [noArg, scoped]) {
-      assert.ok(out.includes('=== STATE ==='));
-      assert.ok(out.includes('counts: discussions='));
-      assert.ok(!out.includes('=== DISCUSSIONS ==='));
-      assert.ok(!out.includes('=== SPECIFICATIONS ==='));
-      assert.ok(!out.includes('=== CACHE ==='));
-      assert.ok(!out.includes('=== DATA'));
-    }
+    const out = run([]);
+    assert.ok(out.includes('=== STATE ==='));
+    assert.ok(out.includes('counts: discussions='));
+    assert.ok(!out.includes('=== DATA'));
+  });
+
+  it('the positional form is the routing read: the view DATA without its ACTIONS, and no gate', () => {
+    groupingsFixture(dir);
+    const out = run(['v1']);
+    const view = run(['view', 'v1']);
+    assert.strictEqual(out, view.slice(0, view.indexOf('ACTIONS (')));
+    assert.ok(out.includes('scenario: groupings\n'));
+    assert.strictEqual(out.split('\n').filter((l) => l.startsWith('=== ')).length, 1, 'one DATA section, nothing to emit');
   });
 });
 

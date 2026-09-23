@@ -263,6 +263,14 @@ describe('workflow-continue-bugfix CLI dispatch', () => {
     assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
+  it('view for an unknown name answers the not-found terminal display, no gate', () => {
+    const res = run(['view', 'ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.match(res.stdout, /error: no active bugfix with this name/);
+    assert.match(res.stdout, /=== DISPLAY: not found [^\n]*\nNo active bugfix named "ghost" found\./);
+    assert.doesNotMatch(res.stdout, /^=== MENU/m);
+  });
+
   it('a bare positional errors instead of rendering the index', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     const res = run(['crash']);

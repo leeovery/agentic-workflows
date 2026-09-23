@@ -7,8 +7,8 @@
 // piece of file IO the engine stays blind to), and sections the output.
 //
 //   gateway.cjs                        → minimal state line, all work units
-//   gateway.cjs {work_unit}            → minimal state line, one work unit
-//   gateway.cjs view {work_unit}       → DATA (+ DISPLAY + MENU) snapshot
+//   gateway.cjs {work_unit}            → DATA only, one work unit — the entry's routing read
+//   gateway.cjs view {work_unit}       → DATA (+ TITLE + DISPLAY + MENU) snapshot
 //   gateway.cjs completed-menu {work_unit} → concluded-specs sub-view
 // ---------------------------------------------------------------------------
 
@@ -175,9 +175,8 @@ function discover(cwd, workUnit) {
   };
 }
 
-// The labelled dump has no prose consumers — every flow reads the `view`
-// snapshot. A bare invocation answers with the one decision-ready counts line,
-// in the view DATA's vocabulary.
+// The bare invocation has no prose consumer: it answers with the one
+// decision-ready counts line, in the view DATA's vocabulary.
 function format(result) {
   const cs = result.current_state;
   return [
@@ -214,9 +213,8 @@ function consultHints(cwd, workUnit) {
   return hints;
 }
 
-function buildDetail(workUnit) {
-  if (!workUnit) throw new Error('Usage: gateway.cjs <view|completed-menu> {work_unit}');
-  const cwd = process.cwd();
+function buildDetail(cwd, workUnit) {
+  if (!workUnit) throw new Error('Usage: gateway.cjs [view|completed-menu] {work_unit}');
   const result = discover(cwd, workUnit);
   return { result, detail: engine.detail.specificationDetail(workUnit, result, { consultHints: consultHints(cwd, workUnit) }) };
 }
@@ -272,10 +270,18 @@ function viewData(result, detail, keys) {
   return lines.join('\n');
 }
 
+// The entry's routing read: the scenario and the detail the confirmations
+// reason from, with no menu — a display a scenario routes to fetches its own
+// snapshot where it shows it.
+function scoped(cwd, workUnit) {
+  const { result, detail } = buildDetail(cwd, workUnit);
+  return engine.gateway.dataBlock(viewData(result, detail, []));
+}
+
 // One snapshot: reasoning DATA always; DISPLAY and MENU when the scenario
 // renders them (analysis-rerun routes without either).
 function view(workUnit) {
-  const { result, detail } = buildDetail(workUnit);
+  const { result, detail } = buildDetail(process.cwd(), workUnit);
   const menu = engine.project.specificationMenu(detail);
   const display = engine.project.specificationDisplay(detail);
   const parts = [engine.gateway.dataBlock(viewData(result, detail, menu.keys))];
@@ -290,7 +296,7 @@ function view(workUnit) {
 // The concluded-specs sub-view: keys table as DATA, the view's heading as
 // TITLE, the spec list as DISPLAY, the Refine pick menu as MENU.
 function completedMenu(workUnit) {
-  const { detail } = buildDetail(workUnit);
+  const { detail } = buildDetail(process.cwd(), workUnit);
   const sub = engine.project.specificationCompletedMenu(detail);
   const dataLines = [`work_unit: ${detail.work_unit}`, 'ACTIONS (key  action  topic  verb):'];
   for (const k of sub.keys) {
@@ -309,8 +315,8 @@ if (require.main === module) {
     index: () => format(discover(process.cwd())),
     view,
     'completed-menu': completedMenu,
-    fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
+    fallback: (workUnit) => scoped(process.cwd(), workUnit),
   });
 }
 
-module.exports = { discover, format };
+module.exports = { discover, format, scoped };
