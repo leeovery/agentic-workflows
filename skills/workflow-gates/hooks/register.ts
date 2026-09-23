@@ -6,8 +6,7 @@
  * module announces itself so the engine collects it, arms the gate off the
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over; the press comes
- * back as the person's own next message, which is what the workflows' prose
- * already reads.
+ * back as the next message, which is what the workflows' prose already reads.
  *
  * Every path fails open: the engine emits the menu regardless, so a hook that
  * throws, overruns or never loads leaves the text menu exactly as it was.
@@ -29,9 +28,6 @@ const SECTION_MARKER = '=== '
 
 /** The `Client`'s key: what `ui.message` matches the board's posts on. */
 const ELEMENT = 'gate'
-
-/** This plugin's name, as the engine stamps it on the prompts it submits. */
-const PLUGIN = 'workflow-gates'
 
 const STOP_NOTE =
   "The options are on screen. The user's choice, or anything they type, arrives as their next message."
@@ -212,6 +208,7 @@ export const register: Register = on => {
       return next(e)
     }
 
+    // Framed for the model and labelled on screen as this plugin's, by design.
     await $.prompt.submit({ text: answer })
 
     if (drawn !== null) {
@@ -221,17 +218,6 @@ export const register: Register = on => {
 
     return next(e)
   }).catch(($, e, next) => next(e))
-
-  // A press is the person's own choice: no origin, so it enters as theirs.
-  on(
-    'prompt.submit',
-    { origin: { kind: 'plugin', name: PLUGIN } },
-    async ($, e, next) => {
-      const { origin: _, ...entered } = await next(e)
-
-      return entered
-    },
-  ).catch(($, e, next) => next(e))
 
   // A gate lives from its render to the turn that answers it; a gate the
   // conversation re-presents is armed again by its own render.
