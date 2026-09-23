@@ -100,8 +100,14 @@ the semantics are set and shipping is "weeks" away.
   (proven live: both mods load from agntc's copy of `skills/` on the
   settings flag alone; the CLI's `plugin list` does not show project-scope
   skills-dir plugins). Settings snapshot at startup, so the session that
-  writes the flag never loads the mod; a mod loaded this way reloads only
-  on restart.
+  writes the flag never loads the mod. A mod loaded this way **reloads in
+  place when its files change**, and a session started just after a change
+  can reload it at the end of its first turn; a reload resets the module's
+  state, so a drawn gate is lost until the next render.
+- The band scrolls as a whole: a tree taller than `maxRows` shows in a
+  window with Claude Code's own "↑/↓ N more" line, which no hook reaches.
+  The wheel is routed to the band only while its tree overflows; a band
+  that fits sends the wheel to the transcript and raises no `ui.scroll`.
 - Tests: `claude plugin test <dir>` with `claude-code/testing` —
   `mock.env` (answers `$.env.get` only), `mock.store`, `mock.clock`,
   `$.ui.press`; a `Client`'s post is driven with `ui.post(data, { in })`.
@@ -198,6 +204,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - The cursor starts on the recommended row, else the first not struck.
     Arrows work only once a click (or ctrl+x tab) has given the band the
     keyboard.
+  - A gate taller than the band scrolls as a whole, Claude Code's way: the
+    rule and question scroll away with the rows. Pinning them while only
+    the rows scroll was spiked and rejected — the wheel reaches the band
+    only when it overflows, which brings Claude Code's own "N more" line
+    beside any the mod draws; and every in-band indicator placement tried
+    (lines always reserved, lines in place of the blanks, lines only while
+    rows are hidden) either doubled the spacing or moved the list under
+    the cursor. A scrollbar and right-aligned counts were also turned down.
 - **R8 — two mods, both under `skills/`.** `workflow-gates` (the band) and
   `workflow-gates-rows` (R15). agntc copies `skills/` recursively, so both
   land in `.claude/skills/` and load as `…@skills-dir`. Declarations are
@@ -319,6 +333,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     payload; the strict audit is what guarantees parity now.
 27. A background agent's notification opens a turn that clears the band;
     a gate the person had not answered must come back.
+28. The wheel reaches the band only while its tree is taller than
+    `maxRows`; a band kept within `maxRows` never sees `ui.scroll`.
+29. An overflowing band always carries Claude Code's own "N more" line,
+    counting whatever overflows — padding included — and no render hook
+    reaches it.
+30. A skills-dir mod reloads in place when its files change, and can
+    reload at the first turn's end of a session started just after a
+    change; module state goes with it.
 
 ## Log
 
@@ -332,3 +354,6 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   added after the origin hook proved inert (R15), statements and details
   added to the payload with a strict audit (R3), every menu made to ask
   (R11), the opt-in's copy rewritten in plain words (R9). Findings 21–27.
+- 2026-09-23 — a pinned header over scrolling rows spiked on a short
+  terminal and rejected (R7); the band keeps Claude Code's whole-panel
+  scroll. Findings 28–30.
