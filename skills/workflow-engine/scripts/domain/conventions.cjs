@@ -126,7 +126,7 @@ const DISCOVERY_GLYPH = {
   fresh: '○',
   handled: '⊙',
   cancelled: '⊘',
-  postponed: '⊟',
+  postponed: '⊖',
 };
 
 /** @param {string} tier */

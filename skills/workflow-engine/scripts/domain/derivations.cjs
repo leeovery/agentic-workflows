@@ -1001,7 +1001,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   };
 }
 
-const TIER_RANK = { '✓': 0, '→': 1, '◐': 2, '○': 3, '⊙': 4, '⊘': 5, '⊟': 6 };
+const TIER_RANK = { '✓': 0, '→': 1, '◐': 2, '○': 3, '⊙': 4, '⊘': 5, '⊖': 6 };
 
 // Shared row comparator for the discovery map: tier rank first — decided
 // leads, then ready, in-flight, fresh, with handled/cancelled/postponed
@@ -1020,7 +1020,7 @@ function compareMapRows(a, b) {
 // The tiers a topic carries no suggested execution order under — off the
 // board (cancelled), non-actionable (handled), or waiting on the roadmap
 // (postponed); each stashes its order and gets none back until it returns.
-const UNORDERED_TIERS = ['⊘', '⊙', '⊟'];
+const UNORDERED_TIERS = ['⊘', '⊙', '⊖'];
 
 // True when any live map item lacks a suggested execution order.
 // Programmatic detection — the assignment of order values stays with Claude.
@@ -1065,7 +1065,7 @@ function computeTopicLifecycle(manifest, topicName) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   if (discovery && discovery.postponed === true) {
-    return { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
+    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   if (discovery && discovery.handled === true) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
@@ -1107,7 +1107,7 @@ function computeTopicLifecycle(manifest, topicName) {
   // The same reading for the postpone, one rank down: the cancel is the
   // stronger closure, so a unit holding both reads cancelled.
   if (attempted.includes('postponed') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
-    return { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
+    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
@@ -1192,7 +1192,7 @@ function computeMapSummary(items) {
       case '○': counts.fresh++; break;
       case '⊙': counts.handled++; break;
       case '⊘': counts.cancelled++; break;
-      case '⊟': counts.postponed++; break;
+      case '⊖': counts.postponed++; break;
     }
   }
   return counts;

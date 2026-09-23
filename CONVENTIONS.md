@@ -26,7 +26,7 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 | 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
 | 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
 
-The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ ● ◌ → ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
+The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
 
 Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
 
@@ -79,7 +79,7 @@ Rules:
 - Exactly this shape: `# ` + `**` + backtick + `■ ` + title + backtick + `**`
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
-- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ ● ◌ → ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
+- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
 
 Engine views carry their heading as a TITLE section — the same markdown H1 shape, emitted above the DISPLAY fence (see Engine Output Sections). Nothing draws boxes.
 

@@ -1200,7 +1200,7 @@ describe('reads + derivations', () => {
     it('the lifecycle reads the marker first, and a map-less topic by its every-item fallback', () => {
       const m = manifest();
       assert.deepStrictEqual(computeTopicLifecycle(m, 'away'),
-        { lifecycle: 'postponed', tier: '⊟', current_phase: null, research_state: null, discussion_state: 'postponed', triage_parked: false, reconcile_pending: false });
+        { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: null, discussion_state: 'postponed', triage_parked: false, reconcile_pending: false });
       // The cancel outranks the postpone: a row holding both is off the board.
       m.phases.discovery.items.away.cancelled = true;
       assert.strictEqual(computeTopicLifecycle(m, 'away').lifecycle, 'cancelled');

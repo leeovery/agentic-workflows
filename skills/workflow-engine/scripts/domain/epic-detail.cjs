@@ -148,7 +148,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} source_provenance
  * @property {number|null} order
  * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled` | `postponed`
- * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘` | `⊟`
+ * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘` | `⊖`
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
