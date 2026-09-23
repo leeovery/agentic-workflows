@@ -84,7 +84,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-A chosen candidate is the target; `new` takes the name derived in **A**. A phase appended to the selection overrides `landing_phase`.
+The surface numbers the candidates in payload order — the picked row's `name` is the target; `new` takes the name derived in **A**. A phase appended to the selection overrides `landing_phase`.
 
 → Proceed to **C. Land It**.
 

@@ -53,9 +53,7 @@ function stateLines(s) {
 function view() {
   const s = state(process.cwd());
   const menu = engine.project.roadmapHomeMenu(s);
-  const dataLines = stateLines(s);
-  dataLines.push('ACTIONS (key  action):');
-  for (const k of menu.keys) dataLines.push(`  ${k.key}  ${k.action}`);
+  const dataLines = [...stateLines(s), ...engine.project.actionsTable(['action'], menu.keys, (k) => [k.action])];
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock(engine.project.roadmapTitle()),

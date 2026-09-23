@@ -17,7 +17,7 @@ const path = require('path');
 const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost } = require('../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -2957,12 +2957,63 @@ function resolvePlanning(cwd, dotpath, surface) {
 }
 
 // external-dependency-gate — implementation entry's two stops over a plan's
-// external dependencies: what to do about the blocking set, and which of them
-// the user has satisfied outside the pipeline. Which dependencies block is
-// judgment — it comes from reading each one's plan through its output format
-// — so the pick variant is told the set by name; each row's description is
-// manifest state and is read here, so the menu can never name a dependency
-// the plan does not declare.
+// external dependencies: what to do about the blocking set, shown beneath the
+// set itself, and which of them the user has satisfied outside the pipeline.
+// Which dependencies block is judgment — it comes from reading each one's
+// plan through its output format — so both variants are told the set by
+// name; each dependency's description and state are manifest state and are
+// read here, so neither can name a dependency the plan does not declare.
+
+/**
+ * @typedef {{name: string, description: string, state: string, internal_id?: string}} BlockingDependency
+ */
+
+/**
+ * The named blocking set, each read from the plan's `external_dependencies`.
+ * @param {object} manifest @param {string} topic @param {string|undefined} blocking
+ * @returns {BlockingDependency[]}
+ */
+function blockingDependencies(manifest, topic, blocking) {
+  const names = String(blocking || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (names.length === 0) {
+    throw new Error('render external-dependency-gate: --blocking <topic,topic,…> is required — the blocking set, in offer order');
+  }
+  const declared = ((((manifest.phases || {}).planning || {}).items || {})[topic] || {}).external_dependencies || {};
+  return names.map((name) => {
+    const dep = declared[name];
+    if (!dep || typeof dep !== 'object') {
+      throw new Error(`render external-dependency-gate: "${name}" is not an external dependency of "${topic}"`);
+    }
+    if (!isFilled(dep.description)) {
+      throw new Error(`render external-dependency-gate: "${name}" carries no description — the row has nothing to say`);
+    }
+    if (dep.state !== 'unresolved' && dep.state !== 'resolved') {
+      throw new Error(`render external-dependency-gate: "${name}" is ${dep.state ?? 'stateless'} — only an unresolved or resolved dependency blocks`);
+    }
+    if (dep.state === 'resolved' && !isFilled(dep.internal_id)) {
+      throw new Error(`render external-dependency-gate: "${name}" is resolved but names no internal_id — the task it waits on is unknown`);
+    }
+    return { name, description: dep.description, state: dep.state, internal_id: dep.internal_id };
+  });
+}
+
+/**
+ * The blocking set as the gate's display: the dependencies with no plan
+ * first, then those waiting on a task in theirs — each its description and
+ * what it waits on, the task as a cross-plan reference.
+ * @param {BlockingDependency[]} deps
+ * @returns {string}
+ */
+function missingDependencies(deps) {
+  const lines = ['Missing Dependencies', ''];
+  for (const state of ['unresolved', 'resolved']) {
+    for (const dep of deps.filter((d) => d.state === state)) {
+      const waits = state === 'unresolved' ? 'No plan exists' : `Waiting on ${dep.name}:${dep.internal_id}`;
+      lines.push(`  ${titlecase(dep.name)}`, treeList([dep.description, waits], { indent: '  ' }), '');
+    }
+  }
+  return lines.join('\n');
+}
 
 /**
  * @param {string} cwd
@@ -2974,27 +3025,17 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
     throw new Error(`render external-dependency-gate: --variant must be "blocking" or "pick", got "${variant}"`);
   }
   const { manifest, topic } = resolvePlanning(cwd, dotpath, 'external-dependency-gate');
+  const deps = blockingDependencies(manifest, topic, blocking);
   if (variant === 'blocking') {
-    return section('MENU: blocking dependencies gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('s', 'satisfied', 'Mark a dependency as satisfied externally'),
-      cmdOption('i', 'implement', 'Exit to implement blocking dependencies first'),
-    ], { question: 'How would you like to proceed?' }));
+    return [
+      section('DISPLAY: missing dependencies', 'emit verbatim as a code block', missingDependencies(deps)),
+      section('MENU: blocking dependencies gate', STOP_FOR_RESPONSE, menu('', [
+        cmdOption('s', 'satisfied', 'Mark a dependency as satisfied externally'),
+        cmdOption('i', 'implement', 'Exit to implement blocking dependencies first'),
+      ], { question: 'How would you like to proceed?' })),
+    ].join('\n');
   }
-  const names = String(blocking || '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (names.length === 0) {
-    throw new Error('render external-dependency-gate: --blocking <topic,topic,…> is required for --variant pick — the blocking set, in offer order');
-  }
-  const declared = ((((manifest.phases || {}).planning || {}).items || {})[topic] || {}).external_dependencies || {};
-  const rows = names.map((name, i) => {
-    const dep = declared[name];
-    if (!dep || typeof dep !== 'object') {
-      throw new Error(`render external-dependency-gate: "${name}" is not an external dependency of "${topic}"`);
-    }
-    if (!isFilled(dep.description)) {
-      throw new Error(`render external-dependency-gate: "${name}" carries no description — the row has nothing to say`);
-    }
-    return cmdOption(String(i + 1), null, `${titlecase(name)} — ${dep.description}`);
-  });
+  const rows = deps.map((dep, i) => cmdOption(String(i + 1), null, `${titlecase(dep.name)} — ${dep.description}`));
   return section('MENU: dependency pick', STOP_FOR_RESPONSE, menu('', rows, { question: 'Which dependency has been satisfied?' }));
 }
 
@@ -5398,11 +5439,11 @@ function roadmapAddGateSurface(cwd, args) {
   if (!state.horizons.includes(args.horizon)) {
     throw new Error(`render roadmap-add-gate: unknown horizon "${args.horizon}"`);
   }
-  return section(
-    'MENU: roadmap add gate',
-    "emit verbatim as markdown, then STOP for the user's response",
-    roadmapAddGate(state, args.horizon),
-  );
+  const gate = roadmapAddGate(state, args.horizon);
+  return [
+    dataSection([`work_units: ${gate.units.join(', ')}`]),
+    section('MENU: roadmap add gate', STOP_FOR_RESPONSE, gate.menu),
+  ].join('\n');
 }
 
 /** @param {string} cwd @param {object} _args @returns {string} */

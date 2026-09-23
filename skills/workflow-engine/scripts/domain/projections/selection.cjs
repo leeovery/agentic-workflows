@@ -94,7 +94,7 @@ function selectionSections(type, units, counts) {
       ? `Continue "${titlecase(u.name)}"`
       : `Continue "${titlecase(u.name)}" — *${u.phase_label}*${cue(u)}`));
   });
-  if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
+  if (closed) menuLines.push(cmdOption('v', 'view', cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage));
 
   return section('DISPLAY: selection', 'emit verbatim as a code block', disp.join('\n'))

@@ -316,7 +316,7 @@ Commands:
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
-  render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
+  render external-dependency-gate <wu.planning.topic> --variant blocking|pick --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution

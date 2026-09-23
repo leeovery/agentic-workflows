@@ -850,10 +850,10 @@ describe('start projections: manage unit', () => {
       'absorb_available: false',
       'available_epics: (none)',
       'planning_topics: (none)',
-      'ACTIONS (key  action):',
-      '  p  pivot',
-      '  c  cancel',
-      '  b  back',
+      'ACTIONS (key  word  action):',
+      '  p  pivot  pivot',
+      '  c  cancel  cancel',
+      '  b  back  back',
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
@@ -927,6 +927,13 @@ describe('start projections: manage unit', () => {
       '**`b/back`**      → Return',
       '**Ask**         → Ask a question about this work unit',
     ].join('\n'));
+    assert.ok(v.data.endsWith([
+      'ACTIONS (key  word  action):',
+      '  d  done  mark_completed',
+      '  v  view-plan  view_plan',
+      '  c  cancel  cancel',
+      '  b  back  back',
+    ].join('\n')), 'every row the menu offers resolves by its key or its word');
     assert.ok(!v.menu.includes('pivot'));
     assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
