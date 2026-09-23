@@ -2003,6 +2003,14 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
+  it('view for an unknown name answers the not-found terminal display, no gate', () => {
+    const res = run(['view', 'ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.match(res.stdout, /error: no active epic with this name/);
+    assert.match(res.stdout, /=== DISPLAY: not found [^\n]*\nNo active epic named "ghost" found\./);
+    assert.doesNotMatch(res.stdout, /^=== MENU/m);
+  });
+
   it('bare positional still renders the scoped dump byte-identically', () => {
     epicFixture();
     const res = run(['v1']);

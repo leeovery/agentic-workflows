@@ -92,7 +92,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_u
 
 #### If `view full`
 
-Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then re-emit the `MENU: phase structure gate` section.
+Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then re-run the render above — the same command, the payload untouched — and emit its sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

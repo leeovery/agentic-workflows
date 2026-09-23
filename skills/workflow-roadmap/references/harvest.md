@@ -14,7 +14,7 @@ Three sources of truth, cross-referenced:
 
 1. **The Exploration section** of the active session log at `.workflows/.roadmap/sessions/session-{session_number}.md`. Read it now, every time, whatever is already in context.
 2. **In-context memory of the conversation** — richer but volatile.
-3. **The existing roadmap** from the home snapshot (re-run `gateway.cjs view` and read its DATA when it is not current in context).
+3. **The existing roadmap** — read it with `engine roadmap state` when it is not current in context.
 
 → Proceed to **B. Identify Items and Horizons**.
 

@@ -1871,6 +1871,12 @@ describe('pipeline simulation', () => {
     // While stale, the spec boundary keeps the spec actionable — Continuing,
     // never Refining/concluded — and the stale row rides the detail.
     const staleView = specDetail(sim.dir, wu);
+    // The entry routes on its scoped read, which carries no gate: the specs
+    // menu is fetched by the display that shows it.
+    assert.strictEqual(staleView.scenario, 'specs-menu');
+    const routingRead = SPEC_GATEWAY.scoped(sim.dir, wu);
+    assert.match(routingRead, /^scenario: specs-menu$/m);
+    assert.doesNotMatch(routingRead, /^=== (MENU|DISPLAY|TITLE)/m);
     const unifiedRow = staleView.actionable.find((r) => r.name === 'unified');
     assert.ok(unifiedRow, 'staled spec stays actionable');
     assert.strictEqual(unifiedRow.verb, 'Continuing');
@@ -3923,6 +3929,10 @@ describe('pipeline simulation', () => {
     // recorded. Its screens are content, so they render at any state.
     assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
     assert.match(sim.render(['walkthrough-home'], { expect: 'content' }), /What would you like to do\?/);
+    // A card is also shown mid-conversation, so it carries no gate; the help
+    // flow fetches the card's menu beneath it.
+    assert.doesNotMatch(sim.render(['walkthrough-topic', '--name', 'the-inbox'], { expect: 'content' }), /^=== MENU/m);
+    assert.match(sim.render(['walkthrough-topic', '--name', 'the-inbox', '--menu-only'], { expect: 'content' }), /t\/topics/);
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
     sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
     const answer = sim.run(['walkthrough', 'record', 'walked']);

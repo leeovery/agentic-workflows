@@ -238,6 +238,14 @@ describe('workflow-continue-cross-cutting CLI dispatch', () => {
     assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
   });
 
+  it('view for an unknown name answers the not-found terminal display, no gate', () => {
+    const res = run(['view', 'ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.match(res.stdout, /error: no active cross-cutting concern with this name/);
+    assert.match(res.stdout, /=== DISPLAY: not found [^\n]*\nNo active cross-cutting concern named "ghost" found\./);
+    assert.doesNotMatch(res.stdout, /^=== MENU/m);
+  });
+
   it('a bare positional errors instead of rendering the index', () => {
     createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     const res = run(['caching']);
