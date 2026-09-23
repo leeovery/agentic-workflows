@@ -3,14 +3,15 @@
 A Claude Code mod that draws the workflow engine's gates in the band above the
 prompt instead of leaving the model to reproduce them.
 
-The engine states each gate as data beside the menu it composed. This mod
-announces itself at the session's start so the engine collects that data, arms
-the gate off the Bash result that carried it, cuts the menu out of what the
-model reads, and draws the rows where they stay put while the transcript
-scrolls; while any screen but the terminal is attached, it leaves the menu as
-text so every screen shows it, though a screen that attaches after a menu was
-drawn on the terminal does not get that menu. The workflows' prose never names
-the mod.
+The engine states each gate as data beside the menu it composed. Where the
+project's `.workflows/manifest.json` records `gate_surface: true` among its
+defaults, this mod announces itself at the session's start so the engine
+collects that data; it arms the gate off the Bash result that carried it, cuts
+the menu out of what the model reads, and draws the rows where they stay put
+while the transcript scrolls; while any screen but the terminal is attached, it
+leaves the menu as text so every screen shows it, though a screen that attaches
+after a menu was drawn on the terminal does not get that menu. The workflows'
+prose never names the mod.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
@@ -65,6 +66,11 @@ Claude Code keeps a transcript unless told otherwise.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
+
+`/workflow-start` asks once per project, before its start menu, whether to
+turn this on, and records the answer; it is the only thing that asks. The mod
+reads the answer at each session's start, so setting `gate_surface` to `false`
+turns it off from the next one.
 
 ## Working on it
 
