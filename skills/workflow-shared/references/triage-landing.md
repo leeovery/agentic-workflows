@@ -66,9 +66,15 @@ The topic is closed — no future session will surface its queue, and concluded 
 
 → Proceed to **D. Closed Target**.
 
+#### If the row's lifecycle is `postponed`
+
+The topic waits on the roadmap and the concern waits with it — the delivery parks it and nothing is reopened. Tell the user in one line that it will be read when the topic returns.
+
+→ Proceed to **C. Land the Concern**.
+
 #### Otherwise
 
-The landing phase is already judged and confirmed — `{landing_phase}` decides, not the target's live state. The delivery handles every item state (absent → parked; live → untouched; completed → reopened), and a terminal item refuses loudly with its recovery path.
+The landing phase is already judged and confirmed — `{landing_phase}` decides, not the target's live state. The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic), and a cancelled or dead-ended target refuses loudly with its recovery path.
 
 → Proceed to **C. Land the Concern**.
 
