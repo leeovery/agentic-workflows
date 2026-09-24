@@ -147,15 +147,14 @@ function reading(glyphs) {
 // A row is an option or a typed row, in order and with its whole label; a
 // wrapped label's continuation belongs to the row above it, and so does any
 // other line directly beneath it, as its detail; the line the menu asks on —
-// its glyphed line, else the prose line it closes on — is the question;
-// every other line is the statement, in order. Every value the payload
-// states is held as it stands against the menu read plain.
+// its glyphed line — is the question; every other line is the statement, in
+// order. Every value the payload states is held as it stands against the menu
+// read plain.
 /** @param {GatePayload} gate @param {string[]} body @param {string} label @returns {void} */
 function assertPayloadDrawsMenu(gate, body, label) {
   /** @type {DrawnRow[]} */ const rows = [];
   /** @type {{text: string, glyphed: boolean}[]} */ const prose = [];
   /** @type {DrawnRow|null} */ let under = null;
-  let closesOnProse = false;
   for (const line of body) {
     if (line === MENU_RULE || line.trim() === '') { under = null; continue; }
     if (CONTINUATION.test(line)) {
@@ -165,7 +164,6 @@ function assertPayloadDrawsMenu(gate, body, label) {
     }
     const glyphed = GLYPHED_LINE.exec(line);
     const row = glyphed ? null : drawnRow(line);
-    closesOnProse = false;
     if (row) {
       rows.push(row);
       under = row;
@@ -173,11 +171,9 @@ function assertPayloadDrawsMenu(gate, body, label) {
       under.detail = plainText(`${under.detail ?? ''} ${line}`);
     } else {
       prose.push({ text: plainText(glyphed?.[1] ?? line), glyphed: glyphed !== null });
-      closesOnProse = true;
     }
   }
-  const glyphAt = prose.findIndex((p) => p.glyphed);
-  const askAt = glyphAt !== -1 ? glyphAt : closesOnProse ? prose.length - 1 : -1;
+  const askAt = prose.findIndex((p) => p.glyphed);
   assert.strictEqual(gate.question, askAt === -1 ? '' : prose[askAt].text,
     `[${label}] the payload's question is not the line the menu asks on`);
   assert.deepStrictEqual(gate.statement === '' ? [] : gate.statement.split('\n'), prose.filter((_, i) => i !== askAt).map((p) => p.text),
