@@ -1,5 +1,5 @@
 {
-  "origin": "the plan's conclude gate lost its dead `no` row for a prompt **Ask** arm — answer from the record, then re-render the same gate — and no planning case walks it: all four answer `y` straight through. The implementation twin covers its own Ask (implementation-concludes-into-review); this pins planning's, which routes back into the gate's own section rather than into plan construction",
+  "origin": "the plan's conclude gate lost its dead `no` row for a prompt **Ask** arm — answer from the record, set the gate aside until the user is ready to move on, then put the same gate back for its answer — and no planning case walks it: all four answer `y` straight through. The implementation twin covers its own Ask (implementation-concludes-into-review); this pins planning's, which routes back into the gate's own section rather than into plan construction",
   "entry": "workflow-planning-entry",
   "world": "claims",
   "files": [
@@ -41,6 +41,7 @@
     "y — the structure still matches",
     "y — the graph is right",
     "before I conclude — what acceptance criteria does phase 2 carry?",
+    "yes, I'm ready",
     "y — conclude the plan"
   ],
   "stubs": {

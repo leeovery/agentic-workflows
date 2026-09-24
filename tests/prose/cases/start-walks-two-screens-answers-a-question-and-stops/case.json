@@ -1,5 +1,5 @@
 {
-  "origin": "the one thing a static tutorial cannot do: a question mid-walk is answered from the glossary and the same screen's menu goes back, never the whole screen — and the offer is recorded the moment it is taken, not when the walk ends",
+  "origin": "the one thing a static tutorial cannot do: a question mid-walk is answered from the glossary, and once the user is ready to move on the same screen's menu goes back — once, never the whole screen — and the offer is recorded the moment it is taken, not when the walk ends",
   "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md",
@@ -17,6 +17,7 @@
   "answers": [
     "n",
     "what do you mean by a phase?",
+    "yes",
     "s"
   ],
   "invariants": {

@@ -58,10 +58,14 @@ The prose should have taken this path:
     into the specification or its Working Notes; the user is told in
     one line what was parked and where
 13. control returns to the caller. The interrupted flow is
-    construction at its approval gate, so that gate comes back and the
-    walk never falls through to the skill's Step 0. It stops there:
-    the gate unanswered, nothing logged to the specification, the
-    source still `pending`
+    construction at its approval gate, which the aside set aside: the
+    session asks in conversation — no gate, no menu — whether the user
+    is ready to move on, and the walk never falls through to the
+    skill's Step 0. The walk STOPS
+14. the fifth scripted answer says they are ready — never the gate's
+    answer — so that gate comes back, fetched from the engine. It stops there: the gate
+    unanswered, nothing logged to the specification, the source still
+    `pending`
 
 The end world's claims:
 
@@ -88,6 +92,7 @@ The end world's claims:
 - the git history carries the engine's own roadmap commit over the
   project manifest, and nothing else new. Nothing is left dirty
   outside the cache
-- the four scripted answers were consumed by the resume choice, the
-  aside, the horizon pick, and the park confirm, in that order. The
+- the five scripted answers were consumed by the resume choice, the
+  aside, the horizon pick, the park confirm, and the readiness
+  question, in that order. The
   user was never asked which backlog and never asked to name a horizon

@@ -59,9 +59,14 @@ The prose should have taken this path:
     backfill write happens; the scoped commit lands as
     impl(pay): add 1 ad hoc task(s)
 15. the interrupted flow is the task loop, so control returns to the
-    caller and the pending task gate re-presents — re-fetched from the
-    engine, not replayed from memory. The walk stops there: the gate
-    unanswered, pay-1-1 never completed, no further task started
+    caller; the pending task gate was set aside by the raised work, so
+    the session asks in conversation — no gate, no menu — whether the
+    user is ready to move on, and the walk STOPS
+16. the fifth scripted answer says they are ready — never the gate's
+    answer — so the gate re-presents, re-fetched from the engine, not
+    replayed from memory.
+    The walk stops there: the gate unanswered, pay-1-1 never completed,
+    no further task started
 
 Further claims:
 
