@@ -347,8 +347,9 @@ const MOUNT = {
  * answered. A submission made while idle resolves once the turn it opens has
  * started, as core's does; `engineWrites` changes what the next Bash call
  * answers, `reads` what the transcript holds, `resumesAs` the session's id,
- * and `stopsSubmitting` fails every submission from then on. `stored` is the
- * store, holding `kept` at the start.
+ * and `stopsSubmitting` fails every submission from then on. The prompt box
+ * holds what a fill put there until the person `types` over it, and
+ * `boxHolds` reads it. `stored` is the store, holding `kept` at the start.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
@@ -390,6 +391,7 @@ function world(
   const clock = disk ?? mock.clock(on)
 
   let output = stdout
+  let box = ''
   let submits = isSubmitting
   let transcript: readonly SessionMessage[] = []
   let sessionId = 's0'
@@ -445,8 +447,14 @@ function world(
     calls.push(`fill ${e.text}`)
     filled.push(e.text)
 
+    if (fills) {
+      box = e.text
+    }
+
     return { isFilled: fills }
   })
+
+  on('prompt.read', () => ({ value: { text: box, cursor: box.length } }))
 
   on('fs.write', async ($, e) => {
     calls.push('write')
@@ -510,6 +518,10 @@ function world(
     submits = false
   }
 
+  const types = (text: string) => {
+    box = text
+  }
+
   return {
     calls,
     filled,
@@ -522,6 +534,8 @@ function world(
     reads,
     resumesAs,
     stopsSubmitting,
+    types,
+    boxHolds: () => box,
   }
 }
 
@@ -1676,7 +1690,7 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('an Esc on a turn anyone else started drops what it half-rendered and leaves the band as it was', async ($, on) => {
+  test('an Esc on a turn anyone else started, once it rendered another gate, empties the band: the model is at that gate’s stop', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1687,10 +1701,23 @@ describe('register', () => {
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(INTERRUPTED)
 
+    expect(await isDrawn($), 'neither the gate it began over nor the half-rendered one').toBe(false)
+  })
+
+  test('an Esc on a turn anyone else started, once it rendered the same gate again, leaves the band as it is', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+    await submitFrom($, { kind: 'task-notification' })
+
+    engineWrites(announced())
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(INTERRUPTED)
+
     const ui = await $.ui.mount(MOUNT)
 
     expect(await lineOf(ui, COMMIT)).toBeGreaterThan(0)
-    expect(await lineOf(ui, 'Start "Billing"')).toBe(-1)
 
     await ui.unmount()
   })
@@ -1994,8 +2021,8 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a pick goes with its gate when a turn draws another over it', async ($, on) => {
-    const { engineWrites } = world($, on, announced())
+  test('a pick goes with its gate when a turn draws another over it, its answer out of the prompt box', async ($, on) => {
+    const { engineWrites, boxHolds } = world($, on, announced())
 
     await presented($)
 
@@ -2004,14 +2031,37 @@ describe('register', () => {
     await submitFrom($, { kind: 'task-notification' })
     await click(ui, COMMIT)
 
+    expect(boxHolds()).toBe('yes')
+
     engineWrites(announced({ options: HELD_FIRST }))
 
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(TURN_END)
 
     expect(await footerOf(ui)).toBe(IDLE_FOOTER)
+    expect(boxHolds(), 'no answer to the old gate left to send to the new one').toBe('')
 
     await ui.unmount()
+  })
+
+  test('a draft the person edited from a pick stays in the prompt box when its gate goes', async ($, on) => {
+    const { engineWrites, boxHolds, types } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await ui.unmount()
+
+    types('yes, and add tests')
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(boxHolds()).toBe('yes, and add tests')
   })
 
   test('a press while the held answer is being sent does nothing', async ($, on) => {
@@ -2057,6 +2107,70 @@ describe('register', () => {
     expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
 
     await ui.unmount()
+  })
+
+  test('an Esc after that turn rendered the same gate again hands a held answer back as a pick, nothing sent', async ($, on) => {
+    const { filled, submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    engineWrites(announced())
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(submitted).toEqual(['ping'])
+    expect(filled).toEqual(['yes', '', 'yes'])
+    expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
+
+    await ui.unmount()
+  })
+
+  test('an Esc after that turn rendered another gate drops a held answer unsent, the band empty', async ($, on) => {
+    const { filled, submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await ui.unmount()
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(submitted).toEqual(['ping'])
+    expect(filled, 'never handed back').toEqual(['yes', ''])
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a pick whose gate an Esc empties from the band leaves the prompt box too, while the box still holds it', async ($, on) => {
+    const { engineWrites, boxHolds } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await ui.unmount()
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(boxHolds()).toBe('')
   })
 
   test('a held answer that fails to send goes back to the prompt as a pick, no send left recorded', async ($, on) => {
