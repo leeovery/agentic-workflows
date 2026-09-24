@@ -75,7 +75,7 @@ Follow every step in sequence. No steps are optional.
 
 The user says to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. An idea, not a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `planning`, from any point in the phase.
 
-→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
+→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.
 
 ---
 
@@ -91,7 +91,7 @@ The user pushes a topic back to the roadmap — "postpone this", "move the loyal
 
 The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. Load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `planning`, from any point in the phase.
 
-→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
+→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.
 
 ---
 

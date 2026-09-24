@@ -122,7 +122,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If adjust:**
 
-Apply the user's correction.
+Confirm your reading of the correction with the person before anything acts on it, then apply it.
 
 → Return to **C. Validate Task Detail File**.
 
