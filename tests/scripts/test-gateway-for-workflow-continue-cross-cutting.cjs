@@ -199,12 +199,13 @@ describe('workflow-continue-cross-cutting CLI dispatch', () => {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
 
-  it('bare call still renders the index byte-identically', () => {
+  it('the bare call is the head insert: the index dump alone, byte-identical to format()', () => {
     createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     const res = run([]);
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
     assert.strictEqual(res.stdout, format(discover(dir)));
+    assert.doesNotMatch(res.stdout, /^=== (DISPLAY|MENU): selection/m, 'the pick list and its menu are the select step\'s');
   });
 
   it('view {work_unit} answers the sectioned snapshot — a MENU section only when there is something to revisit', () => {

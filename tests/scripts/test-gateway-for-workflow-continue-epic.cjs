@@ -1979,12 +1979,13 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(out.includes('build_order_needs_sequencing: true'), out.split('===')[1] || out);
   });
 
-  it('bare call still renders the index byte-identically', () => {
+  it('the bare call is the head insert: the index dump alone, byte-identical to format()', () => {
     epicFixture();
     const res = run([]);
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
     assert.strictEqual(res.stdout, format(discover(dir)));
+    assert.doesNotMatch(res.stdout, /^=== (DISPLAY|MENU): selection/m, 'the pick list and its menu are the select step\'s');
   });
 
   it('select answers the select step: the dump, then the pick list and its menu', () => {
