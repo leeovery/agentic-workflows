@@ -242,21 +242,27 @@ function menuFrame(lines, { width, skip = 0 } = {}) {
 
 const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
 
-// A key the user presses — the code-span head cmdOption, bareOption and
-// rangeOption write. The glyphed question shares the head's markup, so the
-// glyph is what tells them apart.
-const PRESSABLE_ROW = new RegExp(`^\\*\\*\`(?!${MENU_GLYPH} )[^\`]+\`\\*\\*(?: +→ |$)`);
+// A row's code-span head — cmdOption, bareOption and rangeOption write it.
+// The glyphed question shares the head's markup, so the glyph is what tells
+// them apart.
+/** @param {string} span */
+const headedRow = (span) => new RegExp(`^\\*\\*\`(?!${MENU_GLYPH} )${span}\`\\*\\*(?: +→ |$)`);
+const OPTION_ROW = headedRow('[^`]+');
+
+// A key the user presses names one key. A range's span holds both bounds
+// either side of an en dash — the numbers are typed, never pressed.
+const PRESSABLE_ROW = headedRow('[^`–]+');
 
 // Every menu asks: a glyphed question — glyphable, ending in `?` — stands
-// above its first pressable row. The check runs over the composed lines, so
-// a menu grouped by `menu` and one a projection composes itself meet the
-// same rule.
+// above its first row, and at least one row is a key to press. The check
+// runs over the composed lines, so a menu grouped by `menu` and one a
+// projection composes itself meet the same rule.
 /** @param {string[]} body */
 function asksOverRows(body) {
-  const firstRow = body.findIndex((line) => PRESSABLE_ROW.test(line));
-  if (firstRow < 0) {
-    throw new Error('menu: no row to press — a menu offers at least one key (cmdOption, bareOption, or rangeOption)');
+  if (!body.some((line) => PRESSABLE_ROW.test(line))) {
+    throw new Error('menu: no row to press — a menu offers at least one single key (cmdOption or bareOption); a range row is typed, never pressed');
   }
+  const firstRow = body.findIndex((line) => OPTION_ROW.test(line));
   const ask = body.slice(0, firstRow).map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
   if (!ask) {
     throw new Error('menu: every menu asks a glyphed question — no `◆ …?` line stands above the rows; a statement stays context above a short question');
