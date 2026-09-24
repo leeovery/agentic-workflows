@@ -32,7 +32,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {
 
 **If `yes`:** continue the analysis.
 
-**If the user steers:** fold the direction in — update the ledger and trace lines in the investigation file, commit, and continue the analysis from there.
+**If the user steers:** confirm your reading of the direction with the person before anything acts on it, then fold it in — update the ledger and trace lines in the investigation file, commit, and continue the analysis from there.
 
 ## Pivot Gate
 
@@ -48,7 +48,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {
 
 **If `yes`:** record the new direction in the investigation file, commit, and continue the analysis.
 
-**If the user adjusts:** incorporate, record, commit, and continue the analysis on the adjusted direction.
+**If the user adjusts:** confirm your reading of the adjustment with the person before anything acts on it, then incorporate, record, commit, and continue the analysis on the adjusted direction.
 
 ## Files the User Shares
 

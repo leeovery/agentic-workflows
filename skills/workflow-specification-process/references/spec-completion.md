@@ -48,7 +48,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-ga
 
 **If comment:**
 
-Discuss the user's suggested classification and re-assess.
+Discuss the user's suggested classification and re-assess. The comment sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **A. Cross-Cutting Assessment**.
 
@@ -112,7 +112,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-ga
 
 #### If comment
 
-Discuss the user's context and apply any changes.
+Discuss the user's context, and apply a change it leads to once the person confirms it. The comment sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **C. Sign-Off**.
 

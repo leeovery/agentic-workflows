@@ -82,26 +82,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs walkthrough record skippe
 
 #### If the user asks a question
 
-Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)**. A question about ground a later screen covers gets a short answer that says which screen it belongs to.
+Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is this screen's alone, never the whole screen again: the call at **A. Render the Screen** with `--menu-only` added. A question about ground a later screen covers gets a short answer that says which screen it belongs to.
 
-→ Proceed to **C. Put the Menu Back**.
+→ Return to **B. Route the Answer**.
 
 #### If tell me
 
-Screen 8's closing prompt: the user has said what they are likely to start with. Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)**, in a few ordinary sentences — the kind of work it sounds like, the phases it will visit, and where their own attention will go — in the words the screens have already used, never an engine term.
-
-→ Proceed to **C. Put the Menu Back**.
-
-## C. Put the Menu Back
-
-The menu alone — never the whole screen again:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-screen --screen {screen} --from {origin} --menu-only
-```
-
-Emit the `MENU: walkthrough screen` section verbatim per its marker.
-
-**STOP.** Wait for user response.
+Screen 8's closing prompt: the user has said what they are likely to start with. Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)**, in a few ordinary sentences — the kind of work it sounds like, the phases it will visit, and where their own attention will go — in the words the screens have already used, never an engine term. The menu it puts back is this screen's alone, as for a question.
 
 → Return to **B. Route the Answer**.
