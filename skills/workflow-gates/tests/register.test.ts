@@ -53,6 +53,12 @@ const PROJECT_MANIFEST = '.workflows/manifest.json'
 /** A project that said yes to the gate surface. */
 const OPTED_IN = JSON.stringify({ defaults: { gate_surface: true } })
 
+/** A project that said no to it. */
+const OPTED_OUT = JSON.stringify({ defaults: { gate_surface: false } })
+
+/** A process whose session announced the gate surface before the mod loaded. */
+const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
+
 /** Where a send leaves what it answered, under the session's working directory. */
 const SENT = '/.workflows/.cache/.gates/sent.json'
 
@@ -348,7 +354,9 @@ const MOUNT = {
  *
  * `manifest` is the text of the project's `.workflows/manifest.json` — a
  * project that said yes unless a test says otherwise, none at all for null —
- * and `pathsRead` each path the mod read.
+ * and `pathsRead` each path the mod read. `env` is the environment the
+ * process holds at the start, which each `$.env.set` changes and `written`
+ * records.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -364,9 +372,9 @@ const MOUNT = {
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
- * @param options the project's manifest, the surfaces attached, whether the
- *   box and a submission take, the clock a slow disk writes on, what holds a
- *   read up, and what the store holds
+ * @param options the project's manifest, the process's environment, the
+ *   surfaces attached, whether the box and a submission take, the clock a
+ *   slow disk writes on, what holds a read up, and what the store holds
  */
 function world(
   engine: Engine,
@@ -374,6 +382,7 @@ function world(
   stdout = '',
   options: {
     manifest?: string | null
+    env?: Readonly<Record<string, string>>
     surfaces?: readonly RenderSurface[]
     fills?: boolean
     submits?: boolean
@@ -385,6 +394,7 @@ function world(
 ) {
   const {
     manifest = OPTED_IN,
+    env = {},
     surfaces = ['terminal'],
     fills = true,
     submits: isSubmitting = true,
@@ -400,6 +410,7 @@ function world(
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>()
   const pathsRead: string[] = []
+  const environment = new Map(Object.entries(env))
   const stored = new Map(Object.entries(kept))
   const clock = disk ?? mock.clock(on)
 
@@ -450,8 +461,16 @@ function world(
     return next(e)
   })
 
+  on('env.get', ($, e) => ({ value: environment.get(e.name) }))
+
   on('env.set', ($, e) => {
     written.push({ name: e.name, value: e.value })
+
+    if (e.value === undefined) {
+      environment.delete(e.name)
+    } else {
+      environment.set(e.name, e.value)
+    }
 
     return { value: undefined }
   })
@@ -2582,7 +2601,10 @@ describe('register', () => {
   })
 
   test('a module loaded into a conversation at a gate, as a reload of its files does, draws the gate at its first drawing', async ($, on) => {
-    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+    const { reads } = world($, on, announced(), {
+      env: ANNOUNCING,
+      kept: KEPT_AT_GATE,
+    })
 
     reads(AT_GATE)
 
@@ -2591,6 +2613,56 @@ describe('register', () => {
     expect(await lineOf(ui, 'Approve this task?')).toBe(2)
 
     await ui.unmount()
+  })
+
+  const unannounced: Record<string, string>[] = [
+    {},
+    { WORKFLOWS_GATE_SURFACE: '0' },
+  ]
+
+  for (const env of unannounced) {
+    test(`a reload in a session whose environment holds ${JSON.stringify(env)} draws no kept gate`, async ($, on) => {
+      const { reads } = world($, on, announced(), { env, kept: KEPT_AT_GATE })
+
+      reads(AT_GATE)
+
+      expect(await isDrawn($)).toBe(false)
+    })
+  }
+
+  test('a fresh load announces before it reads back, so a band already on screen draws the kept gate', async ($, on) => {
+    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+
+    reads(AT_GATE)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await $.session.start(SESSION)
+
+    expect(await lineOf(ui, 'Approve this task?')).toBe(2)
+
+    await ui.unmount()
+  })
+
+  test('a project that said no gets no kept gate back when the conversation is resumed, and leaves the store alone', async ($, on) => {
+    const { stored, reads } = world($, on, '', {
+      manifest: OPTED_OUT,
+      kept: KEPT_AT_GATE,
+    })
+
+    reads(AT_GATE)
+
+    await $.session.start(SESSION)
+
+    expect(await isDrawn($)).toBe(false)
+
+    reads(MOVED_ON)
+
+    await submitFrom($, { kind: 'composer' }, 'carry on')
+    await $.turn.complete(TURN_END)
+    await $.session.end(QUIT)
+
+    expect(Object.fromEntries(stored)).toEqual(KEPT_AT_GATE)
   })
 
   test('a turn that starts while the band is read back takes no gate from before it', async ($, on) => {

@@ -180,6 +180,16 @@ async function isOptedIn($: EngineInterface, cwd: string): Promise<boolean> {
   }
 }
 
+/**
+ * Whether the session announces the gate surface: set at its start where the
+ * project said yes, and still set after a reload of the module. The band is
+ * kept and read back only where it is, so a project that said no never gets
+ * a kept gate back.
+ */
+async function isAnnounced($: EngineInterface): Promise<boolean> {
+  return (await $.env.get('WORKFLOWS_GATE_SURFACE')) === '1'
+}
+
 /** Whether an event is the conversation's own, not a subagent's loop. */
 const inConversation = (e: AgentLoop) => e.agentId === undefined
 
@@ -356,9 +366,9 @@ const isKept = (value: unknown): value is Kept =>
 
 /**
  * Keeps what the band shows for the conversation at `place` — the gate, or
- * nothing — dropping what was kept for it under a key `before` it has since
- * left, as a compaction or a transcript past what `$.session.messages()`
- * answers moves its first call.
+ * nothing — in a session that announced, dropping what was kept for it under
+ * a key `before` it has since left, as a compaction or a transcript past
+ * what `$.session.messages()` answers moves its first call.
  */
 async function keep(
   $: EngineInterface,
@@ -366,6 +376,10 @@ async function keep(
   gate: Gate | null,
   before: Place | null,
 ) {
+  if (!(await isAnnounced($))) {
+    return
+  }
+
   const key = place?.key ?? null
   const left = before?.key ?? null
 
@@ -391,8 +405,9 @@ async function keep(
  * gets the conversation the transcript holds now, with its kept gate where
  * the transcript still ends where it was kept, or none where it has moved
  * on, the kept band dropped while the read-back is still owed. Nothing
- * settles while the transcript is empty or still holds the conversation
- * that ended in this process.
+ * settles in a session that did not announce, while the transcript is
+ * empty, or while it still holds the conversation that ended in this
+ * process.
  */
 async function readBack(
   $: EngineInterface,
@@ -401,7 +416,7 @@ async function readBack(
 ) {
   const asked = owing()
 
-  if (asked === null) {
+  if (asked === null || !(await isAnnounced($))) {
     return
   }
 
