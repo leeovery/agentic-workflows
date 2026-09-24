@@ -1136,5 +1136,23 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('scenario: groupings\n'));
     assert.strictEqual(out.split('\n').filter((l) => l.startsWith('=== ')).length, 1, 'one DATA section, nothing to emit');
   });
+
+  it('the routing read refuses excess arguments and a name with no active work unit behind it', () => {
+    groupingsFixture(dir);
+    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed' });
+    const refuse = (args) => spawnSync('node', [ADAPTER, ...args], { cwd: dir, encoding: 'utf8' });
+
+    const extra = refuse(['v1', 'extra']);
+    assert.strictEqual(extra.status, 1);
+    assert.strictEqual(extra.stdout, '');
+    assert.strictEqual(extra.stderr, 'gateway: unknown verb "v1"\nUsage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}\n');
+
+    for (const name of ['ghost', 'shipped']) {
+      const unknown = refuse([name]);
+      assert.strictEqual(unknown.status, 1, name);
+      assert.strictEqual(unknown.stdout, '', `${name}: no scenario is reported for a unit that is not there`);
+      assert.strictEqual(unknown.stderr, `gateway: no active work unit "${name}"\n`);
+    }
+  });
 });
 

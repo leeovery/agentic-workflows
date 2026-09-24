@@ -4,7 +4,7 @@
 
 ---
 
-Shows when proposed groupings exist (directly from routing) or after analysis completes. Each numbered item is a specification item from the manifest — proposed groupings and materialized specs alike. The tree, the menu, and the `ACTIONS` table share one ordering and numbering — they map 1:1.
+Shows when proposed groupings exist — reached from routing, or after an analysis that leaves some. Each numbered item is a specification item from the manifest — proposed groupings and materialized specs alike. The tree, the menu, and the `ACTIONS` table share one ordering and numbering — they map 1:1.
 
 ## A. Display and Menu
 
@@ -31,6 +31,8 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or the comm
 The entry's `topic` and `verb`, plus that item's DATA detail (sources, consult references), become the context for confirmation.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
+
+→ On return, return to **A. Display and Menu**.
 
 #### If `action` is `blocked_spec`
 
@@ -77,6 +79,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --stat
 Spec name: "Unified". Sources: all completed discussions.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
+
+→ On return, return to **A. Display and Menu**.
 
 #### If `action` is `reanalyze`
 

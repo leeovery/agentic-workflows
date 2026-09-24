@@ -22,6 +22,8 @@ The entry's `topic` and `verb`, plus that spec's DATA detail (sources, consult r
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 
+→ On return, return to caller.
+
 #### If `action` is `back`
 
 → Return to caller.
