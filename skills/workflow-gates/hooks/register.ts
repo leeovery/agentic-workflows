@@ -7,7 +7,9 @@
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over. A press picks its
  * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which the workflows' prose reads as the answer.
+ * next message, which the workflows' prose reads as the answer. What the band
+ * shows is kept across a restart, so a conversation resumed where nothing has
+ * happened since shows its gate again.
  *
  * Every path up to the cut fails open: the engine emits the menu regardless,
  * so where the module never loads, or a cut throws or overruns, the model
@@ -18,6 +20,7 @@ import type {
   EngineInterface,
   PromptOrigin,
   Register,
+  SessionMessage,
 } from 'claude-code'
 
 import { answerOf, linesOf, type Gate, type Option } from './layout.ts'
@@ -35,6 +38,15 @@ const SENT = '.workflows/.cache/.gates/sent.json'
 
 /** The record that claims no send, which that mod draws nothing from. */
 const NOTHING_SENT = 'null'
+
+/** The prefix of the store key a conversation's band is kept under. */
+const KEPT = 'band:'
+
+/**
+ * How long Claude Code keeps a transcript to resume unless told otherwise:
+ * a band kept longer belongs to a conversation that cannot come back.
+ */
+const KEPT_FOR_MS = 30 * 24 * 60 * 60 * 1000
 
 const STOP_NOTE =
   "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
@@ -197,11 +209,178 @@ async function send($: EngineInterface, gate: Gate, option: Option) {
   }
 }
 
+/**
+ * Where a conversation stands, as its transcript reads: the key its band is
+ * kept under, named by its first tool call, which no other conversation
+ * makes and no change of session id moves (null before its first call); and
+ * the stamp of the message it ends on.
+ */
+type Place = { key: string | null; stamp: string }
+
+/** What the store keeps of a conversation's band: its gate, and when. */
+type Kept = { stamp: string; gate: Gate; keptAt: number }
+
+/** A band read back from the store: where the conversation stands, its gate. */
+type ReadBack = { place: Place; gate: Gate | null }
+
+/**
+ * A read-back the band owes before it is trusted, never taken from `ended`:
+ * the conversation that ended in this process, while the transcript still
+ * holds it.
+ */
+type Owed = { ended: Place | null }
+
+/** The tool calls a message makes or answers, by id. */
+const callsOf = (message: SessionMessage) => [
+  ...message.toolUses.map(use => use.tool_use_id),
+  ...(message.toolResults ?? []).map(result => result.tool_use_id),
+]
+
+/**
+ * Where the conversation stands now; null while its transcript is empty.
+ * The stamp is the last message — who wrote it, its text, the calls it makes
+ * or answers — and the newest call of all, so a conversation that moved on
+ * and came to rest on the same words is told apart.
+ */
+async function placeOf($: EngineInterface): Promise<Place | null> {
+  const messages = await $.session.messages()
+  const last = messages.at(-1)
+
+  if (last === undefined) {
+    return null
+  }
+
+  const calls = messages.flatMap(callsOf)
+  const [first] = calls
+
+  return {
+    key: first === undefined ? null : `${KEPT}${first}`,
+    stamp: JSON.stringify([
+      last.role,
+      last.text,
+      callsOf(last),
+      calls.at(-1) ?? null,
+    ]),
+  }
+}
+
+const isSamePlace = (place: Place, other: Place | null) =>
+  other !== null && place.key === other.key && place.stamp === other.stamp
+
+/** Whether `place` is the keyed conversation `seen` read, however far on. */
+const isSameConversation = (place: Place | null, seen: Place | null) =>
+  place !== null && seen !== null && seen.key !== null && place.key === seen.key
+
+const isKept = (value: unknown): value is Kept =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as Kept).stamp === 'string' &&
+  typeof (value as Kept).keptAt === 'number'
+
+/**
+ * Keeps what the band shows for the conversation at `place` — the gate, or
+ * nothing — dropping what was kept for it under a key `before` it has since
+ * left, as a compaction or a transcript past what `$.session.messages()`
+ * answers moves its first call.
+ */
+async function keep(
+  $: EngineInterface,
+  place: Place | null,
+  gate: Gate | null,
+  before: Place | null,
+) {
+  const key = place?.key ?? null
+  const left = before?.key ?? null
+
+  if (left !== null && left !== key) {
+    await $.store.delete(left)
+  }
+
+  if (place === null || key === null) {
+    return
+  }
+
+  if (gate === null) {
+    await $.store.delete(key)
+  } else {
+    const kept: Kept = { stamp: place.stamp, gate, keptAt: await $.clock.now() }
+
+    await $.store.set(key, kept)
+  }
+}
+
+/**
+ * Settles the read-back the band owes, if `owing` says it owes one: `take`
+ * gets the conversation the transcript holds now, with its kept gate where
+ * the transcript still ends where it was kept, or none where it has moved
+ * on, the kept band dropped while the read-back is still owed. Nothing
+ * settles while the transcript is empty or still holds the conversation
+ * that ended in this process.
+ */
+async function readBack(
+  $: EngineInterface,
+  owing: () => Owed | null,
+  take: (asked: Owed, read: ReadBack) => void,
+) {
+  const asked = owing()
+
+  if (asked === null) {
+    return
+  }
+
+  const place = await placeOf($)
+
+  if (place === null || isSamePlace(place, asked.ended)) {
+    return
+  }
+
+  const kept = place.key === null ? undefined : await $.store.get(place.key)
+
+  if (isKept(kept) && kept.stamp === place.stamp) {
+    take(asked, { place, gate: kept.gate })
+
+    return
+  }
+
+  if (kept !== undefined && place.key !== null && owing() === asked) {
+    await $.store.delete(place.key)
+  }
+
+  take(asked, { place, gate: null })
+}
+
+/** Drops every band kept longer than a transcript is kept to resume. */
+async function forgetExpired($: EngineInterface) {
+  const now = await $.clock.now()
+
+  for (const key of await $.store.keys()) {
+    if (!key.startsWith(KEPT)) {
+      continue
+    }
+
+    const kept = await $.store.get(key)
+
+    if (!isKept(kept) || now - kept.keptAt >= KEPT_FOR_MS) {
+      await $.store.delete(key)
+    }
+  }
+}
+
 export const register: Register = on => {
   let band = emptyBand()
 
   /** Whether a send is under way, so a press meanwhile cannot send twice. */
   let isSending = false
+
+  /**
+   * The read-back the band owes: from the module's load, which a restart or
+   * a reload of its files begins, and from a conversation's end in this
+   * process, until the next turn or a read settles it.
+   */
+  let owed: Owed | null = { ended: null }
+
+  /** Where the conversation stood when the band was last kept or read back. */
+  let seen: Place | null = null
 
   /**
    * The gate the band shows once the conversation's turn ends: the gate it
@@ -227,19 +406,63 @@ export const register: Register = on => {
     return armed === null ? unanswered : null
   }
 
+  const owing = () => owed
+
+  /**
+   * Takes a read-back onto the band, unless a turn or a conversation's end
+   * overtook it while it read: the conversation it read is the one the band
+   * follows from here.
+   */
+  const takeBack = (asked: Owed, read: ReadBack) => {
+    if (owed !== asked) {
+      return
+    }
+
+    owed = null
+    seen = read.place
+
+    if (read.gate !== null) {
+      band.drawn = read.gate
+    }
+  }
+
   // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this.
+  // that asked for one, and every Bash child inherits this. A fresh load
+  // comes back to a conversation this module has not followed, so the band
+  // is read back from the store, and bands kept past any resume are dropped.
   on('session.start', async ($, e, next) => {
     await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
+
+    owed = { ended: null }
+    await readBack($, owing, takeBack)
+
+    if (band.drawn !== null) {
+      $.ui.invalidate('ui.render')
+    }
+
+    await forgetExpired($)
 
     return next(e)
   }).catch(($, e, next) => next(e))
 
   // A /clear or a resume goes on in this process as another conversation,
-  // which no gate of this one answers.
-  on('session.end', ($, e, next) => {
-    band = emptyBand()
-    $.ui.invalidate('ui.render')
+  // which no gate of this one answers. What the band showed is kept for this
+  // one first, stamped where its transcript ends now, which can have moved
+  // since its last turn's end.
+  on('session.end', async ($, e, next) => {
+    try {
+      const place = await placeOf($)
+
+      if (isSameConversation(place, seen)) {
+        await keep($, place, band.drawn, seen)
+        seen = place
+      }
+    } finally {
+      band = emptyBand()
+      owed = { ended: seen }
+      seen = null
+      $.ui.invalidate('ui.render')
+    }
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -277,24 +500,37 @@ export const register: Register = on => {
     }
   }).catch(($, e, next) => next(e))
 
-  // Drawn at the turn's end, once what the rows choose between is on screen.
-  on('turn.complete', ($, e, next) => {
+  // Drawn at the turn's end, once what the rows choose between is on screen,
+  // and kept with where the transcript ends, which a resume must still match.
+  on('turn.complete', async ($, e, next) => {
     if (inConversation(e)) {
       const gate = gateAtTurnEnd(e.isAborted)
 
       band.armed = null
       band.answering = null
+      owed = null
 
       if (gate !== null) {
         band.drawn = gate
         $.ui.invalidate('ui.render')
       }
+
+      const { drawn } = band
+      const place = await placeOf($)
+
+      await keep($, place, drawn, seen)
+      seen = place
     }
 
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  // A drawing while a read-back is owed — a reload's first, the first after
+  // a conversation's end, one before the transcript was there to read —
+  // settles it first.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    await readBack($, owing, takeBack)
+
     const gate = band.drawn
 
     if (gate === null || e.props.hasSurvey || e.surface !== 'terminal') {
@@ -375,10 +611,12 @@ export const register: Register = on => {
 
   // A gate lives from its render to the turn that answers it, which keeps it
   // to put back; a gate the conversation re-presents is armed again by its
-  // own render.
+  // own render. The band follows the conversation the turn runs in, owing
+  // no read-back.
   on('turn.start', ($, e, next) => {
     const { drawn, isOpenedByPerson } = band
 
+    owed = null
     band = {
       ...emptyBand(),
       answering:

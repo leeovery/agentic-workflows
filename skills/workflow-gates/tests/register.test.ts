@@ -4,6 +4,7 @@ import type {
   RenderElement,
   RenderInput,
   RenderSurface,
+  SessionMessage,
 } from 'claude-code'
 import {
   describe,
@@ -241,6 +242,88 @@ const TURN_END = {
 /** The main conversation's turn ended by the person's Esc. */
 const INTERRUPTED = { ...TURN_END, isAborted: true, reason: 'aborted' as const }
 
+/** The person leaving: the process ends, and a fresh one resumes it. */
+const QUIT = {
+  reason: 'prompt_input_exit' as const,
+  sessionId: 's0',
+  resume: { id: 's0' },
+}
+
+/** Another conversation resumed in this process in the ending one's place. */
+const RESUMED = { ...QUIT, reason: 'resume' as const }
+
+/** A message with no tool call in it. */
+const said = (role: SessionMessage['role'], text: string): SessionMessage => ({
+  role,
+  text,
+  toolUses: [],
+})
+
+/** A Bash call the model made and its answer, as the transcript holds them. */
+const called = (id: string): SessionMessage[] => [
+  {
+    role: 'assistant',
+    text: '',
+    toolUses: [
+      { tool_use_id: id, tool: 'Bash', input: { command: ENGINE_CALL.command } },
+    ],
+  },
+  {
+    role: 'user',
+    text: '',
+    toolUses: [],
+    toolResults: [{ tool_use_id: id, text: '', isError: false }],
+  },
+]
+
+/** A conversation at the task gate: its call, then the model's word at the stop. */
+const AT_GATE = [
+  said('user', '/workflow-start'),
+  ...called('toolu_1'),
+  said('assistant', TURN_END.answer),
+]
+
+/** The conversation once an answer at the task gate drew the next gate. */
+const AT_NEXT_GATE = [
+  ...AT_GATE,
+  said('user', 'yes'),
+  ...called('toolu_2'),
+  said('assistant', 'Next.'),
+]
+
+/** The conversation once it moved on from the task gate by talk alone. */
+const MOVED_ON = [
+  ...AT_GATE,
+  said('user', 'carry on'),
+  said('assistant', 'Carried on.'),
+]
+
+/** Another conversation, at a gate of its own, stopped on the same words. */
+const ELSEWHERE_AT_GATE = [
+  said('user', '/workflow-start'),
+  ...called('toolu_9'),
+  said('assistant', TURN_END.answer),
+]
+
+/** The task gate as the payload states it, less its name. */
+const TASK_GATE = {
+  question: 'Approve this task?',
+  statement: '',
+  options: OPTIONS,
+  typed: [COMMENT],
+}
+
+/** What a turn's end keeps of the conversation at the task gate. */
+const KEPT_AT_GATE = {
+  'band:toolu_1': {
+    stamp: JSON.stringify(['assistant', TURN_END.answer, [], 'toolu_1']),
+    gate: TASK_GATE,
+    keptAt: 0,
+  },
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
   plugin: 'workflow-gates',
@@ -253,21 +336,25 @@ const MOUNT = {
 
 /**
  * The world beneath the mod: the session it starts in, the surfaces attached,
- * what a Bash call answers, the prompt box, the files it writes, and the
- * prompts it submits.
+ * its transcript, what a Bash call answers, the prompt box, the files it
+ * writes, the prompts it submits, and the plugin's store.
  *
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
- * `disk` holds each write a second on its clock. A submission made while
- * idle resolves once the turn it opens has started, as core's does;
- * `engineWrites` changes what the next Bash call answers.
+ * `disk` holds each write a second on its clock, which is the clock the mod
+ * reads; `lag` is awaited before a read of the transcript or the store is
+ * answered. A submission made while idle resolves once the turn it opens has
+ * started, as core's does; `engineWrites` changes what the next Bash call
+ * answers, `reads` what the transcript holds, and `resumesAs` the session's
+ * id. `stored` is the store, holding `kept` at the start.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
  * @param options the surfaces attached, whether the box and a submission
- *   take, and the clock a slow disk writes on
+ *   take, the clock a slow disk writes on, what holds a read up, and what
+ *   the store holds
  */
 function world(
   engine: Engine,
@@ -279,6 +366,8 @@ function world(
     submits?: boolean
     drops?: string
     disk?: MockClock
+    lag?: (read: 'transcript' | 'store') => Promise<void>
+    kept?: Readonly<Record<string, unknown>>
   } = {},
 ) {
   const {
@@ -287,6 +376,8 @@ function world(
     submits = true,
     drops,
     disk,
+    lag,
+    kept = {},
   } = options
 
   const calls: string[] = []
@@ -294,13 +385,43 @@ function world(
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>()
+  const stored = new Map(Object.entries(kept))
+  const clock = disk ?? mock.clock(on)
 
   let output = stdout
+  let transcript: readonly SessionMessage[] = []
+  let sessionId = 's0'
   let turns = 0
 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.surfaces', () => ({ value: surfaces }))
+  on('session.id', () => ({ value: sessionId }))
+  on('store.keys', () => ({ value: [...stored.keys()] }))
+
+  on('session.messages', async () => {
+    await lag?.('transcript')
+
+    return { value: [...transcript] }
+  })
+
+  on('store.get', async ($, e) => {
+    await lag?.('store')
+
+    return { value: stored.get(e.key) }
+  })
+
+  on('store.set', ($, e) => {
+    stored.set(e.key, JSON.parse(JSON.stringify(e.value)))
+
+    return { value: undefined }
+  })
+
+  on('store.delete', ($, e) => {
+    stored.delete(e.key)
+
+    return { value: undefined }
+  })
   on('ui.render', () => BENEATH)
   on('ui.message', () => ({}))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -375,7 +496,26 @@ function world(
     output = next
   }
 
-  return { calls, filled, submitted, written, files, engineWrites }
+  const reads = (messages: readonly SessionMessage[]) => {
+    transcript = messages
+  }
+
+  const resumesAs = (id: string) => {
+    sessionId = id
+  }
+
+  return {
+    calls,
+    filled,
+    submitted,
+    written,
+    files,
+    stored,
+    clock,
+    engineWrites,
+    reads,
+    resumesAs,
+  }
 }
 
 /** A gate rendered in a main-conversation turn that has since ended. */
@@ -396,6 +536,12 @@ const joinFrom = (
   turnId: string,
   text = 'yes',
 ) => $.prompt.submit({ text, wait: false, origin, turnId })
+
+/** The person leaving the conversation, then a fresh load resuming it. */
+async function quitAndResume($: Engine) {
+  await $.session.end(QUIT)
+  await $.session.start(SESSION)
+}
 
 /** What the last send recorded, read back as the mod wrote it. */
 function sentIn(files: Map<string, string>): unknown {
@@ -1704,5 +1850,400 @@ describe('register', () => {
     await $.turn.complete(INTERRUPTED)
 
     expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a turn’s end keeps the gate on the band, stamped where the transcript ends, and one ending on nothing keeps nothing', async ($, on) => {
+    const { stored, reads, engineWrites } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    expect(Object.fromEntries(stored)).toEqual(KEPT_AT_GATE)
+
+    engineWrites('')
+    reads(MOVED_ON)
+
+    await submitFrom($, { kind: 'composer' }, 'carry on')
+    await $.turn.complete(TURN_END)
+
+    expect(stored.size).toBe(0)
+  })
+
+  test('a gate on the band when the conversation is left is drawn again, as it was, when it is resumed', async ($, on) => {
+    const { reads } = world($, on, announced({ options: DETAILED }))
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    let ui = await $.ui.mount(MOUNT)
+    const before = await linesOf(ui)
+
+    await ui.unmount()
+    await $.session.end(QUIT)
+
+    ui = await $.ui.mount(MOUNT)
+
+    expect(
+      await ui.find({ type: 'Client', key: 'gate' }),
+      'leaving takes it down',
+    ).toBeUndefined()
+
+    await $.session.start(SESSION)
+
+    expect(await linesOf(ui), 'the band on screen draws it again').toEqual(before)
+
+    await ui.unmount()
+  })
+
+  test('an answer taken back with Esc, then the conversation left, draws the gate again when it is resumed', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    reads([...AT_GATE, said('user', 'yes')])
+
+    await submitFrom($, { kind: 'composer' }, 'yes')
+
+    reads([
+      ...AT_GATE,
+      said('user', 'yes'),
+      said('user', '[Request interrupted by user]'),
+    ])
+
+    await $.turn.complete(INTERRUPTED)
+
+    expect(await isDrawn($), 'the Esc puts it back').toBe(true)
+
+    await quitAndResume($)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('an answer taken back while the transcript moves after the Esc is still drawn again, stamped as the conversation is left', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    reads([...AT_GATE, said('user', 'yes')])
+
+    await submitFrom($, { kind: 'composer' }, 'yes')
+    await $.turn.complete(INTERRUPTED)
+
+    reads(AT_GATE)
+
+    await quitAndResume($)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('an answer that drew the next gate: the next gate is drawn when the conversation is resumed', async ($, on) => {
+    const { reads, engineWrites } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await submitFrom($, { kind: 'composer' }, 'yes')
+
+    engineWrites(announced({ options: HELD_FIRST }))
+    reads(AT_NEXT_GATE)
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+    await quitAndResume($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, 'Start "Billing"')).toBeGreaterThan(0)
+    expect(await lineOf(ui, COMMIT)).toBe(-1)
+
+    await ui.unmount()
+  })
+
+  test('a conversation keeps one gate: the next takes the place of the last', async ($, on) => {
+    const { stored, reads, engineWrites } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await submitFrom($, { kind: 'composer' }, 'yes')
+
+    engineWrites(announced({ options: HELD_FIRST }))
+    reads(AT_NEXT_GATE)
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(stored.size).toBe(1)
+    expect([...stored.values()]).toMatchObject([{ gate: { options: HELD_FIRST } }])
+  })
+
+  test('a conversation that moved on while the mod was not loaded draws nothing when resumed, and what was kept for it goes', async ($, on) => {
+    const { stored, reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    reads(MOVED_ON)
+
+    await $.session.start(SESSION)
+
+    expect(await isDrawn($)).toBe(false)
+    expect(stored.size).toBe(0)
+  })
+
+  test('a conversation that moved on through a call and came to rest on the same words draws nothing when resumed', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    reads([
+      ...AT_GATE,
+      said('user', 'again'),
+      ...called('toolu_2'),
+      said('assistant', TURN_END.answer),
+    ])
+
+    await $.session.start(SESSION)
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a resume under another session id draws the gate all the same', async ($, on) => {
+    const { reads, resumesAs } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    resumesAs('s1')
+
+    await $.session.start(SESSION)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('each conversation keeps its own gate, and a resume in this process draws the resumed one’s, never the one it left', async ($, on) => {
+    const { reads, engineWrites } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(RESUMED)
+
+    expect(await isDrawn($), 'the one left, still in the transcript').toBe(false)
+
+    reads([said('user', 'what next?')])
+
+    expect(await isDrawn($), 'the resumed one kept none').toBe(false)
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await submitFrom($, { kind: 'composer' }, 'go on')
+    await $.tool.call(ENGINE_CALL)
+
+    reads(ELSEWHERE_AT_GATE)
+
+    await $.turn.complete(TURN_END)
+    await $.session.end(RESUMED)
+
+    reads(AT_GATE)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, COMMIT)).toBeGreaterThan(0)
+    expect(await lineOf(ui, 'Start "Billing"')).toBe(-1)
+
+    await ui.unmount()
+  })
+
+  test('a /clear draws nothing in the new conversation, and the cleared one’s gate comes back when it is resumed', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(CLEARED)
+
+    reads([])
+
+    expect(await isDrawn($)).toBe(false)
+
+    await $.session.end(RESUMED)
+
+    reads(AT_GATE)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('a transcript not there to read as the session starts is read at a later drawing', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    reads([])
+
+    await $.session.start(SESSION)
+
+    expect(await isDrawn($), 'nothing to read yet').toBe(false)
+
+    reads(AT_GATE)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('a module loaded into a conversation at a gate, as a reload of its files does, draws the gate at its first drawing', async ($, on) => {
+    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+
+    reads(AT_GATE)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, 'Approve this task?')).toBe(2)
+
+    await ui.unmount()
+  })
+
+  test('a turn that starts while the band is read back takes no gate from before it', async ($, on) => {
+    const clock = mock.clock(on)
+    let isSlow = false
+
+    const { reads } = world($, on, announced(), {
+      disk: clock,
+      lag: async read => {
+        if (isSlow && read === 'transcript') {
+          await clock.sleep(1000)
+        }
+      },
+    })
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    isSlow = true
+
+    const starting = $.session.start(SESSION)
+
+    await clock.settle()
+
+    isSlow = false
+
+    await submitFrom($, { kind: 'composer' }, 'yes')
+    await clock.advance(1000)
+    await starting
+
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a load in the middle of a turn, its read-back overtaken by the turn’s end, leaves what that turn kept', async ($, on) => {
+    const clock = mock.clock(on)
+    let isSlow = false
+
+    const { stored, reads, engineWrites } = world($, on, announced(), {
+      disk: clock,
+      lag: async read => {
+        if (isSlow && read === 'store') {
+          await clock.sleep(1000)
+        }
+      },
+    })
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    reads([...AT_GATE, said('user', 'yes')])
+    isSlow = true
+
+    const starting = $.session.start(SESSION)
+
+    await clock.settle()
+
+    isSlow = false
+    engineWrites(announced({ options: HELD_FIRST }))
+    reads(AT_NEXT_GATE)
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.advance(1000)
+    await starting
+
+    expect(stored.size).toBe(1)
+    expect([...stored.values()]).toMatchObject([{ gate: { options: HELD_FIRST } }])
+  })
+
+  test('a conversation whose first call moves, as a compaction does, keeps its gate under where it stands now alone', async ($, on) => {
+    const { stored, reads, engineWrites } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await submitFrom($, { kind: 'composer' }, 'yes')
+
+    engineWrites(announced({ options: HELD_FIRST }))
+    reads([
+      said('user', 'The conversation so far.'),
+      ...called('toolu_2'),
+      said('assistant', 'Next.'),
+    ])
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect([...stored.keys()]).toEqual(['band:toolu_2'])
+  })
+
+  test('a transcript already holding the next conversation as one ends keeps nothing of the band for it', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    reads(ELSEWHERE_AT_GATE)
+
+    await $.session.end(RESUMED)
+    await quitAndResume($)
+
+    expect(await isDrawn($), 'nothing drawn in the next').toBe(false)
+
+    reads(AT_GATE)
+
+    await quitAndResume($)
+
+    expect(await isDrawn($), 'the one that ended keeps its own').toBe(true)
+  })
+
+  test('a gate kept longer than a transcript is kept goes as a session starts, and a newer one stays', async ($, on) => {
+    const [record] = Object.values(KEPT_AT_GATE)
+    const { stored, clock } = world($, on, announced(), {
+      kept: {
+        'band:toolu_old': { ...record, keptAt: 0 },
+        'band:toolu_new': { ...record, keptAt: 2 * DAY_MS },
+        'band:toolu_bad': 'not a kept band',
+      },
+    })
+
+    await clock.set(31 * DAY_MS)
+    await $.session.start(SESSION)
+
+    expect([...stored.keys()]).toEqual(['band:toolu_new'])
   })
 })
