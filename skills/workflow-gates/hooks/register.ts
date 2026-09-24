@@ -55,7 +55,10 @@ type Band = {
    * no submission opened counts as theirs.
    */
   isOpenedByPerson: boolean
-  /** The gate on the band when the running turn began, and who began it. */
+  /**
+   * The gate on the band when the running turn began, and whether the person
+   * has answered it: they began the turn, or replied while it ran.
+   */
   answering: { gate: Gate; isPersons: boolean } | null
   /** Whether the running turn has called a tool. */
   hasCalledTool: boolean
@@ -205,17 +208,23 @@ export const register: Register = on => {
    * rendered, or with none, the one it began over where the person never
    * answered it. An Esc drops what the turn rendered and takes the answer
    * back, its gate returning, until the turn calls a tool, which may already
-   * have acted on the answer: a read and a write look alike from here.
+   * have acted on the answer: a read and a write look alike from here. Past
+   * that, an Esc'd turn that rendered a gate leaves nothing, since the last
+   * the model read is that gate's instruction to stop.
    */
   const gateAtTurnEnd = (isInterrupted: boolean): Gate | null => {
     const { armed, answering, hasCalledTool } = band
     const unanswered = answering?.isPersons === false ? answering.gate : null
 
-    if (isInterrupted) {
-      return hasCalledTool ? unanswered : (answering?.gate ?? null)
+    if (!isInterrupted) {
+      return armed ?? unanswered
     }
 
-    return armed ?? unanswered
+    if (!hasCalledTool) {
+      return answering?.gate ?? null
+    }
+
+    return armed === null ? unanswered : null
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
@@ -350,10 +359,15 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // A submission made while the session idles opens the next turn; one made
-  // over a running turn joins it.
+  // over a running turn joins it, and the person's answers the gate that
+  // turn began over.
   on('prompt.submit', ($, e, next) => {
+    const isTheirs = isPersons(e.origin, $.plugin.name)
+
     if (e.turnId === undefined) {
-      band.isOpenedByPerson = isPersons(e.origin, $.plugin.name)
+      band.isOpenedByPerson = isTheirs
+    } else if (isTheirs && band.answering !== null) {
+      band.answering = { ...band.answering, isPersons: true }
     }
 
     return next(e)
