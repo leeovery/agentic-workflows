@@ -65,10 +65,12 @@ function renderedLen(head) {
 // a span's closing marker on the next line — the MENU surface is markdown,
 // so each emitted line has to stand alone. The scanner walks one word and
 // carries the open-span state across it: a backtick opens a code span (inside
-// one, only the closing backtick is markup), a backslash escapes the character
-// after it (one rendered column), `**`/`~~`/`*` toggle emphasis spans tracked
-// as a stack (a marker matching the innermost open span closes it; any other
+// one, only the closing backtick is markup), a backslash escape is the one
+// character it escapes, `**`/`~~`/`*` toggle emphasis spans tracked as a
+// stack (a marker matching the innermost open span closes it; any other
 // opens).
+
+const ESCAPABLE = /[!-/:-@[-`{-~]/;
 
 /** @typedef {{code: boolean, spans: string[]}} MarkupState */
 
@@ -89,8 +91,8 @@ function scanWord(word, state) {
       i += 1;
       continue;
     }
+    if (word[i] === '\\' && ESCAPABLE.test(word[i + 1] ?? '')) { rendered += 1; i += 2; continue; }
     if (word[i] === '`') { code = true; i += 1; continue; }
-    if (word[i] === '\\' && i + 1 < word.length) { rendered += 1; i += 2; continue; }
     const two = word.slice(i, i + 2);
     if (two === '**' || two === '~~') { toggleSpan(spans, two); i += 2; continue; }
     if (word[i] === '*') { toggleSpan(spans, '*'); i += 1; continue; }
