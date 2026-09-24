@@ -14,7 +14,7 @@ The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, 
 
 ## Route
 
-#### If selection is `Unify all`
+#### If the selected `ACTIONS` entry's `action` is `unify`
 
 → Load **[confirm-unify.md](confirm-unify.md)** and follow its instructions as written.
 
