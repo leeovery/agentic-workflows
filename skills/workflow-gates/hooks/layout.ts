@@ -47,13 +47,23 @@ export type Run = {
 }
 
 /**
- * What the footer says: how to answer, what a pick put in the prompt, or how
- * to answer the typed row last clicked.
+ * What the footer says: how to answer, what a pick put in the prompt, what
+ * waits to send when Claude finishes, what a new gate kept from sending, or
+ * how to answer the typed row last clicked.
  */
 export type Footer =
   | { kind: 'idle' }
   | { kind: 'picked'; answer: string }
+  | { kind: 'queued'; answer: string }
+  | { kind: 'dropped'; answer: string }
   | { kind: 'typed'; label: string }
+
+/**
+ * What became of a send pressed while Claude works: the answer held until it
+ * finishes, and one a new gate kept from sending, which that gate's footer
+ * names.
+ */
+export type Sends = { held: string | null; dropped: string | null }
 
 /**
  * A line of a row: its wrapped label or its detail, each carrying the row so
@@ -83,16 +93,22 @@ export const GLYPH_COLUMN = 2
 
 export const IDLE: Footer = { kind: 'idle' }
 
+export const NO_SENDS: Sends = { held: null, dropped: null }
+
 const GAP = 2
 const MIN_LABEL = 8
 
 const TAIL_SEPARATOR = ' — '
 const NOTE_SEPARATOR = ' · '
 const RECOMMENDED = ' (recommended)'
+const QUEUED = ' · queued'
 
 const IDLE_HINT =
   'Click a row to choose · click it again to send · or just type'
 const PICKED_HINT = ' is in your prompt · click it again or Enter to send'
+const QUEUED_HINT =
+  ' sends when Claude finishes · click it again to take it back'
+const DROPPED_HINT = " wasn't sent — the menu changed"
 
 /** A typed row's label that is a span of numbers, as the engine writes one. */
 const RANGE = /^\d+–\d+$/
@@ -278,8 +294,11 @@ function labelRuns(option: Option): Run[] {
   ]
 }
 
-/** The pressable rows and then the typed ones, each followed by its detail. */
-function rowLines(gate: Gate, columns: number): RowLine[] {
+/**
+ * The pressable rows and then the typed ones, each followed by its detail;
+ * the row at `heldAt` marked queued after its label.
+ */
+function rowLines(gate: Gate, columns: number, heldAt: number): RowLine[] {
   const { keyWidth, labelWidth } = geometry(gate, columns)
 
   const linesOfRow = (
@@ -305,7 +324,7 @@ function rowLines(gate: Gate, columns: number): RowLine[] {
         'option',
         index,
         keyRuns(option),
-        labelRuns(option),
+        [...labelRuns(option), ...(index === heldAt ? [{ text: QUEUED }] : [])],
         option.detail,
       ),
     ),
@@ -327,7 +346,7 @@ const typedHint = (label: string) =>
     ? `${label} — press Esc, then type the numbers in the prompt`
     : `${label} — press Esc, then type in the prompt`
 
-/** The footer's words: dim, the pick named in bold. */
+/** The footer's words: dim, the answer it speaks of named in bold. */
 export function footerRuns(footer: Footer): Run[] {
   switch (footer.kind) {
     case 'idle':
@@ -336,6 +355,17 @@ export function footerRuns(footer: Footer): Run[] {
       return [
         { text: footer.answer, bold: true },
         { text: PICKED_HINT, dim: true },
+      ]
+    case 'queued':
+      return [
+        { text: footer.answer, bold: true },
+        { text: QUEUED_HINT, dim: true },
+      ]
+    case 'dropped':
+      return [
+        { text: 'your ', dim: true },
+        { text: footer.answer, bold: true },
+        { text: DROPPED_HINT, dim: true },
       ]
     case 'typed':
       return [{ text: typedHint(footer.label), dim: true }]
@@ -347,21 +377,31 @@ const footerLines = (footer: Footer, columns: number) =>
 
 /**
  * The footer, in a slot as tall as the tallest thing it can say for this
- * gate, so a click never moves the rows above it.
+ * gate, so a click never moves the rows above it; `spare` lines more below,
+ * which the rows take back when a held row's mark wraps.
  */
-function footerSlot(gate: Gate, footer: Footer, columns: number): Line[] {
+function footerSlot(
+  gate: Gate,
+  footer: Footer,
+  columns: number,
+  dropped: string | null,
+  spare: number,
+): Line[] {
   const states: Footer[] = [
     IDLE,
-    ...gate.options.map(option => ({
-      kind: 'picked' as const,
-      answer: answerOf(option),
-    })),
+    ...gate.options.flatMap(option => [
+      { kind: 'picked' as const, answer: answerOf(option) },
+      { kind: 'queued' as const, answer: answerOf(option) },
+    ]),
     ...gate.typed.map(row => ({ kind: 'typed' as const, label: row.label })),
+    ...(dropped === null
+      ? []
+      : [{ kind: 'dropped' as const, answer: dropped }]),
   ]
 
-  const rows = Math.max(
-    ...states.map(state => footerLines(state, columns).length),
-  )
+  const rows =
+    Math.max(...states.map(state => footerLines(state, columns).length)) +
+    spare
   const said = footerLines(footer, columns)
 
   return Array.from({ length: rows }, (_, n) => ({
@@ -378,12 +418,13 @@ const block = (lines: Line[]): Line[] =>
  * Every line the band draws for a gate, top to bottom: the rule, the
  * statement, the question (none when the gate asks nothing), the rows and
  * the footer, a blank between each. How many there are is the region's height
- * whatever the footer says.
+ * whatever the footer says and whichever row is held.
  */
 export function linesOf(
   gate: Gate,
   columns: number,
   footer: Footer = IDLE,
+  { held, dropped }: Sends = NO_SENDS,
 ): Line[] {
   const width = columns - GLYPH_COLUMN
   const statement = paragraphs(gate.statement, width)
@@ -394,13 +435,24 @@ export function linesOf(
     runs,
   })
 
+  const rows = rowLines(
+    gate,
+    columns,
+    gate.options.findIndex(option => answerOf(option) === held),
+  )
+  const tallest = Math.max(
+    ...[-1, ...gate.options.keys()].map(
+      heldAt => rowLines(gate, columns, heldAt).length,
+    ),
+  )
+
   return [
     RULE,
     BLANK,
     ...block(statement.map(runs => prose(runs, false))),
     ...block(question.map((runs, n) => prose(runs, n === 0))),
-    ...rowLines(gate, columns),
+    ...rows,
     BLANK,
-    ...footerSlot(gate, footer, columns),
+    ...footerSlot(gate, footer, columns, dropped, tallest - rows.length),
   ]
 }
