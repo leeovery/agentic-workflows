@@ -270,10 +270,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - A row: a two-cell gutter (`▌` in `permission` on the cursor row), the
     key column showing `word ?? key` with the shortcut letter
     **underlined** inside the word, the label in the text menu's grammar —
-    head plain, ` — tail` dim italic, ` · cue` plain (a flag, not state),
-    the strike running from the head through the cue when held,
-    ` · holder` plain after it, ` (recommended)` plain; a bare yes/no row
-    draws its key alone — and its `detail` dim beneath it.
+    head plain, ` — tail` and ` · cue` dim italic, the strike running from
+    the head through the cue when held, ` · holder` plain after it,
+    ` (recommended)` in `permission`; a bare yes/no row draws its key
+    alone — and its `detail` dim beneath it.
   - Backgrounds: the cursor row `selectionBg`; the picked row
     `diffAddedDimmed` (the pick wins when the cursor sits on it). No ticks.
   - Typed rows (Ask, Comment, a range) draw dim and are never pressable.
