@@ -4113,7 +4113,17 @@ describe('render phase-tree', () => {
     assert.ok(lines[goalIdx + 1].startsWith('   │  goal'), 'wrapped detail carries the gutter');
   });
 
+  it('--menu-only is the structure gate alone — byte-identical to the one --approve appends, no payload read', () => {
+    const file = writePayload(dir, 'ph.json', { phases: [{ name: 'X', detail: [['Goal', 'g']] }] });
+    const approve = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
+    const gate = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', 'menu-only': '1' });
+    assert.ok(gate.startsWith('=== MENU: phase structure gate'), gate);
+    assert.strictEqual(approve.slice(approve.indexOf('=== MENU: phase structure gate')), gate);
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning', 'menu-only': '1' }), /address must be <work_unit>\.<phase>\.<topic>/);
+  });
+
   it('validates loudly', () => {
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'a.json', { phases: [] }) }), /"phases" must be a non-empty array/);
     assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'b.json', { phases: [{ name: 'X', detail: [] }] }) }), /"detail" must be a non-empty array/);
   });
@@ -4442,6 +4452,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
     const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
     assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
+    assert.ok(run(['phase-tree', 'pay.planning.pay', '--menu-only']).startsWith('=== MENU: phase structure gate'));
     const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
     assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));

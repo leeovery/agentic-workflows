@@ -1628,18 +1628,35 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
 // ---------------------------------------------------------------------------
 // phase-tree — the multi-phase structure display (D5): numbered phase nodes
 // with wrapped tree children, one visual grammar with the task list beneath.
-// `--approve` appends the phase-structure approval menu.
+// `--approve` appends the phase-structure approval menu; `--menu-only` is
+// that menu alone, put back beneath the full structure the flow shows in the
+// tree's place — no payload is read.
 // ---------------------------------------------------------------------------
+
+/** @returns {string} */
+function phaseStructureGate() {
+  return section(
+    'MENU: phase structure gate',
+    'emit verbatim as markdown, then STOP for the user\'s response',
+    menu('Approve this phase structure?', [
+      cmdOption('y', 'yes', 'Proceed to task breakdown'),
+      cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
+      promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
+      promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
+    ]),
+  );
+}
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string, approve?: string}} args
+ * @param {{dotpath: string, file?: string, approve?: string, 'menu-only'?: string}} args
  * @returns {string}
  */
 function phaseTree(cwd, args) {
   const { dotpath, file } = args;
-  if (!file) throw new Error('render phase-tree: --file <payload.json> is required');
   resolveAddress(cwd, dotpath, 'phase-tree');
+  if ('menu-only' in args) return phaseStructureGate();
+  if (!file) throw new Error('render phase-tree: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'phase-tree');
   if (!Array.isArray(p.phases) || p.phases.length === 0) {
     throw new Error('render phase-tree: "phases" must be a non-empty array of {name, detail?}');
@@ -1659,18 +1676,7 @@ function phaseTree(cwd, args) {
     if (i < count - 1) lines.push('');
   });
   const parts = [section('DISPLAY: phase tree', 'emit verbatim as a code block', lines.join('\n'))];
-  if ('approve' in args) {
-    parts.push(section(
-      'MENU: phase structure gate',
-      'emit verbatim as markdown, then STOP for the user\'s response',
-      menu('Approve this phase structure?', [
-        cmdOption('y', 'yes', 'Proceed to task breakdown'),
-        cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
-        promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
-        promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
-      ]),
-    ));
-  }
+  if ('approve' in args) parts.push(phaseStructureGate());
   return parts.join('\n');
 }
 

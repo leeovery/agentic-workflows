@@ -337,7 +337,7 @@ Commands:
   render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
-  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
+  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
