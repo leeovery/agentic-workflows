@@ -10,6 +10,10 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 
 const harness = require('./engine-harness.cjs');
+const { auditingRender } = require('./gate-audit.cjs');
+
+/** `engine render`, each menu it draws audited against its gate payload. */
+const auditedRender = auditingRender((dir, surface, args) => harness.output(dir, ['render', surface, ...args]));
 
 const GATED_GATES = { task_gate_mode: 'gated', fix_gate_mode: 'gated', analysis_gate_mode: 'gated', consolidation_gate_mode: 'gated' };
 
@@ -856,7 +860,7 @@ describe('engine render task surfaces', () => {
   // above — these surfaces are fetched by the loop at each gate's own stage.
 
   /** Run `engine render` expecting success; returns the whole stdout. */
-  const render = (/** @type {string[]} */ args) => harness.output(dir, ['render', ...args]);
+  const render = (/** @type {string[]} */ [surface, ...args]) => auditedRender(dir, surface, args);
 
   /** Run `engine render` expecting failure; returns the parsed stderr JSON. */
   const renderFails = (/** @type {string[]} */ args) => harness.refuses(dir, ['render', ...args]);
