@@ -3553,7 +3553,7 @@ function specConfirmGate(cwd, { dotpath, variant, file }) {
       variant: /** @type {'create'|'continue'|'refine'|'unify'} */ (variant),
       verb, work_unit: workUnit, name: topic, status, sources, supersedes, consult,
     })),
-    section('MENU: spec confirm gate', STOP_FOR_RESPONSE, menu(variant === 'refine' ? REFINE_NOTE : '', YES_NO, { question: 'Proceed?' })),
+    section('MENU: spec confirm gate', STOP_FOR_RESPONSE, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
   ].join('\n');
 }
 
