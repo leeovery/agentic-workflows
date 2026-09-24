@@ -418,9 +418,13 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   question sets the gate aside — answer it, talk it through, ask in
   conversation whether the person is ready, then present the gate again,
   fetched fresh; a reply that changes what happens next is confirmed
-  before anything acts on it, the gate's own branches owning how; a bare
-  go-ahead is the answer only where the gate has one way forward; never
-  move past a gate without an answer. Background work arriving while a
+  before anything acts on it, the gate's own branches owning how. A gate
+  set aside moves forward only by being presented again and answered
+  there: a yes to being ready, or a go-ahead or a pick the person
+  volunteers in the conversation, brings it back — it is never the
+  answer. A bare go-ahead given at a gate on screen answers it only where
+  the gate has one way forward. Never move past a gate without an
+  answer. Background work arriving while a
   gate waits is handled and named in a line, then the waiting gate is
   presented again, fetched fresh — never typed from memory — and a gate
   background work surfaces meanwhile is held until the waiting one is
