@@ -514,6 +514,8 @@ describe('gate payload — every gateway verb', () => {
       'completed-menu': [gated('completed-menu', 'v1')],
       'cancel-menu': [gated('cancel-menu', 'v1')],
       'reactivate-menu': [gated('reactivate-menu', 'v1')],
+      'postpone-menu': [gated('postpone-menu', 'v1')],
+      'pull-forward-menu': [gated('pull-forward-menu', 'v1')],
       'unblock-menu': [gated('unblock-menu', 'v1')],
       'in-session-gate': [gated('in-session-gate', 'v1', '2')],
       fallback: [ungated('v1')],
@@ -552,8 +554,8 @@ describe('gate payload — every gateway verb', () => {
    * One project holding every state the gateway menus draw from: an inbox
    * and an archive, a roadmap with items waiting, an epic whose discussion a
    * peer holds while its research runs and a concern waits in its queue —
-   * beside a completed topic whose input moved, a cancelled topic and a
-   * blocked plan — an epic grouped into specifications, a unit of each
+   * beside a completed topic whose input moved, a cancelled topic, a topic
+   * postponed to the roadmap and a blocked plan — an epic grouped into specifications, a unit of each
    * linear type ready for its next phase, a feature with a concern queued,
    * and closed units.
    * @param {string} dir
@@ -566,6 +568,7 @@ describe('gate payload — every gateway verb', () => {
           ordering: { horizon: 'now_ish *core*', summary: 'customers order', origin: 'harvest', pulled_to: { work_unit: 'v1' } },
           menus: { horizon: 'now_ish *core*', summary: 'operators keep *menus* in [sync]', origin: 'harvest' },
           loyalty: { horizon: 'later [v2]', summary: 'rewards_for_regulars', origin: 'park:v1' },
+          offline: { horizon: 'now_ish *core*', summary: 'works *offline*', origin: 'postpone:v1', postponed_from: { work_unit: 'v1', topic: 'offline' } },
         },
       },
     }));
@@ -583,6 +586,7 @@ describe('gate payload — every gateway verb', () => {
             auth: { routing: 'discussion', source: 'discovery', order: 1 },
             billing: { routing: 'discussion', source: 'discovery', order: 2 },
             search: { routing: 'discussion', source: 'discovery', order: 3, cancelled: true },
+            offline: { routing: 'discussion', source: 'discovery', order: 4, postponed: true },
           },
         },
         research: { items: { auth: { status: 'in-progress' } } },

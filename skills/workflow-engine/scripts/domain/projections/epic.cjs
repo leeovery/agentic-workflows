@@ -15,6 +15,7 @@ const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../.
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, labelParts, callout } = require('./surfaces.cjs');
+const { escapeMarkdown } = require('./worklist.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
 
@@ -1326,7 +1327,8 @@ function epicPullForwardMenu(detail) {
       topic: t.name,
       item: /** @type {string} */ (t.item),
       row: `${title({ label: name, tag: 'postponed' })} — ${t.horizon}`,
-      label: `Pull "${name}" forward — *waiting under ${t.horizon}*`,
+      // The person's horizon name sits inside the italic tail — escaped, so it never ends the span.
+      label: { head: `Pull "${name}" forward`, tail: `waiting under ${escapeMarkdown(/** @type {string} */ (t.horizon))}` },
       route: null,
     };
   });
