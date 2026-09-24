@@ -9,7 +9,7 @@ const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
-const { specificationDetail } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+const { specificationDetail, discoverySpec, specConfirmation } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
 const {
   specificationDisplay, specificationMenu, specificationCompletedMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/specification.cjs');
@@ -257,6 +257,90 @@ describe('specification detail: scenario derivation', () => {
     });
     assert.deepStrictEqual(d.actionable[0].consult, [{ name: 'b', status: 'pending', hint: 'session slice' }]);
     assert.strictEqual(d.actionable[0].consult_pending, 1);
+  });
+});
+
+describe('specification record: one reading for the entry menu and its confirm', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const confirmationOf = (manifest, name) =>
+    specConfirmation(manifest, discoverySpec(manifest, name, manifest.phases.specification.items[name]));
+
+  it('discoverySpec reads the defaults: an in-progress item, pending rows, an unknown discussion, stale as pending work', () => {
+    const m = { phases: { discussion: { items: { a: { status: 'completed' } } } } };
+    assert.deepStrictEqual(discoverySpec(m, 's', {
+      sources: { a: { status: 'stale' }, ghost: {} },
+      consult_references: { b: {}, c: { status: 'addressed' } },
+    }), {
+      name: 's',
+      status: 'in-progress',
+      has_pending_sources: true,
+      sources: [
+        { name: 'a', status: 'stale', discussion_status: 'completed' },
+        { name: 'ghost', status: 'pending', discussion_status: 'unknown' },
+      ],
+      consult_references: [{ name: 'b', status: 'pending' }, { name: 'c', status: 'addressed' }],
+    });
+    assert.deepStrictEqual(discoverySpec(m, 's', { status: 'proposed' }), { name: 's', status: 'proposed', has_pending_sources: false });
+  });
+
+  it('the confirm reads every menu row\'s verb and sources as the row does', () => {
+    const m = createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'completed' } } },
+        specification: {
+          items: {
+            grouping: { status: 'proposed', sources: { a: { status: 'pending' }, ghost: { status: 'pending' } } },
+            open: { status: 'in-progress', sources: { a: { status: 'incorporated' }, c: { status: 'pending' } } },
+            moved: { status: 'completed', sources: { b: { status: 'stale' }, ghost: { status: 'incorporated' } } },
+            done: { status: 'completed', sources: { c: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    for (const spec of ['open', 'moved', 'done']) createFile(dir, `.workflows/v1/specification/${spec}/specification.md`, '# Spec');
+    const detail = detailOf(dir, 'v1');
+    const rows = [...detail.actionable, ...detail.concluded];
+    assert.deepStrictEqual(rows.map((r) => [r.name, r.verb]),
+      [['grouping', 'Creating'], ['open', 'Continuing'], ['moved', 'Continuing'], ['done', 'Refining']]);
+    for (const row of rows) {
+      const c = confirmationOf(m, row.name);
+      assert.strictEqual(c.verb, row.verb, row.name);
+      assert.deepStrictEqual(c.sources.map((s) => s.name), row.sources.map((s) => s.name), row.name);
+    }
+  });
+
+  it('a fresh grouping marks each source a started specification covers and supersedes it once; a started one covers nothing', () => {
+    const m = {
+      phases: {
+        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'completed' } } },
+        specification: {
+          items: {
+            fresh: { status: 'proposed', sources: { a: { status: 'pending' }, b: { status: 'pending' }, c: { status: 'pending' } } },
+            core: { status: 'in-progress', sources: { a: { status: 'incorporated' }, b: { status: 'pending' } } },
+            other: { status: 'proposed', sources: { c: { status: 'pending' } } },
+            gone: { status: 'superseded', sources: { c: { status: 'incorporated' } } },
+          },
+        },
+      },
+    };
+    assert.deepStrictEqual(confirmationOf(m, 'fresh'), {
+      verb: 'Creating',
+      sources: [
+        { name: 'a', status: 'pending', individual: true },
+        { name: 'b', status: 'pending', individual: true },
+        { name: 'c', status: 'pending', individual: false },
+      ],
+      supersedes: ['core'],
+    });
+    assert.deepStrictEqual(confirmationOf(m, 'core'), {
+      verb: 'Continuing',
+      sources: [{ name: 'a', status: 'incorporated', individual: false }, { name: 'b', status: 'pending', individual: false }],
+      supersedes: [],
+    });
   });
 });
 

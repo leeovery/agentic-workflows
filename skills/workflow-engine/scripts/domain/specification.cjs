@@ -1,18 +1,19 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: specification-entry queries — scenario derivation and the
-// grouping rows the projections render.
+// Domain ring: specification-entry queries — the specification record read
+// from a manifest, scenario derivation, the grouping rows the projections
+// render, and what a handoff's confirmation is about to do.
 //
-// Input is the entry adapter's discover() result (the library surface —
-// unchanged by the dump thinning). This module derives what the flow needs next: which
-// scenario the state is in, the actionable and concluded grouping rows with
-// display statuses and verbs, and the single-discussion auto-proceed context.
-// Pure derivation — no IO; consult-slice hints (parsed from the analysis doc
-// by the adapter, which owns file access) arrive as an input.
+// The entry adapter's discover() result is built from discoverySpec(); from
+// that result this module derives what the flow needs next: which scenario
+// the state is in, the actionable and concluded grouping rows with display
+// statuses and verbs, and the single-discussion auto-proceed context. Pure
+// derivation — no IO; consult-slice hints (parsed from the analysis doc by
+// the adapter, which owns file access) arrive as an input.
 // ---------------------------------------------------------------------------
 
-const { OPEN_SOURCE_STATUSES } = require('./derivations.cjs');
+const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./derivations.cjs');
 
 /**
  * @typedef {object} DiscoverySource
@@ -80,6 +81,13 @@ const { OPEN_SOURCE_STATUSES } = require('./derivations.cjs');
  */
 
 /**
+ * @typedef {object} SpecConfirmationRows
+ * @property {string} verb        the entry row's verb: Creating | Continuing | Refining
+ * @property {{name: string, status: string, individual: boolean}[]} sources  the row's sources; individual: a started specification already covers it
+ * @property {string[]} supersedes  the started specifications the handoff supersedes
+ */
+
+/**
  * @typedef {object} SpecificationDetail
  * @property {string} work_unit
  * @property {'blocked-no-discussions'|'blocked-none-completed'|'blocked-discussions-open'|'single'|'groupings'|'analysis-rerun'|'analyze'|'specs-menu'} scenario
@@ -106,7 +114,7 @@ function sourceTag(src) {
   return reopened ? 'extracted, reopened' : 'extracted';
 }
 
-/** @param {{status: string, pending: number, stale: number}} row */
+/** @param {SpecRow} row */
 function rowVerb(row) {
   if (row.status === 'proposed') return 'Creating';
   if (row.status === 'completed' && row.pending === 0 && row.stale === 0) return 'Refining';
@@ -114,16 +122,56 @@ function rowVerb(row) {
 }
 
 /**
- * One display/menu row from a discovery spec. Sources whose discussion item
- * no longer exists (`discussion_status: unknown` on a materialized spec) are
- * silently skipped — deleted discussions are not work.
+ * One specification item as the entry reads it. A status-less item reads
+ * in-progress; a status-less source row reads pending, so an unmarked source
+ * never reads as extracted; a source whose discussion item is gone reads
+ * `unknown`. Stale counts as pending work: an extraction the source moved out
+ * from under still blocks conclusion.
+ * @param {object} manifest
+ * @param {string} name
+ * @param {Record<string, any>} item
+ * @returns {DiscoverySpec}
+ */
+function discoverySpec(manifest, name, item) {
+  /** @type {DiscoverySpec} */
+  const spec = { name, status: item.status || 'in-progress', has_pending_sources: false };
+  if (item.sources && typeof item.sources === 'object') {
+    spec.sources = sourceRows(item.sources).map(([source, row]) => ({
+      name: source,
+      status: row.status || 'pending',
+      discussion_status: (itemOf(manifest, 'discussion', source) || {}).status || 'unknown',
+    }));
+    spec.has_pending_sources = spec.sources.some((s) => s.status === 'pending' || s.status === 'stale');
+  }
+  if (item.consult_references && typeof item.consult_references === 'object') {
+    spec.consult_references = Object.entries(item.consult_references).map(([ref, row]) => ({
+      name: ref,
+      status: (row && typeof row === 'object' && row.status) || 'pending',
+    }));
+  }
+  return spec;
+}
+
+/**
+ * The sources a specification's row counts. A started specification skips
+ * a source whose discussion item no longer exists — deleted discussions are
+ * not work; a proposed grouping keeps every source it names.
+ * @param {DiscoverySpec} spec
+ * @returns {DiscoverySource[]}
+ */
+function liveSources(spec) {
+  return (spec.sources || []).filter((s) => spec.status === 'proposed' || s.discussion_status !== 'unknown');
+}
+
+/**
+ * One display/menu row from a discovery spec.
  * @param {DiscoverySpec} spec
  * @param {Record<string, ConsultHint[]>} hints  kebab-name → hints from the analysis doc
  * @returns {SpecRow}
  */
 function specRow(spec, hints) {
   const proposed = spec.status === 'proposed';
-  const kept = (spec.sources || []).filter((s) => proposed || s.discussion_status !== 'unknown');
+  const kept = liveSources(spec);
 
   /** @type {ConsultRow[]} */
   let consult;
@@ -184,6 +232,26 @@ function singleContext(workUnit, discussion, result, hints) {
     proceed_name: grouped ? row.name : workUnit,
     discussion,
     spec: row,
+  };
+}
+
+/**
+ * What a handoff over one specification is about to do: the verb its entry
+ * row reads, and its sources with their extraction state. A fresh
+ * specification marks each source a started specification already covers
+ * and supersedes those specifications; a started one has already taken its
+ * sources.
+ * @param {object} manifest
+ * @param {DiscoverySpec} spec
+ * @returns {SpecConfirmationRows}
+ */
+function specConfirmation(manifest, spec) {
+  const fresh = spec.status === 'proposed';
+  const rows = liveSources(spec).map((source) => ({ source, covering: fresh ? lockingSpecs(manifest, source.name) : [] }));
+  return {
+    verb: specRow(spec, {}).verb,
+    sources: rows.map(({ source, covering }) => ({ name: source.name, status: source.status, individual: covering.length > 0 })),
+    supersedes: [...new Set(rows.flatMap((r) => r.covering))],
   };
 }
 
@@ -270,4 +338,4 @@ function specificationDetail(workUnit, result, opts = {}) {
   };
 }
 
-module.exports = { specificationDetail, sourceTag, rowVerb };
+module.exports = { specificationDetail, sourceTag, discoverySpec, specConfirmation };
