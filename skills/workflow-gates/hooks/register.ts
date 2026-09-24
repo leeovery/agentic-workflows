@@ -663,7 +663,7 @@ export const register: Register = on => {
 
     try {
       const { Box, Client } = await $.ui.resolve(e)
-      const columns = e.props.bodyColumns
+      const { bodyColumns: columns, maxRows } = e.props
 
       return Box({
         flexDirection: 'column',
@@ -675,8 +675,14 @@ export const register: Register = on => {
             key: ELEMENT,
             module: './board.ts',
             width: columns,
-            height: linesOf(gate, columns, IDLE, band.sends).length,
-            props: { gate, picked: band.picked, ...band.sends, columns },
+            height: linesOf(gate, columns, IDLE, band.sends, maxRows).length,
+            props: {
+              gate,
+              picked: band.picked,
+              ...band.sends,
+              columns,
+              maxRows,
+            },
           }),
           beneath,
         ],
