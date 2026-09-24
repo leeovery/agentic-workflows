@@ -17,7 +17,7 @@ const isSent = (value: unknown): value is Sent => {
 }
 
 function lineOf({ answer, question, label }: Sent): string {
-  const answered = question === '' ? answer : `${question} → ${answer}`
+  const answered = `${question} → ${answer}`
 
   return label === '' || label === answer ? answered : `${answered} · ${label}`
 }
