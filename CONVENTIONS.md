@@ -187,7 +187,7 @@ Example: `@if(has_discussion) {topic}.md [{status:[in-progress|completed]}] @els
 
 Example with filter: `@foreach(inv in investigations.files where status is in-progress)`
 
-**When to use placeholders:** structural templates (tree displays, status blocks) where each field has a clear source. A template whose fields branch on state belongs in the engine, not in placeholders.
+**When to use placeholders:** structural templates (tree displays, status blocks) where each field has a clear source.
 
 In model-instruction fenced blocks (not user-facing templates), the anonymous enumeration shorthand `{option1|option2}` is acceptable where a name adds nothing.
 
