@@ -895,6 +895,50 @@ function checkQuotedFreeTextFlags(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 23 — a question at a gate defers to the set-aside rule. What a reply
+// at a gate is lives once, in the framework (instructions.md): a question
+// sets the gate aside until the person is ready to move on, and never puts
+// it straight back. So a branch keyed on a question arriving at a gate — `If ask`,
+// `If the user asks a question`, `If user asked a question`, `If the user
+// asks about a number`, `If the comment is a question …`, as an H4 or a bold
+// conditional, or a route list's `- **Ask** —` item — says so before whatever
+// puts the gate back ("sets the gate aside" … "ready to move on"), or
+// delegates the answer to the shared answering-how-it-works.md, whose
+// put-back carries the same rule. A heading branch runs to the next heading,
+// bold conditional, or rule; a list item runs to the next item or blank line.
+// ---------------------------------------------------------------------------
+
+const QUESTION_BRANCH = /^(?:#### If |\*\*If )(?:ask\b|the user asks (?:a question|about a number)|user asked a question|the comment is a question)/;
+const QUESTION_ROUTE = /^\s*[-*] \*\*Ask\*\* —/;
+const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
+const ROUTE_END = /^\s*(?:[-*] |$)/;
+const SETS_ASIDE = /sets the gate aside[\s\S]*ready to move on/;
+const DELEGATES_ANSWER = /\(\.\.\/\.\.\/workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
+
+function checkQuestionsSetGatesAside(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      const route = QUESTION_ROUTE.test(line);
+      if (inFence[i] || !(route || QUESTION_BRANCH.test(line))) return;
+      const ends = route ? ROUTE_END : BRANCH_END;
+      let end = i + 1;
+      while (end < lines.length && (inFence[end] || !ends.test(lines[end]))) end++;
+      const body = lines.slice(route ? i : i + 1, end).filter((_, k) => !inFence[(route ? i : i + 1) + k]).join('\n');
+      if (SETS_ASIDE.test(body) || DELEGATES_ANSWER.test(body)) return;
+      out.push({
+        file,
+        line: i + 1,
+        message: 'a question branch puts its gate back without the set-aside rule — say "The question sets the gate aside until the person is ready to move on; to put it back:" before the route or fetch',
+      });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -918,6 +962,7 @@ const CHECKS = [
   ['20: footerless load directives', checkFooterlessLoads],
   ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
+  ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1583,6 +1628,88 @@ test('check 22 (quoted free-text flags) — catches a bare horizon or summary pl
       '',
     ].join('\n'));
     assert.deepStrictEqual(checkQuotedFreeTextFlags([bare]).map((v) => v.line), [2, 4]);
+  });
+});
+
+test('check 23 (a question at a gate sets it aside) — catches a question branch that puts its gate straight back, permits the set-aside form, a delegated answer, an Ask item in a route list, and branches that carry no question', () => {
+  withTemp((dir) => {
+    const deferring = write(dir, 'skills/x/deferring.md', [
+      '#### If ask',
+      '',
+      'Answer from the record. The question sets the gate aside until the person is ready to move on; to put it back:',
+      '',
+      '→ Return to **A. Conclude Gate**.',
+      '',
+      '**If the comment is a question back or feedback:**',
+      '',
+      'Answer it. The exchange sets the gate aside until the person is ready to move on; to put it back, re-fetch the gate and emit its MENU section verbatim per its marker:',
+      '',
+      '```bash',
+      'engine render executor-block-gate x.implementation.x',
+      '```',
+      '',
+      '#### If the user asks a question',
+      '',
+      'Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
+      '',
+      '→ Return to **B. Handle Selection**.',
+      '',
+      '#### If the user asks for the interactive page',
+      '',
+      '→ Return to **G. Task Gate**.',
+      '',
+      'Route the answer:',
+      '  - **Waiting** (`w/waiting`) — a plain `roadmap add`.',
+      '  - **Ask** — answer it. The question sets the gate aside until the person is ready to move on; to put it back, render the gate again.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkQuestionsSetGatesAside([deferring]).length, 0, `the set-aside form, a delegated answer, and a non-question branch are clean, got ${report(checkQuestionsSetGatesAside([deferring]))}`);
+
+    const blind = write(dir, 'skills/x/blind.md', [
+      '#### If ask',
+      '',
+      'Answer the user\'s questions about the review.',
+      '',
+      '→ Return to **F. Fix Approval Gate**.',
+      '',
+      '**If ask:**',
+      '',
+      'Answer the user\'s question, then fetch the confirm gate again and emit it as above.',
+      '',
+      '**STOP.** Wait for user response.',
+      '',
+      '#### If user asked a question',
+      '',
+      'Answer the question.',
+      '',
+      '→ Return to **B. Action Menu**.',
+      '',
+      '**If the user asks about a number:**',
+      '',
+      'Answer it. Expanding is not objecting; the screen stands.',
+      '',
+      '**If the comment is a question or steers the attempt:**',
+      '',
+      'Answer it. Then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.',
+      '',
+      '#### If the user asks a question',
+      '',
+      'Answer it, then put the gate back — the phrase below is fenced content, not the branch\'s own words:',
+      '',
+      '```',
+      'sets the gate aside until the person is ready to move on',
+      '```',
+      '',
+      '## B. Routes',
+      '',
+      'Route the answer:',
+      '  - **Ask** — answer it and talk it through, then render the gate again.',
+      '  - **Waiting** (`w/waiting`) — the gate sets the gate aside until the person is ready to move on, the next item\'s words, never the Ask\'s.',
+      '',
+    ].join('\n'));
+    const v = checkQuestionsSetGatesAside([blind]);
+    assert.deepStrictEqual(v.map((x) => x.line), [1, 7, 13, 19, 23, 27, 38], `each question branch that puts its gate straight back is caught, got ${report(v)}`);
+    assert.ok(v.every((x) => /without the set-aside rule/.test(x.message)), `the fault is named, got ${report(v)}`);
   });
 });
 
