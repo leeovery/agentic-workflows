@@ -36,6 +36,8 @@ The entry's `topic` and `verb`, plus that spec's DATA detail (sources, consult r
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 
+→ On return, return to **A. Display and Menu**.
+
 #### If `action` is `blocked_spec`
 
 The spec's source discussions reopened — it cannot be entered until they re-conclude. Tell the user in one line which discussions hold it (the spec's `blocked_by` in DATA names them) and that concluding those unlocks the spec, then re-present.
