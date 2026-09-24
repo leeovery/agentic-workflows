@@ -20,7 +20,7 @@ The output is one snapshot in three demarcated sections:
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the menu.
 - **MENU** — the work units as a numbered pick list, then the baseline and back rows. Emit verbatim per its marker.
 
-Emit the TITLE section, then the MENU section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -59,7 +59,7 @@ The response carries demarcated sections:
 > Lifecycle actions for this work unit. Done marks it finished, cancel abandons it, pivot converts a feature to an epic when the scope grows beyond a single topic, absorb merges a feature's discussion into an existing epic.
 ```
 
-Emit the MENU section.
+Emit the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -73,7 +73,7 @@ Run the complete transaction — one command sets `status: completed`, stamps `c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
 ```
 
-Fetch and emit the receipt's `DISPLAY: confirmation` section:
+Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb complete
@@ -85,7 +85,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 → Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
 
-On return, fetch and emit the `MENU: pivot continuation` section:
+On return, fetch and emit the `MENU: pivot continuation` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render pivot-continuation {selected.name}
@@ -123,7 +123,7 @@ Run the cancel transaction — one command sets `status: cancelled`, removes the
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn]

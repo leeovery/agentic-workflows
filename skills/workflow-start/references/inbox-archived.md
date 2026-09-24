@@ -21,17 +21,17 @@ The output is one snapshot in demarcated sections:
 - **MENU** — the archived items as a numbered pick list. Emit verbatim per its marker. Absent when nothing is archived.
 - **DISPLAY** — only when nothing is archived: the empty-store line. Emit verbatim per its marker.
 
-Emit the TITLE section verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section verbatim per its marker.
 
 #### If `archived_count` is 0
 
-Emit the DISPLAY section.
+Emit the DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
 #### Otherwise
 
-Emit the MENU section.
+Emit the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

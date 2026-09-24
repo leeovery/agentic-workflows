@@ -33,7 +33,7 @@ Compose the proposed areas:
 
 ## B. Confirm
 
-Write the proposal payload to `.workflows/.cache/baseline/scope.json` with the Write tool — `{"mode": "{fresh|expand}", "areas": [{"name": "{area:(kebabcase)}", "detail": "{one line: what it covers and why it earns a doc}"}]}` — then fetch the gate and emit its `DISPLAY: baseline scope` and `MENU: baseline scope gate` sections verbatim, each per its marker:
+Write the proposal payload to `.workflows/.cache/baseline/scope.json` with the Write tool — `{"mode": "{fresh|expand}", "areas": [{"name": "{area:(kebabcase)}", "detail": "{one line: what it covers and why it earns a doc}"}]}` — then fetch the gate and emit its `DISPLAY: baseline scope` and `MENU: baseline scope gate` sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-scope-gate --file .workflows/.cache/baseline/scope.json

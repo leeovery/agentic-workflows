@@ -21,7 +21,7 @@ The output is one snapshot in demarcated sections:
 - **DISPLAY** — the numbered inbox list, or the empty line when the inbox holds nothing. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the pickup menu, present only when the inbox holds items. Emit verbatim per its marker. The `a/archived` option renders only when the archived store has items.
 
-Emit the TITLE section, then the DISPLAY section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
 #### If `inbox_count` is 0
 

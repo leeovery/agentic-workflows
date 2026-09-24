@@ -11,7 +11,7 @@ Every session may answer a question about how the workflows work — the system,
 1. Load **[glossary.md](../../workflow-help/references/glossary.md)** — the canonical vocabulary, and where these answers come from. Load it at the question, never ahead of one.
 2. Answer in a few ordinary sentences at the altitude [altitude.md](altitude.md) sets: the product's terms, the words the person meets on screen — never engine verbs, file paths, or skill names.
 3. Where the glossary does not cover it, say so plainly and point at the book: https://github.com/leeovery/agentic-workflows/tree/main/docs. Never invent an answer.
-4. Where more than a short answer is wanted, offer the reference card for the area; when the person takes it, fetch the card and emit its sections in the order they arrive, each per its own marker:
+4. Where more than a short answer is wanted, offer the reference card for the area; when the person takes it, fetch the card and emit its sections in the order they arrive, each verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name <slug>

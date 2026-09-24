@@ -82,7 +82,7 @@ Write the phase-tree payload to `.workflows/.cache/{work_unit}/planning/{topic}/
 {"phases": [{"name": "…", "detail": [["Goal", "…"], ["Criteria", "…"]]}]}
 ```
 
-Render and emit each section verbatim at its marked instruction:
+Render and emit each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json --approve

@@ -14,7 +14,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 
 #### If the response has `held_sources` greater than `0`
 
-Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
+Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section now, verbatim per its marker.
 
 The stop is the whole answer wherever this fires.
 

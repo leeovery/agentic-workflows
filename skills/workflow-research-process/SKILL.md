@@ -111,7 +111,7 @@ A first start, not a resume — no session has ever run. Parked concerns wait in
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
 ```
 
-Emit the DISPLAY section verbatim per its marker — never the `===` marker lines. An empty response means no thread is registered; nothing is shown.
+Emit the DISPLAY section verbatim per its marker. An empty response means no thread is registered; nothing is shown.
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file, the manifest's thread register when the item carries one (node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.research.{topic} threads, then manifest delete on true), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — a landed report would otherwise fold into the restarted session as its own`, commit = `research({work_unit}): restart research`.
 

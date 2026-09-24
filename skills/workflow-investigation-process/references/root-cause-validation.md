@@ -14,7 +14,7 @@ An independent agent validates the root cause hypothesis by tracing the code fre
 > An independent agent can trace the code fresh to validate the root cause before the findings are presented for sign-off.
 ```
 
-Fetch the offer, emitting the section verbatim at its marked instruction:
+Fetch the offer, emitting the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render validation-gate {work_unit}.investigation.{topic} --variant root-cause
@@ -90,7 +90,7 @@ Do not dump the full output; the analysis path carries the reader there.
 
 `{"status": "{STATUS:[validated|gaps_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "checks": [["{label}", "{outcome}"]], "summary": "{SUMMARY}", "items": ["{gap}"], "analysis_path": "{the row's content file path}"}`
 
-Fetch the report, emitting each section verbatim at its marked instruction:
+Fetch the report, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render validation-report {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/validation.json --variant root-cause
