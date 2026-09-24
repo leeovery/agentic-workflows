@@ -331,11 +331,11 @@ function emptyMenu(detail) {
 // Inbox pickup + archived store
 // ---------------------------------------------------------------------------
 
-/** The `n  type  date  slug  → path` table under a header line. @param {string} header @param {PickupItem[]} items */
+/** The `n  type  date  slug  → path  — title` table under a header line. @param {string} header @param {PickupItem[]} items */
 function itemTable(header, items) {
-  const lines = [`${header} (n  type  date  slug  → path):`];
+  const lines = [`${header} (n  type  date  slug  → path  — title):`];
   for (const item of items) {
-    lines.push(`  ${item.n}  ${item.type}  ${item.date}  ${item.slug}  → ${item.path}`);
+    lines.push(`  ${item.n}  ${item.type}  ${item.date}  ${item.slug}  → ${item.path}  — ${item.title}`);
   }
   return lines;
 }

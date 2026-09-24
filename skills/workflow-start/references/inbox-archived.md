@@ -16,7 +16,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs archived
 
 The output is one snapshot in demarcated sections:
 
-- **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path  — title`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker.
 - **MENU** — the archived items as a numbered pick list. Emit verbatim per its marker. Absent when nothing is archived.
 - **DISPLAY** — only when nothing is archived: the empty-store line. Emit verbatim per its marker.
@@ -41,7 +41,7 @@ Emit the MENU section verbatim per its marker.
 
 **If user chose a number:**
 
-Store the selected item's `ITEMS` row — its type, slug, date, and path.
+Store the selected item's `ITEMS` row — its type, slug, date, path, and title.
 
 → Proceed to **B. Action Menu**.
 
