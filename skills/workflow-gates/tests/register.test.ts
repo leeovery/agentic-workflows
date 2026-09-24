@@ -346,8 +346,9 @@ const MOUNT = {
  * reads; `lag` is awaited before a read of the transcript or the store is
  * answered. A submission made while idle resolves once the turn it opens has
  * started, as core's does; `engineWrites` changes what the next Bash call
- * answers, `reads` what the transcript holds, and `resumesAs` the session's
- * id. `stored` is the store, holding `kept` at the start.
+ * answers, `reads` what the transcript holds, `resumesAs` the session's id,
+ * and `stopsSubmitting` fails every submission from then on. `stored` is the
+ * store, holding `kept` at the start.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
@@ -373,7 +374,7 @@ function world(
   const {
     surfaces = ['terminal'],
     fills = true,
-    submits = true,
+    submits: isSubmitting = true,
     drops,
     disk,
     lag,
@@ -389,6 +390,7 @@ function world(
   const clock = disk ?? mock.clock(on)
 
   let output = stdout
+  let submits = isSubmitting
   let transcript: readonly SessionMessage[] = []
   let sessionId = 's0'
   let turns = 0
@@ -504,6 +506,10 @@ function world(
     sessionId = id
   }
 
+  const stopsSubmitting = () => {
+    submits = false
+  }
+
   return {
     calls,
     filled,
@@ -515,6 +521,7 @@ function world(
     engineWrites,
     reads,
     resumesAs,
+    stopsSubmitting,
   }
 }
 
@@ -857,12 +864,15 @@ describe('register', () => {
     const ui = await $.ui.mount(MOUNT)
 
     expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
-      props: { module: 'hooks/board.ts', width: 72, height: 9 },
+      props: { module: 'hooks/board.ts', width: 72, height: 10 },
     })
 
     expect(await ui.find({ text: '? for shortcuts' })).toBeDefined()
 
-    expect((await linesOf(ui)).map(line => line.trimEnd())).toEqual([
+    expect(
+      (await linesOf(ui)).map(line => line.trimEnd()),
+      'the last line kept for the second row, held, to wrap onto',
+    ).toEqual([
       '─'.repeat(72),
       '',
       '◆ Approve this task?',
@@ -872,6 +882,7 @@ describe('register', () => {
       `  Comment  ${COMMENT.description}`,
       '',
       `  ${IDLE_FOOTER}`,
+      '',
     ])
 
     expect(await runOf(ui, COMMENT.description), 'a typed row draws dim').toMatchObject({
@@ -1647,18 +1658,25 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(true)
   })
 
-  test('an Esc on a turn the person did not start brings back the gate they never answered, whatever it called', async ($, on) => {
+  test('an Esc on a turn anyone else started leaves the band as it is, the pick on it included, whatever the turn called', async ($, on) => {
     world($, on, announced())
 
     await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await click(ui, COMMIT)
     await submitFrom($, { kind: 'task-notification' })
     await $.tool.call(READ_CALL)
     await $.turn.complete(INTERRUPTED)
 
-    expect(await isDrawn($)).toBe(true)
+    expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
+    expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
+
+    await ui.unmount()
   })
 
-  test('an Esc on a turn the person did not start, once it rendered a gate of its own, leaves the band empty', async ($, on) => {
+  test('an Esc on a turn anyone else started drops what it half-rendered and leaves the band as it was', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1669,10 +1687,15 @@ describe('register', () => {
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(INTERRUPTED)
 
-    expect(await isDrawn($), 'neither the gate it began over nor its own').toBe(false)
+    const ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, COMMIT)).toBeGreaterThan(0)
+    expect(await lineOf(ui, 'Start "Billing"')).toBe(-1)
+
+    await ui.unmount()
   })
 
-  test('a turn the person did not start, ending with no gate, puts the gate back', async ($, on) => {
+  test('a turn anyone else started leaves the band live through it, and its end leaves the band as it was', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1691,11 +1714,11 @@ describe('register', () => {
     for (const origin of others) {
       await submitFrom($, origin)
 
-      expect(await isDrawn($), `${origin.kind}: the turn takes it down`).toBe(false)
+      expect(await isDrawn($), `${origin.kind}: the band stays through it`).toBe(true)
 
       await $.turn.complete(TURN_END)
 
-      expect(await isDrawn($), `${origin.kind}: and puts it back`).toBe(true)
+      expect(await isDrawn($), `${origin.kind}: and after it`).toBe(true)
     }
   })
 
@@ -1760,7 +1783,7 @@ describe('register', () => {
     await submitFrom($, { kind: 'task-notification' })
     await $.turn.complete(TURN_END)
 
-    expect(await isDrawn($), 'the background turn puts the gate back').toBe(true)
+    expect(await isDrawn($), 'the background turn leaves the gate').toBe(true)
 
     await $.turn.start({ text: '', turnId: 't2' })
     await $.turn.complete(TURN_END)
@@ -1779,7 +1802,7 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
-  test('a reply the person sends into a turn they did not start answers the gate, so its end puts nothing back', async ($, on) => {
+  test('a reply the person sends into a turn anyone else started takes the band down at once, and its end puts nothing back', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1795,9 +1818,12 @@ describe('register', () => {
     for (const [n, origin] of theirs.entries()) {
       await submitFrom($, { kind: 'task-notification' })
       await joinFrom($, origin, `t${n + 1}`)
+
+      expect(await isDrawn($), `${origin.kind}: at the reply`).toBe(false)
+
       await $.turn.complete(TURN_END)
 
-      expect(await isDrawn($), origin.kind).toBe(false)
+      expect(await isDrawn($), `${origin.kind}: at the turn's end`).toBe(false)
 
       engineWrites(announced())
 
@@ -1808,7 +1834,7 @@ describe('register', () => {
     }
   })
 
-  test('a submission from anyone else joining that turn answers nothing, so its end puts the gate back', async ($, on) => {
+  test('a submission from anyone else joining that turn leaves the band as it is', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -1820,6 +1846,324 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
 
     expect(await isDrawn($)).toBe(true)
+  })
+
+  test('a send pressed while anyone else’s turn runs is held: the row reads queued, the footer says when it sends, and the prompt box is emptied', async ($, on) => {
+    const { filled, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    expect(submitted, 'nothing but the turn’s own').toEqual(['ping'])
+    expect(filled, 'picked, then taken out of the box').toEqual(['yes', ''])
+    expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
+    expect(await lineOf(ui, `${COMMIT} (recommended) · queued`)).toBeGreaterThan(0)
+    expect((await runOf(ui, /^ · queued$/))?.props.dimColor, 'plain').toBeUndefined()
+    expect(await footerOf(ui)).toBe(
+      'yes sends when Claude finishes · click it again to take it back',
+    )
+    expect(await runOf(ui, /^yes$/), 'the footer names it in bold').toMatchObject({
+      props: { bold: true },
+    })
+
+    await ui.unmount()
+  })
+
+  test('a press on the held row takes it back to a pick, its answer in the box again', async ($, on) => {
+    const { filled, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    expect(filled).toEqual(['yes', '', 'yes'])
+    expect(submitted).toEqual(['ping'])
+    expect(await lineOf(ui, '· queued')).toBe(-1)
+    expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
+
+    await $.turn.complete(TURN_END)
+
+    expect(submitted, 'a pick waits for its own send').toEqual(['ping'])
+
+    await ui.unmount()
+  })
+
+  test('a press on another row picks it in place of the held one, which never sends', async ($, on) => {
+    const { filled, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await click(ui, AUTH)
+
+    expect(filled).toEqual(['yes', '', '2'])
+    expect(await lineOf(ui, '· queued')).toBe(-1)
+    expect(await backgroundOf(ui, AUTH)).toBe('diffAddedDimmed')
+    expect(await footerOf(ui)).toMatch(/^2 is in your prompt/)
+
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping'])
+
+    await ui.unmount()
+  })
+
+  test('the turn’s end sends the held answer while the same gate is on the band, and the band comes down as that turn starts', async ($, on) => {
+    const { files, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await ui.unmount()
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping', 'yes'])
+    expect(sentIn(files)).toEqual({
+      answer: 'yes',
+      question: 'Approve this task?',
+      label: COMMIT,
+    })
+    expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a turn that presents the same gate again still sends the held answer', async ($, on) => {
+    const { submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await ui.unmount()
+
+    engineWrites(announced())
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping', 'yes'])
+  })
+
+  test('a turn that draws another gate drops the held answer unsent, and the new gate’s footer says so until a click', async ($, on) => {
+    const { submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping'])
+    expect(await lineOf(ui, 'Start "Billing"')).toBeGreaterThan(0)
+    expect(await footerOf(ui)).toBe("your yes wasn't sent — the menu changed")
+    expect(await runOf(ui, /^yes$/), 'the answer named in bold').toMatchObject({
+      props: { bold: true },
+    })
+
+    await click(ui, 'Start "Billing"')
+
+    expect(await footerOf(ui)).toMatch(/^2 is in your prompt/)
+
+    await ui.unmount()
+  })
+
+  test('a pick goes with its gate when a turn draws another over it', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(await footerOf(ui)).toBe(IDLE_FOOTER)
+
+    await ui.unmount()
+  })
+
+  test('a press while the held answer is being sent does nothing', async ($, on) => {
+    const disk = mock.clock(on)
+    const { filled, submitted } = world($, on, announced(), { disk })
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    const ending = $.turn.complete(TURN_END)
+
+    await disk.settle()
+    await ui.post({ answer: '2' }, { in: 'gate' })
+    await disk.advance(1000)
+    await ending
+
+    expect(filled).toEqual(['yes', ''])
+    expect(submitted).toEqual(['ping', 'yes'])
+
+    await ui.unmount()
+  })
+
+  test('an Esc on anyone else’s turn hands a held answer back to the prompt as a pick, nothing sent', async ($, on) => {
+    const { filled, submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(submitted).toEqual(['ping'])
+    expect(filled).toEqual(['yes', '', 'yes'])
+    expect(await lineOf(ui, '· queued')).toBe(-1)
+    expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
+
+    await ui.unmount()
+  })
+
+  test('a held answer that fails to send goes back to the prompt as a pick, no send left recorded', async ($, on) => {
+    const { files, filled, stopsSubmitting } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    stopsSubmitting()
+
+    await $.turn.complete(TURN_END)
+
+    expect(filled).toEqual(['yes', '', 'yes'])
+    expect(sentIn(files)).toBeNull()
+    expect(await footerOf(ui)).toMatch(/^yes is in your prompt/)
+
+    await ui.unmount()
+  })
+
+  test('a reply the person types while an answer is held takes the band down, and the held answer never sends', async ($, on) => {
+    const { submitted } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await ui.unmount()
+    await joinFrom($, { kind: 'composer' }, 't1', 'hold on')
+
+    expect(await isDrawn($)).toBe(false)
+
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping', 'hold on'])
+  })
+
+  test('the band holds its height through a pick, a hold, a take-back and a dropped answer', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount({ ...MOUNT, props: { ...BAND, bodyColumns: 40 } })
+    const heightOf = async () =>
+      (await ui.find({ type: 'Client', key: 'gate' }))?.props.height
+    const heights = [(await linesOf(ui)).length]
+
+    await submitFrom($, { kind: 'task-notification' })
+
+    for (let press = 0; press < 3; press += 1) {
+      await click(ui, AUTH)
+      heights.push((await linesOf(ui)).length)
+    }
+
+    expect(heights, 'idle, picked, held, taken back').toEqual(
+      Array(4).fill(await heightOf()),
+    )
+
+    await click(ui, AUTH)
+
+    engineWrites(announced({ options: DETAILED }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    const dropped = [(await linesOf(ui)).length]
+
+    await click(ui, 'Analyze for groupings')
+    dropped.push((await linesOf(ui)).length)
+
+    expect(dropped, 'the dropped note, then a pick').toEqual(
+      Array(2).fill(await heightOf()),
+    )
+
+    await ui.unmount()
+  })
+
+  test('a held answer is not kept: the conversation resumed shows its gate unpicked', async ($, on) => {
+    const { reads, submitted } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    let ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+    await ui.unmount()
+    await quitAndResume($)
+
+    ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, 'Approve this task?')).toBe(2)
+    expect(await lineOf(ui, '· queued')).toBe(-1)
+    expect(await footerOf(ui)).toBe(IDLE_FOOTER)
+    expect(submitted).toEqual(['ping'])
+
+    await ui.unmount()
   })
 
   test('a background turn that renders a gate draws its own', async ($, on) => {

@@ -14,6 +14,7 @@ import {
   type Line,
   type Option,
   type RowLine,
+  type Sends,
   type Typed,
 } from '../hooks/layout.ts'
 
@@ -407,6 +408,27 @@ describe('layout', () => {
     ])
   })
 
+  test('the footer says what waits to send when Claude finishes, and what a new gate kept from sending', () => {
+    expect(footerRuns({ kind: 'queued', answer: 'yes' })).toEqual([
+      { text: 'yes', bold: true },
+      { text: ' sends when Claude finishes · click it again to take it back', dim: true },
+    ])
+
+    expect(footerRuns({ kind: 'dropped', answer: 'yes' })).toEqual([
+      { text: 'your ', dim: true },
+      { text: 'yes', bold: true },
+      { text: " wasn't sent — the menu changed", dim: true },
+    ])
+  })
+
+  test('a held row reads queued after the rest of its label, plain', () => {
+    const gate = gateOf({ options: [optionOf({ key: 'y', word: 'yes', head: 'Commit', recommended: true })] })
+    const [line] = rowsOf(linesOf(gate, 72, IDLE, { held: 'yes', dropped: null }))
+
+    expect(textOf(line?.runs ?? []).trimEnd()).toBe('Commit (recommended) · queued')
+    expect(line?.runs.find(run => run.text === ' · queued')).toEqual({ text: ' · queued' })
+  })
+
   test('a typed row is named as the engine labels it, whatever it says', () => {
     expect(textOf(footerRuns({ kind: 'typed', label: 'Tell me what to change' }))).toBe(
       'Tell me what to change — press Esc, then type in the prompt',
@@ -442,6 +464,65 @@ describe('layout', () => {
       const heights = said.map(footer => linesOf(gate, columns, footer).length)
 
       expect(new Set(heights).size, `${columns} columns`).toBe(1)
+    }
+  })
+
+  test('the band holds its height whichever row is held and whatever the footer says, a dropped answer included', () => {
+    const gate = gateOf({
+      options: [
+        optionOf({ key: 'y', word: 'yes', head: 'Commit and continue to the next task' }),
+        optionOf({ key: 'b', word: 'bounded', head: 'Run the rest unattended' }),
+      ],
+      typed: [COMMENT],
+    })
+    const dropped = 'a-long-answer-from-the-last-menu'
+    const answers = ['yes', 'bounded']
+
+    const said: Footer[] = [
+      IDLE,
+      ...answers.flatMap(answer => [
+        { kind: 'picked' as const, answer },
+        { kind: 'queued' as const, answer },
+      ]),
+      { kind: 'typed', label: 'Comment' },
+      { kind: 'dropped', answer: dropped },
+    ]
+
+    const rows = (held: string | null) =>
+      rowsOf(linesOf(gate, 30, IDLE, { held, dropped: null })).length
+
+    expect(rows('yes'), 'at 30 columns a held row wraps its mark').toBeGreaterThan(rows(null))
+
+    for (const columns of [30, 44, 72]) {
+      const heights = [null, ...answers].flatMap(held =>
+        said.map(footer => linesOf(gate, columns, footer, { held, dropped }).length),
+      )
+
+      expect(new Set(heights).size, `${columns} columns`).toBe(1)
+    }
+  })
+
+  test('the footer’s slot holds every word of a queued or a dropped answer’s footer', () => {
+    const gate = gateOf({ options: [optionOf({ key: 'y', word: 'yes', head: 'Commit' })] })
+    const dropped = 'a-long-answer-from-the-menu'
+    const spaced = (text: string) => text.split(/\s+/).join(' ').trim()
+    const said = (footer: Footer, columns: number, sends: Sends) =>
+      spaced(
+        linesOf(gate, columns, footer, sends)
+          .flatMap(line => (line.kind === 'footer' ? [textOf(line.runs)] : []))
+          .join(' '),
+      )
+
+    for (const columns of [30, 64]) {
+      const queued: Footer = { kind: 'queued', answer: 'yes' }
+      const gone: Footer = { kind: 'dropped', answer: dropped }
+
+      expect(said(queued, columns, { held: 'yes', dropped: null }), `queued at ${columns}`).toBe(
+        spaced(textOf(footerRuns(queued))),
+      )
+      expect(said(gone, columns, { held: null, dropped }), `dropped at ${columns}`).toBe(
+        spaced(textOf(footerRuns(gone))),
+      )
     }
   })
 
