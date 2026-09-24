@@ -729,18 +729,6 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
-  test('a menu with no pressable row stays text, the payload taken out', async ($, on) => {
-    world($, on, announced({ options: [] }))
-
-    await $.session.start(SESSION)
-
-    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
-
-    await $.turn.complete(TURN_END)
-
-    expect(await isDrawn($)).toBe(false)
-  })
-
   test('with no terminal attached the menu stays text, the payload taken out', async ($, on) => {
     world($, on, announced(), { surfaces: ['vscode'] })
 
@@ -943,26 +931,6 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a gate that asks nothing draws no question: the statement stands alone', async ($, on) => {
-    world($, on, announced({ statement: 'Found existing plan for Auth.', question: '' }))
-
-    await presented($)
-
-    const ui = await $.ui.mount(MOUNT)
-    const lines = await linesOf(ui)
-
-    expect(lines.slice(1, 5).map(line => line.trimEnd())).toEqual([
-      '',
-      '  Found existing plan for Auth.',
-      '',
-      `▌ yes      ${COMMIT} (recommended)`,
-    ])
-
-    expect(lines.some(line => line.includes('◆'))).toBe(false)
-
-    await ui.unmount()
-  })
-
   test("a row's detail draws beneath it, dim, level with its label", async ($, on) => {
     world($, on, announced({ options: DETAILED }))
 
@@ -1009,7 +977,7 @@ describe('register', () => {
       announced({
         options: DETAILED,
         typed: [RANGE],
-        question: '',
+        question: 'What would you like to do?',
         statement: 'Specification Overview\nTwo discussions are ready to be grouped.',
       }),
     )
@@ -1148,29 +1116,6 @@ describe('register', () => {
     await ui.redraw()
 
     expect(await ui.find({ type: 'Client', key: 'gate' })).toBeUndefined()
-
-    await ui.unmount()
-  })
-
-  test('a statement-only gate records an empty question', async ($, on) => {
-    const { files } = world(
-      $,
-      on,
-      announced({ options: DETAILED, statement: 'Overview.', question: '' }),
-    )
-
-    await presented($)
-
-    const ui = await $.ui.mount(MOUNT)
-
-    await click(ui, 'Return to the previous')
-    await click(ui, 'Return to the previous')
-
-    expect(sentIn(files)).toEqual({
-      answer: 'back',
-      question: '',
-      label: 'Return to the previous menu',
-    })
 
     await ui.unmount()
   })

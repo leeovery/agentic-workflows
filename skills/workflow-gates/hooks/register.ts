@@ -164,17 +164,12 @@ const inConversation = (e: AgentLoop) => e.agentId === undefined
 
 /**
  * Whether the band takes a gate a Bash call stated: the conversation's own
- * call, not a subagent's; a row to press (an archived inbox view is a menu of
- * prose alone, and stays text); and the terminal the session's only screen,
- * since the band is the terminal's and any other screen shows the menu as
- * text alone.
+ * call, not a subagent's; and the terminal the session's only screen, since
+ * the band is the terminal's and any other screen shows the menu as text
+ * alone.
  */
-async function isForBand(
-  $: EngineInterface,
-  e: AgentLoop,
-  gate: Gate,
-): Promise<boolean> {
-  if (!inConversation(e) || gate.options.length === 0) {
+async function isForBand($: EngineInterface, e: AgentLoop): Promise<boolean> {
+  if (!inConversation(e)) {
     return false
   }
 
@@ -589,7 +584,7 @@ export const register: Register = on => {
       return result
     }
 
-    const isArmed = await isForBand($, e, stated.gate)
+    const isArmed = await isForBand($, e)
 
     if (isArmed) {
       band.armed = stated.gate

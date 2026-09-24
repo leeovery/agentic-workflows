@@ -416,8 +416,7 @@ const block = (lines: Line[]): Line[] =>
 
 /**
  * Every line the band draws for a gate, top to bottom: the rule, the
- * statement, the question (none when the gate asks nothing), the rows and
- * the footer, a blank between each. How many there are is the region's height
+ * statement, the question, the rows and the footer, a blank between each. How many there are is the region's height
  * whatever the footer says and whichever row is held.
  */
 export function linesOf(
@@ -450,7 +449,8 @@ export function linesOf(
     RULE,
     BLANK,
     ...block(statement.map(runs => prose(runs, false))),
-    ...block(question.map((runs, n) => prose(runs, n === 0))),
+    ...question.map((runs, n) => prose(runs, n === 0)),
+    BLANK,
     ...rows,
     BLANK,
     ...footerSlot(gate, footer, columns, dropped, tallest - rows.length),
