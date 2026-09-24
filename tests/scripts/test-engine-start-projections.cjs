@@ -380,10 +380,10 @@ describe('start projections: inbox pickup', () => {
     assert.strictEqual(v.data, [
       'inbox_count: 3',
       'has_archived: true',
-      'ITEMS (n  type  date  slug  → path):',
-      '  1  idea  2026-06-01  smart-retry  → .workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-      '  2  idea  2026-06-02  dark-launch  → .workflows/.inbox/ideas/2026-06-02--dark-launch.md',
-      '  3  bug  2026-06-03  login-timeout  → .workflows/.inbox/bugs/2026-06-03--login-timeout.md',
+      'ITEMS (n  type  date  slug  → path  — title):',
+      '  1  idea  2026-06-01  smart-retry  → .workflows/.inbox/ideas/2026-06-01--smart-retry.md  — Smart Retry',
+      '  2  idea  2026-06-02  dark-launch  → .workflows/.inbox/ideas/2026-06-02--dark-launch.md  — Dark Launch',
+      '  3  bug  2026-06-03  login-timeout  → .workflows/.inbox/bugs/2026-06-03--login-timeout.md  — Login Timeout',
     ].join('\n'));
     assert.strictEqual(v.display, [
       'Ideas',
@@ -423,7 +423,7 @@ describe('start projections: inbox pickup', () => {
     assert.strictEqual(v.data, [
       'inbox_count: 0',
       'has_archived: true',
-      'ITEMS (n  type  date  slug  → path):',
+      'ITEMS (n  type  date  slug  → path  — title):',
     ].join('\n'));
     assert.strictEqual(v.display, 'No inbox items.\n');
     assert.strictEqual(v.menu, undefined);
@@ -443,10 +443,10 @@ describe('start projections: archived store', () => {
     const v = archivedView(combinedInbox(detail.inbox.archived, { archived: true }));
     assert.strictEqual(v.data, [
       'archived_count: 3',
-      'ITEMS (n  type  date  slug  → path):',
-      '  1  idea  2026-05-01  old-idea  → .workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md',
-      '  2  bug  2026-05-03  tricky  → .workflows/.inbox/.archived/bugs/2026-05-03--tricky.md',
-      '  3  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md',
+      'ITEMS (n  type  date  slug  → path  — title):',
+      '  1  idea  2026-05-01  old-idea  → .workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md  — Old Idea',
+      '  2  bug  2026-05-03  tricky  → .workflows/.inbox/.archived/bugs/2026-05-03--tricky.md  — A title with **bold**',
+      '  3  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md  — Tidy Logs',
     ].join('\n'));
     assert.strictEqual(v.display, undefined);
     assert.strictEqual(v.menu, [
@@ -533,11 +533,11 @@ describe('start projections: working set', () => {
       'set_uniform: true',
       'set_type: bugfix',
       'addable_count: 1',
-      'SET (n  type  date  slug  → path):',
-      '  1  bug  2026-06-01  login-timeout  → .workflows/.inbox/bugs/2026-06-01--login-timeout.md',
-      '  2  bug  2026-06-02  crash-on-save  → .workflows/.inbox/bugs/2026-06-02--crash-on-save.md',
-      'ADDABLE (n  type  date  slug  → path):',
-      '  1  idea  2026-06-03  smart-retry  → .workflows/.inbox/ideas/2026-06-03--smart-retry.md',
+      'SET (n  type  date  slug  → path  — title):',
+      '  1  bug  2026-06-01  login-timeout  → .workflows/.inbox/bugs/2026-06-01--login-timeout.md  — Login Timeout',
+      '  2  bug  2026-06-02  crash-on-save  → .workflows/.inbox/bugs/2026-06-02--crash-on-save.md  — Crash On Save',
+      'ADDABLE (n  type  date  slug  → path  — title):',
+      '  1  idea  2026-06-03  smart-retry  → .workflows/.inbox/ideas/2026-06-03--smart-retry.md  — Smart Retry',
     ].join('\n'));
     // The heading is the adapter's TITLE section — the display opens on the tree.
     assert.strictEqual(v.title, 'Working Set (2 items)');
