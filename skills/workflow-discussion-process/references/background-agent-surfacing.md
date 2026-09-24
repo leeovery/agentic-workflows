@@ -73,7 +73,7 @@ Re-classify before anything renders, in the one permitted direction (core rule 5
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-The engine incorporates the row. No menu needed — append this single line at the end of your current turn:
+The engine incorporates the row. No menu needed — append this single line at the end of your current turn, above the gate where one is waiting on the user:
 
 > *Output the next fenced block as a code block:*
 
@@ -103,7 +103,7 @@ Consult the natural-breaks checklist. Route on the row's `announced` flag.
 
 **If `announced` is `false`:**
 
-Append this one-line parenthetical at the end of your current turn, then record it:
+Append this one-line parenthetical at the end of your current turn, above the gate where one is waiting on the user, then record it:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -239,7 +239,7 @@ Answer it — the report's full section, the sites it touches, why the fix is th
 
 A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked — the walk raises it once the batches empty. A promotion is held for the length of the engagement, not in the store: abandon the batch before the walk reaches it and the report's own lane is what the next visit reads, which costs a repeat ask, never a silent loss.
 
-The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
+The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered. A promotion changed the screen, which re-renders now; a question that changed nothing sets the gate aside until the person is ready to move on. To put it back:
 
 → Return to **E. No Decision Needed**.
 
@@ -307,7 +307,7 @@ The batch is still owed for whatever survives.
 
 Answer it — the report's full section, the derivation in full, what it rests on. Expanding is not objecting; the screen stands.
 
-The batch is still owed, and nothing has been surfaced.
+The batch is still owed, and nothing has been surfaced. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **F. Decided From the Record**.
 
@@ -413,7 +413,7 @@ Confirm in one line total — `All {N} sent.`, or what actually landed when a de
 
 Answer it. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as walked.
 
-The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
+The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered. A kept finding changed the screen, which re-renders now; a question that changed nothing sets the gate aside until the person is ready to move on. To put it back:
 
 → Return to **H. Belongs Elsewhere**.
 

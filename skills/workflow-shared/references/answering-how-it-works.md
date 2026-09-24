@@ -19,6 +19,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic 
 
    The slugs: `kinds-of-work`, `the-phases`, `epics-the-map-and-the-dashboard`, `the-roadmap`, `gates-and-auto`, `the-knowledge-base-and-the-baseline`, `the-inbox`, `reshaping-work`, `working-in-parallel`.
 
-5. Where the person was at a menu, put it back — re-run the render call that produced it, emit it per its marker, and **STOP.** Wait for user response. Otherwise the conversation carries on where it was.
+5. Where the person was at a gate, the question set it aside until they are ready to move on; to put it back, re-run the render call that produced it, or the one the caller names, emit it per its marker, and **STOP.** Wait for user response. Otherwise the conversation carries on where it was.
 
 → Return to caller.

@@ -79,6 +79,6 @@ Render the full content of `.workflows/{work_unit}/investigation/{topic}.md` as 
 
 ## E. Address Feedback
 
-Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
+Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit. The feedback sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **A. Present & Confirm**.
