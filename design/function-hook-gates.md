@@ -293,8 +293,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   surfaces, and the conventions lint (check 3) refuses a menu anywhere in
   skill prose. The hand-drawn displays beside them in the files those
   moves touched are engine-drawn too — the specification entry's
-  confirmation, the empty dismissed list, the cross-cutting references —
-  as CONVENTIONS' "touching a file adopts its menus" owes. Every menu
+  confirmation, the empty dismissed list, the cross-cutting references,
+  the missing-dependencies tree — as CONVENTIONS' "touching a file adopts
+  its displays" owes. Every menu
   carries a glyphed question with any statement above it as context, and
   `menuFrame` refuses a menu without a question above its rows or without
   a pressable row. The pickers — archived inbox, working-set add/drop,
@@ -365,8 +366,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - **Migration stack** (#1278): #1276 → #1277 → #1282 → #1286 → #1287 (the
   seventeen menus, and the hand-drawn displays beside them) → #1295 (every
   menu asks; no menu in prose) → #1299 (a gate is fetched where it is
-  shown, R16) → #1300 (call sites defer to the marker, R18) → the answers
-  PR (R17).
+  shown, R16) → #1300 (call sites defer to the marker, R18) → #1301
+  (every answer resolves from DATA, R17).
 - **Gate-surface stack** (#1291): #1289 the payload (rows from parts,
   strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows mod.
   When it is rebased onto main after the migration stack lands, these need
