@@ -31,6 +31,15 @@ back the gate still waiting on them when it ends or Esc stops it, unless they
 replied while it ran or it rendered a gate of its own. A `/clear` takes the
 gate off the band.
 
+At the end of every turn, and as the conversation ends, the mod keeps what the
+band shows — the gate, or nothing — in its own store, stamped with where the
+transcript ends. A conversation resumed with `claude --resume` or `/resume`,
+or picked up again by a restart or a reload of the mod's files, gets its gate
+back as long as its transcript still ends there; one that moved on while the
+mod was not loaded gets nothing. The store holds at most one entry per
+conversation, and each session's start drops any older than 30 days, how long
+Claude Code keeps a transcript unless told otherwise.
+
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
 
