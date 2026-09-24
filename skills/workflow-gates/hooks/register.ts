@@ -7,7 +7,8 @@
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over. A press picks its
  * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which the workflows' prose reads as the answer. What the band
+ * next message, which the workflows' prose reads as the answer, or while
+ * Claude works on anything else holds it until Claude finishes. What the band
  * shows is kept across a restart, so a conversation resumed where nothing has
  * happened since shows its gate again.
  *
@@ -23,7 +24,15 @@ import type {
   SessionMessage,
 } from 'claude-code'
 
-import { answerOf, linesOf, type Gate, type Option } from './layout.ts'
+import {
+  IDLE,
+  NO_SENDS,
+  answerOf,
+  linesOf,
+  type Gate,
+  type Option,
+  type Sends,
+} from './layout.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -52,26 +61,28 @@ const STOP_NOTE =
   "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
 
 /**
- * What the band holds of the conversation's gates. A turn's start clears
- * all of it but the gate that turn answers; the conversation's end, all.
+ * What the band holds of the conversation's gates. A turn the person starts
+ * clears all of it but the gate that turn answers; a turn anyone else starts
+ * leaves it as it is; the conversation's end clears all.
  */
 type Band = {
   /** The gate a render armed, waiting on the end of its turn. */
   armed: Gate | null
-  /** The gate on the band, from a turn's end to the next turn's start. */
+  /** The gate on the band, from a turn's end to a turn the person starts. */
   drawn: Gate | null
   /** The answer a press put in the prompt box: a press on its row sends it. */
   picked: string | null
+  /** The answer held to send when Claude finishes, and one a gate dropped. */
+  sends: Sends
   /**
    * Whether the submission that opens the next turn is the person's; a turn
    * no submission opened counts as theirs.
    */
   isOpenedByPerson: boolean
-  /**
-   * The gate on the band when the running turn began, and whether the person
-   * has answered it: they began the turn, or replied while it ran.
-   */
-  answering: { gate: Gate; isPersons: boolean } | null
+  /** Whose the running turn is, the person's or anyone else's; null idle. */
+  running: 'person' | 'other' | null
+  /** The gate on the band when the person's running turn began. */
+  answering: Gate | null
   /** Whether the running turn has called a tool. */
   hasCalledTool: boolean
 }
@@ -80,10 +91,22 @@ const emptyBand = (): Band => ({
   armed: null,
   drawn: null,
   picked: null,
+  sends: NO_SENDS,
   isOpenedByPerson: true,
+  running: null,
   answering: null,
   hasCalledTool: false,
 })
+
+/**
+ * What a held answer comes to as its turn ends: its row, and whether it is
+ * sent now or handed back to the prompt as a pick.
+ */
+type Settled = { option: Option; isToSend: boolean } | null
+
+/** Whether two gates state the same question over the same rows. */
+const isSameGate = (gate: Gate | null, other: Gate | null) =>
+  JSON.stringify(gate) === JSON.stringify(other)
 
 /**
  * The gate a Bash result's stdout states directly above its menu, and that
@@ -174,23 +197,24 @@ function optionIn(gate: Gate, data: unknown): Option | null {
     : null
 }
 
-/** Puts a row's answer in the prompt box; whether the box took it. */
-async function pick($: EngineInterface, answer: string): Promise<boolean> {
-  const { isFilled } = await $.prompt.fill({ text: answer, mode: 'replace' })
+/** Puts `text` in the prompt box in place of what is there; whether it took. */
+async function fill($: EngineInterface, text: string): Promise<boolean> {
+  const { isFilled } = await $.prompt.fill({ text, mode: 'replace' })
 
   return isFilled
 }
 
 /**
- * Sends a row as the next message, the box cleared and the send recorded; a
- * send that fails or is dropped puts the answer back in the box, where the
- * pick says it is, and leaves no send recorded.
+ * Sends a row as the next message, the send recorded; whether it entered. A
+ * send that fails or is dropped leaves no send recorded.
  */
-async function send($: EngineInterface, gate: Gate, option: Option) {
+async function submit(
+  $: EngineInterface,
+  gate: Gate,
+  option: Option,
+): Promise<boolean> {
   const answer = answerOf(option)
   let isSent = false
-
-  await $.prompt.fill({ text: '', mode: 'replace' })
 
   try {
     await $.fs.write(
@@ -203,8 +227,27 @@ async function send($: EngineInterface, gate: Gate, option: Option) {
     isSent = drop === undefined
   } finally {
     if (!isSent) {
-      await $.prompt.fill({ text: answer, mode: 'replace' })
       await $.fs.write(SENT, NOTHING_SENT)
+    }
+  }
+
+  return isSent
+}
+
+/**
+ * Sends the picked row, the box cleared first; a send that fails or is
+ * dropped puts the answer back in the box, where the pick says it is.
+ */
+async function send($: EngineInterface, gate: Gate, option: Option) {
+  let isSent = false
+
+  await fill($, '')
+
+  try {
+    isSent = await submit($, gate, option)
+  } finally {
+    if (!isSent) {
+      await fill($, answerOf(option))
     }
   }
 }
@@ -383,27 +426,59 @@ export const register: Register = on => {
   let seen: Place | null = null
 
   /**
-   * The gate the band shows once the conversation's turn ends: the gate it
-   * rendered, or with none, the one it began over where the person never
-   * answered it. An Esc drops what the turn rendered and takes the answer
-   * back, its gate returning, until the turn calls a tool, which may already
-   * have acted on the answer: a read and a write look alike from here. Past
-   * that, an Esc'd turn that rendered a gate leaves nothing, since the last
-   * the model read is that gate's instruction to stop.
+   * The person takes the turn: the band comes down, keeping the gate their
+   * turn answers. Whether a gate came down.
    */
-  const gateAtTurnEnd = (isInterrupted: boolean): Gate | null => {
-    const { armed, answering, hasCalledTool } = band
-    const unanswered = answering?.isPersons === false ? answering.gate : null
+  const takeDown = (): boolean => {
+    const { drawn } = band
 
-    if (!isInterrupted) {
-      return armed ?? unanswered
+    band = { ...emptyBand(), running: 'person', answering: drawn }
+
+    return drawn !== null
+  }
+
+  /**
+   * Settles the band as the conversation's turn ends. The person's turn
+   * draws the gate it rendered; an Esc drops that and takes the answer back,
+   * its gate returning, until the turn calls a tool, which may already have
+   * acted on the answer: a read and a write look alike from here. Anyone
+   * else's turn leaves the band as it is, an Esc included, unless it drew
+   * another gate, which takes the band and drops a held answer unsent; a held
+   * answer on the gate still there sends now, or after an Esc goes back to
+   * the prompt as a pick.
+   */
+  const endTurn = (isInterrupted: boolean): Settled => {
+    const { running, armed, drawn, answering, hasCalledTool, sends } = band
+
+    band = { ...band, armed: null, running: null, answering: null }
+
+    if (running !== 'other') {
+      band.drawn = isInterrupted ? (hasCalledTool ? null : answering) : armed
+
+      return null
     }
 
-    if (!hasCalledTool) {
-      return answering?.gate ?? null
+    const gate = isInterrupted ? drawn : (armed ?? drawn)
+
+    if (!isSameGate(gate, drawn)) {
+      band = {
+        ...band,
+        drawn: gate,
+        picked: null,
+        sends: { held: null, dropped: sends.held },
+      }
+
+      return null
     }
 
-    return armed === null ? unanswered : null
+    band.sends = { ...sends, held: null }
+
+    const option =
+      drawn === null || sends.held === null
+        ? null
+        : optionIn(drawn, { answer: sends.held })
+
+    return option === null ? null : { option, isToSend: !isInterrupted }
   }
 
   const owing = () => owed
@@ -502,27 +577,48 @@ export const register: Register = on => {
 
   // Drawn at the turn's end, once what the rows choose between is on screen,
   // and kept with where the transcript ends, which a resume must still match.
+  // A held answer is not kept: it waits on a turn no resume brings back. It
+  // sends once the turn is over, and one not sent is put back as a pick.
   on('turn.complete', async ($, e, next) => {
-    if (inConversation(e)) {
-      const gate = gateAtTurnEnd(e.isAborted)
-
-      band.armed = null
-      band.answering = null
-      owed = null
-
-      if (gate !== null) {
-        band.drawn = gate
-        $.ui.invalidate('ui.render')
-      }
-
-      const { drawn } = band
-      const place = await placeOf($)
-
-      await keep($, place, drawn, seen)
-      seen = place
+    if (!inConversation(e)) {
+      return next(e)
     }
 
-    return next(e)
+    const settled = endTurn(e.isAborted)
+    const { drawn } = band
+
+    owed = null
+
+    if (drawn !== null) {
+      $.ui.invalidate('ui.render')
+    }
+
+    const place = await placeOf($)
+
+    await keep($, place, drawn, seen)
+    seen = place
+
+    const answered = await next(e)
+
+    if (settled !== null && drawn !== null) {
+      const answer = answerOf(settled.option)
+      let isSent = false
+
+      isSending = true
+
+      try {
+        isSent = settled.isToSend && (await submit($, drawn, settled.option))
+      } finally {
+        isSending = false
+
+        if (!isSent && (await fill($, answer))) {
+          band.picked = answer
+          $.ui.invalidate('ui.render')
+        }
+      }
+    }
+
+    return answered
   }).catch(($, e, next) => next(e))
 
   // A drawing while a read-back is owed — a reload's first, the first after
@@ -553,8 +649,8 @@ export const register: Register = on => {
             key: ELEMENT,
             module: './board.ts',
             width: columns,
-            height: linesOf(gate, columns).length,
-            props: { gate, picked: band.picked, columns },
+            height: linesOf(gate, columns, IDLE, band.sends).length,
+            props: { gate, picked: band.picked, ...band.sends, columns },
           }),
           beneath,
         ],
@@ -567,7 +663,9 @@ export const register: Register = on => {
   // The board has no `$`: a press posts here, and this picks its row or, on
   // the row already picked, sends it. The turn a send opens takes the gate
   // off the band; a send that fails or is dropped leaves the row there to
-  // press again.
+  // press again. While anyone else's turn runs, the send is held, its answer
+  // out of the prompt box, until that turn ends; a press on the held row
+  // takes it back to a pick, and a press on another row picks that instead.
   on('ui.message', { element: ELEMENT }, async ($, e, next) => {
     const gate = band.drawn
     const option = gate === null || isSending ? null : optionIn(gate, e.data)
@@ -578,7 +676,19 @@ export const register: Register = on => {
 
     const answer = answerOf(option)
 
-    if (answer === band.picked) {
+    if (answer !== band.picked) {
+      if (await fill($, answer)) {
+        band.picked = answer
+        band.sends = { ...band.sends, held: null }
+        $.ui.invalidate('ui.render')
+      }
+    } else if (band.running === 'other') {
+      if (await fill($, '')) {
+        band.picked = null
+        band.sends = { ...band.sends, held: answer }
+        $.ui.invalidate('ui.render')
+      }
+    } else {
       isSending = true
 
       try {
@@ -586,44 +696,46 @@ export const register: Register = on => {
       } finally {
         isSending = false
       }
-    } else if (await pick($, answer)) {
-      band.picked = answer
-      $.ui.invalidate('ui.render')
     }
 
     return next(e)
   }).catch(($, e, next) => next(e))
 
   // A submission made while the session idles opens the next turn; one made
-  // over a running turn joins it, and the person's answers the gate that
-  // turn began over.
+  // over a running turn joins it, and the person's makes anyone else's turn
+  // theirs, which takes the band down.
   on('prompt.submit', ($, e, next) => {
     const isTheirs = isPersons(e.origin, $.plugin.name)
 
     if (e.turnId === undefined) {
       band.isOpenedByPerson = isTheirs
-    } else if (isTheirs && band.answering !== null) {
-      band.answering = { ...band.answering, isPersons: true }
+    } else if (isTheirs && band.running === 'other') {
+      if (takeDown()) {
+        $.ui.invalidate('ui.render')
+      }
     }
 
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // A gate lives from its render to the turn that answers it, which keeps it
-  // to put back; a gate the conversation re-presents is armed again by its
-  // own render. The band follows the conversation the turn runs in, owing
-  // no read-back.
+  // A gate lives from its render to the turn the person starts to answer it,
+  // which keeps it to put back; a gate the conversation re-presents is armed
+  // again by its own render. Anyone else's turn — an agent's report, a
+  // notification, a schedule — leaves the band live, its rows still to
+  // press. The band follows the conversation the turn runs in, owing no
+  // read-back.
   on('turn.start', ($, e, next) => {
-    const { drawn, isOpenedByPerson } = band
-
     owed = null
-    band = {
-      ...emptyBand(),
-      answering:
-        drawn === null ? null : { gate: drawn, isPersons: isOpenedByPerson },
-    }
 
-    if (drawn !== null) {
+    if (!band.isOpenedByPerson) {
+      band = {
+        ...band,
+        armed: null,
+        isOpenedByPerson: true,
+        running: 'other',
+        hasCalledTool: false,
+      }
+    } else if (takeDown()) {
       $.ui.invalidate('ui.render')
     }
 

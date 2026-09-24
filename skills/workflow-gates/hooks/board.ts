@@ -1,8 +1,9 @@
 /**
  * The gate's surface module: its own keys and pointer, no `$`. A press posts
  * the row back to the hooks module, which picks it into the prompt or, on the
- * row already picked, sends it; a click on a typed row only tells the person
- * how to answer it.
+ * row already picked, sends it — holding it while Claude works, until a press
+ * takes it back; a click on a typed row only tells the person how to answer
+ * it.
  *
  * Colours are theme keys, never values, so the band resolves against the
  * person's theme — the ANSI themes included, where the palette is the
@@ -22,9 +23,10 @@ import {
   type Line,
   type RowLine,
   type Run,
+  type Sends,
 } from './layout.ts'
 
-type Props = { gate: Gate; picked: string | null; columns: number }
+type Props = Sends & { gate: Gate; picked: string | null; columns: number }
 
 /**
  * The cursor, the typed row whose hint the footer shows, and the rows they
@@ -55,16 +57,32 @@ let shown: { gate: Gate; lines: readonly Line[] } = {
   lines: [],
 }
 
-/** The footer follows the last click: a typed row's hint, else the pick. */
-const footerOf = (hint: string | null, picked: string | null): Footer =>
-  hint !== null
-    ? { kind: 'typed', label: hint }
-    : picked !== null
-      ? { kind: 'picked', answer: picked }
-      : IDLE
+/**
+ * The footer follows the last click: a typed row's hint, else the answer
+ * held or picked, else the one a new gate kept from sending.
+ */
+function footerOf(
+  hint: string | null,
+  picked: string | null,
+  { held, dropped }: Sends,
+): Footer {
+  if (hint !== null) {
+    return { kind: 'typed', label: hint }
+  }
+
+  if (held !== null) {
+    return { kind: 'queued', answer: held }
+  }
+
+  if (picked !== null) {
+    return { kind: 'picked', answer: picked }
+  }
+
+  return dropped === null ? IDLE : { kind: 'dropped', answer: dropped }
+}
 
 export default function GateBoard(
-  { gate, picked, columns }: Props,
+  { gate, picked, held, dropped, columns }: Props,
   surface: ClientSurface<State>,
 ): RenderElement {
   const { Box, Text } = surface.elements
@@ -83,9 +101,11 @@ export default function GateBoard(
     surface.setState(state)
   }
 
-  const lines = linesOf(gate, columns, footerOf(state.hint, picked))
+  const sends = { held, dropped }
+  const footer = footerOf(state.hint, picked, sends)
+  const lines = linesOf(gate, columns, footer, sends)
   const pickedRow = gate.options.findIndex(
-    option => answerOf(option) === picked,
+    option => answerOf(option) === (held ?? picked),
   )
 
   shown = { gate, lines }
