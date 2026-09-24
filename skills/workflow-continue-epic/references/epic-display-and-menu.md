@@ -329,7 +329,7 @@ Render the postponable-topics list and pick menu — one row per Discovery unit,
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs postpone-menu {work_unit}
 ```
 
-Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key` or `word`.
 
 **STOP.** Wait for user response.
 
@@ -361,7 +361,7 @@ The postpone's return leg: this menu let the topic go, so this menu takes it bac
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs pull-forward-menu {work_unit}
 ```
 
-Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key` or `word`.
 
 **STOP.** Wait for user response.
 
