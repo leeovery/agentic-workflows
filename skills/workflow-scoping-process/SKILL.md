@@ -59,7 +59,7 @@ The user says to put an idea aside — "roadmap it", "inbox it", "backlog that",
 
 The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. Load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
 
-→ On return, resume the interrupted flow, re-presenting any gate that was pending — never fall through to Step 0.
+→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.
 
 ---
 
