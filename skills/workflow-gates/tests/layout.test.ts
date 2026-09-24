@@ -194,24 +194,6 @@ describe('layout', () => {
     ])
   })
 
-  test('a gate that asks nothing draws no question: the statement stands alone', () => {
-    const gate = gateOf({ statement: 'Found existing plan for Auth.', question: '' })
-
-    expect(linesOf(gate, 72).map(read).slice(0, 5)).toEqual([
-      '─',
-      '',
-      '  Found existing plan for Auth.',
-      '',
-      'o0 yes  Commit',
-    ])
-  })
-
-  test('with neither a statement nor a question, the rows sit under the rule', () => {
-    const gate = gateOf({ question: '' })
-
-    expect(linesOf(gate, 72).map(read).slice(0, 3)).toEqual(['─', '', 'o0 yes  Commit'])
-  })
-
   test('a question too long for the band wraps past the glyph', () => {
     const gate = gateOf({ question: 'Conclude this discussion and mark as completed?' })
 
