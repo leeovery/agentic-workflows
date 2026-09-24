@@ -1110,10 +1110,10 @@ describe('surfaces primitives', () => {
   });
 
   it('an escaped marker is the character it escapes — it opens no span for a break to close', () => {
-    const out = menuFrame(['**`1`** → Fix \\*auth tokens across every service\\* now'], { width: 40 });
+    const out = menuFrame([...ASK, '**`1`** → Fix \\*auth tokens across every service\\* now'], { width: 40 });
     const lines = out.split('\n');
-    assert.strictEqual(lines[1], '**`1`** → Fix \\*auth tokens across every');
-    assert.strictEqual(lines[2], `${NB(4)}service\\* now`);
+    assert.strictEqual(lines[3], '**`1`** → Fix \\*auth tokens across every');
+    assert.strictEqual(lines[4], `${NB(4)}service\\* now`);
   });
 
   it('keeps the line whole when the label budget falls below the floor', () => {
