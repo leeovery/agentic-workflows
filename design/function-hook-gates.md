@@ -167,22 +167,29 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     plain string (the head alone) or `{ head, tail, cue, holder,
     recommended }`, draws the markdown from the parts (` — *tail*`,
     ` · cue` plain, the strike through the cue when held, ` · holder`
-    after it, ` (recommended)`), and the payload records the parts as
-    given — nothing is split back out of a label string. A string label
-    carrying that markup inline is refused. `struck` is `holder !== null`;
-    a bare yes/no row states no head.
+    after it, ` (recommended)`), and the payload records each part as
+    text, its markup removed and its escapes honoured — nothing is split
+    back out of a label string. A string label carrying that markup inline
+    is refused. `struck` is `holder !== null`; a bare yes/no row states no
+    head.
   - `menuFrame` records the glyphed question and every other line of
     prose it draws — above the rows as `statement`, directly beneath a row
     as that row's `detail` (the engine marks its own wraps so they join
     back) — as text with its markup removed and its escapes honoured.
   - A menu that recorded nothing states no payload. Taken once per render;
     row builders are composed per render, never at module load.
-  - **Nothing a menu draws is missing from its payload**: every render the
-    render suites make is re-rendered announced and audited, and the
-    pipeline simulation audits every navigation gateway's formatted view
-    after every mutation (`tests/scripts/gate-audit.cjs`: every MENU line
-    maps to a row part, a detail, the question or the statement; `struck`
-    matches the strike drawn).
+  - **Nothing a menu draws is missing from its payload**
+    (`tests/scripts/gate-audit.cjs`): every MENU line maps to a row part, a
+    detail, the question or the statement, compared as text against the
+    drawn row's plain reading — strike and italics checked by position, a
+    head's own emphasis allowed — so a part still carrying markup fails.
+    It runs over every render the render suites make (the task surfaces'
+    included), re-rendered announced; over every navigation gateway's view
+    the pipeline simulation formats, after every mutation; and over every
+    verb of every gateway `runGateway` table, spawned once by the payload
+    suite over worlds carrying every row shape, the verb list checked
+    against the scripts. Running the gateways in-process for every
+    simulation step is idea #57.
 - **R4 — the mod cuts the MENU and leaves the instruction.** The GATE
   block is the mod's input alone and never reaches the model: the mod
   removes it from every Bash result that carries one. Where it arms the
@@ -202,27 +209,48 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   session whose only screen is the terminal. A subagent's call, a gate
   with nothing to press, and a session with any other screen attached
   (Remote Control on a phone or the desktop app) keep the text menu, so
-  every screen sees it — the band is the terminal's alone.
-- **R6 — a gate is armed by its render and drawn at the turn's end.**
+  every screen sees it — the band is the terminal's alone. A screen that
+  attaches after a menu was cut for the terminal does not get that menu
+  (idea #53 would close it).
+- **R6 — a gate is armed by its render, drawn at the turn's end, and kept
+  until the person answers it.**
   - `tool.call` arms; the main conversation's `turn.complete` draws, so a
     display the model is still streaming always lands first.
-  - `turn.start` clears the band, the pick and the footer, and remembers
-    the gate that was on the band as the one being answered.
-  - An **interrupted** turn (Esc) discards whatever it armed. Until the
-    turn has called a tool it brings back the gate the person answered to
-    start it — Esc takes back a mis-press. Once any tool has run the
-    answer may already be acted on (a read and a write look alike to the
-    mod), so the band stays empty and the person carries on by talking to
-    Claude. Esc during a render leaves nothing half-drawn.
-  - A turn **not opened by the person** — a background agent's
-    notification, a schedule, a peer — that ends without arming a gate
-    brings back the gate the person had not yet answered. `composer`,
-    `bridge`, this plugin's own submission and a missing origin count as
-    the person.
-  - A turn the person opened that ends without a gate brings back nothing.
-    The memory is dropped at every turn's end.
-  - `session.end` — a `/clear`, a resume — empties the band: no gate of the
-    old conversation answers into the new one.
+  - A turn the person starts — an answer, a question, a press sent — clears
+    the band, the pick and the footer as it begins, and remembers the gate
+    as the one being answered. A reply the person types into a running
+    turn answers it too. `composer`, `bridge`, this plugin's own submission
+    and a missing origin count as the person.
+  - A turn the person did not start — a background agent's report, a
+    notification, a schedule, a peer — leaves the band as it is, live. A
+    send pressed while Claude works is held by the mod, the row reading
+    ` · queued` and the footer "**{answer}** sends when Claude finishes ·
+    click it again to take it back"; at the turn's end it sends if the band
+    still shows the same gate, and is dropped otherwise, the new gate's
+    footer saying "your **{answer}** wasn't sent — the menu changed". A
+    turn that draws a new gate replaces the band's.
+  - An **interrupted** turn (Esc) the person started discards whatever it
+    armed. Until it has called a tool it brings back the gate the person
+    answered to start it — Esc takes back a mis-press; once any tool has
+    run (a read and a write look alike to the mod), or it has armed a gate
+    of its own, the band stays empty and the person carries on by talking
+    to Claude. Esc during a render leaves nothing half-drawn; Esc during a
+    background turn leaves the band alone.
+  - A turn the person started that ends without a gate brings back
+    nothing: the prose presents the gate again when the person is ready
+    (R19).
+  - **The band survives the process.** At every turn's end, and as the
+    conversation ends, the mod saves what the band shows — the gate, or
+    nothing — in its store, keyed by the conversation's first tool-use id
+    and stamped with where the transcript ends (its last message and newest
+    tool-use id). On a fresh load (`claude --resume`, a restart, an account
+    switch), a reload's first drawing, or after an in-process end — and
+    only in a session that announced (R2) — it reads the record back: a
+    transcript that still ends at the stamp redraws the gate exactly as it
+    was, one that moved on drops it. Records past Claude Code's 30-day
+    transcript retention go.
+  - `session.end` — a `/clear`, a resume — empties the band first: no gate
+    of the old conversation answers into the new one.
 - **R7 — the band.** Top to bottom: a full-width rule (`promptBorder`); a
   blank row; the statement, if any, in normal weight, aligned with the
   question's text; a blank row; the `◆` question in bold (glyph in
@@ -291,35 +319,45 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   as a verbatim payload so format names never enter engine code,
   findings-signoff, complexity, first-phase, plan-context) are engine
   surfaces, and the conventions lint (check 3) refuses a menu anywhere in
-  skill prose. The hand-drawn displays beside them in the files those
-  moves touched are engine-drawn too — the specification entry's
-  confirmation, the empty dismissed list, the cross-cutting references,
-  the missing-dependencies tree — as CONVENTIONS' "touching a file adopts
-  its displays" owes. Every menu
-  carries a glyphed question with any statement above it as context, and
-  `menuFrame` refuses a menu without a question above its rows or without
-  a pressable row. The pickers — archived inbox, working-set add/drop,
-  manage list, completed, experiment pick, baseline doc pick — are
-  selection menus with a real `b/back` row. So the band has one shape:
-  statement, question, rows.
-- **R12 — tests.** Engine: `test-engine-gate-payload.cjs`, the strict
-  audit over every render the render suites make and every gateway view
-  the simulation formats, all under `npm test`; guards that no skill's
-  head insert and no context-refresh recovery fetches a gate. Mods: `npm
-  run test:mod` (run by hand — the kit ships in the binary), every
-  lifetime, pick/send and drawing rule mutation-checked; `npm run
+  skill prose. The hand-drawn displays these stacks edit are
+  engine-drawn too — the specification entry's confirmation, the empty
+  dismissed list, the cross-cutting references, the missing-dependencies
+  tree. A file these stacks only swept (a wording normalization, a step
+  renumbering) keeps its other displays: CONVENTIONS' "touching a file
+  adopts its displays" is loosened for this programme alone, and idea #54
+  migrates the rest in one focused pass. Every menu carries a glyphed
+  question with any statement above it as context, and `menuFrame` refuses
+  a menu without a question above its rows or without a single key to
+  press (a range row is typed, never pressed). The pickers — archived
+  inbox, working-set add/drop, manage list, completed, experiment pick,
+  baseline doc pick — are selection menus with a real `b/back` row. So
+  the band has one shape: statement, question, rows.
+- **R12 — tests.** Engine: `test-engine-gate-payload.cjs` and the strict
+  audit where R3 says, all under `npm test`; guards that no skill's head
+  insert and no context-refresh recovery fetches a gate (over a world that
+  owes gates), and that every ACTIONS table resolves every row its menu
+  offers by key and word; conventions lint checks 3 (no menu in prose), 21
+  (every section a sentence emits defers to its marker, in one phrasing)
+  and 22 (no bare `--horizon`/`--summary` value). Mods: `npm run test:mod`
+  (run by hand — the kit ships in the binary), every lifetime, resume,
+  pick/send, queued-send and drawing rule mutation-checked; `npm run
   typecheck:mod`. CLAUDE.md's test gates name both as owed for a change
-  under `skills/workflow-gates*/`.
+  under `skills/workflow-gates*/`. What the kit cannot model — a real
+  resume, a reload, Remote Control, the store across processes — is a lab
+  pass before sign-off.
 - **R13 — non-goals.** A hook that stops the model when it does not stop
   (idea #48); the mod owning the gate loop; DISPLAY sections as data; the
   engine as a registered tool (idea #50). The position line (#47) and
   compaction recovery (#49) ride this plugin later, as does provisioning
   the harness's own display knobs from the mod (another session's
-  research).
+  research). After release: per-screen drawing so a Remote Control screen
+  keeps the text menu (#53), the remaining hand-drawn displays (#54), a
+  native-looking band (#55), commentary worked into engine-rendered gates
+  (#56), and one render door for the gateways' views (#57).
 - **R14 — removable by construction.** The collector is referenced by
   nothing else; the mods are two directories; the opt-in is one boolean,
   one verb and one env line. Delete them and the text menus stand as the
-  engine draws them — R11 and R16–R18 are the workflows' own rules and
+  engine draws them — R11 and R16–R19 are the workflows' own rules and
   stand without the mods.
 - **R15 — the sent row reads as the answer.** `workflow-gates-rows`
   redraws the transcript row of an answer the band sent as `{question} →
@@ -350,15 +388,35 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   from what the model reads, so an answer — a word, or a key with no word
   — resolves from the same response's DATA or from the prose, never from
   the menu's own text: `ACTIONS` tables carry the word a press sends, a
-  numbered pick states its table (the baseline doc pick's `DOCS`), and a
-  numbering that follows a payload or an earlier call's order says so.
-- **R18 — call sites defer to the marker.** Every section marker carries
-  its own handling instruction, and every call site emits TITLE, DISPLAY
-  and MENU sections "per its marker", never restating the form
-  (conventions lint check 21); the framework's rule is that a gate is
-  emitted as its section's marker directs. A consumer that rewrites a
-  marker (R4) then meets one instruction, not two. The prose never names
-  the mod.
+  numbered pick states its table (the baseline doc pick's `DOCS`, the
+  inbox tables carrying each item's title), a numbering that follows a
+  payload or an earlier call's list says so, and a row whose branch needs
+  the person's own words asks for them when a press brings none.
+- **R18 — call sites defer to the marker.** Engine output arrives in
+  sections, each opened by a section marker, `=== NAME (instruction) ===`,
+  whose instruction says how the section is emitted — a code block for
+  trees and displays, markdown for titles and menus, or not at all where a
+  surface draws the menu. `instructions.md` defines it once for every
+  session. Every sentence that emits a TITLE, DISPLAY or MENU says so in
+  one phrasing, "…verbatim per its marker", never restating the form
+  (conventions lint check 21, both directions); the framework lines that
+  once said content is emitted byte-for-byte defer to the marker too.
+  Prose-authored blocks keep "Output the next fenced block as …", the one
+  other mechanism. A consumer that rewrites a marker (R4) then meets one
+  instruction, not two. The prose never names the mod.
+- **R19 — a gate waiting on the person.** One framework rule in
+  `instructions.md`, and every gate's own Ask/Comment branches defer to
+  it: a reply that picks one option unambiguously is the answer; a
+  question sets the gate aside — answer it, talk it through, ask in
+  conversation whether the person is ready, then present the gate again,
+  fetched fresh; a reply that changes what happens next is confirmed
+  before anything acts on it, the gate's own branches owning how; a bare
+  go-ahead is the answer only where the gate has one way forward; never
+  move past a gate without an answer. Background work arriving while a
+  gate waits is handled and named in a line, then the waiting gate is
+  presented again, fetched fresh — never typed from memory — and a gate
+  background work surfaces meanwhile is held until the waiting one is
+  answered: one gate at a time, which is also all the band can show.
 
 ## The stack
 
@@ -371,25 +429,47 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - **Gate-surface stack** (#1291): #1289 the payload (rows from parts,
   strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows mod.
   When it is rebased onto main after the migration stack lands, these need
-  a hand beyond the recorded conflict resolutions:
-  - the migration's `spec-confirm-gate` calls `yesNo()` (the payload made
-    shared row sets per-render functions);
-  - the duplicate `GLYPHED_LINE` / `glyphed()` in `surfaces.cjs` goes;
-  - the payload tests re-pin to the menus' new questions;
-  - the collector's and the audit's trailing-prompt fallback
-    (`closesOnProse`, `askIndex`) is dead — `menu()` has no trailing prompt
-    — and goes;
-  - every label the migration stack builds passes through the parts
-    builders: a string label carrying an inline tail, cue, holder or
-    ` (recommended)` is refused and converts to parts;
-  - `menuBlock('')` returns `''` on both sides — one implementation stays;
-  - every menu asks and has a row to press, so the mod's question-less and
-    row-less paths go (`isForBand`'s no-row check and its archived-inbox
-    note, the question-less band in `layout.ts`, the rows mod's
-    question-less line, and their tests), and the audit asserts both.
+  a hand beyond the recorded conflict resolutions, by layer:
+  - **#1289** —
+    - the migration's `spec-confirm-gate` calls `yesNo()` (the payload made
+      shared row sets per-render functions);
+    - the duplicate `GLYPHED_LINE` / `glyphed()` in `surfaces.cjs` goes;
+    - `menuFrame` takes the migration's glyph rule, records the framed
+      lines (`recordFrame`) before `alignOptions`, then asks
+      `asksOverRows`;
+    - `menuBlock('')` returns `''` on both sides: one implementation — an
+      empty menu is `''`, anything else the GATE block and the marker;
+    - every label the migration builds passes through the parts builders
+      — `experiment.cjs`'s record pick, `start.cjs`'s `itemLabel`
+      (archived, working set), the manage and completed lists — and text
+      the engine did not author goes in as `{ head }` alone: the roadmap's
+      `w/waiting` horizon label and the dependency pick's description;
+    - the payload suite re-pins: five surfaces now ask (the plan and
+      review resume gates, the in-flight agents gate, the summary
+      backfill gate, the specification entry's view), five tests lose
+      their premise (the menu prompt four times, the row-less picker), four
+      synthetic fixtures gain a `?` question; its shape check gains an
+      escaped title once `itemLabel` rows exist, and its gateway verb
+      table gains the migration's verbs (`select` among them);
+    - the collector's and the audit's trailing-prompt fallback
+      (`closesOnProse`, `askIndex`) is dead — `menu()` has no trailing
+      prompt — and goes;
+    - the pipeline simulation audits `gateway select` as well as
+      `format`, which carries no MENU once the migration lands;
+    - `commands.md`'s render introduction and baseline doc pick hunks
+      combine both sides.
+  - **#1292** — `gate-surface-gate` joins the render list the migration
+    rewrote.
+  - **#1290 / #1294** — every menu asks and has a row to press, so the
+    mod's question-less and row-less paths go (`isForBand`'s no-row check
+    and its archived-inbox note, the question-less band in `layout.ts`,
+    the rows mod's question-less line, and their tests), and the audit
+    asserts both.
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
-  returning to its list, a settings menu, per-screen menu drawing.
+  returning to its list, a settings menu, per-screen menu drawing, the
+  remaining hand-drawn displays, a native-looking band, commentary worked
+  into gates, one render door (#53–#57).
 
 ## Findings log — API facts a first reading missed
 
@@ -463,6 +543,24 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     off where the project said no; the mod reads the answer itself (R2),
     and a recorded no has no reason to remove a flag it cannot prove it
     wrote (R9).
+38. The loader refuses a second hook on an event another hook of the same
+    mod already takes, unless each names a matcher: one hook per event,
+    branching inside it.
+39. `$.session.messages()` reads the transcript — each message's role,
+    text and tool uses — so the mod can tell whether anything happened
+    since it last drew (R6's resume stamp).
+40. `$.prompt.submit` made while Claude works waits for the turn to end
+    and then enters, whatever the band shows by then; a send the mod does
+    not hold itself can answer a gate that has already gone (R6's held
+    send).
+41. A reply the person types into a running turn carries that turn's
+    `turnId` and opens no turn of its own; the mod counts it as the
+    person answering (R6).
+42. A background turn that cleared the band and drew nothing left a
+    waiting gate on no screen, and the model re-presented it from memory
+    — a different gate under the same name. Hence the band staying
+    through background turns (R6) and a waiting gate fetched fresh
+    (R19).
 
 ## Log
 
@@ -488,3 +586,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   answer governing the mod and a recorded no leaving the flag alone (R2,
   R9); the hand-drawn displays beside the migrated menus moved to the
   engine (R11). Findings 31–37.
+- 2026-09-24 — the second review pass: the band survives a resume and
+  stays through background work, holding a send pressed while Claude
+  works (R6); a gate waiting on the person has one rule (R19); the section
+  marker defined once and every call site deferring to it in one
+  phrasing (R18); payload parts recorded as text and audited in every
+  suite that renders a menu (R3, R12); displays migrate only where these
+  stacks edit them (R11). Findings 38–42.
