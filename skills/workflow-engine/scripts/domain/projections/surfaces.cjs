@@ -352,33 +352,22 @@ function recordFrame(lines) {
   const prose = [];
   /** @type {GateRow|null} */
   let above = null;
-  let closesOnProse = false;
   for (const line of lines) {
     if (line === '') { above = null; continue; }
     const row = rows.get(line);
-    closesOnProse = false;
     if (row) above = row;
     else if (above !== null && !GLYPHED_LINE.test(line)) describe(above, line, continuations.has(line));
-    else { prose.push(line); closesOnProse = true; }
+    else prose.push(line);
   }
-  const ask = askIndex(prose, closesOnProse);
+  const ask = prose.findIndex((line) => GLYPHED_LINE.test(line));
   collected.prose = {
-    question: ask === -1 ? '' : stripMarkup(GLYPHED_LINE.exec(prose[ask])?.[1] ?? prose[ask]),
+    question: ask === -1 ? '' : stripMarkup(GLYPHED_LINE.exec(prose[ask])?.[1] ?? ''),
     statement: prose
       .filter((_, i) => i !== ask)
       .flatMap((line) => line.split('\n').map(stripMarkup))
       .filter(Boolean)
       .join('\n'),
   };
-}
-
-// A frame asks on its glyphed line. One without asks on its trailing line
-// when that line is prose — the prompt a label-less menu closes on.
-/** @param {string[]} prose @param {boolean} closesOnProse @returns {number} */
-function askIndex(prose, closesOnProse) {
-  const glyphLine = prose.findIndex((line) => GLYPHED_LINE.test(line));
-  if (glyphLine !== -1) return glyphLine;
-  return closesOnProse ? prose.length - 1 : -1;
 }
 
 /**
@@ -496,8 +485,6 @@ function menuFrame(lines, { width, skip = 0 } = {}) {
   return [DOTS, ...body].join('\n');
 }
 
-const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
-
 // A row's code-span head — cmdOption, bareOption and rangeOption write it.
 // The glyphed question shares the head's markup, so the glyph is what tells
 // them apart.
@@ -550,11 +537,6 @@ const LABEL_MAX = 60;
 /** @param {string} label */
 function isGlyphable(label) {
   return Boolean(label) && label.length <= LABEL_MAX && !/[\n*`]/.test(label);
-}
-
-/** @param {string} text */
-function glyphed(text) {
-  return `**\`${MENU_GLYPH} ${text}\`**`;
 }
 
 /**
