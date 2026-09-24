@@ -222,10 +222,11 @@ function checkNoProseMenus(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 4 — Banned STOP variants must not appear.
+// Check 4 — Banned STOP variants must not appear, a bare "STOP for the …"
+// folded into a sentence included.
 // ---------------------------------------------------------------------------
 
-const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.'];
+const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.', 'STOP for the'];
 
 function checkBannedStop(files) {
   const out = [];
