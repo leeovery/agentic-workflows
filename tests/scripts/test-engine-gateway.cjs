@@ -273,15 +273,77 @@ describe('a context-refresh recovery fetches no gate', () => {
 // offers its rows, and every row it offers must name an entry by both.
 describe('an ACTIONS table resolves every row its MENU offers', () => {
   const SKILLS = path.join(__dirname, '../../skills');
+
+  /** @param {string} dir */
+  function projectManifest(dir) {
+    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+      baseline: { status: 'in-progress', areas: {} },
+      roadmap: { horizons: ['mvp'], items: { loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' } } },
+    }));
+    createManifest(dir, 'done-feature', { status: 'completed', phases: { discussion: { items: { 'done-feature': { status: 'completed' } } } } });
+    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
+  }
+
+  /** @param {string} unit @param {string} type @param {string} earlier @param {string} next */
+  function linearUnit(dir, unit, type, earlier, next) {
+    createManifest(dir, unit, {
+      work_type: type,
+      phases: { [earlier]: { items: { [unit]: { status: 'completed' } } }, [next]: { items: { [unit]: { status: 'in-progress' } } } },
+    });
+  }
+
+  // Every unit mid-flight with an earlier phase to revisit; the epic holds a
+  // cancelled topic, a plan blocked on a dependency, a concluded
+  // specification and a proposed grouping, so each of its sub-views offers
+  // rows.
+  const WORLDS = {
+    live: (/** @type {string} */ dir) => {
+      projectManifest(dir);
+      createManifest(dir, 'live-epic', {
+        work_type: 'epic',
+        phases: {
+          discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+          research: { items: { kitchen: { status: 'completed' } } },
+          discussion: { items: {
+            auth: { status: 'in-progress' },
+            billing: { status: 'completed' },
+            payments: { status: 'completed' },
+            gone: { status: 'cancelled', previous_status: 'in-progress' },
+          } },
+          specification: { items: {
+            billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } },
+            payments: { status: 'proposed', sources: { payments: { status: 'pending' } } },
+          } },
+          planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
+        },
+      });
+      createFile(dir, '.workflows/live-epic/specification/billing/specification.md', '# Billing\n');
+      linearUnit(dir, 'live-feature', 'feature', 'research', 'discussion');
+      linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
+      linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');
+      linearUnit(dir, 'live-policy', 'cross-cutting', 'research', 'discussion');
+    },
+    // No active work: the start view's empty state, every conditional row on.
+    quiet: projectManifest,
+  };
+
+  /** @type {[string, string[], keyof typeof WORLDS][]} */
   const CALLS = [
-    ['workflow-start', ['view']],
-    ['workflow-start', ['manage', 'live-feature']],
-    ['workflow-continue-epic', ['view', 'live-epic']],
-    ['workflow-continue-epic', ['completed-menu', 'live-epic']],
-    ['workflow-continue-epic', ['cancel-menu', 'live-epic']],
-    ['workflow-continue-feature', ['view', 'live-feature']],
-    ['workflow-specification-entry', ['completed-menu', 'live-epic']],
-    ['workflow-roadmap', ['view']],
+    ['workflow-start', ['view'], 'live'],
+    ['workflow-start', ['view'], 'quiet'],
+    ['workflow-start', ['manage', 'live-feature'], 'live'],
+    ['workflow-continue-epic', ['view', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['completed-menu', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['cancel-menu', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['unblock-menu', 'live-epic'], 'live'],
+    ['workflow-continue-feature', ['view', 'live-feature'], 'live'],
+    ['workflow-continue-bugfix', ['view', 'live-bugfix'], 'live'],
+    ['workflow-continue-quickfix', ['view', 'live-quickfix'], 'live'],
+    ['workflow-continue-cross-cutting', ['view', 'live-policy'], 'live'],
+    ['workflow-specification-entry', ['view', 'live-epic'], 'live'],
+    ['workflow-specification-entry', ['completed-menu', 'live-epic'], 'live'],
+    ['workflow-roadmap', ['view'], 'live'],
   ];
 
   /** @param {string} out @param {string} marker @returns {string} */
@@ -294,34 +356,12 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
   }
 
   let dir;
-  beforeEach(() => {
-    dir = setupFixture();
-    createFile(dir, '.workflows/manifest.json', JSON.stringify({
-      baseline: { status: 'in-progress', areas: {} },
-      roadmap: { horizons: ['mvp'], items: { loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' } } },
-    }));
-    createManifest(dir, 'live-epic', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { kitchen: { status: 'completed' } } },
-        discussion: { items: { auth: { status: 'in-progress' }, billing: { status: 'completed' } } },
-        specification: { items: { billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } } } },
-      },
-    });
-    createFile(dir, '.workflows/live-epic/specification/billing/specification.md', '# Billing\n');
-    createManifest(dir, 'live-feature', {
-      phases: {
-        research: { items: { 'live-feature': { status: 'completed' } } },
-        discussion: { items: { 'live-feature': { status: 'in-progress' } } },
-      },
-    });
-    createManifest(dir, 'done-feature', { status: 'completed', phases: { discussion: { items: { 'done-feature': { status: 'completed' } } } } });
-    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
-  });
+  beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  for (const [skill, argv] of CALLS) {
-    it(`${skill} ${argv.join(' ')}: every row resolves by its key and its word`, () => {
+  for (const [skill, argv, world] of CALLS) {
+    it(`${skill} ${argv.join(' ')} over the ${world} world: every row resolves by its key and its word`, () => {
+      WORLDS[world](dir);
       const res = spawnSync('node', [path.join(SKILLS, skill, 'scripts/gateway.cjs'), ...argv], { cwd: dir, encoding: 'utf8' });
       assert.strictEqual(res.status, 0, res.stderr);
       const heads = [...sectionOf(res.stdout, 'MENU').matchAll(/^\*\*`(?!◆ )([^`]+)`\*\*/gm)].map((m) => m[1]);
