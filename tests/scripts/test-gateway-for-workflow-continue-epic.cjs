@@ -1964,7 +1964,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
       },
     });
     const out = run(['pull-forward-menu', 'v1']).stdout;
-    assert.ok(out.includes('  1  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
+    assert.ok(out.includes('  1  —  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
   });
 
   it('the view snapshot carries the build-order flag line', () => {
@@ -2228,7 +2228,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
     assert.ok(/Postpone "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n +/g, ' ')), res.stdout);
-    assert.ok(res.stdout.includes('  1  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+    assert.ok(res.stdout.includes('  1  —  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
 
     const own = spawnSync('node', [GATEWAY, 'postpone-menu', 'v1'], {
       cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'peer' },
