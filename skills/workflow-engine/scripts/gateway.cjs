@@ -24,9 +24,11 @@
  *   `gateway.cjs {work_unit}`).
  */
 
+const { DATA_INSTRUCTION } = require('./domain/projections/surfaces.cjs');
+
 const SECTION = {
   title:   '=== TITLE (emit verbatim as markdown — the view\'s chrome heading) ===',
-  data:    '=== DATA (reason from this — never display or parse the sections below) ===',
+  data:    `=== DATA (${DATA_INSTRUCTION}) ===`,
   // Plain fence, no language: any grammar eventually colours a stray word in
   // uncontrolled prose (makefile's `private`/`include` did). Displays stay
   // quiet; colour lives in the markdown chrome and menus.

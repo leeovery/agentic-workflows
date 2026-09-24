@@ -14,6 +14,7 @@ const {
 } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
 const lib = require('../../skills/workflow-engine/scripts/lib.cjs');
+const { dataSection } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 // Capture stdout writes around a runGateway call.
 function captureRun(handlers, argv) {
@@ -97,6 +98,10 @@ describe('gateway: output sections', () => {
 
   it('dataBlock passes strings through', () => {
     assert.strictEqual(dataBlock('raw'), SECTION.data + '\nraw\n');
+  });
+
+  it('dataBlock opens on the same DATA marker a render surface draws', () => {
+    assert.strictEqual(dataBlock('raw'), dataSection(['raw']));
   });
 
   it('displayBlock and menuBlock demarcate and trim trailing newlines', () => {
