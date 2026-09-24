@@ -4,9 +4,9 @@
 
 ---
 
-Validate the selected work unit against the discovery output.
+Validate the selected work unit against the discovery index. Read the index from the `select` response when the user picked at Step 3, from the Step 1 dump when the work unit arrived as an argument.
 
-#### If `work_unit` not found in the `=== BUGFIXES (N) ===` section
+#### If `work_unit` not found in that index's `=== BUGFIXES (N) ===` section
 
 Fetch the terminal display — the `view` snapshot for an unknown name carries it:
 
