@@ -175,7 +175,11 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
 // the flow resumes at is fetched by the step that shows it, once the position
 // is confirmed. Every command a recovery names — a full `node .claude/skills/…`
 // call, or an `engine render` shorthand — is run over a world holding each
-// phase's item at the placeholder address.
+// phase's item at the placeholder address, in the states a gate would be owed
+// over: an undecided subtopic beside a decided one (the defer gate), threads
+// on the research register, several live experiments (the record pick),
+// agents in flight, a baseline mid-assessment, and a roadmap with waiting
+// items.
 describe('a context-refresh recovery fetches no gate', () => {
   const SKILLS = path.join(__dirname, '../../skills');
   const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
@@ -189,26 +193,63 @@ describe('a context-refresh recovery fetches no gate', () => {
     return [...section.matchAll(COMMAND)].map((m) => ({ skill, command: m[0].trim() }));
   });
 
+  const ENGINE = path.join(SKILLS, 'workflow-engine/scripts/engine.cjs');
+
   let dir;
   beforeEach(() => {
     dir = setupFixture();
-    createFile(dir, '.workflows/manifest.json', JSON.stringify({ baseline: { status: 'in-progress', areas: {} } }));
+    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+      baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } },
+      roadmap: {
+        horizons: ['mvp', 'v1'],
+        items: {
+          menus: { horizon: 'mvp', summary: 'operators maintain', origin: 'harvest' },
+          loyalty: { horizon: 'v1', summary: 'rewards', origin: 'park:wu' },
+        },
+      },
+    }));
     createManifest(dir, 'wu', {
       work_type: 'epic',
       phases: {
-        research: { items: { t: { status: 'in-progress' } } },
-        experiment: { items: { t: { status: 'in-progress', experiments: {} } } },
-        discussion: { items: { t: { status: 'in-progress' } } },
+        research: { items: { t: { status: 'in-progress', threads: {
+          'cart-persistence': { question: 'Does the cart survive a session?', status: 'open', origin: 'seed', parent: null },
+        } } } },
+        experiment: { items: { t: { status: 'in-progress', experiments: {
+          E1: { slug: 'cold-start', status: 'running' },
+          E2: { slug: 'warm-cache', status: 'designed' },
+        } } } },
+        discussion: { items: { t: { status: 'in-progress', subtopics: {
+          'token-refresh': { status: 'exploring', parent: null },
+          'session-storage': { status: 'decided', parent: null },
+        } } } },
         specification: { items: { t: { status: 'in-progress', finding_gate_mode: 'gated' } } },
         planning: { items: { t: { status: 'in-progress' } } },
         implementation: { items: { t: { status: 'in-progress' } } },
       },
     });
+    for (const [phase, kind] of [['discussion', 'review'], ['research', 'deep-dive']]) {
+      const res = spawnSync('node', [ENGINE, 'agent', 'dispatch', 'wu', phase, 't', '--kind', kind], { cwd: dir, encoding: 'utf8' });
+      assert.strictEqual(res.status, 0, res.stderr);
+    }
   });
   afterEach(() => { cleanupFixture(dir); });
 
   it('finds the recoveries it guards', () => {
     assert.ok(recoveries.length > 0, 'no recovery command found — the scan would pass vacuously');
+  });
+
+  it('the world holds what a gate would be owed over', () => {
+    const map = spawnSync('node', [path.join(SKILLS, 'workflow-discussion-process/scripts/gateway.cjs'), 'map', 'wu', 't'], { cwd: dir, encoding: 'utf8' });
+    assert.match(map.stdout, /^all_decided: false$/m);
+    assert.match(map.stdout, /^unresolved: \["token-refresh"\]$/m);
+    const defer = spawnSync('node', [ENGINE, 'render', 'defer-gate', 'wu.discussion.t'], { cwd: dir, encoding: 'utf8' });
+    assert.match(defer.stdout, /^=== MENU: defer gate/m, 'a defer gate is owed over this map — the recovery read must not carry it');
+    const pick = spawnSync('node', [ENGINE, 'render', 'experiment-pick', 'wu.experiment.t'], { cwd: dir, encoding: 'utf8' });
+    assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery register must not carry it');
+    for (const phase of ['discussion', 'research']) {
+      const scan = spawnSync('node', [ENGINE, 'agent', 'scan', 'wu', phase, 't'], { cwd: dir, encoding: 'utf8' });
+      assert.strictEqual(JSON.parse(scan.stdout).in_flight.length, 1, `${phase}: an agent is in flight`);
+    }
   });
 
   for (const { skill, command } of recoveries) {
