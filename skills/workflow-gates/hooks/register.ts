@@ -7,11 +7,11 @@
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over. A press picks its
  * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which is what the workflows' prose already reads.
+ * next message, which the workflows' prose reads as the answer.
  *
  * Every path up to the cut fails open: the engine emits the menu regardless,
- * so a module that never loads, or a cut that throws or overruns, leaves the
- * text menu exactly as it was.
+ * so where the module never loads, or a cut throws or overruns, the model
+ * reads the text menu the engine wrote.
  */
 import type {
   AgentLoop,
