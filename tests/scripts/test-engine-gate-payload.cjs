@@ -7,11 +7,11 @@ require('./hermetic-env.cjs');
 // and by nothing else — the first suite here is the proof that a session
 // without the announcement sees the bytes it always saw.
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { execFile, spawnSync } = require('child_process');
 
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
@@ -74,6 +74,17 @@ function seedTaskGate(dir, item = {}) {
   });
 }
 
+/**
+ * A topic's session held by a live peer, last active four minutes ago.
+ * @param {string} dir @param {string} wu @param {string} phase @param {string} topic
+ */
+function heldByPeer(dir, wu, phase, topic) {
+  const presence = createFile(dir, `.workflows/.cache/${wu}/${phase}/${topic}/presence`,
+    JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+  const past = new Date(Date.now() - 240 * 1000);
+  fs.utimesSync(presence, past, past);
+}
+
 /** An epic whose discussion a peer session holds while its research runs. @param {string} dir */
 function seedHeldEpic(dir) {
   createManifest(dir, 'v1', {
@@ -84,10 +95,7 @@ function seedHeldEpic(dir) {
       discussion: { items: { auth: { status: 'in-progress' } } },
     },
   });
-  const presence = createFile(dir, '.workflows/.cache/v1/discussion/auth/presence',
-    JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
-  const past = new Date(Date.now() - 240 * 1000);
-  fs.utimesSync(presence, past, past);
+  heldByPeer(dir, 'v1', 'discussion', 'auth');
 }
 
 describe('gate payload — the announce switch', () => {
@@ -463,6 +471,228 @@ describe('gate payload — a gateway menu', () => {
     assert.strictEqual(detailOf('Re-analyze groupings'),
       'Current groupings are discarded and rebuilt. Existing specification names are preserved. You can provide guidance in the next step.');
     assert.strictEqual(detailOf('Start "Auth Flow"'), null);
+  });
+});
+
+describe('gate payload — every gateway verb', () => {
+  const SKILLS = path.resolve(__dirname, '../../skills');
+  const ENGINE_GATEWAY = path.join(SKILLS, 'workflow-engine/scripts/gateway.cjs');
+  const SET_ITEM = '.workflows/.inbox/ideas/2026-06-01--user-id.md';
+
+  /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
+
+  /** A call whose response draws a menu, stated whole in its payload. @param {...string} args @returns {GatewayCall} */
+  const gated = (...args) => ({ args, gated: true });
+  /** A call whose response draws no menu, so carries no payload. @param {...string} args @returns {GatewayCall} */
+  const ungated = (...args) => ({ args, gated: false });
+  /** A call the gateway refuses — a usage error, no payload. @param {...string} args @returns {GatewayCall} */
+  const refused = (...args) => ({ args, gated: false, refused: true });
+
+  // Every verb each gateway's runGateway table dispatches (`index` is the
+  // bare call, `fallback` an unmatched one), called over the one world below.
+  /** @type {Record<string, Record<string, GatewayCall[]>>} */
+  const CALLS = {
+    'workflow-start': {
+      index: [ungated()],
+      view: [gated('view')],
+      inbox: [gated('inbox')],
+      archived: [gated('archived')],
+      'working-set': [gated('working-set', SET_ITEM)],
+      'working-set-add-gate': [gated('working-set-add-gate', SET_ITEM)],
+      'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
+      manage: [gated('manage'), gated('manage', 'checkout')],
+      completed: [gated('completed')],
+      fallback: [ungated('checkout')],
+    },
+    'workflow-continue-feature': { index: [gated()], view: [gated('view', 'checkout')], fallback: [refused('checkout')] },
+    'workflow-continue-bugfix': { index: [gated()], view: [gated('view', 'crash-fix')], fallback: [refused('crash-fix')] },
+    'workflow-continue-quickfix': { index: [gated()], view: [gated('view', 'typo')], fallback: [refused('typo')] },
+    'workflow-continue-cross-cutting': { index: [gated()], view: [gated('view', 'logging')], fallback: [refused('logging')] },
+    'workflow-continue-epic': {
+      index: [gated()],
+      view: [gated('view', 'v1')],
+      'completed-menu': [gated('completed-menu', 'v1')],
+      'cancel-menu': [gated('cancel-menu', 'v1')],
+      'reactivate-menu': [gated('reactivate-menu', 'v1')],
+      'unblock-menu': [gated('unblock-menu', 'v1')],
+      'in-session-gate': [gated('in-session-gate', 'v1', '2')],
+      fallback: [ungated('v1')],
+    },
+    'workflow-specification-entry': {
+      index: [ungated()],
+      view: [gated('view', 'v2')],
+      'completed-menu': [gated('completed-menu', 'v2')],
+      fallback: [ungated('v2')],
+    },
+    'workflow-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
+    'workflow-discussion-process': { map: [gated('map', 'v1', 'auth')] },
+    'workflow-roadmap': {
+      index: [gated()],
+      view: [gated('view')],
+      'pull-set': [gated('pull-set')],
+      proposal: [ungated('proposal', '--file', 'proposed.json')],
+    },
+  };
+
+  // The shapes the menu builders draw, each met by at least one call's
+  // payload. The world's titles carry `_ * [ ]` wherever it holds a title.
+  /** @type {Record<string, (gate: import('./gate-audit.cjs').GatePayload) => boolean>} */
+  const SHAPES = {
+    'a struck row with its cue and its holder': (g) => g.options.some((o) => o.struck && o.cue !== null && o.holder !== null),
+    'a row with its tail and a cue': (g) => g.options.some((o) => !o.struck && o.tail !== null && o.cue !== null),
+    'a recommended row': (g) => g.options.some((o) => o.recommended),
+    'a row with its detail': (g) => g.options.some((o) => o.detail !== null),
+    'a range row': (g) => g.typed.some((t) => t.label.includes('–')),
+    'a prompt row': (g) => g.typed.some((t) => !t.label.includes('–')),
+    'a statement': (g) => g.statement !== '',
+    'a menu that asks nothing': (g) => g.question === '',
+  };
+
+  /**
+   * One project holding every state the gateway menus draw from: an inbox
+   * and an archive, a roadmap with items waiting, an epic whose discussion a
+   * peer holds while its research runs and a concern waits in its queue —
+   * beside a completed topic whose input moved, a cancelled topic and a
+   * blocked plan — an epic grouped into specifications, a unit of each
+   * linear type ready for its next phase, a feature with a concern queued,
+   * and closed units.
+   * @param {string} dir
+   */
+  function seedEveryRowShape(dir) {
+    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+      roadmap: {
+        horizons: ['now_ish *core*', 'later [v2]'],
+        items: {
+          ordering: { horizon: 'now_ish *core*', summary: 'customers order', origin: 'harvest', pulled_to: { work_unit: 'v1' } },
+          menus: { horizon: 'now_ish *core*', summary: 'operators keep *menus* in [sync]', origin: 'harvest' },
+          loyalty: { horizon: 'later [v2]', summary: 'rewards_for_regulars', origin: 'park:v1' },
+        },
+      },
+    }));
+    createFile(dir, SET_ITEM, '# Fix user_id in *auth* [draft]\n');
+    createFile(dir, '.workflows/.inbox/bugs/2026-06-02--login-timeout.md', '# Login_timeout *spikes* [prod]\n');
+    createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
+    createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
+
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            auth: { routing: 'discussion', source: 'discovery', order: 1 },
+            billing: { routing: 'discussion', source: 'discovery', order: 2 },
+            search: { routing: 'discussion', source: 'discovery', order: 3, cancelled: true },
+          },
+        },
+        research: { items: { auth: { status: 'in-progress' } } },
+        discussion: {
+          items: {
+            auth: { status: 'in-progress', subtopics: { tokens: { status: 'exploring' }, expiry: { status: 'decided' } } },
+            billing: { status: 'completed', reconcile_needed: true },
+            search: { status: 'cancelled', previous_status: 'in-progress' },
+          },
+        },
+        planning: { items: { tmpl: { status: 'in-progress', external_dependencies: { billing: { description: 'the ledger', state: 'unresolved' } } } } },
+      },
+    });
+    createFile(dir, '.workflows/v1/discussion/.triage/auth/001.md', '# A concern\n');
+    heldByPeer(dir, 'v1', 'discussion', 'auth');
+
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'auth-design': { status: 'completed' }, 'session-model': { status: 'completed' }, 'data-model': { status: 'completed' } } },
+        specification: {
+          items: {
+            'done-spec': { status: 'completed', sources: { 'auth-design': { status: 'incorporated' } } },
+            'auth-flow': { status: 'proposed', sources: { 'auth-design': { status: 'pending' }, 'session-model': { status: 'pending' } } },
+            'data-spec': { status: 'in-progress', sources: { 'data-model': { status: 'pending' }, 'session-model': { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v2/specification/done-spec/specification.md', '# Done');
+    createFile(dir, '.workflows/v2/specification/data-spec/specification.md', '# Data');
+
+    /** A linear unit whose phase concluded, so its view asks whether to proceed. @param {string} name @param {string} workType @param {string} phase @param {string} next */
+    const concluded = (name, workType, phase, next) => createManifest(dir, name, {
+      work_type: workType,
+      phases: { [phase]: { items: { [name]: { status: 'completed' } } } },
+      completed_phases: ['discovery', phase],
+      next_phase: next,
+    });
+    concluded('checkout', 'feature', 'discussion', 'specification');
+    concluded('crash-fix', 'bugfix', 'investigation', 'specification');
+    concluded('typo', 'quick-fix', 'scoping', 'implementation');
+    concluded('logging', 'cross-cutting', 'discussion', 'specification');
+    createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
+    createFile(dir, '.workflows/payments/discussion/.triage/payments/001.md', '# A concern\n');
+    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+    createManifest(dir, 'old-bug', { work_type: 'bugfix', status: 'cancelled' });
+  }
+
+  /**
+   * A skill adapter run as its own process, answered whatever its exit.
+   * @param {string} dir @param {string} gateway @param {string[]} args
+   * @param {{env?: Record<string, string>, node?: string[]}} [opts]
+   * @returns {Promise<{code: number, stdout: string, stderr: string}>}
+   */
+  function spawnGateway(dir, gateway, args, { env = {}, node = [] } = {}) {
+    const script = path.join(SKILLS, gateway, 'scripts/gateway.cjs');
+    return new Promise((resolve) => {
+      execFile('node', [...node, script, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } },
+        (err, stdout, stderr) => resolve({ code: err ? Number(err.code) || 1 : 0, stdout, stderr }));
+    });
+  }
+
+  let dir;
+  /** @type {Record<string, string[]>} */
+  let tables;
+  /** @type {Map<GatewayCall, {code: number, stdout: string, stderr: string}>} */
+  let responses;
+
+  before(async () => {
+    dir = setupFixture();
+    seedEveryRowShape(dir);
+    // Each script run with runGateway handing its table back instead of
+    // dispatching it — the verbs as the script registers them.
+    const preload = createFile(dir, 'gateway-verbs.cjs',
+      `require(${JSON.stringify(ENGINE_GATEWAY)}).runGateway = (handlers) => process.stdout.write(JSON.stringify(Object.keys(handlers)));\n`);
+    const gateways = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
+    const calls = Object.entries(CALLS).flatMap(([gateway, verbs]) => Object.values(verbs).flat().map((call) => ({ gateway, call })));
+    const [verbs, answers] = await Promise.all([
+      Promise.all(gateways.map((g) => spawnGateway(dir, g, [], { node: ['--require', preload] }))),
+      Promise.all(calls.map(({ gateway, call }) => spawnGateway(dir, gateway, call.args, { env: ANNOUNCED }))),
+    ]);
+    tables = Object.fromEntries(gateways
+      .map((g, i) => [g, verbs[i].stdout])
+      .filter(([, out]) => out !== '')
+      .map(([g, out]) => [g, JSON.parse(out).sort()]));
+    responses = new Map(calls.map(({ call }, i) => [call, answers[i]]));
+  });
+  after(() => { cleanupFixture(dir); });
+
+  it('calls every verb every gateway dispatches — a verb added without a call here fails', () => {
+    assert.deepStrictEqual(tables, Object.fromEntries(Object.entries(CALLS).map(([g, verbs]) => [g, Object.keys(verbs).sort()])));
+  });
+
+  for (const [gateway, verbs] of Object.entries(CALLS)) {
+    it(`${gateway}: each verb announced states the menu it draws whole, and a response with none states nothing`, () => {
+      for (const call of Object.values(verbs).flat()) {
+        const label = `${gateway} ${call.args.join(' ')}`.trim();
+        const { code, stdout, stderr } = /** @type {{code: number, stdout: string, stderr: string}} */ (responses.get(call));
+        assert.strictEqual(code === 0, !call.refused, `[${label}] exit ${code}\n${stderr}`);
+        assert.strictEqual(auditGate(stdout, label) !== null, call.gated, `[${label}] ${call.gated ? 'draws no gate' : 'draws a gate'}\n${stdout}`);
+      }
+    });
+  }
+
+  it('the world reaches every row shape the menu builders draw', () => {
+    const gates = [...responses.values()].map(({ stdout }) => auditGate(stdout, 'shape')).filter((g) => g !== null);
+    for (const [shape, drawn] of Object.entries(SHAPES)) {
+      assert.ok(gates.some(drawn), `no gateway verb drew ${shape}`);
+    }
   });
 });
 
