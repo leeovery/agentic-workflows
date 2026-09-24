@@ -22,7 +22,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 → loop back to A until done
 ```
 
-**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls — each stage below fetches its own section at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. Each section is emitted verbatim as the form its marker names. A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
+**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls. Each stage below fetches its own section at the moment it displays it and emits it verbatim per its marker, so the section always sits in the tool result directly above its emission; its content is never redrawn, reflowed, or re-derived.
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
@@ -70,7 +70,7 @@ No ready tasks remain, but {N} task(s) are still open — blocked:
   ...
 ```
 
-Fetch the blocked-tasks menu and emit its `MENU: blocked tasks` section:
+Fetch the blocked-tasks menu and emit its `MENU: blocked tasks` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render blocked-tasks
@@ -333,7 +333,7 @@ Branch on the response's `fix_gate_mode`.
 
 **If `fix_gate_mode` is `auto` or `bounded`:**
 
-After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section:
+After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
@@ -353,9 +353,7 @@ The turn does not end here — the gate menu follows in the same turn.
 
 ## F. Fix Approval Gate
 
-Every arrival emits the menu in the turn it arrives — from **E**, and back from a lens, the page, an answer, or a standing challenge alike.
-
-Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
+On every arrival — from **E**, and back from a lens, the page, an answer, or a standing challenge alike — fetch the fix gate in that same turn and emit its `MENU: fix gate` section verbatim per its marker (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
@@ -445,7 +443,7 @@ Include the reviewer's notes and the user's commentary when re-invoking.
 
 ## G. Task Gate
 
-A return from a lens, the page, or an answer re-emits the menu alone — re-run the gated fetch below; the presentation belongs to the gate's first arrival.
+A return from a lens, the page, or an answer re-runs the gated fetch below alone — the presentation belongs to the gate's first arrival.
 
 After the reviewer approves a task, present the result:
 
@@ -457,7 +455,7 @@ Branch on the `task_gate_mode` carried by this task's `start` response.
 
 #### If `task_gate_mode` is `auto` or `bounded`
 
-After the result summary, fetch the task gate and emit its `DISPLAY: task gate auto-approved` section:
+After the result summary, fetch the task gate and emit its `DISPLAY: task gate auto-approved` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
@@ -469,7 +467,7 @@ The turn does not end here — the commit follows in the same turn.
 
 #### If `task_gate_mode` is `gated`
 
-Fetch the task gate and emit its `MENU: task gate` section:
+Fetch the task gate and emit its `MENU: task gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}

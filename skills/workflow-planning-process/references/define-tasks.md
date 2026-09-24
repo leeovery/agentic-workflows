@@ -83,7 +83,7 @@ Use the Write tool for the payload — never a shell heredoc.
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-list {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
 ```
 
-The response carries the task-list display plus the surface for the current gate mode. Emit each section verbatim at its marked instruction.
+The response carries the task-list display plus the surface for the current gate mode. Emit each section verbatim per its marker.
 
 #### If the response carried `DISPLAY: task list auto-approved`
 

@@ -33,7 +33,7 @@ The output is one snapshot in four demarcated sections:
 - **DISPLAY** — the dashboard and key. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim per its marker.
 
-Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -93,7 +93,7 @@ A `(code session: …)` marker needs no gate here — implementation and review 
 
 **If the selected entry carries an `(in session: …)` marker:**
 
-Another session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
+Another session holds this topic open. Fetch the in-session gate for the selected entry and emit its `MENU: in-session gate — {key}` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {work_unit} {key}
@@ -131,7 +131,7 @@ The selection raises no concern.
 
 **If a `MENU: epic soft gate` section is returned:**
 
-Emit the section verbatim.
+Emit the section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -201,7 +201,7 @@ A locked row's name is the usual case — the row carries its reason. Tell the u
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Fetch and emit the confirm's `MENU: cancel gate` section; its statement names exactly what the cancel takes:
+Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Fetch and emit the confirm's `MENU: cancel gate` section verbatim per its marker; its statement names exactly what the cancel takes:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_unit}.{phase}.{topic}
@@ -229,7 +229,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 **Otherwise:**
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]
@@ -277,7 +277,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 **Otherwise:**
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, which names the statuses the unit's items returned to — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status: for each `restored` row whose `status` is `null`, tell the user in one line that its phase returned to never started; when the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the reactivate:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section naming the statuses the unit's items returned to, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status: for each `restored` row whose `status` is `null`, tell the user in one line that its phase returned to never started; when the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the reactivate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]

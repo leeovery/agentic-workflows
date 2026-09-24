@@ -28,7 +28,7 @@ Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-di
 
 `{"options": [{"name": "{approach}", "recommended": true, "rows": [["{label}", "{value}"]]}], "recommendation": "{deciding factor}", "open_question": "{what is still unresolved}"}`
 
-`recommended` and `recommendation` travel together and only where options are compared; omit `open_question` when nothing is open. Then fetch the display, emitting each section verbatim at its marked instruction:
+`recommended` and `recommendation` travel together and only where options are compared; omit `open_question` when nothing is open. Then fetch the display, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render fix-direction {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/fix-direction.json

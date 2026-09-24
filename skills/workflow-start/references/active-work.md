@@ -21,7 +21,7 @@ The output is one snapshot in three demarcated sections:
 - **DISPLAY** — the workflow overview. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim per its marker.
 
-Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 

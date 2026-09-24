@@ -19,7 +19,7 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 - `position` — the in-phase ordinal from the same stage-A listing; omit the field when the listing did not yield the counts.
 - `external` — the plan format's display identifier, obtained as its **reading.md** → Display Identifier section instructs, labelled with the plan's `format` value. Omit the field when the format declares none.
 
-Render and emit its `DISPLAY: task result` section verbatim at its marked instruction:
+Render and emit its `DISPLAY: task result` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-result {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-result.json --result {result}

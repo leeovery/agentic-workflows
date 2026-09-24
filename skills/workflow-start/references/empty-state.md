@@ -21,7 +21,7 @@ The output is one snapshot in three demarcated sections:
 - **DISPLAY** — the empty-state overview. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the start menu. Emit verbatim per its marker.
 
-Emit the TITLE and DISPLAY sections verbatim per their markers, then the signpost blockquote below, then the MENU section verbatim per its marker. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE and DISPLAY sections verbatim per their markers, then the signpost blockquote below, then the MENU section verbatim per its marker.
 
 > *Output the next fenced block as markdown (not a code block):*
 

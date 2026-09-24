@@ -39,7 +39,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic
 - `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `contradiction` (Contradiction), `duplication` (Duplication), `source-defect` (Source defect), `unsourced-decision` (Unsourced decision). The tracking file keeps the full phrase.
 - `status` — the finding's Resolution: `Approved`, `Adjusted`, or `Routed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
-Render and emit the section verbatim at its marked instruction:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
@@ -112,13 +112,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {wor
 
 #### If the response carried `DISPLAY: finding batch auto-approved`
 
-Emit the section verbatim at its marked instruction — it confirms the screen — then land each of the screen's findings per **Landing a Settled Finding**, in the order they read.
+Emit the section verbatim per its marker — it confirms the screen — then land each of the screen's findings per **Landing a Settled Finding**, in the order they read.
 
 → Return to **C. The Settled Batch**.
 
 #### If the response carried `MENU: finding batch`
 
-Emit the DISPLAY and MENU sections verbatim at their marked instructions.
+Emit the DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -149,7 +149,7 @@ Land every other finding on the screen as `yes` does, then raise the named one i
 
 **If ask (a number):**
 
-Write that finding's payload per **The Finding Payload** with `move` = `settled`, then render it and emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
+Write that finding's payload per **The Finding Payload** with `move` = `settled`, then render it and emit each returned section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
@@ -212,7 +212,7 @@ The user decides from the presentation alone — they have not read the specific
 
 #### Otherwise
 
-Take the next one. Write its payload per **The Finding Payload** with `move` = `choice`, then render it and emit each returned section verbatim at its marked instruction — the stop holds whatever the gate mode, and over `auto` the menu opens on the engine's override line:
+Take the next one. Write its payload per **The Finding Payload** with `move` = `choice`, then render it and emit each returned section verbatim per its marker — the stop holds whatever the gate mode, and over `auto` the menu opens on the engine's override line:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json

@@ -18,7 +18,7 @@ Complete the work unit — one command sets `status: completed`, stamps `complet
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete bugfix pipeline"
 ```
 
-Fetch and emit the receipt's `DISPLAY: confirmation` section:
+Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
@@ -52,7 +52,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render next-phase-gate {w
 
 #### If the response carried `MENU: next phase gate`
 
-Emit the section verbatim.
+Emit the section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -68,7 +68,7 @@ Complete the work unit — one command sets `status: completed`, stamps `complet
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete bugfix pipeline (review skipped)"
 ```
 
-Fetch and emit the receipt's `DISPLAY: confirmation` section:
+Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline --skipped-review
@@ -82,7 +82,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 ## C. Select Phase
 
-Fetch and emit the `MENU: revisit phases` section (its numbering follows `revisitable_phases` order):
+Fetch and emit the `MENU: revisit phases` section verbatim per its marker (its numbering follows `revisitable_phases` order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {work_unit}
