@@ -1695,7 +1695,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
       'the reconcile is the sequencing — its apply clears the flag');
     assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'unify'], { expect: 'content' }),
-      /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md → will be superseded\n/);
+      /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md →\n {4}will be superseded\n/);
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
     const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
