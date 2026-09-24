@@ -1,0 +1,1424 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Agentic Workflows Field Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#EDF0EA;
+    --panel:#F7F9F4;
+    --panel-2:#E4E9E1;
+    --ink:#1C2620;
+    --muted:#58675D;
+    --line:#C9D2C7;
+    --line-soft:#DAE0D6;
+    --gold:#9A6E0F;
+    --gold-fill:#E7C765;
+    --gold-wash:rgba(185,134,30,.12);
+    --term-bg:#141B16;
+    --term-ink:#D7E2D8;
+    --term-dim:#7E8F83;
+    --term-blue:#8FBEDD;
+    --term-gold:#E2B95B;
+    --c-epic:#6E4FC0;
+    --c-feature:#2E6E96;
+    --c-bugfix:#B54545;
+    --c-quickfix:#35855A;
+    --c-cross:#99527C;
+    --shadow:0 1px 2px rgba(28,38,32,.06), 0 8px 24px rgba(28,38,32,.05);
+    --display:"Bricolage Grotesque", "Avenir Next", "Helvetica Neue", sans-serif;
+    --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#10150F;
+      --panel:#171E17;
+      --panel-2:#1D251D;
+      --ink:#DFE7DC;
+      --muted:#94A396;
+      --line:#2E382E;
+      --line-soft:#242D24;
+      --gold:#E0B356;
+      --gold-fill:#8A6A1E;
+      --gold-wash:rgba(224,179,86,.13);
+      --term-bg:#0B0F0C;
+      --term-ink:#CBD8CC;
+      --term-dim:#6C7C70;
+      --term-blue:#7FB4D6;
+      --term-gold:#DDB258;
+      --c-epic:#A78BE8;
+      --c-feature:#6FB2D8;
+      --c-bugfix:#E08484;
+      --c-quickfix:#6CC495;
+      --c-cross:#D18BB6;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10150F;
+    --panel:#171E17;
+    --panel-2:#1D251D;
+    --ink:#DFE7DC;
+    --muted:#94A396;
+    --line:#2E382E;
+    --line-soft:#242D24;
+    --gold:#E0B356;
+    --gold-fill:#8A6A1E;
+    --gold-wash:rgba(224,179,86,.13);
+    --term-bg:#0B0F0C;
+    --term-ink:#CBD8CC;
+    --term-dim:#6C7C70;
+    --term-blue:#7FB4D6;
+    --term-gold:#DDB258;
+    --c-epic:#A78BE8;
+    --c-feature:#6FB2D8;
+    --c-bugfix:#E08484;
+    --c-quickfix:#6CC495;
+    --c-cross:#D18BB6;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--gold);text-decoration-thickness:1px;text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:2px}
+
+  .frame{display:flex;min-height:100vh;max-width:1180px;margin:0 auto}
+
+  /* ---------- rail ---------- */
+  .rail{
+    width:236px;flex:0 0 236px;
+    border-right:1px solid var(--line);
+    padding:36px 20px 36px 28px;
+    position:sticky;top:0;align-self:flex-start;height:100vh;
+    display:flex;flex-direction:column;gap:28px;
+  }
+  .brand{font-family:var(--display);line-height:1.15}
+  .brand .mark{color:var(--gold);font-family:var(--mono);font-size:15px;letter-spacing:.08em}
+  .brand .name{font-size:19px;font-weight:700;margin-top:6px}
+  .brand .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:.04em}
+  nav.pages{display:flex;flex-direction:column;gap:2px}
+  nav.pages a{
+    display:flex;gap:10px;align-items:baseline;
+    padding:8px 10px;border-radius:6px;
+    color:var(--muted);text-decoration:none;
+    font-family:var(--display);font-size:14.5px;font-weight:600;
+    border-left:2px solid transparent;
+  }
+  nav.pages a .no{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);width:20px;flex:0 0 20px}
+  nav.pages a:hover{color:var(--ink);background:var(--panel-2)}
+  nav.pages a[aria-current="page"]{color:var(--ink);background:var(--panel);border-left-color:var(--gold)}
+  nav.pages a[aria-current="page"] .no{color:var(--gold)}
+  .rail-foot{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.7}
+  .rail-foot code{font-size:10.5px}
+
+  /* ---------- content ---------- */
+  main{flex:1;min-width:0;padding:52px 48px 96px}
+  section.page{display:none}
+  section.page.active{display:block;animation:rise .35s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:0 0 14px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,4.4vw,44px);line-height:1.08;margin:0 0 18px;text-wrap:balance;letter-spacing:-.01em}
+  h2{font-family:var(--display);font-weight:700;font-size:23px;line-height:1.2;margin:52px 0 14px;text-wrap:balance}
+  h3{font-family:var(--display);font-weight:600;font-size:17px;margin:30px 0 8px}
+  p{max-width:66ch;margin:0 0 16px}
+  .lede{font-size:20px;line-height:1.55;color:var(--ink);max-width:58ch}
+  .lede em{color:var(--gold);font-style:italic}
+  ul{max-width:66ch;padding-left:22px;margin:0 0 16px}
+  li{margin-bottom:8px}
+  li::marker{color:var(--gold)}
+  strong{font-weight:600}
+  hr{border:0;border-top:1px solid var(--line);margin:44px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px}
+  figure{margin:28px 0}
+  figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;max-width:70ch;line-height:1.6}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto}
+  .diagram svg{display:block;min-width:560px;max-width:100%;height:auto;color:var(--ink)}
+
+  /* terminal */
+  .term{
+    background:var(--term-bg);color:var(--term-ink);
+    font-family:var(--mono);font-size:13px;line-height:1.7;
+    border-radius:10px;border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    margin:26px 0;overflow:hidden;max-width:640px;
+  }
+  .term-bar{display:flex;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .term-bar i{width:10px;height:10px;border-radius:50%;background:var(--term-dim);opacity:.5}
+  .term-bar span{margin-left:8px;font-size:11px;color:var(--term-dim);letter-spacing:.05em}
+  .term pre{margin:0;padding:16px 18px;overflow-x:auto}
+  .t-blue{color:var(--term-blue)}
+  .t-gold{color:var(--term-gold)}
+  .t-dim{color:var(--term-dim)}
+  .t-key{color:var(--term-gold);font-weight:600}
+
+  /* pillar cards */
+  .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:30px 0 8px}
+  .pillar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 18px 14px}
+  .pillar h3{margin:0 0 8px;font-size:16px}
+  .pillar p{font-size:14.5px;color:var(--muted);margin:0;line-height:1.6}
+  .pillar .glyph{font-family:var(--mono);color:var(--gold);font-size:13px;letter-spacing:.1em;display:block;margin-bottom:10px}
+
+  /* work-type explorer */
+  .wt-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0}
+  .wt-tab{
+    font-family:var(--display);font-weight:600;font-size:14px;
+    padding:8px 14px;border-radius:999px;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    display:flex;align-items:center;gap:8px;
+  }
+  .wt-tab .dot{width:9px;height:9px;border-radius:50%;background:var(--wt, var(--muted))}
+  .wt-tab:hover{color:var(--ink)}
+  .wt-tab[aria-selected="true"]{color:var(--ink);border-color:var(--wt);background:var(--panel);box-shadow:inset 0 0 0 1px var(--wt)}
+  .wt-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;margin-top:14px}
+  .wt-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px}
+  .wt-head h3{margin:0;font-size:20px}
+  .wt-facts{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
+  .pipeline{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:20px 0 6px}
+  .ph{
+    font-family:var(--mono);font-size:12.5px;font-weight:500;
+    padding:7px 12px;border-radius:6px;
+    border:1px solid var(--line);background:var(--paper);
+    white-space:nowrap;
+  }
+  .ph.first{border-color:var(--wt);box-shadow:inset 0 0 0 1px var(--wt)}
+  .ph.opt{border-style:dashed;color:var(--muted)}
+  .ph.terminalph{background:var(--gold-wash);border-color:var(--gold)}
+  .pipeline .arr{color:var(--muted);font-family:var(--mono);font-size:13px}
+  .wt-desc{margin-top:14px}
+  .wt-desc p{margin-bottom:10px;font-size:15.5px}
+  .wt-note{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:14px}
+
+  /* stage groups on phases page */
+  .stage{margin:36px 0 0}
+  .stage-rule{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .stage-rule .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);white-space:nowrap}
+  .stage-rule .verb{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .stage-rule::after{content:"";height:1px;background:var(--line);flex:1}
+  .phase-card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+  .phase-card summary{cursor:pointer;display:flex;align-items:baseline;gap:12px;font-family:var(--display);font-weight:600;font-size:16px;list-style:none}
+  .phase-card summary::-webkit-details-marker{display:none}
+  .phase-card summary .who{margin-left:auto;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--muted);white-space:nowrap}
+  .phase-card summary .tw{font-family:var(--mono);font-size:12px;color:var(--gold);transition:transform .2s;flex:0 0 auto}
+  .phase-card[open] summary .tw{transform:rotate(90deg)}
+  .phase-card .body{margin-top:12px;font-size:15px;color:var(--ink)}
+  .phase-card .body p{font-size:15px;margin-bottom:10px}
+
+  /* tree */
+  .tree{font-family:var(--mono);font-size:12.5px;line-height:1.8;white-space:pre;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;margin:26px 0}
+  .tree .c{color:var(--muted)}
+  .tree .g{color:var(--gold)}
+
+  /* command table */
+  .cmds{width:100%;border-collapse:collapse;margin:22px 0;font-size:15px}
+  .cmds th{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 14px 8px 0;border-bottom:1px solid var(--line)}
+  .cmds td{padding:10px 14px 10px 0;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  .cmds td:first-child{font-family:var(--mono);font-size:13px;white-space:nowrap;color:var(--gold)}
+  .table-scroll{overflow-x:auto}
+
+  .callout{border-left:3px solid var(--gold);background:var(--gold-wash);border-radius:0 8px 8px 0;padding:14px 18px;margin:24px 0;max-width:66ch}
+  .callout p{margin:0;font-size:15px}
+
+  /* history timeline */
+  .tl{list-style:none;margin:30px 0;padding:0 0 0 28px;border-left:2px solid var(--line);max-width:66ch}
+  .tl li{position:relative;margin-bottom:30px}
+  .tl li::before{content:"";position:absolute;left:-36px;top:5px;width:11px;height:11px;border-radius:50%;background:var(--paper);border:2px solid var(--gold)}
+  .tl li::marker{content:""}
+  .tl .when{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:4px}
+  .tl h3{margin:0 0 6px}
+  .tl p{font-size:15px;margin:0 0 8px}
+
+  /* walkthrough steps */
+  ol.walk{list-style:none;counter-reset:wk;margin:30px 0;padding:0;max-width:70ch}
+  ol.walk>li{counter-increment:wk;position:relative;padding:0 0 28px 58px}
+  ol.walk>li::before{content:counter(wk,decimal-leading-zero);position:absolute;left:0;top:0;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--gold);border:1px solid var(--line);background:var(--panel);border-radius:8px;width:40px;height:32px;display:flex;align-items:center;justify-content:center}
+  ol.walk>li::after{content:"";position:absolute;left:20px;top:40px;bottom:4px;width:1px;background:var(--line)}
+  ol.walk>li:last-child::after{display:none}
+  ol.walk h3{margin:4px 0 8px}
+  ol.walk p{font-size:15px;margin-bottom:10px}
+  ol.walk .term{margin:14px 0}
+
+  .pagenav{display:flex;justify-content:space-between;gap:16px;margin-top:64px;border-top:1px solid var(--line);padding-top:20px}
+  .pagenav a{font-family:var(--display);font-weight:600;font-size:14.5px;text-decoration:none;color:var(--ink)}
+  .pagenav a span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  .pagenav a:hover{color:var(--gold)}
+  .pagenav .next{text-align:right;margin-left:auto}
+
+  @media (max-width:820px){
+    .frame{flex-direction:column}
+    .rail{position:static;width:auto;height:auto;flex:none;border-right:0;border-bottom:1px solid var(--line);padding:24px 20px;gap:16px}
+    nav.pages{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
+    nav.pages a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;border-radius:6px 6px 0 0}
+    nav.pages a[aria-current="page"]{border-bottom-color:var(--gold)}
+    .rail-foot{display:none}
+    main{padding:32px 20px 72px}
+  }
+</style>
+
+<div class="frame">
+  <aside class="rail">
+    <div class="brand">
+      <span class="mark">◆ ── ── ──</span>
+      <div class="name">Agentic Workflows<br>Field Guide</div>
+      <div class="sub">leeovery/<wbr>agentic-workflows</div>
+    </div>
+    <nav class="pages" aria-label="Pages">
+      <a href="#overview" data-page="overview"><span class="no">01</span>Overview</a>
+      <a href="#why" data-page="why"><span class="no">02</span>Why it’s built this way</a>
+      <a href="#work-types" data-page="work-types"><span class="no">03</span>The five work types</a>
+      <a href="#phases" data-page="phases"><span class="no">04</span>The nine phases</a>
+      <a href="#architecture" data-page="architecture"><span class="no">05</span>Under the hood</a>
+      <a href="#implementation" data-page="implementation"><span class="no">06</span>The hands-off loop</a>
+      <a href="#knowledge" data-page="knowledge"><span class="no">07</span>Memory &amp; knowledge</a>
+      <a href="#collab" data-page="collab"><span class="no">08</span>Working together</a>
+      <a href="#agents" data-page="agents"><span class="no">09</span>The agents</a>
+      <a href="#lifecycle" data-page="lifecycle"><span class="no">10</span>Changing shape</a>
+      <a href="#menus" data-page="menus"><span class="no">11</span>Menus &amp; navigation</a>
+      <a href="#walkthrough" data-page="walkthrough"><span class="no">12</span>A feature, end to end</a>
+      <a href="#daily" data-page="daily"><span class="no">13</span>Day-to-day use</a>
+      <a href="#history" data-page="history"><span class="no">14</span>History</a>
+    </nav>
+    <div class="rail-foot">
+      install<br><code>npx agntc add leeovery/agentic-workflows</code><br><br>
+      then, in Claude Code<br><code>/workflow-start</code>
+    </div>
+  </aside>
+
+  <main>
+
+  <!-- ============ 01 OVERVIEW ============ -->
+  <section class="page" id="overview" aria-labelledby="overview-h">
+    <p class="eyebrow">01 · Overview</p>
+    <h1 id="overview-h">A phased engineering process for Claude&nbsp;Code</h1>
+    <p class="lede">Claude Code is a capable engineer with <em>no memory and no process</em>. Agentic Engineering Workflows adds both: discuss, specify, plan — then let it build, hands off, while every decision lands in a versioned document in your repo.</p>
+
+    <div class="term" role="img" aria-label="Terminal showing the install command and the single entry command /workflow-start">
+      <div class="term-bar"><i></i><i></i><i></i><span>your project</span></div>
+      <pre><span class="t-dim">$</span> npx agntc add leeovery/agentic-workflows
+<span class="t-dim"># then, inside Claude Code:</span>
+<span class="t-gold">/workflow-start</span></pre>
+    </div>
+
+    <p>That is the whole interface. Describe what you want to build and the right pipeline picks you up: a discussion that pushes back, a specification you approve, a plan broken into tasks, then implementation running in a gated test-first loop while you do something else. Kill the session whenever — the next one resumes from disk, exactly where it stopped.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <span class="glyph">◆ recall</span>
+        <h3>Real memory</h3>
+        <p>Everything the process produces is indexed locally with provenance. “Why did we rule out email as an identity field?” has a citable answer months later — and dead ends are remembered, so no future session re-explores them.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ autonomy</span>
+        <h3>A loop you can leave alone</h3>
+        <p>Agentic loops fail when the agent improvises. Here the thinking is front-loaded into discussion and specification, so implementation executes decisions that are already written down — task by task, test-first.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ enforcement</span>
+        <h3>Spec-driven, by construction</h3>
+        <p>A deterministic engine owns every state transition. Phases can’t be skipped, status displays are computed from disk rather than remembered, and Claude cannot editorialise your status.</p>
+      </div>
+    </div>
+
+    <h2>What a session looks like</h2>
+    <p>Every menu and status display below is emitted byte-for-byte by the engine, computed from state on disk. One screen shows all your work — active units, the pre-pipeline inbox, and the routes into each.</p>
+
+    <div class="term" role="img" aria-label="Terminal mock of the workflow overview menu, listing features, epics, inbox items and numbered actions">
+      <div class="term-bar"><i></i><i></i><i></i><span>claude · /workflow-start</span></div>
+      <pre><span class="t-blue">■ Workflow Overview</span>
+
+Features
+  └─ 1. Api Rate Limiting
+
+Epics
+  └─ 2. Payments Overhaul
+
+Inbox
+  ├─ Smart Retry <span class="t-dim">[idea]</span>
+  └─ Tooltip Flicker <span class="t-dim">[bug]</span>
+
+<span class="t-dim">· · · · · · · · · · · ·</span>
+<span class="t-gold">◆</span> What would you like to do?
+
+<span class="t-key">1</span>       → Continue “Api Rate Limiting” <span class="t-dim">— feature, specification</span>
+<span class="t-key">2</span>       → Continue “Payments Overhaul” <span class="t-dim">— epic</span>
+<span class="t-key">s/start</span> → Start something new
+<span class="t-key">i/inbox</span> → View the inbox and start from an item</pre>
+    </div>
+
+    <h2>Who this guide is for</h2>
+    <p>This guide is a tour, in reading order: the convictions the system is built on (<a href="#why">02</a>), the shapes work can take (<a href="#work-types">03</a>), what each phase does (<a href="#phases">04</a>), the machinery that makes it durable (<a href="#architecture">05</a>), the implementation loop itself (<a href="#implementation">06</a>), how memory works (<a href="#knowledge">07</a>), how the system collaborates with you (<a href="#collab">08</a>), the agents behind it (<a href="#agents">09</a>), reshaping work mid-flight (<a href="#lifecycle">10</a>), the menus (<a href="#menus">11</a>), one feature followed end to end (<a href="#walkthrough">12</a>), the commands you’ll actually type (<a href="#daily">13</a>), and where it all came from (<a href="#history">14</a>).</p>
+    <div class="callout"><p><strong>Setup:</strong> Node 18+, nothing else. The first run configures itself in chat. An OpenAI-compatible key is optional — it upgrades knowledge-base search from keyword to semantic, and it is entered in your terminal, never the chat.</p></div>
+
+    <div class="pagenav">
+      <a class="next" href="#why"><span>Next · 02</span>Why it’s built this way →</a>
+    </div>
+  </section>
+
+  <!-- ============ 02 WHY ============ -->
+  <section class="page" id="why" aria-labelledby="why-h">
+    <p class="eyebrow">02 · First principles</p>
+    <h1 id="why-h">Why it’s built this way</h1>
+    <p class="lede">Three commitments shape everything the system does. Understand them upfront and the rest of this guide reads as <em>consequences</em>, not rules.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <span class="glyph">◆ commitment 1</span>
+        <h3>Documents drive the work</h3>
+        <p>Every phase produces a durable document in your repository — not notes the system keeps for itself, but the working material of the next phase and the record you approve along the way. Thinking is front-loaded into writing, so building becomes the execution of decisions already made. That’s why a spec exists before a plan, and a plan before code.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ commitment 2</span>
+        <h3>A deterministic core owns the state</h3>
+        <p>The assistant reasons, proposes, and talks with you — but it never decides on its own what the true state of your work is. Anything computable from disk is computed the same way every time by a rule-bound core. There is one authority on what is true, and everything reads from it. The system does not drift.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ commitment 3</span>
+        <h3>Work is validated against what was agreed</h3>
+        <p>“Done” is not a feeling. The final phase holds the delivered work up against the record that produced it — the discussion that shaped it, the spec that defined it, the plan that scheduled it — and confirms they match. The loop closes.</p>
+      </div>
+    </div>
+
+    <h2>The token argument</h2>
+    <p>The engine exists for an economic reason before an ideological one. Before it, every session paid to rebuild the same facts: reading through directories to infer progress, recomputing which phase each topic occupied, redrawing the same dashboards from written instructions, turn after turn. That is a great deal of a model’s finite attention spent reconstructing things that had not changed.</p>
+    <p>The obvious alternative was considered and rejected: hand the whole orchestration to plain code and call the model only as a hired hand through an API. That trades away the thing that makes the model worth having. So the design inverted instead — <strong>the assistant stays the driver of the work; the code becomes a reliable thing it consults</strong>. A single request now returns a finished snapshot of the state, and the model reads it rather than rebuilding it. Less is spent on bookkeeping, more on your actual problem — and the bookkeeping is correct every time rather than usually.</p>
+    <div class="callout"><p><strong>The division of labour in one line:</strong> judgment decides, code records.</p></div>
+
+    <h2>Guarantees you can feel</h2>
+    <p>A system you hand months of work to has to be trustworthy in a specific way: it must not quietly drift. The status it shows you today should mean the same thing tomorrow; a decision captured last week should still be there next month; a crash mid-task should not leave you guessing what actually happened. You don’t manage any of the machinery below — you just never experience the drift it prevents.</p>
+    <ul>
+      <li><strong>One authority on state.</strong> Status is derived from your files, not remembered; a phase is complete because the record says so, not because someone said “done”. Resumption is exact about decisions too: a question you answered before a crash is not asked again, and half-done work is picked up precisely or retired visibly — never silently rerun, never silently dropped.</li>
+      <li><strong>Written down as it happens.</strong> Finished thinking lands in git continuously — at natural breaks, before context refresh, as each document completes — never left floating in a conversation that could be lost. Each commit is scoped to the action that produced it, so parallel work is never swept into a record it doesn’t belong to.</li>
+      <li><strong>Files stay current with the design.</strong> As the system improves, older projects are brought forward at start-up — safely, repeatably, with a plain-language summary when anything moved. Where an update must transform judgment-written content, code alone isn’t trusted to have matched it: verification notes are left behind and checked, with judgment, before you confirm.</li>
+      <li><strong>Never read over stale ground.</strong> Move something a later phase was built on and that phase is marked <em>input moved</em> at that moment — visible on every menu, routed back to instead of past, refusing sign-off until genuinely reconciled. Staleness travels hop by hop, in the open — never as a silent cascade (<a href="#lifecycle">page 10</a>).</li>
+      <li><strong>Two sessions don’t trample each other.</strong> Every running session leaves a per-topic heartbeat: the epic view strikes through topics open elsewhere, background analyses hold off while a peer is live, and a crashed session’s heartbeat is recognised as dead rather than blocking you forever.</li>
+      <li><strong>Every path is rehearsed before it ships.</strong> The system’s own test bed replays every pipeline end-to-end against the deterministic core — each work type’s full arc plus the awkward edges — auditing the entire recorded state after every step. It is aimed squarely at the worst class of bug: the one that writes fine, raises nothing, and shows up three phases later as a menu that looks wrong.</li>
+    </ul>
+
+    <div class="pagenav">
+      <a href="#overview"><span>Back · 01</span>← Overview</a>
+      <a class="next" href="#work-types"><span>Next · 03</span>The five work types →</a>
+    </div>
+  </section>
+
+  <!-- ============ 03 WORK TYPES ============ -->
+  <section class="page" id="work-types" aria-labelledby="wt-h">
+    <p class="eyebrow">03 · Work types</p>
+    <h1 id="wt-h">Five shapes of work, five pipelines</h1>
+    <p class="lede">Work comes in five shapes, each with a pipeline suited to its size — from months of multi-topic discovery down to a one-file fix. You never pick a pipeline by hand: describe the work and <em>Discovery</em> settles the type with you.</p>
+
+    <div class="wt-tabs" role="tablist" aria-label="Work types" id="wtTabs"></div>
+    <div class="wt-panel" id="wtPanel" role="tabpanel"></div>
+
+    <h2>Two ideas that make this work</h2>
+    <ul>
+      <li><strong>Discovery is universal.</strong> Every work type begins with the same first phase, which confirms the type, shapes an outline, and commits the work unit to disk before routing into the pipeline. Nothing persists before that commit — abandoning a conversation early leaves no debris.</li>
+      <li><strong>A work unit is an instance of a type.</strong> “auth-flow” might be a feature; “payments-overhaul” an epic. Each gets its own directory under <code>.workflows/</code> and its own manifest, so many units can be in flight at once — even in parallel sessions.</li>
+    </ul>
+
+    <h2>When work changes shape</h2>
+    <p>Shapes aren’t prisons. A feature that outgrows its scope <strong>pivots</strong> into an epic, one that belongs inside an epic gets <strong>absorbed</strong> as a topic, finished work reopens cleanly, and a spec that turns out to be project-wide gets promoted to a standing document. The full set of reshaping operations — and the <em>input moved</em> machinery that keeps them safe — has its own page: <a href="#lifecycle">10 · Changing shape</a>.</p>
+
+    <div class="pagenav">
+      <a href="#why"><span>Back · 02</span>← Why it’s built this way</a>
+      <a class="next" href="#phases"><span>Next · 04</span>The nine phases →</a>
+    </div>
+  </section>
+
+  <!-- ============ 03 PHASES ============ -->
+  <section class="page" id="phases" aria-labelledby="ph-h">
+    <p class="eyebrow">03 · Phases</p>
+    <h1 id="ph-h">Nine phases, three stages</h1>
+    <p class="lede">The phases group into three stages — the <em>three D’s</em>. Discovery explores and decides, Definition specifies and plans, Delivery builds and verifies. Each phase writes a durable artifact before the next begins.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 150" role="img" aria-label="The three stages: Discovery containing Discovery, Research, Discussion and Investigation; Definition containing Scoping, Specification and Planning; Delivery containing Implementation and Review. Arrows flow left to right, and artifacts flow downward to the repository.">
+          <defs>
+            <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11">
+            <!-- stage boxes -->
+            <rect x="8" y="26" width="268" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+            <rect x="304" y="26" width="222" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+            <rect x="554" y="26" width="198" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+            <text x="16" y="18" fill="var(--gold)" letter-spacing="2">DISCOVERY</text>
+            <text x="312" y="18" fill="var(--gold)" letter-spacing="2">DEFINITION</text>
+            <text x="562" y="18" fill="var(--gold)" letter-spacing="2">DELIVERY</text>
+            <text x="268" y="18" fill="currentColor" opacity=".55" text-anchor="end" font-size="10">explore &amp; decide</text>
+            <text x="518" y="18" fill="currentColor" opacity=".55" text-anchor="end" font-size="10">specify &amp; plan</text>
+            <text x="744" y="18" fill="currentColor" opacity=".55" text-anchor="end" font-size="10">build &amp; verify</text>
+            <!-- phases inside -->
+            <text x="20" y="52" fill="currentColor">Discovery · Research</text>
+            <text x="20" y="72" fill="currentColor">Discussion · Investigation</text>
+            <text x="316" y="52" fill="currentColor">Scoping · Specification</text>
+            <text x="316" y="72" fill="currentColor">Planning</text>
+            <text x="566" y="52" fill="currentColor">Implementation</text>
+            <text x="566" y="72" fill="currentColor">Review</text>
+            <!-- arrows between stages -->
+            <line x1="278" y1="58" x2="298" y2="58" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+            <line x1="528" y1="58" x2="548" y2="58" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+            <!-- artifact drops -->
+            <line x1="142" y1="90" x2="142" y2="116" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+            <line x1="415" y1="90" x2="415" y2="116" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+            <line x1="653" y1="90" x2="653" y2="116" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+            <text x="380" y="140" fill="currentColor" opacity=".65" text-anchor="middle">versioned documents in your repo · .workflows/ · committed by the engine</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Every stage leaves a written record behind it. The dashed drops are the point: a phase isn’t “remembered”, it’s a document the next phase reads.</figcaption>
+    </figure>
+
+    <p>Expand any phase for what it actually does. The right-hand tag shows which work types pass through it.</p>
+
+    <div class="stage">
+      <div class="stage-rule"><span class="lbl">Discovery</span><span class="verb">explore &amp; decide</span></div>
+      <details class="phase-card" open>
+        <summary><span class="tw">▸</span>1 · Discovery<span class="who">every work type</span></summary>
+        <div class="body"><p>The universal first phase. You describe the work; Discovery confirms its type, shapes the outline, and commits the work unit — the durability boundary where the manifest, session log, and any seed material land on disk. For epics the same conversation continues into <strong>topic curation</strong>: naming topics, routing each toward research or discussion, and synthesising per-topic briefs that seed the later phases. Existing files you share are attached as imports and surface through the knowledge base.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>2 · Research<span class="who">epic · feature · cross-cutting (optional)</span></summary>
+        <div class="body"><p>Explore — feasibility, market, viability, early ideas. Scoped per topic, one file per topic. A background review agent challenges topical gaps while you work, and a document review reconciles the session against the file at conclusion, catching substance the conversation produced but nobody wrote down. Deep-dive agents can investigate independent threads in parallel.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>3 · Discussion<span class="who">epic · feature · cross-cutting</span></summary>
+        <div class="body"><p>An organic conversation that pushes back, guided by a live map of points moving <code>pending → exploring → converging → decided</code>. Off-topic concerns don’t derail the session — they’re rerouted into the right topic’s triage queue and block <em>that</em> topic’s conclusion until drained. The same gap-challenging background agent and closing document review apply.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>4 · Investigation<span class="who">bugfix only</span></summary>
+        <div class="body"><p>Bugfix’s replacement for research and discussion: symptom gathering plus code analysis, driving to a root cause before anything is specified or fixed.</p></div>
+      </details>
+    </div>
+
+    <div class="stage">
+      <div class="stage-rule"><span class="lbl">Definition</span><span class="verb">specify &amp; plan</span></div>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>5 · Scoping<span class="who">quick-fix only</span></summary>
+        <div class="body"><p>Quick-fix’s single-pass definition: context, spec, and plan in one sitting, sized for a change that doesn’t warrant the full pipeline.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>6 · Specification<span class="who">epic · feature · bugfix · cross-cutting</span></summary>
+        <div class="body"><p>Turns the decided record into a standalone spec you approve. The spec <em>makes decisions clear, never makes them</em>: when a source conflicts, the conflict comes to you; when a genuine gap appears, it lands back in the owning discussion rather than being papered over. Spec review then runs three sequential verification passes — claims are re-measured against the actual code, fidelity is checked against sources (in both directions), and a standalone gap analysis closes it out. Specification hard-blocks on an unsettled discussion: a spec cannot be reliably built from an in-flight record.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>7 · Planning<span class="who">epic · feature · bugfix</span></summary>
+        <div class="body"><p>Defines <em>how</em>: phases, tasks, acceptance criteria. Tasks are written to the tracker format you choose — Tick, local Markdown, or Linear — behind one adapter contract, so the rest of the pipeline doesn’t care where your tasks live.</p></div>
+      </details>
+    </div>
+
+    <div class="stage">
+      <div class="stage-rule"><span class="lbl">Delivery</span><span class="verb">build &amp; verify</span></div>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>8 · Implementation<span class="who">epic · feature · bugfix · quick-fix</span></summary>
+        <div class="body"><p>Executes the plan through a gated test-first loop — executor, reviewer, and a fix cycle capped at three attempts before you’re consulted. Each task lands as its own commit. Covered in full on <a href="#implementation">page 06</a>.</p></div>
+      </details>
+      <details class="phase-card">
+        <summary><span class="tw">▸</span>9 · Review<span class="who">epic · feature · bugfix · quick-fix</span></summary>
+        <div class="body"><p>Per-task verifiers report only what is <em>wrong</em>, naming the concrete failure, whether it’s inside the delivered change-set, and whether it spreads. Every finding is verified against the code before anything acts on it. Contained in-scope fixes are applied and committed in-session; a spreading problem fails the review and triggers a replan — a verdict that is derived, never chosen. Out-of-scope findings are banked durably and offered later, never silently filed.</p></div>
+      </details>
+    </div>
+
+    <div class="pagenav">
+      <a href="#work-types"><span>Back · 03</span>← The five work types</a>
+      <a class="next" href="#architecture"><span>Next · 05</span>Under the hood →</a>
+    </div>
+  </section>
+
+  <!-- ============ 05 ARCHITECTURE ============ -->
+  <section class="page" id="architecture" aria-labelledby="arch-h">
+    <p class="eyebrow">05 · Under the hood</p>
+    <h1 id="arch-h">Skills in tiers, an engine underneath</h1>
+    <p class="lede">The prose that guides each conversation is organised in tiers of skills, and none of them holds state. A deterministic engine owns every transition, every status display, and every commit — <em>Claude narrates; the engine records.</em></p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 400" role="img" aria-label="Skill tiers: you invoke workflow-start, which routes new work to discovery and existing work to per-type continue skills. Both route into phase entry skills, which invoke processing skills. All tiers call one engine, which reads and writes state on disk and commits to git.">
+          <defs>
+            <marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <!-- you -->
+            <rect x="310" y="8" width="140" height="34" rx="17" fill="none" stroke="currentColor"/>
+            <text x="380" y="29" text-anchor="middle" fill="currentColor">you</text>
+            <line x1="380" y1="42" x2="380" y2="64" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <text x="392" y="58" fill="currentColor" opacity=".6" font-size="10">/workflow-start</text>
+
+            <!-- entry -->
+            <rect x="270" y="66" width="220" height="40" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="380" y="86" text-anchor="middle" fill="currentColor">workflow-start</text>
+            <text x="380" y="99" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">the only command you type</text>
+
+            <!-- routes -->
+            <line x1="310" y1="106" x2="185" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <text x="205" y="128" fill="currentColor" opacity=".65" font-size="10" text-anchor="end">new work</text>
+            <line x1="450" y1="106" x2="575" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <text x="556" y="128" fill="currentColor" opacity=".65" font-size="10">existing work</text>
+
+            <!-- discovery + continue -->
+            <rect x="60" y="148" width="250" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="185" y="168" text-anchor="middle" fill="currentColor">workflow-discovery</text>
+            <text x="185" y="183" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">settle the type · commit the unit</text>
+            <rect x="450" y="148" width="250" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="575" y="168" text-anchor="middle" fill="currentColor">workflow-continue-*</text>
+            <text x="575" y="183" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">per-type dashboards · resume</text>
+
+            <!-- into entry skills -->
+            <line x1="185" y1="194" x2="330" y2="236" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <line x1="575" y1="194" x2="430" y2="236" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <text x="380" y="222" text-anchor="middle" fill="currentColor" opacity=".65" font-size="10">route with work type + unit</text>
+
+            <rect x="235" y="238" width="290" height="40" rx="8" fill="none" stroke="currentColor"/>
+            <text x="380" y="258" text-anchor="middle" fill="currentColor">workflow-*-entry</text>
+            <text x="380" y="271" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">validate · bootstrap · hand off</text>
+
+            <line x1="380" y1="278" x2="380" y2="300" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar2)"/>
+            <rect x="235" y="302" width="290" height="40" rx="8" fill="none" stroke="currentColor"/>
+            <text x="380" y="322" text-anchor="middle" fill="currentColor">workflow-*-process</text>
+            <text x="380" y="335" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">run the phase itself</text>
+
+            <!-- engine bar -->
+            <rect x="40" y="364" width="680" height="30" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="380" y="383" text-anchor="middle" fill="currentColor">engine — state · displays · transactions · migrations · commits</text>
+            <!-- calls into engine -->
+            <line x1="120" y1="194" x2="120" y2="360" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#ar2)"/>
+            <line x1="650" y1="194" x2="650" y2="360" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#ar2)"/>
+            <line x1="380" y1="342" x2="380" y2="360" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#ar2)"/>
+            <text x="108" y="290" fill="currentColor" opacity=".6" font-size="10" text-anchor="end" transform="rotate(-90 108 290)">every tier calls it</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>One user-facing command; everything below it is model-invoked. Dashed lines are the point: no skill touches state directly — every read and write goes through the engine.</figcaption>
+    </figure>
+
+    <h2>What the engine buys you</h2>
+    <ul>
+      <li><strong>Durable by construction.</strong> State transitions are transactions: validated first, refused cleanly, committed atomically. A crash mid-anything leaves files byte-identical, and the next session resumes from disk.</li>
+      <li><strong>Displays you can trust.</strong> Menus and status screens are computed from disk and emitted byte-for-byte. The model cannot claim a phase is done that isn’t.</li>
+      <li><strong>Zero-maintenance upgrades.</strong> Updates ship migrations that bring existing projects in sync on the next run — no manual steps.</li>
+      <li><strong>A full audit trail.</strong> Every phase, decision, and review finding lands in git through engine-owned commits, versioned alongside your code.</li>
+      <li><strong>Session awareness.</strong> Parallel sessions see each other through per-topic presence heartbeats — a topic held by another live session is struck through, skipped as a recommendation, and confirm-gated.</li>
+    </ul>
+
+    <h2>What lands on disk</h2>
+    <p>Everything lives under <code>.workflows/</code> in your repo — human-readable Markdown plus a manifest per work unit. Commit it and your whole team (and Claude Code for Web) shares the same state.</p>
+    <div class="tree" role="img" aria-label="Directory tree of the .workflows folder showing inbox, roadmap, baseline, knowledge store, and a work unit with manifest, discovery, research, discussion, specification, planning, implementation and review folders.">
+.workflows/
+├── manifest.json                <span class="c">— work-unit registry · project defaults</span>
+├── .inbox/                      <span class="c">— captured ideas · bugs · quick-fixes</span>
+├── .roadmap/                    <span class="c">— the product layer above work units</span>
+├── .baseline/                   <span class="c">— brownfield assessment docs</span>
+├── .knowledge/                  <span class="c">— the local knowledge-base store</span>
+└── <span class="g">payments-overhaul/</span>           <span class="c">— one work unit (an epic)</span>
+    ├── manifest.json            <span class="c">— engine-owned state</span>
+    ├── discovery/sessions/      <span class="c">— the running exploration record</span>
+    ├── research/{topic}.md
+    ├── discussion/{topic}.md
+    ├── specification/{topic}/specification.md
+    ├── planning/{topic}/        <span class="c">— plan + task files</span>
+    ├── implementation/{topic}/
+    └── review/{topic}/report.md
+    </div>
+
+    <h2>An expert in the room</h2>
+    <p>The system is multi-agent by design — more than thirty specialised agents work alongside the pipeline, each reading its material cold and handing back a structured result. Who they are, when they act, and the idea about context that justifies them all has its own page: <a href="#agents">09 · The agents</a>.</p>
+
+    <div class="pagenav">
+      <a href="#phases"><span>Back · 04</span>← The nine phases</a>
+      <a class="next" href="#implementation"><span>Next · 06</span>The hands-off loop →</a>
+    </div>
+  </section>
+
+  <!-- ============ 06 IMPLEMENTATION ============ -->
+  <section class="page" id="implementation" aria-labelledby="impl-h">
+    <p class="eyebrow">06 · Implementation</p>
+    <h1 id="impl-h">The hands-off loop</h1>
+    <p class="lede">By the time implementation starts, every decision is written down. What remains is execution: task by task, test-first, with a reviewer at the gate — and <em>you</em> only when the loop earns your attention.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 330" role="img" aria-label="The implementation loop: the plan feeds tasks to an executor which writes code test-first; a reviewer checks against acceptance criteria. Pass leads through a gate to a commit and the next task. Fail loops findings back to the executor, at most three times, then you are consulted. When the last task of a phase lands, a consolidation sweep proposes gated cleanup tasks before the phase closes.">
+          <defs>
+            <marker id="ar3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <!-- plan -->
+            <rect x="16" y="56" width="120" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="76" y="76" text-anchor="middle" fill="currentColor">plan</text>
+            <text x="76" y="91" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">next task</text>
+            <line x1="136" y1="79" x2="176" y2="79" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+
+            <!-- executor -->
+            <rect x="178" y="50" width="150" height="58" rx="8" fill="none" stroke="currentColor"/>
+            <text x="253" y="74" text-anchor="middle" fill="currentColor">executor</text>
+            <text x="253" y="90" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">writes it test-first</text>
+            <line x1="328" y1="79" x2="384" y2="79" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <text x="356" y="70" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">code</text>
+
+            <!-- reviewer -->
+            <rect x="386" y="50" width="160" height="58" rx="8" fill="none" stroke="currentColor"/>
+            <text x="466" y="74" text-anchor="middle" fill="currentColor">reviewer</text>
+            <text x="466" y="90" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">vs acceptance criteria</text>
+
+            <!-- pass to gate -->
+            <line x1="546" y1="79" x2="602" y2="79" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <text x="574" y="70" text-anchor="middle" fill="var(--gold)" font-size="10">pass</text>
+            <rect x="604" y="50" width="140" height="58" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="674" y="74" text-anchor="middle" fill="currentColor">gate</text>
+            <text x="674" y="90" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">approve · or auto</text>
+
+            <!-- commit -->
+            <line x1="674" y1="108" x2="674" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <rect x="604" y="148" width="140" height="40" rx="8" fill="none" stroke="currentColor"/>
+            <text x="674" y="172" text-anchor="middle" fill="currentColor">one commit</text>
+
+            <!-- loop back to next task -->
+            <path d="M604 168 L76 168 L76 106" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <text x="340" y="161" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">next task</text>
+
+            <!-- fail loop -->
+            <path d="M466 50 C466 18, 253 18, 253 48" fill="none" stroke="var(--c-bugfix)" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <text x="360" y="22" text-anchor="middle" fill="var(--c-bugfix)" font-size="10">fail → findings · at most ×3</text>
+            <!-- consult you -->
+            <line x1="466" y1="108" x2="466" y2="140" stroke="var(--c-bugfix)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar3)"/>
+            <text x="466" y="156" text-anchor="middle" fill="var(--c-bugfix)" font-size="10">3rd failure → you’re consulted</text>
+
+            <!-- consolidation band -->
+            <line x1="76" y1="196" x2="76" y2="222" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar3)"/>
+            <text x="88" y="214" fill="currentColor" opacity=".6" font-size="10">phase’s last task lands</text>
+            <rect x="16" y="226" width="728" height="56" rx="8" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+            <text x="380" y="249" text-anchor="middle" fill="currentColor">consolidation sweep — reads what the phase’s tasks built side by side</text>
+            <text x="380" y="266" text-anchor="middle" fill="currentColor" opacity=".55" font-size="10">duplication · near-miss helpers · dead code no single task could see → gated cleanup tasks</text>
+            <line x1="380" y1="282" x2="380" y2="306" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar3)"/>
+            <text x="380" y="322" text-anchor="middle" fill="currentColor" opacity=".7">phase closes → next phase of the plan</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The loop as a task actually experiences it. Red is the failure path — bounded, then escalated. The dashed band runs once per plan phase, not per task.</figcaption>
+    </figure>
+
+    <h2>Why it stays on the rails</h2>
+    <ul>
+      <li><strong>Graduated autonomy.</strong> Every gate accepts auto mode. Hand over as much or as little of the loop as you trust, per work unit, reversibly — from approving each task by hand to a fully unattended run.</li>
+      <li><strong>Engineered context, not a dumped transcript.</strong> Each agent sees briefs, read-in-full contracts, and scoped handoffs — the context the process built for it, not whatever happened to be in the window.</li>
+      <li><strong>Environment aware.</strong> Implementation discovers your linters and project-specific skills and applies them through the test-first cycle and review.</li>
+      <li><strong>Convergence diagnostics.</strong> A loop that stops converging is diagnosed rather than repeated: cycle tracking distinguishes what’s resolving from what’s recurring before escalating to you.</li>
+    </ul>
+
+    <h2>Then review, with teeth</h2>
+    <p>After implementation, the review phase re-verifies the whole delivered change-set task by task (<a href="#phases">page 04, phase 9</a>). The verdict is binary and derived: contained in-scope problems get fixed in-session; a spreading one fails the review and sends the work back to planning. There is no “pass with notes”.</p>
+
+    <div class="pagenav">
+      <a href="#architecture"><span>Back · 05</span>← Under the hood</a>
+      <a class="next" href="#knowledge"><span>Next · 07</span>Memory &amp; knowledge →</a>
+    </div>
+  </section>
+
+  <!-- ============ 07 KNOWLEDGE ============ -->
+  <section class="page" id="knowledge" aria-labelledby="kb-h">
+    <p class="eyebrow">07 · Memory</p>
+    <h1 id="kb-h">A memory that cites its sources</h1>
+    <p class="lede">Not a scratchpad. Every completed artifact is indexed locally with provenance, so later phases — and later <em>months</em> — can ask questions in plain language and get answers that point at the document that decided them.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 250" role="img" aria-label="Knowledge flow: completed artifacts — research, discussions, investigations, specifications, discovery logs, baseline docs — are indexed at phase completion into a local store, which later phases query in plain language and receive cited answers. Relevance decays with shipped work; specifications never decay.">
+          <defs>
+            <marker id="ar4" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <!-- sources -->
+            <rect x="16" y="24" width="212" height="168" rx="8" fill="none" stroke="currentColor"/>
+            <text x="122" y="46" text-anchor="middle" fill="currentColor">completed artifacts</text>
+            <text x="30" y="72" fill="currentColor" opacity=".75">· research</text>
+            <text x="30" y="92" fill="currentColor" opacity=".75">· discussions</text>
+            <text x="30" y="112" fill="currentColor" opacity=".75">· investigations</text>
+            <text x="30" y="132" fill="currentColor" opacity=".75">· specifications</text>
+            <text x="30" y="152" fill="currentColor" opacity=".75">· discovery &amp; roadmap logs</text>
+            <text x="30" y="172" fill="currentColor" opacity=".75">· baseline · seeds · imports</text>
+
+            <line x1="228" y1="108" x2="296" y2="108" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar4)"/>
+            <text x="262" y="98" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">indexed at</text>
+            <text x="262" y="126" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">completion</text>
+
+            <!-- store -->
+            <rect x="298" y="66" width="196" height="84" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="396" y="96" text-anchor="middle" fill="currentColor">local store</text>
+            <text x="396" y="114" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">semantic (with a key)</text>
+            <text x="396" y="128" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">keyword-only without</text>
+
+            <line x1="494" y1="108" x2="562" y2="108" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar4)"/>
+            <text x="528" y="98" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">plain-language</text>
+            <text x="528" y="126" text-anchor="middle" fill="currentColor" opacity=".6" font-size="10">query</text>
+
+            <!-- consumers -->
+            <rect x="564" y="46" width="180" height="124" rx="8" fill="none" stroke="currentColor"/>
+            <text x="654" y="70" text-anchor="middle" fill="currentColor">later phases</text>
+            <text x="578" y="96" fill="currentColor" opacity=".75">answers with</text>
+            <text x="578" y="112" fill="currentColor" opacity=".75">provenance —</text>
+            <text x="578" y="128" fill="currentColor" opacity=".75">every claim cites</text>
+            <text x="578" y="144" fill="currentColor" opacity=".75">its document</text>
+
+            <!-- decay note -->
+            <line x1="396" y1="150" x2="396" y2="186" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar4)"/>
+            <text x="396" y="206" text-anchor="middle" fill="currentColor" opacity=".7">relevance decays with shipped work, not wall-clock time</text>
+            <text x="396" y="226" text-anchor="middle" fill="var(--gold)">specifications never decay — they are the golden record</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Planning, implementation, and review are never indexed — the record is the thinking, not the diffs. Dead ends count too: a rejected approach stops the next work unit exploring the same ground.</figcaption>
+    </figure>
+
+    <h2>Semantic or keyword — both are supported</h2>
+    <p>With an OpenAI-compatible key (entered in your terminal, never the chat) the store uses embeddings for semantic recall. Without one it runs in keyword-only mode — a supported degraded mode, not a broken state. The first <code>/workflow-start</code> walks you through the choice conversationally.</p>
+
+    <h2>Starting in an existing codebase</h2>
+    <p>A project that grew up on the workflows accumulates its record as it goes. A project you install them into has none — so the first run offers a <strong>baseline assessment</strong>. Research agents fan out over the code, then the system interviews you about what they found: the intent, constraints, and history only you can supply, with the evidence woven into every question. The answers land as a doc set the knowledge base surfaces in every later phase — observed structure, your stated reasoning, and honest open questions kept separate. It’s pausable mid-interview, resumable from the start menu, and expandable as the product grows.</p>
+
+    <h2>The product roadmap</h2>
+    <p>Above the work units sits a product layer for the conversations that aren’t yet a piece of work: horizons you name in your own release language, capability-grain items with pointers back to the thinking. Ideas surfacing mid-work park there with one confirmed line (“that’s a v2 thing”), everything unpulled stays visibly waiting, and a <strong>pull</strong> births a work unit already fenced to the slice you chose. Cancelling delivery hands the item straight back.</p>
+
+    <div class="pagenav">
+      <a href="#implementation"><span>Back · 06</span>← The hands-off loop</a>
+      <a class="next" href="#collab"><span>Next · 08</span>Working together →</a>
+    </div>
+  </section>
+
+  <!-- ============ 08 COLLAB ============ -->
+  <section class="page" id="collab" aria-labelledby="collab-h">
+    <p class="eyebrow">08 · Collaboration</p>
+    <h1 id="collab-h">How the system works with you</h1>
+    <p class="lede">The amount of <em>you</em> a phase needs is not constant. It is widest at the start and narrows toward the end — a cone, from a conversation where you shape everything to a delivery loop that mostly runs itself.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 230" role="img" aria-label="The attention cone: your involvement is widest during discovery, research and discussion, narrows through specification and planning, and is smallest during implementation and review, where the system carries the work and you approve at gates.">
+          <defs>
+            <marker id="ar5" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11">
+            <!-- cone: your share -->
+            <path d="M30 30 C260 40, 480 110, 730 132 L730 148 C480 152, 260 156, 30 160 Z" fill="var(--gold-wash)" stroke="var(--gold)" stroke-width="1.2"/>
+            <text x="52" y="102" fill="var(--gold)" font-size="12">you</text>
+            <text x="52" y="118" fill="currentColor" opacity=".6" font-size="9.5">shaping · deciding</text>
+            <!-- system share below -->
+            <text x="640" y="196" fill="currentColor" opacity=".75" font-size="12" text-anchor="end">the system</text>
+            <text x="640" y="210" fill="currentColor" opacity=".55" font-size="9.5" text-anchor="end">drafting · building · checking</text>
+            <path d="M30 168 C260 164, 480 160, 730 156 L730 182 L30 182 Z" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-width="1.2"/>
+            <!-- phase axis -->
+            <line x1="30" y1="222" x2="730" y2="222" stroke="currentColor" stroke-opacity=".4"/>
+            <text x="30" y="216" fill="currentColor" opacity=".7">discovery</text>
+            <text x="180" y="216" fill="currentColor" opacity=".7">discussion</text>
+            <text x="352" y="216" fill="currentColor" opacity=".7">spec</text>
+            <text x="455" y="216" fill="currentColor" opacity=".7">plan</text>
+            <text x="560" y="216" fill="currentColor" opacity=".7">implement</text>
+            <text x="690" y="216" fill="currentColor" opacity=".7">review</text>
+            <!-- role annotations -->
+            <text x="30" y="20" fill="currentColor" opacity=".65">your role: author</text>
+            <text x="352" y="66" fill="currentColor" opacity=".65">→ partner</text>
+            <text x="560" y="100" fill="currentColor" opacity=".65">→ approver</text>
+            <text x="700" y="118" fill="currentColor" opacity=".65" text-anchor="end">→ judge</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Why it narrows: a wrong turn caught in discussion costs a sentence; the same wrong turn caught in review costs a rebuild. Your attention is spent where it buys the most — and by the time implementation runs, certainty lives in documents you approved, not in anyone’s memory.</figcaption>
+    </figure>
+
+    <h2>Stops that mean it</h2>
+    <p>Everywhere the system needs a decision from you, it stops and waits — structured decision points, not the assistant checking in for reassurance. It will not answer a gate for you, even under pressure to keep going: a stored preference or project default <em>pre-fills</em> a question, it never skips one. “The user already decided this” is exactly the shortcut the design forbids.</p>
+    <p>What a stop shows you is written for the person deciding, not the machinery that produced it: findings and outcomes are told in the product’s terms first — what you’d see happen and where — with the same facts retellable from the code’s perspective, or verbatim, on request. You choose the lens; the record on disk stays fully technical either way.</p>
+
+    <h2>Ask or decide</h2>
+    <p>Before any question reaches you, the system locates where the answer lives:</p>
+    <ul>
+      <li><strong>The record</strong> — decisions already made, sibling artifacts, convention, first principles. When these admit exactly one defensible answer, the call is made, stated in a line, and recorded with its derivation — never presented for ratification. A settled call posed as a question costs you a full read to say “yes”.</li>
+      <li><strong>You</strong> — taste, appetite, product intent, priorities, facts only you hold. Then it asks, and the question carries the fork: what turns on the answer, not a recap of everything already known.</li>
+    </ul>
+    <p>Three overrides send an otherwise-derivable call to you anyway: the consequence <strong>leaves the topic</strong> (it would amend ground outside the current artifact), it’s <strong>expensive to reverse</strong> (wrong means rework, not a patch), or the system <strong>doesn’t believe its own derivation</strong> — in which case it says so plainly. When it’s unsure which side a point falls on, it asks: a needless question costs one exchange; a wrong silent call is a decision you never saw.</p>
+
+    <h2>Lanes — ceremony by the move owed, never severity</h2>
+    <p>Background agents run while you talk — gap analyses, reviewers, perspective panels. Their findings don’t arrive as a wall of notes: each is classified by <em>what it asks of you</em>, and each class gets exactly the ceremony it earns.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 300" role="img" aria-label="Lanes: a background agent's report classifies each finding by the move it asks of the user into four lanes. Apply: corrections the record determines, applied as an approved batch. Decide: calls the record settles, shown for a scan and a veto. Route: concerns belonging to another topic, sent to its triage queue. Walk: genuine choices, raised one per turn. Promotion moves findings only toward the walk, never away.">
+          <defs>
+            <marker id="ar6" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <!-- report -->
+            <rect x="16" y="96" width="180" height="76" rx="8" fill="none" stroke="currentColor"/>
+            <text x="106" y="124" text-anchor="middle" fill="currentColor">background agent</text>
+            <text x="106" y="140" text-anchor="middle" fill="currentColor">report</text>
+            <text x="106" y="158" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">each finding names its lane</text>
+
+            <!-- fan-out -->
+            <line x1="196" y1="112" x2="252" y2="46" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar6)"/>
+            <line x1="196" y1="126" x2="252" y2="112" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar6)"/>
+            <line x1="196" y1="142" x2="252" y2="178" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar6)"/>
+            <line x1="196" y1="158" x2="252" y2="248" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar6)"/>
+
+            <!-- lanes -->
+            <rect x="254" y="24" width="150" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="329" y="44" text-anchor="middle" fill="currentColor">apply</text>
+            <text x="329" y="60" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">no choice in them</text>
+            <text x="416" y="44" fill="currentColor" opacity=".75" font-size="10.5">corrections the record determines —</text>
+            <text x="416" y="60" fill="currentColor" opacity=".75" font-size="10.5">rendered numbered, approved as a batch</text>
+
+            <rect x="254" y="90" width="150" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="329" y="110" text-anchor="middle" fill="currentColor">decide</text>
+            <text x="329" y="126" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">calls the record settles</text>
+            <text x="416" y="110" fill="currentColor" opacity=".75" font-size="10.5">made calls with their derivations —</text>
+            <text x="416" y="126" fill="currentColor" opacity=".75" font-size="10.5">shown for a scan and a veto</text>
+
+            <rect x="254" y="156" width="150" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="329" y="176" text-anchor="middle" fill="currentColor">route</text>
+            <text x="329" y="192" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">someone else’s topic</text>
+            <text x="416" y="176" fill="currentColor" opacity=".75" font-size="10.5">sent to the owning topic’s triage</text>
+            <text x="416" y="192" fill="currentColor" opacity=".75" font-size="10.5">queue — nothing falls on the floor</text>
+
+            <rect x="254" y="226" width="150" height="46" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="329" y="246" text-anchor="middle" fill="currentColor">walk</text>
+            <text x="329" y="262" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">a genuine choice each</text>
+            <text x="416" y="246" fill="currentColor" opacity=".75" font-size="10.5">a conversation opened —</text>
+            <text x="416" y="262" fill="currentColor" opacity=".75" font-size="10.5">one finding per turn, yours to settle</text>
+
+            <!-- promotion arrow -->
+            <path d="M240 70 L240 226" fill="none" stroke="var(--gold)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar6)"/>
+            <text x="232" y="150" fill="var(--gold)" font-size="10" text-anchor="end" transform="rotate(-90 232 150)">promotion: toward you only</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>A finding hiding a real choice is promoted into the walk the moment it’s spotted; a walked finding is never demoted into a batch to save a turn. Batch screens render at most five items, and nothing — however “obviously right” — is applied unseen.</figcaption>
+    </figure>
+
+    <p>The surfacing itself is polite by rule, not by mood: the report is announced first with a micro-menu and drained only when you opt in; if you’re mid-thought it waits for a natural break; and a maturity-graded sufficiency bar keeps noise down — in early exploration findings are fuel, but once ground is settled, a finding must survive the consuming-phase test or it lands in the report as an <em>Observation</em>, never raised at you.</p>
+
+    <h2>Managing the discussion itself</h2>
+    <ul>
+      <li><strong>A live map, not a transcript.</strong> Discussion runs against a map of points moving <code>pending → exploring → converging → decided</code>, so both of you can see what’s settled and what’s still open — and conclusion is blocked while anything genuinely isn’t.</li>
+      <li><strong>Off-topic is captured, not chased.</strong> Raise something that belongs elsewhere and it’s rerouted into that topic’s triage queue with one confirmed line, keeping the current thread on course.</li>
+      <li><strong>A challenger in the background.</strong> While you talk, a review agent hunts topical gaps; at conclusion a document review reconciles the session against the written file, catching substance the conversation produced but nobody wrote down. Both are mandatory before a topic concludes.</li>
+      <li><strong>Perspective panels.</strong> For contested decisions, agents argue both sides independently before a synthesis reaches you — you get the tension, not a premature consensus.</li>
+    </ul>
+
+    <h2>The voice it holds</h2>
+    <p>The conversational register is a colleague’s, by explicit rule: it has a position and says what would change its mind, it opens with substance rather than “great question”, it cites the record (<code>file:line</code>, the actual decision) rather than a fabricated past, and it ends turns without ceremony. Menus and status displays are exempt — those are engine-emitted bytes it cannot editorialise. How <em>hard</em> it pushes back is set per phase; the manner stays constant.</p>
+
+    <div class="callout"><p><strong>The through-line:</strong> eager to do the work, unwilling to make your decisions. It drafts, analyses, builds, and checks tirelessly — and stops dead at the line where a choice is yours, handing that line over only when you deliberately choose to hand it.</p></div>
+
+    <div class="pagenav">
+      <a href="#knowledge"><span>Back · 07</span>← Memory &amp; knowledge</a>
+      <a class="next" href="#agents"><span>Next · 09</span>The agents →</a>
+    </div>
+  </section>
+
+  <!-- ============ 09 AGENTS ============ -->
+  <section class="page" id="agents" aria-labelledby="ag-h">
+    <p class="eyebrow">09 · The agents</p>
+    <h1 id="ag-h">Thirty agents, one idea about context</h1>
+    <p class="lede">The session you talk to was <em>in</em> the conversation — it remembers what was said, what was meant, what was waved off. That memory is an asset for catching what was discussed but never written down, and a liability for judging what <em>was</em> written down: a participant reads a document already knowing what it was supposed to say.</p>
+    <p>So the system pairs the two. A sub-agent has no such memory — it reads the artifact cold, with nothing but the artifact in front of it, and that is exactly what makes its critique worth having. The orchestrating session catches what was said but not written; the fresh agent catches what was written but not right.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 800 310" role="img" aria-label="Timeline of when the agents act across the life of one work unit: baseline researchers before the pipeline; background critics, deep-dive researchers and perspective pairs while you converse; sequential validators when a spec or plan nears completion; four plan-building agents; executor and reviewer pairs while code is written; a consolidation finder at each phase boundary; examiners, a synthesiser and review verifiers after the build.">
+          <defs>
+            <marker id="ar7" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+            <line x1="20" y1="155" x2="778" y2="155" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar7)"/>
+            <text x="24" y="146" fill="currentColor" opacity=".55" font-size="9.5">the work, in order →</text>
+            <!-- ticks -->
+            <line x1="70"  y1="148" x2="70"  y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="180" y1="148" x2="180" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="290" y1="148" x2="290" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="400" y1="148" x2="400" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="510" y1="148" x2="510" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="620" y1="148" x2="620" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="730" y1="148" x2="730" y2="162" stroke="currentColor" stroke-width="1.4"/>
+            <!-- above: 1,3,5,7 -->
+            <line x1="70" y1="100" x2="70" y2="146" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="70" y="52" text-anchor="middle" fill="var(--gold)" letter-spacing="1">BEFORE THE PIPELINE</text>
+            <text x="70" y="70" text-anchor="middle" fill="currentColor">baseline researchers</text>
+            <text x="70" y="86" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">one per code area, reading cold</text>
+            <line x1="290" y1="100" x2="290" y2="146" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="290" y="52" text-anchor="middle" fill="var(--gold)" letter-spacing="1">VALIDATING DOCUMENTS</text>
+            <text x="290" y="70" text-anchor="middle" fill="currentColor">spec: claims → inputs → gaps</text>
+            <text x="290" y="86" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">in strict sequence, each pass</text>
+            <text x="290" y="98" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">reviews the corrected version</text>
+            <line x1="510" y1="100" x2="510" y2="146" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="510" y="52" text-anchor="middle" fill="var(--gold)" letter-spacing="1">WRITING THE CODE</text>
+            <text x="510" y="70" text-anchor="middle" fill="currentColor">executor + reviewer</text>
+            <text x="510" y="86" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">the reviewer didn’t write it;</text>
+            <text x="510" y="98" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">its verdict drives the fix loop</text>
+            <line x1="730" y1="100" x2="730" y2="146" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="730" y="52" text-anchor="middle" fill="var(--gold)" letter-spacing="1">AFTER THE BUILD</text>
+            <text x="730" y="70" text-anchor="middle" fill="currentColor">examiners + synthesiser</text>
+            <text x="730" y="86" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">then review verifiers,</text>
+            <text x="730" y="98" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">in parallel, against the record</text>
+            <!-- below: 2,4,6 -->
+            <line x1="180" y1="164" x2="180" y2="210" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="180" y="228" text-anchor="middle" fill="var(--gold)" letter-spacing="1">WHILE YOU CONVERSE</text>
+            <text x="180" y="246" text-anchor="middle" fill="currentColor">background critics · deep-dives</text>
+            <text x="180" y="262" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">and a perspective pair arguing</text>
+            <text x="180" y="274" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">opposite sides, then reconciled</text>
+            <line x1="400" y1="164" x2="400" y2="210" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="400" y="228" text-anchor="middle" fill="var(--gold)" letter-spacing="1">BUILDING THE PLAN</text>
+            <text x="400" y="246" text-anchor="middle" fill="currentColor">phases · tasks · detail · deps</text>
+            <text x="400" y="262" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">four minds, one job each,</text>
+            <text x="400" y="274" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">you approving between them</text>
+            <line x1="620" y1="164" x2="620" y2="210" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="620" y="228" text-anchor="middle" fill="var(--gold)" letter-spacing="1">AT EACH PHASE BOUNDARY</text>
+            <text x="620" y="246" text-anchor="middle" fill="currentColor">consolidation finder</text>
+            <text x="620" y="262" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">reads the combined surface no</text>
+            <text x="620" y="274" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">single task’s eyes could see</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>When the agents act, across the life of one work unit. A bugfix adds one more: an independent agent that re-traces the code from scratch to confirm the root-cause diagnosis holds.</figcaption>
+    </figure>
+
+    <h2>The common shape</h2>
+    <ul>
+      <li><strong>Stateless, every time.</strong> Each run starts from nothing and is handed its inputs in full — no drift, no accumulated bias.</li>
+      <li><strong>Findings go to files, not the chat.</strong> Most agents write reports rather than flooding the conversation; what reaches you comes through the lanes (<a href="#collab">page 08</a>).</li>
+      <li><strong>They propose; they never commit.</strong> No agent touches git or changes your project’s state. Committing and record-keeping belong to the orchestrating session and the engine alone, and nothing an agent produces enters a plan or spec without passing a gate you control.</li>
+    </ul>
+
+    <h2>Context engineering — what each agent is given</h2>
+    <p>The context an agent sees is built by the process, not inherited from whatever happened to be in the window. Three instruments do the work:</p>
+    <ul>
+      <li><strong>Briefs.</strong> An epic’s wide, expensive shaping conversation is projected into a per-topic brief — the soft decisions and why, the paths rejected and why, the open questions carried forward. Each topic’s downstream phase reads its brief in full as starting context, inheriting the thinking instead of re-deriving it and re-walking the same dead ends.</li>
+      <li><strong>Read-in-full contracts.</strong> Durable phase inputs — the seed, the brief, completed research — are read whole by the phase that consumes them, at its own initialisation, never paraphrased through a hand-off. A relay can compress; a contract can’t.</li>
+      <li><strong>Scoped hand-offs.</strong> What passes between skills is the minimum that routes the work — work type, work unit, topic — not a dumped transcript. And because instructions held only by reference can drop out when a long session’s context is compacted, skills re-load their operating rules by name after every refresh rather than trusting memory.</li>
+    </ul>
+    <div class="callout"><p><strong>Why this matters:</strong> most multi-agent failures are context failures — the agent that saw too much and anchored, or too little and guessed. Engineering what each mind reads is the quiet half of the system’s reliability.</p></div>
+
+    <div class="pagenav">
+      <a href="#collab"><span>Back · 08</span>← Working together</a>
+      <a class="next" href="#lifecycle"><span>Next · 10</span>Changing shape →</a>
+    </div>
+  </section>
+
+  <!-- ============ 10 LIFECYCLE ============ -->
+  <section class="page" id="lifecycle" aria-labelledby="lc-h">
+    <p class="eyebrow">10 · Lifecycle</p>
+    <h1 id="lc-h">When work changes shape</h1>
+    <p class="lede">Work does not always run cleanly from start to finish in the shape it began. The system treats that as <em>normal</em> — a small set of deliberate operations you invoke, never something done behind your back.</p>
+
+    <h2>The three states — and no one-way doors</h2>
+    <p>Every work unit is <strong>in-progress</strong>, <strong>completed</strong>, or <strong>cancelled</strong>. Active work is what you see by default; closed work sits behind the <code>v/view</code> door, kept but not cluttering. Cancelling also removes the unit’s material from the knowledge base — an abandoned decision should not resurface as advice — and closing a unit clears its scratch working files while keeping every real artifact. Nothing is final: reactivating a cancelled unit restores its material to the knowledge base, since it is live thinking again.</p>
+
+    <h2>Pivot and absorb — the two reshapes</h2>
+    <ul>
+      <li><strong>Pivot: a feature that grew.</strong> When one feature’s discussion starts feeling like several discussions trying to happen at once, that’s the definition of an epic. Pivot converts it in place — everything already done is kept, and the work gains multi-topic structure. Carry straight on in the epic or step back.</li>
+      <li><strong>Absorb: a feature that belongs elsewhere.</strong> The opposite: a standalone feature that is really one facet of an epic already underway. Absorb moves its discussion, research, seeds, and imports across as a new topic, then deletes the redundant feature — git history remains as provenance. It’s guarded (a discussion must exist, nothing past discussion, an in-progress epic to receive it), because merging half-specified work would tangle two pipelines; when a guard blocks, you’re told which one, and nothing is touched.</li>
+    </ul>
+
+    <h2>Topics inside an epic</h2>
+    <p>Epic topics have their own lifecycle. Cancel a dead-end topic without touching the rest — it stays visible as a record but drops out of progress counts and stops holding up dependent phases. One guard: cancelling a discussion that a live specification is built from would leave that spec standing on rejected ground, so the cancel names the spec that falls with it and, on your confirmation, cancels both together. Reactivating restores the topic’s prior state, returning any completed thinking to the knowledge base.</p>
+
+    <h2>Promoting a spec</h2>
+    <p>Occasionally a specification written for one topic turns out to describe a project-wide pattern — a convention the rest of the codebase should follow. It can be promoted into its own cross-cutting concern, becoming a standing document of record instead of a step toward one build: the same recognition cross-cutting work is built around, applied after the fact.</p>
+
+    <h2>Revisiting finished work — the <em>input moved</em> ripple</h2>
+    <p>Completed phases reopen cleanly, without reactivating anything. What makes this safe is that the system tracks what the revisit sits underneath:</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 190" role="img" aria-label="Reopening a discussion marks the specification built on it as input moved. Menus route back to the flagged phase; the flag clears when you enter it and reconcile, and only that reconciliation decides whether the plan one hop further needs marking in turn.">
+          <defs>
+            <marker id="ar8" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <text x="100" y="24" text-anchor="middle" fill="currentColor" opacity=".7">you reopen it</text>
+            <line x1="100" y1="32" x2="100" y2="56" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar8)"/>
+            <rect x="20" y="58" width="160" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="100" y="78" text-anchor="middle" fill="currentColor">discussion</text>
+            <text x="100" y="94" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">re-decided</text>
+            <line x1="180" y1="81" x2="228" y2="81" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar8)"/>
+            <rect x="230" y="58" width="200" height="46" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="330" y="78" text-anchor="middle" fill="currentColor">specification</text>
+            <text x="330" y="94" text-anchor="middle" fill="var(--gold)" font-size="9.5">⚑ input moved</text>
+            <line x1="430" y1="81" x2="478" y2="81" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar8)"/>
+            <rect x="480" y="58" width="120" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="540" y="84" text-anchor="middle" fill="currentColor">plan</text>
+            <line x1="600" y1="81" x2="648" y2="81" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar8)"/>
+            <rect x="650" y="58" width="96" height="46" rx="8" fill="none" stroke="currentColor"/>
+            <text x="698" y="84" text-anchor="middle" fill="currentColor">build</text>
+            <text x="515" y="130" text-anchor="middle" fill="currentColor" opacity=".65" font-size="10">dashed hops happen only if each phase’s reconciliation says the change ripples on</text>
+            <text x="330" y="160" text-anchor="middle" fill="currentColor" opacity=".7" font-size="10.5">menus route back to the flagged phase, never past it — the flag clears when you enter and reconcile</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Staleness travels one hop at a time, always in the open. If the revisit changed nothing, each clear is a quick touch; if it changed something real, the rework it prompts is rework you wanted. A live mark even survives absorb — it travels into the epic with the feature.</figcaption>
+    </figure>
+
+    <h2>Moving ahead of yourself, safely</h2>
+    <p>Navigate forward out of turn and the system warns rather than blocks: early on it counts what’s unfinished upstream; from planning onward it reads the build order and names exactly which topics you’re stepping past. You can proceed anyway — if the earlier work later changes what you did, the mismatch is re-analysed and surfaced on your return. Specification is the one deliberate wall: a spec is built from the settled discussion record, so it refuses to start over open discussions and blocks while a source discussion is reopened. Everywhere else an informed nudge serves better than a locked door; there, a spec built on moving ground would be a false contract.</p>
+
+    <div class="pagenav">
+      <a href="#agents"><span>Back · 09</span>← The agents</a>
+      <a class="next" href="#menus"><span>Next · 11</span>Menus &amp; navigation →</a>
+    </div>
+  </section>
+
+  <!-- ============ 11 MENUS ============ -->
+  <section class="page" id="menus" aria-labelledby="menus-h">
+    <p class="eyebrow">11 · Menus</p>
+    <h1 id="menus-h">Reading and driving the menus</h1>
+    <p class="lede">Every screen below is computed from disk and emitted byte-for-byte by the engine — the menu you see <em>is</em> the state you’re in. Here’s the grammar they all share, then the four screens you’ll live in.</p>
+
+    <h2>The grammar every menu shares</h2>
+    <ul>
+      <li><strong>Numbered rows are things; lettered rows are actions.</strong> <code>1</code>, <code>2</code>, <code>3</code>… select a work unit, topic, or inbox item. <code>s/start</code>-style rows are actions — type the key (<code>s</code>) or the word (<code>start</code>), either works.</li>
+      <li><strong>Plain words always work.</strong> You’re in a conversation, not a form. “Add 2 and 4”, “cancel the tooltip one”, “archive the bugs” — the menu maps your phrasing onto its rows, selection included. Asking a question instead of choosing is fine too; the menu waits.</li>
+      <li><strong><code>(recommended)</code> is a suggestion, never a rail.</strong> At most one row per menu carries it — the engine’s read of the best next move, from phase order and the build order. Every other row stays open.</li>
+      <li><strong>Menus only offer what state allows.</strong> A row that would be invalid simply isn’t rendered: no absorb without an in-progress epic, no reactivate without a cancelled topic. If you don’t see an action, the state doesn’t permit it yet.</li>
+      <li><strong><code>y/yes</code> rows are commit points.</strong> The big one is discovery’s shaping gate — until you say yes there, no work unit exists on disk. Confirms are where things persist, atomically, in one commit.</li>
+      <li><strong><code>b/back</code> is always safe, and so is walking away.</strong> Every menu is a stop: the system waits, state is already durable, and killing the session mid-menu leaves nothing half-done.</li>
+    </ul>
+
+    <h2>The start menu — home</h2>
+    <p><code>/workflow-start</code> always lands here. Numbered rows continue what’s in flight; the lettered rows appear as they become relevant.</p>
+    <div class="term" role="img" aria-label="Terminal mock of the full start menu with every lettered row">
+      <div class="term-bar"><i></i><i></i><i></i><span>/workflow-start</span></div>
+      <pre><span class="t-gold">◆</span> What would you like to do?
+
+<span class="t-key">1..n</span>    → Continue a work unit <span class="t-dim">— name, type, phase (status)</span>
+<span class="t-key">a/baseline</span>      → Resume, view, or expand the project baseline
+<span class="t-key">r/roadmap</span>       → Open the product roadmap
+<span class="t-key">s/start</span>         → Start something new <span class="t-dim">(not sure what kind yet)</span>
+<span class="t-key">f/feature</span>  <span class="t-key">e/epic</span>  <span class="t-key">b/bugfix</span>  <span class="t-key">q/quick-fix</span>  <span class="t-key">c/cross-cutting</span>
+<span class="t-key">i/inbox</span>         → View the inbox and start from an item
+<span class="t-key">v/view</span>          → View completed &amp; cancelled work units
+<span class="t-key">m/manage</span>        → Manage a work unit's lifecycle</pre>
+    </div>
+    <p>The five type keys pre-seed discovery with a shape — useful when you already know it’s a bugfix. <code>s/start</code> lets discovery decide with you. <code>a</code>, <code>r</code>, <code>i</code>, and <code>v</code> only render when there’s a baseline, roadmap, inbox, or closed work to show; on a fresh project the start rows describe each pipeline instead, since there’s nothing to continue yet.</p>
+
+    <h2>The epic dashboard</h2>
+    <p>An epic has no single “next phase”, so its menu is a dashboard: every topic shown under the phase it currently occupies, grouped by the three stages, sorted by the build order — plus one recommendation.</p>
+    <div class="term" role="img" aria-label="Terminal mock of the epic dashboard action rows">
+      <div class="term-bar"><i></i><i></i><i></i><span>payments-overhaul · epic</span></div>
+      <pre><span class="t-key">1..n</span>         → A topic's next move <span class="t-dim">— one row per live topic</span>
+<span class="t-key">r/research</span>   → Start research on a new topic
+<span class="t-key">d/discuss</span>    → Start a new discussion
+<span class="t-key">s/spec</span>       → Analyze discussions → group into specs
+<span class="t-key">i/discovery</span>  → Re-shape the topic map
+<span class="t-key">o/order</span>      → Re-sequence the build order
+<span class="t-key">u/unblock</span>    → Mark a plan dependency satisfied externally
+<span class="t-key">c/completed</span>  → Resume a completed topic
+<span class="t-key">a/cancel</span>     → Cancel a topic   <span class="t-key">e/reactivate</span> → bring one back</pre>
+    </div>
+
+    <h3>The cues on the tree</h3>
+    <div class="table-scroll">
+    <table class="cmds">
+      <thead><tr><th>Cue</th><th>What it’s telling you</th></tr></thead>
+      <tbody>
+        <tr><td>(recommended)</td><td>The engine’s suggested next move — at most one per menu, derived from phase order and the build order.</td></tr>
+        <tr><td>⚑</td><td>An alert block: plans not ready for implementation (naming the dependency), or new topics the self-healing analyses just added to the map.</td></tr>
+        <tr><td>· input moved</td><td>A completed item whose upstream artifact was revised since — it needs reconciling, and routing takes you back to it, never past it.</td></tr>
+        <tr><td><s>struck through</s></td><td>A topic held by another live session right now. It’s skipped as a recommendation, and entering it asks you to confirm first.</td></tr>
+        <tr><td>triage waiting</td><td>An unstarted topic that already has rerouted concerns parked in its queue — they’ll be delivered when the topic starts.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The inbox — a working set</h2>
+    <p>From <code>i/inbox</code> you build a <em>working set</em>: select items, then act on the set as one. Promotion is single-type — all ideas, all bugs, or all quick-fixes — because the set becomes the seeds of <em>one</em> work unit; archiving takes any mix.</p>
+    <div class="term" role="img" aria-label="Terminal mock of the inbox working-set menu and the archived-store menu">
+      <div class="term-bar"><i></i><i></i><i></i><span>inbox · working set</span></div>
+      <pre><span class="t-key">w/work</span>     → Promote the set into a new work unit <span class="t-dim">(uniform type only)</span>
+<span class="t-key">a/add</span>      → Add items to the set     <span class="t-key">d/drop</span> → remove from the set
+<span class="t-key">r/archive</span>  → Archive the set          <span class="t-key">v/view</span> → read full content
+<span class="t-key">b/back</span>     → Return
+
+<span class="t-dim">— in the archived store —</span>
+<span class="t-key">v/view</span>  <span class="t-key">u/unarchive</span> → restore to inbox  <span class="t-key">d/delete</span> → remove permanently</pre>
+    </div>
+
+    <h2>The manage menu — lifecycle</h2>
+    <p><code>m/manage</code> selects a work unit, then offers exactly the lifecycle actions its state allows:</p>
+    <div class="term" role="img" aria-label="Terminal mock of the manage lifecycle menu">
+      <div class="term-bar"><i></i><i></i><i></i><span>manage · api-rate-limiting</span></div>
+      <pre><span class="t-key">d/done</span>       → Mark completed
+<span class="t-key">c/cancel</span>     → Abandon <span class="t-dim">(reactivate later from v/view)</span>
+<span class="t-key">p/pivot</span>      → Feature → epic, when scope outgrows one topic
+<span class="t-key">a/absorb</span>     → Merge this feature into an epic as a topic
+<span class="t-key">v/view-plan</span>  → Read the plan and task status</pre>
+    </div>
+
+    <div class="callout"><p><strong>The habit that matters:</strong> trust the recommendation but don’t obey it. The menus are computed so you can’t get lost; the <code>(recommended)</code> row is where the process thinks momentum is, and everything else is one keystroke of disagreement away.</p></div>
+
+    <div class="pagenav">
+      <a href="#lifecycle"><span>Back · 10</span>← Changing shape</a>
+      <a class="next" href="#walkthrough"><span>Next · 12</span>A feature, end to end →</a>
+    </div>
+  </section>
+
+  <!-- ============ 12 WALKTHROUGH ============ -->
+  <section class="page" id="walkthrough" aria-labelledby="wt2-h">
+    <p class="eyebrow">12 · Worked example</p>
+    <h1 id="wt2-h">A feature, end to end</h1>
+    <p class="lede">Every mechanism in this guide, threaded through one piece of work: a retry idea that surfaces mid-session and ends as shipped, reviewed, remembered code. Illustrative, but true to how each step behaves.</p>
+
+    <ol class="walk">
+      <li>
+        <h3>It starts as an interruption</h3>
+        <p>You’re deep in unrelated work when the thought lands: webhook deliveries should retry with capped backoff. You say <em>“log that as an idea”</em> — the capture skill writes one file to <code>.workflows/.inbox/ideas/</code> and the conversation you were having keeps moving. No pipeline, no ceremony, nothing forgotten.</p>
+      </li>
+      <li>
+        <h3>Pickup, days later</h3>
+        <p><code>/workflow-start</code> shows the idea sitting in the inbox. You press <code>i</code>, add it to the working set, and choose <code>w/work</code>. Discovery opens with the captured note as its starting material.</p>
+      </li>
+      <li>
+        <h3>The shaping gate</h3>
+        <p>A short conversation settles what this is — one coherent topic, so a feature. Then the one hinge:</p>
+        <div class="term" role="img" aria-label="Terminal mock of discovery's shaping confirmation gate">
+          <div class="term-bar"><i></i><i></i><i></i><span>discovery</span></div>
+          <pre><span class="t-gold">◆</span> Have I read this right?
+A <span class="t-gold">feature</span> — smart retry with capped backoff for webhook delivery.
+
+<span class="t-key">y/yes</span>        → that's the right shape, set it up
+<span class="t-key">o/other</span>      → it's something else (tell me what)
+<span class="t-key">Keep shaping</span> → tell me what I'm missing</pre>
+        </div>
+        <p>Until you say yes, nothing exists on disk. On yes, everything lands atomically in one commit: the work unit <code>smart-retry</code> gets its home and manifest, the inbox note <em>moves</em> in as its seed, and a session log captures the shaping. Walk away before this and there is zero residue.</p>
+      </li>
+      <li>
+        <h3>Discussion</h3>
+        <p>Routed to discussion (the ground is known; no research needed), the conversation works a live map: retry policy, failure classification, idempotency. It pushes back — <em>“I’d cap at five attempts unless delivery volume says otherwise; what changes your mind?”</em> Mid-way you mention rate-limiting the retry queue; that belongs to another concern, so it’s parked with one confirmed line rather than chased. Behind you, a background critic flags that nothing covers <em>permanent</em> failures — a real gap, raised at a natural break, and the map gains a point. At conclusion a document review reconciles the session against the written file, and the record lands: decided, with the rejected paths (exponential jitter, dead-letter-first) recorded alongside the reasons.</p>
+      </li>
+      <li>
+        <h3>Specification</h3>
+        <p>The spec extracts the decided record — never deciding anything itself. A claim about the current delivery code is measured, not assumed: the checking command and its result are recorded in the spec. One extraction turns out to conflict with a decision the discussion actually made; the conflict comes to you as a numbered choice, and your answer is mirrored back into the discussion’s timeline. Then three validation agents run in strict sequence — claims re-measured against the tree, fidelity checked against sources in both directions, a cold gap read — and you sign it off. From here on, this document is the contract.</p>
+      </li>
+      <li>
+        <h3>Planning</h3>
+        <p>Four agents build the plan in relay — phase structure from the spec, tasks per phase, full task detail, then dependencies and ordering — with you approving between them. Tasks land in the tracker format you chose at setup. Two plan validators trace and stress-read the result before you approve it.</p>
+      </li>
+      <li>
+        <h3>Implementation</h3>
+        <p>The loop runs: executor writes each task test-first, the independent reviewer checks it against the acceptance criteria, and each pass lands as its own commit. Task three fails review twice — the findings loop back — and passes on the third attempt, one short of consulting you. After two hand-approved gates you switch the gate to auto for the rest of the sitting. When the phase’s last task lands, the consolidation finder reads the combined surface and spots two near-identical backoff helpers no single task could see; the merge becomes a gated task you approve before the phase closes.</p>
+      </li>
+      <li>
+        <h3>Review, and the close</h3>
+        <p>Verifiers re-check every task against the spec and plan. One in-scope, contained finding — a missed error branch — is verified against the code, applied, and committed in-session. One out-of-scope observation is banked on the manifest for later, never silently filed. The verdict is a derived <em>pass</em>; the unit completes, its scratch files are cleared, and its discussion and spec are indexed into the knowledge base.</p>
+      </li>
+      <li>
+        <h3>Months later</h3>
+        <p>A different session, planning a related queue, asks why fixed backoff was chosen over jitter. The knowledge base answers with provenance — the discussion file, the date, the rejected path and its reason. Nobody re-litigates it; nobody re-walks the dead end. That’s the payoff the whole pipeline was built for.</p>
+      </li>
+    </ol>
+
+    <div class="pagenav">
+      <a href="#menus"><span>Back · 11</span>← Menus &amp; navigation</a>
+      <a class="next" href="#daily"><span>Next · 13</span>Day-to-day use →</a>
+    </div>
+  </section>
+
+  <!-- ============ 13 DAILY ============ -->
+  <section class="page" id="daily" aria-labelledby="daily-h">
+    <p class="eyebrow">13 · In practice</p>
+    <h1 id="daily-h">Day-to-day use</h1>
+    <p class="lede">One command in, one habit alongside it: <em>capture as you go</em>. Everything else is menus computed for you.</p>
+
+    <div class="table-scroll">
+    <table class="cmds">
+      <thead><tr><th>You type or say</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>npx agntc add leeovery/agentic-workflows</td><td>Installs the workflows into your project. Commit the installed files to share them with your team or use them in Claude Code for Web.</td></tr>
+        <tr><td>/workflow-start</td><td>The sole entry point. Shows all work, resumes anything in flight, starts anything new, opens the inbox, roadmap, and baseline.</td></tr>
+        <tr><td>“log that as an idea”</td><td>Mid-conversation capture, in any session. Ideas, bugs, and quick-fixes land in the inbox as one file each — no pipeline, no ceremony — and keep the current conversation moving.</td></tr>
+        <tr><td>“that’s a v2 thing”</td><td>Parks the thought on the product roadmap with one confirmed line, in the horizon you name. The bucket is the ticket.</td></tr>
+        <tr><td>npx agntc update</td><td>Pulls the latest release. Migrations bring your existing <code>.workflows/</code> state in sync automatically on the next run.</td></tr>
+        <tr><td>npx agntc remove leeovery/agentic-workflows</td><td>Uninstalls the skills. Your documents and state stay — they’re just files in your repo.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The inbox habit</h2>
+    <p>The inbox is the pre-pipeline holding area. When you next run <code>/workflow-start</code>, pick up one item — or several of the same kind — and promote them into a new work unit, where they become its <em>seeds</em>: the origin material the discovery conversation starts from. Items you decline archive rather than delete, and can be restored later.</p>
+
+    <h2>Trust dials worth knowing</h2>
+    <ul>
+      <li><strong>Gate modes.</strong> Every approval gate in implementation can be set to auto, per work unit, reversibly. Start supervised; loosen as it earns it.</li>
+      <li><strong>Task format.</strong> Plans write tasks to Tick (native dependency graphs, built for this), local Markdown (zero dependencies), or Linear (your team already lives there) — chosen once, per project or per plan.</li>
+      <li><strong>Edited artifacts are noticed.</strong> Documents are checksummed. Hand-edit a research file and the system offers to re-analyse; edit a spec and it offers to replan. Nothing silently drifts.</li>
+      <li><strong>tmux session labels.</strong> Opt in once and your session renames to show exactly where it’s working — <code>myproject · payments · discussion · auth-flow</code> — restoring the original name on exit.</li>
+    </ul>
+
+    <h2>A working rhythm</h2>
+    <p>The shape that emerges in practice: spend your attention where it compounds — the discussion that pushes back and the specification you sign — and let the delivery stage run gated in the background, in tmux, while you think about the next thing. Capture stray thoughts the moment they occur; the inbox and roadmap make sure nothing falls on the floor, and the knowledge base makes sure nothing is re-litigated.</p>
+
+    <div class="callout"><p><strong>Where to go deeper:</strong> the repo’s <code>docs/</code> directory covers every phase in detail, the engine, the knowledge base, all the agents, and the history of the project — start with <code>docs/how-it-fits-together.md</code>.</p></div>
+
+    <div class="pagenav">
+      <a href="#walkthrough"><span>Back · 12</span>← A feature, end to end</a>
+      <a class="next" href="#history"><span>Next · 14</span>History →</a>
+    </div>
+  </section>
+
+  <!-- ============ 14 HISTORY ============ -->
+  <section class="page" id="history" aria-labelledby="hist-h">
+    <p class="eyebrow">14 · History</p>
+    <h1 id="hist-h">Where it came from</h1>
+    <p class="lede">The one page that speaks in the past tense. The shape of the system makes more sense once you know which problems bent it into place — and every era tells the same story: one more class of work moving from <em>“the model re-derives it in prose”</em> to <em>“code answers, the model consults”</em>.</p>
+
+    <ol class="tl">
+      <li>
+        <span class="when">Late November 2025 — the seed</span>
+        <h3>A couple of markdown files</h3>
+        <p>The very first taught Claude Code to write a planning document before writing code; within the hour it was a three-phase idea — discuss, then plan, then implement. Everything since is that one conviction deepened: documents drive the work, and the quality of the document chain sets a ceiling on the quality of the code.</p>
+      </li>
+      <li>
+        <span class="when">Winter 2025–26 — the prose era</span>
+        <h3>Everything carried in the model’s head</h3>
+        <p>Review, specification, and research joined the family, work split into distinct pipeline shapes behind one entry point, and installation got a real CLI. But all state lived in prose: Claude worked out where things stood by reading around directories, and every dashboard was hand-drawn text, re-derived from written instructions each time it was shown.</p>
+      </li>
+      <li>
+        <span class="when">March–April 2026 — state finds a home</span>
+        <h3>The busiest month</h3>
+        <p>A project’s state moved from narrated markdown into a structured record with a real read-and-write surface. The inbox landed, the project cut its first release as an installable product, and in April it gained a memory: completed artifacts became a searchable index with provenance, so a phase could finally ask whether a question had been settled before.</p>
+      </li>
+      <li>
+        <span class="when">May 2026 — discovery</span>
+        <h3>The front of the funnel</h3>
+        <p>An “inception” idea became the universal first phase every piece of work begins in, with the topic map and self-healing analysis for large initiatives. This is also when the firmness gradient was articulated out loud: discovery is soft, discussion hardens the thinking, the specification is golden.</p>
+      </li>
+      <li>
+        <span class="when">June 2026 — the bug that built the engine</span>
+        <h3>A wrapped line snaps a tree</h3>
+        <p>Resuming a large epic, two topics in the hand-drawn map wrapped past their margin and broke the tree on screen. The fix was trivial; the diagnosis was not: layout fully determined by the data was being reconstructed, by hand, from prose — “wrong by default, correct only when watched closely” is not a rendering strategy. A survey found the pattern everywhere. Handing orchestration to code was ruled out — the model is the better driver — so the architecture inverted the other way, and the engine was born. Judgment decides, code records.</p>
+      </li>
+      <li>
+        <span class="when">June–July 2026 — the re-platforming</span>
+        <h3>A rebuild in waves</h3>
+        <p>Core skeleton, then the epic dashboard, the state transactions, the start-up pipeline, migrations, the implementation loop’s machinery, the reshaping operations — each wave proven against a live copy of a real project, with an endgame of adversarial review fleets, a certification pass, and a final re-review before the record closed as complete.</p>
+      </li>
+      <li>
+        <span class="when">Late July 2026 — the last margins</span>
+        <h3>The markdown left saying only content</h3>
+        <p>The final hidden state — background-agent bookkeeping and gate decisions living as annotations inside the documents they described — moved into engine state, with a migration carrying live projects across. The proving mattered more than the move: rehearsal first, then reviews that hardened from sampling to enumeration, until the campaign ended the only way it was allowed to — with a round that came back empty-handed.</p>
+      </li>
+    </ol>
+
+    <div class="callout"><p><strong>The through-line:</strong> at no point did the conversation stop being the driver. That balance — not any single subsystem — is what the system is.</p></div>
+
+    <div class="pagenav">
+      <a href="#daily"><span>Back · 13</span>← Day-to-day use</a>
+      <a class="next" href="#overview"><span>Start over · 01</span>Overview →</a>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  /* ---------- work-type explorer ---------- */
+  var PHASES_FULL = ["Discovery","Research","Discussion","Specification","Planning","Implementation","Review"];
+  var TYPES = [
+    {id:"epic", label:"Epic", color:"var(--c-epic)",
+      facts:"multi-topic · multi-session · phase-centric",
+      phases:[{n:"Discovery"},{n:"Research",opt:true},{n:"Discussion"},{n:"Specification"},{n:"Planning"},{n:"Implementation"},{n:"Review"}],
+      desc:["The big one: months of work, broken into topics that move through the phases at their own pace. Discovery continues into topic curation — naming topics, routing each toward research or discussion, and distilling per-topic briefs.",
+            "Epics are self-healing: background analyses re-read completed research and discussions to surface emergent topics and gaps between artifacts, and a soft build order sequences which topic gets planned and built first. Individual topics can be cancelled and reactivated without touching the rest."]},
+    {id:"feature", label:"Feature", color:"var(--c-feature)",
+      facts:"single-topic · linear · the everyday shape",
+      phases:[{n:"Discovery"},{n:"Research",opt:true},{n:"Discussion"},{n:"Specification"},{n:"Planning"},{n:"Implementation"},{n:"Review"}],
+      desc:["The full pipeline for one coherent piece of work: a discussion that pushes back, a spec you approve, a plan, then the gated build loop. Research slots in first when the ground is genuinely unknown.",
+            "If a feature outgrows itself it pivots into an epic; if it turns out to belong inside one, it gets absorbed as a topic — history preserved either way."]},
+    {id:"bugfix", label:"Bugfix", color:"var(--c-bugfix)",
+      facts:"single-topic · investigation-centric",
+      phases:[{n:"Discovery"},{n:"Investigation"},{n:"Specification"},{n:"Planning"},{n:"Implementation"},{n:"Review"}],
+      desc:["Discussion is replaced by investigation: symptom gathering plus code analysis, driving to a root cause before anything gets specified. The fix is then specced, planned, and built like any other change — no “just patch it” shortcuts that miss the second call site."]},
+    {id:"quickfix", label:"Quick-fix", color:"var(--c-quickfix)",
+      facts:"single-topic · one sitting · lightest pipeline",
+      phases:[{n:"Discovery"},{n:"Scoping"},{n:"Implementation"},{n:"Review"}],
+      desc:["For the one-file change that still deserves a record. Scoping compresses context, spec, and plan into a single pass; implementation uses a verification workflow rather than the full test-first loop; review still checks the result."]},
+    {id:"cross", label:"Cross-cutting", color:"var(--c-cross)",
+      facts:"project-level · ends at specification",
+      phases:[{n:"Discovery"},{n:"Research",opt:true},{n:"Discussion"},{n:"Specification",term:true}],
+      desc:["For decisions that shape the whole project rather than one change — conventions, architecture positions, standards. The pipeline is deliberately terminal at specification: the output is a standing document other work builds against, not code."]}
+  ];
+
+  var tabs = document.getElementById("wtTabs");
+  var panel = document.getElementById("wtPanel");
+  if (tabs && panel) {
+    TYPES.forEach(function(t, i){
+      var b = document.createElement("button");
+      b.className = "wt-tab";
+      b.id = "tab-" + t.id;
+      b.setAttribute("role","tab");
+      b.setAttribute("aria-selected", i===0 ? "true" : "false");
+      b.style.setProperty("--wt", t.color);
+      b.innerHTML = '<span class="dot" aria-hidden="true"></span>' + t.label;
+      b.addEventListener("click", function(){ select(t.id); });
+      tabs.appendChild(b);
+    });
+
+    function select(id){
+      var t = TYPES.filter(function(x){return x.id===id;})[0] || TYPES[0];
+      Array.prototype.forEach.call(tabs.children, function(b){
+        b.setAttribute("aria-selected", b.id === "tab-" + t.id ? "true" : "false");
+      });
+      panel.setAttribute("aria-labelledby", "tab-" + t.id);
+      panel.style.setProperty("--wt", t.color);
+      var pipe = t.phases.map(function(p, i){
+        var cls = "ph" + (i===0 ? " first" : "") + (p.opt ? " opt" : "") + (p.term ? " terminalph" : "");
+        var tag = p.opt ? " ·opt" : (p.term ? " ·ends here" : "");
+        return (i>0 ? '<span class="arr" aria-hidden="true">→</span>' : "") +
+               '<span class="' + cls + '">' + p.n + '<span style="opacity:.55">' + tag + '</span></span>';
+      }).join("");
+      panel.innerHTML =
+        '<div class="wt-head"><h3>' + t.label + '</h3><span class="wt-facts">' + t.facts + '</span></div>' +
+        '<div class="pipeline">' + pipe + '</div>' +
+        '<div class="wt-desc">' + t.desc.map(function(d){return "<p>"+d+"</p>";}).join("") + '</div>' +
+        '<div class="wt-note">outlined first step = the universal Discovery phase · dashed = optional' +
+        (t.phases.some(function(p){return p.term;}) ? ' · gold = the pipeline’s deliberate end' : '') + '</div>';
+    }
+    select("epic");
+  }
+
+  /* ---------- page navigation ---------- */
+  var pages = document.querySelectorAll("section.page");
+  var links = document.querySelectorAll("nav.pages a");
+  function show(id, scroll){
+    var found = false;
+    pages.forEach(function(s){
+      var on = s.id === id;
+      s.classList.toggle("active", on);
+      if (on) found = true;
+    });
+    if (!found) { pages[0].classList.add("active"); id = pages[0].id; }
+    links.forEach(function(a){
+      if (a.getAttribute("data-page") === id) a.setAttribute("aria-current","page");
+      else a.removeAttribute("aria-current");
+    });
+    if (scroll) window.scrollTo({top:0, behavior:"auto"});
+  }
+  function fromHash(scroll){
+    var id = (location.hash || "#overview").slice(1);
+    show(id, scroll);
+  }
+  window.addEventListener("hashchange", function(){ fromHash(true); });
+  fromHash(false);
+})();
+</script>
+
+</body></html>

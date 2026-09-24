@@ -1,0 +1,6 @@
+=== MENU (emit verbatim as markdown) ===
+· · · · · · · · · · · ·
+**`2`** → Second thing listed first
+**`1`** → First thing listed second
+
+**`◆ Which one?`**

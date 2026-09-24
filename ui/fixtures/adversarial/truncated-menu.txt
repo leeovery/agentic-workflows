@@ -1,0 +1,6 @@
+=== MENU: task approval (emit verbatim as markdown, then STOP for the user's response) ===
+· · · · · · · · · · · ·
+**`◆ Approve this task?`**
+
+**`y/yes`** → Approve and run it
+**`e/ed

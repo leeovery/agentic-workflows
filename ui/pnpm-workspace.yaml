@@ -1,0 +1,7 @@
+packages:
+  - bridge
+  - app
+  - shared
+
+onlyBuiltDependencies:
+  - better-sqlite3
