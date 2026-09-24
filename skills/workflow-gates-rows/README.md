@@ -7,6 +7,6 @@ Claude Code's framing of a plugin's prompt. It is a plugin of its own because
 Claude Code skips a plugin's own render hooks on the row of a prompt that
 plugin submitted. It pairs a row with the record the mod leaves in
 `.workflows/.cache/.gates/sent.json` as it sends and keeps the line across
-sessions; a row it cannot pair shows the answer alone. Only the drawing
-changes: the model reads the framing as before, and ctrl+o shows the message
+sessions; a row it cannot pair shows the answer alone. It changes only the
+drawing: the model reads Claude Code's framing, and ctrl+o shows the message
 in full.
