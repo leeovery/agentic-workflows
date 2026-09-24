@@ -9,7 +9,7 @@ The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` �
 **If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. A surfaced capability parks; a topic already on the map postpones instead — the postponing door. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
 ```
 
 → Return to caller for **B. Session Loop**.
