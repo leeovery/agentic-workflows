@@ -1,0 +1,53 @@
+{
+  "origin": "the roadmap add gate's Ask row had no branch — a question at the routed confirm was answered and nothing put the gate back, so the add was never settled; the talk must set the gate aside and, once the user is ready, render it again before anything lands",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-roadmap/references/roadmap-guidelines.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-roadmap/references/session-loop.md",
+    "skills/workflow-roadmap/references/session-template.md"
+  ],
+  "answers": [
+    "r — open the roadmap",
+    "c — talk about the product",
+    "Gift cards belong in the mvp — restaurants keep asking to sell them from day one. Put them there.",
+    "Before I pick — if it goes into the work underway, does the launch epic have to take gift cards on now, alongside ordering?",
+    "Yes, that answers it — I'm ready.",
+    "w — leave it waiting beside the other mvp items"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "render roadmap-add-gate --horizon mvp",
+      "roadmap add",
+      "--horizon mvp"
+    ],
+    "calls_in_order": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "render roadmap-add-gate --horizon mvp",
+      "render roadmap-add-gate --horizon mvp",
+      "roadmap add"
+    ],
+    "calls_exclude": [
+      "roadmap pull",
+      "roadmap pull-forward",
+      "workunit create",
+      "roadmap session close",
+      "workflow-roadmap/scripts/gateway.cjs proposal",
+      "topic start"
+    ]
+  }
+}

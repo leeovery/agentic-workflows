@@ -1,0 +1,12 @@
+{
+  "name": "launch",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Customers ordering from a restaurant's menu on their phones",
+  "phases": {
+    "discovery": {
+      "active_session": "001"
+    }
+  }
+}
