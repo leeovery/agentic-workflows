@@ -292,9 +292,14 @@ function stripMarkup(text) {
   return String(text).replace(MARKUP, (_, code, escaped) => code ?? escaped ?? '').trim();
 }
 
+/** A label part as text, `null` when the row draws none. @param {string|undefined} part @returns {string|null} */
+function plainPart(part) {
+  return part ? stripMarkup(part) : null;
+}
+
 /**
- * Record one pressable row — a single key the person can be offered, its
- * label's parts as given.
+ * Record one pressable row — a single key the person can be offered, each
+ * part of its label as text, its markup removed and its escapes honoured.
  * @param {string} line  the row as drawn
  * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts
  * @returns {void}
@@ -305,10 +310,10 @@ function recordOption(line, key, word, { head, tail, cue, holder, recommended })
   const option = {
     key: String(key),
     word: word ?? null,
-    head,
-    tail: tail || null,
-    cue: cue || null,
-    holder: holder || null,
+    head: stripMarkup(head),
+    tail: plainPart(tail),
+    cue: plainPart(cue),
+    holder: plainPart(holder),
     detail: null,
     struck: Boolean(holder),
     recommended: Boolean(recommended),

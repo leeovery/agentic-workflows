@@ -499,7 +499,7 @@ describe('gate payload — a row\'s detail', () => {
 });
 
 describe('gate payload — a row built from parts', () => {
-  it('each part draws where the row always drew it, and reaches the payload as given', () => {
+  it('each part draws where the row always drew it, and reaches the payload as its own field', () => {
     /** @type {string[]} */
     let rows = [];
     const gate = collect(() => {
@@ -543,11 +543,12 @@ describe('gate payload — a row built from parts', () => {
     assert.throws(() => cmdOption('1', null, { head: 'Start research for "Billing"', cue: 'triage waiting' }), /a cue notes a tail/);
   });
 
-  it('text the engine did not author passes as a head, whatever it contains', () => {
+  it('text the engine did not author passes as a head, whatever it contains, and states its text', () => {
     const summary = 'Keep the old flow (recommended) — *for now*';
     const gate = collect(() => menu('Which one?', [cmdOption('1', null, { head: summary })]));
 
-    assert.strictEqual(gate.options[0].head, summary);
+    assert.strictEqual(gate.options[0].head, 'Keep the old flow (recommended) — for now');
+    assert.strictEqual(gate.options[0].tail, null);
     assert.strictEqual(gate.options[0].recommended, false);
   });
 });
@@ -572,6 +573,35 @@ describe('gate payload — escaped text', () => {
     const gate = collect(() => menu('Run `a_b*c` to release it.', [cmdOption('1', null, 'One')], { question: 'Proceed?' }));
 
     assert.strictEqual(gate.statement, 'Run a_b*c to release it.');
+  });
+
+  it('a side the model wrote reaches its row as text — its code span as content, its escape as the character', () => {
+    seedTaskGate(dir);
+    const sides = createFile(dir, '.workflows/.cache/auth/implementation/auth-flow/sides.json', JSON.stringify({
+      options: [
+        { summary: 'Call `resolveUser` before the write' },
+        { summary: 'Keep user\\_id on the \\*session\\*', recommended: true },
+      ],
+    }));
+    const gate = gateOf(output(dir, ['render', 'executor-block-gate', 'auth.implementation.auth-flow',
+      '--result', 'blocked', '--file', sides], { env: ANNOUNCED }));
+
+    assert.deepStrictEqual(gate.options.map((/** @type {{head: string}} */ o) => o.head),
+      ['Keep user_id on the *session*', 'Call resolveUser before the write']);
+  });
+
+  it('every part of a row states its text, whatever markup drew it', () => {
+    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, {
+      head: 'Fix user\\_id in \\*auth\\* \\[draft\\]',
+      tail: 'blocks `resolveUser`',
+      cue: 'input `moved`',
+      holder: 'in \\_session\\_',
+    })]));
+
+    assert.deepStrictEqual(gate.options[0], {
+      key: '1', word: null, head: 'Fix user_id in *auth* [draft]', tail: 'blocks resolveUser', cue: 'input moved',
+      holder: 'in _session_', detail: null, struck: true, recommended: false,
+    });
   });
 });
 
@@ -626,6 +656,28 @@ describe('gate payload — the audit', () => {
       ['a holder stated as tail', (o) => { o.tail = 'discussion · input moved · in session (last active 4m ago)'; o.cue = null; o.holder = null; }],
       ['a strike the row does not state', (o) => { o.struck = false; }],
       ['a cue the row does not draw', (o) => { o.cue = 'triage waiting'; }],
+    ];
+    for (const [what, change] of drifts) {
+      assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);
+    }
+  });
+
+  it('reads every part as the text it states — a part still carrying its markup or its escapes fails', () => {
+    const out = announced(() => {
+      openGate();
+      return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one.', [
+        cmdOption('1', null, { head: 'Fix user\\_id in \\*auth\\*', tail: 'blocks `resolveUser`', cue: 'input `moved`', holder: 'in \\_session\\_' }),
+      ]));
+    });
+    assert.ok(auditGate(out, 'as drawn'));
+
+    /** @type {[string, (o: Record<string, unknown>) => void][]} */
+    const drifts = [
+      ['a head with its escapes', (o) => { o.head = 'Fix user\\_id in \\*auth\\*'; }],
+      ['a tail with its code span', (o) => { o.tail = 'blocks `resolveUser`'; }],
+      ['a cue with its code span', (o) => { o.cue = 'input `moved`'; }],
+      ['a holder with its escapes', (o) => { o.holder = 'in \\_session\\_'; }],
+      ['a head with its emphasis', (o) => { o.head = 'Fix user_id in **auth**'; }],
     ];
     for (const [what, change] of drifts) {
       assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);
