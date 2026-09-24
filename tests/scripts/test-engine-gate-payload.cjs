@@ -260,12 +260,12 @@ describe('gate payload — the statement', () => {
       'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
   });
 
-  it('an unglyphed label is the statement, never the question', () => {
+  it('a statement label over the question stays the statement', () => {
     createManifest(dir, 'auth', { phases: { planning: { items: { auth: { status: 'in-progress', phase: 2, task: 3 } } } } });
     createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
     const gate = gateOf(output(dir, ['render', 'resume-gate', 'auth.planning.auth', '--variant', 'plan'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, '');
+    assert.strictEqual(gate.question, 'How would you like to proceed?');
     assert.strictEqual(gate.statement, 'Found existing plan for Auth (previously reached phase 2, task 3).');
   });
 
@@ -278,15 +278,15 @@ describe('gate payload — the statement', () => {
     });
     const gate = gateOf(output(dir, ['render', 'resume-gate', 'auth.review.auth', '--variant', 'review'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, '');
+    assert.strictEqual(gate.question, 'How would you like to proceed?');
     assert.strictEqual(gate.statement, 'Found existing review for Auth.\nReview covered 2 of 5 tasks. 3 task(s) not yet reviewed.');
   });
 
-  it('a glyph-off frame\'s head is the statement', () => {
+  it('a statement over the question is the statement', () => {
     createManifest(dir, 'auth', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     const gate = gateOf(output(dir, ['render', 'in-flight-agents-gate', 'auth.discussion.auth', '--count', '2'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, '');
+    assert.strictEqual(gate.question, 'Wait, or conclude now?');
     assert.strictEqual(gate.statement, 'There are still 2 background agents working.');
   });
 
@@ -304,49 +304,14 @@ describe('gate payload — the statement', () => {
     ].join('\n'));
   });
 
-  it('lines beneath a glyphed label are statement too', () => {
+  it('every line above the question is statement, in order', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     createFile(dir, '.workflows/.cache/v1/names.json', JSON.stringify({ names: ['billing-core', 'auth'] }));
     const gate = gateOf(output(dir, ['render', 'summary-backfill-gate', 'v1', '--variant', 'unsourced',
       '--file', '.workflows/.cache/v1/names.json'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, '2 topic(s) have no source file to draft from:');
-    assert.strictEqual(gate.statement, '- Billing Core\n- Auth');
-  });
-
-  it('a label-less menu asks in its trailing prompt, and carries no statement', () => {
-    const gate = collect(() => menu('', [cmdOption('1', null, 'The first one'), cmdOption('2', null, 'The second')],
-      { prompt: 'Select an option (enter number):' }));
-
-    assert.strictEqual(gate.question, 'Select an option (enter number):');
-    assert.strictEqual(gate.statement, '');
-    assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), ['1', '2']);
-  });
-
-  it('a picker whose one line is its ask asks on that line', () => {
-    const gate = collect(() => menuFrame(['Which doc? (enter the area name, or **`b/back`**)']));
-
-    assert.strictEqual(gate.question, 'Which doc? (enter the area name, or b/back)');
-    assert.strictEqual(gate.statement, '');
-  });
-
-  it('a glyphed question outranks the trailing prompt, which becomes statement', () => {
-    const labelled = collect(() => menu('Which one?', [cmdOption('1', null, 'One')], { prompt: 'Reply with the number.' }));
-    assert.strictEqual(labelled.question, 'Which one?');
-    assert.strictEqual(labelled.statement, 'Reply with the number.');
-
-    const asked = collect(() => menu('A long statement about the state of things.', [cmdOption('1', null, 'One')],
-      { question: 'Proceed?', prompt: 'Select an option:' }));
-    assert.strictEqual(asked.question, 'Proceed?');
-    assert.strictEqual(asked.statement, 'A long statement about the state of things.\nSelect an option:');
-  });
-
-  it('an unglyphable label over a trailing prompt is statement, and the prompt asks', () => {
-    const gate = collect(() => menu(`Where should "${'a concern worded at length '.repeat(3).trim()}" land?`,
-      [cmdOption('1', null, 'One'), promptOption('Comment', 'Tell me more')], { prompt: 'Reply with an option.' }));
-
-    assert.strictEqual(gate.question, 'Reply with an option.');
-    assert.strictEqual(gate.statement, `Where should "${'a concern worded at length '.repeat(3).trim()}" land?`);
+    assert.strictEqual(gate.question, 'How do you want to handle them?');
+    assert.strictEqual(gate.statement, '2 topic(s) have no source file to draft from:\n- Billing Core\n- Auth');
   });
 });
 
@@ -436,7 +401,7 @@ describe('gate payload — a gateway menu', () => {
     createFile(dir, '.workflows/v2/specification/auth-spec/specification.md', '# A');
     const gate = gateOf(runGateway(dir, 'workflow-specification-entry', ['view', 'v2'], ANNOUNCED));
 
-    assert.strictEqual(gate.question, 'Select an option:');
+    assert.strictEqual(gate.question, 'What would you like to do?');
     assert.strictEqual(gate.statement, '');
     assert.deepStrictEqual(gate.options[0], {
       key: '1', word: null, head: 'Analyze for groupings', tail: null, cue: null, holder: null,
@@ -504,12 +469,13 @@ describe('gate payload — every gateway verb', () => {
       completed: [gated('completed')],
       fallback: [ungated('checkout')],
     },
-    'workflow-continue-feature': { index: [gated()], view: [gated('view', 'checkout')], fallback: [refused('checkout')] },
-    'workflow-continue-bugfix': { index: [gated()], view: [gated('view', 'crash-fix')], fallback: [refused('crash-fix')] },
-    'workflow-continue-quickfix': { index: [gated()], view: [gated('view', 'typo')], fallback: [refused('typo')] },
-    'workflow-continue-cross-cutting': { index: [gated()], view: [gated('view', 'logging')], fallback: [refused('logging')] },
+    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout')], fallback: [refused('checkout')] },
+    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix')], fallback: [refused('crash-fix')] },
+    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo')], fallback: [refused('typo')] },
+    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging')], fallback: [refused('logging')] },
     'workflow-continue-epic': {
-      index: [gated()],
+      index: [ungated()],
+      select: [gated('select')],
       view: [gated('view', 'v1')],
       'completed-menu': [gated('completed-menu', 'v1')],
       'cancel-menu': [gated('cancel-menu', 'v1')],
@@ -527,9 +493,8 @@ describe('gate payload — every gateway verb', () => {
       fallback: [ungated('v2')],
     },
     'workflow-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
-    'workflow-discussion-process': { map: [gated('map', 'v1', 'auth')] },
+    'workflow-discussion-process': { map: [ungated('map', 'v1', 'auth')] },
     'workflow-roadmap': {
-      index: [gated()],
       view: [gated('view')],
       'pull-set': [gated('pull-set')],
       proposal: [ungated('proposal', '--file', 'proposed.json')],
@@ -547,7 +512,7 @@ describe('gate payload — every gateway verb', () => {
     'a range row': (g) => g.typed.some((t) => t.label.includes('–')),
     'a prompt row': (g) => g.typed.some((t) => !t.label.includes('–')),
     'a statement': (g) => g.statement !== '',
-    'a menu that asks nothing': (g) => g.question === '',
+    'a title carrying markup as text': (g) => g.options.some((o) => /[_*[\]]/.test(o.head)),
   };
 
   /**
@@ -704,7 +669,7 @@ describe('gate payload — a row\'s detail', () => {
   it('lines directly beneath a row are its detail: separate lines keep their break, a wrapped description joins back', () => {
     const description = 'A description long enough that the engine has to wrap it across several lines.';
     const gate = collect(() => menuFrame([
-      'Pick one.',
+      'Pick one?',
       '',
       cmdOption('1', null, 'First'),
       'A note on the first.',
@@ -718,17 +683,8 @@ describe('gate payload — a row\'s detail', () => {
 
     assert.deepStrictEqual(gate.options.map((/** @type {{detail: string|null}} */ o) => o.detail), ['A note on the first.\nA second note.', null]);
     assert.strictEqual(gate.typed[0].detail, description);
-    assert.strictEqual(gate.question, 'Pick one.');
+    assert.strictEqual(gate.question, 'Pick one?');
     assert.strictEqual(gate.statement, 'Reply with a number.');
-  });
-
-  it('a prompt the rows close on after a blank is the question, never the last row\'s detail', () => {
-    const gate = collect(() => menu('', [cmdOption('1', null, 'One'), ...optionDetail('What one does.', 40)],
-      { prompt: 'Select an option:' }));
-
-    assert.strictEqual(gate.options[0].detail, 'What one does.');
-    assert.strictEqual(gate.question, 'Select an option:');
-    assert.strictEqual(gate.statement, '');
   });
 });
 
@@ -743,7 +699,7 @@ describe('gate payload — a row built from parts', () => {
         cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'triage waiting' }),
         cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
       ];
-      return menu('Pick one.', rows);
+      return menu('Pick one?', rows);
     });
 
     assert.deepStrictEqual(rows, [
@@ -761,7 +717,7 @@ describe('gate payload — a row built from parts', () => {
   });
 
   it('a held row with no tail states its holder alone', () => {
-    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, { head: 'Start research for "Billing"', holder: 'in session (last active 1m ago)' })]));
+    const gate = collect(() => menu('Pick one?', [cmdOption('1', null, { head: 'Start research for "Billing"', holder: 'in session (last active 1m ago)' })]));
 
     assert.deepStrictEqual(gate.options[0],
       { key: '1', word: null, head: 'Start research for "Billing"', tail: null, cue: null, holder: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
@@ -825,7 +781,7 @@ describe('gate payload — escaped text', () => {
   });
 
   it('every part of a row states its text, whatever markup drew it', () => {
-    const gate = collect(() => menu('Pick one.', [cmdOption('1', null, {
+    const gate = collect(() => menu('Pick one?', [cmdOption('1', null, {
       head: 'Fix user\\_id in \\*auth\\* \\[draft\\]',
       tail: 'blocks `resolveUser`',
       cue: 'input `moved`',
@@ -862,7 +818,7 @@ describe('gate payload — the audit', () => {
   /** A held row with a tail and a cue, rendered announced. */
   const heldRow = () => announced(() => {
     openGate();
-    return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one.', [
+    return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
       cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
     ]));
   });
@@ -899,7 +855,7 @@ describe('gate payload — the audit', () => {
   it('reads every part as the text it states — a part still carrying its markup or its escapes fails', () => {
     const out = announced(() => {
       openGate();
-      return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one.', [
+      return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
         cmdOption('1', null, { head: 'Fix user\\_id in \\*auth\\*', tail: 'blocks `resolveUser`', cue: 'input `moved`', holder: 'in \\_session\\_' }),
       ]));
     });
