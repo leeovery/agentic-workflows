@@ -246,9 +246,9 @@ Every migration has a matching test suite.
 - `npm run test:cli` — shell contract suites: manifest field surface, inbox promotion, knowledge CLI and build.
 - `npm run test:migrations` — every `tests/scripts/test-migration-*.sh`.
 - `npm run typecheck` — JSDoc type contracts (`tsc --noEmit`).
-- `npm run typecheck:mod` / `npm run test:mod` — the gate mod's types against Claude Code's mod API declarations, and its suite under `claude plugin test`; owed for any change under `skills/workflow-gates*/`. The declarations are gitignored: `npm run mod:types` fetches them before the first `typecheck:mod`.
+- `npm run typecheck:mod` / `npm run test:mod` — both gate mods' types (`workflow-gates` and `workflow-gates-rows`) against Claude Code's mod API declarations, and their suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/`. The declarations are gitignored: `npm run mod:types` fetches them before the first `typecheck:mod`.
 
-Add or update a test alongside any change to engine scripts, adapters, migrations, the gate mod, or `src/knowledge/`.
+Add or update a test alongside any change to engine scripts, adapters, migrations, the gate mods, or `src/knowledge/`.
 
 **The engine's in-process entry**: `engine.run(argv, {cwd, env, stdin})` (exported by `skills/workflow-engine/scripts/engine.cjs`, covered by `tests/scripts/test-engine-run.cjs`) is the door a node harness takes to drive the engine by argv — same argv, same `stdout`/`stderr`, same exit code as the CLI, without a process per call. The invocation is the caller's: the cwd is a parameter (never a `chdir` — refused inside a worker thread), the env keys are held for the call and restored exactly, the stdin is a string, and the display-width memo resolves per call. Spawning stays for the shell tiers (`test:cli`, `test:migrations`) and for the real CLI, whose door is `main`.
 
