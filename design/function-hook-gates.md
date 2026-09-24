@@ -226,16 +226,23 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     send pressed while Claude works is held by the mod, the row reading
     ` · queued` and the footer "**{answer}** sends when Claude finishes ·
     click it again to take it back"; at the turn's end it sends if the band
-    still shows the same gate, and is dropped otherwise, the new gate's
+    still shows the same gate — compared by content, so the gate presented
+    again fresh is the same — and is dropped otherwise, the new gate's
     footer saying "your **{answer}** wasn't sent — the menu changed". A
-    turn that draws a new gate replaces the band's.
+    turn that draws a new gate replaces the band's. A pick's answer left
+    in the prompt box under a gate that goes is cleared, unless the person
+    has edited it.
   - An **interrupted** turn (Esc) the person started discards whatever it
     armed. Until it has called a tool it brings back the gate the person
     answered to start it — Esc takes back a mis-press; once any tool has
     run (a read and a write look alike to the mod), or it has armed a gate
     of its own, the band stays empty and the person carries on by talking
-    to Claude. Esc during a render leaves nothing half-drawn; Esc during a
-    background turn leaves the band alone.
+    to Claude. Esc during a render leaves nothing half-drawn.
+  - Esc during a background turn leaves the band as it is, unless the turn
+    armed a different gate — its transcript now ends at that gate, so the
+    band empties rather than answer the wrong one. An interrupt never
+    sends: a held answer goes back to a pick, or with an emptied band is
+    dropped.
   - A turn the person started that ends without a gate brings back
     nothing: the prose presents the gate again when the person is ready
     (R19).
@@ -246,8 +253,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     tool-use id). On a fresh load (`claude --resume`, a restart, an account
     switch), a reload's first drawing, or after an in-process end — and
     only in a session that announced (R2) — it reads the record back: a
-    transcript that still ends at the stamp redraws the gate exactly as it
-    was, one that moved on drops it. Records past Claude Code's 30-day
+    transcript that still ends at the stamp redraws the gate, nothing picked
+    or held — a held answer waits on a turn a new process never has — and
+    one that moved on drops it. Records past Claude Code's 30-day
     transcript retention go.
   - `session.end` — a `/clear`, a resume — empties the band first: no gate
     of the old conversation answers into the new one.
