@@ -469,7 +469,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
   remaining hand-drawn displays, a native-looking band, commentary worked
-  into gates, one render door (#53–#57).
+  into gates, one render door, moments of delight drawn by the mod
+  (#53–#58).
 
 ## Findings log — API facts a first reading missed
 
