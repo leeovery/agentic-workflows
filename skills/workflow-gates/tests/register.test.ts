@@ -389,6 +389,14 @@ async function presented($: Engine) {
 const submitFrom = ($: Engine, origin: PromptOrigin, text = 'ping') =>
   $.prompt.submit({ text, wait: false, origin })
 
+/** A submission joining the running turn `turnId`. */
+const joinFrom = (
+  $: Engine,
+  origin: PromptOrigin,
+  turnId: string,
+  text = 'yes',
+) => $.prompt.submit({ text, wait: false, origin, turnId })
+
 /** What the last send recorded, read back as the mod wrote it. */
 function sentIn(files: Map<string, string>): unknown {
   const [path, text] = [...files].at(-1) ?? ['', 'null']
@@ -1504,6 +1512,20 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(true)
   })
 
+  test('an Esc on a turn the person did not start, once it rendered a gate of its own, leaves the band empty', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+    await submitFrom($, { kind: 'task-notification' })
+
+    engineWrites(announced({ options: HELD_FIRST }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(INTERRUPTED)
+
+    expect(await isDrawn($), 'neither the gate it began over nor its own').toBe(false)
+  })
+
   test('a turn the person did not start, ending with no gate, puts the gate back', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
@@ -1604,16 +1626,54 @@ describe('register', () => {
     world($, on, announced())
 
     await presented($)
-    await $.prompt.submit({
-      text: 'done',
-      wait: false,
-      origin: { kind: 'task-notification' },
-      turnId: 't0',
-    })
+    await joinFrom($, { kind: 'task-notification' }, 't0', 'done')
     await $.turn.start({ text: 'yes', turnId: 't1' })
     await $.turn.complete(TURN_END)
 
     expect(await isDrawn($)).toBe(false)
+  })
+
+  test('a reply the person sends into a turn they did not start answers the gate, so its end puts nothing back', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    engineWrites('')
+
+    const theirs: PromptOrigin[] = [
+      { kind: 'composer' },
+      { kind: 'bridge' },
+      { kind: 'plugin', name: 'workflow-gates' },
+    ]
+
+    for (const [n, origin] of theirs.entries()) {
+      await submitFrom($, { kind: 'task-notification' })
+      await joinFrom($, origin, `t${n + 1}`)
+      await $.turn.complete(TURN_END)
+
+      expect(await isDrawn($), origin.kind).toBe(false)
+
+      engineWrites(announced())
+
+      await $.tool.call(ENGINE_CALL)
+      await $.turn.complete(TURN_END)
+
+      engineWrites('')
+    }
+  })
+
+  test('a submission from anyone else joining that turn answers nothing, so its end puts the gate back', async ($, on) => {
+    const { engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    engineWrites('')
+
+    await submitFrom($, { kind: 'task-notification' })
+    await joinFrom($, { kind: 'task-notification' }, 't1', 'done')
+    await $.turn.complete(TURN_END)
+
+    expect(await isDrawn($)).toBe(true)
   })
 
   test('a background turn that renders a gate draws its own', async ($, on) => {

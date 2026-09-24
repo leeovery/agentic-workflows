@@ -23,12 +23,13 @@ pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
 click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 
-Esc on the turn an answer started puts its gate back, dropping whatever that
-turn drew, as long as no tool has run in it; once one has, the band stays
-empty, since the mod cannot tell a read from a write. A turn the person did
-not start — a background agent's report, a scheduled prompt — that ends
-without a gate of its own puts back the gate still waiting on them. A `/clear`
-takes the gate off the band.
+Esc on a turn an answer started or joined puts its gate back, dropping
+whatever that turn drew, as long as no tool has run in it; once one has, the
+band stays empty, since the mod cannot tell a read from a write. A turn the
+person did not start — a background agent's report, a scheduled prompt — puts
+back the gate still waiting on them when it ends or Esc stops it, unless they
+replied while it ran or it rendered a gate of its own. A `/clear` takes the
+gate off the band.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
