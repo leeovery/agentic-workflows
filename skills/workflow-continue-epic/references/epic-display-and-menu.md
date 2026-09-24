@@ -329,7 +329,7 @@ Render the postponable-topics list and pick menu — one row per Discovery unit,
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs postpone-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -361,7 +361,7 @@ The postpone's return leg: this menu let the topic go, so this menu takes it bac
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs pull-forward-menu {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -391,7 +391,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 **Otherwise:**
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, which names the statuses the unit's items returned to — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status; a topic that had never been started comes back with none named:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section naming the statuses the unit's items returned to, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status; a topic that had never been started comes back with none named:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb restore [--warn]
