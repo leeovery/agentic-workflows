@@ -421,8 +421,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   before anything acts on it, the gate's own branches owning how. A gate
   set aside moves forward only by being presented again and answered
   there: a yes to being ready, or a go-ahead or a pick the person
-  volunteers in the conversation, brings it back — it is never the
-  answer. A bare go-ahead given at a gate on screen answers it only where
+  volunteers in the conversation, brings it back at once — never the
+  answer, and a volunteered go-ahead is never met with a readiness
+  question of its own. A bare go-ahead given at a gate on screen answers it only where
   the gate has one way forward. Never move past a gate without an
   answer. Background work arriving while a
   gate waits is handled and named in a line, then the waiting gate is
