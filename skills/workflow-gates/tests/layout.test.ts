@@ -1,18 +1,25 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import {
+  GUTTER,
   IDLE,
+  NO_SENDS,
+  PAGER_SPANS,
   answerOf,
+  firstOnPage,
   footerRuns,
   geometry,
   linesOf,
   pad,
+  pageOf,
+  pagerRuns,
   startingRow,
   wrapRuns,
   type Footer,
   type Gate,
   type Line,
   type Option,
+  type PagerLine,
   type RowLine,
   type Sends,
   type Typed,
@@ -61,6 +68,8 @@ const read = (line: Line): string => {
       return `${line.glyph ? '◆' : ' '} ${textOf(line.runs)}`
     case 'footer':
       return `» ${textOf(line.runs)}`.trimEnd()
+    case 'pager':
+      return `⇅ ${textOf(pagerRuns(line))}`
     default:
       return `${line.kind[0]}${line.index} ${textOf(line.key)}${textOf(line.runs)}`.trimEnd()
   }
@@ -86,6 +95,66 @@ const labelOf = (option: Option, columns = 120) =>
   rowsOf(linesOf(gateOf({ options: [option] }), columns))
     .flatMap(line => line.runs)
     .filter(run => run.text.trim() !== '')
+
+const DROPPED = 'a-long-answer-from-the-last-menu'
+
+/**
+ * A menu of `count` numbered rows as a real one reads: tails, cues, details,
+ * a row another session holds, the last recommended, typed rows beneath.
+ */
+const menuOf = (count: number): Gate =>
+  gateOf({
+    statement: 'Specification Overview\nThese topics are ready to be specified.',
+    question: 'Which topic would you like to continue?',
+    options: Array.from({ length: count }, (_, n) =>
+      optionOf({
+        key: String(n + 1),
+        head: `Continue "Topic ${n + 1}"`,
+        tail: n % 3 === 0 ? 'discussion' : null,
+        cue: n % 4 === 1 ? 'input moved' : null,
+        detail: n % 5 === 2 ? 'Groupings are found.\nNames are kept as the discussions give them.' : null,
+        ...(n === 3 ? { holder: HOLDER, struck: true } : {}),
+        recommended: n === count - 1,
+      }),
+    ),
+    typed: [COMMENT, { label: `1–${count}`, description: 'Pick items', detail: null }],
+  })
+
+/**
+ * Everything the band can say over a menu, a row queued among it, in two
+ * groups — nothing dropped, and an answer dropped, which the footer names
+ * until a click — within each of which the band holds one height.
+ */
+const sayings = (gate: Gate, answer = '4'): { footer: Footer; sends: Sends }[][] =>
+  [null, DROPPED].map(dropped => {
+    const said = (footer: Footer, held: string | null = null) => ({
+      footer,
+      sends: { held, dropped },
+    })
+
+    return [
+      said(dropped === null ? IDLE : { kind: 'dropped', answer: dropped }),
+      said({ kind: 'picked', answer }),
+      said({ kind: 'queued', answer }, answer),
+      ...gate.typed.map(row => said({ kind: 'typed', label: row.label })),
+    ]
+  })
+
+/** How many pages the rows show on; one where they show whole. */
+const pageCount = (gate: Gate, columns: number, sends: Sends, maxRows: number) =>
+  linesOf(gate, columns, IDLE, sends, maxRows).find(
+    (line): line is PagerLine => line.kind === 'pager',
+  )?.pages ?? 1
+
+/** Each page as the band shows it at `maxRows`, first to last. */
+const everyPage = (gate: Gate, columns: number, maxRows: number, footer = IDLE, sends = NO_SENDS) =>
+  Array.from({ length: pageCount(gate, columns, sends, maxRows) }, (_, page) =>
+    linesOf(gate, columns, footer, sends, maxRows, { page }),
+  )
+
+/** The fewest lines the band can take for a gate: the whole of it, or its smallest page. */
+const leastOf = (gate: Gate, columns: number, sends: Sends) =>
+  Math.min(linesOf(gate, columns, IDLE, sends).length, linesOf(gate, columns, IDLE, sends, 0).length)
 
 describe('layout', () => {
   test('a row is pressed, and answers, by its word where it has one', () => {
@@ -177,18 +246,17 @@ describe('layout', () => {
     ])
   })
 
-  test('the statement stands above the question, its lines its own, the glyph on the question alone', () => {
+  test('the statement stands directly above the question, its lines its own, the glyph on the question alone', () => {
     const gate = gateOf({
       statement: 'Found existing review for Auth.\nReview covered 2 of 5 tasks.',
       question: 'Continue the review?',
     })
 
-    expect(linesOf(gate, 72).map(read).slice(0, 7)).toEqual([
+    expect(linesOf(gate, 72).map(read).slice(0, 6)).toEqual([
       '─',
       '',
       '  Found existing review for Auth.',
       '  Review covered 2 of 5 tasks.',
-      '',
       '◆ Continue the review?',
       '',
     ])
@@ -526,5 +594,161 @@ describe('layout', () => {
       '» the numbers in the prompt',
       '»',
     ])
+  })
+  test('a gate that fits shows whole, with no pager; one line short of it, its rows page', () => {
+    const gate = menuOf(6)
+    const whole = linesOf(gate, 72)
+
+    expect(linesOf(gate, 72, IDLE, NO_SENDS, whole.length)).toEqual(whole)
+    expect(whole.some(line => line.kind === 'pager')).toBe(false)
+
+    const paged = linesOf(gate, 72, IDLE, NO_SENDS, whole.length - 1)
+
+    expect(paged).toHaveLength(whole.length - 1)
+    expect(paged.filter(line => line.kind === 'pager')).toHaveLength(1)
+  })
+
+  test('a paged band keeps its head and its footer, a page of rows between them over the pager', () => {
+    expect(linesOf(menuOf(6), 72, IDLE, NO_SENDS, 14).map(read)).toEqual([
+      '─',
+      '',
+      '  Specification Overview',
+      '  These topics are ready to be specified.',
+      '◆ Which topic would you like to continue?',
+      '',
+      'o0 1        Continue "Topic 1" — discussion',
+      'o1 2        Continue "Topic 2" · input moved',
+      'o2 3        Continue "Topic 3"',
+      'o2          Groupings are found.',
+      'o2          Names are kept as the discussions give them.',
+      '⇅ ↑ previous   ↓ next   page 1 of 3',
+      '',
+      '» Click a row to choose · click it again to send · or just type',
+    ])
+  })
+
+  test('a page short of rows is padded out, so the pager and the footer never move', () => {
+    const [, , last] = everyPage(menuOf(6), 72, 14)
+
+    expect(last?.map(read).slice(6, 12)).toEqual([
+      't1 1–6      Pick items',
+      '',
+      '',
+      '',
+      '',
+      '⇅ ↑ previous   ↓ next   page 3 of 3',
+    ])
+  })
+
+  test('the band stands no taller than it may wherever one page fits, one height on every page, whatever it says', { timeoutMs: 30_000 }, () => {
+    for (const gate of [menuOf(6), menuOf(30)]) {
+      for (const columns of [60, 100, 160]) {
+        for (const group of sayings(gate)) {
+          const least = Math.max(...group.map(({ sends }) => leastOf(gate, columns, sends)))
+
+          for (let maxRows = Math.max(8, least); maxRows <= 40; maxRows += 1) {
+            const heights = group.flatMap(({ footer, sends }) =>
+              everyPage(gate, columns, maxRows, footer, sends).map(lines => lines.length),
+            )
+            const where = `${gate.options.length} rows, ${columns} columns, ${maxRows} high`
+
+            expect(Math.max(...heights), where).toBeLessThanOrEqual(maxRows)
+            expect(new Set(heights).size, where).toBe(1)
+          }
+        }
+      }
+    }
+  })
+
+  test('the pages hold every row once, in order, never one row across two', () => {
+    const gate = menuOf(30)
+    const rows = [
+      ...gate.options.map((_, n) => `o${n}`),
+      ...gate.typed.map((_, n) => `t${n}`),
+    ]
+
+    for (const columns of [60, 100, 160]) {
+      for (let maxRows = 8; maxRows <= 40; maxRows += 1) {
+        const shown = everyPage(gate, columns, maxRows).flatMap(lines => [
+          ...new Set(rowsOf(lines).map(line => `${line.kind[0]}${line.index}`)),
+        ])
+
+        expect(shown, `${columns} columns, ${maxRows} high`).toEqual(rows)
+      }
+    }
+  })
+
+  test('a row taller than a page is cut to it, its first lines shown', () => {
+    const detail = Array.from({ length: 12 }, (_, n) => `Line ${n + 1} of the detail.`).join('\n')
+    const gate = gateOf({
+      options: [
+        optionOf({ key: '1', head: 'Analyze', detail }),
+        optionOf({ key: '2', head: 'Unify' }),
+      ],
+    })
+    const [first, second] = everyPage(gate, 72, 12)
+
+    expect(first).toHaveLength(12)
+    expect(rowsOf(first ?? [])).toEqual(rowsOf(linesOf(gate, 72)).slice(0, 5))
+    expect(rowsOf(second ?? []).map(read)).toEqual(['o1 2  Unify'])
+  })
+
+  test('the pager reads previous, next and where it stands, a press that goes nowhere dim', () => {
+    const pager = (page: number): PagerLine => ({ kind: 'pager', page, pages: 3 })
+
+    expect(pagerRuns(pager(0))).toEqual([
+      { text: '↑ previous', dim: true },
+      { text: '   ' },
+      { text: '↓ next', dim: false },
+      { text: '   page 1 of 3', dim: true },
+    ])
+
+    expect(pagerRuns(pager(1)).map(run => run.dim)).toEqual([false, undefined, false, true])
+    expect(pagerRuns(pager(2)).map(run => run.dim)).toEqual([false, undefined, true, true])
+  })
+
+  test("the pager's presses cover its words, as drawn past the gutter", () => {
+    const drawn = ' '.repeat(GUTTER) + textOf(pagerRuns({ kind: 'pager', page: 0, pages: 2 }))
+    const at = ({ from, to }: { from: number; to: number }) => drawn.slice(from, to)
+
+    expect(at(PAGER_SPANS.previous)).toBe('↑ previous')
+    expect(at(PAGER_SPANS.next)).toBe('↓ next')
+  })
+
+  test('with no page named the band shows the one holding the cursor, and past the last shows the last', () => {
+    const gate = menuOf(30)
+    const shownWith = (at: { page?: number; cursor?: number }) =>
+      linesOf(gate, 72, IDLE, NO_SENDS, 20, at).find(
+        (line): line is PagerLine => line.kind === 'pager',
+      )
+
+    expect(rowsOf(linesOf(gate, 72, IDLE, NO_SENDS, 20, { cursor: 29 })).map(line => line.index)).toContain(29)
+    expect(shownWith({})?.page, 'no cursor, the first').toBe(0)
+    expect(shownWith({ page: 99 })?.page).toBe(pageCount(gate, 72, NO_SENDS, 20) - 1)
+  })
+
+  test('an option shows on the page that holds it, and a page opens on its first option', () => {
+    const gate = menuOf(30)
+    const pages = everyPage(gate, 72, 20)
+
+    expect(pages.length).toBeGreaterThan(2)
+
+    pages.forEach((lines, page) => {
+      const options = rowsOf(lines).filter(line => line.kind === 'option')
+
+      expect(firstOnPage(gate, 72, NO_SENDS, 20, page)).toBe(options[0]?.index ?? null)
+
+      for (const { index } of options) {
+        expect(pageOf(gate, 72, NO_SENDS, 20, index), `option ${index}`).toBe(page)
+      }
+    })
+  })
+
+  test('a page of typed rows alone opens on no option, and a gate shown whole is its own first page', () => {
+    const [last] = everyPage(menuOf(6), 72, 14).slice(-1)
+
+    expect(rowsOf(last ?? []).every(line => line.kind === 'typed')).toBe(true)
+    expect(firstOnPage(menuOf(6), 72, NO_SENDS, 14, 2)).toBeNull()
+    expect(pageOf(menuOf(6), 72, NO_SENDS, Infinity, 5)).toBe(0)
   })
 })

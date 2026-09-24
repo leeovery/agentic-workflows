@@ -77,12 +77,16 @@ export type RowLine = {
   runs: Run[]
 }
 
+/** The line under a page of rows: which page shows, of how many. */
+export type PagerLine = { kind: 'pager'; page: number; pages: number }
+
 /** One line of the band, top to bottom. */
 export type Line =
   | { kind: 'rule' }
   | { kind: 'blank' }
   | { kind: 'prose'; glyph: boolean; runs: Run[] }
   | RowLine
+  | PagerLine
   | { kind: 'footer'; runs: Run[] }
 
 /** The cursor's gutter, where the footer also sits. */
@@ -110,11 +114,24 @@ const QUEUED_HINT =
   ' sends when Claude finishes · click it again to take it back'
 const DROPPED_HINT = " wasn't sent — the menu changed"
 
+const PREVIOUS = '↑ previous'
+const NEXT = '↓ next'
+const PAGER_GAP = '   '
+
 /** A typed row's label that is a span of numbers, as the engine writes one. */
 const RANGE = /^\d+–\d+$/
 
 const RULE: Line = { kind: 'rule' }
 const BLANK: Line = { kind: 'blank' }
+
+/** The cells of the pager line its previous and next presses cover. */
+export const PAGER_SPANS = {
+  previous: { from: GUTTER, to: GUTTER + PREVIOUS.length },
+  next: {
+    from: GUTTER + PREVIOUS.length + PAGER_GAP.length,
+    to: GUTTER + PREVIOUS.length + PAGER_GAP.length + NEXT.length,
+  },
+}
 
 /** What a row shows in its key column, and what pressing it answers with. */
 export const answerOf = (option: Option) => option.word ?? option.key
@@ -295,10 +312,11 @@ function labelRuns(option: Option): Run[] {
 }
 
 /**
- * The pressable rows and then the typed ones, each followed by its detail;
- * the row at `heldAt` marked queued after its label.
+ * The pressable rows and then the typed ones, each row's lines a group
+ * closed by its detail; every pressable row marked queued after its label
+ * where `queued`.
  */
-function rowLines(gate: Gate, columns: number, heldAt: number): RowLine[] {
+function rowGroups(gate: Gate, columns: number, queued: boolean): RowLine[][] {
   const { keyWidth, labelWidth } = geometry(gate, columns)
 
   const linesOfRow = (
@@ -319,16 +337,16 @@ function rowLines(gate: Gate, columns: number, heldAt: number): RowLine[] {
     }))
 
   return [
-    ...gate.options.flatMap((option, index) =>
+    ...gate.options.map((option, index) =>
       linesOfRow(
         'option',
         index,
         keyRuns(option),
-        [...labelRuns(option), ...(index === heldAt ? [{ text: QUEUED }] : [])],
+        [...labelRuns(option), ...(queued ? [{ text: QUEUED }] : [])],
         option.detail,
       ),
     ),
-    ...gate.typed.flatMap((row, index) =>
+    ...gate.typed.map((row, index) =>
       linesOfRow(
         'typed',
         index,
@@ -377,15 +395,13 @@ const footerLines = (footer: Footer, columns: number) =>
 
 /**
  * The footer, in a slot as tall as the tallest thing it can say for this
- * gate, so a click never moves the rows above it; `spare` lines more below,
- * which the rows take back when a held row's mark wraps.
+ * gate, so a click never moves the rows above it.
  */
 function footerSlot(
   gate: Gate,
   footer: Footer,
   columns: number,
   dropped: string | null,
-  spare: number,
 ): Line[] {
   const states: Footer[] = [
     IDLE,
@@ -399,9 +415,9 @@ function footerSlot(
       : [{ kind: 'dropped' as const, answer: dropped }]),
   ]
 
-  const rows =
-    Math.max(...states.map(state => footerLines(state, columns).length)) +
-    spare
+  const rows = Math.max(
+    ...states.map(state => footerLines(state, columns).length),
+  )
   const said = footerLines(footer, columns)
 
   return Array.from({ length: rows }, (_, n) => ({
@@ -410,20 +426,53 @@ function footerSlot(
   }))
 }
 
-/** Lines standing as a block: a blank under them, nothing at all for none. */
-const block = (lines: Line[]): Line[] =>
-  lines.length === 0 ? [] : [...lines, BLANK]
+/**
+ * The rows cut into pages of `budget` lines, in order: a page takes whole
+ * rows while they fit, and a row taller than a page is cut to it.
+ */
+function pagesOf(groups: readonly RowLine[][], budget: number): RowLine[][] {
+  const pages: RowLine[][] = []
+  let page: RowLine[] = []
+
+  for (const group of groups) {
+    const lines = group.slice(0, budget)
+
+    if (page.length > 0 && page.length + lines.length > budget) {
+      pages.push(page)
+      page = []
+    }
+
+    page = [...page, ...lines]
+  }
+
+  return [...pages, page]
+}
+
+/** The page holding the option at `cursor`; the first for none. */
+const pageHolding = (pages: readonly RowLine[][], cursor: number) =>
+  Math.max(
+    0,
+    pages.findIndex(page =>
+      page.some(line => line.kind === 'option' && line.index === cursor),
+    ),
+  )
 
 /**
- * Every line the band draws for a gate, top to bottom: the rule, the
- * statement, the question, the rows and the footer, a blank between each. How many there are is the region's height
- * whatever the footer says and whichever row is held.
+ * Every line the band draws for a gate, top to bottom: the rule, a blank, the
+ * statement, the question, a blank, the rows, a blank and the footer. Where
+ * that would stand taller than `maxRows`, the rows show a page at a time over
+ * a pager line, every page padded to one height; the page shown is `page`, or
+ * the one holding the option at `cursor`. How many lines there are is the
+ * region's height whatever the footer says, whichever row is held and
+ * whichever page shows.
  */
 export function linesOf(
   gate: Gate,
   columns: number,
   footer: Footer = IDLE,
   { held, dropped }: Sends = NO_SENDS,
+  maxRows = Infinity,
+  { page, cursor = -1 }: { page?: number; cursor?: number } = {},
 ): Line[] {
   const width = columns - GLYPH_COLUMN
   const statement = paragraphs(gate.statement, width)
@@ -434,25 +483,77 @@ export function linesOf(
     runs,
   })
 
-  const rows = rowLines(
-    gate,
-    columns,
-    gate.options.findIndex(option => answerOf(option) === held),
+  const plain = rowGroups(gate, columns, false)
+  const queued = rowGroups(gate, columns, true)
+  const heldAt = gate.options.findIndex(option => answerOf(option) === held)
+  const groups = plain.map((group, n) =>
+    n === heldAt ? (queued[n] ?? group) : group,
   )
-  const tallest = Math.max(
-    ...[-1, ...gate.options.keys()].map(
-      heldAt => rowLines(gate, columns, heldAt).length,
-    ),
-  )
-
-  return [
+  const rows = groups.flat()
+  const marks = queued.map((group, n) => group.length - (plain[n]?.length ?? 0))
+  const tallest = plain.flat().length + Math.max(0, ...marks)
+  const head: Line[] = [
     RULE,
     BLANK,
-    ...block(statement.map(runs => prose(runs, false))),
+    ...statement.map(runs => prose(runs, false)),
     ...question.map((runs, n) => prose(runs, n === 0)),
     BLANK,
-    ...rows,
-    BLANK,
-    ...footerSlot(gate, footer, columns, dropped, tallest - rows.length),
+  ]
+  const foot = [BLANK, ...footerSlot(gate, footer, columns, dropped)]
+  // Lines under the footer that the rows take back when a held row's mark
+  // wraps, so the whole gate holds its height.
+  const spare = Array.from(
+    { length: tallest - rows.length },
+    (): Line => ({ kind: 'footer', runs: [] }),
+  )
+  const whole = [...head, ...rows, ...foot, ...spare]
+
+  if (whole.length <= maxRows) {
+    return whole
+  }
+
+  const budget = Math.max(1, maxRows - head.length - 1 - foot.length)
+  const pages = pagesOf(groups, budget)
+  const shown = Math.min(pages.length - 1, page ?? pageHolding(pages, cursor))
+  const lines: Line[] = pages[shown] ?? []
+
+  return [
+    ...head,
+    ...lines,
+    ...Array.from({ length: budget - lines.length }, () => BLANK),
+    { kind: 'pager', page: shown, pages: pages.length },
+    ...foot,
   ]
 }
+
+/** The pager line's words, a press that goes nowhere dim. */
+export const pagerRuns = ({ page, pages }: PagerLine): Run[] => [
+  { text: PREVIOUS, dim: page === 0 },
+  { text: PAGER_GAP },
+  { text: NEXT, dim: page === pages - 1 },
+  { text: `${PAGER_GAP}page ${page + 1} of ${pages}`, dim: true },
+]
+
+/** The page the option at `cursor` shows on; the first where none pages. */
+export const pageOf = (
+  gate: Gate,
+  columns: number,
+  sends: Sends,
+  maxRows: number,
+  cursor: number,
+) =>
+  linesOf(gate, columns, IDLE, sends, maxRows, { cursor }).find(
+    (line): line is PagerLine => line.kind === 'pager',
+  )?.page ?? 0
+
+/** The first option on `page`; null where the page shows none. */
+export const firstOnPage = (
+  gate: Gate,
+  columns: number,
+  sends: Sends,
+  maxRows: number,
+  page: number,
+) =>
+  linesOf(gate, columns, IDLE, sends, maxRows, { page }).find(
+    (line): line is RowLine => line.kind === 'option',
+  )?.index ?? null

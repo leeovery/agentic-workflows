@@ -23,6 +23,15 @@ pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
 click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 
+The band is never taller than the rows Claude Code gives it, so it never
+scrolls. A gate that fits shows whole: a rule, the statement and the question,
+the rows, the footer. One that does not keeps its rule, question and footer in
+place and shows its rows a page at a time, every page the same height, over a
+line reading `↑ previous   ↓ next   page 1 of 3`; a click on either turns the
+page and puts the cursor on its first row. The arrows carry the cursor across
+pages, the page following it, and a row's own key picks that row whichever
+page it is on.
+
 A turn the person did not start — a background agent's report, a
 notification, a schedule — leaves the band as it is, its rows live. The band
 comes off when the person starts a turn or replies into a running one, or when
