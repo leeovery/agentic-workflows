@@ -208,9 +208,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   conversation's Bash call, in a session whose only screen is the
   terminal; every gate has a question and a row to press, which the engine
   guarantees (R11) and the audit asserts, so the mod does not check. A
-  subagent's call and a session with any other screen attached (Remote
-  Control on a phone or the desktop app) keep the text menu, so every
-  screen sees it — the band is the terminal's alone. A screen that
+  subagent's call, a session with any other screen attached (Remote
+  Control on a phone or the desktop app) and a terminal too short to draw
+  one page of the gate (R7) keep the text menu, so every screen sees it —
+  the band is the terminal's alone. A screen that
   attaches after a menu was cut for the terminal does not get that menu
   (idea #53 would close it).
 - **R6 — a gate is armed by its render, drawn at the turn's end, and kept
@@ -260,10 +261,13 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     transcript retention go.
   - `session.end` — a `/clear`, a resume — empties the band first: no gate
     of the old conversation answers into the new one.
-- **R7 — the band.** Top to bottom: a full-width rule (`promptBorder`); a
-  blank row; the statement, if any, in normal weight, aligned with the
-  question's text; a blank row; the `◆` question in bold (glyph in
-  `permission`); a blank row; the rows; a blank row; the footer.
+- **R7 — the band never overflows.** Top to bottom: a full-width rule
+  (`promptBorder`); a blank row; the statement, if any, in normal weight,
+  aligned with the question's text; the `◆` question in bold (glyph in
+  `permission`); a blank row; the rows; a blank row; the footer. The band
+  is never taller than the `maxRows` Claude Code gives it (half the
+  terminal's rows, the prompt's included), so it never becomes Claude
+  Code's scroll window and the wheel never reaches it (finding 28).
   - A row: a two-cell gutter (`▌` in `permission` on the cursor row), the
     key column showing `word ?? key` with the shortcut letter
     **underlined** inside the word, the label in the text menu's grammar —
@@ -283,12 +287,26 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - The cursor starts on the recommended row, else the first not struck.
     Arrows work only once a click (or ctrl+x tab) has given the band the
     keyboard.
-  - A gate taller than the band scrolls as a whole, Claude Code's way: the
-    rule and question scroll away with the rows. A pinned header over
-    scrolling rows is rejected: the wheel reaches the band only when it
-    overflows, which brings Claude Code's own "N more" line beside any the
-    mod draws (findings 28–29), and no in-band indicator fits without
-    doubling the spacing or moving the list under the cursor.
+  - A gate that fits is drawn whole. One that does not keeps its head —
+    rule, statement, question — and its footer fixed, and pages the rows:
+    as many whole rows as the space left holds, a pager line beneath them
+    (`↑ previous   ↓ next   page 1 of 2`, a press that goes nowhere
+    dimmed), every page padded to one height so the band never moves. A
+    click on previous or next turns the page and puts the cursor on its
+    first row; the arrows move through every row and turn the page at its
+    edge; a key for a row on another page turns to it. The budget is read
+    at every drawing, so a taller terminal pages less or not at all, and
+    the same rule serves every gate — nothing is sized per menu.
+  - A terminal too short for the head, one row, the pager and the footer
+    keeps the text menu: the mod remembers the budget of its latest
+    drawing and does not arm a gate that could not fit (R5).
+  - Scrolling is rejected in both its forms. The band as Claude Code's
+    scroll window takes trackpad momentum carried in from a flick
+    elsewhere, scrolling its rule away (finding 43); a pinned header over
+    scrolling rows brings Claude Code's own "N more" line beside any the
+    mod draws (finding 29). Two columns of rows were tried and dropped:
+    long labels wrap in half the width, and a phone screen has no second
+    column to give.
 - **R8 — two mods, both under `skills/`.** `workflow-gates` (the band) and
   `workflow-gates-rows` (R15). agntc copies `skills/` recursively, so both
   land in `.claude/skills/` and load as `…@skills-dir`. Declarations are
@@ -548,6 +566,13 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     — a different gate under the same name. Hence the band staying
     through background turns (R6) and a waiting gate fetched fresh
     (R19).
+43. A trackpad flick's momentum keeps arriving as wheel ticks after the
+    fingers lift, and Claude Code sends each to whatever sits under the
+    pointer: moving from the transcript to the prompt across an
+    overflowing band scrolls the band, and back again scrolls the
+    transcript — a loop on the iPad's trackpad, seen in the first minute.
+    `maxRows` on the `AbovePrompt` render is the band's budget, readable
+    before it draws. Hence R7's band that never overflows.
 
 ## Log
 
@@ -582,3 +607,6 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   stacks edit them (R11). Findings 38–42. Both stacks rebased onto main
   over the topic postpone and joined into one, the gate surface on top of
   the migration, its reconciliation carried as `sync:` commits.
+- 2026-09-24 — the lab pass on the one stack: the band never overflows,
+  its rows paged under a fixed head and footer, a too-short terminal left
+  the text menu (R5, R7); two columns tried and dropped. Finding 43.
