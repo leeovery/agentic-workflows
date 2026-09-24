@@ -208,10 +208,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   conversation's Bash call, in a session whose only screen is the
   terminal; every gate has a question and a row to press, which the engine
   guarantees (R11) and the audit asserts, so the mod does not check. A
-  subagent's call, a session with any other screen attached (Remote
-  Control on a phone or the desktop app) and a terminal too short to draw
-  one page of the gate (R7) keep the text menu, so every screen sees it —
-  the band is the terminal's alone. A screen that
+  subagent's call and a session with any other screen attached (Remote
+  Control on a phone or the desktop app) keep the text menu, so every
+  screen sees it — the band is the terminal's alone. A screen that
   attaches after a menu was cut for the terminal does not get that menu
   (idea #53 would close it).
 - **R6 — a gate is armed by its render, drawn at the turn's end, and kept
@@ -297,9 +296,6 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     edge; a key for a row on another page turns to it. The budget is read
     at every drawing, so a taller terminal pages less or not at all, and
     the same rule serves every gate — nothing is sized per menu.
-  - A terminal too short for the head, one row, the pager and the footer
-    keeps the text menu: the mod remembers the budget of its latest
-    drawing and does not arm a gate that could not fit (R5).
   - Scrolling is rejected in both its forms. The band as Claude Code's
     scroll window takes trackpad momentum carried in from a flick
     elsewhere, scrolling its rule away (finding 43); a pinned header over
@@ -608,5 +604,5 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   over the topic postpone and joined into one, the gate surface on top of
   the migration, its reconciliation carried as `sync:` commits.
 - 2026-09-24 — the lab pass on the one stack: the band never overflows,
-  its rows paged under a fixed head and footer, a too-short terminal left
-  the text menu (R5, R7); two columns tried and dropped. Finding 43.
+  its rows paged under a fixed head and footer (R7); two columns tried and
+  dropped. Finding 43.
