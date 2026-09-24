@@ -425,7 +425,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   seventeen menus, and the hand-drawn displays beside them) → #1295 (every
   menu asks; no menu in prose) → #1299 (a gate is fetched where it is
   shown, R16) → #1300 (call sites defer to the marker, R18) → #1301
-  (every answer resolves from DATA, R17).
+  (every answer resolves from DATA, R17) → #1302 (a gate waiting on the
+  person, R19).
 - **Gate-surface stack** (#1291): #1289 the payload (rows from parts,
   strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows mod.
   When it is rebased onto main after the migration stack lands, these need
