@@ -947,6 +947,11 @@ describe('register', () => {
     })
 
     expect(
+      await runOf(ui, ' (recommended)'),
+      'the recommendation is bold in the accent colour',
+    ).toMatchObject({ props: { bold: true, color: 'permission' } })
+
+    expect(
       (await runOf(ui, HOLDER))?.props.strikethrough,
       'what holds it stands after the strike',
     ).toBeUndefined()

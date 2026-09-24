@@ -44,6 +44,8 @@ export type Run = {
   italic?: boolean
   strikethrough?: boolean
   underline?: boolean
+  /** Drawn in the colour the band asks in, rather than the text's own. */
+  accent?: boolean
 }
 
 /**
@@ -291,23 +293,22 @@ const partRuns = (
 
 /**
  * A row's label by the text menu's grammar: the tail dim and italic after a
- * dash, a cue plain after a dot so it reads as a flag, a held row struck from
- * its head through its cue with the holder plain after the strike, and the
- * recommendation last.
+ * dash, and a cue the same after a dot; a held row struck from its head
+ * through its cue, the holder plain after the strike; and the recommendation
+ * last, bold in the accent colour.
  */
 function labelRuns(option: Option): Run[] {
   const strike = option.struck ? { strikethrough: true } : {}
+  const aside = { ...strike, dim: true, italic: true }
 
   return [
     { text: option.head, ...strike },
-    ...partRuns(TAIL_SEPARATOR, option.tail, {
-      ...strike,
-      dim: true,
-      italic: true,
-    }),
-    ...partRuns(NOTE_SEPARATOR, option.cue, strike),
+    ...partRuns(TAIL_SEPARATOR, option.tail, aside),
+    ...partRuns(NOTE_SEPARATOR, option.cue, aside),
     ...partRuns(NOTE_SEPARATOR, option.holder),
-    ...(option.recommended ? [{ text: RECOMMENDED }] : []),
+    ...(option.recommended
+      ? [{ text: RECOMMENDED, bold: true, accent: true }]
+      : []),
   ]
 }
 
