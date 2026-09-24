@@ -2963,8 +2963,10 @@ describe('pipeline simulation', () => {
     // add-to-joined-horizon gate, whose DATA names the unit its delivery row
     // pulls into — the `--into` a `d/delivery` answer takes.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /DISPLAY: roadmap/);
-    assert.match(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }),
-      /^=== DATA [^\n]*\nwork_units: mvp\n\n=== MENU: roadmap add gate[\s\S]*\*\*`d\/delivery`\*\*/);
+    const addGate = sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' });
+    assert.match(addGate, /^=== DATA [^\n]*\nwork_units: mvp\n\n=== MENU: roadmap add gate[\s\S]*\*\*`d\/delivery`\*\*/);
+    // An Ask sets the gate aside; once the person is ready it renders again.
+    assert.strictEqual(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }), addGate);
     sim.render(['roadmap-session-receipt'], { expect: 'empty' });
     // The static gate menus render like every menu — engine-served.
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
