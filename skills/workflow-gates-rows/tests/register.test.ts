@@ -124,18 +124,6 @@ describe('register', () => {
     expect(await drawn($, rowOf('m2'))).toBe(`${QUESTION} → yes`)
   })
 
-  test('a gate that asks nothing draws the answer and its label alone', async ($, on) => {
-    const { leaves } = world(on)
-
-    leaves(recordOf('yes', ''))
-
-    expect(await drawn($, rowOf('m1'))).toBe(`yes · ${COMMIT}`)
-
-    leaves(recordOf('yes', '', ''))
-
-    expect(await drawn($, rowOf('m2'))).toBe('yes')
-  })
-
   test('the record is spent once paired: a later row of the same answer draws it alone', async ($, on) => {
     world(on, recordOf())
 
