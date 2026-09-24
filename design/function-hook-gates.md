@@ -203,13 +203,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   the one instruction at the gate. The engine keeps emitting the MENU, so
   an absent mod, or one that fails before the cut, leaves the text menu;
   every hook falls through to `next(e)` on failure.
-- **R5 — recognition is the GATE marker; the main loop, a pressable row
-  and the terminal alone are preconditions.** The mod arms a gate only from
-  the main conversation's Bash call, for a gate with a pressable row, in a
-  session whose only screen is the terminal. A subagent's call, a gate
-  with nothing to press, and a session with any other screen attached
-  (Remote Control on a phone or the desktop app) keep the text menu, so
-  every screen sees it — the band is the terminal's alone. A screen that
+- **R5 — recognition is the GATE marker; the main loop and the terminal
+  alone are preconditions.** The mod arms a gate only from the main
+  conversation's Bash call, in a session whose only screen is the
+  terminal; every gate has a question and a row to press, which the engine
+  guarantees (R11) and the audit asserts, so the mod does not check. A
+  subagent's call and a session with any other screen attached (Remote
+  Control on a phone or the desktop app) keep the text menu, so every
+  screen sees it — the band is the terminal's alone. A screen that
   attaches after a menu was cut for the terminal does not get that menu
   (idea #53 would close it).
 - **R6 — a gate is armed by its render, drawn at the turn's end, and kept
@@ -434,51 +435,22 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 ## The stack
 
 - **PR0** — this document (#1274), merged last.
-- **Migration stack** (#1278): #1276 → #1277 → #1282 → #1286 → #1287 (the
-  seventeen menus, and the hand-drawn displays beside them) → #1295 (every
-  menu asks; no menu in prose) → #1299 (a gate is fetched where it is
-  shown, R16) → #1300 (call sites defer to the marker, R18) → #1301
-  (every answer resolves from DATA, R17) → #1302 (a gate waiting on the
-  person, R19).
-- **Gate-surface stack** (#1291): #1289 the payload (rows from parts,
-  strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows mod.
-  When it is rebased onto main after the migration stack lands, these need
-  a hand beyond the recorded conflict resolutions, by layer:
-  - **#1289** —
-    - the migration's `spec-confirm-gate` calls `yesNo()` (the payload made
-      shared row sets per-render functions);
-    - the duplicate `GLYPHED_LINE` / `glyphed()` in `surfaces.cjs` goes;
-    - `menuFrame` takes the migration's glyph rule, records the framed
-      lines (`recordFrame`) before `alignOptions`, then asks
-      `asksOverRows`;
-    - `menuBlock('')` returns `''` on both sides: one implementation — an
-      empty menu is `''`, anything else the GATE block and the marker;
-    - every label the migration builds passes through the parts builders
-      — `experiment.cjs`'s record pick, `start.cjs`'s `itemLabel`
-      (archived, working set), the manage and completed lists — and text
-      the engine did not author goes in as `{ head }` alone: the roadmap's
-      `w/waiting` horizon label and the dependency pick's description;
-    - the payload suite re-pins: five surfaces now ask (the plan and
-      review resume gates, the in-flight agents gate, the summary
-      backfill gate, the specification entry's view), five tests lose
-      their premise (the menu prompt four times, the row-less picker), four
-      synthetic fixtures gain a `?` question; its shape check gains an
-      escaped title once `itemLabel` rows exist, and its gateway verb
-      table gains the migration's verbs (`select` among them);
-    - the collector's and the audit's trailing-prompt fallback
-      (`closesOnProse`, `askIndex`) is dead — `menu()` has no trailing
-      prompt — and goes;
-    - the pipeline simulation audits `gateway select` as well as
-      `format`, which carries no MENU once the migration lands;
-    - `commands.md`'s render introduction and baseline doc pick hunks
-      combine both sides.
-  - **#1292** — `gate-surface-gate` joins the render list the migration
-    rewrote.
-  - **#1290 / #1294** — every menu asks and has a row to press, so the
-    mod's question-less and row-less paths go (`isForBand`'s no-row check
-    and its archived-inbox note, the question-less band in `layout.ts`,
-    the rows mod's question-less line, and their tests), and the audit
-    asserts both.
+- **One stack** (#1278), off main, merged bottom to top:
+  - the migration — #1276 → #1277 → #1282 → #1286 → #1287 (the seventeen
+    menus, and the hand-drawn displays these stacks edit) → #1295 (every
+    menu asks; no menu in prose) → #1299 (a gate is fetched where it is
+    shown, R16) → #1300 (call sites defer to the marker, R18) → #1301
+    (every answer resolves from DATA, R17) → #1302 (a gate waiting on the
+    person, R19);
+  - the gate surface on top of it — #1289 the payload (rows from parts,
+    strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows
+    mod. Where the payload meets the migration's menus, each layer closes
+    on `sync:` commits: the spec-confirm gate's per-render `yesNo()`, one
+    glyph helper and a menu asking on its glyphed line alone, the
+    migration's pick rows built from parts, the payload suite re-pinned
+    to menus that always ask (#1289); the band's question-less and
+    row-less paths removed, the audit asserting a question and a row to
+    press (#1290); the rows mod's question-less line removed (#1294).
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
@@ -607,4 +579,6 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   marker defined once and every call site deferring to it in one
   phrasing (R18); payload parts recorded as text and audited in every
   suite that renders a menu (R3, R12); displays migrate only where these
-  stacks edit them (R11). Findings 38–42.
+  stacks edit them (R11). Findings 38–42. Both stacks rebased onto main
+  over the topic postpone and joined into one, the gate surface on top of
+  the migration, its reconciliation carried as `sync:` commits.
