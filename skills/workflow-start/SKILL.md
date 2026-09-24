@@ -202,7 +202,7 @@ Branch on the boot response's `gate_surface` — `prompt` means the choice was n
 > Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time by setting `gate_surface` to `false` in `./.workflows/manifest.json`.
 ```
 
-Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim as markdown (not a code block):
+Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
@@ -210,37 +210,29 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
 
 **STOP.** Wait for user response.
 
-**If `no`:**
-
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded:
+On `yes` or `no`, record the choice — `true` for `yes`, `false` for `no`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config false
+node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config {true|false}
 ```
 
-→ Proceed to **Step 0.5**.
-
-**If `yes`:**
-
-Record the choice:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config true
-```
-
-**If the response is `ok: false`:**
+**If the command fails (`ok: false`):**
 
 Surface its error — the prompt returns at a future start once the project manifest is fixed.
 
 → Proceed to **Step 0.5**.
 
-**If the response carries `warnings`:**
+**If the command succeeds carrying `warnings`:**
 
-Surface them — the choice is recorded, and the next start re-syncs the settings file.
+Surface them — the choice is recorded, and after a `yes` the next start re-syncs the settings file.
 
 → Proceed to **Step 0.5**.
 
-**Otherwise:**
+**If `no` and the command succeeds with no `warnings`:**
+
+→ Proceed to **Step 0.5**.
+
+**If `yes` and the command succeeds with no `warnings`:**
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
