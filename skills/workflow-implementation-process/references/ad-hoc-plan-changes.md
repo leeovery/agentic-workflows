@@ -130,7 +130,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 #### Otherwise
 
-Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "criteria": […]}` from the staging file, `"steps": […]` when the task carries a **Do**, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim at its marked instruction:
+Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "criteria": […]}` from the staging file, `"steps": […]` when the task carries a **Do**, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate_mode} --comment-hint "Provide feedback to adjust"
@@ -138,7 +138,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {wor
 
 #### If the response carried `DISPLAY: task auto-approved`
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`), then emit the section per its marker.
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`), then emit the section verbatim per its marker.
 
 → Return to **F. Approve Each Task**.
 

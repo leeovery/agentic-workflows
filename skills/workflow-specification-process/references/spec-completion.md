@@ -38,7 +38,7 @@ multiple features handle data retrieval, rather than being a standalone piece
 of functionality to build."}
 ```
 
-Fetch the gate and emit its section verbatim at its marked instruction:
+Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment
@@ -102,7 +102,7 @@ If any show `status: pending`, work them now per **[spec-construction.md](spec-c
 
 ## C. Sign-Off
 
-Fetch the gate and emit its section verbatim at its marked instruction:
+Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant signoff
@@ -146,7 +146,7 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification" --topic specification/{topic} --kb
 ```
 
-When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
+When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{topic} --verb complete --warn

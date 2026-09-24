@@ -46,7 +46,7 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
 ```
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb Reopening

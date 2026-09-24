@@ -185,7 +185,7 @@ Present the full task content:
 {task detail from task detail file}
 ```
 
-Render the gate and emit the section verbatim:
+Render the gate and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}"
