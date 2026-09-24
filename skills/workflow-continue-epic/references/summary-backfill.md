@@ -119,7 +119,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-**If `provide`:** set each item's derived field from the user's text and include it in the writes below.
+**If `provide`:** when the reply carries no text — the choice alone — ask for each item's summary and **STOP.** Wait for user response. Set each item's derived field from the user's text and include it in the writes below.
 
 **If `dismiss`:** for each such item, set the null field(s) to a minimal value derived from the topic name and routing, ending `(source artifact missing)`, and include them in the writes below.
 
