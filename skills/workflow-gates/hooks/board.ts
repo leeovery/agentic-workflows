@@ -141,7 +141,7 @@ export default function GateBoard(
 
   const styled = (run: Run, color?: string, backgroundColor?: string) =>
     Text({
-      color,
+      color: run.accent === true ? ACCENT : color,
       backgroundColor,
       bold: run.bold,
       dimColor: run.dim,

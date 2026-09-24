@@ -282,7 +282,7 @@ describe('layout', () => {
     ])
   })
 
-  test('a row draws its head, its tail and its recommendation in one line', () => {
+  test('a row draws its head, its tail and its recommendation in one line, the recommendation bold in the accent colour', () => {
     const gate = gateOf({
       options: [optionOf({ key: 'y', word: 'yes', tail: 'research', recommended: true })],
     })
@@ -293,15 +293,15 @@ describe('layout', () => {
     expect(line?.runs.slice(0, 3)).toEqual([
       { text: 'Continue "Auth"' },
       { text: ' — research', dim: true, italic: true },
-      { text: ' (recommended)' },
+      { text: ' (recommended)', bold: true, accent: true },
     ])
   })
 
-  test('a cue draws plain after a dot, so it reads as a flag on the tail', () => {
+  test('a cue draws dim and italic after a dot, as the tail does', () => {
     expect(labelOf(optionOf({ tail: 'discussion', cue: 'input moved' }))).toEqual([
       { text: 'Continue "Auth"' },
       { text: ' — discussion', dim: true, italic: true },
-      { text: ' · input moved' },
+      { text: ' · input moved', dim: true, italic: true },
     ])
   })
 
@@ -309,9 +309,9 @@ describe('layout', () => {
     expect(labelOf(held({ recommended: true }))).toEqual([
       { text: 'Continue "Auth"', strikethrough: true },
       { text: ' — discussion', dim: true, italic: true, strikethrough: true },
-      { text: ' · input moved', strikethrough: true },
+      { text: ' · input moved', dim: true, italic: true, strikethrough: true },
       { text: ` · ${HOLDER}` },
-      { text: ' (recommended)' },
+      { text: ' (recommended)', bold: true, accent: true },
     ])
   })
 
