@@ -1,5 +1,5 @@
 {
-  "origin": "no case crossed the implementation→review hop — nothing walked the implementation conclude gate, and no bridge case started from implementation. Two defects sat there unseen: the gate's `no` arm sent a finished implementation back into the task loop, which found nothing to run and re-dispatched the analysis it had already converged; and the bridge stopped the user twice with the same question on the way to review. This pins the hop: a clean analysis cycle, the conclude gate's Ask answered from the record the session holds and the same gate re-rendered with no analysis re-run, the completion, and the bridge's single next-phase gate landing the plan-mode handoff to review",
+  "origin": "no case crossed the implementation→review hop — nothing walked the implementation conclude gate, and no bridge case started from implementation. Two defects sat there unseen: the gate's `no` arm sent a finished implementation back into the task loop, which found nothing to run and re-dispatched the analysis it had already converged; and the bridge stopped the user twice with the same question on the way to review. This pins the hop: a clean analysis cycle, the conclude gate's Ask answered from the record the session holds, the gate set aside until the user is ready to move on and then put back for its answer, with no analysis re-run, the completion, and the bridge's single next-phase gate landing the plan-mode handoff to review",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -40,6 +40,7 @@
     "y — skip project skills again",
     "y — skip linters again",
     "before I mark it — what tests did the capture webhook task name?",
+    "yes, I'm ready",
     "y — mark it completed",
     "y — proceed to review"
   ],

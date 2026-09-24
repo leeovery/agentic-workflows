@@ -55,10 +55,15 @@ The prose should have taken this path:
     and an unknown intent logged and ignored, and the answer says so.
     Nothing is dispatched to answer it, no engine transaction runs, the
     flow never returns to the task loop, and no second analysis cycle is
-    recorded. The conclude gate is
-    then fetched again through the engine — a second fetch, the same
-    address — its MENU section re-emitted, and the walk STOPS again. The
-    fourth scripted answer marks it completed
+    recorded. The question set the gate aside: the answer is followed by
+    a question in conversation — no gate, no menu — asking whether they
+    are ready to move on, and the walk STOPS; the gate is **not**
+    fetched again straight after the answer. The fourth scripted answer
+    says they are ready; a yes to being ready is never the gate's
+    answer, so the conclude gate is then fetched again through the
+    engine — a second fetch, the same address — its MENU section
+    re-emitted, and the walk STOPS again. The fifth scripted answer
+    marks it completed
 11. the yes arm: the bank check finds no field (the exists read answers
     false), so no delete is issued; the engine completes the
     implementation item; the completion commit lands with the message
@@ -74,7 +79,7 @@ The prose should have taken this path:
     implementation as the previous phase and review as the next: its
     menu carries all three rows — `y/yes` to proceed, `d/done` to skip
     the review, `r/revisit` for an earlier phase — and the walk STOPS
-    once. The fifth scripted answer proceeds
+    once. The sixth scripted answer proceeds
 14. plan mode: the continuation resolves the plan template — the
     continue-the-pipeline line, never the revisiting line — and the
     resolved content lands as the world's plan-handoff artifact per the
@@ -88,9 +93,10 @@ Further claims:
   architecture — in parallel, one firing each; no synthesizer, task
   author, task writer, executor or reviewer was dispatched, and nothing
   was dispatched to answer the question at the conclude gate
-- the five scripted answers were consumed by the two setup gates, the
-  conclude gate twice — the question, then the yes — and the next-phase
-  gate, in that order and nowhere else
+- the six scripted answers were consumed by the two setup gates, the
+  conclude gate's question, the readiness question, the conclude gate
+  again — the yes — and the next-phase gate, in that order and nowhere
+  else
 - the conclude gate was fetched through the engine exactly twice, both
   before the completion; the analysis cycle was recorded exactly once,
   before the first fetch, and nothing analysis-shaped ran after it
