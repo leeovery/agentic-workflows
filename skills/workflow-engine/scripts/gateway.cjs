@@ -24,10 +24,10 @@
  *   `gateway.cjs {work_unit}`).
  */
 
-const { DATA_INSTRUCTION } = require('./domain/projections/surfaces.cjs');
+const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION } = require('./domain/projections/surfaces.cjs');
 
 const SECTION = {
-  title:   '=== TITLE (emit verbatim as markdown — the view\'s chrome heading) ===',
+  title:   `=== TITLE (${TITLE_INSTRUCTION}) ===`,
   data:    `=== DATA (${DATA_INSTRUCTION}) ===`,
   // Plain fence, no language: any grammar eventually colours a stray word in
   // uncontrolled prose (makefile's `private`/`include` did). Displays stay
@@ -43,7 +43,7 @@ function dataBlock(body) {
 
 /** The chrome heading for a view — markdown, above the fenced display. @param {string} title */
 function titleBlock(title) {
-  return SECTION.title + '\n# **\`■ ' + title + '\`**\n';
+  return titleSection(title);
 }
 
 /** @param {string} body display block, pre-rendered */
