@@ -30,13 +30,13 @@ Whatever you answer, the workflows keep a small session-end hook in the project'
 
 ## Buttons above the prompt
 
-The first `/workflow-start` in a project also asks once whether the workflows may show their menus as buttons above the prompt, instead of printing each menu into the transcript. Turned on, the buttons stay put while the transcript scrolls. A click on a row picks it, putting its answer in the prompt box; a second click on that row, or Enter, sends it, and Claude Code shows the sent answer as the plugin's message. Typing an answer still works. While any screen but the terminal is attached, such as Remote Control, menus stay text. Pressing Esc once Claude has started working on your answer, or running `/clear`, leaves no buttons until the next menu. Turned off, every menu is the text it always was. You answer once per project.
+The first `/workflow-start` in a project also asks once whether the workflows may show their menus as buttons above the prompt, instead of printing each menu into the transcript. Turned on, the buttons stay put while the transcript scrolls. A click on a row picks it, putting its answer in the prompt box; a second click on that row, or Enter, sends it, and Claude Code shows the sent answer as the plugin's message. You can also type an answer. While any screen but the terminal is attached, such as Remote Control, menus stay text, and a Remote Control screen that attaches after a menu was drawn on the terminal does not get that menu. Pressing Esc before Claude has run a tool in reply to your answer brings its menu back; once Claude has run one, Esc leaves no buttons until the next menu, and so does running `/clear`. Turned off, every menu prints into the transcript as text. You answer once per project.
 
 Saying yes writes `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` block of the project's `.claude/settings.json` — the switch for Claude Code's function hooks, which are early access, and which the flag turns on for every plugin in this project's sessions. Claude Code reads settings only when it starts, so a yes ends that session with an instruction to restart; the next session has the buttons.
 
 To turn the buttons off, set `gate_surface` to `false` in `./.workflows/manifest.json`; it takes effect at the next session start. The flag stays in the settings file, since other plugins may rely on it.
 
-Nothing else depends on the answer: the engine emits every menu as text regardless, so buttons that are off, absent or broken leave the menus exactly as they were.
+Nothing else depends on the answer: the engine emits every menu as text regardless, so wherever the buttons are off, absent or broken, the menu prints into the transcript as text.
 
 ## Handing over the gates
 
