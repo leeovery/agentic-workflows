@@ -2,24 +2,33 @@
 
 // The gate payload held against the MENU it states. A surface that draws the
 // gate from the payload shows the person the payload and nothing else, so
-// every line the MENU draws has to have its home there, and the payload has
-// to state nothing the MENU does not draw.
+// every line the MENU draws has to have its home there, the payload has to
+// state nothing the MENU does not draw, and what it states is the text the
+// person reads — never the markup that draws it.
 
 const assert = require('node:assert');
 
 const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
 const MENU_RULE = '· · · · · · · · · · · ·';
-const NBSP = ' ';
+const CONTINUATION = /^ +/;
 const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
 const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
 
-const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|\*|[^`\\*~]+|[\s\S]/g;
+// The same markup one token at a time: a code span and an escape carry their
+// text, a strike or an italic marker toggles its span, bold and a stray
+// backtick drop, and everything else is text.
+const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/g;
+
+const TAIL_SEPARATOR = ' — ';
+const NOTE_SEPARATOR = ' · ';
+const RECOMMENDED_MARKER = ' (recommended)';
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {{gate: string, question: string, statement: string, options: GateOption[], typed: GateTyped[]}} GatePayload */
 /** @typedef {{typed: boolean, name: string, label: string|null, detail: string|null}} DrawnRow */
+/** @typedef {{ch: string, struck: boolean, italic: boolean}} Glyph */
 /** @typedef {{text: string, struck: string, italic: string}} LabelReading */
 
 /**
@@ -38,19 +47,24 @@ function announced(render) {
   }
 }
 
+/** Whitespace runs as one space — line breaks and wraps are layout the MENU cannot show. @param {string} text */
+function squash(text) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+/** A payload value as the MENU can show it. @param {string|null} text */
+function squashed(text) {
+  return text === null ? null : squash(text);
+}
+
 /**
- * Menu text as the payload states it: a code span's content and an escaped
- * character stay as text, every other marker comes off, whitespace runs as
- * one space.
+ * Menu text read plain, as the payload has to state it: a code span's
+ * content and an escaped character stay as text, every other marker comes
+ * off.
  * @param {string} text
  */
 function plainText(text) {
-  return text.replace(MARKUP, (_, code, escaped) => code ?? escaped ?? '').replace(/\s+/g, ' ').trim();
-}
-
-/** A payload detail as text — its line breaks are layout the MENU cannot show. @param {string|null} detail */
-function detailText(detail) {
-  return detail === null ? null : plainText(detail);
+  return squash(text.replace(MARKUP, (_, code, escaped) => code ?? escaped ?? ''));
 }
 
 // A MENU line read back as the row it draws: a code span is a key the user
@@ -64,51 +78,78 @@ function drawnRow(line) {
   return prompt ? { typed: true, name: prompt[1], label: prompt[2], detail: null } : null;
 }
 
-// The label the option grammar draws from a payload row's parts
-// (CONVENTIONS.md: Menus): the metadata tail italic after a dash, the cue
-// plain after a dot, the strike over the row up to its holder, the holder
-// plain after it, the recommendation last. Null for a bare key.
-/** @param {GateOption} o @returns {string|null} */
-function partsLabel(o) {
-  let label = o.head;
-  if (o.tail !== null) label += ` — *${o.tail}*`;
-  if (o.cue !== null) label += ` · ${o.cue}`;
-  if (o.holder !== null) label = `~~${label}~~ · ${o.holder}`;
-  if (o.recommended) label += ' (recommended)';
-  return label === '' ? null : label;
+/** @param {Glyph[]} glyphs @returns {Glyph[]} */
+function squashGlyphs(glyphs) {
+  /** @type {Glyph[]} */
+  const out = [];
+  for (const glyph of glyphs) {
+    const space = /\s/.test(glyph.ch);
+    if (space && (out.length === 0 || out[out.length - 1].ch === ' ')) continue;
+    out.push(space ? { ...glyph, ch: ' ' } : glyph);
+  }
+  if (out.length > 0 && out[out.length - 1].ch === ' ') out.pop();
+  return out;
 }
 
 /**
- * A label read three ways no wrap can disturb — its words, the words under
- * its strike, the words in its italics — markers off and whitespace as one
- * space, so a span a wrap closed and reopened reads whole.
- * @param {string|null} label @returns {LabelReading|null}
+ * A drawn label read as the characters it shows, each marked with the spans
+ * it sits in. Whitespace runs read as one space, so a span a wrap closed and
+ * reopened reads whole.
+ * @param {string|null} label @returns {Glyph[]}
  */
-function readLabel(label) {
-  if (label === null) return null;
-  let text = '';
-  let struck = '';
-  let italic = '';
-  let inStrike = false;
-  let inItalic = false;
-  for (const [token, code, escaped] of label.matchAll(LABEL_TOKEN)) {
-    if (token === '~~') { inStrike = !inStrike; struck += ' '; continue; }
-    if (token === '*') { inItalic = !inItalic; italic += ' '; continue; }
-    if (token === '**') continue;
-    const chars = code ?? escaped ?? token;
-    text += chars;
-    if (inStrike) struck += chars;
-    if (inItalic) italic += chars;
+function drawnGlyphs(label) {
+  /** @type {Glyph[]} */
+  const glyphs = [];
+  let struck = false;
+  let italic = false;
+  for (const [token, code, escaped] of (label ?? '').matchAll(LABEL_TOKEN)) {
+    if (token === '~~') struck = !struck;
+    else if (token === '*') italic = !italic;
+    else if (token !== '**' && token !== '`') for (const ch of code ?? escaped ?? token) glyphs.push({ ch, struck, italic });
   }
-  const squash = (/** @type {string} */ s) => s.replace(/\s+/g, ' ').trim();
-  return { text: squash(text), struck: squash(struck), italic: squash(italic) };
+  return squashGlyphs(glyphs);
+}
+
+/**
+ * The characters a payload row's parts show, each marked where the option
+ * grammar draws it (CONVENTIONS.md: Menus): the tail italic after a dash, the
+ * cue plain after a dot, the strike over all of it when a holder stands
+ * plain after the strike, the recommendation last. The parts are read as the
+ * text they state, so a part still carrying markup or an escape shows
+ * characters the drawn row does not. Emphasis inside the head is the head's
+ * own text, so the head takes the drawn row's.
+ * @param {GateOption} o @param {Glyph[]} drawn @returns {Glyph[]}
+ */
+function partsGlyphs(o, drawn) {
+  const held = o.holder !== null;
+  /** @param {string} text @param {boolean|null} italic @param {boolean} [struck] */
+  const run = (text, italic, struck = held) => [...text].map((ch) => ({ ch, struck, italic }));
+  const glyphs = run(o.head, null);
+  if (o.tail !== null) glyphs.push(...run(TAIL_SEPARATOR, false), ...run(o.tail, true));
+  if (o.cue !== null) glyphs.push(...run(NOTE_SEPARATOR, false), ...run(o.cue, false));
+  if (held) glyphs.push(...run(`${NOTE_SEPARATOR}${o.holder}`, false, false));
+  if (o.recommended) glyphs.push(...run(RECOMMENDED_MARKER, false, false));
+  return squashGlyphs(glyphs).map((g, i) => ({ ...g, italic: g.italic ?? drawn[i]?.italic ?? false }));
+}
+
+/**
+ * Glyphs as three aligned lines: the text, a mark under each struck
+ * character, a mark under each italic one. A space carries no mark — a wrap
+ * may leave it outside the span it sits in.
+ * @param {Glyph[]} glyphs @returns {LabelReading}
+ */
+function reading(glyphs) {
+  /** @param {(g: Glyph) => boolean} marked @param {string} mark */
+  const mask = (marked, mark) => glyphs.map((g) => (g.ch !== ' ' && marked(g) ? mark : ' ')).join('').trimEnd();
+  return { text: glyphs.map((g) => g.ch).join(''), struck: mask((g) => g.struck, '~'), italic: mask((g) => g.italic, '*') };
 }
 
 // A row is an option or a typed row, in order and with its whole label; a
 // wrapped label's continuation belongs to the row above it, and so does any
 // other line directly beneath it, as its detail; the line the menu asks on —
 // its glyphed line, else the prose line it closes on — is the question;
-// every other line is the statement, in order.
+// every other line is the statement, in order. Every value the payload
+// states is held as it stands against the menu read plain.
 /** @param {GatePayload} gate @param {string[]} body @param {string} label @returns {void} */
 function assertPayloadDrawsMenu(gate, body, label) {
   /** @type {DrawnRow[]} */ const rows = [];
@@ -117,9 +158,9 @@ function assertPayloadDrawsMenu(gate, body, label) {
   let closesOnProse = false;
   for (const line of body) {
     if (line === MENU_RULE || line.trim() === '') { under = null; continue; }
-    if (line.startsWith(NBSP)) {
+    if (CONTINUATION.test(line)) {
       assert.ok(under?.label, `[${label}] "${line}" is indented as a continuation but follows no row`);
-      under.label = `${under.label} ${line.replace(/^ +/, '')}`;
+      under.label = `${under.label} ${line.replace(CONTINUATION, '')}`;
       continue;
     }
     const glyphed = GLYPHED_LINE.exec(line);
@@ -146,12 +187,13 @@ function assertPayloadDrawsMenu(gate, body, label) {
   const typed = rows.filter((r) => r.typed);
   assert.deepStrictEqual(gate.options.map((o) => (o.word ? `${o.key}/${o.word}` : o.key)), keys.map((r) => r.name),
     `[${label}] the payload's keys are not the menu's`);
+  const drawn = keys.map((r) => drawnGlyphs(r.label));
   assert.deepStrictEqual(
-    gate.options.map((o) => [readLabel(partsLabel(o)), o.struck, detailText(o.detail)]),
-    keys.map((r) => [readLabel(r.label), Boolean(readLabel(r.label)?.struck), r.detail]),
-    `[${label}] the payload's option parts are not what the menu's rows draw — words, strike, italics, detail`);
-  assert.deepStrictEqual(gate.typed.map((t) => [t.label, plainText(t.description), detailText(t.detail)]),
-    typed.map((r) => [r.name, plainText(r.label ?? ''), r.detail]),
+    gate.options.map((o, i) => [reading(partsGlyphs(o, drawn[i])), o.struck, squashed(o.detail)]),
+    keys.map((r, i) => [reading(drawn[i]), drawn[i].some((g) => g.struck), r.detail]),
+    `[${label}] the payload's option parts are not what the menu's rows draw — text, strike, italics, detail`);
+  assert.deepStrictEqual(gate.typed.map((t) => [t.label, squash(t.description), squashed(t.detail)]),
+    typed.map((r) => [plainText(r.name), plainText(r.label ?? ''), r.detail]),
     `[${label}] the payload's typed rows are not the menu's`);
 }
 
