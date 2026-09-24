@@ -371,11 +371,11 @@ function groupedPickup(items) {
   return { ordered, display: lines.join('\n') + '\n' };
 }
 
-// A pickup item as a pick-menu row's label — the title, its metadata the
-// italic tail.
-/** @param {PickupItem} item @param {string} meta */
+// A pickup item as a pick-menu row's label — the title the head, escaped
+// because the person wrote it, its metadata the tail.
+/** @param {PickupItem} item @param {string} meta @returns {import('./surfaces.cjs').LabelParts} */
 function itemLabel(item, meta) {
-  return `${escapeMarkdown(item.title)} — *${meta}*`;
+  return { head: escapeMarkdown(item.title), tail: meta };
 }
 
 /**
@@ -619,7 +619,7 @@ function manageListView(detail) {
   return {
     data,
     menu: menu('Which work unit?', [
-      ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${r.work_type}*`)),
+      ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: r.work_type })),
       cmdOption('a', 'baseline', baselineOption),
       cmdOption('b', 'back', 'Return'),
     ]),
@@ -774,7 +774,7 @@ function completedView(detail, filter) {
   if (rows.length === 0) return { data, display: 'No completed or cancelled work units found.\n', rows };
 
   const options = [
-    ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${CLOSED_TAIL[r.status]} ${r.last_phase}*`)),
+    ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: `${CLOSED_TAIL[r.status]} ${r.last_phase}` })),
     cmdOption('b', 'back', 'Return'),
   ];
   return {
