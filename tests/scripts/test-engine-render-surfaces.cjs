@@ -1024,10 +1024,21 @@ describe('surfaces primitives', () => {
     assert.throws(() => menuFrame(['**`◆ Which one?`**']), /no row to press/);
   });
 
-  it('every row builder makes a row to press — command, bare, and range options', () => {
+  it('refuses a menu whose only keyed rows are ranges — a range is typed, never pressed', () => {
+    const typedOnly = [rangeOption(1, 3, 'Select item(s)'), promptOption('Comment', 'Tell me what you think')];
+    assert.throws(() => menu('Which items?', typedOnly), /no row to press — a menu offers at least one single key .*; a range row is typed, never pressed/);
+    assert.throws(() => menu('Which items?', [rangeOption(1, 3, 'Select item(s)')]), /no row to press/);
+  });
+
+  it('a range row passes beside a single key — the ask still stands above the range', () => {
+    const rows = [rangeOption(1, 3, 'Select item(s)'), cmdOption('b', 'back', 'Return to menu')];
+    assert.match(menu('Which items?', rows), /◆ Which items\?/);
+    assert.throws(() => menuFrame([rows[0], '', '**`◆ Which items?`**', '', rows[1]]), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('command and bare option builders make a row to press', () => {
     assert.match(menu('Which one?', [cmdOption('1', null, 'A'), promptOption('Ask', 'Ask about it')]), /◆ Which one\?/);
     assert.match(menu('Proceed?', [bareOption('y', 'yes'), bareOption('n', 'no')]), /◆ Proceed\?/);
-    assert.match(menu('Which items?', [rangeOption(1, 3, 'Select item(s)')]), /◆ Which items\?/);
   });
 
   it('aligns option arrows into one column, leaving non-option lines alone', () => {
