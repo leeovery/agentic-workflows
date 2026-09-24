@@ -15,24 +15,36 @@ import {
   GLYPH_COLUMN,
   GUTTER,
   IDLE,
+  NO_SENDS,
+  PAGER_SPANS,
   answerOf,
+  firstOnPage,
   linesOf,
+  pageOf,
+  pagerRuns,
   startingRow,
   type Footer,
   type Gate,
   type Line,
+  type PagerLine,
   type RowLine,
   type Run,
   type Sends,
 } from './layout.ts'
 
-type Props = Sends & { gate: Gate; picked: string | null; columns: number }
+type Props = Sends & {
+  gate: Gate
+  picked: string | null
+  columns: number
+  maxRows: number
+}
 
 /**
- * The cursor, the typed row whose hint the footer shows, and the rows they
- * belong to: another gate's rows start both afresh.
+ * The cursor, the typed row whose hint the footer shows, the page of rows
+ * showing, and the rows they belong to: another gate's rows start all three
+ * afresh.
  */
-type State = { cursor: number; hint: string | null; rows: string }
+type State = { cursor: number; hint: string | null; page: number; rows: string }
 
 /** The prompt's own border, so the rule reads as the gate's top edge. */
 const RULE = 'promptBorder'
@@ -52,9 +64,18 @@ const NO_CURSOR = ' '.repeat(GUTTER)
  * registered once, on the first draw, and a redraw can hand this instance
  * another gate's rows.
  */
-let shown: { gate: Gate; lines: readonly Line[] } = {
+let shown: {
+  gate: Gate
+  lines: readonly Line[]
+  columns: number
+  sends: Sends
+  maxRows: number
+} = {
   gate: { question: '', statement: '', options: [], typed: [] },
   lines: [],
+  columns: 0,
+  sends: NO_SENDS,
+  maxRows: Infinity,
 }
 
 /**
@@ -82,7 +103,7 @@ function footerOf(
 }
 
 export default function GateBoard(
-  { gate, picked, held, dropped, columns }: Props,
+  { gate, picked, held, dropped, columns, maxRows }: Props,
   surface: ClientSurface<State>,
 ): RenderElement {
   const { Box, Text } = surface.elements
@@ -91,24 +112,32 @@ export default function GateBoard(
     listen(surface)
   }
 
+  const sends = { held, dropped }
   const rows = JSON.stringify(gate.options)
+  const cursor = startingRow(gate.options)
   const state =
     surface.state?.rows === rows
       ? surface.state
-      : { cursor: startingRow(gate.options), hint: null, rows }
+      : {
+          cursor,
+          hint: null,
+          page: pageOf(gate, columns, sends, maxRows, cursor),
+          rows,
+        }
 
   if (state !== surface.state) {
     surface.setState(state)
   }
 
-  const sends = { held, dropped }
   const footer = footerOf(state.hint, picked, sends)
-  const lines = linesOf(gate, columns, footer, sends)
+  const lines = linesOf(gate, columns, footer, sends, maxRows, {
+    page: state.page,
+  })
   const pickedRow = gate.options.findIndex(
     option => answerOf(option) === (held ?? picked),
   )
 
-  shown = { gate, lines }
+  shown = { gate, lines, columns, sends, maxRows }
 
   const styled = (run: Run, color?: string, backgroundColor?: string) =>
     Text({
@@ -147,6 +176,16 @@ export default function GateBoard(
     })
   }
 
+  const pager = (line: PagerLine) =>
+    Text({
+      children: [
+        Text({ children: NO_CURSOR }),
+        ...pagerRuns(line).map(run =>
+          styled(run, run.dim === true ? undefined : ACCENT),
+        ),
+      ],
+    })
+
   const draw = (line: Line): RenderElement => {
     switch (line.kind) {
       case 'rule':
@@ -172,6 +211,8 @@ export default function GateBoard(
             ...line.runs.map(run => styled(run)),
           ],
         })
+      case 'pager':
+        return pager(line)
       default:
         return row(line)
     }
@@ -182,25 +223,47 @@ export default function GateBoard(
 
 /**
  * Keys while the band has the focus, and the pointer over the rows: both move
- * the cursor and press a row; a click on a typed row shows its hint.
+ * the cursor and press a row; a click on a typed row shows its hint, and one
+ * on the pager turns the page.
  */
 function listen(surface: ClientSurface<State>) {
   const update = (state: State, change: Partial<State>) => {
     const next = { ...state, ...change }
 
-    if (next.cursor !== state.cursor || next.hint !== state.hint) {
+    if (
+      next.cursor !== state.cursor ||
+      next.hint !== state.hint ||
+      next.page !== state.page
+    ) {
       surface.setState(next)
     }
+  }
+
+  const pageHolding = (cursor: number) =>
+    pageOf(shown.gate, shown.columns, shown.sends, shown.maxRows, cursor)
+
+  // The page follows the cursor onto a row it does not show.
+  const moveTo = (state: State, cursor: number) =>
+    update(state, { cursor, page: pageHolding(cursor) })
+
+  const turnTo = (state: State, page: number) => {
+    const { gate, columns, sends, maxRows } = shown
+    const first = firstOnPage(gate, columns, sends, maxRows, page)
+
+    update(state, { page, cursor: first ?? state.cursor })
   }
 
   const press = (state: State, index: number) => {
     const option = shown.gate.options[index]
 
     if (option !== undefined) {
-      update(state, { cursor: index, hint: null })
+      update(state, { cursor: index, hint: null, page: pageHolding(index) })
       surface.post({ answer: answerOf(option) })
     }
   }
+
+  const within = (x: number, span: { from: number; to: number }) =>
+    x >= span.from && x < span.to
 
   surface.onKey(({ key }) => {
     const state = surface.state
@@ -211,9 +274,9 @@ function listen(surface: ClientSurface<State>) {
     }
 
     if (key === 'up') {
-      update(state, { cursor: (state.cursor - 1 + count) % count })
+      moveTo(state, (state.cursor - 1 + count) % count)
     } else if (key === 'down') {
-      update(state, { cursor: (state.cursor + 1) % count })
+      moveTo(state, (state.cursor + 1) % count)
     } else if (key === 'return') {
       press(state, state.cursor)
     } else {
@@ -232,7 +295,16 @@ function listen(surface: ClientSurface<State>) {
       return
     }
 
-    if (line.kind === 'option' && event.type === 'down') {
+    if (line.kind === 'pager' && event.type === 'down') {
+      if (within(event.x, PAGER_SPANS.previous) && line.page > 0) {
+        turnTo(state, line.page - 1)
+      } else if (
+        within(event.x, PAGER_SPANS.next) &&
+        line.page < line.pages - 1
+      ) {
+        turnTo(state, line.page + 1)
+      }
+    } else if (line.kind === 'option' && event.type === 'down') {
       press(state, line.index)
     } else if (line.kind === 'option' && event.type === 'move') {
       update(state, { cursor: line.index })

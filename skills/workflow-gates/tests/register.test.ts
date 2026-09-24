@@ -25,12 +25,13 @@ const SESSION = {
   isInteractive: true,
 }
 
+/** The band on a 72 by 24 terminal, not fullscreen: its rows are the terminal's. */
 const BAND = {
   hasSurvey: false,
   isWorking: false,
-  maxRows: 12,
+  maxRows: 24,
   bodyColumns: 72,
-  scroll: { offset: 0, bodyRows: 12 },
+  scroll: { offset: 0, bodyRows: 23 },
   view: {},
 }
 
@@ -131,6 +132,32 @@ const DETAILED = [
     struck: false,
     recommended: true,
   },
+  {
+    key: 'b',
+    word: 'back',
+    head: 'Return to the previous menu',
+    tail: null,
+    cue: null,
+    holder: null,
+    detail: null,
+    struck: false,
+    recommended: false,
+  },
+]
+
+/** A menu taller than a short band: eight topics, the first recommended, then back. */
+const LONG = [
+  ...Array.from({ length: 8 }, (_, n) => ({
+    key: String(n + 1),
+    word: null,
+    head: `Continue "Topic ${n + 1}"`,
+    tail: null,
+    cue: null,
+    holder: null,
+    detail: null,
+    struck: false,
+    recommended: n === 0,
+  })),
   {
     key: 'b',
     word: 'back',
@@ -333,6 +360,9 @@ const MOUNT = {
   viewport: { columns: 72, rows: 24 },
   props: BAND,
 }
+
+/** The band with room for four rows at a time: the long menu on three pages. */
+const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
 
 /**
  * The world beneath the mod: the session it starts in, the surfaces attached,
@@ -671,6 +701,27 @@ async function footerOf(ui: Band) {
   return lines.slice(start, end + 1).join(' ')
 }
 
+/** The pager as the band draws it: which page shows, of how many. */
+async function pagerOf(ui: Band) {
+  return (await linesOf(ui)).find(line => line.includes('↓ next'))?.trim()
+}
+
+/** A click on the pager's `word`, where the band draws it. */
+async function turn(ui: Band, word: string) {
+  const lines = await linesOf(ui)
+  const y = lines.findIndex(line => line.includes('↓ next'))
+  const x = lines[y]?.indexOf(word) ?? -1
+
+  expect(x, `the pager shows ${word}`).toBeGreaterThanOrEqual(0)
+
+  await ui.pointer({ type: 'down', x, y, button: 'left', in: 'gate' })
+}
+
+/** The line the cursor mark is on. */
+async function cursorOf(ui: Band) {
+  return (await linesOf(ui)).find(line => line.startsWith('▌'))?.trimEnd()
+}
+
 describe('register', () => {
   test('the session announces the gate surface to every child it starts', async ($, on) => {
     const { written } = world($, on)
@@ -909,17 +960,16 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('the statement draws above the question, level with its text', async ($, on) => {
+  test('the statement draws directly above the question, level with its text', async ($, on) => {
     world($, on, announced({ statement: 'Found existing review for Auth.' }))
 
     await presented($)
 
     const ui = await $.ui.mount(MOUNT)
 
-    expect((await linesOf(ui)).slice(1, 6).map(line => line.trimEnd())).toEqual([
+    expect((await linesOf(ui)).slice(1, 5).map(line => line.trimEnd())).toEqual([
       '',
       '  Found existing review for Auth.',
-      '',
       '◆ Approve this task?',
       '',
     ])
@@ -1492,6 +1542,207 @@ describe('register', () => {
 
     expect(filled).toEqual([])
     expect(submitted).toEqual([])
+
+    await ui.unmount()
+  })
+
+  test('a menu taller than the band shows its rows a page at a time over a pager, the region exactly the band’s height', async ($, on) => {
+    world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
+      props: { height: 11 },
+    })
+
+    expect((await linesOf(ui)).map(line => line.trimEnd())).toEqual([
+      '─'.repeat(72),
+      '',
+      '◆ Approve this task?',
+      '',
+      '▌ 1        Continue "Topic 1" (recommended)',
+      '  2        Continue "Topic 2"',
+      '  3        Continue "Topic 3"',
+      '  4        Continue "Topic 4"',
+      '  ↑ previous   ↓ next   page 1 of 3',
+      '',
+      `  ${IDLE_FOOTER}`,
+    ])
+
+    const heights = [(await linesOf(ui)).length]
+
+    await turn(ui, '↓ next')
+    heights.push((await linesOf(ui)).length)
+    await turn(ui, '↓ next')
+    heights.push((await linesOf(ui)).length)
+
+    expect(await lineOf(ui, '↓ next'), 'the pager stays put under a short last page').toBe(8)
+
+    await click(ui, 'Return to the previous')
+    heights.push((await linesOf(ui)).length)
+
+    expect(heights, 'first page, second, last, a pick on it').toEqual([11, 11, 11, 11])
+
+    await ui.unmount()
+  })
+
+  test('the pager draws its presses in the accent colour, one that goes nowhere dim', async ($, on) => {
+    world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    expect(await runOf(ui, '↑ previous')).toMatchObject({ props: { dimColor: true } })
+    expect(await runOf(ui, '↓ next')).toMatchObject({ props: { color: 'permission' } })
+    expect((await runOf(ui, '↓ next'))?.props.dimColor).toBeFalsy()
+
+    await ui.unmount()
+  })
+
+  test('a click on next turns the page and puts the cursor on its first row, and previous turns back', async ($, on) => {
+    const { filled } = world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    await turn(ui, '↓ next')
+
+    expect(await pagerOf(ui)).toBe('↑ previous   ↓ next   page 2 of 3')
+    expect(await cursorOf(ui)).toBe('▌ 5        Continue "Topic 5"')
+
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(filled, 'Enter takes the row the page opened on').toEqual(['5'])
+
+    await turn(ui, '↑ previous')
+
+    expect(await pagerOf(ui)).toBe('↑ previous   ↓ next   page 1 of 3')
+    expect(await cursorOf(ui)).toBe('▌ 1        Continue "Topic 1" (recommended)')
+
+    await ui.unmount()
+  })
+
+  test('a click on a press that goes nowhere, or on where the pager stands, does nothing', async ($, on) => {
+    const { calls } = world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+    const first = await linesOf(ui)
+
+    calls.length = 0
+
+    await turn(ui, '↑ previous')
+    await turn(ui, 'page 1 of 3')
+
+    expect(await linesOf(ui), 'no page before the first').toEqual(first)
+
+    await turn(ui, '↓ next')
+    await turn(ui, '↓ next')
+
+    const last = await linesOf(ui)
+
+    await turn(ui, '↓ next')
+
+    expect(await linesOf(ui), 'no page after the last').toEqual(last)
+    expect(calls, 'nothing reaches the prompt').toEqual([])
+
+    await ui.unmount()
+  })
+
+  test('the arrows cross pages both ways and wrap round the rows, the page following the cursor', async ($, on) => {
+    world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    for (let press = 0; press < 4; press += 1) {
+      await ui.key({ key: 'down', in: 'gate' })
+    }
+
+    expect(await pagerOf(ui)).toMatch(/page 2 of 3$/)
+    expect(await cursorOf(ui)).toBe('▌ 5        Continue "Topic 5"')
+
+    await ui.key({ key: 'up', in: 'gate' })
+
+    expect(await pagerOf(ui)).toMatch(/page 1 of 3$/)
+    expect(await cursorOf(ui)).toBe('▌ 4        Continue "Topic 4"')
+
+    for (let press = 0; press < 4; press += 1) {
+      await ui.key({ key: 'up', in: 'gate' })
+    }
+
+    expect(await pagerOf(ui), 'up from the first row').toMatch(/page 3 of 3$/)
+    expect(await cursorOf(ui)).toBe('▌ back     Return to the previous menu')
+
+    await ui.key({ key: 'down', in: 'gate' })
+
+    expect(await pagerOf(ui), 'down from the last row').toMatch(/page 1 of 3$/)
+    expect(await cursorOf(ui)).toBe('▌ 1        Continue "Topic 1" (recommended)')
+
+    await ui.unmount()
+  })
+
+  test('a row’s own key picks it on whatever page it sits, the page turning to it', async ($, on) => {
+    const { filled } = world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    await ui.key({ key: 'b', in: 'gate' })
+
+    expect(filled).toEqual(['back'])
+    expect(await pagerOf(ui)).toMatch(/page 3 of 3$/)
+    expect(await cursorOf(ui)).toBe('▌ back     Return to the previous menu')
+
+    await ui.key({ key: '6', in: 'gate' })
+
+    expect(filled).toEqual(['back', '6'])
+    expect(await pagerOf(ui)).toMatch(/page 2 of 3$/)
+
+    await ui.unmount()
+  })
+
+  test('the pointer resting on a row moves the cursor there, the page staying put', async ($, on) => {
+    world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    await turn(ui, '↓ next')
+    await hover(ui, 'Topic 7')
+
+    expect(await backgroundOf(ui, 'Continue "Topic 7"')).toBe('selectionBg')
+    expect(await cursorOf(ui)).toBe('▌ 7        Continue "Topic 7"')
+    expect(await pagerOf(ui)).toMatch(/page 2 of 3$/)
+
+    await ui.unmount()
+  })
+
+  test('a page of typed rows alone leaves the cursor where it was', async ($, on) => {
+    const { filled } = world($, on, announced({ options: LONG }))
+
+    await presented($)
+
+    const ui = await $.ui.mount({ ...MOUNT, props: { ...BAND, maxRows: 10 } })
+
+    await turn(ui, '↓ next')
+    await turn(ui, '↓ next')
+    await turn(ui, '↓ next')
+
+    expect(await pagerOf(ui)).toMatch(/page 4 of 4$/)
+    expect(await cursorOf(ui), 'no row of the page is under the cursor').toBeUndefined()
+
+    await ui.key({ key: 'return', in: 'gate' })
+
+    expect(filled, 'the first row of the page before').toEqual(['7'])
 
     await ui.unmount()
   })
