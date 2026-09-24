@@ -460,7 +460,7 @@ function specificationConfirmation(c) {
     return compose([
       head,
       listBlock('Sources:', bulletRows(c.sources.map((s) => s.name))),
-      listBlock('Existing specifications to incorporate:', c.supersedes.map((n) => `  • ${specPath(n)} → will be superseded`)),
+      listBlock('Existing specifications to incorporate:', bulletRows(c.supersedes.map((n) => `${specPath(n)} → will be superseded`))),
       output,
     ]);
   }
