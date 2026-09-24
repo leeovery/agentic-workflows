@@ -24,17 +24,20 @@ click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 
 A turn the person did not start — a background agent's report, a
-notification, a schedule — leaves the band as it is, its rows live, and so
-does Esc on it. The band comes off when the person starts a turn or replies
-into a running one, or when a turn draws a different gate over it. A second
-click while Claude works holds the answer instead of sending it: its row reads
-`· queued`, and the footer says it sends when Claude finishes. A click on the
-queued row takes it back to a pick, and a click on another row picks that one
-instead. As the turn ends, the held answer sends if the same gate is still on
-the band; if the turn drew a different gate, the answer is dropped unsent and
-the new gate's footer says so; if Esc stopped the turn, the answer goes back
-into the prompt box as a pick. Typing while Claude works joins Claude Code's
-own queue.
+notification, a schedule — leaves the band as it is, its rows live. The band
+comes off when the person starts a turn or replies into a running one, or when
+a turn draws a different gate over it. Esc on such a turn leaves the band as it
+is, unless the turn had already rendered a different gate: the model now waits
+at that gate's stop, so the band empties. A second click while Claude works
+holds the answer instead of sending it: its row reads `· queued`, and the
+footer says it sends when Claude finishes. A click on the queued row takes it
+back to a pick, and a click on another row picks that one instead. As the turn
+ends, the held answer sends if the same gate is still on the band; if the turn
+rendered a different gate, the answer is dropped unsent, and the new gate's
+footer says so; if Esc stopped the turn with the same gate still up, the
+answer goes back into the prompt box as a pick. When a pick's gate goes, its
+answer leaves the prompt box too, unless the person has edited it there.
+Typing while Claude works joins Claude Code's own queue.
 
 Esc on a turn an answer started or joined puts its gate back, dropping
 whatever that turn drew, as long as no tool has run in it; once one has, the
