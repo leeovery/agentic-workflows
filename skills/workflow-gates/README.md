@@ -54,16 +54,18 @@ whatever that turn drew, as long as no tool has run in it; once one has, the
 band stays empty, since the mod cannot tell a read from a write. A `/clear`
 takes the gate off the band.
 
-At the end of every turn, and as the conversation ends, the mod keeps what the
-band shows — the gate, or nothing — in its own store, stamped with where the
-transcript ends, not counting the lines Claude Code writes around an
-interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
-or picked up again by a restart or a reload of the mod's files, gets its gate
-back as long as its transcript still ends there, with nothing picked or held —
-a held answer waits on a turn that does not come back; one that moved on while
-the mod was not loaded gets nothing. The store holds at most one entry per
-conversation, and each session's start drops any older than 30 days, how long
-Claude Code keeps a transcript unless told otherwise.
+In a session where it announced itself, the mod keeps what the band shows at
+the end of every turn, and as the conversation ends — the gate, or nothing —
+in its own store, stamped with where the transcript ends, not counting the
+lines Claude Code writes around an interrupted turn. A conversation
+resumed with `claude --resume` or `/resume`, or picked up again by a restart
+or a reload of the mod's files, gets its gate back as long as its transcript
+still ends there and the session announced, with nothing picked or held — a
+held answer waits on a turn that does not come back; one that moved on while
+the mod was not loaded gets nothing, and so does a project that said no. The
+store holds at most one entry per conversation, and each session's start drops
+any older than 30 days, how long Claude Code keeps a transcript unless told
+otherwise.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
