@@ -57,9 +57,8 @@ const {
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
-  sourcingSpecs, specIsStarted,
 } = require('./derivations.cjs');
-const { rowVerb } = require('./specification.cjs');
+const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -3127,25 +3126,22 @@ const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
 const REFINE_NOTE = 'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.';
 
 /**
- * The item's source rows, status-less rows reading pending. A started
- * specification leaves out a row whose discussion item is gone, as its
- * overview row does.
- * @param {object} manifest @param {Record<string, any>} item @param {string} status
- * @returns {{name: string, status: string}[]}
+ * The single-discussion path's grouping: the lone completed discussion under
+ * the name the handoff creates.
+ * @param {object} manifest @param {string} workUnit @param {string} topic
+ * @returns {import('./specification.cjs').DiscoverySpec}
  */
-function specConfirmSources(manifest, item, status) {
-  return sourceRows(item.sources)
-    .map(([name, row]) => ({ name, status: row.status || 'pending' }))
-    .filter(({ name }) => status === 'proposed' || isFilled((itemOf(manifest, 'discussion', name) || {}).status));
-}
-
-/** @param {object} manifest @param {string} workUnit @param {string} topic @returns {{name: string, status: string}} */
-function loneCompletedDiscussion(manifest, workUnit, topic) {
+function loneDiscussionGrouping(manifest, workUnit, topic) {
   const completed = phaseItems(manifest, 'discussion').filter((d) => d.status === 'completed');
   if (completed.length !== 1) {
     throw new Error(`render spec-confirm-gate: no specification "${topic}" — a create with no proposed grouping confirms the lone completed discussion, and "${workUnit}" has ${completed.length}`);
   }
-  return { name: completed[0].name, status: 'pending' };
+  return {
+    name: topic,
+    status: 'proposed',
+    sources: [{ name: completed[0].name, status: 'pending', discussion_status: 'completed' }],
+    has_pending_sources: true,
+  };
 }
 
 /**
@@ -3199,25 +3195,16 @@ function specConfirmGate(cwd, { dotpath, variant, file }) {
   if (variant === 'unify' && (topic !== 'unified' || !item)) {
     throw new Error(`render spec-confirm-gate: the unify confirm reads the "unified" item its reconcile wrote — "${topic}" ${item ? 'is not it' : 'has no item'}`);
   }
-  const status = item ? item.status || 'in-progress' : 'proposed';
+  const spec = item ? discoverySpec(manifest, topic, item) : loneDiscussionGrouping(manifest, workUnit, topic);
+  const { status } = spec;
   if (!SPEC_CONFIRMABLE.includes(status)) {
     throw new Error(`render spec-confirm-gate: "${topic}" is ${status} — there is nothing to confirm`);
   }
-  const rows = item ? specConfirmSources(manifest, item, status) : [loneCompletedDiscussion(manifest, workUnit, topic)];
-  const tally = (s) => rows.filter((r) => r.status === s).length;
-  const verb = rowVerb({ status, pending: tally('pending'), stale: tally('stale') });
+  const { verb, sources, supersedes } = specConfirmation(manifest, spec);
   if (verb !== SPEC_CONFIRM_VERBS[variant]) {
     throw new Error(`render spec-confirm-gate: "${topic}" reads ${verb} — the ${variant} confirm does not serve it`);
   }
-
-  // A fresh specification supersedes the started ones already extracting
-  // any of its sources.
-  const coverage = rows.map((r) => (status === 'proposed' ? sourcingSpecs(manifest, r.name) : [])
-    .filter(([, spec]) => specIsStarted(spec))
-    .map(([spec]) => spec));
-  const sources = rows.map((r, i) => ({ ...r, individual: coverage[i].length > 0 }));
-  const supersedes = [...new Set(coverage.flat())];
-  const consult = specConfirmConsult(cwd, file, item && status !== 'proposed' ? Object.keys(item.consult_references || {}) : null);
+  const consult = specConfirmConsult(cwd, file, status === 'proposed' ? null : (spec.consult_references || []).map((r) => r.name));
 
   return [
     section('DISPLAY: spec confirmation', 'emit verbatim as a code block, directly above the menu', specificationConfirmation({
