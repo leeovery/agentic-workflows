@@ -99,10 +99,16 @@ const emptyBand = (): Band => ({
 })
 
 /**
- * What a held answer comes to as its turn ends: its row, and whether it is
- * sent now or handed back to the prompt as a pick.
+ * What a turn's end leaves for the prompt box: a held answer's row, sent now
+ * or handed back as a pick; and the text of a pick whose gate went, which
+ * the box may still hold.
  */
-type Settled = { option: Option; isToSend: boolean } | null
+type Settled = {
+  held: { option: Option; isToSend: boolean } | null
+  gone: string | null
+}
+
+const NOTHING_SETTLED: Settled = { held: null, gone: null }
 
 /** Whether two gates state the same question over the same rows. */
 const isSameGate = (gate: Gate | null, other: Gate | null) =>
@@ -232,6 +238,18 @@ async function submit(
   }
 
   return isSent
+}
+
+/**
+ * Empties the prompt box while it holds exactly `text`, a pick's answer; a
+ * draft the person has edited stays.
+ */
+async function unpick($: EngineInterface, text: string) {
+  const box = await $.prompt.read()
+
+  if (box.text === text) {
+    await fill($, '')
+  }
 }
 
 /**
@@ -442,33 +460,37 @@ export const register: Register = on => {
    * draws the gate it rendered; an Esc drops that and takes the answer back,
    * its gate returning, until the turn calls a tool, which may already have
    * acted on the answer: a read and a write look alike from here. Anyone
-   * else's turn leaves the band as it is, an Esc included, unless it drew
-   * another gate, which takes the band and drops a held answer unsent; a held
+   * else's turn leaves the band as it is unless it rendered another gate: at
+   * its end that gate takes the band and drops a held answer unsent; after an
+   * Esc, which leaves the model at that gate's stop, the band empties. A held
    * answer on the gate still there sends now, or after an Esc goes back to
-   * the prompt as a pick.
+   * the prompt as a pick; a pick whose gate went goes with it.
    */
   const endTurn = (isInterrupted: boolean): Settled => {
-    const { running, armed, drawn, answering, hasCalledTool, sends } = band
+    const { running, armed, drawn, picked, answering, hasCalledTool, sends } =
+      band
 
     band = { ...band, armed: null, running: null, answering: null }
 
     if (running !== 'other') {
       band.drawn = isInterrupted ? (hasCalledTool ? null : answering) : armed
 
-      return null
+      return NOTHING_SETTLED
     }
 
-    const gate = isInterrupted ? drawn : (armed ?? drawn)
+    const gate = armed ?? drawn
 
     if (!isSameGate(gate, drawn)) {
-      band = {
-        ...band,
-        drawn: gate,
-        picked: null,
-        sends: { held: null, dropped: sends.held },
-      }
+      band = isInterrupted
+        ? { ...band, drawn: null, picked: null, sends: NO_SENDS }
+        : {
+            ...band,
+            drawn: gate,
+            picked: null,
+            sends: { held: null, dropped: sends.held },
+          }
 
-      return null
+      return { held: null, gone: picked }
     }
 
     band.sends = { ...sends, held: null }
@@ -478,7 +500,10 @@ export const register: Register = on => {
         ? null
         : optionIn(drawn, { answer: sends.held })
 
-    return option === null ? null : { option, isToSend: !isInterrupted }
+    return {
+      held: option === null ? null : { option, isToSend: !isInterrupted },
+      gone: null,
+    }
   }
 
   const owing = () => owed
@@ -578,7 +603,8 @@ export const register: Register = on => {
   // Drawn at the turn's end, once what the rows choose between is on screen,
   // and kept with where the transcript ends, which a resume must still match.
   // A held answer is not kept: it waits on a turn no resume brings back. It
-  // sends once the turn is over, and one not sent is put back as a pick.
+  // sends once the turn is over, and one not sent is put back as a pick; the
+  // answer of a pick whose gate went leaves the prompt box.
   on('turn.complete', async ($, e, next) => {
     if (!inConversation(e)) {
       return next(e)
@@ -599,15 +625,20 @@ export const register: Register = on => {
     seen = place
 
     const answered = await next(e)
+    const { held, gone } = settled
 
-    if (settled !== null && drawn !== null) {
-      const answer = answerOf(settled.option)
+    if (gone !== null) {
+      await unpick($, gone)
+    }
+
+    if (held !== null && drawn !== null) {
+      const answer = answerOf(held.option)
       let isSent = false
 
       isSending = true
 
       try {
-        isSent = settled.isToSend && (await submit($, drawn, settled.option))
+        isSent = held.isToSend && (await submit($, drawn, held.option))
       } finally {
         isSending = false
 
