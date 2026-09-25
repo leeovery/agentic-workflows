@@ -79,6 +79,26 @@ its settings only when it starts, so a start that writes it while the mod is
 not yet running ends by asking for a restart, and the next session loads the
 mod.
 
+## What it sets in Claude Code
+
+Every session starts with Claude Code's `SendUserMessage` tool switched on
+(`CLAUDE_CODE_PEWTER_OWL_TOOL=true`): Claude Code builds its tool list just
+after the session starts, so that is the only moment the switch counts. The
+mod keeps the tool behind ToolSearch in every session, one answer that never
+changes and so never spends the prompt cache; a plain session's tool list is
+Claude Code's own.
+
+When the engine's boot, which only `/workflow-start` runs, succeeds in the
+conversation itself rather than in a subagent, the mod sets
+`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
+Claude's thinking printing as if they were output, and
+`CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
+Claude is doing; project settings cannot set the second. Claude Code reads
+both per request. A `/clear` or a resume unsets them, and a conversation whose
+transcript holds the boot gets them back when the mod next follows it, whether
+`claude --resume`, a restart or `/resume` in the same process brings it back.
+A plain conversation in the same project keeps Claude Code's defaults.
+
 ## Working on it
 
     npm run mod:types       # fetch the API declarations into types/ (gitignored)
