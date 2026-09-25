@@ -218,7 +218,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-onl
 
 ## E. Confirm and Continue
 
-Fetch the confirmation — it names the configuration this checkout's store was built with — and emit its `DISPLAY: knowledge ready` section verbatim as a code block:
+Fetch the confirmation — it names the configuration this checkout's store was built with — and emit its `DISPLAY: knowledge ready` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-ready
@@ -240,7 +240,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-ready
 > The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.
 ```
 
-Fetch the gate and emit its `DISPLAY: knowledge wizard` section verbatim as a code block, then its `MENU: knowledge wizard gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `DISPLAY: knowledge wizard` and `MENU: knowledge wizard gate` sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant wizard
