@@ -82,7 +82,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 1. Group tasks into batches of 5 — no task to verify is no batch, and the step falls through to the excluded tasks and the aggregation, which re-reads the reports already on disk
 2. For each batch:
-   - Dispatch all agents in the batch in parallel
+   - Dispatch all agents in the batch in parallel — the dispatch ends the turn on exactly `The task verifier agents have been dispatched for tasks {numbers}.`, `{numbers}` the batch's task suffixes written `{phase}.{task}` (`1-1` → `1.1`), comma-separated
    - Wait for all agents in the batch to return
    - Record statuses
    - Push the internal ID of each task whose verifier returned and that is not already in the set, and add it to the set — coverage lands per batch, so a crash mid-verification resumes from the batch it lost, never from the start; a failed verifier's task stays unrecorded, so the next session picks it up:

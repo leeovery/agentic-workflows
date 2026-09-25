@@ -53,6 +53,8 @@ Each agent knows its own output path convention and writes findings independentl
 
 ## Wait for Completion
 
+The dispatch ends the turn on exactly `The analysis agents have been dispatched for analysis cycle {N}.` — `{N}` the cycle number of item 7.
+
 > **CHECKPOINT**: Do not proceed until all three agents have returned.
 
 Each agent writes its findings to its own output file and returns a brief status:
