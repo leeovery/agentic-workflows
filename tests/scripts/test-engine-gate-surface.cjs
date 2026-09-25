@@ -24,6 +24,9 @@ const hook = (/** @type {string} */ verb) => ({ type: 'command', command: `${HOO
 // The session hooks boot wants while labels were never asked, already in
 // place: boot's own hook sync is then never the write a flag test reads.
 const SESSION_HOOKS = { SessionEnd: [{ hooks: [hook('presence cleanup')] }] };
+// The knowledge files boot keeps listed in `.worktreeinclude`, likewise in
+// place, so boot's own include write never lands on top of the flag's.
+const WORKTREE_INCLUDE = ['store.msp', 'metadata.json', 'config.json'].map((f) => `.workflows/.knowledge/${f}\n`).join('');
 
 // Boot resolves its migrate and knowledge siblings from its own file, so the
 // engine is copied beside stubs of both — the layout an install has.
@@ -99,6 +102,7 @@ describe('engine boot — the function-hooks flag and gate_surface', () => {
   beforeEach(() => {
     dir = harness.setupGitFixture('engine-gate-surface-');
     writeSettings({ hooks: SESSION_HOOKS });
+    fs.writeFileSync(path.join(dir, '.worktreeinclude'), WORKTREE_INCLUDE);
     commitAll('settings');
   });
   afterEach(() => harness.cleanupFixture(dir));
