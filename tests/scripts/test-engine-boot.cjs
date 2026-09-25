@@ -115,7 +115,7 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 `;
 
 // Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; check/init/compact behaviour is env-driven.
+// project cwd; check, bulk index, and compact behaviour is env-driven.
 const STUB_KNOWLEDGE = `#!/usr/bin/env node
 'use strict';
 const fs = require('fs');
@@ -124,6 +124,13 @@ fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n'
 if (cmd === 'check') {
   if (process.env.STUB_CHECK_EXIT) process.exit(parseInt(process.env.STUB_CHECK_EXIT, 10));
   process.stdout.write((process.env.STUB_CHECK || 'not-ready') + '\\n');
+  process.exit(0);
+}
+if (cmd === 'index' && process.argv.length === 3) {
+  if (process.env.STUB_SYNC_EXIT) {
+    process.stderr.write('Failed to index .workflows/a/discussion/b.md: HTTP 400\\n');
+    process.exit(parseInt(process.env.STUB_SYNC_EXIT, 10));
+  }
   process.exit(0);
 }
 if (cmd === 'compact') {
@@ -174,7 +181,7 @@ describe('engine boot', () => {
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('happy path: no pending migrations, knowledge ready — compact runs', () => {
+  it('happy path: no pending migrations, knowledge ready — the bulk index runs, then compact', () => {
     // TMUX pinned so the label-state leg is deterministic whatever terminal
     // runs the suite; no project manifest makes it `prompt`.
     const res = runEngine(stubbed, fix.project, ['boot'], {
@@ -187,6 +194,7 @@ describe('engine boot', () => {
       ok: true,
       migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [] },
       knowledge: 'ready',
+      indexed: true,
       compacted: true,
       kb_committed: null,
       migrations_committed: null,
@@ -200,7 +208,7 @@ describe('engine boot', () => {
       // and the tree it arrived into holds no project file.
       baseline_signal: { root_date: today, workflows_date: today, commits_total: 1, commits_before: 0, history_before: [], files_at_arrival: 0, tree_at_arrival: [] },
     });
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'compact']);
   });
 
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
@@ -609,6 +617,7 @@ describe('engine boot', () => {
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
     assert.strictEqual(res.kb_committed, null);
     assert.deepStrictEqual(res.warnings, []);
@@ -629,18 +638,19 @@ describe('engine boot', () => {
     assert.deepStrictEqual(show, ['.workflows/.knowledge/config.json', '.workflows/.knowledge/store.msp']);
   });
 
-  it('finds compact dirt on the ready path and commits it', () => {
+  it('finds store dirt on the ready path and commits it', () => {
     writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'store v1']);
-    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v2-compacted\n');
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v2\n');
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
 
     assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): sync store');
   });
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
@@ -682,6 +692,7 @@ describe('engine boot', () => {
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
     assert.strictEqual(res.kb_committed, null);
   });
@@ -694,9 +705,37 @@ describe('engine boot', () => {
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
     assert.strictEqual(res.compacted, false);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge compact failed: compact blew up/);
+  });
+
+  it('a failing bulk index is its own warning, carrying its stderr — compact still runs', () => {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_CHECK: 'ready',
+      STUB_SYNC_EXIT: '1',
+    });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, true);
+    assert.deepStrictEqual(res.warnings, ['knowledge index failed: Failed to index .workflows/a/discussion/b.md: HTTP 400']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'compact']);
+  });
+
+  it('a failing bulk index and a failing compact are two warnings', () => {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_CHECK: 'ready',
+      STUB_SYNC_EXIT: '1',
+      STUB_COMPACT_EXIT: '1',
+    });
+
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual(res.warnings, [
+      'knowledge index failed: Failed to index .workflows/a/discussion/b.md: HTTP 400',
+      'knowledge compact failed: compact blew up',
+    ]);
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
@@ -982,6 +1021,7 @@ describe('engine boot (real scripts)', () => {
     assert.ok(first.migrations.ran > 0, `migrations ran: ${first.migrations.ran}`);
     // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
+    assert.strictEqual(first.indexed, false);
     assert.strictEqual(first.compacted, false);
     assert.strictEqual(first.kb_committed, null);
     assert.ok(!fs.existsSync(path.join(project, '.workflows/.knowledge')));
@@ -1008,13 +1048,16 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(second.migrations_committed, git(project, ['rev-parse', '--short', 'HEAD~1']).trim());
     assert.strictEqual(git(project, ['log', '-1', '--pretty=%s', 'HEAD~1']).trim(), 'chore: record workflow migrations');
     assert.strictEqual(second.knowledge, 'ready');
+    assert.strictEqual(second.indexed, true);
     assert.strictEqual(second.compacted, true);
     assert.strictEqual(second.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
 
-    // Third boot: nothing new to commit, the ledger included.
+    // Third boot: nothing new to commit, the ledger included — a bulk index
+    // and a compact with nothing to do write nothing.
     const third = runEngine(real, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');
+    assert.deepStrictEqual(third.warnings, []);
     assert.strictEqual(third.kb_committed, null);
     assert.strictEqual(third.migrations_committed, null);
   });

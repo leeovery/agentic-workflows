@@ -396,7 +396,6 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
       model: provider.model(),
       dimensions: provider.dimensions(),
       last_indexed: '2026-04-10T12:00:00.000Z',
-      pending: [],
     });
 
     const loaded = await loadStore(storePath);
@@ -440,6 +439,5 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(meta.model, provider.model());
     assert.strictEqual(meta.dimensions, provider.dimensions());
     assert.strictEqual(meta.last_indexed, '2026-04-10T12:00:00.000Z');
-    assert.deepStrictEqual(meta.pending, []);
   });
 });

@@ -292,7 +292,7 @@ If the response includes `kb_warnings`, render them — KB cleanup is best-effor
 > - {w}
 @endforeach
 >
-> Consider running `knowledge rebuild` after the session to reconcile.
+> The next start brings the knowledge base up to date.
 ```
 
 → Return to **A. Iterate**.

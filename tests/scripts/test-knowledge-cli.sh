@@ -7,6 +7,7 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE="$SCRIPT_DIR/../../skills/workflow-knowledge/scripts/knowledge.cjs"
 ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
+STORE_JS="$SCRIPT_DIR/../../src/knowledge/store.js"
 
 PASS=0
 FAIL=0
@@ -257,6 +258,67 @@ run_kb() {
   node "$BUNDLE" "$@"
 }
 
+# The distinct source hashes an identity's chunks carry, comma-joined — empty
+# when the identity has no chunks, "undefined" for a chunk with no hash.
+chunk_hashes() {
+  node -e '
+    const store = require(process.argv[1]);
+    const [sp, wu, phase, topic] = process.argv.slice(2);
+    store.loadStore(sp).then((db) => store.searchAllFulltext(db)).then((chunks) => {
+      const mine = chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic);
+      process.stdout.write([...new Set(mine.map((c) => String(c.source_hash)))].join(","));
+    });
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp" "$@"
+}
+
+# The number of chunks an identity holds.
+chunk_count() {
+  node -e '
+    const store = require(process.argv[1]);
+    const [sp, wu, phase, topic] = process.argv.slice(2);
+    store.loadStore(sp).then((db) => store.searchAllFulltext(db)).then((chunks) => {
+      process.stdout.write(String(chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic).length));
+    });
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp" "$@"
+}
+
+file_sha256() {
+  node -e 'process.stdout.write(require("crypto").createHash("sha256").update(require("fs").readFileSync(process.argv[1], "utf8")).digest("hex"))' "$1"
+}
+
+# Rewrite a keyword-only store with every chunk's source hash dropped — a
+# store whose chunks carry no recorded hash.
+strip_source_hashes() {
+  node -e '
+    const store = require(process.argv[1]);
+    const sp = process.argv[2];
+    (async () => {
+      const chunks = await store.searchAllFulltext(await store.loadStore(sp));
+      const fresh = await store.createStore(1536);
+      for (const c of chunks) await store.insertDocument(fresh, { ...c, source_hash: undefined });
+      await store.saveStore(fresh, sp);
+    })();
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp"
+}
+
+# Set a manifest item's status by writing the work-unit manifest directly —
+# fixtures for retired statuses the field surface guards. An empty status
+# deletes the item.
+write_item_status() {
+  local wu="$1" phase="$2" topic="$3" status="$4"
+  node -e '
+    const fs = require("fs");
+    const [file, phase, topic, status] = process.argv.slice(1);
+    const m = JSON.parse(fs.readFileSync(file, "utf8"));
+    m.phases = m.phases || {};
+    m.phases[phase] = m.phases[phase] || { items: {} };
+    m.phases[phase].items = m.phases[phase].items || {};
+    if (status) m.phases[phase].items[topic] = { status };
+    else delete m.phases[phase].items[topic];
+    fs.writeFileSync(file, JSON.stringify(m, null, 2) + "\n");
+  ' "$TEST_ROOT/.workflows/$wu/manifest.json" "$phase" "$topic" "$status"
+}
+
 # ============================================================================
 # DISPATCH TESTS
 # ============================================================================
@@ -490,36 +552,40 @@ assert_eq "error message surfaces" "true" \
   "$(echo "$output" | grep -q 'Cannot derive identity' && echo true || echo false)"
 teardown_project
 
-# --- Test 15: metadata.json created with empty pending array on first index ---
-echo "Test 15: metadata.json has empty pending array on first index"
+# --- Test 15: first index writes exactly the four metadata fields ---
+echo "Test 15: metadata.json holds provider, model, dimensions, last_indexed"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "pending is empty array" "[]" "$pending"
+keys=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(Object.keys(m).join(','))")
+assert_eq "metadata keys" "provider,model,dimensions,last_indexed" "$keys"
+assert_eq "every chunk carries its source's sha256" \
+  "$(file_sha256 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md")" \
+  "$(chunk_hashes auth-flow discussion auth-flow)"
 teardown_project
 
-# --- Test 16: last_indexed updated; catch-up removes nonexistent pending items ---
-echo "Test 16: last_indexed updated, catch-up cleans nonexistent pending"
+# --- Test 16: last_indexed updated; the retired retry queues drop on write ---
+echo "Test 16: last_indexed updated, retired queues dropped"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Inject a pending item with a nonexistent file — catch-up will remove it.
+# A metadata.json from a store that still carried the retry queues.
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.last_indexed = '2020-01-01T00:00:00.000Z';
   m.pending = [{file: 'test.md', failed_at: '2026-01-01T00:00:00Z', error: 'test'}];
+  m.pending_removals = [{workUnit: 'gone', attempts: 2}];
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
-# Re-index — catch-up runs and cleans nonexistent pending file.
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "nonexistent pending item removed by catch-up" '[]' "$pending"
+meta=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(['pending' in m, 'pending_removals' in m, m.last_indexed > '2020-01-02'].join(','))")
+assert_eq "queues dropped, timestamp moved" "false,false,true" "$meta"
 teardown_project
 
 # ============================================================================
@@ -613,11 +679,9 @@ assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && ech
 teardown_project
 
 # --- Test 22b: Bulk index also refuses provider/dimension mismatch ---
-# Previously: bulk index with a mismatching config short-circuited at
-# isIndexed() for every file, reported 'N already indexed' as if fine,
-# and the stored embeddings silently diverged from the configured dims.
-# Now: preflight resolveProviderState check fires before the per-file
-# loop, same 'Run knowledge rebuild' message as query.
+# Without the preflight, every unchanged file would skip and the run would
+# report the store in line while the stored embeddings diverge from the
+# configured dims — same 'Run knowledge rebuild' message as query.
 echo "Test 22b: Bulk index refuses provider mismatch"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
@@ -636,15 +700,13 @@ node -e "
 "
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow.discussion.auth-flow status completed >/dev/null 2>&1
 exit_code=0
-# Bulk-index (no file arg) should now error on the mismatch instead of
-# silently reporting 'N already indexed'.
 output=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "bulk index refuses mismatch" "true" \
   "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "error mentions rebuild" "true" \
   "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
-assert_eq "bulk did NOT report 'already indexed'" "false" \
-  "$(echo "$output" | grep -q 'already indexed' && echo true || echo false)"
+assert_eq "bulk did NOT report the store in line" "false" \
+  "$(echo "$output" | grep -q 'unchanged' && echo true || echo false)"
 teardown_project
 
 # --- Test 23: Stub-to-full upgrade note ---
@@ -752,7 +814,7 @@ exit_code=0
 output=$(run_kb index 2>&1 || true)
 run_kb index 2>/dev/null || exit_code=$?
 assert_eq "index no-args exits 0 (bulk mode)" "0" "$exit_code"
-assert_eq "index no-args shows summary" "true" "$(echo "$output" | grep -q 'already indexed' && echo true || echo false)"
+assert_eq "index no-args shows summary" "true" "$(echo "$output" | grep -q '0 new, 0 changed, 0 removed, 0 unchanged.' && echo true || echo false)"
 teardown_project
 
 # --- Test 29: Query no-args prints usage ---
@@ -1213,8 +1275,8 @@ write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 output=$(run_kb index 2>&1)
-assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -q 'Indexing' && echo true || echo false)"
-assert_eq "shows summary" "true" "$(echo "$output" | grep -qE 'Indexed [1-9]' && echo true || echo false)"
+assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -qE '^Indexed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(new\)$' && echo true || echo false)"
+assert_eq "shows summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 teardown_project
 
 # --- Test 46: Bulk index skips already-indexed artifacts ---
@@ -1228,7 +1290,7 @@ init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
 # Index again — should skip.
 output=$(run_kb index 2>&1)
-assert_eq "skips already indexed" "true" "$(echo "$output" | grep -q '1 already indexed' && echo true || echo false)"
+assert_eq "skips already indexed" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
 teardown_project
 
 # --- Test 47: Bulk index with no completed artifacts ---
@@ -1239,7 +1301,7 @@ write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "in-progress"
 output=$(run_kb index 2>&1)
-assert_eq "0 files indexed" "true" "$(echo "$output" | grep -q 'Indexed 0 files' && echo true || echo false)"
+assert_eq "0 files indexed" "0 new, 0 changed, 0 removed, 0 unchanged." "$output"
 teardown_project
 
 # --- Test 47b: Bulk index --work-unit scopes discovery to one unit ---
@@ -1256,45 +1318,336 @@ create_research_file "payments" "exploration"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 init_phase_topic "payments" "research" "exploration" "completed"
 output=$(run_kb index --work-unit auth-flow 2>&1)
-assert_eq "indexes the scoped unit" "true" "$(echo "$output" | grep -q 'Indexing .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
+assert_eq "indexes the scoped unit" "true" "$(echo "$output" | grep -q 'Indexed .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
 assert_eq "leaves the sibling unit untouched" "false" "$(echo "$output" | grep -q 'payments' && echo true || echo false)"
-assert_eq "summary counts only the scoped unit" "true" "$(echo "$output" | grep -q 'Indexed 1 files' && echo true || echo false)"
+assert_eq "summary counts only the scoped unit" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 # The sibling's completed artifact is now discoverable-but-unindexed.
 status_out=$(run_kb status 2>&1)
 assert_eq "sibling artifact still unindexed" "true" "$(echo "$status_out" | grep -q 'payments/research/exploration.md' && echo true || echo false)"
 teardown_project
 
 # ============================================================================
-# PENDING QUEUE TESTS
+# BULK INDEX TESTS — the store brought in line with the files
 # ============================================================================
 
 echo ""
-echo "=== Pending Queue Tests ==="
+echo "=== Bulk Index Reconcile Tests ==="
 
-# --- Test 48: Catch-up processes pending items after single-file index ---
-echo "Test 48: Catch-up processes pending items"
+# --- Test RC1: A changed artifact re-indexes; an unchanged one skips ---
+echo "Test RC1: Bulk index re-indexes a changed artifact"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
-# Index the file first to create store.
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Create a spec file and inject it as a pending item.
 create_spec_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+init_phase_topic "auth-flow" "specification" "auth-flow" "completed"
+run_kb index >/dev/null 2>&1
+echo "A line added after indexing." >> "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+output=$(run_kb index 2>&1)
+assert_eq "names the changed file" "true" \
+  "$(echo "$output" | grep -qE '^Indexed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(changed\)$' && echo true || echo false)"
+assert_eq "summary" "true" "$(echo "$output" | grep -q '^0 new, 1 changed, 0 removed, 1 unchanged.$' && echo true || echo false)"
+assert_eq "chunks carry the new content's hash" \
+  "$(file_sha256 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md")" \
+  "$(chunk_hashes auth-flow discussion auth-flow)"
+teardown_project
+
+# --- Test RC2: Chunks with no recorded hash re-index once ---
+echo "Test RC2: Bulk index re-indexes hashless chunks once"
+setup_project
+create_work_unit "legacy" "feature" "Legacy"
+write_keyword_config
+create_discussion_file "legacy" "legacy"
+init_phase_topic "legacy" "discussion" "legacy" "completed"
+run_kb index >/dev/null 2>&1
+strip_source_hashes
+assert_eq "fixture: the chunks carry no hash" "undefined" "$(chunk_hashes legacy discussion legacy)"
+output=$(run_kb index 2>&1)
+assert_eq "re-indexed as changed" "true" "$(echo "$output" | grep -q '^0 new, 1 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
+output=$(run_kb index 2>&1)
+assert_eq "then unchanged" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
+teardown_project
+
+# --- Test RC3: A chunk whose source file is gone is removed ---
+echo "Test RC3: Bulk index removes chunks of a deleted source"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+run_kb index >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+output=$(run_kb index 2>&1)
+assert_eq "names the removed file and why" "true" \
+  "$(echo "$output" | grep -qE '^Removed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(source deleted\)$' && echo true || echo false)"
+assert_eq "summary" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 1 removed, 0 unchanged.$' && echo true || echo false)"
+assert_eq "chunks gone" "0" "$(chunk_count auth-flow discussion auth-flow)"
+teardown_project
+
+# --- Test RC4: A cancelled or unregistered work unit's chunks are removed ---
+echo "Test RC4: Bulk index removes cancelled and unregistered work units"
+setup_project
+create_work_unit "dropped" "feature" "Dropped"
+create_work_unit "orphaned" "feature" "Orphaned"
+create_work_unit "kept" "feature" "Kept"
+write_stub_config
+for wu in dropped orphaned kept; do
+  create_discussion_file "$wu" "$wu"
+  init_phase_topic "$wu" "discussion" "$wu" "completed"
+done
+run_kb index >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set dropped status cancelled >/dev/null 2>&1
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
-  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
-  m.pending = [{file: '.workflows/auth-flow/specification/auth-flow/specification.md', failed_at: '2026-01-01T00:00:00Z', error: 'transient'}];
-  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+  const pp = '$TEST_ROOT/.workflows/manifest.json';
+  const p = JSON.parse(fs.readFileSync(pp, 'utf8'));
+  delete p.work_units.orphaned;
+  fs.writeFileSync(pp, JSON.stringify(p, null, 2) + '\n');
 "
-# Re-index discussion — catch-up should process the pending spec file.
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "pending item caught up" '[]' "$pending"
-# Verify spec chunks now exist.
-query_output=$(run_kb query "specification" --limit 10 2>&1)
-assert_eq "spec chunks indexed by catch-up" "true" "$(echo "$query_output" | grep -q 'specification |' && echo true || echo false)"
+output=$(run_kb index 2>&1)
+assert_eq "cancelled unit removed" "true" \
+  "$(echo "$output" | grep -q '^Removed .workflows/dropped/discussion/dropped.md — .* (work unit cancelled)$' && echo true || echo false)"
+assert_eq "unregistered unit removed" "true" \
+  "$(echo "$output" | grep -q '^Removed .workflows/orphaned/discussion/orphaned.md — .* (work unit not registered)$' && echo true || echo false)"
+assert_eq "live unit kept" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 2 removed, 1 unchanged.$' && echo true || echo false)"
+teardown_project
+
+# --- Test RC5: A retired or missing per-topic item's chunks are removed ---
+# The statuses the engine removes chunks for — superseded, cancelled,
+# postponed, promoted — and an item gone from the manifest. A reopened
+# (in-progress) topic keeps its chunks until it completes again.
+echo "Test RC5: Bulk index removes retired items, keeps a reopened one"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+for topic in superseded-t cancelled-t postponed-t missing-t reopened-t; do
+  create_discussion_file "payments" "$topic"
+  run_kb index ".workflows/payments/discussion/$topic.md" >/dev/null 2>&1
+done
+create_spec_file "payments" "promoted-t"
+run_kb index .workflows/payments/specification/promoted-t/specification.md >/dev/null 2>&1
+write_item_status payments discussion superseded-t superseded
+write_item_status payments discussion cancelled-t cancelled
+write_item_status payments discussion postponed-t postponed
+write_item_status payments discussion reopened-t in-progress
+write_item_status payments specification promoted-t promoted
+output=$(run_kb index 2>&1)
+for pair in "superseded-t:discussion superseded" "cancelled-t:discussion cancelled" "postponed-t:discussion postponed" "missing-t:no discussion item"; do
+  topic="${pair%%:*}"
+  reason="${pair#*:}"
+  assert_eq "$topic removed ($reason)" "true" \
+    "$(echo "$output" | grep -F "Removed .workflows/payments/discussion/$topic.md — " | grep -qF "($reason)" && echo true || echo false)"
+done
+assert_eq "promoted spec removed" "true" \
+  "$(echo "$output" | grep -qF '(specification promoted)' && echo true || echo false)"
+assert_eq "reopened topic kept" "true" "$([ "$(chunk_count payments discussion reopened-t)" -gt 0 ] && echo true || echo false)"
+assert_eq "summary" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 5 removed, 0 unchanged.$' && echo true || echo false)"
+teardown_project
+
+# --- Test RC6: Baseline chunks answer to their files alone ---
+echo "Test RC6: Bulk index keeps baseline chunks until the doc is deleted"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_baseline_file "overview"
+run_kb index >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "unregistered baseline identity kept" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
+rm "$TEST_ROOT/.workflows/.baseline/overview.md"
+output=$(run_kb index 2>&1)
+assert_eq "deleted baseline doc removed" "true" \
+  "$(echo "$output" | grep -q '^Removed .workflows/.baseline/overview.md — .* (source deleted)$' && echo true || echo false)"
+teardown_project
+
+# --- Test RC6b: A source outside the project is no evidence of deletion ---
+# A chunk indexed by absolute path from another checkout records that path;
+# its absence from this project's disk says nothing about this project. The
+# work-unit and item rules still answer for it.
+echo "Test RC6b: Bulk index keeps an outside source's chunks until its unit retires"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+init_phase_topic "auth-flow" "discussion" "elsewhere" "completed"
+OTHER_ROOT=$(mktemp -d)
+mkdir -p "$OTHER_ROOT/.workflows/auth-flow/discussion"
+cp "$SCRIPT_DIR/../fixtures/knowledge/investigation-fixture.md" "$OTHER_ROOT/.workflows/auth-flow/discussion/elsewhere.md"
+run_kb index "$OTHER_ROOT/.workflows/auth-flow/discussion/elsewhere.md" >/dev/null 2>&1
+assert_eq "fixture: indexed from outside" "true" "$([ "$(chunk_count auth-flow discussion elsewhere)" -gt 0 ] && echo true || echo false)"
+rm -rf "$OTHER_ROOT"
+output=$(run_kb index 2>&1)
+assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 0 unchanged." "$output"
+assert_eq "the chunks remain" "true" "$([ "$(chunk_count auth-flow discussion elsewhere)" -gt 0 ] && echo true || echo false)"
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow status cancelled >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "a cancelled unit's outside chunks are removed" "true" \
+  "$(echo "$output" | grep -q 'elsewhere.md — .* (work unit cancelled)$' && echo true || echo false)"
+assert_eq "the chunks are gone" "0" "$(chunk_count auth-flow discussion elsewhere)"
+teardown_project
+
+# --- Test RC7: --work-unit confines the bulk index to one unit ---
+echo "Test RC7: Scoped bulk index removes within its unit only"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+create_work_unit "beta" "feature" "Beta"
+write_stub_config
+for wu in alpha beta; do
+  create_discussion_file "$wu" "$wu"
+  init_phase_topic "$wu" "discussion" "$wu" "completed"
+done
+run_kb index >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set alpha status cancelled >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set beta status cancelled >/dev/null 2>&1
+output=$(run_kb index --work-unit alpha 2>&1)
+assert_eq "scoped summary" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 1 removed, 0 unchanged.$' && echo true || echo false)"
+assert_eq "the scoped unit's chunks are gone" "0" "$(chunk_count alpha discussion alpha)"
+assert_eq "the sibling's chunks remain" "true" "$([ "$(chunk_count beta discussion beta)" -gt 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test RC8: A bulk index with nothing to do writes nothing ---
+echo "Test RC8: Bulk index with nothing to do leaves the store untouched"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+run_kb index >/dev/null 2>&1
+before="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+run_kb index >/dev/null 2>&1
+after="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "store and metadata byte-identical" "$before" "$after"
+teardown_project
+
+# --- Test RC9: A per-file failure is counted; the rest still index ---
+echo "Test RC9: Bulk index attempts every file"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/payments/discussion"
+echo "" > "$TEST_ROOT/.workflows/payments/discussion/empty.md"
+create_discussion_file "payments" "good"
+init_phase_topic "payments" "discussion" "empty" "completed"
+init_phase_topic "payments" "discussion" "good" "completed"
+exit_code=0
+stdout_out=$(run_kb index 2>/dev/null) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "the good file indexed" "true" \
+  "$(echo "$stdout_out" | grep -q '^Indexed .workflows/payments/discussion/good.md' && echo true || echo false)"
+assert_eq "summary counts the failure" "true" \
+  "$(echo "$stdout_out" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.$' && echo true || echo false)"
+teardown_project
+
+# --- Test RC10: An unreadable manifest aborts the bulk index before anything is removed ---
+echo "Test RC10: Bulk index aborts on an unreadable manifest"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+run_kb index >/dev/null 2>&1
+printf '{ not json' > "$TEST_ROOT/.workflows/manifest.json"
+exit_code=0
+output=$(run_kb index 2>&1) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "says the manifest read failed" "true" "$(echo "$output" | grep -q 'manifest read failed' && echo true || echo false)"
+assert_eq "chunks untouched" "true" "$([ "$(chunk_count auth-flow discussion auth-flow)" -gt 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test RC11: An empty registry removes nothing for want of registration ---
+# With no work units registered the engine lists units by scanning the
+# directory, so an unregistered unit is live, not gone.
+echo "Test RC11: Empty registry keeps scanned units"
+setup_project
+create_work_unit "legacy-wu" "feature" "Legacy"
+write_stub_config
+create_discussion_file "legacy-wu" "legacy-wu"
+init_phase_topic "legacy-wu" "discussion" "legacy-wu" "completed"
+run_kb index >/dev/null 2>&1
+printf '{}\n' > "$TEST_ROOT/.workflows/manifest.json"
+output=$(run_kb index 2>&1)
+assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
+teardown_project
+
+# --- Test RC12: The bulk index skips what compact prunes ---
+# prune floor 0.95 + S0 3 → a unit two completions behind is below the floor
+# (R(2,3)=0.931): its discussion is pruned, its spec never is.
+echo "Test RC12: Bulk index skips a pruned unit's non-spec artifacts"
+setup_project
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": 0.95, "decay_base_stability": 3 } }
+CONF
+create_work_unit "buried" "feature" "Buried"
+create_discussion_file "buried" "buried"
+create_spec_file "buried" "buried"
+init_phase_topic "buried" "discussion" "buried" "completed"
+init_phase_topic "buried" "specification" "buried" "completed"
+cd "$TEST_ROOT"
+node "$ENGINE_JS" manifest set buried status completed >/dev/null 2>&1
+node "$ENGINE_JS" manifest set buried completed_at 2024-01-01 >/dev/null 2>&1
+for wu in newer1 newer2; do
+  create_work_unit "$wu" "feature" "$wu"
+  cd "$TEST_ROOT"
+  node "$ENGINE_JS" manifest set "$wu" status completed >/dev/null 2>&1
+done
+node "$ENGINE_JS" manifest set newer1 completed_at 2024-06-01 >/dev/null 2>&1
+node "$ENGINE_JS" manifest set newer2 completed_at 2024-12-01 >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "the spec indexes" "true" \
+  "$(echo "$output" | grep -q '^Indexed .workflows/buried/specification/buried/specification.md' && echo true || echo false)"
+assert_eq "the pruned discussion never embeds" "false" \
+  "$(echo "$output" | grep -q 'buried/discussion' && echo true || echo false)"
+assert_eq "summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
+status_out=$(run_kb status 2>&1)
+assert_eq "status reports it pruned" "true" \
+  "$(echo "$status_out" | grep -A1 'Pruned below the decay floor: 1' | grep -q 'buried/discussion/buried.md' && echo true || echo false)"
+assert_eq "status never calls it unindexed" "false" \
+  "$(echo "$status_out" | grep -q 'Unindexed' && echo true || echo false)"
+# Chunks already in the store for a pruned artifact are compact's to remove,
+# never the bulk index's to refresh or drop.
+run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
+echo "A late edit." >> "$TEST_ROOT/.workflows/buried/discussion/buried.md"
+output=$(run_kb index 2>&1)
+assert_eq "the bulk index leaves the pruned chunks to compact" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
+output=$(run_kb compact 2>&1)
+assert_eq "compact prunes them" "true" "$(echo "$output" | grep -q 'Compacted: removed' && echo true || echo false)"
+assert_eq "and the next bulk index leaves them pruned" "0 new, 0 changed, 0 removed, 1 unchanged." "$(run_kb index 2>&1)"
+teardown_project
+
+# --- Test RC13: An invalid decay_prune_below prunes nothing and blocks nothing ---
+# Compact refuses the setting and status reports it; the bulk index indexes
+# everything regardless.
+echo "Test RC13: Bulk index proceeds past an invalid prune floor"
+setup_project
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": "high" } }
+CONF
+create_work_unit "auth-flow" "feature" "Auth"
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+exit_code=0
+output=$(run_kb index 2>&1) || exit_code=$?
+assert_eq "exits zero" "0" "$exit_code"
+assert_eq "indexes the artifact" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
+exit_code=0
+run_kb compact >/dev/null 2>&1 || exit_code=$?
+assert_eq "compact still refuses it" "1" "$exit_code"
+assert_eq "status still reports it" "true" \
+  "$(run_kb status 2>&1 | grep -q 'WARNING: Invalid decay_prune_below' && echo true || echo false)"
+teardown_project
+
+# --- Test RC14: A registered unit whose manifest is unreadable keeps its chunks ---
+# An unreadable manifest is evidence of nothing.
+echo "Test RC14: Bulk index keeps the chunks of a unit it cannot read"
+setup_project
+create_work_unit "garbled" "feature" "Garbled"
+write_stub_config
+create_discussion_file "garbled" "garbled"
+init_phase_topic "garbled" "discussion" "garbled" "completed"
+run_kb index >/dev/null 2>&1
+printf '{ not json' > "$TEST_ROOT/.workflows/garbled/manifest.json"
+output=$(run_kb index 2>&1)
+assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 0 unchanged." "$output"
+assert_eq "the chunks remain" "true" "$([ "$(chunk_count garbled discussion garbled)" -gt 0 ] && echo true || echo false)"
 teardown_project
 
 # ============================================================================
@@ -1450,24 +1803,20 @@ assert_eq "shows work unit breakdown" "true" "$(echo "$output" | grep -q 'auth-f
 assert_eq "shows store size" "true" "$(echo "$output" | grep -q 'Store size:' && echo true || echo false)"
 teardown_project
 
-# --- Test 56: Status reports pending queue ---
-echo "Test 56: Status reports pending items"
+# --- Test 56: Status reports artifacts changed since indexing ---
+echo "Test 56: Status reports changed artifacts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Inject a pending item.
-node -e "
-  const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
-  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
-  m.pending = [{file: 'test.md', failed_at: '2026-01-01T00:00:00Z', error: 'API timeout'}];
-  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
-"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+run_kb index >/dev/null 2>&1
 output=$(run_kb status 2>&1)
-assert_eq "shows pending count" "true" "$(echo "$output" | grep -q 'Pending items: 1' && echo true || echo false)"
-assert_eq "shows pending details" "true" "$(echo "$output" | grep -q 'API timeout' && echo true || echo false)"
+assert_eq "an unchanged artifact is not reported" "false" "$(echo "$output" | grep -q 'Changed since indexing' && echo true || echo false)"
+echo "An edit after completion." >> "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+output=$(run_kb status 2>&1)
+assert_eq "reports the changed count" "true" "$(echo "$output" | grep -q 'Changed since indexing: 1' && echo true || echo false)"
+assert_eq "names the changed file" "true" "$(echo "$output" | grep -q '  .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
 teardown_project
 
 # --- Test 57: Status on empty store ---
@@ -1478,8 +1827,8 @@ output=$(run_kb status 2>&1)
 assert_eq "shows not initialized" "true" "$(echo "$output" | grep -q 'not initialized' && echo true || echo false)"
 teardown_project
 
-# --- Test 58: Status detects orphaned chunks ---
-echo "Test 58: Status detects orphaned chunks"
+# --- Test 58: Status reports the chunks of a deleted source as retired ---
+echo "Test 58: Status reports a deleted source's chunks"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
@@ -1488,7 +1837,9 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Delete the source file.
 rm "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
 output=$(run_kb status 2>&1)
-assert_eq "detects orphans" "true" "$(echo "$output" | grep -q 'Orphaned' && echo true || echo false)"
+assert_eq "reports the retirement" "true" "$(echo "$output" | grep -q '^Retired since indexing: 1$' && echo true || echo false)"
+assert_eq "names the file and why" "true" \
+  "$(echo "$output" | grep -q '^  .workflows/auth-flow/discussion/auth-flow.md (source deleted)$' && echo true || echo false)"
 teardown_project
 
 # --- Test 59: Status detects unindexed artifacts ---
@@ -1506,8 +1857,8 @@ output=$(run_kb status 2>&1)
 assert_eq "detects unindexed" "true" "$(echo "$output" | grep -q 'Unindexed' && echo true || echo false)"
 teardown_project
 
-# --- Test 60: Status detects cancelled work unit still indexed ---
-echo "Test 60: Status detects cancelled still indexed"
+# --- Test 60: Status reports a cancelled work unit's chunks as retired ---
+echo "Test 60: Status reports a cancelled unit's chunks"
 setup_project
 create_work_unit "cancelled-wu" "feature" "Cancelled"
 write_stub_config
@@ -1515,7 +1866,8 @@ create_discussion_file "cancelled-wu" "cancelled-wu"
 run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
 output=$(run_kb status 2>&1)
-assert_eq "detects cancelled" "true" "$(echo "$output" | grep -q 'Cancelled work unit still indexed' && echo true || echo false)"
+assert_eq "names the file and why" "true" \
+  "$(echo "$output" | grep -q '^  .workflows/cancelled-wu/discussion/cancelled-wu.md (work unit cancelled)$' && echo true || echo false)"
 teardown_project
 
 # --- Test 61: Status shows keyword-only mode ---
@@ -1695,30 +2047,20 @@ assert_eq "rejects empty file" "true" "$([ "$exit_code" -ne 0 ] && echo true || 
 assert_eq "explains refusal" "true" "$(echo "$output" | grep -q 'No chunks produced' && echo true || echo false)"
 teardown_project
 
-# --- Test 72: First-ever bulk index failure tracks in pending queue ---
-echo "Test 72: First-ever failure goes to pending queue"
+# --- Test 72: A bulk index failure exits non-zero, naming the file ---
+echo "Test 72: Bulk index failure exits non-zero and names the file"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 echo "" > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
-run_kb index >/dev/null 2>&1 || true
-[ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ]
-exists=$?
-assert_eq "metadata.json created on first failure" "0" "$exists"
-if [ "$exists" = "0" ]; then
-  pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.pending.length))")
-  assert_eq "pending has 1 item" "1" "$pending"
-fi
+exit_code=0
+stderr_out=$(run_kb index 2>&1 >/dev/null) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "names the file and the error" "true" \
+  "$(echo "$stderr_out" | grep -q '^Failed to index .workflows/auth-flow/discussion/auth-flow.md: No chunks produced' && echo true || echo false)"
 teardown_project
-
-# ============================================================================
-# THIRD-PASS REVIEW FIXES
-# ============================================================================
-
-echo ""
-echo "=== Third-Pass Review Fix Tests ==="
 
 # --- Test 73: Negative decay_prune_below rejected ---
 echo "Test 73: Negative decay_prune_below rejected"
@@ -1766,31 +2108,6 @@ run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
 exit_code=0
 run_kb compact >/dev/null 2>&1 || exit_code=$?
 assert_eq "out-of-range prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-teardown_project
-
-# --- Test 76: Pending queue preserved across re-index (no lost update) ---
-echo "Test 76: Pending queue preserved across re-index"
-setup_project
-create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
-create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Inject a pending item for a non-existent file (so catch-up will drop it,
-# but only after index uses re-read metadata — proves lock + re-read works).
-# Use a file that DOES exist but isn't a valid workflow artifact so deriveIdentity fails.
-node -e "
-  const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
-  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
-  m.pending = [{file: 'not-a-real-file-for-test.md', failed_at: '2026-01-01T00:00:00Z', error: 'test'}];
-  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
-"
-# Re-index: the inner indexSingleFile must re-read metadata and preserve the pending
-# entry, not overwrite with its stale pre-lock snapshot. Then catch-up removes it
-# because the file doesn't exist. Net: pending should be empty.
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "pending cleaned after re-index" '[]' "$pending"
 teardown_project
 
 # --- Test 77: Path-traversal via .. rejected ---
@@ -1864,106 +2181,19 @@ status_output=$(run_kb status 2>&1)
 assert_eq "bulk index skipped proposed spec" "true" "$(echo "$status_output" | grep -q 'auth-grouping' && echo false || echo true)"
 teardown_project
 
-# --- Test 81: pending-removal queue survives writes + drain works ---
-echo "Test 81: Pending removal queue"
+# --- Test 81: A failing remove exits non-zero ---
+echo "Test 81: Remove failure exits non-zero"
 setup_project
 create_work_unit "drop-me" "feature" "Drop"
 write_stub_config
 create_discussion_file "drop-me" "drop-me"
 run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
-meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
-# Seed a pending removal (simulates a prior failure).
-node -e "
-const fs=require('fs');
-const m=JSON.parse(fs.readFileSync('$meta','utf8'));
-m.pending_removals=[{workUnit:'stale-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'seeded',attempts:1}];
-fs.writeFileSync('$meta', JSON.stringify(m));
-"
-# Status surfaces pending removal.
-status_output=$(run_kb status 2>&1)
-assert_eq "status shows pending removal" "true" "$(echo "$status_output" | grep -q 'Pending removals: 1' && echo true || echo false)"
-# Part A — a metadata-mutating operation (index) must PRESERVE the queue, not strip it.
-# This is the direct regression guard for the writeMetadata-whitelist bug that
-# shipped the pending-removal feature broken. Indexing writes metadata; if
-# pending_removals is absent from the whitelist, this assertion fails.
-create_work_unit "other-wu" "feature" "Other"
-create_discussion_file "other-wu" "other-wu"
-run_kb index .workflows/other-wu/discussion/other-wu.md >/dev/null 2>&1
-queue_after_index=$(node -e "
-const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
-process.stdout.write(String((m.pending_removals||[]).length));
-")
-assert_eq "pending_removals survives an index write" "1" "$queue_after_index"
-# Part B — a normal remove call drains the queue on the no-op success path
-# (stale-wu has no chunks; performRemoval returns 0 chunks, processPendingRemovals
-# then removes the entry). Pairs with Parts C and D below which exercise the
-# real-failure paths.
-run_kb remove --work-unit drop-me >/dev/null 2>&1
-queue_after_remove=$(node -e "
-const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
-process.stdout.write(String((m.pending_removals||[]).length));
-")
-assert_eq "queue drains on no-op success" "0" "$queue_after_remove"
-teardown_project
-
-# --- Test 81b: pending-removal queue evicts after REMOVAL_MAX_ATTEMPTS ---
-# Guards processPendingRemovals' eviction branch — without a real-failure
-# test, all observed behaviour was on the no-op success path above.
-echo "Test 81b: Pending removal eviction"
-setup_project
-create_work_unit "drop-me" "feature" "Drop"
-write_stub_config
-create_discussion_file "drop-me" "drop-me"
-run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
-meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
-# Seed a pending removal already at the eviction threshold.
-node -e "
-const fs=require('fs');
-const m=JSON.parse(fs.readFileSync('$meta','utf8'));
-m.pending_removals=[{workUnit:'capped-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'simulated permanent failure',attempts:10}];
-fs.writeFileSync('$meta', JSON.stringify(m));
-"
-# Triggering processPendingRemovals (any command that calls it works).
-evict_stderr=$(run_kb remove --work-unit drop-me 2>&1 >/dev/null)
-queue_after_evict=$(node -e "
-const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
-process.stdout.write(String((m.pending_removals||[]).length));
-")
-assert_eq "queue empty after eviction at MAX_ATTEMPTS" "0" "$queue_after_evict"
-assert_eq "eviction surfaces stderr notice" "true" "$(echo "$evict_stderr" | grep -q 'exceeded 10 attempts.*evicting' && echo true || echo false)"
-teardown_project
-
-# --- Test 81c: pending-removal failure increments attempts ---
-# Guards the addPendingRemoval bump in processPendingRemovals' catch branch.
-# Simulates a real failure by corrupting store.msp before the drain runs.
-echo "Test 81c: Pending removal attempts increment on failure"
-setup_project
-create_work_unit "drop-me" "feature" "Drop"
-write_stub_config
-create_discussion_file "drop-me" "drop-me"
-run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
-meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
-store_msp="$TEST_ROOT/.workflows/.knowledge/store.msp"
-# Seed a pending removal mid-attempts and corrupt the store so loadStore throws.
-node -e "
-const fs=require('fs');
-const m=JSON.parse(fs.readFileSync('$meta','utf8'));
-m.pending_removals=[{workUnit:'flaky-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'prior failure',attempts:5}];
-fs.writeFileSync('$meta', JSON.stringify(m));
-"
-# Backup and corrupt the store.
-cp "$store_msp" "$store_msp.bak"
-printf 'corrupt-msgpack-bytes' > "$store_msp"
-# Trigger processPendingRemovals — this will fail and bump attempts.
-run_kb compact >/dev/null 2>&1 || true
-attempts_after=$(node -e "
-const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
-const r=(m.pending_removals||[]).find(r=>r.workUnit==='flaky-wu');
-process.stdout.write(String(r ? r.attempts : 'evicted'));
-")
-# Restore the store (so teardown_project can run cleanly if needed).
-mv "$store_msp.bak" "$store_msp"
-assert_eq "attempts incremented from 5 to 6 after real failure" "6" "$attempts_after"
+printf 'corrupt-msgpack-bytes' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+exit_code=0
+output=$(run_kb remove --work-unit drop-me 2>&1) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "names what failed" "true" "$(echo "$output" | grep -q 'Removal of drop-me (all phases) failed' && echo true || echo false)"
+assert_eq "says the next start removes them" "true" "$(echo "$output" | grep -q '^The next start will remove them.$' && echo true || echo false)"
 teardown_project
 
 # --- Test 82: Rebuild cleans up .bak files on success and on leftover ---
@@ -1983,6 +2213,49 @@ assert_eq "leftover .bak cleaned after successful rebuild" "true" \
   "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 assert_eq "store still present after rebuild" "true" \
   "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+teardown_project
+
+# --- Test 82b: A file that fails a rebuild fails it, and the rebuilt store stands ---
+echo "Test 82b: Rebuild keeps the rebuilt store when a file fails"
+setup_project
+create_work_unit "wu-a" "epic" "A"
+write_stub_config
+create_discussion_file "wu-a" "good"
+mkdir -p "$TEST_ROOT/.workflows/wu-a/discussion"
+echo "" > "$TEST_ROOT/.workflows/wu-a/discussion/empty.md"
+init_phase_topic "wu-a" "discussion" "good" "completed"
+init_phase_topic "wu-a" "discussion" "empty" "completed"
+exit_code=0
+output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "names the failed file" "true" \
+  "$(echo "$output" | grep -q '^Failed to index .workflows/wu-a/discussion/empty.md: No chunks produced' && echo true || echo false)"
+assert_eq "the rebuilt store holds the good file" "true" "$([ "$(chunk_count wu-a discussion good)" -gt 0 ] && echo true || echo false)"
+assert_eq "no backup left behind" "true" \
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+teardown_project
+
+# --- Test 82c: A manifest read failure mid-rebuild restores the backup ---
+# Discovery before the rebuild degrades to the project-level docs; the bulk
+# index then refuses to decide from an unreadable manifest.
+echo "Test 82c: Rebuild restores the backup when the manifest cannot be read"
+setup_project
+create_work_unit "wu-a" "feature" "A"
+write_stub_config
+create_discussion_file "wu-a" "wu-a"
+create_baseline_file "overview"
+init_phase_topic "wu-a" "discussion" "wu-a" "completed"
+run_kb index >/dev/null 2>&1
+before=$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")
+printf '{ not json' > "$TEST_ROOT/.workflows/manifest.json"
+exit_code=0
+output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
+assert_eq "exits non-zero" "1" "$exit_code"
+assert_eq "says it restored the backup" "true" \
+  "$(echo "$output" | grep -q '^Rebuild failed; restored previous index from backup.$' && echo true || echo false)"
+assert_eq "the previous store is back, byte for byte" "$before" "$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")"
+assert_eq "no backup left behind" "true" \
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 84: Stranded-chunks orphan cleanup ---
@@ -2059,11 +2332,9 @@ assert_eq "setup partial-state guard mentions knowledge rebuild" "true" \
 teardown_project
 
 # --- Test 83: Subdirectory invocation finds project root ---
-# Pre-fix, knowledgeDir() / orphan check / manifest reads anchored at
-# process.cwd(). Running `knowledge status` from a subdirectory of the
-# project marked every chunk as orphaned (and broke other commands).
-# After the findProjectRoot walk-up, KB commands work from any
-# subdirectory of a project.
+# Chunk sources, the knowledge dir, and manifest reads anchor at the project
+# root the findProjectRoot walk-up finds — resolved against a subdirectory,
+# status would read every chunk's source as deleted.
 echo "Test 83: Subdirectory invocation"
 setup_project
 create_work_unit "subdir-wu" "feature" "Subdir"
@@ -2076,8 +2347,8 @@ mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
 cd "$TEST_ROOT/.workflows/subdir-wu/discussion"
 status_from_subdir=$(node "$BUNDLE" status 2>&1)
 cd "$TEST_ROOT"
-assert_eq "status from subdir reports zero orphans" "true" \
-  "$(echo "$status_from_subdir" | grep -q 'Orphaned chunks' && echo false || echo true)"
+assert_eq "status from subdir reports nothing retired" "true" \
+  "$(echo "$status_from_subdir" | grep -q 'Retired since indexing' && echo false || echo true)"
 assert_eq "status from subdir reports the indexed chunks" "true" \
   "$(echo "$status_from_subdir" | grep -qE 'Total chunks: [1-9]' && echo true || echo false)"
 teardown_project
@@ -2092,14 +2363,13 @@ output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
 assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
-# --- Test 84b: A non-markdown import is refused by name, not queued ---
+# --- Test 84b: A non-markdown import is refused by name ---
 echo "Test 84b: Index refuses a non-markdown import"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_stub_config
 create_import_file "seeded-wu" "seed-conversation"
 create_binary_import_file "seeded-wu" "diagram.png"
-# Index the markdown import first so metadata (and its pending queue) exists.
 run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb index .workflows/seeded-wu/imports/diagram.png 2>&1) || exit_code=$?
@@ -2108,8 +2378,6 @@ assert_eq "names the policy as the reason" "true" \
   "$(echo "$output" | grep -q 'only markdown imports are indexed' && echo true || echo false)"
 assert_eq "names the file refused" "true" \
   "$(echo "$output" | grep -qF 'imports/diagram.png' && echo true || echo false)"
-pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "refusal never enters the pending queue" "[]" "$pending"
 teardown_project
 
 # --- Test 85: Query an indexed imports file shows imports provenance ---
@@ -2232,7 +2500,7 @@ create_import_file "dup-wu" "seed-conversation"
 node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:05:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
-indexing_lines=$(echo "$output" | grep -c 'Indexing .workflows/dup-wu/imports/seed-conversation.md')
+indexing_lines=$(echo "$output" | grep -c 'Indexed .workflows/dup-wu/imports/seed-conversation.md')
 assert_eq "deduped to one index call per identity" "1" "$indexing_lines"
 teardown_project
 
@@ -2478,7 +2746,7 @@ cd "$TEST_ROOT" && node "$ENGINE_JS" manifest push login-timeout seeds \
   '{"path":"seeds/2026-05-30-login-timeout.md","source":"inbox:bug","seeded_at":"2026-06-02T00:00:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "bulk index reports the seed indexed" "true" \
-  "$(echo "$output" | grep -qE 'Indexed [1-9][0-9]* files' && echo true || echo false)"
+  "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 query_after=$(run_kb query "auth callback request timeout" --boost:work-unit login-timeout 2>&1)
 assert_eq "seed surfaces after bulk index" "true" \
   "$(echo "$query_after" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo true || echo false)"
@@ -3024,8 +3292,8 @@ output=$(node "$STANDALONE/scripts/knowledge.cjs" check 2>&1) || exit_code=$?
 assert_eq "check exits 0 without engine" "0" "$exit_code"
 assert_eq "check answers ready/not-ready" "true" \
   "$(echo "$output" | grep -qE 'ready|not-ready' && echo true || echo false)"
-# setup --keyword-only: initialises the store; the bulk-index step degrades
-# to zero discovered artifacts (manifest-list warning), not a crash.
+# setup --keyword-only: initialises the store; the bulk-index step fails on
+# the missing engine and is reported, not a crash.
 exit_code=0
 output=$(node "$STANDALONE/scripts/knowledge.cjs" setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "setup --keyword-only exits 0 without engine" "0" "$exit_code"
@@ -3044,43 +3312,28 @@ rm -rf "$STANDALONE"
 teardown_project
 
 # ============================================================================
-# ROBUSTNESS FIXES — subdir path anchoring, single-file queueing,
+# ROBUSTNESS FIXES — subdir path anchoring, single-file failures,
 # key-unresolved diagnosis, dotted-name rejection
 # ============================================================================
 
 echo ""
 echo "=== Robustness Fix Tests ==="
 
-# --- Test R4: Pending queue survives a subdirectory invocation ---
-# Pre-fix, processPendingQueue resolved item.file against process.cwd(), so
-# running any index from a project subdirectory made every pending entry look
-# "no longer exists" and evicted valid items unindexed. Now anchored at the
-# project root.
-echo "Test R4: Pending queue not evicted from a subdirectory"
+# --- Test R4: A bulk index from a subdirectory reads no source as deleted ---
+# Chunk source paths are recorded relative to the project root; resolved
+# against cwd, every chunk would read as orphaned and the bulk index would drop the
+# whole store.
+echo "Test R4: Bulk index from a subdirectory keeps live chunks"
 setup_project
-create_work_unit "sub-pending" "feature" "SubPending"
+create_work_unit "sub-sync" "feature" "SubSync"
 write_stub_config
-create_discussion_file "sub-pending" "topic-a"
-create_discussion_file "sub-pending" "topic-b"
-run_kb index .workflows/sub-pending/discussion/topic-a.md >/dev/null 2>&1
-# Inject topic-b as a pending item, recorded relative to the project root.
-node -e '
-  const fs = require("fs");
-  const mp = process.argv[1];
-  const m = JSON.parse(fs.readFileSync(mp, "utf8"));
-  m.pending = [{ file: ".workflows/sub-pending/discussion/topic-b.md", failed_at: new Date().toISOString(), error: "simulated", attempts: 1 }];
-  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + "\n");
-' "$TEST_ROOT/.workflows/.knowledge/metadata.json"
-# Re-index topic-a from a nested subdirectory (absolute arg so the trigger index
-# is itself cwd-independent) — its success runs the pending catch-up.
-cd "$TEST_ROOT/.workflows/sub-pending/discussion"
-suberr=$(node "$BUNDLE" index "$TEST_ROOT/.workflows/sub-pending/discussion/topic-a.md" 2>&1 >/dev/null)
+create_discussion_file "sub-sync" "sub-sync"
+init_phase_topic "sub-sync" "discussion" "sub-sync" "completed"
+run_kb index >/dev/null 2>&1
+cd "$TEST_ROOT/.workflows/sub-sync/discussion"
+subout=$(node "$BUNDLE" index 2>&1)
 cd "$TEST_ROOT"
-assert_eq "pending item not reported as missing from subdir" "false" \
-  "$(echo "$suberr" | grep -q 'no longer exists' && echo true || echo false)"
-qb=$(run_kb query "content" --topic topic-b 2>&1)
-assert_eq "pending topic-b was re-indexed, not evicted" "true" \
-  "$(echo "$qb" | grep -q 'discussion | sub-pending/topic-b' && echo true || echo false)"
+assert_eq "nothing removed from a subdirectory" "0 new, 0 changed, 0 removed, 1 unchanged." "$subout"
 teardown_project
 
 # --- Test R5: Bulk discovery finds imports from a subdirectory ---
@@ -3103,33 +3356,28 @@ assert_eq "subdir-discovered import is indexed" "true" \
   "$(echo "$q" | grep -q 'imports | sub-bulk/seed-conversation' && echo true || echo false)"
 teardown_project
 
-# --- Test R6: Single-file transient failure lands in the pending queue ---
-# Pre-fix, cmdIndex let retry-exhaustion propagate with no pending entry, so a
-# transient failure (network/lock/store I/O) was lost — contradicting the
-# documented pending-queue contract. Now a non-permanent failure is queued for
-# automatic retry, matching cmdIndexBulk. A corrupt store forces a NON-UserError
-# (retryable) failure inside indexSingleFile.
-echo "Test R6: Single-file transient failure is queued"
+# --- Test R6: A single-file failure exits non-zero and says the next start retries ---
+# A corrupt store forces a non-permanent failure inside indexSingleFile, so the
+# retries run out before the failure surfaces.
+echo "Test R6: Single-file transient failure exits non-zero"
 setup_project
-create_work_unit "queue-wu" "feature" "Queue"
+create_work_unit "fail-wu" "feature" "Fail"
 write_stub_config
-create_discussion_file "queue-wu" "queue-wu"
+create_discussion_file "fail-wu" "fail-wu"
 printf 'garbage-not-msgpack' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
 set +e
-out=$(run_kb index .workflows/queue-wu/discussion/queue-wu.md 2>&1)
+out=$(run_kb index .workflows/fail-wu/discussion/fail-wu.md 2>&1)
 exit_code=$?
 set -e
-assert_eq "transient failure exits 0 (graceful, queued)" "0" "$exit_code"
-assert_eq "reports the file was queued" "true" \
-  "$(echo "$out" | grep -q 'Added to pending queue' && echo true || echo false)"
-pend=$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String((m.pending||[]).length))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")
-assert_eq "pending has the failed file" "1" "$pend"
+assert_eq "transient failure exits non-zero" "1" "$exit_code"
+assert_eq "names the file" "true" \
+  "$(echo "$out" | grep -q 'Failed to index .workflows/fail-wu/discussion/fail-wu.md' && echo true || echo false)"
+assert_eq "says the next start retries it" "true" \
+  "$(echo "$out" | grep -q 'The next start will retry it.' && echo true || echo false)"
 teardown_project
 
-# --- Test R6b: Permanent single-file failure still surfaces (not queued) ---
-# The queueing must NOT swallow permanent validation errors — a provider
-# mismatch is a UserError and must still exit non-zero with its message.
-echo "Test R6b: Permanent failure still exits non-zero"
+# --- Test R6b: A permanent single-file failure exits non-zero at once ---
+echo "Test R6b: Permanent failure exits non-zero"
 setup_project
 create_work_unit "perm-wu" "feature" "Perm"
 write_stub_config
@@ -3147,8 +3395,8 @@ permout=$(run_kb index .workflows/perm-wu/discussion/perm-wu.md 2>&1)
 perm_exit=$?
 set -e
 assert_eq "permanent failure exits non-zero" "true" "$([ "$perm_exit" -ne 0 ] && echo true || echo false)"
-assert_eq "permanent failure not swallowed by the queue" "false" \
-  "$(echo "$permout" | grep -q 'Added to pending queue' && echo true || echo false)"
+assert_eq "surfaces the cause" "true" \
+  "$(echo "$permout" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
 # --- Test R7: Configured-provider-without-key is diagnosed as a missing key ---

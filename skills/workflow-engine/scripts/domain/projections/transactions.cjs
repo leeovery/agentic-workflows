@@ -67,19 +67,18 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
   }
   if (verb === 'cancel') {
     return joined([
-      warn ? warningBlock('Knowledge removal warning',
-        'The work unit is cancelled. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.') : null,
+      warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
       confirmation(`"${name}" marked as cancelled.`),
     ]);
   }
   if (verb === 'reactivate') {
     return joined([
-      warn ? warningBlock('Knowledge indexing warning', 'Indexing can be retried later.') : null,
+      warn ? warningBlock('Knowledge indexing warning', 'The work unit is reactivated. The next start retries the indexing.') : null,
       confirmation(`"${name}" reactivated.`),
     ]);
   }
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.', CONTINUE_INSTRUCTION)
+    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. The next start retries the indexing.', CONTINUE_INSTRUCTION)
     : '';
 }
 
@@ -99,18 +98,18 @@ function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null
   const name = titlecase(topic);
   if (verb === 'complete') {
     return warn
-      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.', CONTINUE_INSTRUCTION)
+      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. The next start retries the indexing.', CONTINUE_INSTRUCTION)
       : '';
   }
   if (verb === 'cancel') {
     return joined([
-      warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. You can run knowledge remove manually later.') : null,
+      warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. The next start removes its chunks from the knowledge base.') : null,
       confirmation(`Cancelled "${name}".`),
     ]);
   }
   if (verb === 'postpone') {
     return joined([
-      warn ? warningBlock('Knowledge removal warning', 'The topic is postponed. You can run knowledge remove manually later.') : null,
+      warn ? warningBlock('Knowledge removal warning', 'The topic is postponed. The next start removes its chunks from the knowledge base.') : null,
       confirmation(`Postponed "${name}"${horizon ? ` → ${horizon}` : ''}.`),
     ]);
   }
@@ -118,7 +117,7 @@ function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null
     ? ` Restored ${restored.map((r) => `${r.phase} [${r.status}]`).join(' · ')}.`
     : '';
   return joined([
-    warn ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.') : null,
+    warn ? warningBlock('Knowledge indexing warning', `The topic is ${verb === 'restore' ? 'pulled forward' : 'reactivated'}. The next start retries the indexing.`) : null,
     confirmation(verb === 'restore' ? `Pulled "${name}" forward.${returned}` : `Reactivated "${name}".${returned}`),
   ]);
 }
@@ -183,7 +182,7 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
   }
   lines.push('  • Feature: removed');
   return joined([
-    warn ? warningBlock('Knowledge sync warning', 'The feature is absorbed. Indexing can be retried later.') : null,
+    warn ? warningBlock('Knowledge warning', 'The feature is absorbed. The next start brings the knowledge base up to date.') : null,
     confirmation(lines.join('\n')),
   ]);
 }
@@ -210,7 +209,7 @@ function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false, imports = 0
     '  • Epic status: promoted',
   ];
   return joined([
-    warn ? warningBlock('Knowledge warning', 'The promotion is committed. The knowledge base will catch up on the next sync.') : null,
+    warn ? warningBlock('Knowledge warning', 'The promotion is committed. The next start brings the knowledge base up to date.') : null,
     confirmation(lines.join('\n')),
   ]);
 }
@@ -280,7 +279,7 @@ function absorbContinuationMenu(feature, epic) {
  */
 function sessionReceipt({ warn = false } = {}) {
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.', CONTINUE_INSTRUCTION)
+    ? warningBlock('Knowledge indexing warning', 'The session is closed. The next start retries the indexing.', CONTINUE_INSTRUCTION)
     : '';
 }
 

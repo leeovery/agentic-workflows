@@ -218,7 +218,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
 3. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
 4. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
 5. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
-6. Remove the spec's knowledge-base entry:
+6. Remove the spec's knowledge-base entry. A failed removal never blocks: tell the user in one line that the next start removes it, and continue:
    ```bash
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
    ```

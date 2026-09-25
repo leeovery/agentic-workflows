@@ -11,6 +11,15 @@ const {
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
 } = require('../../src/knowledge/providers/openai');
+const {
+  OpenAIEmbeddingsEngine,
+  InvalidRequestError,
+  ConfigError,
+  MAX_BATCH_SIZE,
+  MAX_BATCH_CHARS,
+  REQUEST_TIMEOUT_MS,
+} = require('../../src/knowledge/providers/openai-engine');
+const { isPermanentError } = require('../../src/knowledge/index');
 
 // ---------------------------------------------------------------------------
 // Constructor
@@ -109,6 +118,71 @@ describe('OpenAIProvider embed (mocked)', () => {
       () => p.embed('hello'),
       (err) =>
         err instanceof AuthError && /403/.test(err.message) && /knowledge setup/.test(err.message)
+    );
+  });
+
+  for (const status of [400, 413, 422]) {
+    it(`throws InvalidRequestError on ${status} — the request itself is refused`, async () => {
+      globalThis.fetch = mockFetchError(status, 'input too long');
+      const p = new OpenAIProvider({ apiKey: 'sk-test' });
+
+      await assert.rejects(
+        () => p.embedBatch(['hello']),
+        (err) =>
+          err instanceof InvalidRequestError &&
+          err.name === 'InvalidRequestError' &&
+          new RegExp(`embedding request failed \\(HTTP ${status}\\): input too long`).test(err.message)
+      );
+    });
+  }
+
+  for (const status of [429, 500, 503]) {
+    it(`throws a plain Error on ${status} — a transient failure a retry may clear`, async () => {
+      globalThis.fetch = mockFetchError(status, 'try again');
+      const p = new OpenAIProvider({ apiKey: 'sk-test' });
+
+      await assert.rejects(
+        () => p.embed('hello'),
+        (err) => err.constructor === Error && new RegExp(String(status)).test(err.message)
+      );
+    });
+  }
+
+  it('bounds every request with a 60-second timeout signal', async () => {
+    let signal;
+    globalThis.fetch = async (_url, init) => {
+      signal = init.signal;
+      return { ok: true, status: 200, json: async () => ({ data: [{ index: 0, embedding: [0.1, 0.2] }] }) };
+    };
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await p.embed('hello');
+    assert.strictEqual(REQUEST_TIMEOUT_MS, 60000);
+    assert.ok(signal instanceof AbortSignal, 'the request carries an abort signal');
+    assert.strictEqual(signal.aborted, false);
+  });
+
+  it('a request the endpoint never answers times out as a transient error', async () => {
+    // Never settles on its own — only the request's signal ends it, as with a
+    // real fetch to an endpoint that accepted the connection and went silent.
+    globalThis.fetch = (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason));
+    });
+    const engine = new OpenAIEmbeddingsEngine({
+      baseUrl: 'https://api.example.test/v1',
+      apiKey: 'sk-test',
+      model: 'm',
+      dimensions: 2,
+      sendDimensionsParam: false,
+      timeoutMs: 50,
+      errorContext: { label: 'OpenAI' },
+    });
+
+    await assert.rejects(
+      () => engine.embedBatch(['hello']),
+      (err) =>
+        err.constructor === Error &&
+        /^OpenAI embedding request timed out after 0\.05s \(network error\): the endpoint did not answer$/.test(err.message) &&
+        isPermanentError(err) === false
     );
   });
 
@@ -235,6 +309,55 @@ describe('OpenAIProvider embedBatch (mocked)', () => {
       /response length mismatch/
     );
   });
+
+  // Each input is tagged `t{n} …`; the stub answers every request with the
+  // vector [n, 0] per input, rows in reverse order, and records the inputs
+  // each request carried.
+  function recordingFetch(requests) {
+    return async (_url, init) => {
+      const { input } = JSON.parse(init.body);
+      requests.push(input);
+      const data = input.map((text, index) => ({ index, embedding: [Number(/^t(\d+)/.exec(text)[1]), 0] }));
+      return { ok: true, status: 200, json: async () => ({ data: data.reverse() }) };
+    };
+  }
+
+  it('splits inputs past the character budget across requests, results in input order', async () => {
+    const requests = [];
+    globalThis.fetch = recordingFetch(requests);
+    const size = 150000;
+    const texts = Array.from({ length: 5 }, (_, i) => `t${i} `.padEnd(size, 'x'));
+    assert.ok(texts.length * size > MAX_BATCH_CHARS);
+
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    const vectors = await p.embedBatch(texts);
+
+    assert.deepStrictEqual(requests.map((r) => r.length), [2, 2, 1]);
+    for (const request of requests) {
+      assert.ok(request.reduce((sum, t) => sum + t.length, 0) <= MAX_BATCH_CHARS);
+    }
+    assert.deepStrictEqual(vectors.map((v) => v[0]), [0, 1, 2, 3, 4]);
+  });
+
+  it('still caps a request at the input count', async () => {
+    const requests = [];
+    globalThis.fetch = recordingFetch(requests);
+    const texts = Array.from({ length: MAX_BATCH_SIZE + 3 }, (_, i) => `t${i}`);
+
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    const vectors = await p.embedBatch(texts);
+
+    assert.deepStrictEqual(requests.map((r) => r.length), [MAX_BATCH_SIZE, 3]);
+    assert.deepStrictEqual(vectors.map((v) => v[0]), texts.map((_, i) => i));
+  });
+
+  it('sends nothing for an empty batch', async () => {
+    const requests = [];
+    globalThis.fetch = recordingFetch(requests);
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    assert.deepStrictEqual(await p.embedBatch([]), []);
+    assert.strictEqual(requests.length, 0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -256,7 +379,7 @@ describe('OpenAIProvider vector-width validation', () => {
     const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
     await assert.rejects(
       () => p.embed('hello'),
-      /expected width 2/
+      (err) => err instanceof ConfigError && /expected width 2/.test(err.message)
     );
   });
 
@@ -277,7 +400,7 @@ describe('OpenAIProvider vector-width validation', () => {
     const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
     await assert.rejects(
       () => p.embedBatch(['a', 'b']),
-      (err) => /expected width 2/.test(err.message) && /index 1/.test(err.message)
+      (err) => err instanceof ConfigError && /expected width 2/.test(err.message) && /index 1/.test(err.message)
     );
   });
 });

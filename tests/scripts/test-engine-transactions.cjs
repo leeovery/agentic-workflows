@@ -1192,7 +1192,7 @@ describe('engine topic complete', () => {
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     const advisory = render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. Indexing can be retried later\./);
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. The next start retries the indexing\./);
     assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
     assert.strictEqual(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete']), '',
       'no --warn, no advisory — an empty receipt');
@@ -1205,6 +1205,22 @@ describe('engine topic complete', () => {
     // No commit inside.
     assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
     assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+  });
+
+  it('an index that still fails after its retries lands in the transaction\'s warnings', () => {
+    writeFile(dir, '.workflows/payments/research/auth-flow.md', '# Auth Flow\n\nResearch findings.\n');
+    writeFile(dir, '.workflows/.knowledge/config.json', '{ "knowledge": {} }\n');
+    writeFile(dir, '.workflows/.knowledge/metadata.json',
+      JSON.stringify({ provider: null, model: null, dimensions: null, last_indexed: null }) + '\n');
+    // A store the CLI cannot load — the failure outlasts every retry.
+    writeFile(dir, '.workflows/.knowledge/store.msp', 'not msgpack');
+
+    const res = engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
+
+    assert.strictEqual(res.status, 'completed');
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/research\/auth-flow\.md: loadStore: /);
+    assert.match(res.warnings[0], /The next start will retry it\.$/);
   });
 
   it('completes a non-indexed phase with no KB attempt — empty warnings', () => {

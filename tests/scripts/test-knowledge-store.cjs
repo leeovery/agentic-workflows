@@ -599,6 +599,23 @@ describe('knowledge store — persistence and locking', () => {
     assert.strictEqual(hits[0].id, 'doc-1');
   });
 
+  it('persists source_hash through a save/load round trip without making it searchable', async () => {
+    const hash = 'a3f1c9e07b2d4a6e8f10c2b3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f607';
+    const db = await createStore(STUB_DIMS);
+    await insertDocument(db, makeDoc({ source_hash: hash }));
+    await insertDocument(db, makeDoc({ id: 'legacy', content: 'a chunk indexed before hashes' }));
+    assert.strictEqual('source_hash' in db.schema, false, 'the hash stays out of the schema');
+
+    const storePath = path.join(tmpDir, 'store.msp');
+    await saveStore(db, storePath);
+    const loaded = await loadStore(storePath);
+
+    const byId = new Map((await searchAllFulltext(loaded)).map((h) => [h.id, h]));
+    assert.strictEqual(byId.get('doc-1').source_hash, hash);
+    assert.strictEqual(byId.get('legacy').source_hash, undefined);
+    assert.deepStrictEqual(await searchFulltext(loaded, { term: hash }), []);
+  });
+
   it('produces identical fulltext results after save/load round-trip', async () => {
     const db = await createStore(STUB_DIMS);
     const provider = new StubProvider({ dimensions: STUB_DIMS });
@@ -715,21 +732,37 @@ describe('knowledge store — metadata', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it('writes metadata.json with all 5 fields', () => {
+  it('writes metadata.json with exactly its 4 fields', () => {
     const metaPath = path.join(tmpDir, 'metadata.json');
     writeMetadata(metaPath, {
       provider: 'openai',
       model: 'text-embedding-3-small',
       dimensions: 1536,
       last_indexed: '2026-04-10T12:34:56.789Z',
-      pending: [],
     });
     const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-    assert.strictEqual(parsed.provider, 'openai');
-    assert.strictEqual(parsed.model, 'text-embedding-3-small');
-    assert.strictEqual(parsed.dimensions, 1536);
-    assert.strictEqual(parsed.last_indexed, '2026-04-10T12:34:56.789Z');
-    assert.deepStrictEqual(parsed.pending, []);
+    assert.deepStrictEqual(parsed, {
+      provider: 'openai',
+      model: 'text-embedding-3-small',
+      dimensions: 1536,
+      last_indexed: '2026-04-10T12:34:56.789Z',
+    });
+  });
+
+  it('drops the retired retry-queue arrays on the next write', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    fs.writeFileSync(metaPath, JSON.stringify({
+      provider: null, model: null, dimensions: null, last_indexed: null,
+      pending: [{ file: 'x.md', failed_at: '2026-04-10T12:00:00.000Z', error: 'oops' }],
+      pending_removals: [{ workUnit: 'gone', attempts: 3 }],
+    }));
+    const meta = readMetadata(metaPath);
+    meta.last_indexed = '2026-04-11T00:00:00.000Z';
+    writeMetadata(metaPath, meta);
+    const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    assert.strictEqual('pending' in parsed, false);
+    assert.strictEqual('pending_removals' in parsed, false);
+    assert.strictEqual(parsed.last_indexed, '2026-04-11T00:00:00.000Z');
   });
 
   it('writes null for provider/model/dimensions in keyword-only mode', () => {
@@ -739,7 +772,6 @@ describe('knowledge store — metadata', () => {
       model: null,
       dimensions: null,
       last_indexed: '2026-04-10T12:34:56.789Z',
-      pending: [],
     });
     const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
     assert.strictEqual(parsed.provider, null);
@@ -755,7 +787,6 @@ describe('knowledge store — metadata', () => {
     assert.ok(raw.includes('"provider": null'));
     assert.ok(raw.includes('"model": null'));
     assert.ok(raw.includes('"dimensions": null'));
-    assert.ok(raw.includes('"pending": []'));
   });
 
   it('reads metadata.json correctly', () => {
@@ -765,12 +796,10 @@ describe('knowledge store — metadata', () => {
       model: 'text-embedding-3-small',
       dimensions: 1536,
       last_indexed: '2026-04-10T12:34:56.789Z',
-      pending: [{ file: 'x.md', failed_at: '2026-04-10T12:00:00.000Z', error: 'oops' }],
     });
     const parsed = readMetadata(metaPath);
     assert.strictEqual(parsed.provider, 'openai');
-    assert.strictEqual(parsed.pending.length, 1);
-    assert.strictEqual(parsed.pending[0].file, 'x.md');
+    assert.strictEqual(parsed.last_indexed, '2026-04-10T12:34:56.789Z');
   });
 
   it('throws a clear error when metadata.json is missing', () => {

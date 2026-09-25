@@ -1,17 +1,18 @@
 // Knowledge CLI entry point.
 //
 // Dispatches commands to their handlers, resolving config and provider
-// once at startup. Phase 3 implements: index, query, check. Other
-// commands dispatch with a "not yet implemented" error until Phase 4.
+// once at startup.
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
-const { OpenAIProvider, AuthError } = require('./providers/openai');
+const { OpenAIProvider } = require('./providers/openai');
+const { AuthError, InvalidRequestError, ConfigError } = require('./providers/openai-engine');
 const config = require('./config');
 const setup = require('./setup');
 const setupForms = require('./setup-forms');
@@ -33,6 +34,8 @@ const BASELINE_IDENTITY = 'baseline';
 // reserved-pseudo-identity carve-out: chunks carry `roadmap` for both
 // work_unit and work_type, and the engine reserves the name.
 const ROADMAP_IDENTITY = 'roadmap';
+
+const RESERVED_IDENTITIES = new Set([BASELINE_IDENTITY, ROADMAP_IDENTITY]);
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
 // derivation (topic = basename, no subdirectories). specification (nested under
@@ -79,27 +82,20 @@ function resolveEngineJs() {
 }
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
-const PENDING_CATCHUP_LIMIT = 5;
-const PENDING_MAX_ATTEMPTS = 10;
 
 // Default dimensions when creating a store in keyword-only mode.
 // The store schema requires a dimension parameter, but keyword-only docs
 // omit the embedding field entirely — this value just satisfies the schema.
 const KEYWORD_ONLY_DIMENSIONS = 1536;
 
-// Emit the stub-to-full upgrade note at most once per process to avoid
-// spamming bulk-index runs that iterate over many files.
+// Emit the stub-to-full upgrade note at most once per process — a retried
+// index resolves the mode again.
 let stubUpgradeWarned = false;
 
 // ---------------------------------------------------------------------------
 // UserError — marker class for user-visible validation failures. Thrown at
 // input-validation sites (bad path, provider mismatch, missing chunking
 // config, etc.) where the error message is actionable advice for the user.
-//
-// Two behavioural contracts:
-//   1. withRetry does not retry UserError (same treatment as programming
-//      errors — retry would waste backoff budget on a permanent failure).
-//   2. The top-level main().catch prints the message alone, no stack trace.
 // ---------------------------------------------------------------------------
 
 class UserError extends Error {
@@ -107,6 +103,28 @@ class UserError extends Error {
     super(message);
     this.name = 'UserError';
   }
+}
+
+// Failures that repeat identically on every attempt: input validation, a
+// provider refusing the key or the request, a provider configuration the
+// model contradicts, and programming errors.
+const PERMANENT_ERRORS = [
+  UserError,
+  AuthError,
+  InvalidRequestError,
+  ConfigError,
+  TypeError,
+  ReferenceError,
+  SyntaxError,
+  RangeError,
+];
+
+/**
+ * Whether a failure is permanent — no retry can change its outcome.
+ * @param {unknown} err
+ */
+function isPermanentError(err) {
+  return PERMANENT_ERRORS.some((type) => err instanceof type);
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +206,7 @@ function buildOptions(flags, boosts) {
 const USAGE = `Usage: knowledge <command> [options]
 
 Commands:
-  index     Index a file or all pending artifacts
+  index     Index a file, or with no file bring the store in line with every artifact
   query     Search the knowledge base
   check     Check if the knowledge base is ready
   status    Show knowledge base status
@@ -241,14 +259,13 @@ function lockFilePath() {
 }
 
 // Resolve a stored or relative artifact path against the PROJECT ROOT, never
-// process.cwd(). Every artifact path that flows through the store — pending-
-// queue entries, manifest-discovered imports/seeds/analysis/discovery files,
+// process.cwd(). Every artifact path that flows through the store — chunk
+// source files, manifest-discovered imports/seeds/analysis/discovery files,
 // and the source path handed to a single-file index — is recorded relative to
 // the project root. Resolving them against cwd breaks every KB command
-// invoked from a subdirectory: the pending queue evicts live items as "no
-// longer exists" and bulk discovery silently skips unindexed artifacts.
-// path.resolve short-circuits on an already-absolute input, so paths the
-// engine returns absolute (manifest `resolve`) pass through unchanged.
+// invoked from a subdirectory: bulk discovery skips live artifacts and the
+// bulk index reads every chunk's source as deleted. path.resolve short-circuits on
+// an already-absolute input, so absolute paths pass through unchanged.
 function resolveArtifactPath(p) {
   return path.resolve(config.findProjectRoot(), p);
 }
@@ -275,20 +292,7 @@ async function withRetry(fn, opts) {
     try {
       return await fn();
     } catch (err) {
-      // Don't retry programming errors — retrying a TypeError just burns
-      // 7s of backoff before the stack trace reaches the user.
-      // Also don't retry UserError or AuthError: validation failures and
-      // bad/expired API keys will fail identically on every retry.
-      if (
-        err instanceof UserError ||
-        err instanceof AuthError ||
-        err instanceof TypeError ||
-        err instanceof ReferenceError ||
-        err instanceof SyntaxError ||
-        err instanceof RangeError
-      ) {
-        throw err;
-      }
+      if (isPermanentError(err)) throw err;
       lastErr = err;
       if (attempt < maxAttempts - 1) {
         const delay = backoff[attempt] || backoff[backoff.length - 1];
@@ -641,8 +645,9 @@ function resolveProviderState(metadata, cfg, provider) {
 
 async function cmdIndex(args, options, cfg, provider) {
   if (args.length === 0) {
-    // Bulk index mode — discover and index all missing completed artifacts.
-    return cmdIndexBulk(options, cfg, provider);
+    const summary = await cmdIndexBulk(options, cfg, provider);
+    if (summary.failed > 0) process.exitCode = 1;
+    return;
   }
 
   const sourceFile = args[0];
@@ -659,7 +664,6 @@ async function cmdIndex(args, options, cfg, provider) {
   // Derive identity from path.
   const identity = deriveIdentity(sourceFile);
 
-  // Index with retry wrapper.
   let chunkCount;
   try {
     chunkCount = await withRetry(
@@ -667,236 +671,262 @@ async function cmdIndex(args, options, cfg, provider) {
       { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
     );
   } catch (err) {
-    // Permanent failures (validation UserError, bad/expired key AuthError,
-    // programming errors) will fail identically on every retry — surface them
-    // now with a non-zero exit rather than clogging the pending queue. Only a
-    // TRANSIENT failure that exhausted its retries (network, lock timeout,
-    // store I/O) is queued for automatic retry on the next index call — the
-    // same durability contract cmdIndexBulk gives, which phase-completion (the
-    // primary single-file caller) previously never got.
-    const isPermanent =
-      err instanceof UserError ||
-      err instanceof AuthError ||
-      err instanceof TypeError ||
-      err instanceof ReferenceError ||
-      err instanceof SyntaxError ||
-      err instanceof RangeError;
-    if (isPermanent) throw err;
-
-    await addToPendingQueue(sourceFile, err.message);
     process.stderr.write(
-      `Failed to index ${sourceFile} after 3 attempts: ${err.message}. Added to pending queue.\n`
+      `Failed to index ${sourceFile}: ${err.message}\nThe next start will retry it.\n`
     );
-    if (err.stack) process.stderr.write(err.stack + '\n');
-    return;
+    process.exit(1);
   }
 
   process.stdout.write(`Indexed ${chunkCount} chunks from ${sourceFile}\n`);
-
-  // After successful single-file index, catch up pending queue (up to 5).
-  await processPendingQueue(cfg, provider, PENDING_CATCHUP_LIMIT);
 }
 
 /**
- * Index a single file into the store. Returns the number of chunks indexed.
- * Separated from cmdIndex so it can be called by both single-file and bulk modes.
+ * The sha256 of an artifact's content — what a chunk records as its
+ * `source_hash`, and what the bulk index compares against the file on disk.
+ * @param {string} content
  */
-async function indexSingleFile(sourceFile, identity, cfg, provider) {
-  // Read work_type from manifest. Baseline is project-level — no work-unit
-  // manifest exists to read, so its chunks carry the pseudo work_type.
-  const workType = identity.phase === 'baseline' ? BASELINE_IDENTITY
-    : identity.workUnit === ROADMAP_IDENTITY ? ROADMAP_IDENTITY
-      : readWorkType(identity.workUnit);
+function contentHash(content) {
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
 
-  // Load chunking config. In the bundle, __dirname is
-  // skills/workflow-knowledge/scripts/, whose sibling ../chunking/ ships the
-  // configs. In source mode __dirname is src/knowledge/, whose sibling
-  // ../chunking/ does NOT exist — fall back to the shipped skills directory so
-  // the dev CLI can index too (mirrors resolveEngineJs's dual-candidate probe).
-  let chunkConfigPath = path.join(__dirname, '..', 'chunking', identity.phase + '.json');
+/**
+ * @typedef {object} Artifact
+ * @property {string} file  the source path, relative to the project root
+ * @property {string} workUnit
+ * @property {string} phase
+ * @property {string} topic
+ */
+
+/**
+ * @typedef {object} Built
+ * @property {Artifact} artifact
+ * @property {'new'|'changed'} [state]  the bulk index's classification
+ * @property {Array<Record<string, any>>} docs  the artifact's store documents
+ */
+
+/**
+ * The chunking config a phase indexes with. In the bundle, __dirname is
+ * skills/workflow-knowledge/scripts/, whose sibling ../chunking/ ships the
+ * configs; in source mode __dirname is src/knowledge/, so the dev CLI falls
+ * back to the shipped skills directory (mirrors resolveEngineJs's probe).
+ * @param {string} phase
+ */
+function readChunkConfig(phase) {
+  let chunkConfigPath = path.join(__dirname, '..', 'chunking', phase + '.json');
   if (!fs.existsSync(chunkConfigPath)) {
-    const shipped = path.join(
-      __dirname, '..', '..', 'skills', 'workflow-knowledge', 'chunking', identity.phase + '.json'
-    );
+    const shipped = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'chunking', phase + '.json');
     if (fs.existsSync(shipped)) chunkConfigPath = shipped;
   }
   if (!fs.existsSync(chunkConfigPath)) {
     throw new UserError(`Chunking config not found: ${chunkConfigPath}`);
   }
-  const chunkConfig = JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
+  return JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
+}
 
-  // Read and chunk the source file. Anchor at the project root so a source
-  // path recorded relative to the project (bulk discovery, pending queue)
-  // reads correctly regardless of the invoking cwd.
-  const absSource = resolveArtifactPath(sourceFile);
+/**
+ * An artifact's chunks as store documents, not yet embedded — the per-file
+ * work every index shares. Refuses a file that yields no chunks: indexing it
+ * would silently wipe the identity's existing chunks.
+ * @param {Artifact} artifact
+ * @returns {Array<Record<string, any>>}
+ */
+function buildDocuments(artifact) {
+  // Baseline and roadmap are project-level — no work-unit manifest exists to
+  // read, so their chunks carry the pseudo work_type.
+  const workType = artifact.phase === 'baseline' ? BASELINE_IDENTITY
+    : artifact.workUnit === ROADMAP_IDENTITY ? ROADMAP_IDENTITY
+      : readWorkType(artifact.workUnit);
+  const chunkConfig = readChunkConfig(artifact.phase);
+  const absSource = resolveArtifactPath(artifact.file);
   const content = fs.readFileSync(absSource, 'utf8');
   const chunks = chunker.chunk(content, chunkConfig);
 
   if (chunks.length === 0) {
     throw new UserError(
-      `No chunks produced from ${sourceFile}. Refusing to index an empty file — ` +
+      `No chunks produced from ${artifact.file}. Refusing to index an empty file — ` +
         'this would silently wipe any existing indexed chunks for this topic. ' +
         'Use `knowledge remove` explicitly if that is what you want.'
     );
   }
 
-  // Resolve store and metadata.
-  const kDir = knowledgeDir();
-  const sp = storePath();
-  const mp = metadataPath();
-  const lp = lockFilePath();
-
-  // Ensure knowledge directory exists.
-  if (!fs.existsSync(kDir)) {
-    fs.mkdirSync(kDir, { recursive: true });
-  }
-
-  // Resolve store state. The store is NOT loaded here: the pre-lock load's
-  // contents were only ever consulted to decide whether a fresh store had to
-  // be created — a question fs.existsSync answers — and the authoritative load
-  // happens inside the lock below. Dropping it removes one full store load per
-  // file without touching the lock window (the in-lock reload is unchanged).
-  let db;
-  let metadata;
-  const storeExists = fs.existsSync(sp);
-  const metadataExists = fs.existsSync(mp);
-
-  if (metadataExists) {
-    metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending)) {
-      metadata.pending = [];
-    }
-  }
-
-  // Determine effective mode (full vs keyword-only).
-  let effectiveMode;
-  let effectiveProvider;
-
-  if (metadata) {
-    const state = resolveProviderState(metadata, cfg, provider);
-    effectiveMode = state.mode;
-    effectiveProvider = state.provider;
-  } else {
-    if (provider) {
-      effectiveMode = 'full';
-      effectiveProvider = provider;
-    } else {
-      effectiveMode = 'keyword-only';
-      effectiveProvider = null;
-    }
-  }
-
-  // Materialise a fresh empty store only when none exists on disk. When one
-  // does exist it is loaded inside the lock (never pre-lock) so the write sees
-  // the freshest committed state. The !storeExists lock branch falls back to
-  // this empty store when no concurrent writer created one first.
-  if (!storeExists) {
-    const dims = effectiveProvider
-      ? effectiveProvider.dimensions()
-      : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
-    db = await store.createStore(dims);
-  }
-
-  // Embed chunks if in full mode (with retry for embed calls).
-  let embeddings = null;
-  if (effectiveMode === 'full' && effectiveProvider && chunks.length > 0) {
-    const texts = chunks.map((c) => c.content);
-    embeddings = await effectiveProvider.embedBatch(texts);
-  }
-
-  // Build chunk documents. Stamp each chunk with the source document's date
-  // (its mtime), not index time — otherwise bulk/fresh indexing (install,
-  // reindex, migration) marks every legacy doc as "today", corrupting the
-  // provenance shown in query headers and the recency signal. `last_indexed`
-  // (set below) stays wall-clock; that one genuinely means "store last built".
-  const docTimestamp = fs.statSync(absSource).mtimeMs;
+  // A chunk's date is its source document's (its mtime), never index time —
+  // query headers show when the work was written, and a fresh index of old
+  // documents would otherwise read as today's.
+  const timestamp = fs.statSync(absSource).mtimeMs;
+  const sourceHash = contentHash(content);
   const confidence = chunkConfig.confidence || 'medium';
-  const docs = chunks.map((chunk, idx) => {
-    const seq = String(idx + 1).padStart(3, '0');
-    const doc = {
-      id: `${identity.workUnit}-${identity.phase}-${identity.topic}-${seq}`,
-      content: chunk.content,
-      work_unit: identity.workUnit,
-      work_type: workType,
-      phase: identity.phase,
-      topic: identity.topic,
-      confidence,
-      source_file: sourceFile,
-      timestamp: docTimestamp,
-    };
-    if (embeddings) {
-      doc.embedding = embeddings[idx];
-    }
-    return doc;
+  return chunks.map((chunk, idx) => ({
+    id: `${artifact.workUnit}-${artifact.phase}-${artifact.topic}-${String(idx + 1).padStart(3, '0')}`,
+    content: chunk.content,
+    work_unit: artifact.workUnit,
+    work_type: workType,
+    phase: artifact.phase,
+    topic: artifact.topic,
+    confidence,
+    source_file: artifact.file,
+    source_hash: sourceHash,
+    timestamp,
+  }));
+}
+
+/**
+ * The provider new documents are embedded with — null when they go in
+ * keyword-only. Throws on a provider or model the store was not built with.
+ * @param {object} cfg @param {object|null} provider
+ */
+function indexProvider(cfg, provider) {
+  const mp = metadataPath();
+  return fs.existsSync(mp) ? resolveProviderState(store.readMetadata(mp), cfg, provider).provider : provider;
+}
+
+/**
+ * Embed documents in one embedBatch call — the provider splits the texts
+ * into requests by its own count and size budgets.
+ * @param {Array<Record<string, any>>} docs @param {object} provider
+ */
+async function embedDocuments(docs, provider) {
+  const vectors = await provider.embedBatch(docs.map((doc) => doc.content));
+  docs.forEach((doc, i) => {
+    doc.embedding = vectors[i];
   });
+}
 
-  // Acquire lock, remove old chunks, insert new, save.
-  await store.withLock(lp, async () => {
-    if (storeExists) {
-      db = await store.loadStore(sp);
-    } else if (fs.existsSync(sp)) {
-      db = await store.loadStore(sp);
+/**
+ * Embed every built artifact's documents in one batch. When the endpoint
+ * refuses an input in it, file by file, so the refused file fails alone; any
+ * other failure fails every file in the batch — each would fail the same way.
+ * Returns the artifacts that could not be embedded, each with its error.
+ * @param {Built[]} built @param {object} provider
+ * @returns {Promise<Array<{artifact: Artifact, error: Error}>>}
+ */
+async function embedAll(built, provider) {
+  const retried = (docs) => withRetry(() => embedDocuments(docs, provider), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
+  try {
+    await retried(built.flatMap((b) => b.docs));
+    return [];
+  } catch (batchError) {
+    if (!(batchError instanceof InvalidRequestError)) {
+      return built.map(({ artifact }) => ({ artifact, error: batchError }));
     }
-
-    // Re-validate provider state inside the lock. A concurrent rebuild or
-    // another indexer could have rewritten the store with different
-    // dimensions between our embedBatch call (outside the lock) and now
-    // (deferred-issue #1 TOCTOU). If dimensions diverged, our embeddings
-    // are the wrong width — abort, and withRetry at the CLI layer will
-    // re-enter with fresh state.
-    if (effectiveMode === 'full' && fs.existsSync(mp)) {
-      const reloadedMeta = store.readMetadata(mp);
-      const expectedDims = effectiveProvider.dimensions();
-      if (reloadedMeta.provider && reloadedMeta.dimensions !== expectedDims) {
-        throw new Error(
-          'Store schema changed during index (concurrent rebuild). ' +
-          `Embeddings produced for dims=${expectedDims}, store now has dims=${reloadedMeta.dimensions}. Retrying.`
-        );
+    const failures = [];
+    for (const { artifact, docs } of built) {
+      try {
+        await retried(docs);
+      } catch (error) {
+        failures.push({ artifact, error });
       }
     }
+    return failures;
+  }
+}
 
-    await store.removeByIdentity(db, {
-      work_unit: identity.workUnit,
-      phase: identity.phase,
-      topic: identity.topic,
-    });
+/**
+ * The store to write into, inside the lock: the snapshot read before
+ * embedding while the file is still the one it was read from, else a fresh
+ * load, else a new empty store.
+ * @param {{db: any, stamp: string|null}|null} snapshot
+ * @param {object} cfg @param {object|null} provider
+ */
+async function currentStore(snapshot, cfg, provider) {
+  const sp = storePath();
+  const stamp = store.storeStamp(sp);
+  if (snapshot && snapshot.stamp !== null && snapshot.stamp === stamp) return snapshot.db;
+  if (stamp !== null) return store.loadStore(sp);
+  return store.createStore(provider ? provider.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS));
+}
 
-    for (const doc of docs) {
-      await store.insertDocument(db, doc);
+/**
+ * Refuse to write vectors of a width the store no longer has — a concurrent
+ * rebuild can change it between embedding and the lock.
+ * @param {object|null} provider
+ */
+function assertStoreDimensions(provider) {
+  const mp = metadataPath();
+  if (!provider || !fs.existsSync(mp)) return;
+  const { provider: storeProvider, dimensions } = store.readMetadata(mp);
+  if (storeProvider && dimensions !== provider.dimensions()) {
+    throw new Error(
+      'Store schema changed during index (concurrent rebuild). ' +
+        `Embeddings produced for dims=${provider.dimensions()}, store now has dims=${dimensions}.`
+    );
+  }
+}
+
+/**
+ * Stamp the metadata with this write's time, creating it on a store's first
+ * write. Provider, model, and dimensions never change once set.
+ * @param {object} cfg @param {object|null} provider
+ */
+function recordIndexed(cfg, provider) {
+  const mp = metadataPath();
+  const metadata = fs.existsSync(mp) ? store.readMetadata(mp) : {
+    provider: provider ? cfg.provider : null,
+    model: provider ? provider.model() : null,
+    dimensions: provider ? provider.dimensions() : null,
+  };
+  store.writeMetadata(mp, { ...metadata, last_indexed: new Date().toISOString() });
+}
+
+/**
+ * @param {{workUnit: string, phase: string, topic: string}} entry
+ */
+function identityOf(entry) {
+  return { work_unit: entry.workUnit, phase: entry.phase, topic: entry.topic };
+}
+
+/**
+ * Write into the store in one locked load and save: each built identity's
+ * chunks replaced by its new documents, then every identity `retire` names
+ * over the result removed. Nothing is saved when nothing changed.
+ * @param {{
+ *   cfg: object,
+ *   provider: object|null,
+ *   built: Built[],
+ *   snapshot?: {db: any, stamp: string|null}|null,
+ *   retire?: (db: any) => Promise<Retirement[]>,
+ * }} write
+ * @returns {Promise<Retirement[]>} what was retired
+ */
+async function writeStore({ cfg, provider, built, snapshot = null, retire = async () => [] }) {
+  fs.mkdirSync(knowledgeDir(), { recursive: true });
+  return store.withLock(lockFilePath(), async () => {
+    assertStoreDimensions(provider);
+    const db = await currentStore(snapshot, cfg, provider);
+    for (const { artifact, docs } of built) {
+      await store.removeByIdentity(db, identityOf(artifact));
+      for (const doc of docs) await store.insertDocument(db, doc);
     }
-
-    await store.saveStore(db, sp);
-
-    // Re-read metadata inside the lock to avoid clobbering concurrent
-    // pending-queue mutations (addToPendingQueue runs under the same
-    // lock, but an earlier addToPendingQueue may have committed between
-    // our pre-lock load at line ~376 and this write).
-    const freshMeta = fs.existsSync(mp) ? store.readMetadata(mp) : null;
-
-    if (!freshMeta) {
-      const newMeta = {
-        provider: effectiveProvider ? cfg.provider : null,
-        model: effectiveProvider ? effectiveProvider.model() : null,
-        dimensions: effectiveProvider ? effectiveProvider.dimensions() : null,
-        last_indexed: new Date().toISOString(),
-        pending: [],
-      };
-      store.writeMetadata(mp, newMeta);
-    } else {
-      // Preserve provider/model/dimensions (never change once set) and
-      // preserve the FRESHEST pending[] from disk.
-      freshMeta.last_indexed = new Date().toISOString();
-      if (!Array.isArray(freshMeta.pending)) freshMeta.pending = [];
-      store.writeMetadata(mp, freshMeta);
+    const retired = await retire(db);
+    for (const entry of retired) await store.removeByIdentity(db, identityOf(entry));
+    if (built.length > 0 || retired.length > 0) {
+      await store.saveStore(db, storePath());
+      recordIndexed(cfg, provider);
     }
+    return retired;
   });
+}
 
+/**
+ * Index a single file into the store. Returns the number of chunks indexed.
+ * @param {string} sourceFile @param {{workUnit: string, phase: string, topic: string}} identity
+ * @param {object} cfg @param {object|null} provider
+ */
+async function indexSingleFile(sourceFile, identity, cfg, provider) {
+  const artifact = { file: sourceFile, ...identity };
+  const docs = buildDocuments(artifact);
+  const embedder = indexProvider(cfg, provider);
+  if (embedder) await embedDocuments(docs, embedder);
+  await writeStore({ cfg, provider: embedder, built: [{ artifact, docs }] });
   return docs.length;
 }
 
 // ---------------------------------------------------------------------------
-// Bulk index — discover and index all missing completed artifacts
+// Bulk index — bring the store in line with the files
 // ---------------------------------------------------------------------------
+
+// `manifest list` carries every work unit's whole manifest — past
+// execFileSync's 1 MiB default on a large project.
+const MANIFEST_READ_MAX_BUFFER = 256 * 1024 * 1024;
 
 /**
  * Run an `engine manifest` read and return stdout.
@@ -910,30 +940,43 @@ function runManifest(args) {
     cwd: config.findProjectRoot(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: MANIFEST_READ_MAX_BUFFER,
   });
 }
 
 /**
+ * What a failed manifest read says — the engine's stderr when it spoke.
+ * @param {any} err
+ */
+function manifestErrorDetail(err) {
+  return err && err.stderr ? String(err.stderr).trim() : err.message;
+}
+
+/**
  * Surface real manifest-read failures (corrupt JSON, broken paths, etc.).
- * Expected misses are no longer thrown — `get` returns empty stdout + exit 0
- * for missing work units / fields, so callers detect them by checking output.
+ * `get` answers a missing work unit or field with empty stdout and exit 0,
+ * so callers detect expected misses by checking the output.
  */
 function reportUnexpectedManifestError(context, err) {
-  const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
-  process.stderr.write(`Warning: manifest read failed in ${context}: ${msg}\n`);
+  process.stderr.write(`Warning: manifest read failed in ${context}: ${manifestErrorDetail(err)}\n`);
 }
 
 /**
  * Read every work unit's full manifest via a single `manifest list` spawn.
- * Returns an array of manifests, or [] on any failure (warned, non-fatal) or a
- * non-array payload. Callers that need both the discovered artifacts AND the
- * manifest tree (cmdStatus) fetch once and share, rather than listing twice.
+ * Throws when the read fails; a non-array payload reads as no work units.
+ */
+function readWorkUnits() {
+  const parsed = JSON.parse(runManifest(['list']));
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+/**
+ * readWorkUnits for callers that degrade on a failed read: [] and a warning.
  * @param {string} context  label for the failure warning
  */
 function listWorkUnits(context) {
   try {
-    const parsed = JSON.parse(runManifest(['list']));
-    return Array.isArray(parsed) ? parsed : [];
+    return readWorkUnits();
   } catch (err) {
     reportUnexpectedManifestError(context, err);
     return [];
@@ -941,19 +984,55 @@ function listWorkUnits(context) {
 }
 
 /**
- * Check if chunks exist for the given identity triple.
+ * The session number a manifest node marks live, or null.
+ * @param {any} node  an epic's `phases.discovery`, or the project's `roadmap`
  */
-async function isIndexed(db, workUnit, phase, topic) {
-  const res = await store.searchFulltext(db, {
-    term: '',
-    where: {
-      work_unit: { eq: workUnit },
-      phase: { eq: phase },
-      topic: { eq: topic },
-    },
-    limit: 1,
-  });
-  return res.length > 0;
+function activeSession(node) {
+  const session = node && node.active_session;
+  return typeof session === 'string' && session !== '' ? session : null;
+}
+
+/**
+ * @typedef {object} Manifests
+ * @property {Array<any>} workUnits  every work unit's manifest the engine lists
+ * @property {Set<string>|null} registry  the registered work-unit names — null
+ *   when none are registered: the engine then lists work units by scanning the
+ *   directory, so an empty registry says nothing about which units exist
+ * @property {string|null} roadmapSession  the live roadmap session's number
+ */
+
+/**
+ * The manifests the bulk index decides from. A failed read throws — it is
+ * not evidence that anything is gone.
+ * @returns {Manifests}
+ */
+function readManifests() {
+  try {
+    const project = JSON.parse(runManifest(['get', 'project'])) || {};
+    const registered = Object.keys(project.work_units || {});
+    return {
+      workUnits: readWorkUnits(),
+      registry: registered.length > 0 ? new Set(registered) : null,
+      roadmapSession: activeSession(project.roadmap),
+    };
+  } catch (err) {
+    throw new Error(`manifest read failed: ${manifestErrorDetail(err)}`);
+  }
+}
+
+/**
+ * readManifests for callers that degrade on a failed read: no work units,
+ * and a warning.
+ * @param {string} context  label for the failure warning
+ * @returns {Manifests}
+ */
+function listManifests(context) {
+  try {
+    return readManifests();
+  } catch (err) {
+    process.stderr.write(`Warning: ${err.message} (${context})\n`);
+    return { workUnits: [], registry: null, roadmapSession: null };
+  }
 }
 
 // Per-topic artifact path shapes, keyed by phase. The shapes are static, so a
@@ -1012,16 +1091,32 @@ function collectFlatEntries(wu, wuName, field) {
 }
 
 /**
- * Discover all completed artifacts across all work units from a single
- * `manifest list` read. Per-topic phase paths are derived locally from
- * ARTIFACT_PATHS (no per-topic engine spawn); imports, seeds, analysis caches,
- * and discovery sessions are file-based traversals.
- * Returns an array of { file, workUnit, phase, topic }.
- * @param {Array} [workUnits]  pre-fetched manifest list (via listWorkUnits) —
- *   passed by cmdStatus so the manifest tree is read once, not once here plus
- *   once for its consistency checks. Omitted → this fetches its own.
+ * The session logs in a sessions directory, bar the live session's — a live
+ * log is indexed when its session closes.
+ * @param {string} dir  project-relative @param {string|null} liveSession
+ * @returns {string[]} the log filenames
  */
-function discoverArtifacts(workUnits) {
+function closedSessionLogs(dir, liveSession) {
+  let files;
+  try {
+    files = fs.readdirSync(resolveArtifactPath(dir));
+  } catch {
+    return [];
+  }
+  return files.filter((f) => /^session-\d+\.md$/.test(f) && (liveSession === null || f !== `session-${liveSession}.md`));
+}
+
+/**
+ * Discover all completed artifacts across all work units. Per-topic phase
+ * paths are derived locally from ARTIFACT_PATHS (no per-topic engine spawn);
+ * imports, seeds, analysis caches, and closed discovery sessions are
+ * file-based traversals.
+ * Returns an array of { file, workUnit, phase, topic }.
+ * @param {Manifests} [manifests]  already read — omitted, this reads its own
+ *   and degrades to the project-level artifacts on a failed read
+ * @returns {Artifact[]}
+ */
+function discoverArtifacts(manifests = listManifests('discoverArtifacts')) {
   const items = [];
 
   // Baseline docs — project-level and registry-independent. They exist before
@@ -1049,13 +1144,7 @@ function discoverArtifacts(workUnits) {
   // ahead of the manifest walk (the genesis conversation predates the first
   // work unit). Shapes mirror deriveIdentity exactly.
   const roadmapSessDir = path.posix.join('.workflows', '.roadmap', 'sessions');
-  let roadmapSessions = [];
-  try {
-    roadmapSessions = fs.readdirSync(resolveArtifactPath(roadmapSessDir)).filter((f) => /^session-\d+\.md$/.test(f));
-  } catch (_) {
-    roadmapSessions = [];
-  }
-  for (const f of roadmapSessions) {
+  for (const f of closedSessionLogs(roadmapSessDir, manifests.roadmapSession)) {
     items.push({
       file: path.posix.join(roadmapSessDir, f),
       workUnit: ROADMAP_IDENTITY,
@@ -1083,10 +1172,7 @@ function discoverArtifacts(workUnits) {
     });
   }
 
-  const units = workUnits || listWorkUnits('discoverArtifacts:list');
-  if (!Array.isArray(units) || units.length === 0) return items;
-
-  for (const wu of units) {
+  for (const wu of manifests.workUnits) {
     const wuName = wu.name;
     if (!wuName) continue;
     if (wu.status === 'cancelled') continue;
@@ -1128,13 +1214,8 @@ function discoverArtifacts(workUnits) {
     // shape-and-route and are not indexed.
     if (wu.work_type === 'epic') {
       const sessDir = path.posix.join('.workflows', wuName, 'discovery', 'sessions');
-      let sessFiles = [];
-      try {
-        sessFiles = fs.readdirSync(resolveArtifactPath(sessDir)).filter((f) => /^session-\d+\.md$/.test(f));
-      } catch (_) {
-        sessFiles = [];
-      }
-      for (const f of sessFiles) {
+      const live = activeSession(wu.phases && wu.phases.discovery);
+      for (const f of closedSessionLogs(sessDir, live)) {
         items.push({ file: path.posix.join(sessDir, f), workUnit: wuName, phase: 'discovery', topic: f.slice(0, -3) });
       }
     }
@@ -1143,334 +1224,270 @@ function discoverArtifacts(workUnits) {
   return items;
 }
 
-async function cmdIndexBulk(options, cfg, provider) {
-  let artifacts = discoverArtifacts();
+// Statuses under which the engine removes a per-topic item's chunks — its
+// `knowledge remove` call sites: supersede, topic cancel, topic postpone,
+// and specification promote.
+const RETIRED_ITEM_STATUSES = new Set(['superseded', 'cancelled', 'postponed', 'promoted']);
 
-  // --work-unit scopes the bulk walk to a single unit. This is the lifecycle
-  // re-index path (reactivate / pivot): the same artifact set the engine's old
-  // per-artifact walk covered, indexed in ONE spawn instead of one per file.
-  if (options && options.workUnit) {
-    artifacts = artifacts.filter((a) => a.workUnit === options.workUnit);
+/**
+ * @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function identityKey(workUnit, phase, topic) {
+  return `${workUnit}/${phase}/${topic}`;
+}
+
+/**
+ * @typedef {object} Indexed
+ * @property {string} workUnit
+ * @property {string} phase
+ * @property {string} topic
+ * @property {string} file  the source file the chunks were indexed from
+ * @property {Set<string|undefined>} hashes  the source hashes they carry —
+ *   undefined for a chunk with no recorded hash
+ * @property {number} chunks
+ */
+
+/**
+ * @typedef {Indexed & {reason: string}} Retirement
+ */
+
+/**
+ * Chunks grouped by identity.
+ * @param {Array<{work_unit: string, phase: string, topic: string, source_file: string, source_hash?: string}>} chunks
+ * @returns {Map<string, Indexed>}
+ */
+function identitiesOf(chunks) {
+  const byKey = new Map();
+  for (const c of chunks) {
+    const key = identityKey(c.work_unit, c.phase, c.topic);
+    if (!byKey.has(key)) {
+      byKey.set(key, { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), chunks: 0 });
+    }
+    const entry = byKey.get(key);
+    entry.hashes.add(c.source_hash);
+    entry.chunks += 1;
   }
+  return byKey;
+}
 
-  const kDir = knowledgeDir();
+/**
+ * Sort discovered artifacts against the store: `fresh` has no chunks,
+ * `changed` has chunks indexed from other content (or from content whose hash
+ * was never recorded), `unchanged` matches the file on disk.
+ * @param {Artifact[]} artifacts
+ * @param {Map<string, Indexed>} indexed
+ */
+function classifyArtifacts(artifacts, indexed) {
+  const out = { fresh: [], changed: [], unchanged: [] };
+  for (const artifact of artifacts) {
+    const entry = indexed.get(identityKey(artifact.workUnit, artifact.phase, artifact.topic));
+    if (!entry) {
+      out.fresh.push(artifact);
+      continue;
+    }
+    const hash = contentHash(fs.readFileSync(resolveArtifactPath(artifact.file), 'utf8'));
+    const current = entry.hashes.size === 1 && entry.hashes.has(hash);
+    out[current ? 'unchanged' : 'changed'].push(artifact);
+  }
+  return out;
+}
+
+/**
+ * Split artifacts into those compact leaves in the store and those it prunes
+ * — the bulk index never re-embeds a pruned one.
+ * @template {{workUnit: string, phase: string}} T
+ * @param {T[]} artifacts
+ * @param {ReturnType<typeof pruneTest>} pruning
+ * @returns {{kept: T[], pruned: T[]}}
+ */
+function splitPruned(artifacts, pruning) {
+  const out = { kept: [], pruned: [] };
+  for (const a of artifacts) {
+    out[pruning && pruning.prunes(a.workUnit, a.phase) ? 'pruned' : 'kept'].push(a);
+  }
+  return out;
+}
+
+/**
+ * Whether a recorded source path lands outside this project — a chunk indexed
+ * by absolute path from another checkout.
+ * @param {string} file
+ */
+function outsideProject(file) {
+  const rel = path.relative(config.findProjectRoot(), resolveArtifactPath(file));
+  return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
+}
+
+/**
+ * Why an indexed identity no longer belongs in the store, or null while it
+ * may. Only positive knowledge removes: the source file gone from disk, the
+ * work unit unregistered or cancelled, the per-topic item gone or retired. A
+ * source outside the project is no evidence it was deleted, a work unit whose
+ * manifest could not be read is evidence of nothing, and the project-level
+ * identities answer to their files alone.
+ * @param {Indexed} entry
+ * @param {Map<string, any>} units  work-unit manifests by name
+ * @param {Set<string>|null} registry
+ */
+function retiredReason(entry, units, registry) {
+  if (!outsideProject(entry.file) && !fs.existsSync(resolveArtifactPath(entry.file))) return 'source deleted';
+  if (RESERVED_IDENTITIES.has(entry.workUnit)) return null;
+  if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
+  const unit = units.get(entry.workUnit);
+  if (!unit) return null;
+  if (unit.status === 'cancelled') return 'work unit cancelled';
+  if (!ARTIFACT_PATHS[entry.phase]) return null;
+  const items = (unit.phases && unit.phases[entry.phase] && unit.phases[entry.phase].items) || {};
+  const item = items[entry.topic];
+  if (!item) return `no ${entry.phase} item`;
+  return RETIRED_ITEM_STATUSES.has(item.status) ? `${entry.phase} ${item.status}` : null;
+}
+
+/**
+ * The indexed identities that no longer belong in the store, each with its
+ * reason. A scope confines them to one work unit.
+ * @param {Map<string, Indexed>} indexed @param {Manifests} manifests @param {string|null} scope
+ * @returns {Retirement[]}
+ */
+function retirements(indexed, manifests, scope) {
+  const units = new Map(manifests.workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+  return [...indexed.values()]
+    .filter((entry) => !scope || entry.workUnit === scope)
+    .map((entry) => ({ ...entry, reason: retiredReason(entry, units, manifests.registry) }))
+    .filter((entry) => entry.reason);
+}
+
+/**
+ * What the bulk index does to the store: the discovered artifacts sorted into
+ * fresh, changed and unchanged, with those compact prunes set aside, and the
+ * indexed identities to retire. A scope confines all of it to one work unit.
+ * @param {Array<any>} chunks  every chunk in the store
+ * @param {Manifests} manifests
+ * @param {{scope: string|null, pruning: ReturnType<typeof pruneTest>}} opts
+ */
+function planIndex(chunks, manifests, { scope, pruning }) {
+  const indexed = identitiesOf(chunks);
+  const artifacts = discoverArtifacts(manifests).filter((a) => !scope || a.workUnit === scope);
+  const { kept, pruned } = splitPruned(artifacts, pruning);
+  return { ...classifyArtifacts(kept, indexed), pruned, retired: retirements(indexed, manifests, scope) };
+}
+
+/**
+ * Compact's prune test as the bulk index skips by: an invalid
+ * `decay_prune_below` prunes nothing here — compact alone refuses it.
+ * @param {object} cfg @param {Array<object>} workUnits
+ */
+function indexPruning(cfg, workUnits) {
+  try {
+    return pruneTest(cfg, workUnits);
+  } catch (err) {
+    if (err instanceof UserError) return null;
+    throw err;
+  }
+}
+
+/**
+ * The store as the bulk index plans from, and the stamp of the file it was
+ * read from — taken before the load, so a write that lands between the two
+ * reads as a change.
+ * @returns {Promise<{db: any, stamp: string|null}>}
+ */
+async function readStore() {
   const sp = storePath();
-  const mp = metadataPath();
+  const stamp = store.storeStamp(sp);
+  return { db: stamp === null ? null : await store.loadStore(sp), stamp };
+}
 
-  // Ensure knowledge directory exists.
-  if (!fs.existsSync(kDir)) {
-    fs.mkdirSync(kDir, { recursive: true });
-  }
-
-  // Preflight: if a prior store exists, validate the current config's
-  // provider/model/dimensions match what the store was built with. Without
-  // this check, a config change (e.g. 128-dim stub → 1536-dim OpenAI) that
-  // triggers bulk index would short-circuit at the isIndexed() step for
-  // every file and report "Indexed 0 files. N already indexed." as though
-  // everything were fine — while the stored embeddings are still at the old
-  // dimensions. resolveProviderState throws a UserError with the "Run
-  // `knowledge rebuild`" hint, same as `query` surfaces on mismatch.
-  if (fs.existsSync(mp)) {
-    const meta = store.readMetadata(mp);
-    resolveProviderState(meta, cfg, provider);
-  }
-
-  // Load existing store to check what's already indexed.
-  let db = null;
-  if (fs.existsSync(sp)) {
-    db = await store.loadStore(sp);
-  }
-
-  let totalNew = 0;
-  let totalChunks = 0;
-  let skipped = 0;
-
-  for (const item of artifacts) {
-    // Check if already indexed.
-    if (db) {
-      const indexed = await isIndexed(db, item.workUnit, item.phase, item.topic);
-      if (indexed) {
-        skipped++;
-        continue;
-      }
-    }
-
-    // Index with retry.
+/**
+ * Build and embed each planned artifact's documents. A failure fails its own
+ * artifact alone.
+ * @param {Array<{artifact: Artifact, state: 'new'|'changed'}>} planned
+ * @param {object|null} provider  null indexes keyword-only
+ * @returns {Promise<{built: Built[], failures: Array<{artifact: Artifact, error: Error}>}>}
+ */
+async function buildAll(planned, provider) {
+  const built = [];
+  const failures = [];
+  for (const { artifact, state } of planned) {
     try {
-      const identity = { workUnit: item.workUnit, phase: item.phase, topic: item.topic };
-      const count = await withRetry(
-        () => indexSingleFile(item.file, identity, cfg, provider),
-        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-      );
-      process.stdout.write(`Indexing ${item.file}... ${count} chunks\n`);
-      totalNew++;
-      totalChunks += count;
-      // No db reload here. discoverArtifacts yields one entry per identity
-      // (imports/seeds deduped, phase topics distinct), so indexing this file
-      // can never flip a LATER item's isIndexed answer — every isIndexed check
-      // is against a different identity. Reloading the store each file was one
-      // full load per file that never changed an outcome.
-    } catch (err) {
-      // All retries exhausted — add to pending queue. Write the stack to
-      // stderr so debugging does not depend on users capturing it later.
-      // Skip the stack for UserError and AuthError — both are user-config
-      // failures (validation / bad API key) where the message line alone
-      // is the actionable signal.
-      await addToPendingQueue(item.file, err.message);
-      process.stderr.write(
-        `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
-      );
-      const isUserFacing = err instanceof UserError || err instanceof AuthError;
-      if (err.stack && !isUserFacing) process.stderr.write(err.stack + '\n');
+      built.push({ artifact, state, docs: buildDocuments(artifact) });
+    } catch (error) {
+      failures.push({ artifact, error });
     }
   }
+  const unembedded = provider && built.length > 0 ? await embedAll(built, provider) : [];
+  const failed = new Set(unembedded.map((f) => f.artifact));
+  return { built: built.filter((b) => !failed.has(b.artifact)), failures: [...failures, ...unembedded] };
+}
 
-  // In bulk mode, process entire pending queue (no limit).
-  await processPendingQueue(cfg, provider, Infinity);
+/**
+ * Print what a bulk index did — each failure, each removal, each file
+ * indexed, then the summary — and return the summary. An identity retired
+ * after it was built reads as removed alone.
+ * @param {{built: Built[], failures: Array<{artifact: Artifact, error: Error}>, retired: Retirement[], unchanged: Artifact[]}} outcome
+ * @returns {{new: number, changed: number, removed: number, unchanged: number, failed: number}}
+ */
+function reportIndex({ built, failures, retired, unchanged }) {
+  const gone = new Set(retired.map((e) => identityKey(e.workUnit, e.phase, e.topic)));
+  const stays = (a) => !gone.has(identityKey(a.workUnit, a.phase, a.topic));
+  const indexed = built.filter((b) => stays(b.artifact));
 
+  for (const { artifact, error } of failures) {
+    process.stderr.write(`Failed to index ${artifact.file}: ${error.message}\n`);
+  }
+  for (const entry of retired) {
+    process.stdout.write(`Removed ${entry.file} — ${entry.chunks} chunks (${entry.reason})\n`);
+  }
+  for (const { artifact, docs, state } of indexed) {
+    process.stdout.write(`Indexed ${artifact.file} — ${docs.length} chunks (${state})\n`);
+  }
+
+  const summary = {
+    new: indexed.filter((b) => b.state === 'new').length,
+    changed: indexed.filter((b) => b.state === 'changed').length,
+    removed: retired.length,
+    unchanged: unchanged.filter(stays).length,
+    failed: failures.length,
+  };
+  const failed = summary.failed > 0 ? `, ${summary.failed} failed` : '';
   process.stdout.write(
-    `Indexed ${totalNew} files (${totalChunks} chunks). ${skipped} already indexed.\n`
+    `${summary.new} new, ${summary.changed} changed, ${summary.removed} removed, ${summary.unchanged} unchanged${failed}.\n`
   );
+  return summary;
 }
 
-// ---------------------------------------------------------------------------
-// Pending queue helpers
-// ---------------------------------------------------------------------------
+/**
+ * Bring the store in line with the files (see planIndex). Everything new or
+ * changed is built and embedded first; then, under the lock, the manifests
+ * are read again — a topic retired mid-run leaves in the same run — and the
+ * documents and the retirements land in one load and one save. Every file is
+ * attempted; a failure is counted in the returned summary.
+ * @returns {Promise<{new: number, changed: number, removed: number, unchanged: number, failed: number}>}
+ */
+async function cmdIndexBulk(options, cfg, provider) {
+  const scope = (options && options.workUnit) || null;
+  const manifests = readManifests();
+  // Resolved even when nothing needs embedding: a provider or model change
+  // since the store was built must surface here, not read as a store in line.
+  const embedder = indexProvider(cfg, provider);
+  const snapshot = await readStore();
+  const chunks = snapshot.db ? await store.searchAllFulltext(snapshot.db) : [];
+  const plan = planIndex(chunks, manifests, { scope, pruning: indexPruning(cfg, manifests.workUnits) });
 
-// Both pending-queue helpers are async and lock-protected to avoid
-// read-modify-write races with concurrent index/bulk operations.
+  const { built, failures } = await buildAll([
+    ...plan.fresh.map((artifact) => ({ artifact, state: 'new' })),
+    ...plan.changed.map((artifact) => ({ artifact, state: 'changed' })),
+  ], embedder);
 
-async function addToPendingQueue(file, errorMsg) {
-  const mp = metadataPath();
-  const kDir = knowledgeDir();
-  const lp = lockFilePath();
-  if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
-
-  await store.withLock(lp, async () => {
-    let metadata;
-    if (fs.existsSync(mp)) {
-      metadata = store.readMetadata(mp);
-    } else {
-      // First-ever failure before any successful index — create a minimal
-      // metadata file so failure tracking doesn't silently drop entries.
-      metadata = {
-        provider: null,
-        model: null,
-        dimensions: null,
-        last_indexed: null,
-        pending: [],
-      };
-    }
-    if (!Array.isArray(metadata.pending)) metadata.pending = [];
-
-    const existing = metadata.pending.findIndex((p) => p.file === file);
-    const base = { file, failed_at: new Date().toISOString(), error: errorMsg };
-    if (existing >= 0) {
-      const prior = metadata.pending[existing];
-      metadata.pending[existing] = { ...base, attempts: (prior.attempts || 1) + 1 };
-    } else {
-      metadata.pending.push({ ...base, attempts: 1 });
-    }
-    store.writeMetadata(mp, metadata);
+  const retired = built.length === 0 && plan.retired.length === 0 ? [] : await writeStore({
+    cfg,
+    provider: embedder,
+    built,
+    snapshot,
+    retire: async (db) => retirements(identitiesOf(await store.searchAllFulltext(db)), readManifests(), scope),
   });
-}
 
-async function removePendingItem(file) {
-  const mp = metadataPath();
-  const lp = lockFilePath();
-  if (!fs.existsSync(mp)) return;
-
-  await store.withLock(lp, async () => {
-    if (!fs.existsSync(mp)) return;
-    const metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending)) return;
-    metadata.pending = metadata.pending.filter((p) => p.file !== file);
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-// IMPORTANT: The store lock is NOT reentrant. processPendingQueue calls
-// indexSingleFile (acquires lock) and removePendingItem (acquires lock)
-// from inside this function — each call must happen with no lock held
-// at entry. Never wrap a call to processPendingQueue in withLock —
-// doing so would cause a same-process deadlock.
-async function processPendingQueue(cfg, provider, limit) {
-  const mp = metadataPath();
-  if (!fs.existsSync(mp)) return;
-
-  const metadata = store.readMetadata(mp);
-  if (!Array.isArray(metadata.pending) || metadata.pending.length === 0) return;
-
-  const toProcess = metadata.pending.slice(0, limit);
-
-  for (const item of toProcess) {
-    if ((item.attempts || 0) >= PENDING_MAX_ATTEMPTS) {
-      // Permanent failure — evict so the queue doesn't grow forever.
-      process.stderr.write(
-        `Pending item ${item.file} exceeded ${PENDING_MAX_ATTEMPTS} attempts — evicting. Last error: ${item.error}\n`
-      );
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    const absFile = resolveArtifactPath(item.file);
-    if (!fs.existsSync(absFile)) {
-      // File no longer exists — remove from queue. Anchored at the project
-      // root so a pending entry (stored relative to the project) is not
-      // wrongly evicted when the CLI runs from a subdirectory.
-      process.stderr.write(`Pending item ${item.file} no longer exists. Removing from queue.\n`);
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    let identity;
-    try {
-      identity = deriveIdentity(item.file);
-    } catch (_) {
-      // Can't derive identity — remove from queue.
-      await removePendingItem(item.file);
-      continue;
-    }
-
-    try {
-      await withRetry(
-        () => indexSingleFile(item.file, identity, cfg, provider),
-        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-      );
-      await removePendingItem(item.file);
-    } catch (err) {
-      // Still failing — bump attempts so eviction eventually fires.
-      await addToPendingQueue(item.file, err.message);
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Pending removal queue — mirrors the pending-index queue but for failed
-// `knowledge remove` calls (lock timeout, store I/O error). Without this,
-// a cancelled/superseded/promoted work unit's stale chunks persist in the
-// store until the user manually retries.
-// ---------------------------------------------------------------------------
-
-const REMOVAL_MAX_ATTEMPTS = 10;
-
-function removalKey(r) {
-  return `${r.workUnit}|${r.phase || ''}|${r.topic || ''}`;
-}
-
-async function addPendingRemoval(opts, errorMsg) {
-  const mp = metadataPath();
-  const kDir = knowledgeDir();
-  const lp = lockFilePath();
-  if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
-
-  await store.withLock(lp, async () => {
-    let metadata;
-    if (fs.existsSync(mp)) {
-      metadata = store.readMetadata(mp);
-    } else {
-      metadata = {
-        provider: null,
-        model: null,
-        dimensions: null,
-        last_indexed: null,
-        pending: [],
-        pending_removals: [],
-      };
-    }
-    if (!Array.isArray(metadata.pending_removals)) metadata.pending_removals = [];
-
-    const key = removalKey(opts);
-    const existing = metadata.pending_removals.findIndex((r) => removalKey(r) === key);
-    const base = {
-      workUnit: opts.workUnit,
-      phase: opts.phase || null,
-      topic: opts.topic || null,
-      queued_at: new Date().toISOString(),
-      error: errorMsg,
-    };
-    if (existing >= 0) {
-      const prior = metadata.pending_removals[existing];
-      metadata.pending_removals[existing] = { ...base, attempts: (prior.attempts || 0) + 1 };
-    } else {
-      metadata.pending_removals.push({ ...base, attempts: 1 });
-    }
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-async function removePendingRemoval(opts) {
-  const mp = metadataPath();
-  const lp = lockFilePath();
-  if (!fs.existsSync(mp)) return;
-
-  await store.withLock(lp, async () => {
-    if (!fs.existsSync(mp)) return;
-    const metadata = store.readMetadata(mp);
-    if (!Array.isArray(metadata.pending_removals)) return;
-    const key = removalKey(opts);
-    metadata.pending_removals = metadata.pending_removals.filter((r) => removalKey(r) !== key);
-    store.writeMetadata(mp, metadata);
-  });
-}
-
-// Lock semantics mirror processPendingQueue: never call while holding the
-// store lock — each queued retry acquires the lock itself.
-async function processPendingRemovals() {
-  const mp = metadataPath();
-  if (!fs.existsSync(mp)) return;
-
-  const metadata = store.readMetadata(mp);
-  if (!Array.isArray(metadata.pending_removals) || metadata.pending_removals.length === 0) return;
-
-  const toProcess = metadata.pending_removals.slice();
-
-  for (const item of toProcess) {
-    if ((item.attempts || 0) >= REMOVAL_MAX_ATTEMPTS) {
-      process.stderr.write(
-        `Pending removal for ${removalKey(item)} exceeded ${REMOVAL_MAX_ATTEMPTS} attempts — evicting.\n`
-      );
-      await removePendingRemoval(item);
-      continue;
-    }
-
-    try {
-      await performRemoval({ workUnit: item.workUnit, phase: item.phase, topic: item.topic });
-      process.stderr.write(`Drained pending removal for ${removalKey(item)}.\n`);
-      await removePendingRemoval(item);
-    } catch (err) {
-      // Still failing — bump attempts so we eventually evict.
-      try {
-        await addPendingRemoval(
-          { workUnit: item.workUnit, phase: item.phase, topic: item.topic },
-          err.message
-        );
-      } catch (_) {
-        // Metadata write failed — the next invocation will retry.
-      }
-    }
-  }
-}
-
-// Perform the actual remove-by-filter operation under the store lock.
-// Extracted from cmdRemove so the pending-removal queue can invoke it
-// without re-running the CLI layer (argument parsing, exit codes).
-async function performRemoval(opts) {
-  const sp = storePath();
-  const lp = lockFilePath();
-
-  if (!fs.existsSync(sp)) return 0;
-
-  let removed = 0;
-  await store.withLock(lp, async () => {
-    const db = await store.loadStore(sp);
-    const where = { work_unit: { eq: opts.workUnit } };
-    if (opts.phase) where.phase = { eq: opts.phase };
-    if (opts.topic) where.topic = { eq: opts.topic };
-    removed = await store.removeByFilter(db, where);
-    await store.saveStore(db, sp);
-  });
-  return removed;
+  return reportIndex({ built, failures, retired, unchanged: plan.unchanged });
 }
 
 // ---------------------------------------------------------------------------
@@ -1529,7 +1546,7 @@ function formatDate(ts) {
 }
 
 // ---------------------------------------------------------------------------
-// Progress clock (watermark) — idea #33
+// Progress clock (watermark)
 //
 // A logical clock that advances on completed WORK, not wall-clock time. For a
 // given work unit, `progressElapsed` is the summed significance weight of the
@@ -1638,15 +1655,15 @@ function resolveDecayWeights(cfg) {
  *   from config by the caller). Omitted → plain unit-count.
  */
 function getProgressClock(weights) {
-  let units;
-  try {
-    units = JSON.parse(runManifest(['list']));
-  } catch (err) {
-    reportUnexpectedManifestError('getProgressClock:list', err);
-    return new Map();
-  }
-  if (!Array.isArray(units)) return new Map();
-  const completed = units
+  return progressClockOf(listWorkUnits('getProgressClock:list'), weights);
+}
+
+/**
+ * The progress clock over an already-read manifest list.
+ * @param {Array<object>} workUnits @param {Object<string, number>} [weights]
+ */
+function progressClockOf(workUnits, weights) {
+  const completed = workUnits
     .filter((u) => u && u.name && u.status === 'completed')
     .map((u) => ({
       name: u.name,
@@ -1673,6 +1690,40 @@ function retrievability(progressElapsed, stability) {
   return Math.pow(DECAY_BASE, p / s);
 }
 
+/** @param {object} cfg */
+function resolveStability(cfg) {
+  return cfg && Number.isFinite(cfg.decay_base_stability)
+    ? cfg.decay_base_stability
+    : config.DEFAULTS.decay_base_stability;
+}
+
+/**
+ * Compact's prune test: a unit's non-spec chunks are pruned once its
+ * retrievability has decayed below `decay_prune_below`. A unit the progress
+ * clock has not moved past — in progress, undateable, the frontier — never
+ * is, and specifications never decay. Null when `decay_prune_below` is false.
+ * @param {object} cfg
+ * @param {Array<object>} workUnits  the manifest list the clock is built from
+ * @returns {{floor: number, prunes: (workUnit: string, phase: string) => boolean} | null}
+ */
+function pruneTest(cfg, workUnits) {
+  const floor = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
+  if (floor === false) return null;
+  if (typeof floor !== 'number' || !Number.isFinite(floor) || floor < 0 || floor > 1) {
+    throw new UserError(`Invalid decay_prune_below: ${JSON.stringify(floor)}. Expected false or a number in [0, 1].`);
+  }
+  const stability = resolveStability(cfg);
+  const clock = progressClockOf(workUnits, resolveDecayWeights(cfg));
+  return {
+    floor,
+    prunes: (workUnit, phase) => {
+      if (phase === 'specification') return false;
+      const elapsed = clock.get(workUnit) || 0;
+      return elapsed > 0 && retrievability(elapsed, stability) < floor;
+    },
+  };
+}
+
 // CLI boost field → store schema field. Kebab-case on the CLI surface,
 // snake_case in the schema. Keeps the CLI consistent with --work-unit /
 // --work-type while matching the indexed field names internally.
@@ -1694,9 +1745,7 @@ const BOOST_AMOUNT = 0.1;
  * R = 0.9^(progressElapsed / stability), which decays as the project completes
  * work past a chunk's work unit (see the progress clock). A decayed chunk sinks
  * but is never removed. Specs never decay. R attenuates only the similarity
- * score — intentional boosts are added on top, undimmed. (Replaces the former
- * timestamp-relative recency boost, which was both weak and — pre-#33 — fed by
- * a broken index-time timestamp.)
+ * score — intentional boosts are added on top, undimmed.
  *
  * @param {Array} results  raw result rows; each may carry `progressElapsed`
  *        (attached by the query pipeline; absent → 0 → no decay)
@@ -1889,10 +1938,7 @@ async function cmdQuery(args, options, cfg, provider) {
   // down-rank by retrievability + user --boost directives. The clock is derived
   // once from the manifest; on failure it's empty → progressElapsed 0 → no decay.
   const progressClock = getProgressClock(resolveDecayWeights(cfg));
-  const stability =
-    cfg && Number.isFinite(cfg.decay_base_stability)
-      ? cfg.decay_base_stability
-      : config.DEFAULTS.decay_base_stability;
+  const stability = resolveStability(cfg);
   const merged = Array.from(allResults.values()).map((r) =>
     Object.assign({}, r, { progressElapsed: progressClock.get(r.work_unit) || 0 })
   );
@@ -1988,7 +2034,6 @@ async function cmdCheck(/* args, options, cfg, provider */) {
 // ---------------------------------------------------------------------------
 
 async function cmdStatus() {
-  const kDir = knowledgeDir();
   const sp = storePath();
   const mp = metadataPath();
   const out = [];
@@ -2007,7 +2052,7 @@ async function cmdStatus() {
   const db = await store.loadStore(sp);
   const allChunks = await store.searchAllFulltext(db);
 
-  // 1. Index summary.
+  // Index summary.
   out.push(`Total chunks: ${allChunks.length}`);
 
   const byWu = {};
@@ -2043,11 +2088,14 @@ async function cmdStatus() {
     }
   }
 
-  // 2. Last indexed + 3. Store health.
+  // Last indexed + store health.
   out.push('');
   const stat = fs.statSync(sp);
   const sizeKb = (stat.size / 1024).toFixed(1);
   out.push(`Store size: ${sizeKb} KB`);
+
+  let cfg;
+  try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
 
   if (fs.existsSync(mp)) {
     const metadata = store.readMetadata(mp);
@@ -2062,28 +2110,7 @@ async function cmdStatus() {
       out.push('Mode: Keyword-only');
     }
 
-    // 4. Pending items.
-    if (Array.isArray(metadata.pending) && metadata.pending.length > 0) {
-      out.push('');
-      out.push(`Pending items: ${metadata.pending.length}`);
-      for (const p of metadata.pending) {
-        const a = p.attempts || 1;
-        out.push(`  ${p.file} — ${p.error} (attempt ${a}/${PENDING_MAX_ATTEMPTS}, ${p.failed_at})`);
-      }
-    }
-
-    // 4b. Pending removals.
-    if (Array.isArray(metadata.pending_removals) && metadata.pending_removals.length > 0) {
-      out.push('');
-      out.push(`Pending removals: ${metadata.pending_removals.length}`);
-      for (const r of metadata.pending_removals) {
-        out.push(`  ${removalKey(r)} — ${r.error} (attempt ${r.attempts || 1}/${REMOVAL_MAX_ATTEMPTS})`);
-      }
-    }
-
-    // 6. Provider mismatch warning.
-    let cfg;
-    try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
+    // Provider mismatch warning.
     if (cfg) {
       const cfgProvider = config.resolveProvider(cfg);
       if (metadata.provider && cfgProvider) {
@@ -2095,7 +2122,7 @@ async function cmdStatus() {
         }
       }
 
-      // 10. Stub-to-full upgrade note.
+      // Stub-to-full upgrade note.
       if ((metadata.provider === null || metadata.provider === undefined) && cfgProvider) {
         out.push('');
         out.push('NOTE: Keyword-only mode but embedding provider configured. Run `knowledge rebuild` for full hybrid search.');
@@ -2105,84 +2132,33 @@ async function cmdStatus() {
     out.push('Metadata: missing (run `knowledge rebuild` to fix)');
   }
 
-  // 7. Orphan detection — source files that no longer exist.
-  // Resolve relative to the project root (found by walking up from cwd)
-  // rather than cwd directly, so status invoked from a subdirectory
-  // does not mark every chunk as orphaned.
-  const projectRoot = config.findProjectRoot();
-  const orphans = [];
-  const seenSources = new Set();
-  for (const c of allChunks) {
-    if (seenSources.has(c.source_file)) continue;
-    seenSources.add(c.source_file);
-    if (!fs.existsSync(path.resolve(projectRoot, c.source_file))) {
-      orphans.push(c.source_file);
-    }
-  }
-  if (orphans.length > 0) {
-    out.push('');
-    out.push(`Orphaned chunks (source deleted): ${orphans.length} files`);
-    for (const f of orphans) {
-      out.push(`  ${f}`);
-    }
-  }
-
-  // The manifest tree is read ONCE and shared by both the unindexed-artifact
-  // discovery (8) and the manifest-knowledge consistency checks (9). Before,
-  // each listed independently — two `manifest list` spawns per status call.
-  const workUnits = listWorkUnits('cmdStatus:list');
-
-  // 8. Unindexed artifacts.
+  // What the next bulk index does: the artifacts it indexes — never indexed,
+  // or changed since — those compact prunes below the decay floor, which it
+  // skips, and the indexed identities it retires.
+  const warn = (err) => out.push('', `WARNING: ${err.message}`);
+  let manifests = null;
   try {
-    const artifacts = discoverArtifacts(workUnits);
-    const unindexed = [];
-    for (const a of artifacts) {
-      const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic);
-      if (!indexed) unindexed.push(a.file);
-    }
-    if (unindexed.length > 0) {
-      out.push('');
-      out.push(`Unindexed completed artifacts: ${unindexed.length}`);
-      for (const f of unindexed) {
-        out.push(`  ${f}`);
-      }
-    }
+    manifests = readManifests();
   } catch (err) {
-    // Discovery may fail if no manifest — surface so user can tell.
-    process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
+    warn(err);
   }
-
-  // 9. Manifest-knowledge consistency. Reuses the shared manifest tree (read
-  // once above) rather than shelling out per spec topic — status was O(specs)
-  // processes before, which meant ~5s on 50-spec repos.
-  const consistency = [];
-  const manifestByName = new Map();
-  for (const m of workUnits) if (m && m.name) manifestByName.set(m.name, m);
-
-  for (const wu of Object.keys(byWu)) {
-    const m = manifestByName.get(wu);
-    if (!m) continue;
-    if (m.status === 'cancelled') {
-      consistency.push(`Cancelled work unit still indexed: ${wu}`);
+  if (manifests) {
+    let pruning = null;
+    try {
+      pruning = pruneTest(cfg, manifests.workUnits);
+    } catch (err) {
+      warn(err);
     }
-  }
-  // Superseded specs: look up each topic in the cached manifest tree.
-  const specChunks = allChunks.filter((c) => c.phase === 'specification');
-  const specTopics = new Set(specChunks.map((c) => `${c.work_unit}.specification.${c.topic}`));
-  for (const key of specTopics) {
-    const [wuName, , topicName] = key.split('.');
-    const m = manifestByName.get(wuName);
-    if (!m || !m.phases || !m.phases.specification || !m.phases.specification.items) continue;
-    const topicData = m.phases.specification.items[topicName];
-    if (topicData && topicData.status === 'superseded') {
-      consistency.push(`Superseded spec still indexed: ${key}`);
-    }
-  }
-  if (consistency.length > 0) {
-    out.push('');
-    out.push('Consistency warnings:');
-    for (const w of consistency) {
-      out.push(`  ${w}`);
+    const plan = planIndex(allChunks, manifests, { scope: null, pruning });
+    for (const [label, rows] of [
+      ['Unindexed completed artifacts', plan.fresh.map((a) => a.file)],
+      ['Changed since indexing', plan.changed.map((a) => a.file)],
+      ['Pruned below the decay floor', plan.pruned.map((a) => a.file)],
+      ['Retired since indexing', plan.retired.map((e) => `${e.file} (${e.reason})`)],
+    ]) {
+      if (rows.length === 0) continue;
+      out.push('', `${label}: ${rows.length}`);
+      for (const row of rows) out.push(`  ${row}`);
     }
   }
 
@@ -2250,29 +2226,25 @@ async function cmdRebuild(_args, options, cfg, provider) {
 
     // Write a sentinel empty store + keyword-only metadata so cmdCheck
     // and concurrent invocations see a valid (empty) state. The bulk
-    // index below will overwrite these per-file.
+    // index below overwrites them.
     const dims = provider
       ? provider.dimensions()
       : (cfg && cfg.dimensions) || KEYWORD_ONLY_DIMENSIONS;
     const emptyDb = await store.createStore(dims);
     await store.saveStore(emptyDb, sp);
-    // pending[] resets to empty and pending_removals is deliberately dropped:
-    // rebuild reindexes every artifact from scratch, so a queued index retry
-    // is redundant and a queued removal targets chunks that no longer exist in
-    // the fresh store. Both queues are meaningless against the rebuilt index.
     store.writeMetadata(mp, {
       provider: provider ? cfg.provider : null,
       model: provider ? provider.model() : null,
       dimensions: provider ? provider.dimensions() : null,
       last_indexed: new Date().toISOString(),
-      pending: [],
     });
   });
   process.stdout.write('Deleted existing index.\n');
 
+  let summary;
   try {
-    // Run bulk index (acquires the lock per-file internally).
-    await cmdIndexBulk(options, cfg, provider);
+    // The bulk index takes the lock itself, once, for its write.
+    summary = await cmdIndexBulk(options, cfg, provider);
   } catch (err) {
     // Roll back to the pre-rebuild state. Best-effort: if the rollback
     // itself fails (disk full, permission change), we surface both errors
@@ -2301,9 +2273,11 @@ async function cmdRebuild(_args, options, cfg, provider) {
     throw err;
   }
 
-  // Bulk index succeeded — discard the backup.
+  // The rebuilt index stands — a file that failed to index is one the next
+  // start's bulk index retries — so the backup goes.
   if (fs.existsSync(spBak)) fs.unlinkSync(spBak);
   if (fs.existsSync(mpBak)) fs.unlinkSync(mpBak);
+  if (summary.failed > 0) process.exitCode = 1;
 }
 
 /**
@@ -2365,23 +2339,14 @@ async function cmdRemove(_args, options) {
   // `remove --work-unit <typo>` silently succeeds with "Removed 0 chunks"
   // — a fat-finger is indistinguishable from a real no-op. The registry
   // is authoritative (migration 031 backfills it from the filesystem),
-  // so a miss here means the caller has the wrong name.
-  //
-  // This check lives in cmdRemove only, not performRemoval — the pending-
-  // removal queue's drain path may legitimately target a WU that has since
-  // been removed from the registry (e.g. after absorption), and the stored
-  // chunks can still be cleaned up even when the WU entry is gone.
-  // Registry presence determines whether this is a "named WU" remove (the
-  // common path) or an "orphan-chunk cleanup" remove (the escape hatch
-  // when chunks linger after absorption / manual registry mutation). On
-  // registry-not-found, fall through to a store probe — if the store has
-  // chunks for this WU we treat it as an orphan cleanup and proceed; if
-  // not, surface the typo error.
+  // so a miss here means the caller has the wrong name — unless the store
+  // still holds chunks for the name (after absorption or a manual registry
+  // edit), which makes it an orphan-chunk cleanup instead.
   // Baseline and roadmap are file-based, project-level, and never in the
   // work-unit registry — the registry probe below would misreport a
   // legitimate remove as an orphan cleanup. Skip straight to removal.
   let isOrphanCleanup = false;
-  const projectEntry = options.workUnit === BASELINE_IDENTITY || options.workUnit === ROADMAP_IDENTITY
+  const projectEntry = RESERVED_IDENTITIES.has(options.workUnit)
     ? options.workUnit
     : runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
   if (projectEntry === '') {
@@ -2389,10 +2354,7 @@ async function cmdRemove(_args, options) {
     let storeMatch = 0;
     if (fs.existsSync(sp)) {
       const db = await store.loadStore(sp);
-      const where = { work_unit: { eq: options.workUnit } };
-      if (options.phase) where.phase = { eq: options.phase };
-      if (options.topic) where.topic = { eq: options.topic };
-      storeMatch = await store.countByFilter(db, where);
+      storeMatch = await store.countByFilter(db, removeFilter(options));
     }
     if (storeMatch === 0) {
       throw new UserError(
@@ -2413,42 +2375,26 @@ async function cmdRemove(_args, options) {
   const desc = formatRemoveDesc(options) + (isOrphanCleanup ? ' (orphan cleanup)' : '');
 
   // --dry-run is observational only: count what would be removed, touch
-  // nothing on disk. Don't drain the pending-removal queue either — that
-  // would be a real side effect.
+  // nothing on disk.
   if (options.dryRun) {
     if (!fs.existsSync(sp)) {
       process.stdout.write(`Would remove 0 chunks for ${desc} (store not initialised)\n`);
       return;
     }
     const db = await store.loadStore(sp);
-    const where = { work_unit: { eq: options.workUnit } };
-    if (options.phase) where.phase = { eq: options.phase };
-    if (options.topic) where.topic = { eq: options.topic };
-    const count = await store.countByFilter(db, where);
+    const count = await store.countByFilter(db, removeFilter(options));
     process.stdout.write(`Would remove ${count} chunks for ${desc}\n`);
     return;
   }
 
-  // Drain any previously-failed removals first so stale chunks from earlier
-  // cancellations/supersessions don't linger just because the store was
-  // briefly locked.
-  await processPendingRemovals();
-
-  if (!fs.existsSync(sp)) {
-    process.stdout.write(`Removed 0 chunks for ${desc}\n`);
-    return;
-  }
-
+  let removed;
   try {
-    const removed = await performRemoval(options);
-    process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
+    removed = await performRemoval(options);
   } catch (err) {
-    await addPendingRemoval(options, err.message);
-    process.stderr.write(
-      `Removal of ${desc} failed (${err.message}). Queued for automatic retry on next remove/compact.\n`
-    );
+    process.stderr.write(`Removal of ${desc} failed: ${err.message}\nThe next start will remove them.\n`);
     process.exit(1);
   }
+  process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
 }
 
 function formatRemoveDesc(options) {
@@ -2457,38 +2403,53 @@ function formatRemoveDesc(options) {
   return `${options.workUnit} (all phases)`;
 }
 
+/**
+ * The where-clause a remove's options name.
+ * @param {{workUnit: string, phase?: string|null, topic?: string|null}} opts
+ */
+function removeFilter(opts) {
+  const where = { work_unit: { eq: opts.workUnit } };
+  if (opts.phase) where.phase = { eq: opts.phase };
+  if (opts.topic) where.topic = { eq: opts.topic };
+  return where;
+}
+
+/**
+ * Remove every chunk the options name under the store lock. Returns the
+ * count removed — 0 when no store exists yet.
+ * @param {{workUnit: string, phase?: string|null, topic?: string|null}} opts
+ */
+async function performRemoval(opts) {
+  const sp = storePath();
+  if (!fs.existsSync(sp)) return 0;
+
+  let removed = 0;
+  await store.withLock(lockFilePath(), async () => {
+    const db = await store.loadStore(sp);
+    removed = await store.removeByFilter(db, removeFilter(opts));
+    await store.saveStore(db, sp);
+  });
+  return removed;
+}
+
 // ---------------------------------------------------------------------------
 // Compact command
 // ---------------------------------------------------------------------------
 
 async function cmdCompact(_args, options, cfg) {
-  // Drain any previously-failed removals first.
-  await processPendingRemovals();
-
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Decay is progress-based now (idea #33). `compact` is a pure storage
-  // backstop: it prunes a unit's non-spec chunks only once their retrievability
-  // R has fallen below decay_prune_below — by then they're already unreachable
-  // in ranking, so removal is hygiene, not a relevance call. false disables
+  // Decay is progress-based. `compact` is a pure storage backstop:
+  // it prunes a unit's non-spec chunks only once their retrievability R has
+  // fallen below decay_prune_below — by then they're already unreachable in
+  // ranking, so removal is hygiene, not a relevance call. false disables
   // pruning entirely; relevance still decays live in query ranking.
-  const rawPrune = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
-  if (rawPrune === false) {
+  const pruning = pruneTest(cfg, listWorkUnits('cmdCompact:list'));
+  if (!pruning) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
-  if (typeof rawPrune !== 'number' || !Number.isFinite(rawPrune) || rawPrune < 0 || rawPrune > 1) {
-    process.stderr.write(
-      `Invalid decay_prune_below: ${JSON.stringify(rawPrune)}. Expected false or a number in [0, 1].\n`
-    );
-    process.exit(1);
-  }
-  const pruneBelow = rawPrune;
-  const stability =
-    cfg && Number.isFinite(cfg.decay_base_stability)
-      ? cfg.decay_base_stability
-      : config.DEFAULTS.decay_base_stability;
 
   if (!fs.existsSync(sp)) return;
 
@@ -2497,11 +2458,6 @@ async function cmdCompact(_args, options, cfg) {
   // Discover unique work units in the store by searching for all docs.
   const allResults = await store.searchAllFulltext(db);
   if (allResults.length === 0) return;
-
-  // Progress clock: how far the project has moved past each unit. A unit
-  // absent from the clock (in-progress / undateable) has progressElapsed 0 →
-  // R = 1 → never pruned.
-  const progressClock = getProgressClock(resolveDecayWeights(cfg));
 
   // Group by work unit.
   const byWorkUnit = {};
@@ -2515,13 +2471,7 @@ async function cmdCompact(_args, options, cfg) {
   const toRemoveIds = [];
 
   for (const [wu, chunks] of Object.entries(byWorkUnit)) {
-    const progressElapsed = progressClock.get(wu) || 0;
-    if (progressElapsed === 0) continue; // frontier / in-progress — keep
-    const R = retrievability(progressElapsed, stability);
-    if (R >= pruneBelow) continue; // still reachable in ranking — keep
-
-    // Buried below the floor — prune non-spec chunks only (specs never decay).
-    const candidates = chunks.filter((c) => c.phase !== 'specification');
+    const candidates = chunks.filter((c) => pruning.prunes(wu, c.phase));
     if (candidates.length === 0) continue;
 
     const phases = new Set(candidates.map((c) => c.phase));
@@ -2538,7 +2488,7 @@ async function cmdCompact(_args, options, cfg) {
 
   if (options.dryRun) {
     const out = [];
-    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
+    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruning.floor})`);
     for (const r of removals) {
       out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
     }
@@ -2563,7 +2513,7 @@ async function cmdCompact(_args, options, cfg) {
   });
 
   const out = [];
-  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
+  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruning.floor})`);
   for (const r of removals) {
     out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
   }
@@ -2625,8 +2575,11 @@ module.exports = {
   deriveIdentity,
   resolveProviderState,
   withRetry,
+  isPermanentError,
   UserError,
   AuthError,
+  InvalidRequestError,
+  ConfigError,
   main,
   cmdIndexBulk,
   discoverArtifacts,
@@ -2642,10 +2595,13 @@ module.exports = {
   metadataPath,
   lockFilePath,
   INDEXED_PHASES,
+  ARTIFACT_PATHS,
+  RETIRED_ITEM_STATUSES,
   KEYWORD_ONLY_DIMENSIONS,
   buildProgressClock,
   getProgressClock,
   retrievability,
+  pruneTest,
   rerank,
   resolveSimilarityThreshold,
 };

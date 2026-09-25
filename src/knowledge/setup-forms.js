@@ -230,7 +230,6 @@ async function initProjectStore({ provider, providerName, cfg, projectConfigPayl
       model: provider ? provider.model() : null,
       dimensions: provider ? provider.dimensions() : null,
       last_indexed: null,
-      pending: [],
     });
     process.stdout.write('  metadata.json written\n');
   }

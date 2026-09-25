@@ -7,7 +7,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, MAX_TOKEN_LENGTH } = require('../../src/knowledge/chunker.js');
+const { chunk, MAX_TOKEN_LENGTH, MAX_CHUNK_CHARS } = require('../../src/knowledge/chunker.js');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
 const CHUNKING_DIR = path.resolve(
@@ -55,7 +55,6 @@ function baseConfig(overrides = {}) {
     strategy: 'split-on-heading',
     primary_level: 2,
     fallback_level: 3,
-    max_lines: 200,
     keep_whole_below: 0, // disable whole-file gate by default
     special_sections: {},
     strip_frontmatter: true,
@@ -113,44 +112,40 @@ describe('knowledge chunker', () => {
     assert.match(result[1].content, /banana/);
   });
 
-  it('splits oversized H2 sections once at H3 and does not recurse further', () => {
-    const big = [];
-    big.push('## Big');
-    big.push('intro line');
-    big.push('');
-    for (let i = 0; i < 3; i += 1) {
-      big.push('### Sub ' + i);
-      // Add many body lines so the parent H2 exceeds max_lines (set small
-      // below). Each sub-section is intentionally large to prove no recursion.
-      for (let j = 0; j < 15; j += 1) big.push('line ' + j);
-      big.push('');
-    }
-    const md = big.join('\n');
-    const result = chunk(md, baseConfig({ max_lines: 20, fallback_level: 3 }));
-    // Expect 3 H3 sub-chunks plus possibly a leading H2 header chunk (which
-    // here is empty because "intro line" falls under the H2 heading itself).
-    // At minimum: one chunk per H3.
-    const h3Chunks = result.filter((c) => /^### Sub/.test(c.content.trimStart()));
-    assert.strictEqual(h3Chunks.length, 3);
-    // Prove no further recursion: each sub-chunk retains its full body
-    // (14 "line N" entries) despite still exceeding a hypothetical inner
-    // max_lines cap.
-    for (const c of h3Chunks) {
-      assert.match(c.content, /line 0/);
-      assert.match(c.content, /line 14/);
-    }
+  it('splits an over-budget H2 at H3 and recurses into an over-budget H3', () => {
+    const para = (tag) => tag + ' ' + 'x'.repeat(900);
+    const md = [
+      '## Big',
+      'intro line',
+      '',
+      '### Small',
+      para('small body'),
+      '',
+      '### Huge',
+      'huge intro',
+      '',
+      '#### Deep A',
+      ...Array.from({ length: 10 }, (_, i) => para('deep-a ' + i)),
+      '',
+      '#### Deep B',
+      ...Array.from({ length: 10 }, (_, i) => para('deep-b ' + i)),
+    ].join('\n');
+    const result = chunk(md, baseConfig());
+    const openers = result.map((c) => c.content.split('\n')[0]);
+    assert.deepStrictEqual(openers, ['## Big', '### Small', '### Huge', '#### Deep A', '#### Deep B']);
+    assert.match(result[0].content, /intro line/);
+    assert.match(result[2].content, /huge intro/);
+    for (const c of result) assert.ok(c.content.length <= MAX_CHUNK_CHARS);
   });
 
-  it('keeps oversized H3 sections as-is (flat fallback chain)', () => {
-    const lines = ['## Parent'];
-    lines.push('### Sub');
-    for (let j = 0; j < 50; j += 1) lines.push('body ' + j);
-    const md = lines.join('\n');
-    const result = chunk(md, baseConfig({ max_lines: 10 }));
-    // Sub-chunks are kept as-is. Body should still be intact.
-    const all = result.map((c) => c.content).join('\n');
-    assert.match(all, /body 0/);
-    assert.match(all, /body 49/);
+  it('keeps a section under the budget whole, however many lines it runs to', () => {
+    const lines = ['## Long'];
+    for (let j = 0; j < 400; j += 1) lines.push('body ' + j);
+    lines.push('### Sub', 'sub body');
+    const result = chunk(lines.join('\n'), baseConfig());
+    assert.strictEqual(result.length, 1);
+    assert.match(result[0].content, /body 399/);
+    assert.match(result[0].content, /### Sub/);
   });
 
   it('falls back to H3 when no H2 headings exist', () => {
@@ -397,10 +392,177 @@ describe('knowledge chunker', () => {
       lines.push('');
     }
     const md = lines.join('\n');
-    // max_lines=200 — each section is ~101 lines, below the cap, so no
-    // fallback. Expect 10 chunks.
     const result = chunk(md, baseConfig());
     assert.strictEqual(result.length, 10);
+  });
+
+  it('exports a 16000-character budget', () => {
+    assert.strictEqual(MAX_CHUNK_CHARS, 16000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Character budget — every chunk fits, whatever the shape of the source
+// ---------------------------------------------------------------------------
+
+describe('knowledge chunker — character budget', () => {
+  const discussion = loadConfig('discussion');
+  const research = loadConfig('research');
+
+  // A paragraph of `size` characters of words on one line, tagged so order
+  // and survival can be checked.
+  function paragraph(tag, size) {
+    const words = 'lorem ipsum dolor sit amet ';
+    return (tag + ' ' + words.repeat(Math.ceil(size / words.length))).slice(0, size).trimEnd();
+  }
+
+  // Budget, verbatim, and no body lost: every chunk fits, every chunk is a
+  // slice of the source, and the chunks carry all of the source's
+  // non-whitespace body content — every line but a heading — in order. A
+  // heading can go: a split drops the heading-only piece it leaves behind.
+  function assertFaithful(chunks, source) {
+    const body = stripFrontmatter(source);
+    for (const c of chunks) {
+      assert.ok(c.content.length <= MAX_CHUNK_CHARS, 'chunk of ' + c.content.length + ' chars exceeds the budget');
+      assert.ok(body.includes(c.content), 'chunk is not a verbatim slice of the source');
+    }
+    const bodyText = (s) => s.split('\n').filter((line) => !/^#{1,6}\s/.test(line)).join('').replace(/\s+/g, '');
+    assert.ok(chunks.map((c) => bodyText(c.content)).join('') === bodyText(body), 'the chunks lost or reordered body content');
+  }
+
+  it('splits an over-budget own-chunk Summary into paragraph groups, packed up to the budget', () => {
+    const paras = Array.from({ length: 40 }, (_, i) => paragraph('summary-' + i, 1500));
+    const src = ['# Topic', '', 'Intro.', '', '## Context', '', 'Some context.', '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
+    const chunks = chunk(src, discussion);
+    const summary = chunks.filter((c) => c.content.includes('summary-'));
+    assert.ok(summary.length >= 4, 'expected the Summary split into several groups');
+    assert.ok(summary[0].content.startsWith('## Summary'), 'the first group carries the heading');
+    assert.ok(summary.every((c) => c.content.length > MAX_CHUNK_CHARS - 1600), 'groups are packed, not one paragraph each');
+    assertFaithful(chunks, src);
+  });
+
+  it('keeps an own-chunk Summary under the budget as one chunk', () => {
+    const paras = Array.from({ length: 5 }, (_, i) => paragraph('summary-' + i, 1500));
+    const context = Array.from({ length: 60 }, (_, i) => 'context line ' + i).join('\n');
+    const src = ['## Context', '', context, '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
+    const chunks = chunk(src, discussion);
+    const summary = chunks.filter((c) => c.content.startsWith('## Summary'));
+    assert.strictEqual(summary.length, 1);
+    assert.match(summary[0].content, /summary-4/);
+  });
+
+  it('recurses through H3, H4 and H5 until each piece fits', () => {
+    const block = (tag, count) => Array.from({ length: count }, (_, i) => paragraph(tag + '-' + i, 1000)).join('\n\n');
+    const src = [
+      '## Deep',
+      '',
+      block('intro', 2),
+      '',
+      '### Level 3',
+      '',
+      block('l3', 3),
+      '',
+      '#### Level 4',
+      '',
+      block('l4', 3),
+      '',
+      '##### Level 5a',
+      '',
+      block('l5a', 12),
+      '',
+      '##### Level 5b',
+      '',
+      block('l5b', 12),
+      '',
+      '### Sibling 3',
+      '',
+      block('s3', 3),
+      '',
+    ].join('\n');
+    const chunks = chunk(src, research);
+    const openers = chunks.map((c) => c.content.split('\n')[0]);
+    assert.deepStrictEqual(openers, ['## Deep', '### Level 3', '#### Level 4', '##### Level 5a', '##### Level 5b', '### Sibling 3']);
+    assertFaithful(chunks, src);
+  });
+
+  it('packs one giant paragraph by lines', () => {
+    const lines = Array.from({ length: 600 }, (_, i) => 'line ' + i + ' ' + 'z'.repeat(80));
+    const src = ['## Wall', lines.join('\n'), ''].join('\n');
+    const chunks = chunk(src, research);
+    assert.ok(chunks.length >= 3);
+    assert.ok(chunks[0].content.startsWith('## Wall'));
+    assertFaithful(chunks, src);
+  });
+
+  it('splits a fenced block only when the fence alone exceeds the budget', () => {
+    const code = Array.from({ length: 900 }, (_, i) => '  statement(' + i + ');' + ' '.repeat(2) + '// ' + 'c'.repeat(20)).join('\n');
+    const src = ['## Code', '', 'Before the fence.', '', '```js', code, '```', '', 'After the fence.', ''].join('\n');
+    const chunks = chunk(src, research);
+    assert.ok(chunks.length >= 3, 'the over-budget fence is split');
+    assertFaithful(chunks, src);
+  });
+
+  it('never splits inside a fence that fits the budget, blank lines inside it included', () => {
+    const fenceBody = Array.from({ length: 40 }, (_, i) => (i % 5 === 4 ? '' : 'fenced ' + i + ' ' + 'f'.repeat(100))).join('\n');
+    const fence = ['```', fenceBody, '```'].join('\n');
+    const before = Array.from({ length: 10 }, (_, i) => paragraph('before-' + i, 1200)).join('\n\n');
+    const after = Array.from({ length: 10 }, (_, i) => paragraph('after-' + i, 1200)).join('\n\n');
+    const src = ['## Mixed', '', before, '', fence, '', after, ''].join('\n');
+    const chunks = chunk(src, research);
+    const holding = chunks.filter((c) => c.content.includes('fenced '));
+    assert.strictEqual(holding.length, 1, 'the fence lands whole in one chunk');
+    assert.ok(holding[0].content.includes(fence));
+    assertFaithful(chunks, src);
+  });
+
+  it('slices a single line longer than the budget', () => {
+    const giant = Array.from({ length: 5000 }, (_, i) => 'word' + i).join(' ');
+    assert.ok(giant.length > MAX_CHUNK_CHARS * 2);
+    const src = ['## One Line', '', giant, ''].join('\n');
+    const chunks = chunk(src, research);
+    assert.ok(chunks.length >= 3);
+    assertFaithful(chunks, src);
+  });
+
+  it('splits a file under keep_whole_below lines when it is over the budget', () => {
+    const src = Array.from({ length: 10 }, (_, i) => paragraph('short-file-' + i, 5000)).join('\n\n');
+    assert.ok(src.split('\n').length < research.keep_whole_below);
+    const chunks = chunk(src, research);
+    assert.ok(chunks.length >= 4);
+    assertFaithful(chunks, src);
+  });
+
+  it('keeps a file under keep_whole_below lines and under the budget as one chunk', () => {
+    const src = ['## A', 'body a', '', '## B', 'body b'].join('\n');
+    const chunks = chunk(src, research);
+    assert.strictEqual(chunks.length, 1);
+    assert.strictEqual(chunks[0].content, src);
+  });
+
+  it('drops the heading-only piece a split leaves behind', () => {
+    const block = (tag) => Array.from({ length: 12 }, (_, i) => paragraph(tag + '-' + i, 1000)).join('\n\n');
+    const src = ['## Parent', '', '### Child A', '', block('a'), '', '### Child B', '', block('b'), ''].join('\n');
+    const chunks = chunk(src, research);
+    assert.deepStrictEqual(chunks.map((c) => c.content.split('\n')[0]), ['### Child A', '### Child B']);
+    assert.ok(chunks.every((c) => !c.content.includes('## Parent')), 'the parent heading is dropped');
+    assertFaithful(chunks, src);
+  });
+
+  it('holds the budget and the verbatim slice across every real fixture', () => {
+    for (const [fixture, phase] of [
+      ['discussion-fixture.md', 'discussion'],
+      ['spec-folio-fixture.md', 'specification'],
+      ['spec-deep-nested-fixture.md', 'specification'],
+      ['specification-fixture.md', 'specification'],
+      ['research-oversized-h3-fixture.md', 'research'],
+    ]) {
+      const src = loadFixture(fixture);
+      const chunks = chunk(src, loadConfig(phase));
+      for (const c of chunks) {
+        assert.ok(c.content.length <= MAX_CHUNK_CHARS, fixture);
+        assert.ok(stripFrontmatter(src).includes(c.content), fixture);
+      }
+    }
   });
 });
 
@@ -431,7 +593,6 @@ describe('phase chunking configs', () => {
       assert.strictEqual(cfg.strategy, 'split-on-heading');
       assert.strictEqual(cfg.primary_level, 2);
       assert.strictEqual(cfg.fallback_level, 3);
-      assert.strictEqual(cfg.max_lines, 200);
       assert.strictEqual(cfg.keep_whole_below, 50);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
@@ -470,19 +631,16 @@ describe('phase chunking configs', () => {
     }
   });
 
-  it('a bottom Corrigenda section chunks in isolation and stays whole past max_lines', () => {
+  it('a bottom Corrigenda section chunks in isolation — whole under the budget, split past it', () => {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
     );
-    // H3 date sub-headings inside the oversized section make the test
-    // discriminating: without the own-chunk rule the section splits at the
-    // fallback level, so these assertions fail on a reverted config.
-    const entries = Array.from({ length: 70 }, (_, i) => [
+    const entries = (count) => Array.from({ length: count }, (_, i) => [
       '### 2026-08-0' + ((i % 9) + 1) + ' — batch ' + i,
       '',
       '> **Corrigendum 2026-08-0' + ((i % 9) + 1) + '** (from `other`): "claim ' + i + '" — corrected: truth ' + i + '.',
     ].join('\n')).join('\n');
-    const src = [
+    const spec = (count) => [
       '# Billing Specification',
       '',
       'Intro paragraph.',
@@ -493,20 +651,22 @@ describe('phase chunking configs', () => {
       '',
       '## Corrigenda',
       '',
-      entries,
+      entries(count),
       '',
     ].join('\n');
-    const chunks = chunk(src, cfg);
-    const corrigenda = chunks.filter((c) => c.content.startsWith('## Corrigenda'));
+
+    const small = chunk(spec(70), cfg);
+    const corrigenda = small.filter((c) => c.content.startsWith('## Corrigenda'));
     assert.strictEqual(corrigenda.length, 1, 'exactly one Corrigenda chunk');
-    assert.ok(corrigenda[0].content.includes('claim 69'), 'oversized section not split despite H3s');
-    assert.strictEqual(
-      chunks.filter((c) => c.content.startsWith('### 2026')).length,
-      0,
-      'no fallback-level fragments escaped the section'
-    );
-    const intro = chunks.find((c) => c.content.startsWith('# Billing Specification'));
+    assert.ok(corrigenda[0].content.includes('claim 69'), 'the whole section in one chunk');
+    assert.strictEqual(small.filter((c) => c.content.startsWith('### 2026')).length, 0);
+    const intro = small.find((c) => c.content.startsWith('# Billing Specification'));
     assert.ok(intro && !intro.content.includes('Corrigendum'), 'title chunk free of corrigenda');
+
+    const big = chunk(spec(400), cfg);
+    assert.ok(big.filter((c) => c.content.startsWith('### 2026')).length > 1, 'an over-budget own-chunk splits');
+    for (const c of big) assert.ok(c.content.length <= MAX_CHUNK_CHARS);
+    assert.ok(big.some((c) => c.content.includes('claim 399')));
   });
 
   it('imports.json declares low confidence (matches research tier)', () => {
@@ -582,12 +742,11 @@ describe('phase chunking configs', () => {
     assert.ok(/Rate Limiting/.test(combined), 'expected Rate Limiting content preserved');
   });
 
-  it('analysis config falls back to H3 splitting when the H2 section is large', () => {
-    // primary_level=2, fallback_level=3, max_lines=200. Force the H2 section
-    // past max_lines so the chunker falls back to splitting at H3.
+  it('analysis config falls back to H3 splitting when the H2 section is over the budget', () => {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
     );
+    const body = (tag) => Array.from({ length: 120 }, (_, i) => tag + ' line ' + (i + 1) + ' ' + 'y'.repeat(60)).join('\n');
     const src = [
       '# discovery-gap-analysis',
       '',
@@ -595,18 +754,17 @@ describe('phase chunking configs', () => {
       '',
       '### Caching Layer',
       '',
-      Array.from({ length: 120 }, (_, i) => 'caching line ' + (i + 1)).join('\n'),
+      body('caching'),
       '',
       '### Rate Limiting',
       '',
-      Array.from({ length: 120 }, (_, i) => 'rate line ' + (i + 1)).join('\n'),
+      body('rate'),
       '',
     ].join('\n');
     const chunks = chunk(src, cfg);
-    assert.ok(chunks.length >= 2, 'expected H3 fallback splitting on oversized H2 section');
-    const contents = chunks.map((c) => c.content);
-    assert.ok(contents.some((c) => /### Caching Layer/.test(c)), 'expected a Caching Layer chunk');
-    assert.ok(contents.some((c) => /### Rate Limiting/.test(c)), 'expected a Rate Limiting chunk');
+    const openers = chunks.map((c) => c.content.split('\n')[0]);
+    assert.ok(openers.includes('### Caching Layer'), 'expected a Caching Layer chunk');
+    assert.ok(openers.includes('### Rate Limiting'), 'expected a Rate Limiting chunk');
   });
 });
 
@@ -629,12 +787,11 @@ describe('knowledge chunker — real fixtures', () => {
     }
   }
 
-  function assertNoChunkExceedsMaxLines(chunks, maxLines) {
+  function assertWithinBudget(chunks) {
     for (const c of chunks) {
-      const n = c.content.split('\n').length;
       assert.ok(
-        n <= maxLines,
-        'chunk exceeded max_lines: ' + n + ' > ' + maxLines
+        c.content.length <= MAX_CHUNK_CHARS,
+        'chunk exceeded the budget: ' + c.content.length + ' > ' + MAX_CHUNK_CHARS
       );
     }
   }
@@ -670,7 +827,7 @@ describe('knowledge chunker — real fixtures', () => {
       );
     }
 
-    assertNoChunkExceedsMaxLines(chunks, cfg.max_lines);
+    assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
   });
 
@@ -734,7 +891,7 @@ describe('knowledge chunker — real fixtures', () => {
       );
     }
 
-    assertNoChunkExceedsMaxLines(chunks, cfg.max_lines);
+    assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
   });
 
@@ -767,29 +924,23 @@ describe('knowledge chunker — real fixtures', () => {
       );
     }
 
-    assertNoChunkExceedsMaxLines(chunks, cfg.max_lines);
+    assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
   });
 
-  it('triggers fallback splitting on oversized research section', () => {
+  it('keeps a long research section under the budget as one chunk', () => {
+    // The single H2 runs to ~250 lines but well under the character budget,
+    // so its three H3 observations stay together.
     const src = loadFixture('research-single-section-fixture.md');
     const cfg = loadConfig('research');
     const chunks = chunk(src, cfg);
 
-    // The single H2 exceeds max_lines, so fallback splits at H3 into 3
-    // sub-chunks (Observation A, B, C). The leading pre-H3 content under
-    // the H2 may also become its own sub-chunk if it has body text.
-    const h3Chunks = chunks.filter((c) =>
-      /^### Observation/.test(c.content.split('\n')[0])
-    );
-    assert.strictEqual(h3Chunks.length, 3);
-
-    // No recursion: each H3 sub-chunk still contains its full body
-    // (80 body lines).
-    for (const c of h3Chunks) {
-      assert.match(c.content, /body line 01/);
-      assert.match(c.content, /body line 80/);
+    const section = chunks.filter((c) => /^## /.test(c.content.split('\n')[0]));
+    assert.strictEqual(section.length, 1);
+    for (const observation of ['### Observation A', '### Observation B', '### Observation C']) {
+      assert.ok(section[0].content.includes(observation), observation);
     }
+    assert.match(section[0].content, /body line 80/);
 
     assertVerbatim(chunks, src);
   });
@@ -896,8 +1047,8 @@ describe('knowledge chunker — real fixtures', () => {
   it('chunks a deeply-nested spec (tick-core) where a single H2 contains all H3s', () => {
     // tick v1 tick-core/specification.md has only 2 H2s: "## Specification"
     // (754 lines, gets fallback-split at H3) and "## Dependencies" (27
-    // lines, stays whole). Verifies that real artifacts with one huge
-    // parent H2 do not break the flat fallback chain.
+    // lines, stays whole). Verifies that a real artifact with one huge
+    // parent H2 splits at its H3s.
     const src = loadFixture('spec-deep-nested-fixture.md');
     const cfg = loadConfig('specification');
     const chunks = chunk(src, cfg);
@@ -918,25 +1069,15 @@ describe('knowledge chunker — real fixtures', () => {
     assertVerbatim(chunks, src);
   });
 
-  it('chunks an oversized-H3 research fixture and keeps oversized H3s intact', () => {
+  it('chunks a research fixture with a ~310-line H3 within the budget', () => {
     // tick v1 research exploration.md has an H3 "Session 1" under "Open
-    // Questions to Explore" that is ~310 lines — well over max_lines=200.
-    // The flat fallback chain says: no recursion. This chunk stays as-is
-    // and `knowledge status` (Phase 4) will report it as oversized.
+    // Questions to Explore" that runs to ~310 lines.
     const src = loadFixture('research-oversized-h3-fixture.md');
     const cfg = loadConfig('research');
     const chunks = chunk(src, cfg);
 
-    const oversized = chunks.filter((c) => c.content.split('\n').length > cfg.max_lines);
-    assert.ok(
-      oversized.length >= 1,
-      'expected at least one oversized H3 chunk, got ' + oversized.length
-    );
-    // The oversized chunk should be an H3, not an H2 (fallback already
-    // fired once at H3, and flat chain forbids further recursion).
-    for (const c of oversized) {
-      assert.match(c.content.split('\n')[0], /^### /);
-    }
+    assert.ok(chunks.length >= 2);
+    assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
   });
 
@@ -969,7 +1110,7 @@ describe('knowledge chunker — real fixtures', () => {
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 10);
-    assertNoChunkExceedsMaxLines(chunks, cfg.max_lines);
+    assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
   });
 
@@ -1059,7 +1200,6 @@ describe('knowledge chunker — real fixtures', () => {
       strategy: 'split-on-heading',
       primary_level: 2,
       fallback_level: 3,
-      max_lines: 200,
       keep_whole_below: 0,
       special_sections: { Footnote: 'merge-up' },
       strip_frontmatter: false,
@@ -1101,7 +1241,6 @@ describe('knowledge chunker — real fixtures', () => {
       strategy: 'split-on-heading',
       primary_level: 2,
       fallback_level: 3,
-      max_lines: 200,
       keep_whole_below: 0,
       special_sections: { Footnote: 'merge-up' },
       strip_frontmatter: false,
@@ -1129,7 +1268,6 @@ describe('knowledge chunker — token-length cap', () => {
       strategy: 'split-on-heading',
       primary_level: 2,
       fallback_level: 3,
-      max_lines: 200,
       keep_whole_below: 0,
       special_sections: {},
       strip_frontmatter: true,
@@ -1156,6 +1294,7 @@ describe('knowledge chunker — token-length cap', () => {
     const chunks = chunk(md, capConfig());
     assert.ok(chunks.length >= 1);
     assert.ok(longestToken(chunks) <= MAX_TOKEN_LENGTH);
+    for (const c of chunks) assert.ok(c.content.length <= MAX_CHUNK_CHARS);
     // Every byte of the run survives — split, not truncated.
     const joined = chunks.map((c) => c.content).join('\n');
     const runChars = (joined.match(/a/g) || []).length;

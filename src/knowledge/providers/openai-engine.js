@@ -27,6 +27,18 @@
 
 const MAX_BATCH_SIZE = 2048;
 
+// OpenAI refuses a request whose inputs sum past 300,000 tokens; at the
+// densest likely tokenisation, about 2 characters a token, this stays under.
+const MAX_BATCH_CHARS = 400000;
+
+// A request the endpoint never answers must not hang the caller — the bulk
+// index runs at every start.
+const REQUEST_TIMEOUT_MS = 60000;
+
+// HTTP statuses where the endpoint refused the request itself — an input
+// over the model's limit, a malformed body.
+const INVALID_REQUEST_STATUSES = new Set([400, 413, 422]);
+
 // AuthError — marker class for HTTP 401/403 from the embeddings API.
 // Bad/expired keys do not fix themselves between retries, so withRetry
 // short-circuits this class instead of burning the backoff budget.
@@ -34,6 +46,25 @@ class AuthError extends Error {
   constructor(message) {
     super(message);
     this.name = 'AuthError';
+  }
+}
+
+// InvalidRequestError — marker class for HTTP 400/413/422 from the
+// embeddings API. The same request is refused the same way on every retry.
+class InvalidRequestError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'InvalidRequestError';
+  }
+}
+
+// ConfigError — marker class for a provider configuration the model
+// contradicts (a vector of another width than the configured dimensions).
+// Only a config change fixes it, never a retry.
+class ConfigError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ConfigError';
   }
 }
 
@@ -45,6 +76,7 @@ class OpenAIEmbeddingsEngine {
    *   model: string,
    *   dimensions: number,
    *   sendDimensionsParam: boolean,
+   *   timeoutMs?: number,
    *   errorContext: {
    *     label: string,
    *     authHint: string,
@@ -64,6 +96,7 @@ class OpenAIEmbeddingsEngine {
     this._model = policy.model;
     this._dimensions = policy.dimensions;
     this._sendDimensionsParam = policy.sendDimensionsParam === true;
+    this._timeoutMs = policy.timeoutMs || REQUEST_TIMEOUT_MS;
     this._errorContext = policy.errorContext || {};
   }
 
@@ -91,7 +124,7 @@ class OpenAIEmbeddingsEngine {
     if (!Number.isInteger(this._dimensions) || this._dimensions <= 0) return;
     if (!Array.isArray(vec) || vec.length !== this._dimensions) {
       const got = Array.isArray(vec) ? `width ${vec.length}` : `a non-array (${typeof vec})`;
-      throw new Error(
+      throw new ConfigError(
         `${this._errorContext.label} returned ${got}${where ? ' ' + where : ''}, ` +
           `expected width ${this._dimensions}. The configured \`dimensions\` does not match ` +
           "the model's native output — set dimensions to the model's real width and rebuild."
@@ -130,8 +163,9 @@ class OpenAIEmbeddingsEngine {
   }
 
   /**
-   * Embed a batch of text strings. OpenAI natively accepts arrays.
-   * Chunks into multiple requests if the array exceeds MAX_BATCH_SIZE.
+   * Embed a batch of text strings, one request per batch that fits both
+   * MAX_BATCH_SIZE inputs and MAX_BATCH_CHARS characters. Vectors come back
+   * in input order.
    * @param {string[]} texts
    * @returns {Promise<number[][]>}
    */
@@ -139,42 +173,25 @@ class OpenAIEmbeddingsEngine {
     if (!Array.isArray(texts)) {
       throw new Error(`${this._errorContext.label}.embedBatch: texts must be an array`);
     }
-    if (texts.length === 0) return [];
 
-    if (texts.length <= MAX_BATCH_SIZE) {
-      const res = await this._fetch(this._body(texts));
+    const results = [];
+    for (const batch of requestBatches(texts)) {
+      const res = await this._fetch(this._body(batch.texts));
       // Validate response length — a short response silently propagates
       // undefined embeddings into Orama and degrades chunks to keyword-only
       // with no warning. Also doubles as a "config dims ≠ model native dims"
       // sanity check for compatible endpoints.
-      if (!Array.isArray(res.data) || res.data.length !== texts.length) {
+      if (!Array.isArray(res.data) || res.data.length !== batch.texts.length) {
         throw new Error(
-          `${this._errorContext.label} embedBatch response length mismatch: requested ${texts.length}, received ${res.data ? res.data.length : 0}`
+          `${this._errorContext.label} embedBatch response length mismatch at offset ${batch.offset}: requested ${batch.texts.length}, received ${res.data ? res.data.length : 0}`
         );
       }
       // OpenAI returns data sorted by index — ensure correct order.
       const sorted = [...res.data].sort((a, b) => a.index - b.index);
-      return sorted.map((d, i) => {
-        this._assertVectorWidth(d.embedding, `at index ${i}`);
-        return d.embedding;
+      sorted.forEach((d, i) => {
+        this._assertVectorWidth(d.embedding, `at index ${batch.offset + i}`);
+        results.push(d.embedding);
       });
-    }
-
-    // Chunk into batches of MAX_BATCH_SIZE.
-    const results = new Array(texts.length);
-    for (let offset = 0; offset < texts.length; offset += MAX_BATCH_SIZE) {
-      const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
-      const res = await this._fetch(this._body(slice));
-      if (!Array.isArray(res.data) || res.data.length !== slice.length) {
-        throw new Error(
-          `${this._errorContext.label} embedBatch response length mismatch on chunk offset=${offset}: requested ${slice.length}, received ${res.data ? res.data.length : 0}`
-        );
-      }
-      const sorted = [...res.data].sort((a, b) => a.index - b.index);
-      for (let i = 0; i < sorted.length; i++) {
-        this._assertVectorWidth(sorted[i].embedding, `at index ${offset + i}`);
-        results[offset + i] = sorted[i].embedding;
-      }
     }
     return results;
   }
@@ -205,8 +222,18 @@ class OpenAIEmbeddingsEngine {
 
     let res;
     try {
-      res = await fetch(this._endpoint(), { method: 'POST', headers, body });
+      res = await fetch(this._endpoint(), {
+        method: 'POST',
+        headers,
+        body,
+        signal: AbortSignal.timeout(this._timeoutMs),
+      });
     } catch (err) {
+      if (err && err.name === 'TimeoutError') {
+        throw new Error(
+          `${ctx.label} embedding request timed out after ${this._timeoutMs / 1000}s (network error): the endpoint did not answer`
+        );
+      }
       // Node's fetch (undici) reports low-level failures as a generic
       // "fetch failed" message and stashes the real errno (ECONNREFUSED,
       // ENOTFOUND, ETIMEDOUT, ...) on err.cause. Surface it so the setup
@@ -240,7 +267,8 @@ class OpenAIEmbeddingsEngine {
       if (res.status === 429) {
         throw new Error(`${ctx.label} rate limit exceeded (HTTP 429). ${detail}`.trim());
       }
-      throw new Error(`${ctx.label} embedding request failed (HTTP ${res.status}): ${detail}`);
+      const failed = `${ctx.label} embedding request failed (HTTP ${res.status}): ${detail}`;
+      throw INVALID_REQUEST_STATUSES.has(res.status) ? new InvalidRequestError(failed) : new Error(failed);
     }
 
     let json;
@@ -254,8 +282,39 @@ class OpenAIEmbeddingsEngine {
   }
 }
 
+/**
+ * Split inputs into consecutive request batches: a batch closes when the next
+ * input would take it past MAX_BATCH_SIZE inputs or MAX_BATCH_CHARS
+ * characters. An input over the character budget on its own still gets a
+ * batch of its own.
+ * @param {string[]} texts
+ * @returns {Array<{offset: number, texts: string[]}>}
+ */
+function requestBatches(texts) {
+  const batches = [];
+  let current = null;
+  let chars = 0;
+  texts.forEach((text, i) => {
+    const fits = current !== null &&
+      current.texts.length < MAX_BATCH_SIZE &&
+      chars + text.length <= MAX_BATCH_CHARS;
+    if (!fits) {
+      current = { offset: i, texts: [] };
+      batches.push(current);
+      chars = 0;
+    }
+    current.texts.push(text);
+    chars += text.length;
+  });
+  return batches;
+}
+
 module.exports = {
   OpenAIEmbeddingsEngine,
   AuthError,
+  InvalidRequestError,
+  ConfigError,
   MAX_BATCH_SIZE,
+  MAX_BATCH_CHARS,
+  REQUEST_TIMEOUT_MS,
 };

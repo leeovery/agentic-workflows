@@ -225,11 +225,70 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.ok(!files.includes('.workflows/.roadmap/imports/diagram.png'));
   });
 
-  it('accepts a pre-fetched manifest list and yields the identical set', () => {
-    // cmdStatus passes the shared `manifest list` payload in; the result must
-    // match the self-fetching path exactly.
-    const units = JSON.parse(require('./engine-harness.cjs').output(root, ['manifest', 'list']));
-    assert.deepStrictEqual(normalise(discoverArtifacts(units)), EXPECTED);
+  it('accepts manifests already read and yields the identical set', () => {
+    // The bulk index and status read the manifests once and pass them in; the
+    // result must match the self-fetching path exactly.
+    const workUnits = JSON.parse(require('./engine-harness.cjs').output(root, ['manifest', 'list']));
+    assert.deepStrictEqual(normalise(discoverArtifacts({ workUnits, registry: null, roadmapSession: null })), EXPECTED);
+  });
+});
+
+describe('knowledge bulk discovery — live session logs', () => {
+  // A live session's log is indexed when the session closes, never while it
+  // is being written: the epic's `phases.discovery.active_session` and the
+  // project's `roadmap.active_session` name the live one.
+  let root;
+  let cwd0;
+
+  before(() => {
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-discover-live-')));
+    const wf = path.join(root, '.workflows');
+    writeJson(path.join(wf, 'manifest.json'), {
+      work_units: { payments: { work_type: 'epic' } },
+      roadmap: { active_session: '002' },
+    });
+    writeJson(path.join(wf, 'payments', 'manifest.json'), {
+      name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
+      phases: { discovery: { active_session: '002' } },
+    });
+    for (const dir of [path.join(wf, 'payments', 'discovery', 'sessions'), path.join(wf, '.roadmap', 'sessions')]) {
+      writeFile(path.join(dir, 'session-001.md'), '# closed\n');
+      writeFile(path.join(dir, 'session-002.md'), '# live\n');
+    }
+    cwd0 = process.cwd();
+    process.chdir(root);
+  });
+
+  after(() => {
+    process.chdir(cwd0);
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it("leaves the epic's live discovery session log undiscovered", () => {
+    const sessions = normalise(discoverArtifacts()).filter((it) => it.phase === 'discovery').map((it) => it.topic);
+    assert.deepStrictEqual(sessions, ['session-001']);
+  });
+
+  it("leaves the roadmap's live session log undiscovered", () => {
+    const sessions = normalise(discoverArtifacts()).filter((it) => it.phase === 'roadmap').map((it) => it.topic);
+    assert.deepStrictEqual(sessions, ['session-001']);
+  });
+});
+
+describe('knowledge vocabularies the engine also defines', () => {
+  const { ARTIFACT_PATHS, RETIRED_ITEM_STATUSES } = require('../../src/knowledge/index');
+
+  it('retires chunks under exactly the statuses the engine calls terminal', () => {
+    const { TERMINAL_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+    assert.deepStrictEqual([...RETIRED_ITEM_STATUSES].sort(), [...TERMINAL_STATUSES].sort());
+  });
+
+  it("derives each phase artifact's path exactly as the engine does", () => {
+    const { INDEXED_ARTIFACTS } = require('../../skills/workflow-engine/scripts/domain/kb.cjs');
+    assert.deepStrictEqual(Object.keys(ARTIFACT_PATHS).sort(), Object.keys(INDEXED_ARTIFACTS).sort());
+    for (const phase of Object.keys(ARTIFACT_PATHS)) {
+      assert.strictEqual(ARTIFACT_PATHS[phase]('payments', 'ledger'), INDEXED_ARTIFACTS[phase]('payments', 'ledger'), phase);
+    }
   });
 });
 

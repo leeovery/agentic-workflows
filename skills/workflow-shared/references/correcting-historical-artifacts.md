@@ -74,7 +74,7 @@ Present the full correction list — each wrong claim, its evidence, and its pro
    > **Corrigendum {YYYY-MM-DD}** (from `{correcting_work_unit}`): {original claim, quoted} — corrected: {what is true}.
    ```
 
-3. **Re-index.** Replaces the file's existing chunks in one idempotent call:
+3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks: tell the user in one line that the next start retries it, and continue:
 
    ```bash
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
@@ -129,7 +129,7 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
    > **Corrigendum {YYYY-MM-DD}** (from `{correcting_phase}`): {original claim, quoted} — corrected: {what is true}.
    ```
 
-3. **Re-index.** Replaces the file's existing chunks in one idempotent call:
+3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks — continue, and the next start retries it:
 
    ```bash
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}

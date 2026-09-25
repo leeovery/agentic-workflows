@@ -71,14 +71,12 @@ Apply the changes to the doc, restate the summary, then re-fetch and emit the ga
 
 ## C. Land
 
-Index the doc, mark the area, and commit:
+Index the doc, mark the area, and commit. A failed `index` never blocks — note it to the user in one line (the next start retries it) and continue; the doc and commit still land:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/.baseline/{area}.md
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} completed
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline({area}): document the {area} baseline"
 ```
-
-A failed `index` is queued by the CLI for retry on its next call — note it to the user in one line and continue; the doc and commit still land.
 
 → Return to caller.
