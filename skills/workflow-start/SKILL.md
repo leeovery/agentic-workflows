@@ -191,6 +191,12 @@ Branch on the boot response's `tmux_labels` — `prompt` means the session runs 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+**`▪ Session Labels`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 > You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at its menu — putting the original name back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.
 ```
 
@@ -255,6 +261,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
 → Proceed to **Step 1**.
 
 #### If `baseline` is `none` and the codebase predates the workflows
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Baseline Assessment`**
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 
