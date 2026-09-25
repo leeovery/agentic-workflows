@@ -4,8 +4,8 @@
 //
 // Imports from the BUILT bundle so we validate the shipped surface. Covers the
 // pure buildProgressClock() — the watermark that advances on completed work,
-// not wall-clock time. getProgressClock() (the manifest IO wrapper) is thin
-// glue exercised end-to-end by the CLI tests, not here.
+// not wall-clock time. The query's manifest read is thin glue exercised
+// end-to-end by the CLI tests, not here.
 
 require('./hermetic-env.cjs');
 

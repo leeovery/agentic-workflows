@@ -1722,20 +1722,7 @@ function resolveDecayWeights(cfg) {
 }
 
 /**
- * Gather completed work units from the manifest and build the progress clock.
- * Thin IO glue around buildProgressClock; degrades to an empty Map (→ no decay)
- * on any failure. `list` returns full manifests, so name/status/completed_at/
- * work_type/phases all come from a single call.
- *
- * @param {Object<string, number>} [weights]  significance weights (resolved
- *   from config by the caller). Omitted → plain unit-count.
- */
-function getProgressClock(weights) {
-  return progressClockOf(listWorkUnits('getProgressClock:list'), weights);
-}
-
-/**
- * The progress clock over an already-read manifest list.
+ * The progress clock over a manifest list — its completed units alone count.
  * @param {Array<object>} workUnits @param {Object<string, number>} [weights]
  */
 function progressClockOf(workUnits, weights) {
@@ -1857,33 +1844,41 @@ function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
 }
 
 /**
- * Validate user-supplied boost directives and map CLI field names to the
- * store schema field names. Exits with a clear error on unknown field or
- * missing value so skill-template typos don't silently no-op.
+ * What is wrong with a --boost directive, or null when it is valid.
+ * @param {{field: string, value: string|null}} boost
+ * @returns {string|null}
+ */
+function boostProblem({ field, value }) {
+  if (!field || !BOOST_FIELD_MAP[field]) {
+    return `Unknown --boost field: "${field}". Valid fields: ${Object.keys(BOOST_FIELD_MAP).join(', ')}`;
+  }
+  if (value == null || value === '') return `--boost:${field} requires a value`;
+  return null;
+}
+
+/**
+ * Map --boost directives to the store schema's field names. Exits with a
+ * clear error on an unknown field or a missing value so skill-template typos
+ * don't silently no-op.
+ * @param {Array<{field: string, value: string|null}>} boosts
+ * @returns {Array<{field: string, value: string}>}
  */
 function normaliseBoosts(boosts) {
-  const out = [];
-  for (const b of boosts) {
-    if (!b.field || !BOOST_FIELD_MAP[b.field]) {
-      process.stderr.write(
-        `Unknown --boost field: "${b.field}". Valid fields: ${Object.keys(BOOST_FIELD_MAP).join(', ')}\n`
-      );
+  return boosts.map((boost) => {
+    const problem = boostProblem(boost);
+    if (problem) {
+      process.stderr.write(`${problem}\n`);
       process.exit(1);
     }
-    if (b.value == null || b.value === '') {
-      process.stderr.write(`--boost:${b.field} requires a value\n`);
-      process.exit(1);
-    }
-    out.push({ field: BOOST_FIELD_MAP[b.field], value: b.value });
-  }
-  return out;
+    return { field: BOOST_FIELD_MAP[boost.field], value: boost.value };
+  });
 }
 
 /**
  * Query-time provider-state check. Symmetric with resolveProviderState but, for
  * a keyword-only store while a provider is configured, returns
- * 'upgrade-available' (so cmdQuery emits the rebuild hint) rather than warning
- * and indexing keyword-only. Every other outcome is shared.
+ * 'upgrade-available' (so the output carries the rebuild hint) rather than
+ * warning and indexing keyword-only. Every other outcome is shared.
  */
 function resolveQueryMode(metadata, cfg, provider) {
   return resolveProviderMode(metadata, cfg, provider, 'upgrade-available');
@@ -1914,6 +1909,131 @@ function resolveSimilarityThreshold(cfg) {
   return similarity;
 }
 
+/**
+ * The where clause a query's hard filters make — undefined when it has none.
+ * @param {QueryFilters} filters
+ */
+function queryWhere({ phase, workType, workUnit, topic }) {
+  const where = {};
+  if (phase) where.phase = csv(phase);
+  if (workType) where.work_type = csv(workType);
+  if (workUnit) where.work_unit = csv(workUnit);
+  if (topic) where.topic = csv(topic);
+  return Object.keys(where).length > 0 ? where : undefined;
+}
+
+/**
+ * @typedef {object} QuerySettings
+ * @property {string} mode  'full', 'keyword-only' or 'upgrade-available'
+ * @property {object|null} provider  embeds each term — set only when the mode is full
+ * @property {number} similarity  the vector leg's cosine floor
+ * @property {number} stability  S0 for the decay curve
+ * @property {Object<string, number>} weights  the progress clock's significance weights
+ */
+
+/**
+ * What a query over a store runs with: the mode the store's metadata and the
+ * config resolve to, and the ranking settings the config holds. Throws
+ * UserError on a provider the store was not built with, or an invalid
+ * similarity threshold.
+ * @param {Record<string, any>} metadata @param {object} cfg @param {object|null} provider
+ * @returns {QuerySettings}
+ */
+function querySettings(metadata, cfg, provider) {
+  const { mode, provider: embedder } = resolveQueryMode(metadata, cfg, provider);
+  return {
+    mode,
+    provider: embedder,
+    similarity: resolveSimilarityThreshold(cfg),
+    stability: resolveStability(cfg),
+    weights: resolveDecayWeights(cfg),
+  };
+}
+
+/**
+ * @typedef {object} QueryFilters  the CLI's hard filters, each a value or a comma list
+ * @property {string|null} [phase]
+ * @property {string|null} [workType]
+ * @property {string|null} [workUnit]
+ * @property {string|null} [topic]
+ */
+
+/**
+ * @typedef {QuerySettings & {
+ *   terms: string[],
+ *   filters: QueryFilters,
+ *   boosts: Array<{field: string, value: string}>,
+ *   limit?: number|null,
+ *   workUnits: Array<object>,
+ * }} QueryRequest  boosts are normalised to schema fields; workUnits are the
+ *   manifests the progress clock is built from
+ */
+
+const DEFAULT_QUERY_LIMIT = 10;
+
+/**
+ * A query's ranked results: one search per term, over-fetched and merged by
+ * each chunk's highest score, then decayed by the progress clock, boosted,
+ * and cut to the limit.
+ * @param {any} db @param {QueryRequest} request
+ * @returns {Promise<Array<Record<string, any>>>}
+ */
+async function queryStore(db, request) {
+  const limit = request.limit || DEFAULT_QUERY_LIMIT;
+  const scope = { where: queryWhere(request.filters), limit: limit * 2 };
+  const merged = new Map();
+  for (const term of request.terms) {
+    for (const r of await searchTerm(db, term, scope, request)) {
+      const existing = merged.get(r.id);
+      if (!existing || r.score > existing.score) merged.set(r.id, r);
+    }
+  }
+  const clock = progressClockOf(request.workUnits, request.weights);
+  const dated = Array.from(merged.values())
+    .map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
+  return rerank(dated, request.boosts, request.stability).slice(0, limit);
+}
+
+/**
+ * One term's search — hybrid when the mode is full, else full-text.
+ * @param {any} db @param {string} term
+ * @param {{where: object|undefined, limit: number}} scope @param {QuerySettings} settings
+ */
+async function searchTerm(db, term, { where, limit }, { mode, provider, similarity }) {
+  if (mode !== 'full') return store.searchFulltext(db, { term, where, limit });
+  const vector = await withRetry(() => provider.embed(term), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
+  return store.searchHybrid(db, { term, vector, where, limit, similarity });
+}
+
+const MODE_NOTES = {
+  'keyword-only': '[keyword-only mode — configure embedding provider for semantic search]',
+  'upgrade-available': '[keyword-only mode but embedding provider configured — run knowledge rebuild for full hybrid search]',
+};
+
+/**
+ * The text `query` prints: the mode's note, the count, then each result's
+ * header, content and source. Control characters are stripped from the whole
+ * at the boundary — \n is exempt, so the joins survive.
+ * @param {Array<Record<string, any>>} results @param {string|null} mode  null when there is no store
+ * @returns {string}
+ */
+function renderQuery(results, mode) {
+  const out = [];
+  if (MODE_NOTES[mode]) out.push(MODE_NOTES[mode]);
+  out.push(`[${results.length} results]`);
+  for (const r of results) {
+    // Header date is the source document's date (its mtime at index time) —
+    // i.e. when the work was authored, not when the store was indexed.
+    out.push(
+      '',
+      `[${r.phase} | ${r.work_unit}/${r.topic} | ${r.confidence} | ${formatDate(r.timestamp)}]`,
+      r.content,
+      `Source: ${r.source_file}`,
+    );
+  }
+  return stripControlChars(out.join('\n')) + '\n';
+}
+
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
     process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N]\n');
@@ -1933,117 +2053,31 @@ async function cmdQuery(args, options, cfg, provider) {
     }
   }
 
-  const searchTerms = args; // batch: multiple positional args
-  const limit = options.limit || 10;
   const sp = storePath();
   const mp = metadataPath();
 
   if (!fs.existsSync(sp)) {
-    process.stdout.write('[0 results]\n');
+    process.stdout.write(renderQuery([], null));
     return;
   }
 
   const db = await store.loadStore(sp);
-
-  let queryMode = 'keyword-only';
-  let effectiveProvider = null;
-  let stubNote = null;
 
   if (!fs.existsSync(mp)) {
     process.stderr.write('metadata.json missing but store exists. Run `knowledge rebuild` to fix.\n');
     process.exit(1);
   }
 
-  const metadata = store.readMetadata(mp);
-  const state = resolveQueryMode(metadata, cfg, provider);
-  queryMode = state.mode;
-  effectiveProvider = state.provider;
-
-  if (queryMode === 'keyword-only') {
-    stubNote = '[keyword-only mode — configure embedding provider for semantic search]';
-  } else if (queryMode === 'upgrade-available') {
-    stubNote = '[keyword-only mode but embedding provider configured — run knowledge rebuild for full hybrid search]';
-  }
-
-  // Build where clause from hard filters. Every --flag that names a
-  // dimension is a filter; re-ranking happens exclusively via --boost:<field>.
-  const where = {};
-  if (options.phase) where.phase = csv(options.phase);
-  if (options.workType) where.work_type = csv(options.workType);
-  if (options.workUnit) where.work_unit = csv(options.workUnit);
-  if (options.topic) where.topic = csv(options.topic);
-
-  const similarity = resolveSimilarityThreshold(cfg);
-  const whereClause = Object.keys(where).length > 0 ? where : undefined;
-
-  // Run a search per term and merge.
-  const allResults = new Map(); // key: chunk id → result (highest score wins)
-
-  for (const term of searchTerms) {
-    let termResults;
-    if (queryMode === 'full' && effectiveProvider) {
-      const queryVector = await withRetry(
-        () => effectiveProvider.embed(term),
-        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-      );
-      termResults = await store.searchHybrid(db, {
-        term,
-        vector: queryVector,
-        where: whereClause,
-        limit: limit * 2, // over-fetch per term to improve merged coverage
-        similarity,
-      });
-    } else {
-      termResults = await store.searchFulltext(db, {
-        term,
-        where: whereClause,
-        limit: limit * 2,
-      });
-    }
-
-    // Merge — keep highest score per chunk.
-    for (const r of termResults) {
-      const existing = allResults.get(r.id);
-      if (!existing || r.score > existing.score) {
-        allResults.set(r.id, r);
-      }
-    }
-  }
-
-  // Attach the progress-clock distance to each result, then re-rank: soft
-  // down-rank by retrievability + user --boost directives. The clock is derived
-  // once from the manifest; on failure it's empty → progressElapsed 0 → no decay.
-  const progressClock = getProgressClock(resolveDecayWeights(cfg));
-  const stability = resolveStability(cfg);
-  const merged = Array.from(allResults.values()).map((r) =>
-    Object.assign({}, r, { progressElapsed: progressClock.get(r.work_unit) || 0 })
-  );
-
-  const normalisedBoosts = normaliseBoosts(options.boosts);
-  let results = rerank(merged, normalisedBoosts, stability);
-
-  if (results.length > limit) {
-    results = results.slice(0, limit);
-  }
-
-  // Format output.
-  const out = [];
-  if (stubNote) out.push(stubNote);
-  out.push(`[${results.length} results]`);
-
-  for (const r of results) {
-    out.push('');
-    // Header date is the source document's date (its mtime at index time) —
-    // i.e. when the work was authored, not when the store was indexed.
-    const date = formatDate(r.timestamp);
-    out.push(`[${r.phase} | ${r.work_unit}/${r.topic} | ${r.confidence} | ${date}]`);
-    out.push(r.content);
-    out.push(`Source: ${r.source_file}`);
-  }
-
-  // Sanitise the whole composed output (content, headers, source lines) at
-  // the boundary — \n is exempt from the strip, so joins survive.
-  process.stdout.write(stripControlChars(out.join('\n')) + '\n');
+  const settings = querySettings(store.readMetadata(mp), cfg, provider);
+  const results = await queryStore(db, {
+    ...settings,
+    terms: args,
+    filters: options,
+    boosts: normaliseBoosts(options.boosts),
+    limit: options.limit,
+    workUnits: listWorkUnits('query'),
+  });
+  process.stdout.write(renderQuery(results, settings.mode));
 }
 
 // ---------------------------------------------------------------------------
@@ -2651,11 +2685,15 @@ module.exports = {
   RETIRED_ITEM_STATUSES,
   KEYWORD_ONLY_DIMENSIONS,
   buildProgressClock,
-  getProgressClock,
   retrievability,
   pruneTest,
   rerank,
   resolveSimilarityThreshold,
+  boostProblem,
+  normaliseBoosts,
+  querySettings,
+  queryStore,
+  renderQuery,
 };
 
 if (require.main === module) {
