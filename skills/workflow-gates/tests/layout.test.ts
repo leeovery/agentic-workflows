@@ -242,7 +242,7 @@ describe('layout', () => {
       'o0 yes      Commit',
       't0 Comment  Request changes (triggers a fix round)',
       '',
-      '» Click a row to choose · click it again to send · or just type',
+      '» Click to choose · click again to send · or type',
     ])
   })
 
@@ -445,29 +445,28 @@ describe('layout', () => {
 
   test('the footer says how to answer, what a pick put in the prompt, and how to answer a typed row', () => {
     expect(footerRuns(IDLE)).toEqual([
-      { text: 'Click a row to choose · click it again to send · or just type', dim: true },
+      { text: 'Click to choose · click again to send · or type', dim: true },
     ])
 
     expect(footerRuns({ kind: 'picked', answer: 'yes' })).toEqual([
       { text: 'yes', bold: true },
-      { text: ' is in your prompt · click it again or Enter to send', dim: true },
+      { text: ' is in your prompt · click again to send', dim: true },
     ])
 
     expect(footerRuns({ kind: 'typed', label: 'Comment' })).toEqual([
-      { text: 'Comment — press Esc, then type in the prompt', dim: true },
+      { text: 'Comment — Esc, then type it in the prompt', dim: true },
     ])
   })
 
   test('the footer says what waits to send when Claude finishes, and what a new gate kept from sending', () => {
     expect(footerRuns({ kind: 'queued', answer: 'yes' })).toEqual([
       { text: 'yes', bold: true },
-      { text: ' sends when Claude finishes · click it again to take it back', dim: true },
+      { text: ' sends when Claude finishes · click to undo', dim: true },
     ])
 
     expect(footerRuns({ kind: 'dropped', answer: 'yes' })).toEqual([
-      { text: 'your ', dim: true },
       { text: 'yes', bold: true },
-      { text: " wasn't sent — the menu changed", dim: true },
+      { text: ' not sent — the menu changed', dim: true },
     ])
   })
 
@@ -481,13 +480,13 @@ describe('layout', () => {
 
   test('a typed row is named as the engine labels it, whatever it says', () => {
     expect(textOf(footerRuns({ kind: 'typed', label: 'Tell me what to change' }))).toBe(
-      'Tell me what to change — press Esc, then type in the prompt',
+      'Tell me what to change — Esc, then type it in the prompt',
     )
   })
 
   test('a range row asks for the numbers', () => {
     expect(textOf(footerRuns({ kind: 'typed', label: '1–12' }))).toBe(
-      '1–12 — press Esc, then type the numbers in the prompt',
+      '1–12 — Esc, then type the numbers in the prompt',
     )
   })
 
@@ -506,9 +505,9 @@ describe('layout', () => {
       { kind: 'typed', label: '1–12' },
     ]
 
-    const natural = said.map(footer => wrapRuns(footerRuns(footer), 28).length)
+    const natural = said.map(footer => wrapRuns(footerRuns(footer), 42).length)
 
-    expect(new Set(natural).size, 'at 30 columns the states wrap unevenly').toBeGreaterThan(1)
+    expect(new Set(natural).size, 'at 44 columns the states wrap unevenly').toBeGreaterThan(1)
 
     for (const columns of [30, 44, 72]) {
       const heights = said.map(footer => linesOf(gate, columns, footer).length)
@@ -579,20 +578,20 @@ describe('layout', () => {
   test('the footer wraps at the gutter, a short state leaving the rest of its slot empty', () => {
     const gate = gateOf({ typed: [{ label: '1–12', description: 'Pick items', detail: null }] })
     const footer = (said: Footer) =>
-      linesOf(gate, 30, said)
+      linesOf(gate, 25, said)
         .filter(line => line.kind === 'footer')
         .map(read)
 
     expect(footer(IDLE)).toEqual([
-      '» Click a row to choose ·',
-      '» click it again to send · or',
-      '» just type',
+      '» Click to choose · click',
+      '» again to send · or type',
+      '»',
     ])
 
     expect(footer({ kind: 'typed', label: '1–12' })).toEqual([
-      '» 1–12 — press Esc, then type',
-      '» the numbers in the prompt',
-      '»',
+      '» 1–12 — Esc, then type',
+      '» the numbers in the',
+      '» prompt',
     ])
   })
   test('a gate that fits shows whole, with no pager; one line short of it, its rows page', () => {
@@ -623,7 +622,7 @@ describe('layout', () => {
       'o2          Names are kept as the discussions give them.',
       '⇅ ↑ previous   ↓ next   page 1 of 3',
       '',
-      '» Click a row to choose · click it again to send · or just type',
+      '» Click to choose · click again to send · or type',
     ])
   })
 
