@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.79] - 2026-09-25
+
+✨ Added
+- The knowledge base now bulk-reindexes at every start — new and changed artifacts are indexed and stale ones removed automatically, without a manual `rebuild`.
+- `.worktreeinclude` is kept in sync so a new git worktree starts with a copy of the knowledge store instead of rebuilding it from scratch.
+- Chunker now splits oversized sections by heading, paragraph, and line to keep every chunk within the embedding provider's input limit, instead of an arbitrary line-count cap.
+- OpenAI embedding requests are now batched by character budget and time out after 60s instead of hanging indefinitely.
+
+🔧 Changed
+- The knowledge store (index, metadata, and per-project config) is no longer committed to git — it's rebuilt locally in each checkout, and any already-tracked copies are automatically untracked.
+- Knowledge indexing/removal failures no longer use a pending retry queue; they're retried by the next bulk index at start instead, simplifying failure recovery.
+- `knowledge check` now reports a `buildable` state (set up but no store yet) so boot can build the store automatically when the machine's configuration allows it.
+- `knowledge index` (bulk mode) now reports new/changed/removed/unchanged counts and treats content-hash changes as reindex triggers, rather than only catching up on artifacts that were never indexed.
+- `--keyword-only` setup now always pins the project to keyword-only search regardless of the machine's system configuration, so the choice travels correctly with the project.
+
+🐛 Fixed
+- Fixed a warning-message inconsistency where cancelled/postponed/reactivated items claimed knowledge cleanup was "queued for retry" when no such queue existed — now correctly states it happens on the next start.
+
 ## [0.7.78] - 2026-09-23
 
 ✨ Added
