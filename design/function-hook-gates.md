@@ -226,10 +226,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     notification, a schedule, a peer — leaves the band as it is, live. A
     send pressed while Claude works is held by the mod, the row reading
     ` · queued` and the footer "**{answer}** sends when Claude finishes ·
-    click it again to take it back"; at the turn's end it sends if the band
+    click to undo"; at the turn's end it sends if the band
     still shows the same gate — compared by content, so the gate presented
     again fresh is the same — and is dropped otherwise, the new gate's
-    footer saying "your **{answer}** wasn't sent — the menu changed". A
+    footer saying "**{answer}** not sent — the menu changed". A
     turn that draws a new gate replaces the band's. A pick's answer left
     in the prompt box under a gate that goes is cleared, unless the person
     has edited it.
@@ -251,7 +251,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     conversation ends, the mod saves what the band shows — the gate, or
     nothing — in its store, keyed by the conversation's first tool-use id
     and stamped with where the transcript ends (its last message and newest
-    tool-use id). On a fresh load (`claude --resume`, a restart, an account
+    tool-use id). The lines Claude Code writes around an interrupted turn
+    are no step of the conversation and no stamp reads them: the
+    "[Request interrupted by user…]" line, which lands after the aborted
+    turn's end has kept the band, and the "No response requested." reply
+    it puts in the model's place when a conversation interrupted that way
+    is resumed (findings 44–45). On a fresh load (`claude --resume`, a restart, an account
     switch), a reload's first drawing, or after an in-process end — and
     only in a session that announced (R2) — it reads the record back: a
     transcript that still ends at the stamp redraws the gate, nothing picked
@@ -277,12 +282,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - Backgrounds: the cursor row `selectionBg`; the picked row
     `diffAddedDimmed` (the pick wins when the cursor sits on it). No ticks.
   - Typed rows (Ask, Comment, a range) draw dim and are never pressable.
-  - The footer, dim: `Click a row to choose · click it again to send · or
-    just type`; after a pick, `**{answer}** is in your prompt · click it
-    again or Enter to send`; after a click on a typed row, `{Label} — press
-    Esc, then type in the prompt` (a range: `… type the numbers in the
-    prompt`). It always reflects the last click, and its height is reserved
-    as its tallest state for the gate, so the band never moves.
+  - The footer, dim: `Click to choose · click again to send · or type`;
+    after a pick, `**{answer}** is in your prompt · click again to send`;
+    after a click on a typed row, `{Label} — Esc, then type it in the
+    prompt` (a range: `… — Esc, then type the numbers in the prompt`). It
+    always reflects the last click, and its height is reserved as its
+    tallest state for the gate, so the band never moves — every state is
+    worded to fit one line on a phone, since the reserve is the longest
+    state any row could reach, clicked or not.
   - The cursor starts on the recommended row, else the first not struck.
     Arrows work only once a click (or ctrl+x tab) has given the band the
     keyboard.
@@ -311,8 +318,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - **R9 — opt-in per project, the tmux-labels shape.** The project
   manifest's `defaults.gate_surface`; `engine boot` reports `gate_surface`
   (`on`/`off`/`prompt`); `workflow-start` Step 0.4 asks once, after the
-  session-labels question, through `render gate-surface-gate`. The
-  signpost: "Whenever a decision is yours, the workflows stop and show a
+  session-labels question, under its own `▪ Menu Buttons` sub-step
+  marker (as the session labels and the baseline offer carry theirs),
+  through `render gate-surface-gate`. The signpost: "Whenever a decision is yours, the workflows stop and show a
   menu like the one below. Claude Mods, an experimental Claude Code
   feature, can show these menus as buttons above the prompt instead: click
   a row or press its key to answer. You can turn it off at any time by
@@ -333,7 +341,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   answer inside the lock its settings sync holds. The prose-test harness
   stamps `gate_surface: false`. The opt-in is a stopgap: once function
   hooks ship, the buttons stop being optional and the question, the field,
-  the verb and the sync go.
+  the verb and the sync go. Open: whether a "no" is offered at all — the
+  mod is also what sets the display-delivery switches for workflow
+  sessions alone (see the stack's next layers), so a project without it
+  loses more than the buttons.
 - **R10 — auto gates arm nothing.** Under `auto`/`bounded` the engine
   emits a DISPLAY, never a MENU.
 - **R11 — every gate is an engine menu, and every menu asks.** No skill
@@ -465,6 +476,21 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     to menus that always ask (#1289); the band's question-less and
     row-less paths removed, the audit asserting a question and a row to
     press (#1290); the rows mod's question-less line removed (#1294).
+- **Next: display delivery** (layers on top of #1294; not yet designed
+  here, built with the stack and landed with it). Text the workflows tell
+  Claude to show — a signpost or marker before a tool call, a task brief —
+  is dropped at random: recent models read instructions arriving through
+  a tool's output as data, and the dropped text is reliably the kind the
+  model must write just before a call (finding 46). A spike in a copy of
+  a project (Portal session `4219c972`, `~/Code/harness-spike`) landed on
+  three switches, all the mod's to set: Claude Code's `SendUserMessage`
+  tool, turned on at `session.start` (the only moment its flag counts),
+  through which prescribed text reaches the person; the silent-turn
+  "say what you're doing" nudge and the thinking-update lines turned off
+  on the workflow's own boot, so a plain session in the same project
+  keeps Claude Code's defaults. #1292's settings sync shrinks to the
+  function-hooks flag. The design is written here after that session's
+  record is read in full.
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
@@ -569,6 +595,21 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     transcript — a loop on the iPad's trackpad, seen in the first minute.
     `maxRows` on the `AbovePrompt` render is the band's budget, readable
     before it draws. Hence R7's band that never overflows.
+44. `session.end` does not run (or never lands) on `/exit`: the band kept
+    at the last turn's end is the only record a later resume reads.
+45. Resuming a conversation whose last turn was interrupted, Claude Code
+    inserts an assistant "No response requested." after the interruption
+    line, so a stamp read off the transcript's last message never matches
+    the one kept before the quit. Hence R6's stamp skipping both.
+46. Text a skill prescribes just before a tool call — the setup gates'
+    sub-step marker and signpost before the buttons question, Portal's
+    task brief — is dropped on some runs and shown on others, while the
+    gate the call returns is always drawn. The display-delivery layers
+    exist for it.
+47. A background agent's report arrives as two turns, one after the
+    other (origin `peer`, then `task-notification`); an Esc in the first
+    and the second starting within the same second once left the band
+    treating a press as a send, not a hold. Not reproduced since; open.
 
 ## Log
 
@@ -606,3 +647,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - 2026-09-24 — the lab pass on the one stack: the band never overflows,
   its rows paged under a fixed head and footer (R7); two columns tried and
   dropped. Finding 43.
+- 2026-09-25 — the lab pass continued, then paused: answering, questions
+  at a gate, background work and resume all passed live (R6's resume
+  stamp corrected, findings 44–45); the footers shortened to one line on
+  a phone, the setup gates given sub-step markers (R7, R9); prescribed
+  text before a tool call seen dropped (finding 46), bringing the
+  display-delivery work in as the stack's next layers.
