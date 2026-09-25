@@ -206,8 +206,7 @@ const DRAWN_MENU = [
 /** The menu as the engine wrote it, the payload taken out. */
 const TEXT_MENU = [...RESULT_SECTION, ...MENU_SECTION].join('\n')
 
-const IDLE_FOOTER =
-  'Click a row to choose · click it again to send · or just type'
+const IDLE_FOOTER = 'Click to choose · click again to send · or type'
 
 type Stated = {
   options?: readonly unknown[]
@@ -1111,7 +1110,7 @@ describe('register', () => {
 
     expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
     expect(await footerOf(ui)).toBe(
-      'yes is in your prompt · click it again or Enter to send',
+      'yes is in your prompt · click again to send',
     )
     expect(await runOf(ui, /^yes$/), 'the footer names the pick in bold').toMatchObject({
       props: { bold: true },
@@ -1230,7 +1229,7 @@ describe('register', () => {
     expect(await ui.find({ type: 'Client', key: 'gate' })).toBeDefined()
     expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
     expect(await footerOf(ui)).toBe(
-      'yes is in your prompt · click it again or Enter to send',
+      'yes is in your prompt · click again to send',
     )
 
     await ui.key({ key: 'return', in: 'gate' })
@@ -1506,7 +1505,7 @@ describe('register', () => {
 
     expect(calls, 'the box and the pick are left alone').toEqual([])
     expect(await footerOf(ui)).toBe(
-      'Comment — press Esc, then type in the prompt',
+      'Comment — Esc, then type it in the prompt',
     )
     expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
 
@@ -1529,7 +1528,7 @@ describe('register', () => {
     await click(ui, RANGE.description)
 
     expect(await footerOf(ui)).toBe(
-      '1–2 — press Esc, then type the numbers in the prompt',
+      '1–2 — Esc, then type the numbers in the prompt',
     )
 
     await ui.unmount()
@@ -2093,7 +2092,7 @@ describe('register', () => {
     expect(await lineOf(ui, `${COMMIT} (recommended) · queued`)).toBeGreaterThan(0)
     expect((await runOf(ui, /^ · queued$/))?.props.dimColor, 'plain').toBeUndefined()
     expect(await footerOf(ui)).toBe(
-      'yes sends when Claude finishes · click it again to take it back',
+      'yes sends when Claude finishes · click to undo',
     )
     expect(await runOf(ui, /^yes$/), 'the footer names it in bold').toMatchObject({
       props: { bold: true },
@@ -2210,7 +2209,7 @@ describe('register', () => {
 
     expect(submitted).toEqual(['ping'])
     expect(await lineOf(ui, 'Start "Billing"')).toBeGreaterThan(0)
-    expect(await footerOf(ui)).toBe("your yes wasn't sent — the menu changed")
+    expect(await footerOf(ui)).toBe('yes not sent — the menu changed')
     expect(await runOf(ui, /^yes$/), 'the answer named in bold').toMatchObject({
       props: { bold: true },
     })
