@@ -182,10 +182,13 @@ Relevance is judged from the documents, never from the KB's results;
 otherwise the baseline would grade the system against itself. For each
 case, the judge searches the corpus directly and records every passage an
 agent issuing that query would want to read: a decision, finding or
-constraint on the query's subject, never a passing mention. The current
-system's top ten is then pooled, and any result not yet judged is read and
-adjudicated. Pooling completes the judgments without letting the system
-define them.
+constraint on the query's subject, never a passing mention. Each passage is
+graded **primary**, where the answer is recorded (the decision or finding in
+its home document), or **supporting**, a passage that restates, summarises
+or bears on it; a superseded ruling is supporting and the current one
+primary. The top ten of both legs, keyword and hybrid, is then pooled, and
+any result not yet judged is read and adjudicated to the same bar. Pooling
+completes the judgments without letting the system define them.
 
 A judgment names a source file and an **anchor**: a short verbatim phrase
 from one line of the relevant passage. A returned chunk matches when it
@@ -198,8 +201,9 @@ from its file, which keeps the judgments honest when the corpus moves.
 Over the positive cases:
 
 - **hit@5**: the share of cases with a judged passage in the top five.
+- **primary hit@5**: the same, counting primary passages alone.
 - **MRR@10**: the mean reciprocal rank of the first judged passage.
-- **recall@10**: the mean share of a case's judged passages found in the
+- **recall@10**: the mean share of a case's primary passages found in the
   top ten.
 - **file hit@5**: hit@5 at file grain, where any chunk of a judged file
   counts.
@@ -244,6 +248,34 @@ function; none changes how the harness calls it.
 `query --explain` (each result's rank in each leg, and what fusion, decay
 and boosts did to it) belongs to step 2, where the legs first exist
 separately.
+
+### The measured baseline
+
+58 cases (49 positive, 9 negative) and 698 judged passages, pinned on both
+legs:
+
+| metric | keyword | hybrid |
+|---|---|---|
+| hit@5 | 0.857 | 0.980 |
+| primary hit@5 | 0.592 | 0.959 |
+| MRR@10 | 0.691 | 0.934 |
+| recall@10 | 0.431 | 0.678 |
+| file hit@5 | 0.959 | 1.000 |
+| bytes per query | 49.5 KB | 41.9 KB |
+| results on a negative | 10 | 10 |
+
+What it says for the steps ahead:
+
+- **The vector leg carries retrieval.** Keyword-only finds the right file
+  almost every time but the passage holding the answer in its top five
+  only 59% of the time. A first-class keyword mode has to close most of
+  that gap: the target of step 5's stemming, stop words and content-only
+  indexing.
+- **Nothing is ever turned away.** Every negative, on either leg, returns a
+  full ten results and 40–47 KB. The floor is measured from zero.
+- **Recall is the weakest number on both legs**, because a multi-framing
+  query's answer spans several passages and the top ten is shared among
+  the framings.
 
 ## Step 2 — ranking in our own code
 
