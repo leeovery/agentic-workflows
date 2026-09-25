@@ -324,6 +324,15 @@ const MOVED_ON = [
   said('assistant', 'Carried on.'),
 ]
 
+/** The conversation once the task gate was answered, before anything more. */
+const ANSWERED = [...AT_GATE, said('user', 'yes')]
+
+/** The line Claude Code writes when the person's Esc stops a turn. */
+const INTERRUPTION = said('user', '[Request interrupted by user]')
+
+/** What Claude Code puts in the model's place, resuming after an Esc. */
+const NO_RESPONSE = said('assistant', 'No response requested.')
+
 /** Another conversation, at a gate of its own, stopped on the same words. */
 const ELSEWHERE_AT_GATE = [
   said('user', '/workflow-start'),
@@ -2562,15 +2571,11 @@ describe('register', () => {
 
     await presented($)
 
-    reads([...AT_GATE, said('user', 'yes')])
+    reads(ANSWERED)
 
     await submitFrom($, { kind: 'composer' }, 'yes')
 
-    reads([
-      ...AT_GATE,
-      said('user', 'yes'),
-      said('user', '[Request interrupted by user]'),
-    ])
+    reads([...ANSWERED, INTERRUPTION])
 
     await $.turn.complete(INTERRUPTED)
 
@@ -2588,7 +2593,7 @@ describe('register', () => {
 
     await presented($)
 
-    reads([...AT_GATE, said('user', 'yes')])
+    reads(ANSWERED)
 
     await submitFrom($, { kind: 'composer' }, 'yes')
     await $.turn.complete(INTERRUPTED)
@@ -2596,6 +2601,45 @@ describe('register', () => {
     reads(AT_GATE)
 
     await quitAndResume($)
+
+    expect(await isDrawn($)).toBe(true)
+  })
+
+  test('the lines Claude Code writes around an interrupted turn move no stamp: the gate is kept the same with them as without', async ($, on) => {
+    const { stored, reads } = world($, on, announced())
+    const endings = [[], [INTERRUPTION], [INTERRUPTION, NO_RESPONSE]]
+
+    await $.session.start(SESSION)
+
+    for (const ending of endings) {
+      reads([...AT_GATE, ...ending])
+
+      await $.tool.call(ENGINE_CALL)
+      await $.turn.complete(TURN_END)
+
+      expect(Object.fromEntries(stored), `${ending.length} lines past the stop`).toEqual(KEPT_AT_GATE)
+    }
+  })
+
+  test('an answer taken back with Esc before any call, then the conversation left, draws the gate again when it is resumed past the lines written around the stop', async ($, on) => {
+    const { reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+
+    reads(ANSWERED)
+
+    await submitFrom($, { kind: 'composer' }, 'yes')
+    await $.turn.complete(INTERRUPTED)
+
+    reads([...ANSWERED, INTERRUPTION])
+
+    await $.session.end(QUIT)
+
+    reads([...ANSWERED, INTERRUPTION, NO_RESPONSE])
+
+    await $.session.start(SESSION)
 
     expect(await isDrawn($)).toBe(true)
   })
@@ -2827,7 +2871,7 @@ describe('register', () => {
     await presented($)
     await $.session.end(QUIT)
 
-    reads([...AT_GATE, said('user', 'yes')])
+    reads(ANSWERED)
     isSlow = true
 
     const starting = $.session.start(SESSION)

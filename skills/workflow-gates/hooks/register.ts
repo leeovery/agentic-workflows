@@ -269,7 +269,7 @@ async function send($: EngineInterface, gate: Gate, option: Option) {
  * Where a conversation stands, as its transcript reads: the key its band is
  * kept under, named by its first tool call, which no other conversation
  * makes and no change of session id moves (null before its first call); and
- * the stamp of the message it ends on.
+ * the stamp of the step it ends on.
  */
 type Place = { key: string | null; stamp: string }
 
@@ -293,20 +293,35 @@ const callsOf = (message: SessionMessage) => [
 ]
 
 /**
- * Where the conversation stands now; null while its transcript is empty.
- * The stamp is the last message — who wrote it, its text, the calls it makes
- * or answers — and the newest call of all, so a conversation that moved on
- * and came to rest on the same words is told apart.
+ * The lines Claude Code writes around an interrupted turn rather than the
+ * conversation taking a step: the interruption itself, which can land after
+ * that turn's end has kept the band, and the reply it puts in the model's
+ * place when the conversation is resumed after one. No stamp reads them.
+ */
+const isInterruption = (message: SessionMessage) =>
+  (message.role === 'user' &&
+    message.text.startsWith('[Request interrupted by user')) ||
+  (message.role === 'assistant' &&
+    message.text === 'No response requested.' &&
+    message.toolUses.length === 0)
+
+/**
+ * Where the conversation stands now; null until it takes a step. The stamp
+ * is the last step — who wrote it, its text, the calls it makes or answers —
+ * and the newest call of all, so a conversation that moved on and came to
+ * rest on the same words is told apart.
  */
 async function placeOf($: EngineInterface): Promise<Place | null> {
-  const messages = await $.session.messages()
-  const last = messages.at(-1)
+  const steps = (await $.session.messages()).filter(
+    message => !isInterruption(message),
+  )
+  const last = steps.at(-1)
 
   if (last === undefined) {
     return null
   }
 
-  const calls = messages.flatMap(callsOf)
+  const calls = steps.flatMap(callsOf)
   const [first] = calls
 
   return {
