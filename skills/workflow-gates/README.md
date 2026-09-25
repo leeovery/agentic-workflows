@@ -3,15 +3,14 @@
 A Claude Code mod that draws the workflow engine's gates in the band above the
 prompt instead of leaving the model to reproduce them.
 
-The engine states each gate as data beside the menu it composed. Where the
-project's `.workflows/manifest.json` records `gate_surface: true` among its
-defaults, this mod announces itself at the session's start so the engine
-collects that data; it arms the gate off the Bash result that carried it, cuts
-the menu out of what the model reads, and draws the rows where they stay put
-while the transcript scrolls; while any screen but the terminal is attached, it
-leaves the menu as text so every screen shows it, though a screen that attaches
-after a menu was drawn on the terminal does not get that menu. The workflows'
-prose never names the mod.
+The engine states each gate as data beside the menu it composed. This mod
+announces itself at the session's start so the engine collects that data, arms
+the gate off the Bash result that carried it, cuts the menu out of what the
+model reads, and draws the rows where they stay put while the transcript
+scrolls; while any screen but the terminal is attached, it leaves the menu as
+text so every screen shows it, though a screen that attaches after a menu was
+drawn on the terminal does not get that menu. The workflows' prose never names
+the mod.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
@@ -54,15 +53,15 @@ whatever that turn drew, as long as no tool has run in it; once one has, the
 band stays empty, since the mod cannot tell a read from a write. A `/clear`
 takes the gate off the band.
 
-In a session where it announced itself, the mod keeps what the band shows at
-the end of every turn, and as the conversation ends — the gate, or nothing —
-in its own store, stamped with where the transcript ends, not counting the
-lines Claude Code writes around an interrupted turn. A conversation
-resumed with `claude --resume` or `/resume`, or picked up again by a restart
-or a reload of the mod's files, gets its gate back as long as its transcript
-still ends there and the session announced, with nothing picked or held — a
-held answer waits on a turn that does not come back; one that moved on while
-the mod was not loaded gets nothing, and so does a project that said no. The
+At the end of every turn, and as the conversation ends, the mod keeps what the
+band shows — the gate, or nothing — in its own store, stamped with where the
+transcript ends, not counting the lines Claude Code writes around an
+interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
+or picked up again by a restart or a reload of the mod's files, gets its gate
+back as long as its transcript still ends there, with nothing picked or held —
+a held answer waits on a turn that does not come back; one that moved on while
+the mod was not loaded gets nothing. A session the mod was loaded into after it
+started carries no announcement, so there it keeps and reads back nothing. The
 store holds at most one entry per conversation, and each session's start drops
 any older than 30 days, how long Claude Code keeps a transcript unless told
 otherwise.
@@ -70,10 +69,12 @@ otherwise.
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
 
-`/workflow-start` asks once per project, before its start menu, whether to
-turn this on, and records the answer; it is the only thing that asks. The mod
-reads the answer at each session's start, so setting `gate_surface` to `false`
-turns it off from the next one.
+The mod is part of the workflows, and nothing asks whether to use it: every
+`/workflow-start` puts `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` of
+the project's `.claude/settings.json` where it is missing. Claude Code reads
+its settings only when it starts, so a start that writes it while the mod is
+not yet running ends by asking for a restart, and the next session loads the
+mod.
 
 ## Working on it
 

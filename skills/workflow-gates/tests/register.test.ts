@@ -48,15 +48,6 @@ const BENEATH: RenderElement = { type: 'Text', children: ['? for shortcuts'] }
 
 const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 
-/** Where the workflows record the project's answers, under the session's working directory. */
-const PROJECT_MANIFEST = '.workflows/manifest.json'
-
-/** A project that said yes to the gate surface. */
-const OPTED_IN = JSON.stringify({ defaults: { gate_surface: true } })
-
-/** A project that said no to it. */
-const OPTED_OUT = JSON.stringify({ defaults: { gate_surface: false } })
-
 /** A process whose session announced the gate surface before the mod loaded. */
 const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
 
@@ -399,16 +390,13 @@ const MOUNT = {
 const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
 
 /**
- * The world beneath the mod: the session it starts in, the project's
- * manifest, the surfaces attached, its transcript, what a Bash call answers,
- * the prompt box, the files it writes, the prompts it submits, and the
- * plugin's store.
+ * The world beneath the mod: the session it starts in, the process's
+ * environment, the surfaces attached, its transcript, what a Bash call
+ * answers, the prompt box, the files it writes, the prompts it submits, and
+ * the plugin's store.
  *
- * `manifest` is the text of the project's `.workflows/manifest.json` — a
- * project that said yes unless a test says otherwise, none at all for null —
- * and `pathsRead` each path the mod read. `env` is the environment the
- * process holds at the start, which each `$.env.set` changes and `written`
- * records.
+ * `env` is the environment the process holds at the start, which each
+ * `$.env.set` changes and `written` records.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -424,8 +412,7 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
- * @param options the project's manifest, the process's environment, the
- *   surfaces attached, whether the box and a submission take, the clock a
+ * @param options the process's environment, the surfaces attached, whether the box and a submission take, the clock a
  *   slow disk writes on, what holds a read up, and what the store holds
  */
 function world(
@@ -433,7 +420,6 @@ function world(
   on: On,
   stdout = '',
   options: {
-    manifest?: string | null
     env?: Readonly<Record<string, string>>
     surfaces?: readonly RenderSurface[]
     fills?: boolean
@@ -445,7 +431,6 @@ function world(
   } = {},
 ) {
   const {
-    manifest = OPTED_IN,
     env = {},
     surfaces = ['terminal'],
     fills = true,
@@ -461,7 +446,6 @@ function world(
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>()
-  const pathsRead: string[] = []
   const environment = new Map(Object.entries(env))
   const stored = new Map(Object.entries(kept))
   const clock = disk ?? mock.clock(on)
@@ -540,16 +524,6 @@ function world(
 
   on('prompt.read', () => ({ value: { text: box, cursor: box.length } }))
 
-  on('fs.read', ($, e) => {
-    pathsRead.push(e.path)
-
-    if (manifest === null || e.path !== `${SESSION.cwd}/${PROJECT_MANIFEST}`) {
-      throw new Error(`ENOENT: no such file, open '${e.path}'`)
-    }
-
-    return { value: manifest }
-  })
-
   on('fs.write', async ($, e) => {
     calls.push('write')
     files.set(e.path, e.text)
@@ -622,7 +596,6 @@ function world(
     submitted,
     written,
     files,
-    pathsRead,
     stored,
     clock,
     engineWrites,
@@ -669,9 +642,8 @@ function sentIn(files: Map<string, string>): unknown {
 }
 
 /**
- * A plugin above the mod that leaves how each of the mod's hooks settled —
- * its `tool.call` hooks in `trace.json`, its `session.start` hook in
- * `start.json`: one that failed reads `caught`.
+ * A plugin above the mod that leaves, in `trace.json`, how each of the mod's
+ * `tool.call` hooks settled: one that failed reads `caught`.
  */
 const OBSERVED = {
   plugins: [
@@ -679,25 +651,13 @@ const OBSERVED = {
       name: 'observer',
       tier: 'prepend' as const,
       register(on: On) {
-        const outcomesOf = (trace: readonly { plugin: string; outcome: string }[]) =>
-          JSON.stringify(
-            trace
-              .filter(link => link.plugin === 'workflow-gates')
-              .map(link => link.outcome),
-          )
-
-        on('session.start', async ($, e, next) => {
-          const result = await next(e)
-
-          await $.fs.write('start.json', outcomesOf(next.trace))
-
-          return result
-        })
-
         on('tool.call', async ($, e, next) => {
           const result = await next(e)
+          const outcomes = next.trace
+            .filter(link => link.plugin === 'workflow-gates')
+            .map(link => link.outcome)
 
-          await $.fs.write('trace.json', outcomesOf(next.trace))
+          await $.fs.write('trace.json', JSON.stringify(outcomes))
 
           return result
         })
@@ -709,9 +669,9 @@ const OBSERVED = {
 /** How the mod's hooks settle when none of them fails. */
 const PASSED = ['returned']
 
-/** How the mod's hooks settled, as the observer left it in `file`. */
-function outcomesIn(files: Map<string, string>, file = 'trace.json'): unknown {
-  const [, text] = [...files].find(([path]) => path.endsWith(file)) ?? []
+/** How the mod's `tool.call` hooks settled, as the observer left it. */
+function outcomesIn(files: Map<string, string>): unknown {
+  const [, text] = [...files].find(([path]) => path.endsWith('trace.json')) ?? []
 
   return JSON.parse(text ?? 'null')
 }
@@ -801,47 +761,14 @@ async function cursorOf(ui: Band) {
 }
 
 describe('register', () => {
-  test('a project that said yes has the session announce the gate surface to every child it starts', async ($, on) => {
-    const { written, pathsRead } = world($, on)
+  test('every session start announces the gate surface to every child it starts', async ($, on) => {
+    const { written } = world($, on)
+    const announcement = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
 
     await $.session.start(SESSION)
+    await quitAndResume($)
 
-    expect(pathsRead).toEqual([`${SESSION.cwd}/${PROJECT_MANIFEST}`])
-    expect(written).toEqual([{ name: 'WORKFLOWS_GATE_SURFACE', value: '1' }])
-  })
-
-  for (const answer of [
-    { defaults: { gate_surface: false } },
-    { defaults: { gate_surface: 'true' } },
-    { defaults: { tmux_labels: true } },
-    { work_units: {} },
-    null,
-  ]) {
-    test(`a project whose manifest reads ${JSON.stringify(answer)} has nothing announced`, async ($, on) => {
-      const { written } = world($, on, '', { manifest: JSON.stringify(answer) })
-
-      await $.session.start(SESSION)
-
-      expect(written).toEqual([])
-    })
-  }
-
-  test('a project with no manifest has nothing announced, the hook never failing over it', OBSERVED, async ($, on) => {
-    const { written, files } = world($, on, '', { manifest: null })
-
-    await $.session.start(SESSION)
-
-    expect(written).toEqual([])
-    expect(outcomesIn(files, 'start.json')).toEqual(PASSED)
-  })
-
-  test('a manifest that does not parse has nothing announced, the hook never failing over it', OBSERVED, async ($, on) => {
-    const { written, files } = world($, on, '', { manifest: '{not json' })
-
-    await $.session.start(SESSION)
-
-    expect(written).toEqual([])
-    expect(outcomesIn(files, 'start.json')).toEqual(PASSED)
+    expect(written).toEqual([announcement, announcement])
   })
 
   test('a stated gate is cut out of what the model reads, the rest left alone', async ($, on) => {
@@ -2982,15 +2909,10 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a project that said no gets no kept gate back when the conversation is resumed, and leaves the store alone', async ($, on) => {
-    const { stored, reads } = world($, on, '', {
-      manifest: OPTED_OUT,
-      kept: KEPT_AT_GATE,
-    })
+  test('a session that never announced — the module loaded after it started — keeps nothing, and leaves the store as it was', async ($, on) => {
+    const { stored, reads } = world($, on, '', { kept: KEPT_AT_GATE })
 
     reads(AT_GATE)
-
-    await $.session.start(SESSION)
 
     expect(await isDrawn($)).toBe(false)
 
