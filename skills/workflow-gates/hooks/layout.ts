@@ -109,12 +109,10 @@ const NOTE_SEPARATOR = ' · '
 const RECOMMENDED = ' (recommended)'
 const QUEUED = ' · queued'
 
-const IDLE_HINT =
-  'Click a row to choose · click it again to send · or just type'
-const PICKED_HINT = ' is in your prompt · click it again or Enter to send'
-const QUEUED_HINT =
-  ' sends when Claude finishes · click it again to take it back'
-const DROPPED_HINT = " wasn't sent — the menu changed"
+const IDLE_HINT = 'Click to choose · click again to send · or type'
+const PICKED_HINT = ' is in your prompt · click again to send'
+const QUEUED_HINT = ' sends when Claude finishes · click to undo'
+const DROPPED_HINT = ' not sent — the menu changed'
 
 const PREVIOUS = '↑ previous'
 const NEXT = '↓ next'
@@ -362,8 +360,8 @@ function rowGroups(gate: Gate, columns: number, queued: boolean): RowLine[][] {
 // A click leaves the keys with the band; only the person can hand them back.
 const typedHint = (label: string) =>
   RANGE.test(label)
-    ? `${label} — press Esc, then type the numbers in the prompt`
-    : `${label} — press Esc, then type in the prompt`
+    ? `${label} — Esc, then type the numbers in the prompt`
+    : `${label} — Esc, then type it in the prompt`
 
 /** The footer's words: dim, the answer it speaks of named in bold. */
 export function footerRuns(footer: Footer): Run[] {
@@ -382,7 +380,6 @@ export function footerRuns(footer: Footer): Run[] {
       ]
     case 'dropped':
       return [
-        { text: 'your ', dim: true },
         { text: footer.answer, bold: true },
         { text: DROPPED_HINT, dim: true },
       ]
