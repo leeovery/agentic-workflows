@@ -22,7 +22,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 → loop back to A until done
 ```
 
-**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls. Each stage below fetches its own section at the moment it displays it and emits it verbatim per its marker, so the section always sits in the tool result directly above its emission; its content is never redrawn, reflowed, or re-derived.
+**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls. Each stage below fetches its own section at the moment it displays it and emits it verbatim per its marker; its content is never redrawn, reflowed, or re-derived.
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
