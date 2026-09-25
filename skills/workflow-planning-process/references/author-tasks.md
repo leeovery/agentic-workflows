@@ -34,12 +34,6 @@ Mid-authoring resume — the text and its decisions already stand; re-invoking w
 
 **Amendment runs** — when `staging.author-p{N}` carries `rejected` rows (arrival from **F. Revision Check**, or a mismatch retry from **C** during an amendment), the invocation is an amendment: name those ids via input item 8. All other arrivals are full runs — omit item 8.
 
-> *Output the next fenced block as a code block:*
-
-```
-Authoring {count} tasks for Phase {N}: {Phase Name}...
-```
-
 Invoke `workflow-planning-task-author` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
@@ -52,6 +46,8 @@ Invoke `workflow-planning-task-author` with these file paths:
 8. **Amendment context** (amendment runs only): the rejected internal ids being rewritten — any surviving feedback blockquotes sit under their headings in the detail file
 
 The agent writes all tasks to the task detail file and returns.
+
+The dispatch ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
 
 → Proceed to **C. Validate Task Detail File**.
 

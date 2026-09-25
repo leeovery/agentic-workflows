@@ -486,6 +486,16 @@ Two categories:
 
 Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before ending.`, or other variations.
 
+### Dispatch Lines
+
+An agent dispatched in the background while the flow waits on its report ends the turn there, so the dispatch prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
+
+```
+The dispatch ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
+```
+
+One sentence in that shape, naming the agent and what it works on in the plan's own terms — `task {phase}.{task}`, `phase {N}`, `review cycle {N}` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below end the turn on exactly …`). A background dispatch the conversation carries on past carries none.
+
 ### Heading Hierarchy
 
 - **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)

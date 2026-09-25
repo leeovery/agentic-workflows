@@ -29,6 +29,8 @@ Pass via the orchestrator's prompt:
 
 The agent locates findings files and writes output files using the work unit and topic name.
 
+The dispatch ends the turn on exactly `The synthesizer agent has been dispatched for analysis cycle {N}.`
+
 ---
 
 ## Expected Result

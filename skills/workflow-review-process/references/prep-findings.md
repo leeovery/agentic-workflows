@@ -54,6 +54,8 @@ Keep the guard inventory each guards agent returns in its status — the synthes
 
 If an agent fails, record the failure and continue. A missing assessment makes its findings unresolved, never silently dropped — synthesis routes those to `replan`, where nothing is applied without the planning loop's own review.
 
+The dispatch ends the turn on exactly `The assessor, guards and relationships agents have been dispatched for the review's findings.`
+
 > **CHECKPOINT**: Do not proceed until every dispatched agent has returned.
 
 → Proceed to **C. Synthesise**.
@@ -73,6 +75,8 @@ Dispatch the synthesis agent once.
 5. **Work unit** and **topic**
 
 It resolves each finding — re-aiming at the code any comment remedy the assessor found standing in for a code change — collapses the collisions into single actions, routes each survivor, blocking issues by their remedy's radius, and derives the verdict.
+
+The dispatch ends the turn on exactly `The synthesis agent has been dispatched for the review's findings.`
 
 → Proceed to **D. Record**.
 
