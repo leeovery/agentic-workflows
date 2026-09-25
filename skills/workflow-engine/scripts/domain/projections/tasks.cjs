@@ -4,8 +4,7 @@
 // Domain ring: task gate sections — the implementation loop's state-derived
 // gates, served by the `engine render` surfaces (render.cjs) at the exact
 // prose point that displays them. The `engine task` verbs answer with their
-// one-line JSON only; a gate's section is fetched by its own render call, so
-// the section always sits in the tool result directly above its emission.
+// one-line JSON only; a gate's section is fetched by its own render call.
 // Deterministic: same state, same string. Conversational content (reviewer
 // findings, executor summaries, the blocked-task list) never renders here —
 // it stays with the session.

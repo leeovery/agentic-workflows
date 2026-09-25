@@ -174,7 +174,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
-Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
+Dispatch **one agent** as a foreground task (pass `run_in_background: false` — results are needed before continuing).
 
 The review agent receives:
 
