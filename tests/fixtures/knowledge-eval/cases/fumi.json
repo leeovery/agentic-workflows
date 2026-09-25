@@ -1,0 +1,2424 @@
+[
+  {
+    "id": "fumi-note-data-model",
+    "origin": "harvested",
+    "asked": "2026-08-20",
+    "need": "What a fumi is at the data level (Markdown content, ULID identity, derived title, tags, colour role), how its assets are bundled, tokenised, ref-counted and materialised, and the Note/Machine/Derived state tiers with the geometry-intent rule and write invariant.",
+    "terms": [
+      "note data model: markdown content, ULID identity, derived title, tags, colour role",
+      "asset bundle package, fumi:// tokens, ref-counting and materialisation",
+      "state tiers: note vs machine vs derived, geometry intent, write invariant"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "Content is Markdown, and the `.md` file holds **nothing but content**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "The UID is encoded as a **ULID** — 128-bit, time-ordered, Crockford base32",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "The title is the **derived first line**, display-only, and **never an identifier**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "the first line that yields non-empty text after stripping",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "Tags are **inline `#hashtag`s in the content** (like Bear / Obsidian / Apple Notes)",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "Colour is a per-note intrinsic (the Note tier), stored as a **stable role/slot**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Title is DERIVED, not first-class.** A note is *just its Markdown body*",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "A fumi is a **package/bundle** identified by its UID",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "All Fumi-managed references in `content.md` use the **`fumi://` scheme**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Recognised** for reference-counting wherever the token appears in content",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "On any write to `content.md` — GUI, CLI or MCP — the engine scans",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "Materialisation mints once per *source id* per write",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Assets — ref-count by version-links**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**They are orthogonal axes**, and the grid has one empty cell",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Geometry *intent* travels. Resolved geometry does not.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "A synced geometry field is written by a deliberate act, occurring on exactly one machine",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Intent travels; resolution does not.** The epic's third application",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "An attribute's tier and its column's category are independent",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "A fumi is a Markdown body with a stable per-note UID. The title is derived",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The bundle folder is **`{ulid}.fumi/`**, treated as an opaque macOS **package**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Restore writes the Note tier.** It is a deliberate act on exactly one machine, so the write invariant says it writes",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "note-model settled that a fumi is a bundle (`content.md` + `assets/` + intrinsic metadata)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**GFM (GitHub-Flavoured Markdown) is the base**, extended freely with Fumi-custom syntax",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**State model — two axes, three tiers.** **Note** (travels + backed up, in the bundle)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Decision: a ULID, globally unique, opaque, minted when the bytes are copied into `assets/`.**",
+        "grade": "primary",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-chip-label-original-filename",
+    "origin": "harvested",
+    "asked": "2026-09-14",
+    "need": "What an attachment chip shows when its originalFilename cannot be recovered from a damaged meta.json, and how the assets manifest stores originalFilename and is repaired when the sidecar is damaged.",
+    "terms": [
+      "asset chip label when the original filename is unrecoverable from a damaged sidecar",
+      "assets manifest originalFilename storage and repair of a damaged meta.json"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Inserting a file writes its filename as the link label. The chip renders the label.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The concern's state stops being reachable at this surface.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "the chip is for a non-renderable asset, the bytes are present",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**A chip's name is the link's label — content, not a record field**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "so a chip with a lost manifest entry still renders",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The assets manifest is reconstructed from the note's asset child records",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "A damaged sidecar's repair consults the note's record first, and defaults only what the record cannot supply",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "the original filename + add-time live in a `meta.json` **assets manifest**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Plus the assets manifest** — `id → {originalFilename, addedAt}`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "for a sync-off store with a damaged sidecar the manifest is the filename's only home",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Most repairs now invent nothing at all.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "The name the chip draws is the **link's label** in `content.md`, written as the filename at insert",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "which is why a damaged manifest costs the Finder name and never the chip's label",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**A non-renderable asset's chip draws its name from the link's label in `content.md`**",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-bundle-store-gc-read-model",
+    "origin": "harvested",
+    "asked": "2026-08-04",
+    "need": "How the on-disk .fumi bundle store and CloudKit sync fit together and resolve multi-Mac conflicts, how assets in a bundle are ref-counted and garbage-collected, and how the SQLite read-model rebuilds with its schema and derivation versions.",
+    "terms": [
+      "file-based Markdown bundle store on disk with CloudKit sync, conflict resolution across multiple Macs",
+      "asset storage, ref-counting and garbage collection inside a note bundle",
+      "SQLite read-model index rebuild, schema version and derivation version"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The bundle folder is **`{ulid}.fumi/`**, treated as an opaque macOS **package**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "store-locality = local-truth; v1 transport = CloudKit via `CKSyncEngine`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "`content.md` is the only unmergeable thing. Every other field is a scalar",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**`content.md` is never blended, only ever kept.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Three-way conflict detection** via CloudKit's client + server + **ancestor**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Assets — ref-count by version-links**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**B. GC is a sweep, never synchronous with a write**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**A Mac that still holds a live reference to a deleted asset re-uploads it.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Duplication is the design, not a gap in it.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The machine-local SQLite index is a **rebuildable projection** of the bundles",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "`meta` — the index's own schema version, **a separate derivation version**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Two separate values, not one.** They answer different questions",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**The derivation rules carry a version. When it changes, the projection is rebuilt rather than trusted.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "SQLite is excluded: the index carries its own schema version in `meta` and migrates by rebuild",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**The split is adopted: `notes_fts` carries its own derivation version",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**Every asset is always copied into the bundle's `assets/`.** No linking/aliasing",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Decided — asset-storage:** `<ulid>.<ext>` filenames + `meta.json` manifest",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**On-disk naming = generated id.** Each asset stored as `<ulid>.<ext>` inside the bundle's `assets/`",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The search index is separately versioned from title / tags / preview",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Decision — storage is a single file-in-a-folder store; the user picks the folder.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Local-truth + cloud-as-transport** (Apple Notes/Bear via CloudKit",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**The one thing that needs a decision here — an ordering window the invariant opens.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**A derivation-rule change** bumps a version held separately from the schema version",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-sync-off-repair-reconciled",
+    "origin": "harvested",
+    "asked": "2026-08-05",
+    "need": "Whether a store with sync disabled has any CloudKit record to consult and counts as reconciled, and how damaged-sidecar repair consults the synced record and waits for the store to be reconciled before writing.",
+    "terms": [
+      "sync disabled local store authoritative no CloudKit record to consult",
+      "damaged sidecar repair consults the record and waits for reconciled"
+    ],
+    "options": {
+      "work-unit": "fumi",
+      "topic": "storage-and-sync"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**A store that has never had a sync relationship is always reconciled**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "has no record to consult, and therefore repairs immediately with defaults",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "disabled-after-enabled all read as **not reconciled**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "That user also permanently loses those filenames, because the manifest was their only home",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "Fumi then doesn't offer sync/backup — the app still works fully on local truth",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "A damaged sidecar's repair consults the note's record first, and defaults only what the record cannot supply",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Repair is a write, and writes wait. Rendering doesn't.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The `reconciled` gate applies unchanged: a store that never had a sync relationship is trivially reconciled",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "reconcile before asset repair runs; a Mac that has not reconciled does not repair",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "consult the note's record before inventing anything",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "a never-synced store is always reconciled (local state is total state",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-edit-counter-fsevents-blur",
+    "origin": "harvested",
+    "asked": "2026-08-02",
+    "need": "Whether an edit_counter field decides conflict precedence in the per-note record, whether the engine watches the store with FSEvents for external folder-sync changes, and whether a synced geometry change is applied at open or when the note window is unfocused/on blur.",
+    "terms": [
+      "edit_counter conflict precedence in the per-note stored record",
+      "FSEvents watching the store for external folder-sync changes",
+      "geometry applied at open versus unfocused on blur for note windows"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Per-field merge against the ancestor retired the counter before it shipped**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Precedence = per-note edit-counter** in `meta.json`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Consequence — no precedence counter is needed at all**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "The first is moot — `edit_counter` was dropped 2026-07-31",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**No FSEvents in v1** — nothing outside the engine writes the store",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**The watcher is gone, and the assumption under it went first**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Struck: the mechanism pointer.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "receive = **FSEvents** on files the third-party service drops in",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "A synced geometry change applies when the note is not focused",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "A synced geometry change applies when the note is not focused",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "It is honoured at open (or when a preset binding re-resolves).",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The existing gate applies unchanged: a re-resolved preset takes effect when the note is not focused",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "\"honoured at open\" replaced by unfocused/on-blur, and its no-conflict-UI-for-geometry position",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-link-conflict-agent-activity",
+    "origin": "harvested",
+    "asked": "2026-07-27",
+    "need": "How a note-to-note link peeks at and opens its target, how a sync conflict between two divergent versions of a note is presented and reconciled, and how agent activity is shown on the note surface while an agent writes.",
+    "terms": [
+      "note-to-note link interaction, hover peek and click-to-open a linked note",
+      "sync conflict presentation and reconciling two divergent versions of a note",
+      "showing agent activity on a note surface while an agent writes"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Single click selects · **Space peeks** · double-click opens",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**So the peek is a popover anchored to the pill, with a beak pointing at it**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Opening a linked fumi honours everything the target already knows about itself**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Note links are in, working.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "hover spawns a peek of the linked note to the side, click opens it",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "A conflict is: *browse a small set of candidate versions, preview each, commit to one.*",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Stabilised flicking genuinely works.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Correction 1 — the conflict state is a banner, not a chrome glyph.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "No lock, for the same reason agent writes don't lock",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**`content.md` is never blended, only ever kept.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Kept: the edge shimmer and streaming text.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "an **angular gradient stroked around the window's rounded rect, masked to the edge, blurred",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Shimmer = it's happening now, you can watch it. A tint = it already happened, you missed it.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Do not lock the note while an agent writes.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**Any operation on a note lights that note's shimmer and refreshes its expiry.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Edits elsewhere in the note apply silently while the agent shimmer indicates activity",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "(a gentle travelling shimmer along the glass edge) rather than bolting on a badge",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Conflict Reconciler** — the version panel *is* the reconciler (not tabs)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Hovering** a `fumi://` link spawns a **peek** of the linked note to the side of the current note",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Why the reconciler needs it and version history doesn't.**",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-preset-binding-break",
+    "origin": "harvested",
+    "asked": "2026-08-06",
+    "need": "Which gestures break a note's preset binding, and whether the binding is cleared atomically or per axis when only some of the preset's axes are overridden.",
+    "terms": [
+      "what gesture breaks a preset binding on a note",
+      "whether a preset binding is atomic or per-axis when partially overridden"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Drag breaks a preset that sets Position; resize breaks one that sets Size",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A cross-display drag breaks a Display-setting binding**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The trigger is what the gesture *changed*, not which gesture it was.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A break writes only the axis the gesture actually changed.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**A gesture breaks the binding only if it overrides an axis the preset actually sets.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**The only thing that ever clears `preset_id` is a binding-breaking gesture**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**`presetId` is written by exactly two deliberate acts:** bind and unbind",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The binding is atomic** — one reference, cleared or not; only the *trigger* is scoped.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "*Per-axis breakage was argued here and dropped.*",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "The binding stays **atomic** — one reference, cleared or not — only the *trigger* is scoped.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "Drag breaks a Position-setting preset, resize breaks a Size-setting one, neither breaks a preset",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "So a gesture breaks the binding only if it overrides an axis the preset actually sets; the binding stays atomic",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**a gesture breaks it only if it overrides an axis the preset sets**, breaking the whole reference when it does",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-chrome-controls-plain-circles",
+    "origin": "harvested",
+    "asked": "2026-09-02",
+    "need": "Why a fumi's close and options controls are drawn as plain filled circles rather than .glass buttons, and the decision that moved the note chrome away from the .glass button style.",
+    "terms": [
+      "the close and options window controls are drawn as plain filled circles rather than glass buttons",
+      "decision moving away from .glass button style for the note chrome controls"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Control = a clean filled circle, ~~13px~~, no container well.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "darkens it and reveals its glyph — the close circle shows its `✕`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "drawn as a plain filled circle rather than a system glass button",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/research/platform-support.md",
+        "anchor": "its own later decision already specifies the flat circle, and the `.glass` text was never struck",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Amended 2026-09-11 — the control is not a `.glass` button",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "specified the close and `•••` controls as `.glass` buttons with vibrancy SF Symbols",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "the controls are drawn shapes, not system glass buttons",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "This settles what `.glass` was claiming *by construction*",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**nothing in the note surface requires macOS 26.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/platform-support.md",
+        "anchor": "**Liquid Glass pins nothing either**, because the drawn design uses none of the entry points",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-reconciler-device-label",
+    "origin": "harvested",
+    "asked": "2026-08-23",
+    "need": "How the conflict reconciler's rows name which Mac wrote each version: where the device name comes from, when it is resolved, and what the row reads when the Mac cannot be named.",
+    "terms": [
+      "conflict reconciler row labels showing which Mac wrote a version, device naming in the note window"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ],
+      "phase": "discussion",
+      "topic": "note-window"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The name source is the one the platform already shows the user.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The name is resolved at display time, never stamped on the version.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Where the name cannot be resolved, the row reads",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Device identity shows in the reconciler only, not in version history.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "a device name plus a timestamp, carrying the panel's attribution row unchanged",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The reconciler's device names rest on two fields that don't exist yet**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A rejected option can survive as the fallback of the one that beat it.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Rows carry the writing Mac's **ComputerName**, resolved at display time from the device key",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "The **row's device label**: resolved ComputerNames on both rows in place of the drawn",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-engine-protocol-skew-supervision",
+    "origin": "harvested",
+    "asked": "2026-08-12",
+    "need": "The engine socket's wire framing and request/response shape, how clients learn about note changes, how engine/client version skew is detected, and how the always-on engine is supervised (crash loops, watchdog) and logs for diagnosis.",
+    "terms": [
+      "engine socket wire protocol framing and request/response shape between a macOS daemon and its thin CLI/MCP clients",
+      "how clients learn about note changes — subscription, push notification, or polling",
+      "version skew between an engine and its clients after an update; protocol compatibility",
+      "daemon supervision, crash loops, and logging/observability for an always-on background agent"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "One JSON object per line, in both directions. Requests carry an `id`; responses echo it",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**A file-bearing operation passes a path, never contents.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Errors carry a code and a message.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**The error frame carries a code and a message. Never a content payload",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**No client subscribes. The engine pushes changes only to the surfaces it owns in-process",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "It is the same free in-process path the note windows take.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**A change stream is rejected, not deferred.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**The engine states a protocol version when a client connects: one integer, bumped only on a breaking change.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**The engine announces its protocol version to everything that connects",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**A phrasebook is the right model, and it does most of the work.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "version_mismatch   client and engine protocol disagree",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "There is no launchd agent, no plist, and no supervision.",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Two of the three dissolved on 2026-08-12** when `process-model`'s Fork 1 reversed",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "A crash that outlasts the bound is simply a dead engine, and the client says so.",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**A watchdog thread exists to log, not to act.",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Diagnostics go to Apple's unified log (`os_log`), not to a file Fumi owns.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Copy Diagnostics exports Fumi's own subsystem with no time bound",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Nothing supervises the process, and that is settled rather than outstanding.**",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Supervision and failure** — a watchdog thread records that the main thread stopped and never acts on it",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "an always-on engine that crashes often has a bug, not a supervision problem",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "The logging is still owed for the opposite reason: with nothing recording why the process went away",
+        "grade": "supporting",
+        "framing": 3
+      }
+    ]
+  },
+  {
+    "id": "fumi-launch-at-login-optin",
+    "origin": "harvested",
+    "asked": "2026-09-15",
+    "need": "Whether Fumi registers launch-at-login automatically or only when the user accepts an offer, and what happens to open fumis after a restart when Fumi is not set to launch at login.",
+    "terms": [
+      "login item registration, launch at login, whether the user opts in",
+      "what happens to open fumis after a restart if Fumi does not launch at login"
+    ],
+    "options": {
+      "work-unit": "fumi",
+      "phase": "discussion",
+      "topic": "engine-architecture"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "Fumi offers launch-at-login during first run, recommended.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**The login-item registration is a preference and nothing more.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Fumi registers its login item once, on first launch, and never again. It is on by default",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Launch-at-login is offered during first run, recommended and declinable**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "The user's ruling is precisely that the wrong answer breaks nothing",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Restoration fires once, at the first session-ready moment after process start — never on reopen.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**The engine is never started by a client. It starts on user action, or at login when launch-at-login is registered",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Launching Fumi manually always runs the engine, whatever the login-item preference says.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "someone who wanted it and missed the question finds the switch where every Mac app keeps it",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Fork 1 → A: a plain login item. Fumi is an ordinary `LSUIElement` app that stays running",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-agent-surface-writes-output",
+    "origin": "harvested",
+    "asked": "2026-09-12",
+    "need": "The CLI/MCP operation set an agent gets over the engine socket, how an agent's whole-body write is kept from clobbering text a human is typing, and how structured JSON output, UID addressing and ambiguous titles are handled.",
+    "terms": [
+      "CLI and MCP server operation set over a local socket for an AI agent client",
+      "agent writes to a note while the human is typing in the open window, last-write-wins clobbering",
+      "structured JSON output for agents versus pretty human output, UID addressing and disambiguation"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "The verbs were named across nine subtopics as each needed them and never gathered.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**A small, task-shaped set of MCP tools — find a note, read one, write one",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**A closed, named operation set with typed arguments. No general query surface, no runtime operation catalogue.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "Verbs split into: **body** (`new`, `read`, `edit` = replace body, `append`)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**A write that replaces existing content requires the read token that came with the content it is replacing.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**B's cost was put up as an objection and returned as the point.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "the wire carries a whole body, and the engine diffs it against the live buffer before applying",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Mutations serialise per note, not globally.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "So the agent is **not in your undo stack**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**Human output by default. `--json` opts into structured. No terminal detection.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**stdout carries the answer and nothing else. System state, errors and every other line go to stderr.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "Resolving a name is how every verb that takes a UID accepts a title instead.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**The call fails with `ambiguous_title`.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "On ambiguity, the agent does **`list → read → reason`**, escalating to the human only as a last resort.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**`tag` leaves the operation set. `append` stays, with no client exposing it.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Decision — agentic disambiguation by reasoning, not hard failure.**",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-search-index-agent-find-widenings",
+    "origin": "harvested",
+    "asked": "2026-09-12",
+    "need": "What the full-text search index covers and how its FTS5 tokenisation treats a query, how the CLI/MCP agent surface finds notes (list vs search, filters, the list→read→reason loop), and whether soft-deleted notes and version snapshots can be searched.",
+    "terms": [
+      "full-text search index over note content, what a query matches, FTS5 tokenisation",
+      "how the CLI and MCP agent surface find notes, list read reason loop, filtering by tag",
+      "soft-deleted notes, recently deleted, version snapshots and whether they are queryable"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The index holds what the user put there, and that is now the note's own text alone.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The invariant.** A query must never return fewer notes than filtering on the equivalent tag would.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**`#` is a separator, so a tag indexes as its bare text.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**Full folding is not reachable by any tokeniser setting**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**What the user types is literal text: tokenised exactly as note content is",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**The manifest pull is dropped. `notes_fts`'s corpus is `content.md` alone**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**`list` enumerates with filters. `search` matches text.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**Search is one facility taking a scope and a match style.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "On ambiguity, the agent does **`list → read → reason`**, escalating to the human only as a last resort.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**Neither. `search` is one verb and it finds text.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "widens the query to every note's version history",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**A second switch — *include deleted* — widens the query to notes in Recently Deleted.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**A history hit surfaces the note, marked as a history match.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**`list` excludes soft-deleted notes by default. A flag includes them",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**The *include deleted* widening is spelled identically on `list` and `search`.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "the read-model filters deleted notes out of normal `list` into a **Recently-Deleted** view",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**What was decided (2026-09-15).** `notes_fts` no longer reads the assets manifest.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**Resolved** — `search` finds text; resolving a name is title-as-address on every UID-taking verb",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "North star: the agent surface is built for an AI that **lists → reads → reasons → acts on a UID**",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-search-corpus-rule",
+    "origin": "harvested",
+    "asked": "2026-09-15",
+    "need": "The corpus rule for what a search query matches: content.md with fumi:// targets stripped and link labels kept, and whether each asset's originalFilename is still part of the index.",
+    "terms": [
+      "what a search query matches: the corpus rule, content plus asset originalFilename, stripping fumi:// targets, keeping link labels"
+    ],
+    "options": {
+      "work-unit": "fumi",
+      "topic": "search-and-retrieval"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The index holds what the user put there, and that is now the note's own text alone.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "Corpus = `content.md`, plus each asset's `originalFilename` from the assets manifest, minus the `fumi://` URL targets.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The principle is authorship, not visibility.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The mirror problem: things in the body the user never typed.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "`notes_fts` no longer reads the assets manifest.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**So the chain that produced the failure is broken at its first link.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**Authorship, not visibility, is the test for what belongs in an index.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "The recovery still works, and now for the ordinary reason",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**B — the note as the user made it.** `content.md` plus each asset's `originalFilename`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "the corpus dropped the manifest pull the same day, so a pass re-reading `content.md` alone would now be correct",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-space-route-home-fallback-launch",
+    "origin": "harvested",
+    "asked": "2026-08-25",
+    "need": "Which private route (AppKit restoration vs SkyLight) places windows on a Space, how a note's home display and Space are stored and resolved without rewriting intent, where a note opens when its Space no longer exists (including new or restored Macs), and how restore is sequenced at launch.",
+    "terms": [
+      "choosing between private AppKit window restoration and private SkyLight APIs for placing windows on a macOS Space",
+      "how a note remembers its home display and Space, resolution ladder, home is intent and resolution never rewrites it",
+      "fallback when a window's remembered Space no longer exists, Space 1 fallback, restored or new Mac",
+      "app launch sequencing, login item, always-on engine restart, window restore at startup"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**The AppKit route for placement. SkyLight for reads, on either route.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**A `SpacePlacement` layer owned by Fumi, with the placement write behind a driver.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/research/space-homing.md",
+        "anchor": "the failure asymmetry favours the AppKit route",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A home is *intent*. Where a note currently sits is *resolution*. Fallbacks resolve; they never rewrite.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A home stores two things, not three: display identity · Space UUID.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**A home is display identity plus the Space UUID. Nothing positional is stored.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**A home stores three things:** **display identity · Space UUID · the Space's ordinal index on that display.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "So the honest ground is one this document already owns",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "A note whose home Space UUID resolves opens on that Space. Otherwise it opens on the first Space of its home display",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "Absent is the state of a **genuinely new** Mac",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-model.md",
+        "anchor": "**A genuinely new Mac** — the Machine tier has no record for this device",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**Readiness is a property of the Space list, not of the homes.",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**Placement state is applied while the window is ordered out; the window is then shown without being activated.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/research/space-homing.md",
+        "anchor": "the eager-restore requirement is satisfied by sequencing rather than by timing",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**No re-attempt. What the timeout places stays placed until the next launch.**",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**Restoration gates on session readiness, not on process start.**",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/research/space-homing.md",
+        "anchor": "**Answer: (b) — Chrome uses AppKit state restoration, not the CGS/SkyLight Spaces calls.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/research/space-homing.md",
+        "anchor": "a home is intent and resolution never rewrites it; the resolution ladder is *display identity",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/space-homing.md",
+        "anchor": "note-window's existing rule that **resolving a home never writes one**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "so a note homed to Space 1 lands on the new machine's Space 1 by **resolution**, never entering the fallback path",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Decision — deleted-Space fallback: put the orphaned note on Space 1.**",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-own-window-no-accessibility",
+    "origin": "harvested",
+    "asked": "2026-09-02",
+    "need": "Whether placing Fumi's own windows on Spaces needs the Accessibility (or any TCC) permission, and what that means for the permission wizard's relaunch after a grant.",
+    "terms": [
+      "does placing own windows on Spaces need the Accessibility permission",
+      "permission wizard relaunch shape after a grant"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ],
+      "phase": "discussion"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "**No TCC grant of any kind is needed to place Fumi's own windows on Spaces.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "no TCC grant of any kind — is required to place Fumi's own windows on Spaces",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**No TCC permission of any kind** is needed to place your own windows",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "`space-homing` measured the assumption rather than reasoning about it",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**Moot. There is no permission-driven restart during first run, so the gesture has nothing to own.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "which relaunch shape the permission grant uses, a helper or the user reopening",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "a TCC file grant applies to the running process",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "so there is no permission to ask for and no permission-driven relaunch to survive",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "The permission restart is not a smaller problem; it is not a problem.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "established on 2026-09-02 that **no TCC grant of any kind is requested** to place Fumi",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "fumi-macos-floor-capability-stale-pins",
+    "origin": "harvested",
+    "asked": "2026-09-10",
+    "need": "Which macOS versions Fumi supports and which document records that minimum, how the app detects at runtime that the Space-placement capability is unavailable and degrades, and how stale macOS-14 floor statements in decided documents get corrected.",
+    "terms": [
+      "which macOS versions the product supports and where that minimum is recorded",
+      "how the app detects at runtime that a system capability is unavailable and degrades",
+      "stale version pins and constraints propagating across decided documents"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**`platform-support` is where the supported range is stated as a product fact.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**The supported range is a floor, open-ended: macOS 15.0.0 and later.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**Fumi asserts `15.0.0` from the first build.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/research/platform-support.md",
+        "anchor": "**Fixed at 15 for now. Revisited after release, or when the new OS ships.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**One implementation, because the OS floor moved**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "the project minimum is macOS 15+, and it is not this topic's to state",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "a version check is not the mechanism",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**No capability gate on the write side. Fumi attempts placement, verifies by read-back, and logs.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "Space homing degrades to fumis opening on the current Space. No crash, no retry, no user-facing notice.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/space-homing.md",
+        "anchor": "**No enumeration, no placement.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/platform-support.md",
+        "anchor": "**Capability resolution, not version checks.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**Corrections go out to `storage-and-sync` and `engine-architecture`.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**six sites across three files still assert 14 as the current floor**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "**A decision can be real, correct, and have no home.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/research/platform-support.md",
+        "anchor": "**Why it was missed, which matters more than the miss.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/platform-support.md",
+        "anchor": "is an assumption, not a finding. The corpus was checked against the floor",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/engine-architecture.md",
+        "anchor": "restating CloudKit's availability minimum as the project's",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**the project floor surrendered to the topic that owns it**",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-status-channels-dot-permission",
+    "origin": "harvested",
+    "asked": "2026-09-15",
+    "need": "How Fumi tells the user something happened when no window is on screen (system notifications, the menu-bar dot, the management window), how notification authorisation is requested at first run and handled under denial, and which conditions mark the menu-bar icon versus stay silent.",
+    "terms": [
+      "how the app tells the user something happened when no window is on screen — notifications, menu-bar status dot, management window",
+      "notification authorisation permission request during first run and what happens under denial",
+      "which conditions qualify to mark the menu-bar icon and which stay silent"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**A condition that persists gets both: a system notification when it begins, and a mark on the menu-bar icon",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**The channel follows who can see the problem and who can act on it — never how serious it is.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Tapping any notification Fumi posts opens the management window",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Named residual, accepted: the icon is not guaranteed to be on screen.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**The engine records the state; management-window renders it.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Fumi requests notification authorisation once, during the first-run flow. The ask is not framed on backup",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**The management window's line says the user can turn notifications back on, not merely where the pane is.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Under denial, the management window states it once and Fumi never asks again.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Nothing precedes the system dialog.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**Fumi asks for notification authorisation once, during first run, for everyone.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Scope — the dot reports this Mac's backup relationship as a whole, never the state of one note.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Red — the backup relationship is gone and restoring it takes an explicit act.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**A permanently rejected note gets the notification and no dot.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**The audit changes nothing further.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**The indexing caveat lives beside the manager's search results, and nowhere else.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**A system notification, not an in-app toast** (`note-window`, twice).",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**Fumi asks for notification authorisation once, during setup, for everyone.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**2. But the user has a route back that Fumi does not.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**The deferred first ask works, and `status-and-alerts`' stated reason for rejecting it is wrong.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**First run must therefore never treat a denied notification permission as grounds to ask harder.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**Denial handling, inherited:** the management window states it once, quietly, where sync state already lives",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**Resolved** — that a persistent condition gets both a transition notification and a standing mark",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "fumi-first-run-wizard-notifications-sync",
+    "origin": "harvested",
+    "asked": "2026-09-16",
+    "need": "What Fumi's first-run onboarding sequence is and what its opening screen says, when the notification permission is requested and what happens if it is denied, and how iCloud sync is offered at first run, including Apple ID binding and where sync is turned on later.",
+    "terms": [
+      "first-run onboarding sequence for a macOS menu-bar app — what the first screen says and does",
+      "notification permission request timing and what happens when denied",
+      "iCloud sync opt-in at first run, Apple ID binding, and where sync is turned on later"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**Six steps: intro, walkthrough (two pages), personalisation, permissions, synchronisation, launch.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**The greeting becomes the wizard's intro step",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**A short wizard, in this order: an intro, a walkthrough of what a fumi is and what it does",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**First run ends by opening a single prepared fumi, centre screen and focused",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**Fumi asks for notification authorisation once, during first run, for everyone.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "If the permission is denied, the first-delete education and the oversized-refusal reason simply never appear",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**The management window's line says the user can turn notifications back on, not merely where the pane is.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**Fumi asks for notification authorisation once, during setup, for everyone.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**The deferred first ask works, and `status-and-alerts`' stated reason for rejecting it is wrong.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**The sync toggle is pre-enabled on the first-run screen when an iCloud account is present.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**Out of scope. First run says nothing about which Apple ID sync would bind to, at either end",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "*Where* you turn sync on later is the settings surface",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "is a statement about the preference the app ships with, not about what the first-run screen proposes",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "The no-account/local-only store is its own partition (binds to the first account that enables sync)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**Opting out is not a free deferral.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "Apple documentation carries: the prompt binds to the first call; subsequent calls never prompt",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "onboarding's first-run screen offers sync **on**, visible and switchable before Continue",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "**A. Ask during first run, framed around backup.** Fumi states its reason, then the system dialog.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**User's direction:** when iCloud is not signed in, the sync option is simply disabled",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**The notification ask.** Unconditional, once, during setup, for everyone.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/research/onboarding-and-permissions.md",
+        "anchor": "**First run must therefore never treat a denied notification permission as grounds to ask harder.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/onboarding-and-permissions.md",
+        "anchor": "**First run says nothing about the login-item banner, and does not sequence around it.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "Nothing precedes the system dialog. Fumi shows no screen of its own explaining why it wants notifications.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/status-and-alerts.md",
+        "anchor": "Fumi requests notification authorisation once, during the first-run flow. The ask is not framed on backup",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "fumi-management-window-organiser",
+    "origin": "harvested",
+    "asked": "2026-09-19",
+    "need": "What the main app window does as an organiser, what the menu-bar quick menu and quick capture offer, how user-mappable keyboard shortcuts and defaults work, and how the Recently Deleted bin handles restore and permanent delete.",
+    "terms": [
+      "the main app window as an organiser for browsing, searching and sorting a library of notes",
+      "menu-bar quick menu and quick capture for a menu-bar-only macOS app",
+      "user-mappable keyboard shortcuts and default keybindings",
+      "Recently Deleted bin, restore and permanent delete"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "fumi"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "It's for browsing / organising: list all fumis, search, filter by tag/Space, sort",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "a full **manager window** (searchable list of all notes, filter by tag/Space",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Manager (reconfirmed + extended).**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "management-window has since decided a **two-window split** (user, 2026-09-21)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discussion/search-and-retrieval.md",
+        "anchor": "**The manager** — browse / search / filter / sort over the whole library.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "A menu-bar **quick menu** (new note, jump to a recent note, open the manager)",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "Primary path = menu-bar icon → dropdown → \"new fumi\"",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The legitimate global case is New fumi** (quick capture)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "Power users get **user-mappable keybindings** with a small default set",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Shortcuts are user-overridable** — an **in-app keyboard-shortcuts pane**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Global hotkeys are for getting *into* the app. App-scoped shortcuts are for acting *within* it.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**You cannot hard-delete a note unless it is already in Recently Deleted.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "**Soft-delete = a flag** (`deleted` + `deleted-at`) on the record/`meta.json`",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**The confirm moves to permanent delete**, in the Recently Deleted view",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/storage-and-sync.md",
+        "anchor": "Recently-Deleted **bin** (list, restore, delete-permanently, clear)",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/agent-surface.md",
+        "anchor": "**The un-delete action is exposed.",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Delete — RESOLVED (user walked the framing back and forth, landed here).**",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**Distinct from management-window's menu-bar *status item*** (top-right icon: new note, recent notes, open manager)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discovery/sessions/session-001.md",
+        "anchor": "**Decision — Fumi lives in the menu bar (LSUIElement), NOT the dock by default",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "**\"Put Back\", not \"Restore\"** (resolves review-005 F6).",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/fumi/discussion/note-window.md",
+        "anchor": "Hard-delete removes the record + writes a tombstone; **no auto-purge**",
+        "grade": "supporting",
+        "framing": 3
+      }
+    ]
+  },
+  {
+    "id": "fumi-neg-portal-go-file-organisation",
+    "origin": "negative",
+    "from": "portal",
+    "need": "Portal's Go source-file organisation standard (one concern per file, splitting internal/tui/model.go) and CLAUDE.md code standards enforced by guard tests — nothing in Fumi's corpus covers Go code layout or project code standards.",
+    "terms": [
+      "file organisation standard for Go source files, one concern per file, splitting large files into siblings",
+      "internal/tui/model.go structure, update routing, view composition, panel-scoped files",
+      "code standards recorded in CLAUDE.md, guard tests enforcing architectural conventions"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "fumi-neg-portal-tmux-resume-hooks",
+    "origin": "negative",
+    "from": "portal",
+    "need": "How Portal keys tmux resume hooks per pane and sweeps stale hooks.json entries — Fumi has no tmux panes, resume hooks or hooks.json.",
+    "terms": [
+      "resume hooks keyed by pane window and pane index become stale when tmux renumbers panes",
+      "hook key derivation from portal-id session user option rename immune",
+      "daemon clean-stale sweep removing hooks.json entries whose pane no longer exists"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "fumi-neg-tick-same-second-ordering",
+    "origin": "negative",
+    "from": "tick",
+    "need": "Tick's fix for tasks created in the same second sorting arbitrarily (a monotonic per-task creation sequence ordering list queries by priority, created time, then sequence) — Fumi has no tasks, priorities or creation-sequence field.",
+    "terms": [
+      "Tasks created within the same second come back in arbitrary order; add an explicit monotonic creation sequence per task so list-family queries sort deterministically by priority, created time, then sequence."
+    ],
+    "options": {},
+    "relevant": []
+  }
+]

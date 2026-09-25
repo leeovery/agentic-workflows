@@ -1,0 +1,928 @@
+[
+  {
+    "id": "tick-free-text-toon-context",
+    "origin": "harvested",
+    "asked": "2026-09-16",
+    "need": "Starting the free-text-round-trip discussion: the recorded decisions on tick's TOON output design for agents (why TOON, section structure, token cost), how multi-line descriptions and notes render and round-trip through CLI output, and the output-format flags and per-command flag registry.",
+    "terms": [
+      "toon output format design for agent consumption and token efficiency",
+      "multi-line free text description round trip through CLI output",
+      "output format flags and per-command flag registry decisions"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "free-text-round-trip"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/v1/discussion/toon-output-format.md",
+        "anchor": "TOON achieves 30-60% token savings over JSON while actually improving parsing accuracy",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/toon-output-format.md",
+        "anchor": "Each section has its own schema header - self-documenting",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "**Decision**: Keep JSONL for storage, use TOON as default output format.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "TOON (Token-Oriented Object Notation) is optimized for AI agent consumption",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**Named fields, with no wrapping key.** The task's own fields sit at the top level of the document",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "The description section prefixes every line of the description with two spaces and emits no terminator",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**The fidelity bar is byte-identity, and the existing whitespace trimming does not stand in its way.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**The description is emitted as one TOON-quoted value.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**One field — the bare value.** `tick show tick-a1b2 --field description`:",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "**It becomes a single TOON-quoted string, exactly as the library's `toon.MarshalString` produces from a Go string:**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "Read a value out of `tick show`, write it back unchanged, and the stored value is byte-for-byte what it was.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "a long text field is a single TOON-quoted value on the section it belongs to",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/cli-command-structure-ux.md",
+        "anchor": "**Option C: Auto-detect TTY** with explicit override flags.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/toon-output-format.md",
+        "anchor": "**Option C: Auto-detect TTY** (decided in CLI discussion)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "Output format is determined automatically based on whether stdout is a terminal:",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/unknown-flags-silently-ignored/investigation/unknown-flags-silently-ignored.md",
+        "anchor": "Each command exports its set of valid flags. The dispatcher validates args against that set before invoking the handler.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/unknown-flags-silently-ignored/specification/unknown-flags-silently-ignored/specification.md",
+        "anchor": "| `ready` | same as `list` minus `--ready` |",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**A single-field request ignores `--json`, `--pretty` and `--toon`; a multi-field request honours them.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "One deliberately awkward task becomes a permanent fixture, round-tripped end to end.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**Read-side only. No note edit command in this work.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "The description becomes one TOON-quoted value, the same rule note text already obeys.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "One deliberately awkward task becomes a permanent fixture, round-tripped end to end.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "the §2.2 round-trip guarantee has a hole — text an agent can read out of tick and cannot put back",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "Every command listed here emits output a standard TOON reader decodes, on **every** branch",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "tick-same-second-ordering-context",
+    "origin": "harvested",
+    "asked": "2026-09-21",
+    "need": "Starting the same-second-tasks-sort-by-id investigation: why tasks created in one second come back in random ID order, how creation timestamps are stored (their precision) and used for ordering, and the list/ready/blocked ORDER BY clauses and SQLite cache schema behind it.",
+    "terms": [
+      "tasks created in the same second sort by random task ID instead of creation order",
+      "creation timestamp precision and ordering of task lists",
+      "ORDER BY clauses on list ready blocked queries and the SQLite cache schema"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "same-second-tasks-sort-by-id"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/seeds/2026-09-21-same-second-tasks-sort-by-id.md",
+        "anchor": "All five had been created inside the same wall-clock second, so the creation-date sort tied on every row",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "Two independent defects compound. Neither alone produces the reported symptom",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**Record an explicit creation sequence on every task, and sort on it beneath priority and creation date.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "Every task carries an explicit creation sequence — a monotonic number assigned when the task is created",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "All timestamps (`created`, `updated`, `closed`) use ISO 8601 format in UTC:",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "Creation timestamps are truncated to whole-second granularity before storage",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**C — Sub-second creation timestamps, with or without a tiebreak (agreed, then reversed). Ruled out by measurement.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "A naive precision increase introduces a *new* ordering defect on mixed-precision data",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "**The sort has no deterministic final term.** Both list-family clauses end at `t.created ASC`",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "ORDER BY t.priority ASC, t.created ASC;",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ready-includes-in-progress/specification/ready-includes-in-progress/specification.md",
+        "anchor": "The `ORDER BY` becomes conditional on the ready filter.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "The list-family `ORDER BY` terminates at `t.created ASC` with no deterministic tiebreak",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/data-schema-design.md",
+        "anchor": "Indexes on `status`, `priority`, `parent` cover common filters",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "`tasks` table mirrors JSONL fields (minus `blocked_by` which is normalized)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ready-includes-in-progress/discussion/ready-includes-in-progress.md",
+        "anchor": "**Option 2, `ready`-only.** In the `ready` query, `in_progress` floats to the top as a band",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "Both clauses in `buildListQuery` gain two terms, ending on the sequence and then the task ID:",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/cache-schema-versioning/specification/cache-schema-versioning/specification.md",
+        "anchor": "Add a hard-coded schema version constant. Store it in the existing `metadata` table.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "every row ties on both, so the incoming primary-key order survives to the output",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "The creation-date sort ties on every row in the batch and falls through to the secondary key.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "one distinct millisecond for 100 in-process stamps means imports get nothing",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "then ruled out by measurement (100 in-process stamps share one millisecond; already-stored tasks never gain precision)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**Timestamp precision is one knob for storage and display.**",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "tick-random-ids-locking",
+    "origin": "harvested",
+    "asked": "2026-09-22",
+    "need": "Why tick task IDs are random bytes rather than sequential numbers, how ID collisions are handled at creation, and how tick protects the task file when two processes write at once (file locking).",
+    "terms": [
+      "why task IDs are random bytes rather than sequential or incrementing",
+      "ID generation design decision collision concurrent creation",
+      "concurrent access file locking two processes writing tasks at once"
+    ],
+    "options": {},
+    "relevant": [
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "No merge conflicts - IDs are globally unique without coordination",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "rejecting sequential IDs (`TICK-001`) to avoid merge conflicts",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "Timestamp-based rejected - leaks creation time, adds ordering semantics we don't want.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "Use `crypto/rand` from Go stdlib (3 random bytes → 6 hex characters)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "two branches each numbering from the same maximum merge into duplicates",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "**Merge conflicts** → Minimized by hash-based IDs. When they occur, Git handles it.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "**Retry up to 5 times, silent to caller**. On exhaustion, error with actionable message",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "**6 hex characters**. ~16.7M combinations, negligible collision risk at project scale.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "On collision: retry silently up to 5 times",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "**Atomic rename + file locking.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "Corruption issues stem from concurrent access without file locking",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "**Write operations**: Exclusive lock (blocks other readers and writers)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "**Read operations**: Shared lock (allows other readers, blocks writers)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "Error: Could not acquire lock on .tick/lock - another process may be using tick",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "writes are serialised by the exclusive file lock (`store.go` `acquireExclusive`)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "**File locking prevents concurrent access bugs** - Learned from Taskwarrior's pain.",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "tick-dep-tree-context",
+    "origin": "written",
+    "need": "Prior decisions on the tick dep tree command: what it shows and leaves out, how the toon and JSON edge lists are shaped, and how an empty graph and dependency cycles are rendered.",
+    "terms": [
+      "dependency tree visualization command for blocked_by relationships",
+      "dep tree toon edge list and JSON output shape",
+      "dep tree with no dependencies, empty results and dependency cycles"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "dep-tree-visualization"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "**`tick dependency tree [id]`** — extends the existing dependency subcommand pattern.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "**Diamond dependencies:** Just duplicate.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "**Dependencies only. No parent/child relationships, no parent annotations.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "A \"root task\" is a task that blocks other tasks but is not itself blocked by anything",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "**Toon:** Flat edge list in standard toon format — `dep_tree[N]{from,to}:` with one edge per line.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "Focused mode: separate `blocked_by[N]{from,to}:` and `blocks[N]{from,to}:` sections",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "**The full-graph edge list is therefore the stored relation itself**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "the line identifying that task becomes top-level `id`, `title` and `status` fields in the same form",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "**No dependencies in project** (full graph mode): \"No dependencies found.\"",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/discussion/free-text-round-trip.md",
+        "anchor": "**A command in the must-parse table emits its structured form on every branch, the empty one included.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "**What replaces them is the document the non-empty branch produces, emptied**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "A project containing a dependency cycle therefore reported `2 chains, longest: 1, 4 blocked`",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "Where every remaining participant is blocked by another that is also undrawn — a cycle",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "**A participant that names no task says so.**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "**Asymmetric focused view** — if a task has upstream blockers but blocks nothing",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/discussion/dep-tree-visualization.md",
+        "anchor": "Dependencies and parent/child are different relationship types and should not be mixed",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "Extends the existing `tick dep add/remove` subcommand pattern with a `tree` subcommand.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "Priority is excluded — it's orthogonal to dependency ordering and doesn't help understand what's blocking what.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/dep-tree-visualization/specification/dep-tree-visualization/specification.md",
+        "anchor": "**Dependencies only.** No parent/child relationships, no parent annotations.",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "tick-task-removal-context",
+    "origin": "written",
+    "need": "Decisions on permanently removing tasks: how remove differs from cancel, what happens to tasks that depend on or descend from a removed task, and the confirmation prompt and --force behaviour.",
+    "terms": [
+      "permanently removing a task versus cancelling it",
+      "what happens to dependent and child tasks when a task is deleted",
+      "confirmation prompt and force flag for destructive commands"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "v1"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**True deletion (Option A).** Filter the task from the slice inside `Store.Mutate()`, rewrite JSONL without it.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/task-removal/specification.md",
+        "anchor": "This is fundamentally different from `cancel` — cancel marks a task as resolved-but-present",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/cli-command-structure-ux.md",
+        "anchor": "`tick cancel tick-abc` = not completed (covers: cancelled, rejected, not needed, duplicate, wontfix)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**Remove ≠ cancel.** Cancel is a reversible status transition; remove is true deletion.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**Auto-clean (Option B).** Strip the removed task's ID from all `BlockedBy` arrays in the same atomic mutation.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**Cascade delete (Option A).** Removing a parent recursively removes all descendants.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/specification/task-removal/specification.md",
+        "anchor": "**Bulk + cascade interaction:** When multiple IDs are passed and some trigger cascades",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/data-schema-design.md",
+        "anchor": "**Option 1: Cancelled tasks unblock dependents.**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/specification/task-removal/specification.md",
+        "anchor": "its ID is automatically scrubbed from all surviving tasks' `BlockedBy` arrays",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/hierarchy-dependency-model.md",
+        "anchor": "Task remains valid, treated as root-level task (parent reference ignored)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**Default: interactive confirmation prompt.** When run without `--force`:",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/task-removal/specification.md",
+        "anchor": "**Prompt destination:** The confirmation prompt (question text) is written to stderr, not stdout.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "cancel marks a task as resolved-but-present; remove erases it entirely",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "**Orphaned children** (parent reference points to non-existent task):",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/task-removal.md",
+        "anchor": "**Any status.** No restrictions. The confirmation prompt (or `--force` flag) is the safety gate, not status rules.",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "tick-auto-cascade-context",
+    "origin": "written",
+    "need": "The auto-cascade rules that move a parent's status when its children start or finish, how cascaded (system-initiated) transitions are recorded with the auto flag in transition history, and the StateMachine that holds the rules.",
+    "terms": [
+      "parent status cascade when a child task starts or all children finish",
+      "transition history auto flag for system-initiated status changes",
+      "state machine consolidating transition validation and cascade rules"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "auto-cascade-parent-status"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Yes, auto-cascade upward.** When a child transitions to `in_progress`, walk the ancestor chain",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Unconditional.** No configuration. Two behaviors ship as default:",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "Refined rule 2: **All children terminal → parent goes to `done`, unless all children are `cancelled`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
+        "anchor": "When all children of a parent reach a terminal state (`done` or `cancelled`), the parent automatically transitions:",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "**Explicit completion** - Parent doesn't auto-complete when children done. Manual `tick done`.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Persistent tracking:** Add a `transitions` array field to the Task struct. Each entry records `{from, to, at, auto}`.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
+        "anchor": "`auto` — boolean, `true` if the transition was triggered by a cascade (not a direct user action)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/rule6-parent-reopen-auto-flag/investigation/rule6-parent-reopen-auto-flag.md",
+        "anchor": "`ApplyWithCascades` hardcodes `Auto: false` on the primary target's `TransitionRecord`",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/rule6-parent-reopen-auto-flag/investigation/rule6-parent-reopen-auto-flag.md",
+        "anchor": "`ApplySystemTransition(tasks, target, action)` — for system-initiated side effects (wraps with `auto=true`)",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/rule6-parent-reopen-auto-flag/specification/rule6-parent-reopen-auto-flag/specification.md",
+        "anchor": "Add an `auto bool` parameter to `ApplyWithCascades` and make it unexported (`applyWithCascades`).",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/free-text-round-trip/specification/free-text-round-trip/specification.md",
+        "anchor": "Every task's transition history already records each change with an `auto` flag",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**`StateMachine` struct in `internal/task/`** that consolidates all transition, validation, and cascade rules.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Confirmed: `StateMachine` struct with queue-based cascade processing.** No external libraries.",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
+        "anchor": "A `StateMachine` struct in `internal/task/` consolidates all 11 rules",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Child reopened under done parent → parent reopens** (undo auto-done)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
+        "anchor": "**Upward completion cascade** — all children terminal → parent done (or cancelled if all cancelled)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/rule6-parent-reopen-auto-flag/investigation/rule6-parent-reopen-auto-flag.md",
+        "anchor": "This transition should be recorded with `auto=true` since it is system-initiated, not a manual user command.",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "tick-cache-schema-version",
+    "origin": "written",
+    "need": "How tick's SQLite cache detects and recovers from a schema change after an upgrade: the schema version constant and the delete-and-rebuild path.",
+    "terms": [
+      "how the SQLite cache handles a schema change after upgrading tick"
+    ],
+    "options": {
+      "phase": "specification",
+      "limit": 5
+    },
+    "relevant": [
+      {
+        "source": ".workflows/cache-schema-versioning/specification/cache-schema-versioning/specification.md",
+        "anchor": "Add a hard-coded schema version constant. Store it in the existing `metadata` table.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cache-schema-versioning/specification/cache-schema-versioning/specification.md",
+        "anchor": "`CREATE TABLE IF NOT EXISTS` silently succeeds on old schemas without adding missing columns",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "No migration is needed. `ensureFresh` checks the version before every query and before every mutation",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "tick-partial-id-matching",
+    "origin": "written",
+    "need": "The partial task ID matching rules: the minimum prefix length, what happens on ambiguous or zero matches, and which ID inputs accept a prefix.",
+    "terms": [
+      "partial task ID prefix matching minimum length and ambiguous matches"
+    ],
+    "options": {
+      "work-type": "feature",
+      "limit": 5
+    },
+    "relevant": [
+      {
+        "source": ".workflows/cli-enhancements/discussion/cli-enhancements.md",
+        "anchor": "On ambiguity (2+ matches): return error listing the matching IDs so user can be more specific",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-enhancements/discussion/cli-enhancements.md",
+        "anchor": "Minimum 3 hex chars required for prefix matching",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-enhancements/discussion/cli-enhancements.md",
+        "anchor": "**Yes — everywhere an ID is accepted.** Partial matching applies to `--parent`, `--blocked-by`, `--blocks`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-enhancements/specification/cli-enhancements/specification.md",
+        "anchor": "Minimum 3 hex chars required for prefix matching (prevents overly broad matches)",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "tick-install-script-macos",
+    "origin": "written",
+    "need": "What tick's install script does on macOS, in particular when Homebrew is not installed.",
+    "terms": [
+      "install script behaviour on macOS when Homebrew is not installed"
+    ],
+    "options": {
+      "work-unit": "v1",
+      "phase": "specification",
+      "limit": 3
+    },
+    "relevant": [
+      {
+        "source": ".workflows/v1/specification/installation/specification.md",
+        "anchor": "macOS does not handle direct binary downloads. This avoids code signing complexity",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/installation/specification.md",
+        "anchor": "Handles code signing automatically",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "tick-neg-fumi-glass-controls",
+    "origin": "negative",
+    "from": "fumi",
+    "need": "Fumi's decision to draw the note window's close and options controls as plain filled circles instead of glass buttons; tick has no window chrome or visual controls.",
+    "terms": [
+      "the close and options window controls are drawn as plain filled circles rather than glass buttons",
+      "decision moving away from .glass button style for the note chrome controls"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "tick-neg-fumi-launch-at-login",
+    "origin": "negative",
+    "from": "fumi",
+    "need": "Fumi's login item registration and launch-at-login consent, and what the user sees after a restart; tick has no app lifecycle, login items or window restore.",
+    "terms": [
+      "login item registration, launch at login, whether the user opts in",
+      "what happens to open fumis after a restart if Fumi does not launch at login"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "tick-neg-portal-palette-contrast",
+    "origin": "negative",
+    "from": "portal",
+    "need": "Portal's colour palette token table and its contrast ratios against the canvas; tick has no colour tokens, themes or contrast rules.",
+    "terms": [
+      "MV palette token table contrast ratios canvas"
+    ],
+    "options": {},
+    "relevant": []
+  }
+]
