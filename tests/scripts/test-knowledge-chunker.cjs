@@ -416,17 +416,18 @@ describe('knowledge chunker — character budget', () => {
     return (tag + ' ' + words.repeat(Math.ceil(size / words.length))).slice(0, size).trimEnd();
   }
 
-  // Budget, verbatim, and no loss: every chunk fits, every chunk is a slice
-  // of the source, and the chunks carry all of the source's non-whitespace
-  // content in order.
+  // Budget, verbatim, and no body lost: every chunk fits, every chunk is a
+  // slice of the source, and the chunks carry all of the source's
+  // non-whitespace body content — every line but a heading — in order. A
+  // heading can go: a split drops the heading-only piece it leaves behind.
   function assertFaithful(chunks, source) {
     const body = stripFrontmatter(source);
     for (const c of chunks) {
       assert.ok(c.content.length <= MAX_CHUNK_CHARS, 'chunk of ' + c.content.length + ' chars exceeds the budget');
       assert.ok(body.includes(c.content), 'chunk is not a verbatim slice of the source');
     }
-    const squash = (s) => s.replace(/\s+/g, '');
-    assert.ok(squash(chunks.map((c) => c.content).join('')) === squash(body), 'the chunks lost or reordered source content');
+    const bodyText = (s) => s.split('\n').filter((line) => !/^#{1,6}\s/.test(line)).join('').replace(/\s+/g, '');
+    assert.ok(chunks.map((c) => bodyText(c.content)).join('') === bodyText(body), 'the chunks lost or reordered body content');
   }
 
   it('splits an over-budget own-chunk Summary into paragraph groups, packed up to the budget', () => {
@@ -538,6 +539,15 @@ describe('knowledge chunker — character budget', () => {
     assert.strictEqual(chunks[0].content, src);
   });
 
+  it('drops the heading-only piece a split leaves behind', () => {
+    const block = (tag) => Array.from({ length: 12 }, (_, i) => paragraph(tag + '-' + i, 1000)).join('\n\n');
+    const src = ['## Parent', '', '### Child A', '', block('a'), '', '### Child B', '', block('b'), ''].join('\n');
+    const chunks = chunk(src, research);
+    assert.deepStrictEqual(chunks.map((c) => c.content.split('\n')[0]), ['### Child A', '### Child B']);
+    assert.ok(chunks.every((c) => !c.content.includes('## Parent')), 'the parent heading is dropped');
+    assertFaithful(chunks, src);
+  });
+
   it('holds the budget and the verbatim slice across every real fixture', () => {
     for (const [fixture, phase] of [
       ['discussion-fixture.md', 'discussion'],
@@ -583,7 +593,6 @@ describe('phase chunking configs', () => {
       assert.strictEqual(cfg.strategy, 'split-on-heading');
       assert.strictEqual(cfg.primary_level, 2);
       assert.strictEqual(cfg.fallback_level, 3);
-      assert.strictEqual('max_lines' in cfg, false, 'the size gate is the chunker budget, not a config field');
       assert.strictEqual(cfg.keep_whole_below, 50);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
@@ -1038,8 +1047,8 @@ describe('knowledge chunker — real fixtures', () => {
   it('chunks a deeply-nested spec (tick-core) where a single H2 contains all H3s', () => {
     // tick v1 tick-core/specification.md has only 2 H2s: "## Specification"
     // (754 lines, gets fallback-split at H3) and "## Dependencies" (27
-    // lines, stays whole). Verifies that real artifacts with one huge
-    // parent H2 do not break the flat fallback chain.
+    // lines, stays whole). Verifies that a real artifact with one huge
+    // parent H2 splits at its H3s.
     const src = loadFixture('spec-deep-nested-fixture.md');
     const cfg = loadConfig('specification');
     const chunks = chunk(src, cfg);

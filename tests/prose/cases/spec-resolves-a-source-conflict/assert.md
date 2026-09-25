@@ -62,5 +62,4 @@ The end world's claims:
   source rows incorporated; the discussion items behavioural-ranking
   and synonym-handling both read completed with no reconcile flags
 - the knowledge store holds the reindexed synonym-handling content
-  (keyword store — the index call succeeded, no pending-queue entry
-  for it)
+  (keyword store — the index call succeeded)

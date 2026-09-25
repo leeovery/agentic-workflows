@@ -182,7 +182,7 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
   }
   lines.push('  • Feature: removed');
   return joined([
-    warn ? warningBlock('Knowledge indexing warning', 'The feature is absorbed. The next start brings the knowledge base up to date.') : null,
+    warn ? warningBlock('Knowledge warning', 'The feature is absorbed. The next start brings the knowledge base up to date.') : null,
     confirmation(lines.join('\n')),
   ]);
 }

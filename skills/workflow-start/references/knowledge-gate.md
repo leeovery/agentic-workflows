@@ -272,7 +272,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs boot
 
 **If `knowledge` is `ready`:**
 
-Boot committed any store dirt the wizard left. Confirm with the active settings from the wizard's summary:
+Boot committed any store dirt the wizard left. If the response carries `warnings`, surface them. Confirm with the active settings from the wizard's summary:
 
 > *Output the next fenced block as a code block:*
 
@@ -293,6 +293,8 @@ The wizard did not complete. Surface the boot response's detail.
 The setup command just ran. Branch on its result. `origin` names the branch that ran it — the authentication path routes back through **D** to that origin's command.
 
 #### If the command succeeded
+
+When its output reports artifacts that failed to index (`N artifact(s) failed to index`) or an initial indexing error, surface it in one sentence — the next start retries them.
 
 → Return to **E. Confirm and Continue**.
 

@@ -480,6 +480,10 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(res.warnings[4], /knowledge index \(seeds\/seed\.md\) failed/);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
+
+    // The absorb both removes and indexes, so its advisory names neither.
+    const receipt = stubbed.output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--warn']);
+    assert.match(receipt, /  ⚑ Knowledge warning\n    The feature is absorbed\. The next start brings the knowledge base up to date\./);
   });
 });
 

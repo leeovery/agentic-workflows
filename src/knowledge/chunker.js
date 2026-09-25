@@ -122,7 +122,8 @@ function chunk(markdown, config) {
   //    entry (at any level, not just the split level) is carved out of its
   //    parent and emitted with its own action. If the parent itself matches
   //    at the split level, the parent's action wins and no sub-carving
-  //    happens — "Discussion Map as H2" stays one chunk.
+  //    happens — "Discussion Map as H2" stays one chunk while it fits the
+  //    budget.
   const items = expandSubLevelSpecials(
     sections,
     doc.lines,
@@ -280,7 +281,7 @@ function buildSections(lines, headings, splitLevel) {
  * Precedence rule: if a split-level section's heading is itself in
  * special_sections, that match wins and the section is emitted whole with
  * the configured action. No sub-carving — "Discussion Map as an H2" stays
- * one chunk regardless of any nested H3s.
+ * one chunk regardless of any nested H3s, while it fits the budget.
  *
  * Otherwise, scan the section for sub-level headings (H3+, below the
  * split level) whose text matches special_sections. Each match is carved

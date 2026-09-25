@@ -137,7 +137,7 @@ const FILTERED_QUERY_LIMIT = 1_000_000;
 
 /**
  * Enumerate every document in the store, paged via offset+limit until
- * exhausted. Used by status, the bulk sync, and any caller that needs a
+ * exhausted. Used by status, the bulk index, and any caller that needs a
  * complete unfiltered view. Filtered enumerations should call Orama's
  * `where` directly with an unbounded limit (see findInternalIdsByIdentity).
  */
@@ -369,6 +369,18 @@ async function saveStore(db, storePath) {
 }
 
 /**
+ * A stamp of the store file as it stands. Every save writes a new file, so
+ * the stamp changes with each one — a matching stamp means the file is the
+ * one a load read. Null when there is no store.
+ * @param {string} storePath
+ * @returns {string|null}
+ */
+function storeStamp(storePath) {
+  const stat = fs.statSync(storePath, { throwIfNoEntry: false });
+  return stat ? `${stat.ino}:${stat.size}:${stat.mtimeMs}` : null;
+}
+
+/**
  * Load a store from disk. Reads the MsgPack envelope, creates a fresh
  * Orama instance with the stashed schema, then calls Orama load() to
  * populate it.
@@ -522,7 +534,6 @@ function readMetadata(metadataPath) {
 
 module.exports = {
   SCHEMA_FIELDS,
-  STORED_FIELDS,
   METADATA_FIELDS,
   buildSchema,
   createStore,
@@ -536,6 +547,7 @@ module.exports = {
   searchHybrid,
   saveStore,
   loadStore,
+  storeStamp,
   acquireLock,
   releaseLock,
   withLock,
