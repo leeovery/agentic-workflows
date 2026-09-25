@@ -48,7 +48,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 Validating root cause hypothesis... (validation agent running)
 ```
 
-Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in_background`).
+Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).
 
 The validation agent receives:
 
