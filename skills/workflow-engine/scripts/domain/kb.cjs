@@ -16,14 +16,14 @@ const { spawnSync } = require('child_process');
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 /**
- * The knowledge directory holds one committed file, the project's
- * `config.json` — the record that the project is set up. Everything else in
- * it is derived and never committed; the store's files are the pair a new
- * worktree is given a copy of.
+ * The knowledge directory is local to each checkout and never committed: the
+ * store, its metadata, and the knowledge config setup wrote. Those three are
+ * the files a worktree Claude Code creates is given a copy of — the same
+ * paths the knowledge CLI's own helpers resolve.
  */
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
-const KNOWLEDGE_CONFIG = `${KNOWLEDGE_DIR}/config.json`;
-const STORE_FILES = [`${KNOWLEDGE_DIR}/store.msp`, `${KNOWLEDGE_DIR}/metadata.json`];
+const METADATA_FILE = `${KNOWLEDGE_DIR}/metadata.json`;
+const STORE_FILES = [`${KNOWLEDGE_DIR}/store.msp`, METADATA_FILE, `${KNOWLEDGE_DIR}/config.json`];
 
 /**
  * Phases whose completed artifact is knowledge-base indexed, with the artifact
@@ -64,4 +64,4 @@ function knowledge(cwd, args, label, warnings) {
   return !failed;
 }
 
-module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, KNOWLEDGE_CONFIG, STORE_FILES };
+module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, METADATA_FILE, STORE_FILES };

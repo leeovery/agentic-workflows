@@ -899,6 +899,10 @@ describe('engine CLI: roadmap sessions and imports', () => {
   });
 
   it('a binary lands tracked and unindexed, its extension kept and lowercased', () => {
+    // Set up keyword-only, so the markdown landing indexes cleanly and any
+    // warning could only be the binary's.
+    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
     fs.writeFileSync(path.join(dir, 'Board Sketch.PNG'), 'png bytes\n');
     fs.writeFileSync(path.join(dir, 'notes.md'), '# notes\n');
     const res = runOk(dir, ['import', 'Board Sketch.PNG', 'notes.md']);

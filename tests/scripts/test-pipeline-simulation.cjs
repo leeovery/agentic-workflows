@@ -41,7 +41,7 @@ const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
-const { STORE_FILES } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/kb.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/kb.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -237,9 +237,14 @@ class Sim {
     git(this.dir, ['config', 'user.name', 'Sim']);
     git(this.dir, ['config', 'commit.gpgsign', 'false']);
     fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
-    // The nested gitignore every booted project carries (migration 049): the
-    // cache is ephemeral session machinery, mechanical heartbeats included.
-    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
+    // The nested gitignore every booted project carries (migrations 049,
+    // 060): the cache is ephemeral session machinery, mechanical heartbeats
+    // included, and the knowledge directory is the checkout's own.
+    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n.knowledge/\n');
+    // This checkout's knowledge setup: keyword-only, pinned as setup records
+    // it, so the transactions' indexing builds a store as a set-up project's does.
+    fs.mkdirSync(path.join(this.dir, KNOWLEDGE_DIR), { recursive: true });
+    fs.writeFileSync(path.join(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
     this.step = 0;
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
@@ -334,11 +339,9 @@ class Sim {
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }
     auditState(this.dir, label);
-    // The sandbox carries no ignore rule for the store its indexing builds,
-    // so a commit that staged the store would show here.
     if (typeof parsed.committed === 'string') {
-      assert.strictEqual(git(this.dir, ['ls-files', '--', ...STORE_FILES]).trim(), '',
-        `[${label}] the commit carried the knowledge store — it is the checkout's own index, never committed`);
+      assert.strictEqual(git(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
+        `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
     }
     return parsed;
   }
@@ -714,7 +717,8 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`]);
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.
-    assert.ok(fs.existsSync(path.join(sim.dir, STORE_FILES[0])), 'the completion built the store');
+    assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.msp')), 'the completion built the store');
+    assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
@@ -3710,6 +3714,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /knowledge\.cjs setup[\s\S]*Has the wizard completed\?/);
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);

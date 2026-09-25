@@ -37,8 +37,9 @@ const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
 }, null, 2) + '\n';
 
-/** The store's files, as boot keeps them listed in `.worktreeinclude`. */
-const STORE_FILES = ['.workflows/.knowledge/store.msp', '.workflows/.knowledge/metadata.json'];
+/** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
+const KNOWLEDGE_DIR = '.workflows/.knowledge';
+const STORE_FILES = ['store.msp', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
 const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
@@ -656,7 +657,6 @@ describe('engine boot', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
 
     assert.strictEqual(res.knowledge, 'ready');
-    assert.ok(!('kb_committed' in res));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
     assert.strictEqual(git(fix.project, ['ls-files', '--', '.workflows/.knowledge']).trim(), '');
   });
@@ -799,7 +799,7 @@ describe('engine boot: the store leaves git', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   const head = () => git(fix.project, ['rev-parse', 'HEAD']).trim();
-  const tracked = () => git(fix.project, ['ls-files', '--', ...STORE_FILES]).trim().split('\n').filter(Boolean);
+  const tracked = () => git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim().split('\n').filter(Boolean);
   const committedChanges = () => git(fix.project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
 
   /** Commit the store as an earlier version did. */
@@ -837,19 +837,19 @@ describe('engine boot: the store leaves git', () => {
 
     assert.notStrictEqual(res.status, 0, 'nothing to commit — the partial commit took the files back from the working tree');
     assert.strictEqual(head(), before);
-    assert.strictEqual(git(fix.project, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...STORE_FILES]).trim().split('\n').length, 2);
+    assert.strictEqual(git(fix.project, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...STORE_FILES]).trim().split('\n').length, STORE_FILES.length);
   });
 
-  it('takes everything tracked under the knowledge directory in one commit — a rebuild backup too — and leaves config.json tracked', () => {
-    const backup = '.workflows/.knowledge/store.msp.bak';
-    commitStore([STORE_FILES[0], backup, '.workflows/.knowledge/config.json']);
+  it('takes everything tracked under the knowledge directory in one commit — the config and a rebuild backup too', () => {
+    const backup = `${KNOWLEDGE_DIR}/store.msp.bak`;
+    commitStore([...STORE_FILES, backup]);
 
     runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
 
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
-    assert.deepStrictEqual(committedChanges(), [`D\t${STORE_FILES[0]}`, `D\t${backup}`].sort());
-    assert.deepStrictEqual(git(fix.project, ['ls-files', '--', '.workflows/.knowledge']).trim().split('\n'), ['.workflows/.knowledge/config.json']);
-    assert.ok(fs.existsSync(path.join(fix.project, backup)), 'the backup stays on disk');
+    assert.deepStrictEqual(committedChanges(), [...STORE_FILES, backup].map((p) => `D\t${p}`).sort());
+    assert.deepStrictEqual(tracked(), []);
+    for (const p of [...STORE_FILES, backup]) assert.ok(fs.existsSync(path.join(fix.project, p)), `${p} stays on disk`);
   });
 
   it('untracks whichever of the files git still tracks', () => {
@@ -892,7 +892,7 @@ describe('engine boot: the store leaves git', () => {
   it('holds while the ignore rules are uncommitted — the reviewed migration commit never takes the store back', () => {
     commitStore();
     // What migration 060 leaves in the working tree ahead of the review gate.
-    writeFile(fix.project, '.workflows/.gitignore', '.knowledge/store.msp\n.knowledge/metadata.json\n.knowledge/*.bak\n');
+    writeFile(fix.project, '.workflows/.gitignore', '.knowledge/\n');
 
     runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
     runEngine(stubbed, fix.project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
@@ -913,7 +913,40 @@ describe('engine boot: the store leaves git', () => {
     assert.strictEqual(git(linked, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
     assert.strictEqual(git(linked, ['ls-files', '--', ...STORE_FILES]).trim(), '');
     assert.ok(fs.existsSync(path.join(linked, STORE_FILES[0])));
-    assert.strictEqual(git(fix.project, ['ls-files', '--', ...STORE_FILES]).trim().split('\n').length, 2, 'the main checkout\'s branch is untouched');
+    assert.strictEqual(git(fix.project, ['ls-files', '--', ...STORE_FILES]).trim().split('\n').length, STORE_FILES.length, 'the main checkout\'s branch is untouched');
+  });
+
+  it('waits out a conflicted merge — MERGE_HEAD and the index untouched, a warning naming it, and the next boot finishes it', () => {
+    commitStore();
+    // A merge that stops on a conflict: both sides edit the same line.
+    const conflicted = '.workflows/payments/discussion/topic-a.md';
+    writeFile(fix.project, conflicted, 'base\n');
+    git(fix.project, ['add', '--', conflicted]);
+    git(fix.project, ['commit', '-q', '-m', 'base']);
+    git(fix.project, ['checkout', '-q', '-b', 'incoming']);
+    writeFile(fix.project, conflicted, 'incoming\n');
+    git(fix.project, ['commit', '-q', '-am', 'incoming']);
+    git(fix.project, ['checkout', '-q', 'main']);
+    writeFile(fix.project, conflicted, 'ours\n');
+    git(fix.project, ['commit', '-q', '-am', 'ours']);
+    const merge = spawnSync('git', ['merge', '-q', 'incoming'], { cwd: fix.project, encoding: 'utf8' });
+    assert.notStrictEqual(merge.status, 0, 'the merge stops on its conflict');
+    const mergeHead = fs.readFileSync(path.join(fix.project, '.git/MERGE_HEAD'), 'utf8');
+    const index = git(fix.project, ['ls-files', '--stage']);
+    const before = head();
+
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^knowledge store untracking failed: a merge is in progress \(MERGE_HEAD\)/);
+    assert.strictEqual(head(), before, 'no commit — none would have recorded the merge');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.git/MERGE_HEAD'), 'utf8'), mergeHead, 'the merge stays in progress');
+    assert.strictEqual(git(fix.project, ['ls-files', '--stage']), index, 'the index, conflict stages included, as it was');
+
+    git(fix.project, ['merge', '--abort']);
+    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    assert.deepStrictEqual(tracked(), []);
   });
 
   it('a failing commit is a warning — still tracked, the index as it was, and the next boot finishes it', () => {
@@ -952,7 +985,7 @@ describe('engine boot: the worktree include', () => {
   const include = () => fs.readFileSync(path.join(fix.project, '.worktreeinclude'), 'utf8');
   const head = () => git(fix.project, ['rev-parse', 'HEAD']).trim();
 
-  it('creates the file listing the store, committed confined — and a second boot changes nothing', () => {
+  it('creates the file listing the knowledge files, committed confined — and a second boot changes nothing', () => {
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
 
@@ -986,11 +1019,11 @@ describe('engine boot: the worktree include', () => {
 
     runEngine(stubbed, fix.project, ['boot']);
 
-    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n`);
+    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n${STORE_FILES[2]}\n`);
   });
 
-  it('a file already listing the store is left alone', () => {
-    const content = `${STORE_FILES[1]}\n  ${STORE_FILES[0]}  \nnode_modules/\n`;
+  it('a file already listing the knowledge files is left alone', () => {
+    const content = `${STORE_FILES[1]}\n  ${STORE_FILES[0]}  \nnode_modules/\n${STORE_FILES[2]}\n`;
     writeFile(fix.project, '.worktreeinclude', content);
     git(fix.project, ['add', '--', '.worktreeinclude']);
     git(fix.project, ['commit', '-q', '-m', 'the user\'s include']);
@@ -1043,10 +1076,10 @@ describe('engine boot: a set-up checkout with no store', () => {
       phases: { discussion: { items: { payments: { status: 'completed' } } } },
     }, null, 2) + '\n');
     writeFile(fix.project, '.workflows/payments/discussion/payments.md', '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
-    // Set up elsewhere: the committed project config is all this checkout has.
-    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": {} }\n');
     git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'a clone of a set-up project']);
+    git(fix.project, ['commit', '-q', '-m', 'the project']);
+    // This checkout is set up — its local knowledge config — with no store.
+    writeFile(fix.project, CONFIG, '{ "knowledge": {} }\n');
   });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
@@ -1054,6 +1087,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     if (systemConfig !== null) writeFile(sysDir, 'config.json', JSON.stringify(systemConfig));
     return runEngine(realKnowledge, fix.project, ['boot'], { WORKFLOWS_CONFIG_DIR: sysDir, ...extra });
   };
+  const CONFIG = STORE_FILES[2];
   const storePath = () => path.join(fix.project, STORE_FILES[0]);
   const metadata = () => JSON.parse(fs.readFileSync(path.join(fix.project, STORE_FILES[1]), 'utf8'));
 
@@ -1072,7 +1106,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(meta.dimensions, 8);
     assert.ok(meta.last_indexed, 'the discussion was indexed into it');
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
-    assert.strictEqual(git(fix.project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
+    assert.strictEqual(git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '');
   });
 
   it('keyword-only chosen outright in the system config builds a keyword-only store', () => {
@@ -1085,7 +1119,7 @@ describe('engine boot: a set-up checkout with no store', () => {
   });
 
   it('keyword-only pinned by the project config builds keyword-only, whatever the machine lacks', () => {
-    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
 
     const res = bootWith(null);
 
@@ -1121,9 +1155,8 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.ok(!fs.existsSync(storePath()));
   });
 
-  it('a project never set up is not-ready whatever the machine says — boot sets nothing up', () => {
-    git(fix.project, ['rm', '-q', '--', '.workflows/.knowledge/config.json']);
-    git(fix.project, ['commit', '-q', '-m', 'never set up']);
+  it('a checkout never set up is not-ready whatever the machine says — boot sets nothing up', () => {
+    fs.rmSync(path.join(fix.project, KNOWLEDGE_DIR), { recursive: true, force: true });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
@@ -1420,8 +1453,8 @@ describe('engine boot (real scripts)', () => {
     const store = require('../../src/knowledge/store.js');
     await store.createStore(3).then((db) => store.saveStore(db, path.join(project, '.workflows/.knowledge/store.msp')));
 
-    // …and the restart's boot finds the store ready and leaves it out of
-    // git: the first boot's migrations ignore it, config.json alone shows.
+    // …and the restart's boot finds the store ready and leaves the whole
+    // directory out of git: the first boot's migrations ignore it.
     const second = runEngine(real, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
@@ -1433,8 +1466,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.indexed, true);
     assert.strictEqual(second.compacted, true);
-    assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(),
-      '?? .workflows/.knowledge/config.json');
+    assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(), '');
 
     // Third boot: nothing new to commit, the ledger included — a bulk index
     // and a compact with nothing to do write nothing.

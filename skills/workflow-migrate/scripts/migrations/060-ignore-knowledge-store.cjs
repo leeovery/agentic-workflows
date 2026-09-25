@@ -1,30 +1,25 @@
 'use strict';
 
 //
-// Migration 060: Ignore the knowledge store
+// Migration 060: Ignore the knowledge directory
 //
-// The knowledge store is a derived index every checkout builds from the
-// committed artifacts, so its files belong outside git: the store itself
-// (.workflows/.knowledge/store.msp), its metadata (metadata.json), and the
-// backups `knowledge rebuild` sets aside while it runs (*.bak). The lock
-// and the atomic-write temp files are already ignored (053). config.json
-// stays tracked — it records that the project is set up.
+// The knowledge directory (.workflows/.knowledge/) is local to each
+// checkout: the store is a derived index every checkout builds from the
+// committed artifacts, its metadata describes that store, and the knowledge
+// config setup writes records this checkout's choice. None of it belongs in
+// git, so one rule ignores the whole directory.
 //
 // Extends .workflows/.gitignore the way 049 and 053 do. Files already
 // tracked are boot's to untrack — a migration never runs git.
 //
-// Idempotent: rules already present are skipped; existing content and
+// Idempotent: a rule already present is skipped; existing content and
 // custom rules are preserved.
 //
 
 const fs = require('fs');
 const path = require('path');
 
-const RULES = [
-  '.knowledge/store.msp',
-  '.knowledge/metadata.json',
-  '.knowledge/*.bak',
-];
+const RULES = ['.knowledge/'];
 
 // grep -qxF: any whole line equals `needle`.
 function hasExactLine(content, needle) {
@@ -35,7 +30,7 @@ function hasExactLine(content, needle) {
 
 module.exports = {
   id: '060',
-  description: 'ignore the knowledge store',
+  description: 'ignore the knowledge directory',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     const nested = path.join(workflowsDir, '.gitignore');

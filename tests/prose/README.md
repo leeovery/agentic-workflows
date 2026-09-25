@@ -183,8 +183,8 @@ changed; the hash covers each case's recipes, the shared mainlines, and
 the engine and knowledge sources, so an engine change invalidates every
 hash and forces a full rebuild. Only `/prose-test` spends tokens.
 
-Snapshots exclude `.git/`, `.workflows/.knowledge/` (the world builder
-re-derives the store) and `.claude/skills|agents/` (copied into live
+Snapshots exclude `.git/`, `.workflows/.knowledge/` (checkout-local — the
+world builder sets it up afresh, never committed) and `.claude/skills|agents/` (copied into live
 worlds, never part of a world's own state), and store `.gitignore` files
 as `_gitignore.fixture` so the product-written `.workflows/.gitignore`
 cannot ignore snapshot content out of this repo.

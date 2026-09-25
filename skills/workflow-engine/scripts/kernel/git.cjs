@@ -218,38 +218,83 @@ function trackedPaths(cwd, specs) {
 }
 
 /**
- * Stop tracking `paths`, leaving every file on disk: one commit records
- * their removal from HEAD, and the index drops them. `git commit -- <paths>`
- * cannot record this — a partial commit re-reads each named path from the
- * working tree, and a file still on disk goes straight back in — so the
- * commit is built from a scratch index holding HEAD without the paths. The
- * real index is never committed from, so whatever else is staged in it
- * stays staged and out of the commit.
+ * A path in the git dir as git resolves it — a linked worktree's own for
+ * per-worktree state — made absolute.
  * @param {string} cwd project root
- * @param {string[]} paths
+ * @param {string} name
+ * @returns {string}
+ */
+function gitPath(cwd, name) {
+  const rel = git(cwd, ['rev-parse', '--git-path', name]).trim();
+  return path.isAbsolute(rel) ? rel : path.join(cwd, rel);
+}
+
+// The operations git holds open across commands, by the marker each leaves
+// in the git dir. A commit made while one is open takes on its state — a
+// merge's second parent, a pick's authorship — and consumes the marker.
+const OPERATION_MARKERS = [
+  ['MERGE_HEAD', 'a merge'],
+  ['CHERRY_PICK_HEAD', 'a cherry-pick'],
+  ['REVERT_HEAD', 'a revert'],
+  ['rebase-merge', 'a rebase'],
+  ['rebase-apply', 'a rebase'],
+];
+
+/**
+ * The operation git is in the middle of, as `{operation, marker}`, or null.
+ * @param {string} cwd project root
+ * @returns {{operation: string, marker: string}|null}
+ */
+function operationInProgress(cwd) {
+  const open = OPERATION_MARKERS.find(([marker]) => fs.existsSync(gitPath(cwd, marker)));
+  return open ? { operation: open[1], marker: open[0] } : null;
+}
+
+/**
+ * Stop tracking everything under `specs`, leaving every file on disk: one
+ * commit records their removal from HEAD, and the index drops them.
+ * `git commit -- <paths>` cannot record this — a partial commit re-reads each
+ * named path from the working tree, and a file still on disk goes straight
+ * back in — so the commit is built from a scratch index holding HEAD without
+ * the paths. The real index is never committed from, so whatever else is
+ * staged in it stays staged and out of the commit. Refuses while a merge,
+ * cherry-pick, revert or rebase is in progress, touching nothing.
+ * @param {string} cwd project root
+ * @param {string[]} specs
  * @param {string} message
  * @returns {string|null} the short commit sha, or null when HEAD tracks none of the paths
  */
-function commitUntrack(cwd, paths, message) {
-  const inHead = outputLines(tryGit(cwd, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...paths]));
-  const inIndex = outputLines(tryGit(cwd, ['ls-files', '--', ...paths]));
-  /** @type {string|null} */
-  let committed = null;
-  if (inHead.length > 0) {
-    const rel = git(cwd, ['rev-parse', '--git-path', 'workflows-untrack.index']).trim();
-    const scratch = path.isAbsolute(rel) ? rel : path.join(cwd, rel);
-    const env = { GIT_INDEX_FILE: scratch };
-    try {
-      git(cwd, ['read-tree', 'HEAD'], env);
-      git(cwd, ['rm', '--cached', '-q', '--', ...inHead], env);
-      git(cwd, ['commit', '-q', '-m', message], env);
-    } finally {
-      fs.rmSync(scratch, { force: true });
-    }
-    committed = git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+function commitUntrack(cwd, specs, message) {
+  const tracked = trackedPaths(cwd, specs);
+  if (tracked.length === 0) return null;
+  const open = operationInProgress(cwd);
+  if (open) {
+    throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, and the next start stops tracking ${tracked.join(', ')}`);
   }
-  if (inIndex.length > 0) gitIndexed(cwd, ['update-index', '--force-remove', '--', ...inIndex]);
+  const committed = commitWithout(cwd, tracked, message);
+  gitIndexed(cwd, ['update-index', '--force-remove', '--', ...tracked]);
   return committed;
+}
+
+/**
+ * Commit HEAD's tree without `paths`, from a scratch index. Null when HEAD
+ * holds none of them, or there is no HEAD.
+ * @param {string} cwd @param {string[]} paths @param {string} message
+ * @returns {string|null}
+ */
+function commitWithout(cwd, paths, message) {
+  const head = tryGit(cwd, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']);
+  if (head === null) return null;
+  const env = { GIT_INDEX_FILE: gitPath(cwd, 'workflows-untrack.index') };
+  try {
+    git(cwd, ['read-tree', 'HEAD'], env);
+    git(cwd, ['rm', '--cached', '-q', '--ignore-unmatch', '--', ...paths], env);
+    if (git(cwd, ['write-tree'], env).trim() === head.trim()) return null;
+    git(cwd, ['commit', '-q', '-m', message], env);
+  } finally {
+    fs.rmSync(env.GIT_INDEX_FILE, { force: true });
+  }
+  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
 /**
@@ -283,4 +328,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, commitPathspec, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

@@ -231,7 +231,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-9. Commit what remains — the deleted specification, the store the removal emptied, and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
+9. Commit what remains — the deleted specification and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping"
    ```

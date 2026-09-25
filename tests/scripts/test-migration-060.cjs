@@ -3,10 +3,10 @@
 //
 // Tests for migration 060: ignore-knowledge-store (.cjs)
 //
-// Happy path (rules appended to 053's file), fresh-file creation,
-// partial-presence append, no-trailing-newline edge, idempotency,
-// content preservation, report accounting, and — against real git — that
-// the rules ignore the store while config.json stays visible.
+// Happy path (the rule appended to 053's file), fresh-file creation,
+// already-present skip, no-trailing-newline edge, idempotency, content
+// preservation, report accounting, and — against real git — that the rule
+// ignores the whole knowledge directory.
 //
 
 require('./hermetic-env.cjs');
@@ -20,11 +20,7 @@ const { execFileSync } = require('child_process');
 
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/060-ignore-knowledge-store.cjs');
 
-const RULES = [
-  '.knowledge/store.msp',
-  '.knowledge/metadata.json',
-  '.knowledge/*.bak',
-];
+const RULE = '.knowledge/';
 
 const RULES_053 = [
   '.cache/',
@@ -62,25 +58,25 @@ function lines(p) {
   return fs.readFileSync(p, 'utf8').split('\n').filter((l) => l !== '');
 }
 
-describe('migration 060: ignore the knowledge store', () => {
-  it('happy path — the rules append after 053 content, which is preserved', () => {
+describe('migration 060: ignore the knowledge directory', () => {
+  it('happy path — the rule appends after 053 content, which is preserved', () => {
     const dir = setup();
     fs.writeFileSync(nestedPath(dir), RULES_053.join('\n') + '\n');
 
     const c = runMigration(dir);
 
-    assert.deepStrictEqual(lines(nestedPath(dir)), [...RULES_053, ...RULES]);
+    assert.deepStrictEqual(lines(nestedPath(dir)), [...RULES_053, RULE]);
     assert.strictEqual(c.updates, 1, 'one update reported');
     assert.strictEqual(c.skips, 0, 'no skip reported');
     teardown(dir);
   });
 
-  it('missing .workflows/.gitignore — created with the rules', () => {
+  it('missing .workflows/.gitignore — created with the rule', () => {
     const dir = setup();
 
     runMigration(dir);
 
-    assert.deepStrictEqual(lines(nestedPath(dir)), RULES);
+    assert.deepStrictEqual(lines(nestedPath(dir)), [RULE]);
     teardown(dir);
   });
 
@@ -89,18 +85,18 @@ describe('migration 060: ignore the knowledge store', () => {
 
     runMigration(dir);
 
-    assert.deepStrictEqual(lines(nestedPath(dir)), RULES);
+    assert.deepStrictEqual(lines(nestedPath(dir)), [RULE]);
     teardown(dir);
   });
 
-  it('partial presence — only the missing rules append, no duplicates', () => {
+  it('the rule already present — skipped, content unchanged', () => {
     const dir = setup();
-    fs.writeFileSync(nestedPath(dir), '.cache/\n.knowledge/store.msp\n');
+    fs.writeFileSync(nestedPath(dir), `.cache/\n${RULE}\n`);
 
-    runMigration(dir);
-    const got = lines(nestedPath(dir));
+    const c = runMigration(dir);
 
-    assert.deepStrictEqual(got, ['.cache/', '.knowledge/store.msp', '.knowledge/metadata.json', '.knowledge/*.bak']);
+    assert.deepStrictEqual(lines(nestedPath(dir)), ['.cache/', RULE]);
+    assert.deepStrictEqual(c, { updates: 0, skips: 1 });
     teardown(dir);
   });
 
@@ -110,17 +106,17 @@ describe('migration 060: ignore the knowledge store', () => {
 
     runMigration(dir);
 
-    assert.deepStrictEqual(lines(nestedPath(dir)), ['.cache/', ...RULES]);
+    assert.deepStrictEqual(lines(nestedPath(dir)), ['.cache/', RULE]);
     teardown(dir);
   });
 
-  it('a rule as part of a longer line is no match — the whole line is the rule', () => {
+  it('the rule as part of a longer line is no match — the whole line is the rule', () => {
     const dir = setup();
-    fs.writeFileSync(nestedPath(dir), '# .knowledge/store.msp\n');
+    fs.writeFileSync(nestedPath(dir), `# ${RULE}\n`);
 
     runMigration(dir);
 
-    assert.deepStrictEqual(lines(nestedPath(dir)), ['# .knowledge/store.msp', ...RULES]);
+    assert.deepStrictEqual(lines(nestedPath(dir)), [`# ${RULE}`, RULE]);
     teardown(dir);
   });
 
@@ -147,7 +143,7 @@ describe('migration 060: ignore the knowledge store', () => {
     teardown(dir);
   });
 
-  it('git ignores the store, its metadata and a rebuild backup — config.json stays visible', () => {
+  it('git ignores everything in the knowledge directory — the config with the store', () => {
     const dir = setup();
     const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
     git('init', '-q');
@@ -159,9 +155,7 @@ describe('migration 060: ignore the knowledge store', () => {
 
     runMigration(dir);
 
-    const untracked = git('status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge')
-      .split('\n').filter(Boolean);
-    assert.deepStrictEqual(untracked, ['?? .workflows/.knowledge/config.json']);
+    assert.strictEqual(git('status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge').trim(), '');
     teardown(dir);
   });
 });

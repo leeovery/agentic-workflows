@@ -12,14 +12,14 @@
 // only dirt, and no reviewed commit follows a report of no changes, so boot
 // commits that line itself — this run's, or one an earlier boot stranded.
 //
-// The knowledge store is a derived index every checkout builds for itself,
-// never committed: boot stops git tracking whatever of it an earlier version
-// committed, and keeps the store listed in `.worktreeinclude` so a new
-// worktree starts with a copy. A project set up elsewhere (its committed
-// config) whose checkout has no store gets one built by the bulk index when
-// this machine's config says how — `check` answers `buildable`. Anything
-// else not-ready is the caller's gate: boot never sets a project up itself,
-// and a not-ready response carries the system-config report so the gate can
+// The knowledge directory — the store, its metadata, the knowledge config —
+// is local to each checkout and never in git: boot keeps git from tracking
+// anything under it, and keeps its files listed in `.worktreeinclude` so a
+// worktree Claude Code creates starts with a copy. A checkout set up (its
+// local config) with no store gets one built by the bulk index when this
+// machine's config says how — `check` answers `buildable`. Anything else
+// not-ready is the caller's gate: boot never sets a checkout up itself, and
+// a not-ready response carries the system-config report so the gate can
 // offer setup without extra probes. A failing bulk index or compact is a
 // warning, never a block.
 // ---------------------------------------------------------------------------
@@ -28,10 +28,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git, trackedPaths } = require('../kernel/git.cjs');
+const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
-const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR, KNOWLEDGE_CONFIG } = require('./kb.cjs');
+const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, SETTINGS_SPEC } = require('./session-label.cjs');
 const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
@@ -94,7 +94,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {boolean} worktree_include_installed this boot wrote the store's files into `.worktreeinclude`; false when it already listed them
+ * @property {boolean} worktree_include_installed this boot wrote the knowledge files into `.worktreeinclude`; false when it already listed them
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -319,19 +319,17 @@ function boot(cwd) {
 }
 
 /**
- * Stop git tracking whatever an earlier version committed from the
- * knowledge directory besides its config — the store, its metadata, a
- * rebuild's backups: one confined commit records their removal and the
- * files stay on disk. It runs before the migration commit that lands their
- * ignore rules, and holds without it — the rules are live in the working
- * tree from the moment the migration writes them. Nothing tracked, nothing
- * done; a failure is a warning, and the next boot tries again.
+ * Stop git tracking anything under the knowledge directory: one confined
+ * commit records the removal and the files stay on disk. It runs before the
+ * migration commit that lands the directory's ignore rule, and holds without
+ * it — the rule is live in the working tree from the moment the migration
+ * writes it. Nothing tracked, nothing done; a failure — a merge or rebase in
+ * progress among them — is a warning, and the next boot tries again.
  * @param {string} cwd @param {string[]} warnings
  */
 function untrackStore(cwd, warnings) {
   try {
-    const derived = trackedPaths(cwd, [KNOWLEDGE_DIR]).filter((p) => p !== KNOWLEDGE_CONFIG);
-    if (derived.length > 0) commitUntrackScoped(cwd, derived, 'chore(knowledge): stop tracking the store');
+    commitUntrackScoped(cwd, [KNOWLEDGE_DIR], 'chore(knowledge): stop tracking the store');
   } catch (err) {
     warnings.push(`knowledge store untracking failed: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -367,14 +365,16 @@ function syncKnowledge(cwd, warnings) {
 }
 
 /**
- * Keep the store listed in `.worktreeinclude` so a new worktree starts with
- * a copy, committed confined when this boot wrote it. A file that cannot be
- * written or committed is a warning, never a block.
+ * Keep the knowledge files listed in `.worktreeinclude` so a worktree Claude
+ * Code creates starts with a copy, committed confined when this boot wrote
+ * it. The read and the append share the project lock, so concurrent boots
+ * never append twice. A file that cannot be written or committed is a
+ * warning, never a block.
  * @param {string} cwd @param {string[]} warnings
  * @returns {boolean} this boot wrote the file
  */
 function installWorktreeInclude(cwd, warnings) {
-  const include = syncWorktreeInclude(cwd);
+  const include = withProjectLock(cwd, () => syncWorktreeInclude(cwd));
   if (include.error) {
     warnings.push(`worktree include not written: ${include.error}`);
     return false;

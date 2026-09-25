@@ -83,8 +83,16 @@ write_stub_config() {
 CONF
 }
 
-# Write a keyword-only config (no provider).
+# Write a keyword-only config — the choice pinned, as `setup --keyword-only` records it.
 write_keyword_config() {
+  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": null } }
+CONF
+}
+
+# Write a config that names no provider and records no choice.
+write_unchosen_config() {
   mkdir -p "$TEST_ROOT/.workflows/.knowledge"
   cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
 { "knowledge": {} }
@@ -1025,18 +1033,30 @@ assert_eq "outputs buildable" "buildable" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 36b: A missing store with no configuration anywhere is not-ready ---
-echo "Test 36b: Check not-ready (missing store, no system config)"
+# --- Test 36b: A missing store with no choice anywhere is not-ready, and no write creates one ---
+echo "Test 36b: Check not-ready (missing store, no system config, no choice)"
 setup_project
-write_keyword_config
+write_unchosen_config
 rm -rf "$HOME/.config/workflows"
 assert_eq "no configuration is no keyword-only choice" "not-ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+create_work_unit "auth-flow" "feature" "Auth"
+create_discussion_file "auth-flow" "auth-flow"
+exit_code=0
+iout=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+assert_eq "single-file index refuses" "1" "$exit_code"
+assert_eq "says no configuration chose" "true" "$(echo "$iout" | grep -q 'keyword-only was never chosen' && echo true || echo false)"
+exit_code=0
+bout=$(run_kb index 2>&1) || exit_code=$?
+assert_eq "bulk index refuses" "1" "$exit_code"
+assert_eq "bulk index says the same" "true" "$(echo "$bout" | grep -q 'keyword-only was never chosen' && echo true || echo false)"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "no metadata written" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 36c: A system config that names no provider is a keyword-only choice ---
 echo "Test 36c: Check buildable (missing store, keyword-only system config)"
 setup_project
-write_keyword_config
+write_unchosen_config
 mkdir -p "$HOME/.config/workflows"
 echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
 assert_eq "keyword-only chosen at system level" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
@@ -1054,7 +1074,7 @@ teardown_project
 # --- Test 36e: A provider whose key cannot be resolved never reads buildable ---
 echo "Test 36e: Check not-ready (missing store, provider key unresolved)"
 setup_project
-write_keyword_config
+write_unchosen_config
 mkdir -p "$HOME/.config/workflows"
 echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$HOME/.config/workflows/config.json"
 assert_eq "an unresolved key is not keyword-only" "not-ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
@@ -1081,6 +1101,37 @@ assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.m
 assert_eq "metadata names the provider" "stub" \
   "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
 assert_eq "check reads ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+teardown_project
+
+# --- Test 36g: Metadata left without its store describes nothing — each write path replaces it ---
+echo "Test 36g: Stale metadata without a store is replaced (single-file and bulk)"
+write_stale_metadata() {
+  cat > "$TEST_ROOT/.workflows/.knowledge/metadata.json" <<'META'
+{ "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536, "last_indexed": null }
+META
+}
+metadata_provider() {
+  node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+}
+setup_project
+write_keyword_config
+write_stale_metadata
+create_work_unit "auth-flow" "feature" "Auth"
+create_discussion_file "auth-flow" "auth-flow"
+exit_code=0
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+assert_eq "single-file index builds past the stale metadata" "0" "$exit_code"
+assert_eq "single-file index records the new store's mode" "null" "$(metadata_provider)"
+assert_eq "single-file index leaves a ready store" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+teardown_project
+setup_project
+write_keyword_config
+write_stale_metadata
+exit_code=0
+run_kb index >/dev/null 2>&1 || exit_code=$?
+assert_eq "bulk index builds past the stale metadata" "0" "$exit_code"
+assert_eq "bulk index records the new store's mode" "null" "$(metadata_provider)"
+assert_eq "bulk index leaves a ready store" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
 teardown_project
 
 # --- Test 37: Check outputs not-ready when store is corrupted ---

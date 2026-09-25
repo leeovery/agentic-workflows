@@ -53,15 +53,18 @@ function cleanup(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
-/** Index the project's one document; answers the store's metadata. */
+/**
+ * Index the project's one document; answers the run and the store's
+ * metadata — null when no store was built.
+ */
 function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
     const env = configDir === undefined ? process.env : { ...process.env, WORKFLOWS_CONFIG_DIR: configDir };
     const res = spawnSync('node', [KNOWLEDGE, 'index', '.workflows/auth/discussion/auth.md'],
       { cwd: project, encoding: 'utf8', env });
-    assert.strictEqual(res.status, 0, `index failed:\n${res.stdout}\n${res.stderr}`);
-    return JSON.parse(fs.readFileSync(path.join(project, '.workflows', '.knowledge', 'metadata.json'), 'utf8'));
+    const metadataFile = path.join(project, '.workflows', '.knowledge', 'metadata.json');
+    return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {
     cleanup(project);
   }
@@ -111,24 +114,25 @@ describe('hermetic environment — the pins', () => {
 });
 
 describe('hermetic environment — no embedding provider', () => {
-  it('a store built under the suite environment records no provider', () => {
-    const meta = indexUnderConfigDir();
-    assert.strictEqual(meta.provider, null);
-    assert.strictEqual(meta.model, null);
-    assert.strictEqual(meta.dimensions, null);
+  it('under the suite environment nothing configures a provider — a store no test chose is never built', () => {
+    const { res, metadata } = indexUnderConfigDir();
+    assert.notStrictEqual(res.status, 0);
+    assert.match(res.stderr, /no embedding provider is configured and keyword-only was never chosen/);
+    assert.strictEqual(metadata, null);
   });
 
   // The control that gives the assertion above its teeth. It names the stub
-  // provider, not openai: measured, an openai config with no resolvable key
-  // indexes keyword-only and records `provider: null` too — so openai would
-  // pass whether the pin held or not, while the stub needs no key and no
-  // network and still reaches the metadata.
+  // provider, not openai: an openai config with no resolvable key builds no
+  // store either — so openai would pass whether the pin held or not — while
+  // the stub needs no key and no network and still reaches the metadata.
   it('a system config naming a provider would reach the store — the pin is what keeps it out', () => {
     const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermetic-control-'));
     try {
       fs.writeFileSync(path.join(configDir, 'config.json'),
         JSON.stringify({ knowledge: { provider: 'stub', model: 'stub', dimensions: 128 } }));
-      assert.strictEqual(indexUnderConfigDir(configDir).provider, 'stub');
+      const { res, metadata } = indexUnderConfigDir(configDir);
+      assert.strictEqual(res.status, 0, `index failed:\n${res.stdout}\n${res.stderr}`);
+      assert.strictEqual(metadata.provider, 'stub');
     } finally {
       cleanup(configDir);
     }

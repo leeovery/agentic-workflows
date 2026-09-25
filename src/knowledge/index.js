@@ -569,36 +569,50 @@ function keyUnresolvedError(cfg, consequence = KEY_UNRESOLVED_OVER_STORE) {
   );
 }
 
+const NO_BUILD_CHOICE_MSG =
+  'No knowledge store here, and no configuration says how to build one — no embedding provider ' +
+  'is configured and keyword-only was never chosen.\n' +
+  '  Run `knowledge setup` to choose, or `knowledge setup --keyword-only` for keyword-only search.';
+
 /**
- * The mode a store created now takes: full with a provider, keyword-only
- * with none configured. A provider configured without a resolvable key
- * refuses — a keyword-only store there would stand in for the embeddings
- * the configuration asks for.
- * @returns {'full'|'keyword-only'}
+ * Whether keyword-only was chosen outright: the project config unsets the
+ * provider, or a system config holds knowledge settings naming none.
+ * Called once no provider is configured at either level.
+ * @returns {boolean}
  */
-function newStoreMode(cfg, provider) {
-  if (provider) return 'full';
-  if (providerKeyUnresolved(cfg)) throw keyUnresolvedError(cfg, KEY_UNRESOLVED_NO_STORE);
-  return 'keyword-only';
+function keywordOnlyChosen() {
+  const project = config.readConfigFile(config.projectConfigPath());
+  if (project && project.provider === null) return true;
+  return config.readConfigFile(config.systemConfigPath(), { sharedFile: true }) !== null;
 }
 
 /**
- * Whether this machine can build the store a set-up checkout lacks without
- * a choice being made for it: a provider that resolves, or keyword-only
- * chosen outright — a system config holding knowledge settings that name no
- * provider, or a project config unsetting the provider. No configuration at
- * all, or a provider whose key cannot be resolved, is never read as a
- * keyword-only choice.
+ * The embedder a store created now is built with — the provider, or null for
+ * keyword-only — when this machine's config says how: a provider that
+ * resolves, or keyword-only chosen outright. Anything else refuses, so no
+ * path creates a store the configuration never asked for: a provider whose
+ * key cannot be resolved is never stood in for by a keyword-only store, and
+ * no configuration at all is never read as a keyword-only choice.
+ * @param {object} cfg @param {object|null} provider
+ * @returns {object|null}
+ */
+function newStoreEmbedder(cfg, provider) {
+  if (provider) return provider;
+  if (cfg.provider) throw keyUnresolvedError(cfg, KEY_UNRESOLVED_NO_STORE);
+  if (keywordOnlyChosen()) return null;
+  throw new UserError(NO_BUILD_CHOICE_MSG);
+}
+
+/**
+ * Whether this machine can build the store a checkout lacks — the question
+ * `newStoreEmbedder` answers, asked without building anything.
  * @returns {boolean}
  */
 function storeBuildable() {
   try {
     const cfg = config.loadConfig();
-    if (config.resolveProvider(cfg)) return true;
-    if (cfg.provider) return false;
-    const project = config.readConfigFile(config.projectConfigPath());
-    if (project && project.provider === null) return true;
-    return config.readConfigFile(config.systemConfigPath(), { sharedFile: true }) !== null;
+    newStoreEmbedder(cfg, config.resolveProvider(cfg));
+    return true;
   } catch (_) {
     return false;
   }
@@ -812,14 +826,26 @@ function buildDocuments(artifact) {
 }
 
 /**
+ * The metadata of the store this checkout has, or null when it has none —
+ * metadata left without its store describes nothing, and the store created
+ * next replaces it.
+ * @returns {Record<string, any>|null}
+ */
+function storeMetadata() {
+  const mp = metadataPath();
+  return fs.existsSync(storePath()) && fs.existsSync(mp) ? store.readMetadata(mp) : null;
+}
+
+/**
  * The provider new documents are embedded with — null when they go in
- * keyword-only. Throws on a provider or model the store was not built with.
+ * keyword-only: the store's own when there is one, else the one a store
+ * created now is built with (see newStoreEmbedder). Throws on a provider or
+ * model the store was not built with, and where no store may be created.
  * @param {object} cfg @param {object|null} provider
  */
 function indexProvider(cfg, provider) {
-  const mp = metadataPath();
-  if (fs.existsSync(mp)) return resolveProviderState(store.readMetadata(mp), cfg, provider).provider;
-  return newStoreMode(cfg, provider) === 'full' ? provider : null;
+  const metadata = storeMetadata();
+  return metadata ? resolveProviderState(metadata, cfg, provider).provider : newStoreEmbedder(cfg, provider);
 }
 
 /**
@@ -866,16 +892,19 @@ async function embedAll(built, provider) {
 /**
  * The store to write into, inside the lock: the snapshot read before
  * embedding while the file is still the one it was read from, else a fresh
- * load, else a new empty store.
+ * load, else a new empty store — the one place a store is created, as wide
+ * as its embedder's vectors (keyword-only stores take a placeholder width).
  * @param {{db: any, stamp: string|null}|null} snapshot
  * @param {object} cfg @param {object|null} provider
+ * @returns {Promise<{db: any, created: boolean}>}
  */
 async function currentStore(snapshot, cfg, provider) {
   const sp = storePath();
   const stamp = store.storeStamp(sp);
-  if (snapshot && snapshot.stamp !== null && snapshot.stamp === stamp) return snapshot.db;
-  if (stamp !== null) return store.loadStore(sp);
-  return store.createStore(provider ? provider.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS));
+  if (snapshot && snapshot.stamp !== null && snapshot.stamp === stamp) return { db: snapshot.db, created: false };
+  if (stamp !== null) return { db: await store.loadStore(sp), created: false };
+  const dims = provider ? provider.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
+  return { db: await store.createStore(dims), created: true };
 }
 
 /**
@@ -884,30 +913,30 @@ async function currentStore(snapshot, cfg, provider) {
  * @param {object|null} provider
  */
 function assertStoreDimensions(provider) {
-  const mp = metadataPath();
-  if (!provider || !fs.existsSync(mp)) return;
-  const { provider: storeProvider, dimensions } = store.readMetadata(mp);
-  if (storeProvider && dimensions !== provider.dimensions()) {
+  const metadata = storeMetadata();
+  if (!provider || !metadata) return;
+  if (metadata.provider && metadata.dimensions !== provider.dimensions()) {
     throw new Error(
       'Store schema changed during index (concurrent rebuild). ' +
-        `Embeddings produced for dims=${provider.dimensions()}, store now has dims=${dimensions}.`
+        `Embeddings produced for dims=${provider.dimensions()}, store now has dims=${metadata.dimensions}.`
     );
   }
 }
 
 /**
- * Stamp the metadata with this write's time, creating it on a store's first
- * write. Provider, model, and dimensions never change once set.
- * @param {object} cfg @param {object|null} provider
+ * Stamp the metadata with this write's time. Provider, model, and dimensions
+ * never change once a store records them: a store created by this write —
+ * or one that lost its metadata — records its embedder's.
+ * @param {object} cfg @param {object|null} provider @param {boolean} created
  */
-function recordIndexed(cfg, provider) {
-  const mp = metadataPath();
-  const metadata = fs.existsSync(mp) ? store.readMetadata(mp) : {
+function recordIndexed(cfg, provider, created) {
+  const existing = created ? null : storeMetadata();
+  const identity = existing || {
     provider: provider ? cfg.provider : null,
     model: provider ? provider.model() : null,
     dimensions: provider ? provider.dimensions() : null,
   };
-  store.writeMetadata(mp, { ...metadata, last_indexed: new Date().toISOString() });
+  store.writeMetadata(metadataPath(), { ...identity, last_indexed: new Date().toISOString() });
 }
 
 /**
@@ -935,8 +964,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = asyn
   fs.mkdirSync(knowledgeDir(), { recursive: true });
   return store.withLock(lockFilePath(), async () => {
     assertStoreDimensions(provider);
-    const created = store.storeStamp(storePath()) === null;
-    const db = await currentStore(snapshot, cfg, provider);
+    const { db, created } = await currentStore(snapshot, cfg, provider);
     for (const { artifact, docs } of built) {
       await store.removeByIdentity(db, identityOf(artifact));
       for (const doc of docs) await store.insertDocument(db, doc);
@@ -945,7 +973,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = asyn
     for (const entry of retired) await store.removeByIdentity(db, identityOf(entry));
     if (created || built.length > 0 || retired.length > 0) {
       await store.saveStore(db, storePath());
-      recordIndexed(cfg, provider);
+      recordIndexed(cfg, provider, created);
     }
     return retired;
   });
@@ -1444,22 +1472,6 @@ async function readStore() {
 }
 
 /**
- * Write an empty store and fresh metadata in the mode a new store takes
- * (see newStoreMode). The caller holds the store lock.
- */
-async function writeEmptyStore(cfg, provider) {
-  const effective = newStoreMode(cfg, provider) === 'full' ? provider : null;
-  const dims = effective ? effective.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
-  await store.saveStore(await store.createStore(dims), storePath());
-  store.writeMetadata(metadataPath(), {
-    provider: effective ? cfg.provider : null,
-    model: effective ? effective.model() : null,
-    dimensions: effective ? effective.dimensions() : null,
-    last_indexed: null,
-  });
-}
-
-/**
  * Build and embed each planned artifact's documents. A failure fails its own
  * artifact alone.
  * @param {Array<{artifact: Artifact, state: 'new'|'changed'}>} planned
@@ -1530,7 +1542,8 @@ async function cmdIndexBulk(options, cfg, provider) {
   const scope = (options && options.workUnit) || null;
   const manifests = readManifests();
   // Resolved even when nothing needs embedding: a provider or model change
-  // since the store was built must surface here, not read as a store in line.
+  // since the store was built must surface here, not read as a store in line,
+  // and a store this machine may not create must never be started.
   const embedder = indexProvider(cfg, provider);
   const snapshot = await readStore();
   const chunks = snapshot.db ? await store.searchAllFulltext(snapshot.db) : [];
@@ -2227,9 +2240,8 @@ async function cmdRebuild(_args, options, cfg, provider) {
   const mp = metadataPath();
   const lp = lockFilePath();
 
-  // Refuse before anything is touched when the rebuilt store could not take
-  // the configured mode.
-  newStoreMode(cfg, provider);
+  // Refuse before anything is touched when no store may be created here.
+  newStoreEmbedder(cfg, provider);
 
   process.stderr.write(
     'Warning: This will delete the existing index and rebuild from scratch.\n' +
@@ -2265,31 +2277,25 @@ async function cmdRebuild(_args, options, cfg, provider) {
   const spBak = sp + '.bak';
   const mpBak = mp + '.bak';
 
-  // Acquire lock before mutating files so a concurrent index/remove/
-  // compact does not race past and resurrect partial state. Then write
-  // an empty placeholder store+metadata inside the same lock so there
-  // is no "uninitialised" window where another process could build a
-  // fresh store racing with our bulk-index.
-  //
-  // Use .bak rename rather than delete so a bulk-index failure (network
-  // outage, provider down, Ctrl-C) can be rolled back — otherwise a
-  // transient failure leaves the user with no store and no metadata.
+  // Set the store aside under the lock, so a concurrent index/remove/compact
+  // never writes into a half-moved one. A .bak rename rather than a delete,
+  // so a bulk-index failure (network outage, provider down, Ctrl-C) can be
+  // rolled back — otherwise a transient failure leaves the user with no
+  // store and no metadata.
   await store.withLock(lp, async () => {
     // Clean any leftover .bak from a prior aborted rebuild.
     if (fs.existsSync(spBak)) fs.unlinkSync(spBak);
     if (fs.existsSync(mpBak)) fs.unlinkSync(mpBak);
     if (fs.existsSync(sp)) fs.renameSync(sp, spBak);
     if (fs.existsSync(mp)) fs.renameSync(mp, mpBak);
-
-    // Write a sentinel empty store + metadata so cmdCheck and concurrent
-    // invocations see a valid (empty) state. The bulk index below fills it.
-    await writeEmptyStore(cfg, provider);
   });
   process.stdout.write('Deleted existing index.\n');
 
   let summary;
   try {
-    // The bulk index takes the lock itself, once, for its write.
+    // The bulk index creates the new store and fills it, taking the lock
+    // itself, once, for its write — a store a concurrent writer created in
+    // the meantime is loaded under that lock and filled in turn.
     summary = await cmdIndexBulk(options, cfg, provider);
   } catch (err) {
     // Roll back to the pre-rebuild state. Best-effort: if the rollback

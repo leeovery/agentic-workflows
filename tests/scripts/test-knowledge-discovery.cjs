@@ -290,6 +290,24 @@ describe('knowledge vocabularies the engine also defines', () => {
       assert.strictEqual(ARTIFACT_PATHS[phase]('payments', 'ledger'), INDEXED_ARTIFACTS[phase]('payments', 'ledger'), phase);
     }
   });
+
+  it('names the knowledge files a worktree is given exactly as the CLI resolves them', () => {
+    const { knowledgeDir, storePath, metadataPath, config } = require('../../src/knowledge/index');
+    const { KNOWLEDGE_DIR, METADATA_FILE, STORE_FILES } = require('../../skills/workflow-engine/scripts/domain/kb.cjs');
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-paths-')));
+    const cwd0 = process.cwd();
+    try {
+      fs.mkdirSync(path.join(root, '.workflows'));
+      process.chdir(root);
+      const rel = (p) => path.relative(root, p).split(path.sep).join('/');
+      assert.strictEqual(rel(knowledgeDir()), KNOWLEDGE_DIR);
+      assert.strictEqual(rel(metadataPath()), METADATA_FILE);
+      assert.deepStrictEqual(STORE_FILES, [storePath(), metadataPath(), config.projectConfigPath()].map(rel));
+    } finally {
+      process.chdir(cwd0);
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('knowledge bulk discovery — baseline without work units', () => {

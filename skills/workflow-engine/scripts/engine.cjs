@@ -392,7 +392,8 @@ Commands:
   render walkthrough-topic --name <slug> [--menu-only]
   render migration-gate
   render label-gate
-  render knowledge-gate --variant reuse|deviate|mode|retry [--provider <name> --model <name>]
+  render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
+  render knowledge-ready
   render legacy-split-gate --variant themes|plan|remove
   render legacy-split-display --variant candidates|plan|errors --file <payload.json>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
