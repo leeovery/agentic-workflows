@@ -338,9 +338,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   workflows are opinionated, and the mod carries the buttons and the
   workflow session's harness (R20) alike. Every `engine boot` puts
   `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"` into the project's
-  committed `.claude/settings.json` where it is missing
-  (`domain/settings.cjs`, beside the session hooks' sync), commits it
-  confined, and reports `gate_surface`:
+  committed `.claude/settings.json` wherever it is not already `"1"`
+  (`domain/gate-surface.cjs`, writing through the `domain/settings.cjs`
+  the session hooks' sync shares), inside the lock that sync holds,
+  commits it confined, and reports `gate_surface`:
   - `on` where the mod is running, its announcement (R2) in boot's
     environment;
   - `restart` where this boot wrote the flag and the mod is not running;
@@ -492,14 +493,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     one. A plain conversation in the same project keeps Claude Code's
     defaults throughout.
 - **R21 — what a step shows reaches the person.** One rule in
-  `instructions.md` says how a block a step shows (a fenced block the
-  prose tells Claude to output, or an engine section emitted per its
-  marker) gets to the screen:
-  - A block Claude shows and then carries on past with another tool call
-    goes through `SendUserMessage`, verbatim in the form its instruction
-    names; blocks shown one after another share one call.
+  `instructions.md` says how what a step shows or says (a fenced block
+  the prose tells Claude to output, an engine section emitted per its
+  marker, a line the prose tells Claude to say) gets to the screen:
+  - Written and then carried past with another tool call, it goes
+    through `SendUserMessage`, a block verbatim in the form its
+    instruction names; what comes one after another shares one call.
   - The step that ends the turn (at a gate, a STOP, or a dispatch that
-    waits) holds its blocks and writes them after its last call, in
+    waits) holds what it shows and writes it after its last call, in
     order, as Claude's own text. A turn always ends on text: one that ends
     on a tool call alone draws Claude Code's "no visible output" nudge,
     and a gate whose lead-in all went through the tool left Claude
@@ -515,9 +516,15 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   Where a flow sends an agent to work in the background and waits for its
   report, the turn's closing text is a sentence the prose prescribes, "The
   executor agent has been dispatched for task 5.1.", naming the task by
-  the plan's phase and task numbers, never an internal id or a topic slug.
-  Without it the turn ends on the dispatch, and Claude improvises a status
-  line in answer to the nudge.
+  the plan's phase and task numbers, never an internal id or a topic slug;
+  every other waited-on agent is named with what it works on ("phase 2",
+  "review cycle 3"). Without it the turn ends on the dispatch, and Claude
+  improvises a status line in answer to the nudge. Claude Code runs an
+  agent in the background unless told otherwise, so every dispatch the
+  flow waits on ends a turn and carries a sentence; a dispatch meant to
+  run in the foreground says `run_in_background: false`, and one the
+  conversation carries on past carries none (CONVENTIONS' Dispatch
+  Lines).
 
 ## The stack
 
@@ -532,9 +539,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - the gate surface on top of it — #1289 the payload (rows from parts,
     strict audit) → #1290 the band → #1292 the mod set up on the first
     run (R9) → #1294 the rows mod;
-  - display delivery on top of that — the workflow session's harness
-    (R20) → what a step shows reaches the person, with the dispatch
-    sentence (R21, R22). Where the payload meets the migration's menus, each layer closes
+  - display delivery on top of that — #1303 the workflow session's
+    harness (R20) → #1304 what a step shows reaches the person, with the
+    dispatch sentence (R21, R22). Where the payload meets the migration's menus, each layer closes
     on `sync:` commits: the spec-confirm gate's per-render `yesNo()`, one
     glyph helper and a menu asking on its glyphed line alone, the
     migration's pick rows built from parts, the payload suite re-pinned
