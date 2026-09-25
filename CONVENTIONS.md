@@ -522,15 +522,15 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [up-to-date display]
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Walkthrough
-[one-time offer when the boot response says so — the loaded walk records the answer; otherwise silent]
+### Step 0.2: Workflow Mod
+[terminal restart stop when the boot response says this boot switched the mod on; otherwise silent]
 → Proceed to **Step 0.3**.
 
-### Step 0.3: Session Labels
-[one-time prompt when the boot response says so; otherwise silent]
+### Step 0.3: Walkthrough
+[one-time offer when the boot response says so — the loaded walk records the answer; otherwise silent]
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Gate Surface
+### Step 0.4: Session Labels
 [one-time prompt when the boot response says so; otherwise silent]
 → Proceed to **Step 0.5**.
 

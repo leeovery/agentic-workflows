@@ -42,7 +42,6 @@ const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
-const { recordGateSurfaceChoice } = require('./domain/gate-surface.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -215,7 +214,6 @@ Commands:
   session repair
   session cleanup [session-id]
   session resume [session-id]
-  gate-surface config <true|false>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -404,7 +402,6 @@ Commands:
   render walkthrough-topic --name <slug> [--menu-only]
   render migration-gate
   render label-gate
-  render gate-surface-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
   render legacy-split-gate --variant themes|plan|remove
@@ -985,29 +982,6 @@ function runSession(call, argv) {
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-/**
- * `gate-surface config <true|false>` — workflow-start's one-time answer to
- * the gate-surface prompt: the choice on the project manifest and, on a yes,
- * the function-hooks flag in the project's settings, committed confined.
- * @param {Call} call @param {string[]} argv
- */
-function runGateSurface(call, argv) {
-  const [command, ...rest] = argv;
-  try {
-    if (command === 'config') {
-      const [value] = rest;
-      if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
-        throw new Error('Usage: engine gate-surface config <true|false>');
-      }
-      respond(call, recordGateSurfaceChoice(call.cwd, value === 'true'));
-      return;
-    }
-    throw new Error('Usage: engine gate-surface config <true|false>');
   } catch (err) {
     failJson(call, err);
   }
@@ -2023,9 +1997,6 @@ function runCli(call, argv) {
       break;
     case 'session':
       runSession(call, rest);
-      break;
-    case 'gate-surface':
-      runGateSurface(call, rest);
       break;
     case 'task':
       runTask(call, rest);

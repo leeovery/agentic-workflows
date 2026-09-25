@@ -132,7 +132,43 @@ All documents up to date.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Walkthrough
+### Step 0.2: Workflow Mod
+
+Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `on` and `off` render nothing.
+
+#### If `gate_surface` is `restart`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Workflow Mod`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The workflows come with a Claude Mod, an experimental Claude Code feature. It shows each menu as buttons above the prompt — click a row or press its key to answer — and in a workflow session it makes sure what the workflow shows you reaches the screen as written. Your other Claude sessions in this project are left as they are. It's switched on in this project's `.claude/settings.json`.
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```
+⚑ Restart Claude Code to finish setting up
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Claude Code reads its settings only when it starts. Exit Claude Code, start it again in this project, then run `/workflow-start`.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Walkthrough
 
 Branch on the boot response's `walkthrough` — the one-time offer of a short walk through how the workflows work. A recorded answer (`walked` or `skipped`) never re-offers, and the walk stays reachable from the `h/help` row on the start menu either way.
 
@@ -140,13 +176,13 @@ Branch on the boot response's `walkthrough` — the one-time offer of a short wa
 
 The offer is the walk's first screen, which records the answer. Load **[walk.md](../workflow-help/references/walk.md)** with origin = `first-run`.
 
-→ On return, proceed to **Step 0.3**.
+→ On return, proceed to **Step 0.4**.
 
 #### Otherwise
 
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.4**.
 
-### Step 0.3: Session Labels
+### Step 0.4: Session Labels
 
 Branch on the boot response's `tmux_labels` — `prompt` means the session runs inside tmux and the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts; `no-tmux` records nothing, so a later session inside tmux still asks.
 
@@ -174,7 +210,7 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 ```
 
-→ Proceed to **Step 0.4**.
+→ Proceed to **Step 0.5**.
 
 **If `no`:**
 
@@ -184,69 +220,7 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
 ```
 
-→ Proceed to **Step 0.4**.
-
-#### Otherwise
-
-→ Proceed to **Step 0.4**.
-
-### Step 0.4: Gate Surface
-
-Branch on the boot response's `gate_surface` — `prompt` means the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts.
-
-#### If `gate_surface` is `prompt`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Whenever a decision is yours, the workflows stop and show a menu like the one below. Claude Mods, an experimental Claude Code feature, can show these menus as buttons above the prompt instead: click a row or press its key to answer. You can turn it off at any time by setting `gate_surface` to `false` in `./.workflows/manifest.json`.
-```
-
-Fetch the opt-in and emit its `MENU: gate surface gate` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render gate-surface-gate
-```
-
-**STOP.** Wait for user response.
-
-On `yes` or `no`, record the choice — `true` for `yes`, `false` for `no`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs gate-surface config {true|false}
-```
-
-**If the command fails (`ok: false`):**
-
-Surface its error — the prompt returns at a future start once the project manifest is fixed.
-
 → Proceed to **Step 0.5**.
-
-**If the command succeeds carrying `warnings`:**
-
-Surface them — the choice is recorded, and after a `yes` the next start re-syncs the settings file.
-
-→ Proceed to **Step 0.5**.
-
-**If `no` and the command succeeds with no `warnings`:**
-
-→ Proceed to **Step 0.5**.
-
-**If `yes` and the command succeeds with no `warnings`:**
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```
-⚑ Restart Claude Code to turn the buttons on
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Your choice is saved in this project's Claude settings, and Claude Code only reads those when it starts. Exit Claude Code, start it again in this project, then run `/workflow-start`.
-```
-
-**STOP.** Do not proceed — terminal condition.
 
 #### Otherwise
 

@@ -23,18 +23,21 @@ function writeFile(dir, rel, content) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The session hooks boot keeps in every project's `.claude/settings.json`.
+// The session hooks and the function-hooks flag boot keeps in every
+// project's `.claude/settings.json`.
+const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
 const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
-/** Settings carrying `hooks` in boot's one SessionEnd group, beside `rest`. */
+/** Settings as boot leaves them: `rest`, `hooks` in boot's one SessionEnd group, then the flag. */
 function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] } }, null, 2) + '\n';
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] }, env: { [FLAG]: '1' } }, null, 2) + '\n';
 }
-/** The settings a project reaches with labels on: both SessionEnd hooks, and the SessionStart resume hook. */
+/** The settings a project reaches with labels on: both SessionEnd hooks, the SessionStart resume hook, and the flag. */
 const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
+  env: { [FLAG]: '1' },
 }, null, 2) + '\n';
 
 /** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
@@ -44,10 +47,11 @@ const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
  * A project fixture: a real git repo with a `.workflows/` tree, its
- * settings already carrying the presence sweep and its `.worktreeinclude`
- * already listing the store — the state every booted project reaches, so
- * boot's own plumbing commits never join the history a test reads. A test
- * about either install takes its file away first.
+ * settings already carrying the presence sweep and the function-hooks flag,
+ * and its `.worktreeinclude` already listing the store — the state every
+ * booted project reaches, so boot's own plumbing commits never join the
+ * history a test reads. A test about either install takes its file away
+ * first.
  */
 function setupProject(root) {
   const project = path.join(root, 'project');
@@ -224,7 +228,7 @@ describe('engine boot', () => {
       label_repaired: false,
       session_hooks_installed: false,
       worktree_include_installed: false,
-      gate_surface: 'prompt',
+      gate_surface: 'off',
       baseline: 'none',
       walkthrough: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
@@ -486,10 +490,10 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     // Boot commits exactly the two config paths the skill's .workflows-scoped
     // migration commit would otherwise leave dirty — then, the migration
-    // having rewritten settings.json without the session hooks, puts
-    // them back in a commit of their own.
+    // having rewritten settings.json without the session hooks and the
+    // function-hooks flag, puts them back in a commit of their own.
     const subjects = git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n');
-    assert.deepStrictEqual(subjects, ['chore: install workflow session hooks', 'chore: apply workflow migration config changes']);
+    assert.deepStrictEqual(subjects, ['chore: sync workflow project settings', 'chore: apply workflow migration config changes']);
     assert.strictEqual(res.session_hooks_installed, true);
     const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD~1']).trim().split('\n').sort();
     assert.deepStrictEqual(show, ['.claude/settings.json', '.gitignore']);
@@ -697,7 +701,7 @@ describe('engine boot', () => {
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
     // other one on the checkout. Its commits — the migration config pass,
-    // the store's untracking, the session hooks install, and the worktree
+    // the store's untracking, the project settings sync, and the worktree
     // include — must take their own paths and nothing else, staged peer
     // content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
@@ -720,7 +724,7 @@ describe('engine boot', () => {
     const shas = git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 4);
     assert.deepStrictEqual(shas.map((sha) => git(fix.project, ['log', '-1', '--pretty=%s', sha]).trim()), [
       'chore: copy the knowledge store into new worktrees',
-      'chore: install workflow session hooks',
+      'chore: sync workflow project settings',
       'chore(knowledge): stop tracking the store',
       'chore: apply workflow migration config changes',
     ]);
@@ -1318,13 +1322,13 @@ describe('engine boot session hooks', () => {
     }
   });
 
-  it('a project with no settings gets `presence cleanup` installed, committed confined — and a second boot changes nothing', () => {
+  it('a project with no settings gets `presence cleanup` installed beside the function-hooks flag, committed confined — and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: sync workflow project settings');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
@@ -1390,6 +1394,7 @@ describe('engine boot session hooks', () => {
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] },
+      env: { [FLAG]: '1' },
     });
   });
 
@@ -1409,8 +1414,9 @@ describe('engine boot session hooks', () => {
     const res = bootWith();
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.session_hooks_installed, false);
-    assert.strictEqual(res.warnings.length, 1);
+    assert.strictEqual(res.warnings.length, 2);
     assert.match(res.warnings[0], /session hooks not installed: \.claude\/settings\.json is not valid JSON/);
+    assert.match(res.warnings[1], /gate surface not synced: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 });

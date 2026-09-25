@@ -50,22 +50,6 @@ function labelGate() {
 }
 
 /**
- * The one-time gate-surface opt-in.
- * @returns {string}
- */
-function gateSurfaceGate() {
-  const body = menu(
-    '',
-    [
-      cmdOption('y', 'yes', 'Click a row or press its key; the menu stays put as you scroll'),
-      cmdOption('n', 'no', 'Keep menus as text in the conversation, as now'),
-    ],
-    { question: 'Show menus like this one as buttons above the prompt?' },
-  );
-  return section('MENU: gate surface gate', MENU_INSTRUCTION, body);
-}
-
-/**
  * A knowledge configuration by name: provider · model, or keyword-only.
  * @param {{provider?: string|null, model?: string|null}} config
  * @returns {string}
@@ -155,4 +139,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationGate, labelGate, gateSurfaceGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };
+module.exports = { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };
