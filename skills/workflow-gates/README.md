@@ -55,7 +55,8 @@ takes the gate off the band.
 
 At the end of every turn, and as the conversation ends, the mod keeps what the
 band shows — the gate, or nothing — in its own store, stamped with where the
-transcript ends. A conversation resumed with `claude --resume` or `/resume`,
+transcript ends, not counting the lines Claude Code writes around an
+interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
 or picked up again by a restart or a reload of the mod's files, gets its gate
 back as long as its transcript still ends there, with nothing picked or held —
 a held answer waits on a turn that does not come back; one that moved on while
