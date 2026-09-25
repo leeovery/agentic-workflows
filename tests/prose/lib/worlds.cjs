@@ -17,8 +17,8 @@
 // so drift can never hide behind the skip and no PR carries the
 // bookkeeping.
 //
-// Snapshots exclude `.git/` (SHAs), `.workflows/.knowledge/` (binary
-// store, re-derived at materialise) and `.claude/skills|agents/` (copied
+// Snapshots exclude `.git/` (SHAs), `.workflows/.knowledge/` (checkout-
+// local, set up afresh at materialise) and `.claude/skills|agents/` (copied
 // into live worlds, never part of a world's own state), and store
 // `.gitignore` files escaped so the product-written `.workflows/.gitignore`
 // cannot ignore snapshot content out of this repo.
@@ -38,6 +38,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const cases = require('./cases.cjs');
 const { withFrozenClock } = require('./fake-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/domain/kb.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
 // share a machine, and a directory another process is still walking answers
@@ -645,7 +646,11 @@ function buildWorld(caseId) {
   // The harness's logs live inside the world but are not world state — a
   // walker staging broadly must never commit them. info/exclude keeps the
   // rule out of the working tree, so snapshots and deltas never see it.
-  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), `${ACTION_LOG}\n${WALK_LOG}\n${ASSERT_PROMPT}\n`);
+  // The knowledge directory rides the same rule: a project ignores it
+  // whole, and a fixture whose recipe never booted carries no ignore rules
+  // of its own.
+  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'),
+    [ACTION_LOG, WALK_LOG, ASSERT_PROMPT, `${KNOWLEDGE_DIR}/`].map((p) => `${p}\n`).join(''));
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
 
@@ -683,14 +688,13 @@ function buildWorld(caseId) {
     }
   }
 
+  // The world's own checkout-local knowledge setup — never committed.
   const knowledge = path.join(dir, '.claude/skills/workflow-knowledge/scripts/knowledge.cjs');
   const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8' });
   if (setup.status !== 0) {
     removeTree(dir);
     throw new Error(`knowledge setup failed in world:\nstdout: ${setup.stdout}\nstderr: ${setup.stderr}`);
   }
-  git('add', '-A');
-  git('commit', '-q', '-m', 'chore(knowledge): initialise store');
 
   // Last, after every commit: what a peer session left behind. The dirt
   // stands untracked because it was held back from the commits above;

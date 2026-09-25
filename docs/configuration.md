@@ -38,7 +38,7 @@ The first time [implementation](implementation.md) runs, it asks whether there a
 
 ## Knowledge configuration
 
-The [knowledge base](knowledge-base.md) reads its settings from three layers. Built-in defaults sit at the bottom. A system config at `~/.config/workflows/config.json` applies across every project on your machine. A project config at `.workflows/.knowledge/config.json` applies to one project and wins over both. A key present in a file overrides the layers beneath it, and a key set to `null` unsets it — which is how a project switches off a machine-level embedding provider and runs keyword-only on its own.
+The [knowledge base](knowledge-base.md) reads its settings from three layers. Built-in defaults sit at the bottom. A system config at `~/.config/workflows/config.json` applies across every project on your machine. A project config at `.workflows/.knowledge/config.json` applies to one copy of a project — it is written by setup and never committed — and wins over both. A key present in a file overrides the layers beneath it, and a key set to `null` unsets it — which is how a project switches off a machine-level embedding provider and runs keyword-only on its own.
 
 Setup writes provider identity only: which embedding provider, which model, its dimensions, and an endpoint for a compatible service. If a cloud service is involved, its key is stored separately and securely on your machine and never travels through the chat. Setup never writes a tuning value, so a default that improves in a later version reaches you without anything to redo.
 

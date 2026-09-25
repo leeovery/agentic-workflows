@@ -218,18 +218,10 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-onl
 
 ## E. Confirm and Continue
 
-The fresh store is uncommitted. Commit it:
+Fetch the confirmation — it names the configuration this checkout's store was built with — and emit its `DISPLAY: knowledge ready` section verbatim as a code block:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(knowledge): initialise store"
-```
-
-Then confirm, filling the placeholders from the mode just initialised:
-
-> *Output the next fenced block as a code block:*
-
-```
-Knowledge base ready — @if(provider) {provider} · {model} @else keyword-only @endif.
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-ready
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 0.5**.
@@ -248,16 +240,10 @@ Knowledge base ready — @if(provider) {provider} · {model} @else keyword-only 
 > The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.
 ```
 
-> *Output the next fenced block as a code block:*
+Fetch the gate and emit its `DISPLAY: knowledge wizard` section verbatim as a code block, then its `MENU: knowledge wizard gate` section verbatim as markdown (not a code block):
 
-```
-Run the wizard in your terminal:
-
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
-
-It configures system defaults, initialises the project store, and
-runs the initial indexing pass. Say `y/yes` here when it
-completes.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant wizard
 ```
 
 **STOP.** Wait for user response.
@@ -272,15 +258,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs boot
 
 **If `knowledge` is `ready`:**
 
-Boot committed any store dirt the wizard left. If the response carries `warnings`, surface them. Confirm with the active settings from the wizard's summary:
+If the response carries `warnings`, surface them.
 
-> *Output the next fenced block as a code block:*
-
-```
-Knowledge base ready — {provider} · {model}.
-```
-
-→ Return to **[the skill](../SKILL.md)** for **Step 0.5**.
+→ Return to **E. Confirm and Continue**.
 
 **If `knowledge` is still `not-ready`:**
 

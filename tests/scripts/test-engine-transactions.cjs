@@ -2282,15 +2282,13 @@ describe('engine commit', () => {
   });
 });
 
-describe('knowledge store rides along on every engine commit', () => {
+describe('the knowledge store never rides an engine commit', () => {
   let dir;
   beforeEach(() => {
     dir = setupEpicFixture();
+    // Store dirt beside the work — what a transaction's index or remove
+    // leaves; simulated here since the fixture has no real knowledge CLI.
     writeFile(dir, '.workflows/.knowledge/store.msp', 'v1\n');
-    commitAll(dir, 'store v1');
-    // Transaction side effects (index/remove) dirty the store mid-flow —
-    // simulated here since the fixture has no real knowledge CLI.
-    writeFile(dir, '.workflows/.knowledge/store.msp', 'v2\n');
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -2298,33 +2296,18 @@ describe('knowledge store rides along on every engine commit', () => {
     return git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
   }
 
-  it('engine commit <wu> stages .workflows/.knowledge alongside the work unit', () => {
-    writeFile(dir, '.workflows/payments/discussion/auth.md', '# Auth\n');
-    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): note']);
-    assert.strictEqual(res.committed, shortHead(dir));
-    assert.deepStrictEqual(committedFiles(), [
-      '.workflows/.knowledge/store.msp',
-      '.workflows/payments/discussion/auth.md',
-    ]);
-  });
-
-  it('a transaction commit sweeps the store dirt its KB sync produced', () => {
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
-    assert.strictEqual(res.committed, shortHead(dir));
-    assert.deepStrictEqual(committedFiles(), [
-      '.workflows/.knowledge/store.msp',
-      '.workflows/payments/manifest.json',
-    ]);
-  });
-
-  it('exists-guarded: no .knowledge directory, no pathspec, no git error', () => {
-    fs.rmSync(path.join(dir, '.workflows/.knowledge'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'drop store']);
+  it('engine commit <wu> takes the work unit and nothing of the store', () => {
     writeFile(dir, '.workflows/payments/discussion/auth.md', '# Auth\n');
     const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): note']);
     assert.strictEqual(res.committed, shortHead(dir));
     assert.deepStrictEqual(committedFiles(), ['.workflows/payments/discussion/auth.md']);
+  });
+
+  it('a transaction commit takes its own paths and nothing of the store', () => {
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.deepStrictEqual(committedFiles(), ['.workflows/payments/manifest.json']);
+    assert.match(git(dir, ['status', '--porcelain']), /\?\? \.workflows\/\.knowledge\//);
   });
 });
 

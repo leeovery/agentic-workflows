@@ -90,7 +90,7 @@ Expected path:
 15. the edited discussion is reindexed through the knowledge CLI; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
-    the sweep shape (`--topic discussion/pay --kb --sweep`)
+    the sweep shape (`--topic discussion/pay --sweep`)
 16. back in the batch the finding's Proposed Text lands in the
     specification's Capture Webhooks section, re-derived against the
     live document; the Resolution is set to `Routed` with Notes naming

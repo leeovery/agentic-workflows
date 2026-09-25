@@ -55,7 +55,6 @@
       "render research-conclude-gate search-relevance.research.relevance-measurement",
       "manifest get search-relevance.research.relevance-measurement threads",
       "topic complete search-relevance research relevance-measurement",
-      "--kb",
       "research(search-relevance): complete relevance-measurement research"
     ],
     "calls_in_order": [

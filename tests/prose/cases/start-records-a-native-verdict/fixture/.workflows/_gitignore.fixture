@@ -7,3 +7,4 @@
 .commit-lock
 .commit-lock.breaking
 .knowledge/*.tmp
+.knowledge/

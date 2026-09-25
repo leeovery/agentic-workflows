@@ -33,7 +33,8 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { METADATA_FILE } = require('./kb.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -5420,6 +5421,26 @@ function knowledgeGateSurface(_cwd, { variant, provider, model }) {
   return knowledgeGate(variant, { provider, model });
 }
 
+/**
+ * The knowledge gate's closing line, read from this checkout's store
+ * metadata — the configuration the store was built with.
+ * @param {string} cwd @returns {string}
+ */
+function knowledgeReadySurface(cwd) {
+  const file = path.join(cwd, METADATA_FILE);
+  if (!fs.existsSync(file)) {
+    throw new Error(`render knowledge-ready: no ${METADATA_FILE} — this checkout has no knowledge store yet`);
+  }
+  /** @type {{provider?: string|null, model?: string|null}} */
+  let metadata;
+  try {
+    metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    throw new Error(`render knowledge-ready: ${METADATA_FILE} is not valid JSON — ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return knowledgeReady(metadata);
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -5544,6 +5565,7 @@ const SURFACES = {
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
+  'knowledge-ready': knowledgeReadySurface,
   'legacy-split-gate': legacySplitGateSurface,
   'legacy-split-display': legacySplitDisplaySurface,
 };

@@ -63,7 +63,7 @@ module.exports = {
     h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): signal availability and density`);
     h.engine('topic', 'complete', WU, 'research', TOPIC);
-    h.engine('commit', WU, '--topic', `research/${TOPIC}`, '--kb', '-m',
+    h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}): complete ${TOPIC} research`);
 
     h.engine('topic', 'start', WU, 'discussion', TOPIC);

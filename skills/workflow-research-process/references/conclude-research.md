@@ -42,7 +42,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
    ```
 4. Final commit — the Open Threads write rides it:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} --kb -m "research({work_unit}): complete {topic} research"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}): complete {topic} research"
    ```
 
    When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:

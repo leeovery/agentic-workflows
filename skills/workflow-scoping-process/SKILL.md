@@ -195,9 +195,9 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
    ```
-3. Commit each edit under its own scope — the specification with the store its re-completion re-indexed, then the plan with its declared storage:
+3. Commit each edit under its own scope — the specification, then the plan with its declared storage:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --kb --sweep
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --sweep
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust plan" --plan {topic}
    ```
 
@@ -231,7 +231,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-9. Commit what remains — the deleted specification, the store the removal emptied, and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
+9. Commit what remains — the deleted specification and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping"
    ```

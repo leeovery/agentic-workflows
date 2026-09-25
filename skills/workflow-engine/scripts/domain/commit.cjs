@@ -2,19 +2,13 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the engine's commit door. Every engine-made commit routes
-// through here, for three guarantees:
+// through here, for two guarantees:
 //
-// - Commits are confined: each one names the paths its action wrote and
-//   commits `-- <paths>`, so a peer session's dirty or staged files are never
-//   swept up under someone else's message. No engine commit can reach outside
-//   its declared scope.
-//
-// - The knowledge store rides along where the action touched it: transactions
-//   mutate the store (index/remove) as a side effect of manifest writes, and
-//   their commit must carry that dirt. The pathspec is appended
-//   exists-guarded — keyword-less projects may have no store. Transactions
-//   that never call the store take the rider-less siblings; sweeping store
-//   dirt an action did not create is the theft the confinement removes.
+// - Commits are confined: each one commits exactly the paths its action
+//   wrote (`-- <paths>`), or — for an untracking — HEAD without the paths it
+//   names, built in a scratch index (`commitUntrack`). A peer session's dirty
+//   or staged files are never swept up under someone else's message, and no
+//   engine commit reaches outside its declared scope.
 //
 // - Commits are serialised: a process-wide lock (`.git/workflows-commit.lock`,
 //   same discipline as the manifest lock, on a longer clock) holds each
@@ -22,12 +16,9 @@
 //   git's shared index.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
-const path = require('path');
-const { git, commitPathspec } = require('../kernel/git.cjs');
+const { gitPath, commitPathspec, commitUntrack } = require('../kernel/git.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 
-const KB_DIR = '.workflows/.knowledge';
 const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
 
 /**
@@ -49,13 +40,12 @@ function discoveryScope(workUnit) {
 /**
  * The commit lock lives in the `.git` dir (like git's own transient locks) —
  * a lock inside `.workflows` would be staged by the very commit it guards.
- * `--git-path` resolves linked worktrees to their per-worktree dir, which is
- * the right scope: the index being serialised is per-worktree too.
+ * A linked worktree's lock is its own, which is the right scope: the index
+ * being serialised is per-worktree too.
  * @param {string} cwd project root
  */
 function commitLockPath(cwd) {
-  const rel = git(cwd, ['rev-parse', '--git-path', 'workflows-commit.lock']).trim();
-  return path.isAbsolute(rel) ? rel : path.join(cwd, rel);
+  return gitPath(cwd, 'workflows-commit.lock');
 }
 
 /**
@@ -83,23 +73,8 @@ function withCommitLock(cwd, fn) {
 }
 
 /**
- * The caller's pathspec with the knowledge store appended when it exists on
- * disk — for the transactions whose own action dirtied the store.
- * @param {string} cwd @param {string|string[]} pathspec
- * @returns {string[]}
- */
-function withKbSpec(cwd, pathspec) {
-  const specs = Array.isArray(pathspec) ? [...pathspec] : [pathspec];
-  if (!specs.includes(KB_DIR) && fs.existsSync(path.join(cwd, KB_DIR))) {
-    specs.push(KB_DIR);
-  }
-  return specs;
-}
-
-/**
  * `commitPathspec` under the commit lock: commit exactly the named paths,
- * leaving every other process's dirty or staged files untouched. The KB dir
- * never rides — this is the door for actions that never touched the store.
+ * leaving every other process's dirty or staged files untouched.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
  * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
  *   must run inside the same commit-lock hold as the commit that lands it
@@ -113,14 +88,13 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
 }
 
 /**
- * `commitPathspecScoped` with the knowledge store staged alongside the
- * caller's pathspec — the door for actions that indexed or removed chunks.
- * @param {string} cwd @param {string|string[]} pathspec @param {string} message
- * @param {() => void} [beforeInLock]
+ * `commitUntrack` under the commit lock: stop tracking everything under the
+ * pathspecs, the files left on disk, in one commit that carries nothing else.
+ * @param {string} cwd @param {string[]} specs @param {string} message
  * @returns {string|null}
  */
-function commitPathspecWithKb(cwd, pathspec, message, beforeInLock) {
-  return commitPathspecScoped(cwd, withKbSpec(cwd, pathspec), message, beforeInLock);
+function commitUntrackScoped(cwd, specs, message) {
+  return withCommitLock(cwd, () => commitUntrack(cwd, specs, message));
 }
 
 /**
@@ -154,24 +128,6 @@ function commitTailPathspec(cwd, pathspec, message, warnings, beforeInLock) {
 }
 
 /**
- * `commitTailPathspec` for a transaction that touched the knowledge store —
- * the store's dirt commits with the write that produced it.
- * @param {string} cwd @param {string|string[]} pathspec @param {string} message
- * @param {string[]} warnings
- * @param {() => void} [beforeInLock]
- * @returns {{committed: string|null, failed: boolean}}
- */
-function commitTailWithKb(cwd, pathspec, message, warnings, beforeInLock) {
-  try {
-    return { committed: commitPathspecWithKb(cwd, pathspec, message, beforeInLock), failed: false };
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    warnings.push(`commit failed: ${detail}`);
-    return { committed: null, failed: true };
-  }
-}
-
-/**
  * Stamp a transaction result from a tail-commit outcome: a failure notes the
  * pending commit (the state is saved — only the commit is owed), a clean
  * tree notes `nothing to commit`. Mutates the result in place.
@@ -197,13 +153,11 @@ function noteCommitOutcome(result, outcome, retry) {
 
 module.exports = {
   commitPathspecScoped,
-  commitPathspecWithKb,
   commitTailPathspec,
-  commitTailWithKb,
+  commitUntrackScoped,
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,
   discoveryScope,
-  KB_DIR,
   PROJECT_MANIFEST_SPEC,
 };

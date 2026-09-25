@@ -58,7 +58,7 @@ Expected path:
 11. the edited discussion is reindexed through the knowledge CLI; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
-    the sweep shape (`--topic discussion/pay --kb --sweep`)
+    the sweep shape (`--topic discussion/pay --sweep`)
 12. the specification's Gateway Integration content is then composed
     from the pick and written, re-derived against the live document;
     the Resolution is set to `Routed` with Notes naming the discussion

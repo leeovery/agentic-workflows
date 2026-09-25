@@ -68,7 +68,7 @@ Expected path:
 12. the edited discussion is re-indexed through the knowledge CLI; the
     sources-stale step is **skipped** — single-topic work has no
     sibling specifications — and the resolution commits scoped to the
-    discussion with the sweep shape (`--topic discussion/pay --kb
+    discussion with the sweep shape (`--topic discussion/pay
     --sweep`)
 13. the discussion now carries the decision, and that is the record
     that settles the specification: the correction route runs over this
@@ -77,7 +77,7 @@ Expected path:
     arm. The rule is added to the section that owns the ground, a dated
     corrigendum attributed to `planning/pay` is appended citing the
     decision, the specification is re-indexed, and one scoped commit
-    lands carrying `--topic specification/pay`, `--kb` and `--sweep`
+    lands carrying `--topic specification/pay` and `--sweep`
 14. control returns to the findings walk, which re-disposes finding 2
     against the corrected record: it is now `settled`, carrying what
     landed into the plan. The tracking row is rewritten before anything

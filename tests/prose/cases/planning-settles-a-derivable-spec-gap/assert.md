@@ -54,7 +54,7 @@ Expected path:
    (never a quoted claim — the defect is an omission) and recording the
    derivation; the specification is re-indexed with a single-file
    knowledge index; and one scoped commit lands carrying
-   `--topic specification/pay`, `--kb` and `--sweep`. No gate renders
+   `--topic specification/pay` and `--sweep`. No gate renders
    for it, no question is asked, no scripted answer is consumed, and
    the specification item's status is never touched
 9. the landing changed the specification, so the task designer is

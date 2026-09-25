@@ -52,7 +52,7 @@
       "render finding pay.specification.pay",
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
-      "--topic discussion/pay --kb --sweep",
+      "--topic discussion/pay --sweep",
       "tracking.review-gap-analysis-tracking-c1 complete",
       "render spec-review-gate pay.specification.pay --variant reloop",
       "manifest set pay.specification.pay review_cycle 2",

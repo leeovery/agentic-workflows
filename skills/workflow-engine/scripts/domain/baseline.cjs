@@ -14,6 +14,7 @@
 const { tryGit } = require('../kernel/git.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 
 /** The statuses a project manifest records; `none` is their absence. */
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
@@ -37,7 +38,7 @@ const VERDICTS = /** @type {const} */ (['native', 'skipped']);
  * @property {number} commits_total  every commit reachable from HEAD
  * @property {number} commits_before  ancestors of the commit the workflows arrived in (the whole history when nothing under `.workflows/` is committed)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first — the head and tail kept around an elision line when the run is long
- * @property {number} files_at_arrival  project files (outside `.claude/` and `.workflows/`) in the tree the workflows arrived into — HEAD's tree when nothing under `.workflows/` is committed
+ * @property {number} files_at_arrival  project files (outside `.claude/` and `.workflows/`, `.worktreeinclude` aside) in the tree the workflows arrived into — HEAD's tree when nothing under `.workflows/` is committed
  * @property {string[]} tree_at_arrival  that tree's top-level shape: `dir/ (n)` and root files, largest first, elided past a dozen
  */
 
@@ -104,15 +105,15 @@ function historyOf(cwd, rev) {
 
 /**
  * The project's tree at `rev`, less the workflows' own footprint (the skills
- * install under `.claude/`, the `.workflows/` tree): a file count plus the
- * top-level shape, largest entries first.
+ * install under `.claude/`, the `.workflows/` tree, the `.worktreeinclude`
+ * boot keeps): a file count plus the top-level shape, largest entries first.
  * @param {string} cwd @param {string} rev
  * @returns {{files_at_arrival: number, tree_at_arrival: string[]}|null}
  */
 function treeAt(cwd, rev) {
   const paths = gitLines(cwd, ['ls-tree', '-r', '--name-only', rev]);
   if (paths === null) return null;
-  const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith('.workflows/'));
+  const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith('.workflows/') && p !== WORKTREE_INCLUDE);
   /** @type {Map<string, number>} */
   const top = new Map();
   for (const p of project) {

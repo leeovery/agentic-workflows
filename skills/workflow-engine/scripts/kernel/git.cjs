@@ -43,10 +43,11 @@ function indexBudgetMs() {
  * Run git and return stdout. Throws with git's stderr on a non-zero exit.
  * @param {string} cwd
  * @param {string[]} args
+ * @param {Record<string, string>} [env] variables layered over the process's own
  * @returns {string}
  */
-function git(cwd, args) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8' });
+function git(cwd, args, env) {
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', env: env && { ...process.env, ...env } });
   if (res.error) throw new Error(`git ${args[0]} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();
@@ -72,6 +73,15 @@ function tryGit(cwd, args) {
   const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: TRY_BUDGET_BYTES });
   if (res.error || res.status !== 0) return null;
   return res.stdout;
+}
+
+/**
+ * A listing's non-empty lines; a failed read has none.
+ * @param {string|null} out
+ * @returns {string[]}
+ */
+function outputLines(out) {
+  return (out || '').split('\n').filter(Boolean);
 }
 
 /** @param {string} message */
@@ -193,6 +203,101 @@ function commitPathspec(cwd, pathspec, message) {
 }
 
 /**
+ * Every path under the pathspecs that git tracks — in HEAD, the index, or
+ * both — sorted. None outside a repository or before its first commit.
+ * @param {string} cwd project root
+ * @param {string[]} specs
+ * @returns {string[]}
+ */
+function trackedPaths(cwd, specs) {
+  const listed = [
+    ...outputLines(tryGit(cwd, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...specs])),
+    ...outputLines(tryGit(cwd, ['ls-files', '--', ...specs])),
+  ];
+  return [...new Set(listed)].sort();
+}
+
+/**
+ * A path in the git dir as git resolves it — a linked worktree's own for
+ * per-worktree state — made absolute.
+ * @param {string} cwd project root
+ * @param {string} name
+ * @returns {string}
+ */
+function gitPath(cwd, name) {
+  const rel = git(cwd, ['rev-parse', '--git-path', name]).trim();
+  return path.isAbsolute(rel) ? rel : path.join(cwd, rel);
+}
+
+// The operations git holds open across commands, by the marker each leaves
+// in the git dir. A commit made while one is open takes on its state — a
+// merge's second parent, a pick's authorship — and consumes the marker.
+const OPERATION_MARKERS = [
+  ['MERGE_HEAD', 'a merge'],
+  ['CHERRY_PICK_HEAD', 'a cherry-pick'],
+  ['REVERT_HEAD', 'a revert'],
+  ['rebase-merge', 'a rebase'],
+  ['rebase-apply', 'a rebase'],
+];
+
+/**
+ * The operation git is in the middle of, as `{operation, marker}`, or null.
+ * @param {string} cwd project root
+ * @returns {{operation: string, marker: string}|null}
+ */
+function operationInProgress(cwd) {
+  const open = OPERATION_MARKERS.find(([marker]) => fs.existsSync(gitPath(cwd, marker)));
+  return open ? { operation: open[1], marker: open[0] } : null;
+}
+
+/**
+ * Stop tracking everything under `specs`, leaving every file on disk: one
+ * commit records their removal from HEAD, and the index drops them.
+ * `git commit -- <paths>` cannot record this — a partial commit re-reads each
+ * named path from the working tree, and a file still on disk goes straight
+ * back in — so the commit is built from a scratch index holding HEAD without
+ * the paths. The real index is never committed from, so whatever else is
+ * staged in it stays staged and out of the commit. Refuses while a merge,
+ * cherry-pick, revert or rebase is in progress, touching nothing.
+ * @param {string} cwd project root
+ * @param {string[]} specs
+ * @param {string} message
+ * @returns {string|null} the short commit sha, or null when HEAD tracks none of the paths
+ */
+function commitUntrack(cwd, specs, message) {
+  const tracked = trackedPaths(cwd, specs);
+  if (tracked.length === 0) return null;
+  const open = operationInProgress(cwd);
+  if (open) {
+    throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, and the next start stops tracking ${tracked.join(', ')}`);
+  }
+  const committed = commitWithout(cwd, tracked, message);
+  gitIndexed(cwd, ['update-index', '--force-remove', '--', ...tracked]);
+  return committed;
+}
+
+/**
+ * Commit HEAD's tree without `paths`, from a scratch index. Null when HEAD
+ * holds none of them, or there is no HEAD.
+ * @param {string} cwd @param {string[]} paths @param {string} message
+ * @returns {string|null}
+ */
+function commitWithout(cwd, paths, message) {
+  const head = tryGit(cwd, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']);
+  if (head === null) return null;
+  const env = { GIT_INDEX_FILE: gitPath(cwd, 'workflows-untrack.index') };
+  try {
+    git(cwd, ['read-tree', 'HEAD'], env);
+    git(cwd, ['rm', '--cached', '-q', '--ignore-unmatch', '--', ...paths], env);
+    if (git(cwd, ['write-tree'], env).trim() === head.trim()) return null;
+    git(cwd, ['commit', '-q', '-m', message], env);
+  } finally {
+    fs.rmSync(env.GIT_INDEX_FILE, { force: true });
+  }
+  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+}
+
+/**
  * Every path in the working tree that differs from HEAD — tracked
  * modifications and untracked, non-ignored files alike — project-relative.
  * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
@@ -223,4 +328,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

@@ -12,7 +12,7 @@ const {
   saveWorkUnitManifest,
   withWorkUnitLock,
 } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const {
   planImports,
@@ -104,7 +104,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
     knowledge(cwd, ['index', importArtifact(workUnit, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
   }
 
-  const outcome = commitTailWithKb(
+  const outcome = commitTailPathspec(
     cwd,
     [`.workflows/${workUnit}/imports`, `.workflows/${workUnit}/manifest.json`],
     `workflow(${workUnit}): import ${moves.length} file(s) for ${origin}`,

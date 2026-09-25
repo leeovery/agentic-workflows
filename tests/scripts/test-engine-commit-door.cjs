@@ -241,26 +241,12 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'KB dirt left in place');
   });
 
-  it('--kb stages the knowledge store alongside the topic pathspec', () => {
-    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nconcluded\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
-
-    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a discussion', '--topic', 'discussion/topic-a', '--kb']);
-
-    assert.match(res.committed, /^[0-9a-f]+$/);
-    const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/.knowledge/metadata.json'), 'KB dirt rides the --kb commit');
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic still excluded');
-  });
-
   it('rejects malformed and illegal --topic specs', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'bogus/topic-a']).error, /expected <phase>\/<topic>/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion']).error, /expected <phase>\/<topic>/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/..']).error, /invalid topic name/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/topic-a', '--plan', 'topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--inbox', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'toString/topic-a']).error, /expected <phase>\/<topic>/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', '__proto__/topic-a']).error, /expected <phase>\/<topic>/);
   });
@@ -332,7 +318,7 @@ describe('engine commit --state: the analysis scopes', () => {
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the work unit form takes its analysis dir, its manifest, and the store', () => {
+  it('the work unit form takes its analysis dir and its manifest — never the store', () => {
     writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
     writeFile(dir, '.workflows/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
@@ -346,10 +332,10 @@ describe('engine commit --state: the analysis scopes', () => {
     const files = headFiles(dir);
     assert.ok(files.includes('.workflows/payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
     assert.ok(files.includes('.workflows/payments/manifest.json'), 'so does the manifest it wrote');
-    assert.ok(files.includes('.workflows/.knowledge/metadata.json'), 'and the store its stamp dirtied');
+    assert.ok(!files.some((f) => f.startsWith('.workflows/.knowledge/')), 'the store is never committed');
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [' M .workflows/payments/discussion/topic-b.md', '?? .workflows/payments/specification/'],
+      [' M .workflows/payments/discussion/topic-b.md', '?? .workflows/.knowledge/', '?? .workflows/payments/specification/'],
       'both live peers keep every byte they had not committed',
     );
   });
@@ -446,7 +432,7 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
       'the peer planning session keeps its own dirt');
   });
 
-  it('leaves the knowledge store alone — the rider is for forms that dirty it', () => {
+  it('leaves the knowledge store alone', () => {
     const manifest = epicManifest();
     manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: [] } } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
@@ -456,8 +442,8 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
 
     engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
-    assert.ok(!headFiles(dir).some((f) => f.startsWith('.workflows/.knowledge/')), 'a plan pass never touched the store');
-    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'so the store dirt stays with whoever made it');
+    assert.ok(!headFiles(dir).some((f) => f.startsWith('.workflows/.knowledge/')), 'a plan pass never commits the store');
+    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'which stays as it was on disk');
   });
 
   it('refuses a planning topic name that is a path', () => {
@@ -597,16 +583,17 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   const beatFile = (phase, topic) => path.join(dir, '.workflows/.cache/payments', phase, topic, 'presence');
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
 
-  it('the session-cadence commit beats; --kb clears; --sweep suppresses', () => {
+  it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
     assert.ok(beaten('discussion', 'topic-a'), 'the cadence commit is the heartbeat');
 
-    // The conclusion: `topic complete` then the --kb commit. Clearing is what
-    // stops a concluded topic reading held forever.
+    // The conclusion: `topic complete` then its commit. The completed item
+    // makes that commit a release, so a concluded topic never reads held.
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nconcluded\n');
-    engine(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a', '--topic', 'discussion/topic-a', '--kb']);
-    assert.ok(!beaten('discussion', 'topic-a'), '--kb clears instead of beating');
+    engine(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-a']);
+    engine(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a', '--topic', 'discussion/topic-a']);
+    assert.ok(!beaten('discussion', 'topic-a'), 'the conclusion commit clears instead of beating');
 
     // The conclude sweep committing a dead session's leavings must not
     // resurrect the hold it just swept.
@@ -615,22 +602,20 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(!beaten('discussion', 'topic-b'), '--sweep never stamps the swept topic');
   });
 
-  it('--sweep outranks --kb: a foreign topic is neither stamped nor cleared', () => {
-    // The spec-side resolution edits and reindexes another phase's document,
-    // so its commit carries both riders. `--kb` means the action touched the
-    // store; it never means this session owns the topic — and a peer that is
-    // alive but idle still holds it. Clearing there would delete a hold another session still owns.
+  it('--sweep leaves a live peer\'s hold as it found it — neither stamped nor cleared', () => {
+    // The spec-side resolution edits and reindexes another phase's document;
+    // a peer that is alive but idle still holds it.
     const peer = beatFile('discussion', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nresolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
-      '--topic', 'discussion/topic-b', '--kb', '--sweep']);
+      '--topic', 'discussion/topic-b', '--sweep']);
 
-    assert.ok(beaten('discussion', 'topic-b'), '--sweep stops --kb clearing a peer\'s hold');
+    assert.ok(beaten('discussion', 'topic-b'), 'the peer\'s hold stands');
     assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
-      'and stops it stamping this session\'s identity over the peer\'s');
+      'and this session\'s identity is never stamped over the peer\'s');
   });
 
   it('--sweep outranks the terminal-status release too — the live spec-side case', () => {
@@ -646,15 +631,14 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nthe resolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
-      '--topic', 'discussion/topic-b', '--kb', '--sweep']);
+      '--topic', 'discussion/topic-b', '--sweep']);
 
     assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
       'a completed topic another session holds is still that session\'s to release');
   });
 
-  it('both riders still require a --topic scope', () => {
+  it('--sweep still requires a --topic scope', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--sweep']).error, /Usage/);
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb', '--sweep']).error, /Usage/);
   });
 
   it('the topic verbs a session runs on its own topic beat — and the reads and triage never create one', () => {

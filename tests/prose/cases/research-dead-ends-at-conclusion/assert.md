@@ -32,7 +32,7 @@ The prose should have taken this path:
 8. the conclusion runs with the dead-end closure: the queue is checked a
    final time, the register holds nothing open or parked so no Open
    Threads section is written, the research completes and indexes, and
-   one `--kb` commit closes it. Presence clears, the sweep finds no
+   one conclusion commit closes it. Presence clears, the sweep finds no
    leavings, and the closing recap runs
 9. the closing signpost is the dead-end one — the topic is closed, no
    discussion follows, the file stays on the map and in the knowledge

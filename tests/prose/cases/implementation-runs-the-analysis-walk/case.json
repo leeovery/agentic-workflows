@@ -70,7 +70,6 @@
       "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
       "specification(pay): corrigendum from implementation/pay",
       "--topic specification/pay",
-      "--kb",
       "--sweep",
       "impl(pay): analysis cycle 1 — comment corrections",
       "commit --paths src/webhooks/capture.js",

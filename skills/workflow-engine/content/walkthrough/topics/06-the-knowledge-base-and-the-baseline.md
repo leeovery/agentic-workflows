@@ -14,6 +14,6 @@ You rarely go looking for it. During the thinking-heavy phases the system checks
    never fades   specifications
 ```
 
-The knowledge base is switched on once per project, and that is the one moment you are asked to configure something by name: how it should search. Search by meaning needs an embedding provider; keyword-only needs nothing and can be upgraded any time.
+The knowledge base is switched on once in each copy of the project, and that is the one moment you are asked to configure something by name: how it should search. Search by meaning needs an embedding provider; keyword-only needs nothing and can be upgraded any time. The memory and that choice stay out of git, so a fresh clone asks again, while a worktree the assistant creates for you starts with a copy of both.
 
 A baseline is for a codebase that existed before the workflows did. Without one, the memory starts empty and every phase that leans on it fires blanks. The baseline reads the code, area by area, then interviews you in rounds for the intentions, history and constraints the code cannot show, and writes both up as documents the knowledge base surfaces in every later phase, marked as reference rather than decisions of record. It is offered once on a codebase with a history, it can be paused and resumed, and it is always available from the start menu's `a/baseline` row to view, expand or begin.

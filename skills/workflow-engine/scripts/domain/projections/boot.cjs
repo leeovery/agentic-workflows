@@ -2,14 +2,20 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: workflow-start's boot gates — the static menus Step 0 puts to
-// the user before any work is on the table. Pure renderers; none reads
-// state (the calling prose branches on the boot response and fetches the
-// gate at its display point).
+// the user before any work is on the table, and the knowledge gate's
+// displays. Pure renderers; none reads state (the calling prose branches on
+// the boot response and fetches the gate at its display point, and the
+// render surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { wrapWithPrefix } = require('../../kernel/render.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const ABOVE_MENU_INSTRUCTION = 'emit verbatim as a code block, directly above the menu';
+
+const WIZARD_COMMAND = 'node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup';
 
 /**
  * The migration confirm gate — after the summary of what the migrations did.
@@ -43,17 +49,27 @@ function labelGate() {
   return section('MENU: label gate', MENU_INSTRUCTION, body);
 }
 
+/**
+ * A knowledge configuration by name: provider · model, or keyword-only.
+ * @param {{provider?: string|null, model?: string|null}} config
+ * @returns {string}
+ */
+function configurationName({ provider, model }) {
+  return provider ? [provider, model].filter(Boolean).join(' · ') : 'keyword-only';
+}
+
 // The knowledge gate's menus, keyed by what each asks: reuse = adopt the
 // system configuration (its yes row names it — provider · model, or
 // keyword-only), deviate = the per-project alternatives to it, mode = the
 // search-mode pick with no system configuration to lean on, retry = the
-// re-run after the key is stored.
-/** @type {Record<string, (config: {provider?: string, model?: string}) => {question: string, options: string[]}>} */
+// re-run after the key is stored, wizard = the wait while the terminal
+// wizard runs (its display names the command).
+/** @type {Record<string, (config: {provider?: string, model?: string}) => {question: string, options: string[], display?: string[]}>} */
 const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
     question: 'Use the existing configuration for this project?',
     options: [
-      cmdOption('y', 'yes', `Use the existing configuration (${provider ? [provider, model].filter(Boolean).join(' · ') : 'keyword-only'})`),
+      cmdOption('y', 'yes', `Use the existing configuration (${configurationName({ provider, model })})`),
       cmdOption('d', 'different', 'Choose a different mode for this project'),
       cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead'),
     ],
@@ -81,20 +97,46 @@ const KNOWLEDGE_GATES = {
       cmdOption('k', 'keyword', 'Skip the key for now — use keyword-only search instead'),
     ],
   }),
+  wizard: () => ({
+    display: [
+      'Run the wizard in your terminal:',
+      '',
+      `  ${WIZARD_COMMAND}`,
+      '',
+      ...wrapWithPrefix('It configures system defaults, initialises the project store, and runs the initial indexing pass.', { width: displayWidth() }),
+    ],
+    question: 'Has the wizard completed?',
+    options: [
+      cmdOption('y', 'yes', 'It completed — check the knowledge base again'),
+    ],
+  }),
 };
 
 const KNOWLEDGE_GATE_VARIANTS = Object.keys(KNOWLEDGE_GATES);
 
 /**
- * One of the knowledge gate's menus. `config` is the system configuration
- * the reuse variant offers — the provider, with its model when the
- * configuration names one; neither for keyword-only.
+ * One of the knowledge gate's menus, beneath the display a variant carries.
+ * `config` is the system configuration the reuse variant offers — the
+ * provider, with its model when the configuration names one; neither for
+ * keyword-only.
  * @param {string} variant @param {{provider?: string, model?: string}} [config]
  * @returns {string}
  */
 function knowledgeGate(variant, config = {}) {
   const gate = KNOWLEDGE_GATES[variant](config);
-  return section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options, { question: gate.question }));
+  const gateMenu = section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options, { question: gate.question }));
+  if (!gate.display) return gateMenu;
+  return [section(`DISPLAY: knowledge ${variant}`, ABOVE_MENU_INSTRUCTION, gate.display.join('\n')), gateMenu].join('\n');
 }
 
-module.exports = { migrationGate, labelGate, knowledgeGate, KNOWLEDGE_GATE_VARIANTS };
+/**
+ * The knowledge gate's closing line: the configuration this checkout's store
+ * was built with.
+ * @param {{provider?: string|null, model?: string|null}} store
+ * @returns {string}
+ */
+function knowledgeReady(store) {
+  return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
+}
+
+module.exports = { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };

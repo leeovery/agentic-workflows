@@ -88,10 +88,10 @@ No dispatch.
 
 ## C. Sweep
 
-The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, knowledge-store dirt, and the brief each approved candidate landed. Check for leavings:
+The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, and the brief each approved candidate landed. Check for leavings:
 
 ```bash
-git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/discovery/briefs .workflows/{work_unit}/manifest.json .workflows/.knowledge
+git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/discovery/briefs .workflows/{work_unit}/manifest.json
 ```
 
 #### If the tree is dirty

@@ -87,7 +87,7 @@ Expected path:
 15. the edited discussion is reindexed through the knowledge CLI; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
-    the sweep shape (`--topic discussion/pay --kb --sweep`)
+    the sweep shape (`--topic discussion/pay --sweep`)
 16. back in the batch the held-order rule lands in the
     specification's Capture Webhooks section, and the row records
     `Routed` with Notes naming the discussion the decision landed in

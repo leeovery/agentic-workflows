@@ -37,7 +37,7 @@ The prose should have taken this path:
 7. the edited discussion is reindexed through the knowledge CLI; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
-   with the sweep shape (`--topic discussion/pay --kb --sweep`)
+   with the sweep shape (`--topic discussion/pay --sweep`)
 8. back in the findings flow the specification's Intent Creation
    Resilience content re-aligns to what the source now records — each
    attempt capped at 3 seconds, the 2-second figure gone — announced

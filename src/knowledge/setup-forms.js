@@ -7,8 +7,8 @@
 //                    config.json: resolve the key (env → credentials.json),
 //                    validate with one test embed (provider configs only),
 //                    initialise the project store, bulk-index.
-//   --keyword-only   project-level keyword-only init. Never touches the
-//                    system config.
+//   --keyword-only   project-level keyword-only init, pinned in the project
+//                    config. Never touches the system config.
 //   --provider ...   first-time (or replacement) system-config creation
 //                    from flags, then proceeds as --from-system. The key is
 //                    resolved from env/credentials — never from argv.
@@ -279,18 +279,14 @@ async function runFromSystem(cmdIndexBulk, options) {
 
 /**
  * `setup --keyword-only` — project-level keyword-only init. Never touches
- * the system config: when the system layer names a provider, the project
- * config pins `provider: null` (the documented per-project unset sentinel)
- * so this project genuinely runs keyword-only.
+ * the system config: the project config pins `provider: null` (the
+ * documented per-project unset sentinel), whatever the system layer names,
+ * so the choice travels with the project — this project runs keyword-only on
+ * every machine, and a checkout without a store rebuilds it keyword-only.
  */
 async function runKeywordOnly(cmdIndexBulk, options) {
   requireWorkflowsDir();
   const projectConfigFile = config.projectConfigPath();
-
-  const sys = setup.detectSystemConfig(config.systemConfigPath());
-  const systemProvider = sys.valid && sys.knowledge && sys.knowledge.provider
-    ? sys.knowledge.provider
-    : null;
 
   let knowledge = {};
   if (fs.existsSync(projectConfigFile)) {
@@ -300,8 +296,7 @@ async function runKeywordOnly(cmdIndexBulk, options) {
       refuse(`project config at ${projectConfigFile} is invalid: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  if (systemProvider) knowledge.provider = null;
-  else delete knowledge.provider;
+  knowledge.provider = null;
 
   // Refuse the partial state before writing anything.
   const projectDir = path.dirname(projectConfigFile);

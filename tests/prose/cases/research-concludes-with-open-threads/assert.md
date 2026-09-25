@@ -40,7 +40,7 @@ The prose should have taken this path:
    thread as parked with its note on the line (`- {question} — parked:
    {note}`), and no line for either learned thread, whose answers are
    already in the body — written **before** the completion; the research
-   completes and indexes; one `--kb` commit closes it, the Open Threads
+   completes and indexes; one conclusion commit closes it, the Open Threads
    write riding it; presence clears, the sweep finds no leavings, and
    the closing recap runs — questions in, findings out
 8. the closing signpost is the discussion one — the discussion phase

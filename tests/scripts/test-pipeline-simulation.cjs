@@ -41,6 +41,7 @@ const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/kb.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -236,9 +237,14 @@ class Sim {
     git(this.dir, ['config', 'user.name', 'Sim']);
     git(this.dir, ['config', 'commit.gpgsign', 'false']);
     fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
-    // The nested gitignore every booted project carries (migration 049): the
-    // cache is ephemeral session machinery, mechanical heartbeats included.
-    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
+    // The nested gitignore every booted project carries (migrations 049,
+    // 060): the cache is ephemeral session machinery, mechanical heartbeats
+    // included, and the knowledge directory is the checkout's own.
+    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n.knowledge/\n');
+    // This checkout's knowledge setup: keyword-only, pinned as setup records
+    // it, so the transactions' indexing builds a store as a set-up project's does.
+    fs.mkdirSync(path.join(this.dir, KNOWLEDGE_DIR), { recursive: true });
+    fs.writeFileSync(path.join(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
     this.step = 0;
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
@@ -333,6 +339,10 @@ class Sim {
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }
     auditState(this.dir, label);
+    if (typeof parsed.committed === 'string') {
+      assert.strictEqual(git(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
+        `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
+    }
     return parsed;
   }
 
@@ -704,7 +714,11 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review', '--reason', 'no review has run yet'], /takes no --reason/);
     sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`]);
+    // The completion indexed into a store, which every commit's audit in
+    // `run` holds untracked from here on.
+    assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.msp')), 'the completion built the store');
+    assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
@@ -3072,7 +3086,7 @@ describe('pipeline simulation', () => {
       `# Research — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
     sim.run(['topic', 'complete', feat, 'research', feat]);
-    sim.run(['commit', feat, '-m', `research(${feat}): complete`, '--topic', `research/${feat}`, '--kb']);
+    sim.run(['commit', feat, '-m', `research(${feat}): complete`, '--topic', `research/${feat}`]);
 
     label(sim, feat, 'discussion', feat);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
@@ -3243,13 +3257,13 @@ describe('pipeline simulation', () => {
       'bounded auto holds while the phase stays open for the consolidation pass');
     // B's spec-defect settle, before any proposal is staged: a record-settled
     // correction lands on the same unit's concluded spec — in-place edit +
-    // corrigendum — then the same-unit route's scoped commit (--kb carries the
-    // store, --sweep leaves the spec topic's presence untouched), with the
-    // work unit still in-progress and implementation live.
+    // corrigendum — then the same-unit route's scoped commit (--sweep leaves
+    // the spec topic's presence untouched), with the work unit still
+    // in-progress and implementation live.
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`,
       `# Spec — ${wu}\n\n## Corrigenda\n\n> **Corrigendum 2026-01-01** (from \`implementation/${wu}\`): "intent.js" — corrected: payment-intent.js.\n`);
     sim.run(['commit', wu, '-m', `specification(${wu}): corrigendum from implementation/${wu}`,
-      '--topic', `specification/${wu}`, '--kb', '--sweep']);
+      '--topic', `specification/${wu}`, '--sweep']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
       'staging.p1.tasks.1=pending', 'staging.p1.tasks.2=pending', 'staging.p1.tasks.3=pending']);
     sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);
@@ -3700,6 +3714,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /knowledge\.cjs setup[\s\S]*Has the wizard completed\?/);
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
@@ -3840,7 +3855,7 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n`);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
-    sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`, '--kb']);
+    sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`]);
     sim.run(['topic', 'start', wu, 'planning', wu]);
     sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
@@ -4097,10 +4112,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(adopted.held, true);
 
     // --- the terminal clear -------------------------------------------------
-    // The conclusion's `--kb` commit clears instead of beating, or the topic
-    // would read held forever after its session ended.
+    // The conclusion's commit, over the completed item, clears instead of
+    // beating, or the topic would read held forever after its session ended.
     talkSession.run(['topic', 'complete', wu, 'discussion', 'ranking']);
-    talkSession.run(['commit', wu, '--topic', 'discussion/ranking', '--kb',
+    talkSession.run(['commit', wu, '--topic', 'discussion/ranking',
       '-m', `discussion(${wu}): complete ranking discussion`]);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'ranking'), undefined,
       'the terminal commit drops the heartbeat');
@@ -4246,7 +4261,7 @@ describe('pipeline simulation', () => {
       /^discussion "timing" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding$/);
     sim.run(['manifest', 'delete', `${wu}.discussion.timing`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): complete timing discussion`, '--topic', 'discussion/timing', '--kb']);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): complete timing discussion`, '--topic', 'discussion/timing']);
 
     // Series continuation: the next questions spawn E2 and E3 onto the
     // completed series and reopen it; abandonment is the other release — the

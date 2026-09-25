@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
 const {
@@ -230,7 +230,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   // project-manifest registration lands with it too.
   const pathspecs = [`.workflows/${workUnit}`, '.workflows/manifest.json'];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
-  const outcome = commitTailWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
+  const outcome = commitTailPathspec(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
   const result = {

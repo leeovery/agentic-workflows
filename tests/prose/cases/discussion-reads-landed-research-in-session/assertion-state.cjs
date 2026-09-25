@@ -72,7 +72,7 @@ module.exports = {
     h.engine('topic', 'reopen', WU, 'research', TOPIC);
     h.write(`.workflows/${WU}/research/${TOPIC}.md`, RELANDED_RESEARCH);
     h.engine('topic', 'complete', WU, 'research', TOPIC);
-    h.engine('commit', WU, '--topic', `research/${TOPIC}`, '--kb', '-m',
+    h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): fold the stability-line measurement`);
 
     h.engine('manifest', 'delete', `${WU}.discussion.${TOPIC}`, 'reconcile_needed');

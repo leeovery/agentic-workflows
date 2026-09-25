@@ -26,7 +26,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -99,7 +99,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   }
 
   const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const outcome = commitTailWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, message, warnings);
+  const outcome = commitTailPathspec(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, message, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -143,7 +143,7 @@ function cancelWorkUnit(cwd, workUnit) {
   const specs = [`.workflows/${workUnit}`];
   if (cacheSpec) specs.push(cacheSpec);
   if (reverted.length > 0) specs.push('.workflows/manifest.json');
-  const outcome = commitTailWithKb(cwd, specs.length === 1 ? specs[0] : specs, `workflow(${workUnit}): mark as cancelled`, warnings);
+  const outcome = commitTailPathspec(cwd, specs.length === 1 ? specs[0] : specs, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed: outcome.committed, warnings };
   if (reverted.length > 0) result.roadmap_reverted = reverted;
@@ -212,7 +212,7 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`, warnings);
+  const outcome = commitTailPathspec(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -289,7 +289,7 @@ function pivotWorkUnit(cwd, workUnit) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, warnings, { clearFirst: true });
 
-  const outcome = commitTailWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
+  const outcome = commitTailPathspec(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', routing, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);

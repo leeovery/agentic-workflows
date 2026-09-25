@@ -40,7 +40,7 @@ The prose should have taken this path:
 7. the edited discussion is reindexed through the knowledge CLI; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
-   with the sweep shape (`--topic discussion/pay --kb --sweep`)
+   with the sweep shape (`--topic discussion/pay --sweep`)
 8. construction continues against the corrected record: the
    specification's backfill content carries the corrected claim with
    its command and result and the re-derived arithmetic — 250 per

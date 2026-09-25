@@ -40,7 +40,7 @@ Emit the call's MENU section verbatim per its marker.
    ```
 4. Final commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} --kb -m "discussion({work_unit}): complete {topic} discussion"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}): complete {topic} discussion"
    ```
 
    When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:

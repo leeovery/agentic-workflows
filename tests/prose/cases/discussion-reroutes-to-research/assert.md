@@ -37,7 +37,7 @@ The prose should have taken this path:
    turn, with or without the user's own wrap-up
 7. the closing gates run the review machinery per the conduct (the
    stubbed review returns clean), the conclude gate finds the queue
-   still empty, and the discussion completes with the `--kb` commit
+   still empty, and the discussion completes with its conclusion commit
 8. the sweep finds no leavings, and the walk stops at the bridge
    invocation
 
