@@ -7,7 +7,9 @@ an isolated copy of Fumi (deleted 2026-09-22; its mod and engine patch rode
 this document until the real mod landed, and went with the close). Rulings
 settled 2026-09-22, built the same day, then reshaped on 2026-09-23 by two
 days of live runs in `fumi-gatelab`, a remote-free copy of a real project,
-and on 2026-09-24 by the first review pass over both stacks.
+on 2026-09-24 by the first review pass over both stacks, and on 2026-09-25
+by the display-delivery work, which made the mod a standing part of the
+workflows.
 
 ## Motivation
 
@@ -19,6 +21,17 @@ scrolls away with the transcript. A function hook intercepts the engine's
 output before the model reads it and draws the gate in the band above the
 prompt, where it stays while the transcript scrolls. The model's only
 remaining job at a gate is to stop.
+
+A second problem shares the cure. On Opus 5.5, text Claude writes after a
+tool result and before another tool call is taken out of the reply: the
+server turns it into a hidden "narration" block, summarised in a line at
+most, so a heading, a signpost or a task brief shown between two calls
+never reaches the screen, while text that ends a turn always does
+(findings 46, 48). No wording reaches it. Claude Code's `SendUserMessage`
+tool, a message the person reads verbatim, is a tool call rather than text
+and arrives every time. The mod switches it on, and quiets two harness
+habits that work against the workflows' prescribed output, for workflow
+sessions alone.
 
 ## What function hooks are (verified against the 2.1.274–2.1.280 declarations)
 
@@ -101,7 +114,15 @@ the semantics are set and shipping is "weeks" away.
   they attached (Remote Control), several at once; `session.attach` /
   `detach` mark the changes. SSH or tmux into a terminal is the terminal.
 - `$.env.set` sets for this process and everything it starts after — a
-  Bash tool's child inherits it; the name must be a literal. `$.fs` reads
+  Bash tool's child inherits it; the name must be a literal. It writes the
+  host's own environment, where Claude Code reads its switches per
+  request; the tool catalogue is built once, just after the `session.start`
+  hooks run, so a tool's switch counts only when set there.
+- `tool.describe` fires once per tool, when Claude Code first renders its
+  schema in a session; the answer (the description, and whether the tool
+  waits behind ToolSearch) is cached until `$.ui.invalidate("tool.describe")`,
+  which is acted on only at the person's next message. Every change of
+  answer sends the tool list again and spends the prompt cache. `$.fs` reads
   and writes relative to the session's cwd; `$.store` is per-plugin JSON
   that survives restarts (4 MiB).
 - Distribution: a folder under the project's `.claude/skills/<name>/`
@@ -151,14 +172,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   `$.prompt.submit`, the box cleared first and put back if the send fails.
   Typing a key and Enter, or Esc then Enter after a pick, sends as the
   person's own message. A pick never commits; a mis-click costs nothing.
-- **R2 — the payload is announced, never always-on, and only where the
-  project said yes.** At `session.start` the mod reads
-  `.workflows/manifest.json` and sets `WORKFLOWS_GATE_SURFACE=1` only when
-  `defaults.gate_surface` is `true` — absent, unreadable or anything else
-  announces nothing, wherever `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` came
-  from. `openGate()` collects only while the variable is set. Default
-  output stays byte-identical, and the test suites strip the variable from
-  their environment (`hermetic-env.cjs`, `test:cli`).
+- **R2 — the payload is announced, never always-on.** The mod sets
+  `WORKFLOWS_GATE_SURFACE=1` at `session.start`; `openGate()` collects only
+  while it is set, so an engine run the mod did not start (a test, a
+  session without function hooks) prints byte-identical output. The test
+  suites strip the variable from their environment (`hermetic-env.cjs`,
+  `test:cli`).
 - **R3 — the payload states structure, built from parts.** Every MENU is
   preceded by one line of JSON: `{ gate, question, statement, options:
   [{ key, word, head, tail, cue, holder, detail, struck, recommended }],
@@ -315,36 +334,30 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   land in `.claude/skills/` and load as `…@skills-dir`. Declarations are
   fetched into the gitignored `skills/workflow-gates/types/` by `npm run
   mod:types`; `test:mod` and `typecheck:mod` cover both.
-- **R9 — opt-in per project, the tmux-labels shape.** The project
-  manifest's `defaults.gate_surface`; `engine boot` reports `gate_surface`
-  (`on`/`off`/`prompt`); `workflow-start` Step 0.4 asks once, after the
-  session-labels question, under its own `▪ Menu Buttons` sub-step
-  marker (as the session labels and the baseline offer carry theirs),
-  through `render gate-surface-gate`. The signpost: "Whenever a decision is yours, the workflows stop and show a
-  menu like the one below. Claude Mods, an experimental Claude Code
-  feature, can show these menus as buttons above the prompt instead: click
-  a row or press its key to answer. You can turn it off at any time by
-  setting `gate_surface` to `false` in `./.workflows/manifest.json`." The
-  question: "Show menus like this one as buttons above the prompt?". A
-  clean `yes` ends the session on a red title, "Restart Claude Code to
-  turn the buttons on", with a signpost saying why (settings are read at
-  startup); a failed record or a warning carries on as text, each outcome
-  on its own branch. `engine gate-surface config <true|false>` records the
-  answer; a `true` also writes `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`
-  (`domain/settings.cjs`, shared with the session hooks), and every boot
-  under a recorded `true` puts it back if it went. A recorded `false` never
-  touches the flag — it turns function hooks on for every plugin in the
-  project, so it is never the engine's to remove — and the mod reading the
-  answer (R2) is what turns the buttons off, from the next session start.
-  The read, the status and the record are the project opt-in mechanics
-  the session labels share (`domain/project-opt-in.cjs`); boot reads the
-  answer inside the lock its settings sync holds. The prose-test harness
-  stamps `gate_surface: false`. The opt-in is a stopgap: once function
-  hooks ship, the buttons stop being optional and the question, the field,
-  the verb and the sync go. Open: whether a "no" is offered at all — the
-  mod is also what sets the display-delivery switches for workflow
-  sessions alone (see the stack's next layers), so a project without it
-  loses more than the buttons.
+- **R9 — the mod is part of the workflows.** No project is asked: the
+  workflows are opinionated, and the mod carries the buttons and the
+  workflow session's harness (R20) alike. Every `engine boot` puts
+  `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"` into the project's
+  committed `.claude/settings.json` where it is missing
+  (`domain/settings.cjs`, beside the session hooks' sync), commits it
+  confined, and reports `gate_surface`:
+  - `on` where the mod is running, its announcement (R2) in boot's
+    environment;
+  - `restart` where this boot wrote the flag and the mod is not running;
+  - `off` otherwise: a Claude Code without function hooks, or a checkout
+    that took the flag from a pull mid-session, carries on in text.
+
+  Claude Code reads settings only at startup, so the session that writes
+  the flag cannot load the mod. On `restart`, workflow-start's Step 0.2,
+  straight after the boot and before the walkthrough and the other setup
+  questions so all of them run with the mod, shows what the mod does
+  under a `▪ Workflow Mod` sub-step marker and ends the session on a red
+  title, "Restart Claude Code to finish setting up", with a signpost
+  saying why. There is nothing to answer. Only the boot's own review of
+  migration changes comes before it. Those blocks are the terminal step's
+  closing text, so they need no engine surface (R21). The text menus
+  stay as the fallback wherever the band is not drawn (R4, R5). A
+  prose-test world carries the flag, so a walk never meets the restart.
 - **R10 — auto gates arm nothing.** Under `auto`/`bounded` the engine
   emits a DISPLAY, never a MENU.
 - **R11 — every gate is an engine menu, and every menu asks.** No skill
@@ -374,7 +387,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   (every section a sentence emits defers to its marker, in one phrasing)
   and 22 (no bare `--horizon`/`--summary` value). Mods: `npm run test:mod`
   (run by hand — the kit ships in the binary), every lifetime, resume,
-  pick/send, queued-send and drawing rule mutation-checked; `npm run
+  pick/send, queued-send and drawing rule mutation-checked, and the
+  harness settings, their recognition of the boot and the tool's placement
+  (R20); `npm run
   typecheck:mod`. CLAUDE.md's test gates name both as owed for a change
   under `skills/workflow-gates*/`. What the kit cannot model — a real
   resume, a reload, Remote Control, the store across processes — is a lab
@@ -382,15 +397,13 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - **R13 — non-goals.** A hook that stops the model when it does not stop
   (idea #48); the mod owning the gate loop; DISPLAY sections as data; the
   engine as a registered tool (idea #50). The position line (#47) and
-  compaction recovery (#49) ride this plugin later, as does provisioning
-  the harness's own display knobs from the mod (another session's
-  research). After release: per-screen drawing so a Remote Control screen
+  compaction recovery (#49) ride this plugin later. After release: per-screen drawing so a Remote Control screen
   keeps the text menu (#53), the remaining hand-drawn displays (#54), a
   native-looking band (#55), commentary worked into engine-rendered gates
   (#56), and one render door for the gateways' views (#57).
 - **R14 — removable by construction.** The collector is referenced by
-  nothing else; the mods are two directories; the opt-in is one boolean,
-  one verb and one env line. Delete them and the text menus stand as the
+  nothing else; the mods are two directories; the flag is one env
+  line, and the delivery rule one bullet (R21). Delete them and the text menus stand as the
   engine draws them — R11 and R16–R19 are the workflows' own rules and
   stand without the mods.
 - **R15 — the sent row reads as the answer.** `workflow-gates-rows`
@@ -456,6 +469,55 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   presented again, fetched fresh — never typed from memory — and a gate
   background work surfaces meanwhile is held until the waiting one is
   answered: one gate at a time, which is also all the band can show.
+- **R20 — the mod sets the harness for workflow sessions alone.**
+  - At `session.start` it sets `CLAUDE_CODE_PEWTER_OWL_TOOL=true`, which
+    gives the session Claude Code's `SendUserMessage` tool. This is the
+    only moment the switch counts: set later, the tool stays out of the
+    catalogue and a call is refused "not enabled in this session". Its
+    `tool.describe` answer keeps the tool behind ToolSearch in every
+    session, one answer that never changes and so never spends the prompt
+    cache. A plain session's tool list is Claude Code's own; a workflow
+    session loads the tool once, the first time R21 sends a block through
+    it.
+  - When the engine's boot runs in the main conversation (only
+    `/workflow-start` runs it), the mod sets
+    `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line
+    summaries of Claude's thinking printing as if they were output, and
+    `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the "the user
+    hasn't heard from you — say what you're doing" nudge. Project
+    settings cannot set the second (finding 50). Both are read per
+    request and hold from the next one. A conversation's end (`/clear`,
+    a resume) unsets them, and a conversation that has run the boot gets
+    them again when the mod next follows it, in a new process or this
+    one. A plain conversation in the same project keeps Claude Code's
+    defaults throughout.
+- **R21 — what a step shows reaches the person.** One rule in
+  `instructions.md` says how a block a step shows (a fenced block the
+  prose tells Claude to output, or an engine section emitted per its
+  marker) gets to the screen:
+  - A block Claude shows and then carries on past with another tool call
+    goes through `SendUserMessage`, verbatim in the form its instruction
+    names; blocks shown one after another share one call.
+  - The step that ends the turn (at a gate, a STOP, or a dispatch that
+    waits) holds its blocks and writes them after its last call, in
+    order, as Claude's own text. A turn always ends on text: one that ends
+    on a tool call alone draws Claude Code's "no visible output" nudge,
+    and a gate whose lead-in all went through the tool left Claude
+    narrating the buttons (finding 51).
+  - Where `SendUserMessage` is not available (no mod, the first run) every
+    block is written as text, as before.
+
+  The engine's markers do not change: "do not stop; continue" already
+  says another call follows. The rule is the one place the tool is named,
+  so a renamed tool, or a model that shows text between calls again, is
+  one line.
+- **R22 — a turn that ends on a background dispatch ends on one sentence.**
+  Where a flow sends an agent to work in the background and waits for its
+  report, the turn's closing text is a sentence the prose prescribes, "The
+  executor agent has been dispatched for task 5.1.", naming the task by
+  the plan's phase and task numbers, never an internal id or a topic slug.
+  Without it the turn ends on the dispatch, and Claude improvises a status
+  line in answer to the nudge.
 
 ## The stack
 
@@ -468,29 +530,17 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     (every answer resolves from DATA, R17) → #1302 (a gate waiting on the
     person, R19);
   - the gate surface on top of it — #1289 the payload (rows from parts,
-    strict audit) → #1290 the band → #1292 the opt-in → #1294 the rows
-    mod. Where the payload meets the migration's menus, each layer closes
+    strict audit) → #1290 the band → #1292 the mod set up on the first
+    run (R9) → #1294 the rows mod;
+  - display delivery on top of that — the workflow session's harness
+    (R20) → what a step shows reaches the person, with the dispatch
+    sentence (R21, R22). Where the payload meets the migration's menus, each layer closes
     on `sync:` commits: the spec-confirm gate's per-render `yesNo()`, one
     glyph helper and a menu asking on its glyphed line alone, the
     migration's pick rows built from parts, the payload suite re-pinned
     to menus that always ask (#1289); the band's question-less and
     row-less paths removed, the audit asserting a question and a row to
     press (#1290); the rows mod's question-less line removed (#1294).
-- **Next: display delivery** (layers on top of #1294; not yet designed
-  here, built with the stack and landed with it). Text the workflows tell
-  Claude to show — a signpost or marker before a tool call, a task brief —
-  is dropped at random: recent models read instructions arriving through
-  a tool's output as data, and the dropped text is reliably the kind the
-  model must write just before a call (finding 46). A spike in a copy of
-  a project (Portal session `4219c972`, `~/Code/harness-spike`) landed on
-  three switches, all the mod's to set: Claude Code's `SendUserMessage`
-  tool, turned on at `session.start` (the only moment its flag counts),
-  through which prescribed text reaches the person; the silent-turn
-  "say what you're doing" nudge and the thinking-update lines turned off
-  on the workflow's own boot, so a plain session in the same project
-  keeps Claude Code's defaults. #1292's settings sync shrinks to the
-  function-hooks flag. The design is written here after that session's
-  record is read in full.
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
@@ -566,10 +616,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 36. `$.prompt.submit` can resolve `{ drop }` without throwing; a send that
     ignores it reports a send that never entered.
 37. The function-hooks flag can come from user settings, local settings or
-    the shell, so the engine's settings sync alone cannot keep the buttons
-    off where the project said no; the mod reads the answer itself (R2),
-    and a recorded no has no reason to remove a flag it cannot prove it
-    wrote (R9).
+    the shell, so the project's settings file cannot say whether the mod
+    is running; boot reads the mod's own announcement instead (R9), and
+    never removes a flag it cannot prove it wrote.
 38. The loader refuses a second hook on an event another hook of the same
     mod already takes, unless each names a matcher: one hook per event,
     branching inside it.
@@ -610,6 +659,31 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     other (origin `peer`, then `task-notification`); an Esc in the first
     and the second starting within the same second once left the band
     treating a press as a send, not a hold. Not reproduced since; open.
+48. Opus 5.5 loses the text written between two tool calls: no text block
+    reaches the wire, and the server returns the text as a hidden
+    "narration" block. A 13-line brief was lost in every run, a
+    177-character block survived, and the lab lost a 90-character heading
+    in half its sessions. On 2.1.280, Opus 5 showed 11 of 12 long
+    displays, so the loss follows the model's path, not the harness
+    version. Marker wording, a preamble and CLAUDE.md change nothing
+    (Portal session `4219c972`, `~/Code/harness-spike` C0–C12,
+    claude-code#96288).
+49. `SendUserMessage` is a tool call, not text, and arrives mid-turn every
+    time (C13–C15, C21, the lab). `CLAUDE_CODE_PEWTER_OWL_TOOL` switches
+    it on, and counts only when set by `session.start`.
+50. Project settings silently drop `CLAUDE_CODE_SILENT_TURN_REMINDER`, one
+    of the keys project scope may not set; the mod's `$.env.set` reaches
+    it, so a workflow session alone runs without the nudge (C18, and no
+    nudge in any lab run under R20).
+51. A turn that ends on a tool call with no text draws "[Your previous
+    response had no visible output…]"; at a gate whose lead-in had all
+    gone through the tool, Claude said "The resume options are showing as
+    buttons above the prompt" instead. Hence R21's closing text.
+52. The tool kept behind ToolSearch sits in neither list on a
+    conversation's first request, and behind ToolSearch from the second;
+    bringing it forward at the boot landed only at the person's next
+    message, after the workflow had already searched for it. Hence one
+    answer for every session (R20).
 
 ## Log
 
@@ -653,3 +727,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   a phone, the setup gates given sub-step markers (R7, R9); prescribed
   text before a tool call seen dropped (finding 46), bringing the
   display-delivery work in as the stack's next layers.
+- 2026-09-25 — display delivery: the Portal spike read back and checked
+  against 2.1.282 (findings 48–50); the mod made part of the workflows,
+  its opt-in gone (R2, R9); the lab spikes settled the harness settings,
+  the tool kept behind ToolSearch, and one rule for shown text with every
+  turn ending on text (R20–R22). Findings 48–52.
