@@ -1,0 +1,92 @@
+{
+  "work_units": {
+    "qualify-command-tree-leaks-to-note": {
+      "work_type": "bugfix"
+    },
+    "auto-cascade-parent-status": {
+      "work_type": "feature"
+    },
+    "cache-schema-versioning": {
+      "work_type": "bugfix"
+    },
+    "cascade-unchanged-noise": {
+      "work_type": "bugfix"
+    },
+    "cli-enhancements": {
+      "work_type": "feature"
+    },
+    "dep-tree-visualization": {
+      "work_type": "feature"
+    },
+    "rule6-parent-reopen-auto-flag": {
+      "work_type": "bugfix"
+    },
+    "unknown-flags-silently-ignored": {
+      "work_type": "bugfix"
+    },
+    "v1": {
+      "work_type": "epic"
+    },
+    "add-version-flag": {
+      "work_type": "quick-fix"
+    },
+    "ready-includes-in-progress": {
+      "work_type": "feature"
+    },
+    "version-flag-help-and-alias": {
+      "work_type": "quick-fix"
+    },
+    "increase-note-char-limit": {
+      "work_type": "quick-fix"
+    },
+    "free-text-round-trip": {
+      "work_type": "feature"
+    },
+    "same-second-tasks-sort-by-id": {
+      "work_type": "bugfix"
+    }
+  },
+  "defaults": {
+    "plan_format": "tick",
+    "project_skills": [
+      ".claude/skills/golang-how-to",
+      ".claude/skills/golang-code-style",
+      ".claude/skills/golang-naming",
+      ".claude/skills/golang-testing",
+      ".claude/skills/golang-error-handling",
+      ".claude/skills/golang-modernize",
+      ".claude/skills/golang-lint",
+      ".claude/skills/golang-cli",
+      ".claude/skills/golang-design-patterns",
+      ".claude/skills/golang-dependency-injection",
+      ".claude/skills/golang-structs-interfaces",
+      ".claude/skills/golang-project-layout",
+      ".claude/skills/golang-data-structures",
+      ".claude/skills/golang-database",
+      ".claude/skills/golang-concurrency",
+      ".claude/skills/golang-safety",
+      ".claude/skills/golang-security",
+      ".claude/skills/golang-troubleshooting",
+      ".claude/skills/golang-documentation",
+      ".claude/skills/golang-dependency-management",
+      ".claude/skills/golang-continuous-integration"
+    ],
+    "linters": [
+      {
+        "name": "golangci-lint",
+        "command": "golangci-lint run ./..."
+      },
+      {
+        "name": "gofmt",
+        "command": "gofmt -l ./internal ./cmd"
+      }
+    ],
+    "tmux_labels": true
+  },
+  "baseline": {
+    "status": "native"
+  },
+  "walkthrough": {
+    "status": "walked"
+  }
+}

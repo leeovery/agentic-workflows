@@ -1,0 +1,104 @@
+{
+  "name": "three-column-keymap-footer",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-22",
+  "description": "Restructure the sessions and projects list keymap footer from two columns to three columns with a fixed per-column entry count, no behavioural changes.",
+  "phases": {
+    "specification": {
+      "items": {
+        "three-column-keymap-footer": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "three-column-keymap-footer": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "4a0283962d99ffd3a8a9674e605445643aa85dbe",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "three-column-keymap-footer-1-1": "tick-6ca74a",
+            "three-column-keymap-footer-2": "tick-894882",
+            "three-column-keymap-footer-2-1": "tick-e52394",
+            "three-column-keymap-footer-2-2": "tick-8a59ee",
+            "three-column-keymap-footer-3": "tick-b6a75b",
+            "three-column-keymap-footer-3-1": "tick-0b2f5a"
+          },
+          "external_id": "tick-1658ca"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "three-column-keymap-footer": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "three-column-keymap-footer": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 3,
+          "current_task": "~",
+          "completed_tasks": [
+            "three-column-keymap-footer-1-1",
+            "three-column-keymap-footer-2-1",
+            "three-column-keymap-footer-2-2",
+            "three-column-keymap-footer-3-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-22"
+}

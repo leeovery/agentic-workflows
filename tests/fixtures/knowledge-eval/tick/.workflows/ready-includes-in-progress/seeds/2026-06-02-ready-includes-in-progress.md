@@ -1,0 +1,9 @@
+# `tick ready` should include in-progress work
+
+Right now `tick ready` surfaces the next actionable *open* tasks, but it skips tasks already in the `in_progress` state. That leaves a gap in the everyday workflow: you start work on a task, get pulled away for whatever reason, and come back later having lost the thread. When you run `tick ready` to pick up where you should be, it points you at the next open task instead of reminding you about the in-progress one you already started. The in-progress task ends up dangling — invisible to the very command you'd use to ask "what should I be doing right now?"
+
+The intuition is that "ready" should mean "work that is available and unblocked to act on right now," and a task you've already started is the *most* ready thing there is — arguably it should be surfaced ahead of anything still open. Returning in-progress items would close the loop so resuming interrupted work is the natural default rather than something you have to remember to check separately.
+
+There's an open question worth flagging (without resolving it here): whether in-progress items should appear inline in the normal `ready` results, be sorted to the top, or be visually distinguished so it's obvious which ones are resumptions versus fresh starts. There's also the inverse to keep in mind — `blocked` is defined as the De Morgan inverse of `ready` (see `query_helpers.go`, `ReadyConditions()` / `BlockedConditions()`), so any change to what counts as "ready" needs to stay consistent with how "blocked" is derived.
+
+Scope feels small — possibly a quick fix to the ready/blocked SQL conditions — but it's logged as an idea rather than a quick-fix because the behaviour change touches a core query semantic and the presentation question deserves a moment's thought before committing to it.

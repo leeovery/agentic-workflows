@@ -1,0 +1,1097 @@
+{
+  "name": "fumi",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-07-17",
+  "description": "Fumi — a smarter macOS Stickies alternative: notes assigned to specific macOS Spaces (returning to their Space on relaunch), remembering exact screen position, with titles and a full fumi CLI/MCP scripting surface",
+  "phases": {
+    "discovery": {
+      "items": {
+        "space-homing": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Notes remember their macOS Space and return to it across relaunch via the private CGS/SkyLight APIs; deleted-Space falls back to Space 1; Chromium/yabai reference implementations, launch-time sequencing/timing, and multi-display.",
+          "description": "The signature quiet mechanic: a fumi remembers its home macOS Space by the stable managed-space UUID and returns there on relaunch. Requires the private CGS/SkyLight APIs, so distribution goes off the App Store; the hard part is launch-time sequencing and timing, not the API call. A deleted or absent home Space falls back to Space 1. Reference implementations to study: Chromium, Spaceman, yabai.",
+          "brief_path": "discovery/briefs/space-homing.md",
+          "order": 5,
+          "brief_incorporated": true
+        },
+        "engine-architecture": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "One always-on app over a local socket; note windows, menu-bar manager, CLI and MCP are thin clients (one engine, four clients); single-writer; app lifecycle and restart.",
+          "description": "A single always-running LSUIElement app, registered for launch-at-login via SMAppService.mainApp, owns the data model, storage, the note windows and the private-CGS Space-pinning, exposing a local socket. The fumi CLI, the MCP server, the menu-bar manager and the note windows are all thin clients over that one engine (one engine, four clients), with a single writer. Menu-bar-first, dock optional.",
+          "brief_path": "discovery/briefs/engine-architecture.md",
+          "order": 4,
+          "brief_incorporated": true
+        },
+        "note-model": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "What a fumi is: a Markdown body with a stable UID, an optional first-line-derived title, tags, and colour; agentic addressing/disambiguation via list -> read -> reason.",
+          "description": "A fumi is a Markdown body with a stable per-note UID. The title is derived (the first non-empty line, Markdown-stripped and truncated), not a stored field; titles are optional and not unique. Tags are a multi-valued optional filter axis parallel to Spaces. Colour is an independent per-note property. Agentic addressing resolves ambiguity by list, then read, then reason.",
+          "brief_path": "discovery/briefs/note-model.md",
+          "order": 1,
+          "brief_incorporated": true
+        },
+        "note-window": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "The floating fumi as an on-screen object: near-frameless luminous-glass design, colour/opacity, close=hide + always-autosave + soft-delete, per-note menu, float-on-top, positioning presets/tiling, and live-Markdown editing.",
+          "description": "The floating fumi is the primary surface, with a calm furniture aesthetic: near-frameless, controls hover-reveal, the first line acts as the title. Native macOS Liquid Glass material (luminous, opacity default-off and fill-only), muted tinted-glass colour in a curated palette (flood and accent). Close hides rather than deletes, autosave is always on, delete is a reversible Recently-Deleted bin plus a dismissible confirm. Float on Top per note. Free-float with exact-coordinate memory and named position/size presets. Live-Markdown editing scope is open.",
+          "brief_path": "discovery/briefs/note-window.md",
+          "order": 3,
+          "brief_incorporated": true
+        },
+        "agent-surface": {
+          "routing": "discussion",
+          "source": "discovery,gap-analysis",
+          "summary": "The `fumi` CLI and MCP server over the engine socket: operation set, UID-first addressing, structured output, the list -> read -> reason -> act loop, and write-side concurrency with live human edits.",
+          "description": "The fumi CLI and MCP server are thin clients over the engine socket, built for an AI that lists, reads, reasons, then acts on a UID. Body verbs (new, read, edit, append) and metadata verbs (mv, tag, pos, float, show/hide, rm), a rich list, structured JSON output, and silent create on other Spaces. The exact command grammar is deferred to discussion. Open: write-side concurrency with live human edits.",
+          "brief_path": "discovery/briefs/agent-surface.md",
+          "order": 10,
+          "brief_incorporated": true
+        },
+        "management-window": {
+          "routing": "discussion",
+          "source": "discovery,gap-analysis",
+          "summary": "The main app window as an organiser (browse/search/filter/sort, Recently Deleted) plus the menu-bar quick menu, quick capture, and user-mappable keybindings.",
+          "description": "A two-tier human control surface: a menu-bar quick menu (new fumi, recents, open manager) as the fast path, and the main app window as an organiser (browse, search, filter by tag or Space, sort, rename, reopen, move, delete; Recently Deleted lives here). Editing happens in the floating fumi, not inline. Includes quick capture and user-mappable keybindings.",
+          "brief_path": "discovery/briefs/management-window.md",
+          "order": 11,
+          "brief_incorporated": true
+        },
+        "storage-and-sync": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "File-based Markdown store in a user-chosen folder (local / iCloud / Dropbox as one driver, SFTP/hosted later), backup and restore, and live multi-Mac sync conflict handling.",
+          "description": "A file-based Markdown store in a user-chosen folder. iCloud, Dropbox, Google Drive and local are one folder driver, so backup and multi-Mac fall out for free; network backends (SFTP, hosted) come later. No hosted cloud and no backend to run. Open: live multi-Mac conflict handling.",
+          "brief_path": "discovery/briefs/storage-and-sync.md",
+          "order": 2,
+          "brief_incorporated": true
+        },
+        "commercialization": {
+          "routing": "discussion",
+          "source": "discovery,gap-analysis",
+          "summary": "One-time ~$19 plus paid major upgrades, no subscription and no hosted cloud; freemium with a visible usage-metered premium trial.",
+          "description": "One-time purchase around 19 dollars plus paid major upgrades, no subscription and no hosted cloud; the licensed unit is the one always-on app. Freemium with an overt usage-metered premium trial (a visible counter and an upgrade path). Parked: exactly what is premium (the free/paid boundary) until more premium-shaped features surface.",
+          "brief_path": "discovery/briefs/commercialization.md",
+          "order": 13
+        },
+        "licensing-and-trial-integrity": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Cryptographically-signed offline licences and how far to harden the resettable trial (device/account/backend), including Merchant-of-Record licensing options.",
+          "description": "How to make the paid licence robust and how far to harden the resettable trial. The licence can be a cryptographically signed payload verified offline with an embedded public key, needing no server for base validity. The trial is irreducibly soft (local state) unless tracked server-side or behind an account; Keychain storage is a cheap no-backend mitigation. Flagged for investigation of signed-key schemes, Merchant-of-Record licensing, device fingerprinting, and account-gated trials.",
+          "brief_path": "discovery/briefs/licensing-and-trial-integrity.md",
+          "order": 15
+        },
+        "positioning-and-audience": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Positioning as a polished do-one-thing-well tool, user personas and use-cases (engineer, student, lawyer, etc.), landing-page framing, and competitor/alternatives research.",
+          "description": "How to position a small polished do-one-thing-well tool without overselling, and who it is for. Space-homing is deliberately de-emphasised to avoid alienating single-Space users. One landing page and one pitch around a single avatar (the user), with a few relatable example groups. Use-cases across professions are researched for their priority differences as design input, not as marketing segments.",
+          "brief_path": "discovery/briefs/positioning-and-audience.md",
+          "previous_order": 7
+        },
+        "onboarding-and-permissions": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "First-run permission wizard for the Accessibility permission the private APIs need, a flawless self-relaunch that restores open fumis, storage setup, trial intro, and graceful degradation if denied.",
+          "description": "First-run experience: a permission wizard, storage-location setup, and the trial intro. The crux is a flawless permission request and relaunch (the private APIs likely need Accessibility), where the always-on engine must restart and restore every open fumi seamlessly. Degrade gracefully if denied. Research the canonical macOS approach and the exact permissions required.",
+          "brief_path": "discovery/briefs/onboarding-and-permissions.md",
+          "order": 12,
+          "brief_incorporated": true
+        },
+        "build-and-release": {
+          "routing": "discussion",
+          "source": "discovery,gap-analysis",
+          "summary": "Developer-ID signing, notarization, and Sparkle auto-updates for off-store distribution, including the update UX and the always-on-engine restart.",
+          "description": "Off-App-Store release: Developer-ID signing, notarization, and Sparkle auto-updates (a static appcast, no backend). The real product choice is the auto-update experience (silent vs prompted); an update triggers the same seamless engine-restart-with-open-fumis-restored requirement as the permission relaunch.",
+          "brief_path": "discovery/briefs/build-and-release.md",
+          "order": 18
+        },
+        "data-export": {
+          "routing": "discussion",
+          "source": "gap-analysis",
+          "summary": "How a user gets their whole library out of Fumi — on demand, or when they stop paying.",
+          "description": "An integration gap created by decisions that each made sense alone. Neither completed discussion covers it, and both closed the doors that used to make it unnecessary.\n\nnote-model retracted external readability as a goal outright — \"External readability is not a goal (this retracts the earlier point-it-at-Obsidian framing)… that is for backup/sync, not a portability contract.\" storage-and-sync then moved the store to ~/Library/Application Support/Fumi/ (never ~/Documents, no folder picker), wrapped every note in an opaque .fumi package needing Show Package Contents, made CloudKit the transport so the synced copy lives in Apple container, and dropped the Quick Look extension precisely because \"nobody browses Application Support\". It also formally retired the product own framing: \"No hosted cloud; the storage location is yours\" has been softened twice, and the honest current position is \"your notes are yours and they just sync\" — with an explicit note that positioning should not claim the older line.\n\nEach of those is well-argued. Together they mean a user entire library sits in an app-managed, opaque, undiscoverable location, and nothing anywhere says how they get it out. The only escape hatches decided are per-note and manual: Edit as Markdown shows one note source, and copy puts Markdown on the clipboard. Neither scales past a single note.\n\nThree questions with no owner. Bulk export — is there an \"export my notes\" action at all (plain .md files plus assets, a folder tree, a zip), where does it live, and does it carry version history, tags and colour or only content? Filenames would have to be derived from titles, and collisions are real. Exit on lapse — commercialization ships a one-time licence with a metered trial and licensing-and-trial-integrity hardens it, but neither says what a lapsed or expired user can do with their notes; a notes app that can strand your library on expiry is a different product from one that cannot. And what positioning may claim — an export capability is what would let positioning-and-audience make an honest replacement for the retired data-ownership line rather than none.\n\nNot a mechanism question: the bundle format, ULID naming and the assets manifest are all decided, so the material exists. What is missing is the product decision about whether the capability exists, what it produces, and when it is available.",
+          "cancelled": true,
+          "previous_order": 14
+        },
+        "scale-and-performance": {
+          "routing": "research",
+          "source": "research-analysis:space-homing,gap-analysis",
+          "summary": "How Fumi behaves as a library grows — launch time, memory, and whether there is a practical ceiling on how many fumis can be open at once.",
+          "description": "Space-homing's eager-restore bar forbids lazy placement: every fumi with a home Space must be a live window at launch, materialised before the user visits its Space. That requirement was accepted on correctness grounds and its cost was never sized.\n\nMeasured so far: sixteen bare NSWindows created, placed one per Space and shown non-activating in 242 ms total. That is the floor, not the real number — a fumi is a borderless surface with custom chrome, a Markdown editor, autosave wiring and per-note appearance state, and a real library may hold far more than sixteen.\n\nUnexplored: launch latency and memory at realistic note counts (50, 200, 500); whether the always-on engine plus N live windows stays within a menu-bar app's acceptable footprint; whether WindowServer load or per-Space window counts degrade Mission Control or Space switching; whether there is a practical ceiling on simultaneously-open fumis and what the product does at it (a soft cap, lazy realisation beyond a threshold, or nothing); and how the Recently Deleted bin and a large hidden set interact with all of it, since existence and visibility are already split.\n\nSits between engine-architecture (which owns the always-on process and its lifecycle) and note-window (which owns the window surface), both of which concluded without sizing this. It is genuinely open rather than decided-but-unwritten, and a wrong answer would land on the eager-restore requirement itself.",
+          "brief_incorporated": true,
+          "previous_order": 7
+        },
+        "platform-support": {
+          "routing": "research",
+          "source": "gap-analysis",
+          "summary": "Which macOS versions Fumi supports, what happens on a version that cannot do everything, and how the user finds out.",
+          "description": "Three completed artifacts each set a version constraint, and no topic owns the join or the degradation story.\n\nstorage-and-sync fixed a floor: CloudKit's CKSyncEngine puts the minimum at macOS 14, recorded in build-and-release as a hard minimum that propagates everywhere.\n\nspace-homing then measured that the Space-placement mechanism is not uniform across that range. Chromium restricts NSWindowRestoresWorkspaceAtLaunch to macOS 14 and earlier and uses the private NSWindowRestorationOptions from 15 onward — so the leaning AppKit route may need two implementations inside the supported range, or may not work on 14 at all. The SkyLight symbol sweep was run on macOS 26 only, and that surface visibly churns: CGSAddWindowToSpace, the symbol the discovery brief named, no longer exists. yabai version-tiers its own handling across 12.7, 13.6, 14.5 and 15.\n\nNothing establishes what actually resolves on 14 or 15, on Intel, or on a single-display Mac — the majority configuration. Every probe in the project ran on one arm64 machine on macOS 26.5.2.\n\nWhat has no owner: the supported version range as a stated product fact; what a user on the oldest supported version actually gets; whether Space homing degrades silently, degrades visibly, or gates the version out; the shape of the kill switch space-homing recorded as an option (a local preference disabling homing and falling back to opening on the current Space) and who owns turning it; and how a future macOS release breaking the private surface is detected and communicated rather than discovered in support tickets.\n\nSits across build-and-release (which owns what ships and the Sparkle update path), space-homing (which owns the private-API surface) and storage-and-sync (which set the floor). Each has a piece; none owns the matrix, and space-homing concluded without stating the range its findings apply to.",
+          "order": 6,
+          "brief_incorporated": true
+        },
+        "search-and-retrieval": {
+          "routing": "discussion",
+          "source": "gap-analysis",
+          "summary": "How you find a fumi you can't see — what searching a note actually matches, and whether the CLI, the MCP server and the manager all agree on the answer.",
+          "description": "Every completed topic assumes search and none defines it. storage-and-sync pins the mechanism — `notes_fts`, an FTS5 index over `content.md`, refreshed inline by the engine on every note change — and note-model lists \"the search index\" in the Derived tier. Neither says what a query means. Nothing states whether a search matches tags, the derived title, an asset's `originalFilename`, or a note's raw Markdown syntax and `fumi://` tokens; whether soft-deleted notes and version snapshots are searchable; or what tokenisation and normalisation a query goes through.\n\nThat last one is a live inconsistency rather than an omission. note-model pins tag identity at NFC → full case fold → NFC precisely because a derived value computed independently on each Mac diverges without it, and pins title matching to the same rule. FTS tokenisation is a fourth reading of the same content and inherits none of it by anything written down. The documents also already disagree on scope: note-model's derivation-version rule — a rule change bumps a version and forces a reprojection — enumerates \"the title, the tag-set, the preview\", while storage-and-sync's re-derivation pass recomputes \"title / tags / preview / FTS\". So FTS is inside the versioned set in one document and outside it in the other, and a tokenisation change would silently leave stale rows under one reading.\n\nThe two topics that will consume the answer are both unstarted and would each invent their own: management-window owns browse/search/filter/sort, and agent-surface owns the `list → read → reason` loop where search is the cheap step that decides whether a note gets opened at all. This is the exact shape note-model named as its own worst failure — an invariant stated in one document and implemented in another is only as strong as the caller who remembers it, and the fix was moving enforcement to the layer every reader passes through.",
+          "order": 8,
+          "brief_incorporated": true
+        },
+        "status-and-alerts": {
+          "routing": "discussion",
+          "source": "gap-analysis",
+          "summary": "How Fumi tells you something happened when it has no window on screen — a refused file, a stopped sync, a feature that quietly stopped working, an engine that died.",
+          "description": "Fumi is an `LSUIElement` app with no Dock icon whose windows are furniture the user may not be looking at. Four completed topics each landed a moment where the app must tell the user something, and each solved it locally with no shared surface:\n\n- **note-window** fires one-time system notifications for the first delete and for a refused file, and flagged in its own open threads that the size limit \"wants a standing home\" because notification permission or Focus mode can swallow the only place it is ever stated — rerouted to management-window without a receiving decision.\n- **storage-and-sync** rules that an absent CloudKit zone always means \"I have lost my sync relationship\": stop, leave local truth untouched, tell the user, require explicit re-enable. It assigns the state to the engine and the surface to management-window.\n- **engine-architecture** accepts that a crashed engine stays dead until the user reopens it, on the ground that the failure announces itself — every note on every Space vanishes at once. That is the loudest case; the quiet ones have no equivalent argument.\n- **space-homing** decided a broken placement surface degrades as \"the feature stops, the app does not\", which by construction is a failure with no symptom other than fumis opening on the wrong Space.\n\nNobody owns the composition. The open questions are which channel carries which class of message (a system notification, the menu-bar item, a badge on the manager, silence), what happens when notifications are denied or suppressed — note-window's refusal notification is the only statement of *why* a file was rejected — whether there is any persistent surface for a condition the user was not present for, and whether notification permission is even requested, which onboarding-and-permissions has to know and cannot derive.",
+          "order": 9,
+          "brief_incorporated": true
+        },
+        "support-and-diagnostics": {
+          "routing": "discussion",
+          "source": "gap-analysis",
+          "summary": "How a user gets help when something goes wrong, and how you find out your app broke on a machine you have never seen.",
+          "description": "An integration gap that only became visible when platform-support concluded. Three completed artifacts now depend on a support loop that no topic owns.\n\n**What made it load-bearing.** platform-support settled (user, 2026-09-02) that when the Space-placement surface breaks on a future macOS release, Fumi degrades in silence: it keeps working, surfaces nothing, logs everything, and *\"on a support contact, the user attaches a debug log that says what happened\"*. That choice is only defensible if the second half exists. Silent degradation with no support channel is just silent breakage — the user notices their notes stopped coming back, has nowhere to say so, and the fault is never diagnosed.\n\n**What the corpus assumes but never decides.** engine-architecture decided diagnostics go to Apple's unified log rather than a file Fumi owns, with a **Copy Diagnostics** action running the `log show` export — and assigned its *placement* to management-window, which has not run. Nothing decides how a user knows the action exists, what they do with the export once they have it, or where it goes. storage-and-sync carries a set of *\"verified at implementation\"* items and a *\"spike before build\"* whose failures would surface as user reports. platform-support established that Sparkle's `feedParameters` can report every installed base member's exact OS triple and architecture on each update check — a diagnostic channel pointing the other way, which nothing yet reads.\n\n**The specific unowned questions.** Where a user goes when something is wrong (an in-app route, an email, a form) and whether Fumi ever tells them. What a bug report needs to contain to be actionable for a one-person operation, and whether Copy Diagnostics produces it. Whether the app ever asks to report a fault, or stays quiet on principle — Fumi is *\"quiet furniture\"* and note-window rejected notification surfaces repeatedly, so a crash reporter is a real decision rather than a default. How a fix reaches the reporter: Sparkle ships it, but nothing decides whether they are told the thing they reported is fixed. And whether any inbound signal exists at all besides a user bothering to write — the alternative being that Fumi ships broken on a macOS release for months, which is precisely Chromium's recorded eighteen-month case.\n\n**Why not the existing topics.** commercialization owns price, trial and upgrades — the purchase, not the aftercare. build-and-release owns signing, notarization and the Sparkle mechanism — how a fix ships, not how a fault arrives. management-window may host a button, but a button is not a support story. status-and-alerts owns what Fumi tells you *in the moment* on your own machine — the opposite direction of travel from a report reaching the developer.\n\n**Product stakes, not process.** Fumi is a one-time ~£19 purchase with paid major upgrades, no subscription and no hosted service, sold off-store to a self-selecting audience. There is no account, no server, and no telemetry beyond what the update check carries. That constrains the answer sharply and makes it worth deciding deliberately rather than defaulting into a mailto link.",
+          "order": 16
+        },
+        "privacy-and-data-handling": {
+          "routing": "discussion",
+          "source": "gap-analysis",
+          "summary": "What leaves the user's Mac, who receives it, and what Fumi promises about it — for a product whose pitch is that your notes are files you own.",
+          "description": "Four channels carry data off the machine and each arrived through a different topic's door. Note content and assets go to CloudKit. Sparkle's appcast reports the exact OS triple and architecture on every update check — platform-support recorded that as a benefit, a live point-granular picture of the installed base with no analytics service, and nothing weighed what the user is told about it or whether it can be declined. Licence validation reaches a backend, possibly a Merchant of Record's. And the support path is a Copy Diagnostics action that exports the unified log for the user to attach, where nothing has yet said what a Fumi log line may contain — a note's title is a derived first line of the user's own prose, and it is exactly the sort of thing a placement or sync failure would want to name.\n\nEach leg has a home — storage-and-sync, build-and-release, licensing-and-trial-integrity, support-and-diagnostics — and the statement across them has none. That statement is product-shaping rather than legal boilerplate: it decides whether the update check is opt-out, what a diagnostic export is allowed to carry, and what the landing page can honestly claim about a local-first notes app that syncs through Apple and phones home on a schedule.",
+          "brief_incorporated": true,
+          "cancelled": true,
+          "previous_order": 17
+        }
+      },
+      "gap_analysis_cache": {
+        "checksum": "cb7816d9b04fa036d8c4351d5d8d03c0",
+        "generated": "2026-09-19T11:18:24.540Z",
+        "input_files": [
+          "agent-surface.md",
+          "engine-architecture.md",
+          "note-model.md",
+          "note-window.md",
+          "onboarding-and-permissions.md",
+          "platform-support.md",
+          "search-and-retrieval.md",
+          "space-homing.md",
+          "status-and-alerts.md",
+          "storage-and-sync.md",
+          "onboarding-and-permissions.md",
+          "platform-support.md",
+          "space-homing.md"
+        ]
+      },
+      "dismissed": [
+        "multi-mac-desk",
+        "note-import",
+        "text-and-language",
+        "cross-version-compatibility",
+        "accessibility",
+        "verification-and-testing",
+        "app-settings"
+      ],
+      "analysis_staging": {}
+    },
+    "discussion": {
+      "items": {
+        "note-model": {
+          "status": "completed",
+          "subtopics": {
+            "content-format": {
+              "status": "decided",
+              "parent": null
+            },
+            "identity-and-uid": {
+              "status": "decided",
+              "parent": null
+            },
+            "title-derivation": {
+              "status": "decided",
+              "parent": null
+            },
+            "tags": {
+              "status": "decided",
+              "parent": null
+            },
+            "colour": {
+              "status": "decided",
+              "parent": null
+            },
+            "agentic-addressing": {
+              "status": "decided",
+              "parent": null
+            },
+            "metadata-representation": {
+              "status": "decided",
+              "parent": null
+            },
+            "markdown-dialect": {
+              "status": "decided",
+              "parent": null
+            },
+            "non-text-content": {
+              "status": "decided",
+              "parent": null
+            },
+            "asset-references": {
+              "status": "decided",
+              "parent": null
+            },
+            "asset-storage-model": {
+              "status": "decided",
+              "parent": null
+            },
+            "note-size-classification": {
+              "status": "decided",
+              "parent": null
+            },
+            "content-preview": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "note-window": {
+          "status": "completed",
+          "subtopics": {
+            "drop-interaction": {
+              "status": "decided",
+              "parent": null
+            },
+            "inline-rendering": {
+              "status": "decided",
+              "parent": null
+            },
+            "note-link-interaction": {
+              "status": "decided",
+              "parent": null
+            },
+            "editing-ux": {
+              "status": "decided",
+              "parent": null
+            },
+            "tag-rendering": {
+              "status": "decided",
+              "parent": null
+            },
+            "conflict-reconciler": {
+              "status": "decided",
+              "parent": null
+            },
+            "delete-ux": {
+              "status": "decided",
+              "parent": null
+            },
+            "version-history-ui": {
+              "status": "decided",
+              "parent": null
+            },
+            "surface-and-chrome": {
+              "status": "decided",
+              "parent": null
+            },
+            "colour": {
+              "status": "decided",
+              "parent": null
+            },
+            "positioning": {
+              "status": "decided",
+              "parent": null
+            },
+            "agent-activity-presentation": {
+              "status": "decided",
+              "parent": null
+            },
+            "math-rendering": {
+              "status": "decided",
+              "parent": "inline-rendering"
+            },
+            "preset-authoring": {
+              "status": "decided",
+              "parent": "positioning"
+            },
+            "formatting-surface": {
+              "status": "decided",
+              "parent": "editing-ux"
+            },
+            "asset-reference-states": {
+              "status": "decided",
+              "parent": "inline-rendering"
+            },
+            "swatch-switching-in-the-menu-bar": {
+              "status": "decided",
+              "parent": "surface-and-chrome"
+            }
+          }
+        },
+        "management-window": {
+          "status": "in-progress",
+          "subtopics": {
+            "two-tier-surface": {
+              "status": "pending",
+              "parent": null
+            },
+            "quick-capture": {
+              "status": "pending",
+              "parent": null
+            },
+            "keybindings": {
+              "status": "pending",
+              "parent": null
+            },
+            "browse-list": {
+              "status": "pending",
+              "parent": null
+            },
+            "search-filter-sort": {
+              "status": "exploring",
+              "parent": null
+            },
+            "scale-and-bulk-actions": {
+              "status": "pending",
+              "parent": null
+            },
+            "reopen-and-space-moves": {
+              "status": "pending",
+              "parent": null
+            },
+            "recently-deleted": {
+              "status": "exploring",
+              "parent": null
+            },
+            "manager-shell": {
+              "status": "decided",
+              "parent": null
+            },
+            "in-window-editing": {
+              "status": "pending",
+              "parent": null
+            },
+            "window-naming": {
+              "status": "decided",
+              "parent": null
+            },
+            "space-labelling": {
+              "status": "exploring",
+              "parent": "manager-shell"
+            },
+            "chrome-treatment": {
+              "status": "decided",
+              "parent": "manager-shell"
+            },
+            "rail-structure": {
+              "status": "decided",
+              "parent": "manager-shell"
+            },
+            "the-swatch-library-is-a-reader-not-an-editor": {
+              "status": "decided",
+              "parent": null
+            },
+            "appearance-settings-material-global-opacity-and-the-chrome-appearance-flag": {
+              "status": "decided",
+              "parent": null
+            },
+            "shrinking-version-retention-needs-a-confirm-naming-the-cost": {
+              "status": "decided",
+              "parent": null
+            },
+            "preset-editor-the-presets-section-unit-controls-and-grid-drag": {
+              "status": "decided",
+              "parent": null
+            },
+            "the-default-new-note-size-is-a-user-setting-and-needs-a-settings-surface": {
+              "status": "decided",
+              "parent": null
+            },
+            "the-asset-size-limit-needs-a-standing-home-outside-the-moment-of-refusal": {
+              "status": "decided",
+              "parent": null
+            },
+            "a-note-that-changed-while-you-werent-looking-has-no-surface-when-it-is-hidden": {
+              "status": "decided",
+              "parent": null
+            },
+            "should-quit-be-less-prominent-than-an-ordinary-apps-quit": {
+              "status": "decided",
+              "parent": null
+            },
+            "the-manager-should-be-able-to-answer-what-links-to-this-note": {
+              "status": "decided",
+              "parent": null
+            },
+            "red-and-amber-are-the-same-dot-for-a-colour-blind-user": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "storage-and-sync": {
+          "status": "completed",
+          "subtopics": {
+            "bundle-layout": {
+              "status": "decided",
+              "parent": null
+            },
+            "read-model-index": {
+              "status": "decided",
+              "parent": null
+            },
+            "sync-safety": {
+              "status": "decided",
+              "parent": null
+            },
+            "soft-delete-mechanism": {
+              "status": "decided",
+              "parent": null
+            },
+            "folder-drivers-and-backup": {
+              "status": "decided",
+              "parent": null
+            },
+            "multi-mac-concurrency": {
+              "status": "decided",
+              "parent": null
+            },
+            "metadata-sidecar-format": {
+              "status": "decided",
+              "parent": "bundle-layout"
+            },
+            "store-locality": {
+              "status": "decided",
+              "parent": null
+            },
+            "asset-storage": {
+              "status": "decided",
+              "parent": null
+            },
+            "version-history": {
+              "status": "decided",
+              "parent": null
+            },
+            "per-device-settings": {
+              "status": "decided",
+              "parent": null
+            },
+            "synced-geometry-fields": {
+              "status": "decided",
+              "parent": null
+            },
+            "quick-look-preview": {
+              "status": "decided",
+              "parent": null
+            },
+            "child-record-ceiling": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "commercialization": {
+          "status": "triaged"
+        },
+        "agent-surface": {
+          "status": "completed",
+          "subtopics": {
+            "command-grammar": {
+              "status": "decided",
+              "parent": null
+            },
+            "addressing-and-disambiguation": {
+              "status": "decided",
+              "parent": null
+            },
+            "structured-output": {
+              "status": "decided",
+              "parent": null
+            },
+            "write-concurrency": {
+              "status": "decided",
+              "parent": null
+            },
+            "mcp-tool-surface": {
+              "status": "decided",
+              "parent": null
+            },
+            "agent-initiated-window-effects": {
+              "status": "decided",
+              "parent": null
+            },
+            "failure-modes-and-engine-absence": {
+              "status": "decided",
+              "parent": null
+            },
+            "session-declaration": {
+              "status": "decided",
+              "parent": null
+            },
+            "verb-naming": {
+              "status": "decided",
+              "parent": null
+            },
+            "asset-token-handling": {
+              "status": "decided",
+              "parent": null
+            },
+            "space-addressing": {
+              "status": "decided",
+              "parent": null
+            },
+            "response-envelope": {
+              "status": "decided",
+              "parent": null
+            },
+            "version-history-access": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "build-and-release": {
+          "status": "triaged"
+        },
+        "engine-architecture": {
+          "status": "completed",
+          "subtopics": {
+            "process-model": {
+              "status": "decided",
+              "parent": null
+            },
+            "client-transport": {
+              "status": "decided",
+              "parent": null
+            },
+            "operation-core": {
+              "status": "decided",
+              "parent": null
+            },
+            "client-connection-lifecycle": {
+              "status": "decided",
+              "parent": null
+            },
+            "change-notification": {
+              "status": "decided",
+              "parent": null
+            },
+            "restart-and-restore": {
+              "status": "decided",
+              "parent": null
+            },
+            "supervision-and-failure": {
+              "status": "decided",
+              "parent": null
+            },
+            "version-skew": {
+              "status": "decided",
+              "parent": null
+            },
+            "observability": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "onboarding-and-permissions": {
+          "status": "completed",
+          "subtopics": {
+            "first-run-shape": {
+              "status": "decided",
+              "parent": null
+            },
+            "sync-offer-copy": {
+              "status": "decided",
+              "parent": null
+            },
+            "no-icloud-account-state": {
+              "status": "decided",
+              "parent": null
+            },
+            "enabling-sync-later": {
+              "status": "decided",
+              "parent": null
+            },
+            "launch-at-login-offer": {
+              "status": "decided",
+              "parent": null
+            },
+            "notification-permission-ask": {
+              "status": "decided",
+              "parent": null
+            },
+            "pricing-mention": {
+              "status": "decided",
+              "parent": null
+            },
+            "permission-grant-restart-gesture": {
+              "status": "decided",
+              "parent": null
+            },
+            "files-and-folders-access": {
+              "status": "decided",
+              "parent": null
+            },
+            "screen-title": {
+              "status": "decided",
+              "parent": null
+            },
+            "sync-toggle-default": {
+              "status": "decided",
+              "parent": null
+            },
+            "login-item-banner": {
+              "status": "decided",
+              "parent": null
+            },
+            "first-run-landing": {
+              "status": "decided",
+              "parent": null
+            },
+            "sample-notes-and-sync": {
+              "status": "decided",
+              "parent": null
+            },
+            "first-launch-definition": {
+              "status": "decided",
+              "parent": null
+            },
+            "wizard-step-content": {
+              "status": "decided",
+              "parent": null
+            },
+            "personalisation-step": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "space-homing": {
+          "status": "completed",
+          "subtopics": {
+            "placement-route": {
+              "status": "decided",
+              "parent": null
+            },
+            "home-identity": {
+              "status": "decided",
+              "parent": null
+            },
+            "fallback-destination": {
+              "status": "decided",
+              "parent": null
+            },
+            "launch-sequencing": {
+              "status": "decided",
+              "parent": null
+            },
+            "create-time-placement": {
+              "status": "decided",
+              "parent": null
+            },
+            "fullscreen-spaces": {
+              "status": "decided",
+              "parent": null
+            },
+            "os-range-and-degradation": {
+              "status": "decided",
+              "parent": null
+            },
+            "private-api-isolation": {
+              "status": "decided",
+              "parent": null
+            },
+            "placement-verification": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "platform-support": {
+          "status": "completed",
+          "subtopics": {
+            "range-ownership": {
+              "status": "decided",
+              "parent": null
+            },
+            "asserted-vs-tested-floor": {
+              "status": "decided",
+              "parent": null
+            },
+            "capability-resolution": {
+              "status": "decided",
+              "parent": null
+            },
+            "stale-floor-propagation": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "search-and-retrieval": {
+          "status": "completed",
+          "subtopics": {
+            "query-semantics": {
+              "status": "decided",
+              "parent": null
+            },
+            "tokenisation-and-normalisation": {
+              "status": "decided",
+              "parent": null
+            },
+            "searchable-corpus": {
+              "status": "decided",
+              "parent": null
+            },
+            "derivation-version-scope": {
+              "status": "decided",
+              "parent": null
+            },
+            "query-syntax": {
+              "status": "decided",
+              "parent": null
+            },
+            "result-shape-and-ranking": {
+              "status": "decided",
+              "parent": null
+            },
+            "surface-agreement": {
+              "status": "decided",
+              "parent": null
+            },
+            "index-availability": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "status-and-alerts": {
+          "status": "completed",
+          "subtopics": {
+            "message-taxonomy": {
+              "status": "decided",
+              "parent": null
+            },
+            "notification-permission": {
+              "status": "decided",
+              "parent": null
+            },
+            "standing-surface": {
+              "status": "decided",
+              "parent": null
+            },
+            "silent-by-design": {
+              "status": "decided",
+              "parent": null
+            },
+            "dot-qualification": {
+              "status": "decided",
+              "parent": null
+            },
+            "notification-lifecycle": {
+              "status": "decided",
+              "parent": null
+            },
+            "indexing-notice": {
+              "status": "decided",
+              "parent": null
+            },
+            "launch-during-restart": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "privacy-and-data-handling": {
+          "status": "cancelled",
+          "subtopics": {
+            "what-leaves-the-mac": {
+              "status": "exploring",
+              "parent": null
+            },
+            "update-check-telemetry": {
+              "status": "decided",
+              "parent": null
+            },
+            "diagnostic-export-contents": {
+              "status": "pending",
+              "parent": null
+            },
+            "licence-call-identity": {
+              "status": "pending",
+              "parent": null
+            },
+            "analytics-and-crash-reporting": {
+              "status": "pending",
+              "parent": null
+            },
+            "the-privacy-promise": {
+              "status": "pending",
+              "parent": null
+            }
+          },
+          "previous_status": "in-progress"
+        }
+      }
+    },
+    "research": {
+      "items": {
+        "onboarding-and-permissions": {
+          "status": "completed",
+          "threads": {
+            "required-permissions": {
+              "question": "Which permissions does first run actually ask for, now that Space placement asks for none — notifications, and what else?",
+              "status": "learned",
+              "origin": "brief",
+              "parent": null
+            },
+            "relaunch-requirement": {
+              "question": "Does current macOS still force a quit/relaunch when those permissions are granted, and for which of them?",
+              "status": "learned",
+              "origin": "brief",
+              "parent": "required-permissions"
+            },
+            "self-relaunch-mechanics": {
+              "question": "What is the clean way for a macOS app to relaunch itself after a permission grant — helper process, launchd, open(1), something else — and which approach survives sandboxing/notarization?",
+              "status": "parked",
+              "origin": "brief",
+              "parent": null,
+              "note": "No permission grant means no permission relaunch; restart-and-restore owns the Sparkle-driven case"
+            },
+            "engine-restore-on-relaunch": {
+              "question": "How does the always-on engine restart across a permission relaunch and restore every open fumi — position, Space, content — with no visible seam?",
+              "status": "parked",
+              "origin": "brief",
+              "parent": null,
+              "note": "Owned by restart-and-restore (engine-architecture); no first-run relaunch to survive"
+            },
+            "permission-request-ux": {
+              "question": "What is the canonical macOS pattern for asking for these permissions — when to prompt, how to deep-link System Settings, how to detect the grant without polling badly — and what do comparable apps do?",
+              "status": "parked",
+              "origin": "brief",
+              "parent": null,
+              "note": "Premise gone: one permission, an ordinary dialog, deliberately unexplained — no deep-link or multi-permission problem left"
+            },
+            "denied-and-revoked": {
+              "question": "What does Fumi do when the permission is denied at first run, or revoked later while running — how does the product behave and how does the user find out?",
+              "status": "learned",
+              "origin": "seed",
+              "parent": null
+            },
+            "first-run-composition": {
+              "question": "Is the single-screen shape right — two toggles plus the notification dialog on exit — and what precedes it, if anything?",
+              "status": "learned",
+              "origin": "seed",
+              "parent": null
+            },
+            "icloud-account-state": {
+              "question": "How does the start-up sync opt-in handle the no-iCloud-account state, and does it name the Apple ID it would bind to?",
+              "status": "open",
+              "origin": "conversation",
+              "parent": null
+            },
+            "opt-in-later-binding": {
+              "question": "Where does the user turn sync on after opting out at start-up, and what does that surface tell them about the account their local store is about to bind to?",
+              "status": "open",
+              "origin": "conversation",
+              "parent": "icloud-account-state"
+            },
+            "account-state-taxonomy": {
+              "question": "Does a CloudKit private-database app appear in System Settings' iCloud app list, so a user can switch Fumi's sync off while the account stays available?",
+              "status": "open",
+              "origin": "conversation",
+              "parent": "icloud-account-state"
+            },
+            "screen-promises": {
+              "question": "Within a recommend-sync-but-don't-dramatise framing, what does the screen actually say on each side?",
+              "status": "open",
+              "origin": "conversation",
+              "parent": null
+            },
+            "notification-permission-needed-for-the-first-delete-education": {
+              "question": "Does the first-delete education's dependency on the notification permission change what first run must do?",
+              "status": "learned",
+              "origin": "note-window",
+              "parent": null
+            },
+            "storage-facts-the-first-run-flow-must-sequence-around": {
+              "question": "What must the first-run sequence design around, given the UTI timing, the default-off sync toggle, and the no-iCloud state?",
+              "status": "learned",
+              "origin": "storage-and-sync",
+              "parent": null
+            },
+            "the-accessibility-permission-this-topic-is-scoped-around-does-not-exist": {
+              "question": "What does first run actually need, once the Accessibility premise is removed?",
+              "status": "learned",
+              "origin": "space-homing",
+              "parent": null
+            },
+            "notification-permission-is-decided-asked-once-up-front-framed-on-backup": {
+              "question": "Where does the notification ask sit in the first-run sequence, and what does it say?",
+              "status": "learned",
+              "origin": "status-and-alerts",
+              "parent": null
+            },
+            "deferred-first-authorisation-request": {
+              "question": "If Fumi never requests notification authorisation at first run, can it still raise the system dialog months later when the user enables sync — or does 'macOS asks once' foreclose a deferred first ask?",
+              "status": "learned",
+              "origin": "conversation",
+              "parent": null
+            },
+            "trial-intro": {
+              "question": "Does first run say anything about the pricing model, and if so what — given the counter cannot mean anything before any usage?",
+              "status": "open",
+              "origin": "conversation",
+              "parent": null
+            },
+            "dependency-spends-the-prompt": {
+              "question": "Does anything in Fumi's dependency graph — Sparkle, CKSyncEngine, crash reporting — call requestAuthorization or use the deprecated NSUserNotification delegate path, spending the one-shot before the user reaches the sync decision?",
+              "status": "learned",
+              "origin": "deep-dive-001",
+              "parent": "deferred-first-authorisation-request"
+            },
+            "deferred-ask-in-practice": {
+              "question": "Does a menu-bar-only agent that is not frontmost actually raise a visible, unmissable dialog months into the app's life — is 'a moment of Fumi's choosing' really Fumi's to choose?",
+              "status": "parked",
+              "origin": "deep-dive-001",
+              "parent": "deferred-first-authorisation-request",
+              "note": "Moot — the ask happens at first run with the app frontmost; the deferred shape was abandoned"
+            },
+            "sequence-the-notification-permission-ask-after-the-sync-decision": {
+              "question": "Does the notification ask sit after the sync decision, and is it conditional on it?",
+              "status": "learned",
+              "origin": "status-and-alerts",
+              "parent": null
+            },
+            "the-desk-leg-is-withdrawn-not-restated": {
+              "question": "Does the first-run sync screen promise the desk as well as the notes — and is that promise true?",
+              "status": "learned",
+              "origin": "storage-and-sync",
+              "parent": null
+            },
+            "wizard-step-content": {
+              "question": "What do the wizard's intro and walkthrough steps actually contain — and does it gain a personalisation step showing the swatches?",
+              "status": "open",
+              "origin": "user",
+              "parent": null
+            }
+          }
+        },
+        "space-homing": {
+          "status": "completed"
+        },
+        "positioning-and-audience": {
+          "status": "cancelled",
+          "previous_status": "triaged"
+        },
+        "platform-support": {
+          "status": "completed"
+        },
+        "scale-and-performance": {
+          "status": "cancelled",
+          "previous_status": "in-progress"
+        }
+      }
+    }
+  },
+  "imports": [
+    {
+      "path": "imports/dockset-01-explore.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-02-tour-profiles.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-03-choose-setup.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-04-essentials-colour.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-05-material-liquid-glass.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-06-material-picker-open.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-07-more-than-apps.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-08-pick-widgets.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-09-permissions.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-10-ready.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/dockset-11-landing.jpeg",
+      "imported_at": "2026-09-17T19:22:24Z",
+      "origin": "research/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/raycast-permissions-screen.png",
+      "imported_at": "2026-09-17T19:22:29Z",
+      "origin": "discussion/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/raycast-cloud-sync-screen.png",
+      "imported_at": "2026-09-17T19:22:29Z",
+      "origin": "discussion/onboarding-and-permissions"
+    },
+    {
+      "path": "imports/cleanshot-2026-09-16-at-12-01-22-2x.png",
+      "imported_at": "2026-09-21T13:59:47Z",
+      "origin": "discussion/management-window"
+    },
+    {
+      "path": "imports/cleanshot-2026-09-21-at-14-12-23-2x.png",
+      "imported_at": "2026-09-21T13:59:47Z",
+      "origin": "discussion/management-window"
+    },
+    {
+      "path": "imports/cleanshot-2026-09-21-at-14-12-46-2x.png",
+      "imported_at": "2026-09-21T13:59:47Z",
+      "origin": "discussion/management-window"
+    },
+    {
+      "path": "imports/cleanshot-2026-09-21-at-14-13-06-2x.png",
+      "imported_at": "2026-09-21T13:59:47Z",
+      "origin": "discussion/management-window"
+    },
+    {
+      "path": "imports/588ce026-14c6-4765-acf7-24d46ac42212-1-201-a.jpeg",
+      "imported_at": "2026-09-21T13:59:47Z",
+      "origin": "discussion/management-window"
+    },
+    {
+      "path": "imports/cleanshot-2026-09-21-at-16-40-04-2x.png",
+      "imported_at": "2026-09-21T15:41:48Z",
+      "origin": "discussion/management-window"
+    }
+  ]
+}

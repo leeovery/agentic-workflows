@@ -1,0 +1,109 @@
+{
+  "name": "agent-first-portal",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-06-26",
+  "description": "Reposition Portal as an agent-first tool — internal multi-agent session resume, an in-tmux pop-up overlay, a mobile companion app, and push notifications for remote agent handoff",
+  "phases": {
+    "discovery": {
+      "items": {
+        "agent-state": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Host-side agent-state spine: the state model and capture every other surface reads from",
+          "description": "The core per-session agent-state model (Working, Waiting, Idle, Unknown) captured on the host. Per-agent hooks report events to the daemon over a unix IPC socket, correlated to panes via $TMUX_PANE and normalised through an adapter interface (Claude Code first; Codex, OpenCode and others added later as additive adapters). A concurrency-safe agent store in the daemon is the single source of truth, with a persisted snapshot so state survives a daemon blip. This is the spine of the whole epic: picker, status line, notifications and mobile client all read from it. Open thread for the downstream phase: verifying the Claude hook-event to state mapping against current Claude Code behaviour, and how non-Claude agents signal state.",
+          "order": 1
+        },
+        "agent-state-surfacing": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Desktop and terminal display of agent state: picker glyph, needs-attention view, status-line segment, notifications",
+          "description": "How agent state surfaces on the desktop and in the terminal, distinct from host capture. An inline agent-state glyph on every session row in every picker view, distinct from the existing attached dot. A new by-status / needs-attention view mode alongside flat, by-project and by-tag, sorted so Waiting floats to the top. A Portal-owned tmux status-line segment showing the aggregate (for example: 2 waiting) from inside any session, with a keybind to jump to waiting sessions. Notifications: macOS at the desk, and on mobile an OSC 9 banner through Blink for the active session until the client exists. No separate dashboard page; the dashboard is a lens, not a page.",
+          "order": 2
+        },
+        "session-control-overlay": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "In-tmux Portal pop-up replacing the Alt+M tool for rename/detach/quit of panes, windows and sessions",
+          "description": "A Portal pop-up overlay accessible from inside tmux while an agent runs, surfacing the relevant Portal and tmux session-control actions cleanly: rename, detach and quit across panes, windows and sessions. Replaces the existing Alt+M tmux overlay tool the user relies on today. Explicitly not a full tmux reimplementation; only the actions worth surfacing through Portal. Raised in conversation and confirmed in scope; not covered by the imported control-plane plan.",
+          "order": 6
+        },
+        "resume-hook-internalisation": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Make resume-hook registration internal and managed by Portal rather than hand-wired by the user",
+          "description": "Today the user registers a hook themselves to wire up Portal resume commands. This topic makes that registration internal and managed by Portal, likely reusing the same versioned, idempotent, non-destructive hook-install machinery introduced for agent-awareness hooks but applied to the existing resume hooks. Kept conceptually separate from the agent-awareness hooks (different concept, sibling not merged). Raised in conversation and confirmed in scope; the imported plan keeps the resume engine itself as-is and does not cover auto-registration.",
+          "order": 5
+        },
+        "mobile-client": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Structured-first phone app: control tower, approvals, compose box, embedded terminal, diff viewer, browser preview",
+          "description": "A structured-first mobile client, the inverse of a terminal-first app with status bolted on. Surfaces: a control tower live session list with agent state (Waiting first) as the home screen; approval cards to approve or deny a waiting tool call, wired to lock-screen notification actions; a native compose box that sends to the pane via tmux send-keys (autocorrect, dictation, multi-line, image paste, local until sent); an embedded real terminal for the raw view (GhosttyKit / libghostty is the lead), kept hot across sessions with Mosh for resilience and predictive echo; a native diff viewer over git diff in the session git root; and an in-app browser preview over a forwarded dev-server port. Open and routed to research: client framework (the Moshi RN/Expo stack is a strong lead but undecided) and terminal engine (GhosttyKit lead, not finalised).",
+          "order": 4
+        },
+        "transport": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Phone-to-host connectivity: Tailscale data plane, hosted relay (Pro), push path, launchd boot agent, optional protocol",
+          "description": "Connectivity between phone and host, deliberately split into two planes. Data plane: Tailscale by default (free), the daemon API on the Tailscale interface of the host, reached peer-to-peer over WireGuard, with the embedded terminal over Mosh/SSH. Relay (Pro): a hosted rendezvous relay for simpler setup where the daemon holds an outbound connection and the phone meets it in the middle, kept private by end-to-end encryption with the relay as a dumb forwarder; never the only path because of the trust cost, and the natural basis for a later team story. A minimal push/APNs path so a block reaches the phone. A thin launchd boot agent so the reboot-then-pick-up-on-phone case works without first sitting at the desktop. An optional future custom multiplexed protocol (efficiency and battery, not the moat). Routed to research: relay implementation, end-to-end encryption specifics and the APNs path were discussed at a high level only.",
+          "order": 3
+        },
+        "productisation": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Free/Pro packaging, one-line installer, pricing posture, agent-first repositioning, parked team story",
+          "description": "The product and positioning layer. Free: the CLI and the desktop control plane. Pro: the mobile app, push, and the relay. Setup: ideally one line on the host that installs Portal, checks for and installs tmux if missing, starts the daemon, installs the agent hooks, and prints a pairing code, then install the app and pair; a reach-your-own-machine product, not a cloud one. Pricing posture: a small side business around 5k to 10k MRR and roughly 1000 paying users (Moshi at about 6.99/month, 59.99/year, 249 lifetime is comparison, not a decision). The agent-first repositioning and messaging: deliberately stop being agnostic and make agent-first the product thesis (adoption, and it matches how the user already uses Portal). Branding direction (indie craft executed cleanly) is leaning but not finalised. A team story is parked.",
+          "order": 7
+        }
+      }
+    },
+    "discussion": {
+      "items": {
+        "agent-state": {
+          "status": "in-progress",
+          "subtopics": {
+            "state-model-semantics": {
+              "status": "pending",
+              "parent": null
+            },
+            "event-capture-hook-state-mapping": {
+              "status": "pending",
+              "parent": null
+            },
+            "hook-to-daemon-ipc-transport": {
+              "status": "pending",
+              "parent": null
+            },
+            "pane-session-correlation": {
+              "status": "pending",
+              "parent": null
+            },
+            "adapter-interface-multi-agent-normalisation": {
+              "status": "pending",
+              "parent": null
+            },
+            "agent-store-persistence": {
+              "status": "pending",
+              "parent": null
+            },
+            "consumer-read-contract": {
+              "status": "pending",
+              "parent": null
+            }
+          }
+        },
+        "agent-state-surfacing": {
+          "status": "triaged"
+        }
+      }
+    }
+  },
+  "imports": [
+    {
+      "path": "imports/portal-control-plane-plan.md",
+      "imported_at": "2026-06-26T14:14:35Z",
+      "origin": "discovery"
+    }
+  ]
+}

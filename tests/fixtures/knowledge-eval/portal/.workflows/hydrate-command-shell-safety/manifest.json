@@ -1,0 +1,94 @@
+{
+  "name": "hydrate-command-shell-safety",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-26",
+  "description": "Harden buildHydrateCommand quoting and broaden sanitizeSessionName to an allowlist so resume works for session names with whitespace or shell-meta characters",
+  "phases": {
+    "specification": {
+      "items": {
+        "hydrate-command-shell-safety": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "hydrate-command-shell-safety": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "ac1b5ebba58140b6963e59d1ec5e1949c3af7122",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "hydrate-command-shell-safety-1-1": "tick-7c4b5c",
+            "hydrate-command-shell-safety-1-2": "tick-eeefe1",
+            "hydrate-command-shell-safety-2": "tick-23d95c",
+            "hydrate-command-shell-safety-2-1": "tick-eb318f"
+          },
+          "external_id": "tick-72464c"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "hydrate-command-shell-safety": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "hydrate-command-shell-safety": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "hydrate-command-shell-safety-1-1",
+            "hydrate-command-shell-safety-1-2",
+            "hydrate-command-shell-safety-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-26"
+}

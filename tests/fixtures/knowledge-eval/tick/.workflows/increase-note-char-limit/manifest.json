@@ -1,0 +1,97 @@
+{
+  "name": "increase-note-char-limit",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-07-11",
+  "description": "Increase note text character limit from 500 to 2000",
+  "phases": {
+    "specification": {
+      "items": {
+        "increase-note-char-limit": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "increase-note-char-limit": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "20fed6027b2eb9f493e21328e21466b0de2c9d52",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "increase-note-char-limit-1-1": "tick-78ed02"
+          },
+          "external_id": "tick-eb9595"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "increase-note-char-limit": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "increase-note-char-limit": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-modernize",
+            ".claude/skills/golang-lint",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-project-layout",
+            ".claude/skills/golang-data-structures",
+            ".claude/skills/golang-database",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-security",
+            ".claude/skills/golang-troubleshooting",
+            ".claude/skills/golang-documentation",
+            ".claude/skills/golang-dependency-management",
+            ".claude/skills/golang-continuous-integration"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "increase-note-char-limit-1-1"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-07-12"
+}

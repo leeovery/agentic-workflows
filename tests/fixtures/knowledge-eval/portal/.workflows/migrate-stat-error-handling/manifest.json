@@ -1,0 +1,80 @@
+{
+  "name": "migrate-stat-error-handling",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-03-30",
+  "description": "Use os.IsNotExist explicitly in migrateConfigFile stat check instead of treating any error as file-not-found",
+  "phases": {
+    "specification": {
+      "items": {
+        "migrate-stat-error-handling": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "migrate-stat-error-handling": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "ebaf21e7e2557df156968d280cf8d0185da6a72e",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "migrate-stat-error-handling-1-1": "tick-9002a5"
+          }
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "migrate-stat-error-handling": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "migrate-stat-error-handling": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "migrate-stat-error-handling-1-1"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-30"
+}

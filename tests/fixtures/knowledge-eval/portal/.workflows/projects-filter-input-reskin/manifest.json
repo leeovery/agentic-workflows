@@ -1,0 +1,105 @@
+{
+  "name": "projects-filter-input-reskin",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-07-27",
+  "description": "Reskin the Projects page live filter input to Modern Vivid (orange prompt/query/cursor), mirroring the Sessions filter-input restyle.",
+  "phases": {
+    "specification": {
+      "items": {
+        "projects-filter-input-reskin": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "projects-filter-input-reskin": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "1134ae92f46d939cae793450a132ff8d33a5128a",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": null,
+          "external_id": "tick-dc0f87",
+          "task_map": {
+            "projects-filter-input-reskin-1": "tick-37c9c1",
+            "projects-filter-input-reskin-1-1": "tick-4c392b"
+          },
+          "storage_paths": [
+            ".tick/"
+          ]
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "projects-filter-input-reskin": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "projects-filter-input-reskin": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 1,
+          "current_task": null,
+          "completed_tasks": [
+            "projects-filter-input-reskin-1-1"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-25-projects-filter-input-reskin.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-07-27T10:28:41Z"
+    }
+  ],
+  "completed_at": "2026-07-27"
+}

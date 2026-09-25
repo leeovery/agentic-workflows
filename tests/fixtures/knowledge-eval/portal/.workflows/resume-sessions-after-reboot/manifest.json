@@ -1,0 +1,200 @@
+{
+  "name": "resume-sessions-after-reboot",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-03-25",
+  "description": "Generic restart command registry for resuming processes in tmux sessions after system reboot",
+  "phases": {
+    "research": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed"
+        }
+      }
+    },
+    "discussion": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-03-27",
+          "sources": {
+            "resume-sessions-after-reboot": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "ff9b31ccf8c2fb36fe3f92ab9eef956f55eff53c",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "resume-sessions-after-reboot-1-1": "tick-a136fa",
+            "resume-sessions-after-reboot-1": "tick-483f66",
+            "resume-sessions-after-reboot-1-2": "tick-a57cf3",
+            "resume-sessions-after-reboot-1-3": "tick-22933d",
+            "resume-sessions-after-reboot-1-4": "tick-50cc96",
+            "resume-sessions-after-reboot-1-5": "tick-81dc0f",
+            "resume-sessions-after-reboot-2-1": "tick-36b933",
+            "resume-sessions-after-reboot-2": "tick-e57c0a",
+            "resume-sessions-after-reboot-2-2": "tick-f507fa",
+            "resume-sessions-after-reboot-2-3": "tick-a302e9",
+            "resume-sessions-after-reboot-2-4": "tick-938a5f",
+            "resume-sessions-after-reboot-2-5": "tick-573380",
+            "resume-sessions-after-reboot-3-1": "tick-bf7d64",
+            "resume-sessions-after-reboot-3": "tick-e9c1aa",
+            "resume-sessions-after-reboot-3-2": "tick-a8e239",
+            "resume-sessions-after-reboot-3-3": "tick-49850d",
+            "resume-sessions-after-reboot-3-4": "tick-be944f",
+            "resume-sessions-after-reboot-4": "tick-df41eb",
+            "resume-sessions-after-reboot-4-1": "tick-444b6b",
+            "resume-sessions-after-reboot-4-2": "tick-867e69",
+            "resume-sessions-after-reboot-4-3": "tick-c55492",
+            "resume-sessions-after-reboot-4-4": "tick-ce65fa",
+            "resume-sessions-after-reboot-4-5": "tick-e83b1a",
+            "resume-sessions-after-reboot-5": "tick-705cf8",
+            "resume-sessions-after-reboot-5-1": "tick-2ee721"
+          },
+          "external_id": "tick-695f97",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "in-progress",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 5,
+          "current_task": "~",
+          "completed_tasks": [
+            "resume-sessions-after-reboot-1-1",
+            "resume-sessions-after-reboot-1-2",
+            "resume-sessions-after-reboot-1-3",
+            "resume-sessions-after-reboot-1-4",
+            "resume-sessions-after-reboot-1-5",
+            "resume-sessions-after-reboot-2-1",
+            "resume-sessions-after-reboot-2-2",
+            "resume-sessions-after-reboot-2-3",
+            "resume-sessions-after-reboot-2-4",
+            "resume-sessions-after-reboot-2-5",
+            "resume-sessions-after-reboot-3-1",
+            "resume-sessions-after-reboot-3-2",
+            "resume-sessions-after-reboot-3-3",
+            "resume-sessions-after-reboot-3-4",
+            "resume-sessions-after-reboot-4-1",
+            "resume-sessions-after-reboot-4-2",
+            "resume-sessions-after-reboot-4-3",
+            "resume-sessions-after-reboot-4-4",
+            "resume-sessions-after-reboot-4-5",
+            "resume-sessions-after-reboot-5-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "resume-sessions-after-reboot": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "resume-sessions-after-reboot-1-1",
+            "resume-sessions-after-reboot-1-2",
+            "resume-sessions-after-reboot-1-3",
+            "resume-sessions-after-reboot-1-4",
+            "resume-sessions-after-reboot-1-5",
+            "resume-sessions-after-reboot-2-1",
+            "resume-sessions-after-reboot-2-2",
+            "resume-sessions-after-reboot-2-3",
+            "resume-sessions-after-reboot-2-4",
+            "resume-sessions-after-reboot-2-5",
+            "resume-sessions-after-reboot-3-1",
+            "resume-sessions-after-reboot-3-2",
+            "resume-sessions-after-reboot-3-3",
+            "resume-sessions-after-reboot-3-4",
+            "resume-sessions-after-reboot-4-1",
+            "resume-sessions-after-reboot-4-2",
+            "resume-sessions-after-reboot-4-3",
+            "resume-sessions-after-reboot-4-4",
+            "resume-sessions-after-reboot-4-5",
+            "resume-sessions-after-reboot-5-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-28"
+}

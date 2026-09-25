@@ -1,0 +1,180 @@
+{
+  "name": "auto-start-tmux-server",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-03-17",
+  "description": "Auto-bootstrap tmux server on Portal launch when no server is running, removing dependency on LaunchAgent",
+  "phases": {
+    "discussion": {
+      "items": {
+        "auto-start-tmux-server": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "auto-start-tmux-server": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "gated",
+          "date": "2026-03-19",
+          "sources": {
+            "auto-start-tmux-server": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "auto-start-tmux-server": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "fc0d76218f83ab61e6752aed352732eec52115fe",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "phase": 4,
+          "task": "/Users/leeovery",
+          "external_id": "tick-42b5fe",
+          "task_map": {
+            "auto-start-tmux-server": "tick-42b5fe",
+            "auto-start-tmux-server-1": "tick-247d0e",
+            "auto-start-tmux-server-1-1": "tick-e5d297",
+            "auto-start-tmux-server-1-2": "tick-1ec6ed",
+            "auto-start-tmux-server-1-3": "tick-f4b15d",
+            "auto-start-tmux-server-1-4": "tick-8f1379",
+            "auto-start-tmux-server-2": "tick-0ed5f4",
+            "auto-start-tmux-server-2-1": "tick-f366f9",
+            "auto-start-tmux-server-2-2": "tick-043946",
+            "auto-start-tmux-server-2-3": "tick-df7c9b",
+            "auto-start-tmux-server-3": "tick-55ff5a",
+            "auto-start-tmux-server-3-1": "tick-68976a",
+            "auto-start-tmux-server-3-2": "tick-b7044d",
+            "auto-start-tmux-server-3-3": "tick-313884",
+            "auto-start-tmux-server-4": "tick-bd7001",
+            "auto-start-tmux-server-4-1": "tick-a06ea1",
+            "auto-start-tmux-server-4-2": "tick-386271",
+            "auto-start-tmux-server-4-3": "tick-a271d4",
+            "auto-start-tmux-server-4-4": "tick-738e6c",
+            "auto-start-tmux-server-5": "tick-c62d1f",
+            "auto-start-tmux-server-5-1": "tick-9d5522",
+            "auto-start-tmux-server-5-2": "tick-879f38",
+            "auto-start-tmux-server-6": "tick-603f53",
+            "auto-start-tmux-server-6-1": "tick-56d372"
+          },
+          "review_cycle": 2,
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "in-progress",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "in-progress"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "auto-start-tmux-server": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            "golangci-lint run ./..."
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 6,
+          "current_task": "/Users/leeovery",
+          "completed_tasks": [
+            "auto-start-tmux-server-1-1",
+            "auto-start-tmux-server-1-2",
+            "auto-start-tmux-server-1-3",
+            "auto-start-tmux-server-1-4",
+            "auto-start-tmux-server-2-1",
+            "auto-start-tmux-server-2-2",
+            "auto-start-tmux-server-2-3",
+            "auto-start-tmux-server-3-1",
+            "auto-start-tmux-server-3-2",
+            "auto-start-tmux-server-3-3",
+            "auto-start-tmux-server-4-1",
+            "auto-start-tmux-server-4-2",
+            "auto-start-tmux-server-4-3",
+            "auto-start-tmux-server-4-4",
+            "auto-start-tmux-server-5-1",
+            "auto-start-tmux-server-5-2",
+            "auto-start-tmux-server-6-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "analysis_cycle_total": 4,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "auto-start-tmux-server": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "auto-start-tmux-server-1-1",
+            "auto-start-tmux-server-1-2",
+            "auto-start-tmux-server-1-3",
+            "auto-start-tmux-server-1-4",
+            "auto-start-tmux-server-2-1",
+            "auto-start-tmux-server-2-2",
+            "auto-start-tmux-server-2-3",
+            "auto-start-tmux-server-3-1",
+            "auto-start-tmux-server-3-2",
+            "auto-start-tmux-server-3-3",
+            "auto-start-tmux-server-4-1",
+            "auto-start-tmux-server-4-2",
+            "auto-start-tmux-server-4-3",
+            "auto-start-tmux-server-4-4",
+            "auto-start-tmux-server-5-1",
+            "auto-start-tmux-server-5-2",
+            "auto-start-tmux-server-6-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-21"
+}

@@ -1,0 +1,408 @@
+{
+  "name": "restore-host-terminal-windows",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-06-29",
+  "description": "Portal restores the host-local terminal layer after reboot: track which terminal windows were attached to which sessions on this machine, then re-spawn and re-attach them on demand. macOS Spaces placement is out of scope.",
+  "phases": {
+    "research": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed"
+        }
+      }
+    },
+    "discussion": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed",
+          "sources": {
+            "restore-host-terminal-windows": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 5,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-12",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c5": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c4": "complete",
+            "review-input-tracking-c5": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "0653739697a85fe975fdbf0a354624cab76b97a0",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 6,
+          "phase": 7,
+          "task": "~",
+          "task_map": {
+            "restore-host-terminal-windows-1": "tick-4b80f0",
+            "restore-host-terminal-windows-1-1": "tick-b30354",
+            "restore-host-terminal-windows-1-2": "tick-f27b19",
+            "restore-host-terminal-windows-1-3": "tick-0f48c7",
+            "restore-host-terminal-windows-1-4": "tick-919134",
+            "restore-host-terminal-windows-1-5": "tick-b5efc1",
+            "restore-host-terminal-windows-1-6": "tick-face9e",
+            "restore-host-terminal-windows-2": "tick-814e37",
+            "restore-host-terminal-windows-2-1": "tick-407756",
+            "restore-host-terminal-windows-2-2": "tick-44ecd2",
+            "restore-host-terminal-windows-2-3": "tick-13bcd7",
+            "restore-host-terminal-windows-2-4": "tick-b9d231",
+            "restore-host-terminal-windows-2-5": "tick-06b044",
+            "restore-host-terminal-windows-2-6": "tick-4b0f5e",
+            "restore-host-terminal-windows-2-7": "tick-904b0f",
+            "restore-host-terminal-windows-3": "tick-427196",
+            "restore-host-terminal-windows-3-1": "tick-d3f83b",
+            "restore-host-terminal-windows-3-2": "tick-4568f3",
+            "restore-host-terminal-windows-3-3": "tick-f66f7f",
+            "restore-host-terminal-windows-3-4": "tick-ac0677",
+            "restore-host-terminal-windows-3-5": "tick-05c3f8",
+            "restore-host-terminal-windows-3-6": "tick-e2fc0a",
+            "restore-host-terminal-windows-3-7": "tick-83b670",
+            "restore-host-terminal-windows-4": "tick-59e6df",
+            "restore-host-terminal-windows-4-1": "tick-b660bd",
+            "restore-host-terminal-windows-4-2": "tick-72bad1",
+            "restore-host-terminal-windows-4-3": "tick-129344",
+            "restore-host-terminal-windows-4-4": "tick-ef7aa2",
+            "restore-host-terminal-windows-4-5": "tick-8916cd",
+            "restore-host-terminal-windows-4-6": "tick-202b46",
+            "restore-host-terminal-windows-5": "tick-1594ec",
+            "restore-host-terminal-windows-5-1": "tick-3e042b",
+            "restore-host-terminal-windows-5-2": "tick-daede7",
+            "restore-host-terminal-windows-5-3": "tick-d1829c",
+            "restore-host-terminal-windows-5-4": "tick-407ca2",
+            "restore-host-terminal-windows-5-5": "tick-269129",
+            "restore-host-terminal-windows-5-6": "tick-c7c428",
+            "restore-host-terminal-windows-5-7": "tick-88df32",
+            "restore-host-terminal-windows-5-8": "tick-333179",
+            "restore-host-terminal-windows-6": "tick-ca80f3",
+            "restore-host-terminal-windows-6-1": "tick-fceca5",
+            "restore-host-terminal-windows-6-2": "tick-7ff62e",
+            "restore-host-terminal-windows-6-3": "tick-ffe7d0",
+            "restore-host-terminal-windows-6-4": "tick-b0440e",
+            "restore-host-terminal-windows-6-5": "tick-409641",
+            "restore-host-terminal-windows-6-6": "tick-c636c2",
+            "restore-host-terminal-windows-6-7": "tick-7ea2f9",
+            "restore-host-terminal-windows-6-8": "tick-354353",
+            "restore-host-terminal-windows-6-9": "tick-96f412",
+            "restore-host-terminal-windows-6-10": "tick-2795f8",
+            "restore-host-terminal-windows-6-11": "tick-81596e",
+            "restore-host-terminal-windows-7": "tick-a6277b",
+            "restore-host-terminal-windows-7-1": "tick-81e59a",
+            "restore-host-terminal-windows-7-2": "tick-e2fb18",
+            "restore-host-terminal-windows-7-3": "tick-473b1a",
+            "restore-host-terminal-windows-7-4": "tick-160e87",
+            "restore-host-terminal-windows-7-5": "tick-be06d5",
+            "restore-host-terminal-windows-7-6": "tick-cc1ad5",
+            "restore-host-terminal-windows-8": "tick-fcc411",
+            "restore-host-terminal-windows-8-1": "tick-6f32ac",
+            "restore-host-terminal-windows-8-2": "tick-407482",
+            "restore-host-terminal-windows-8-3": "tick-3b522a",
+            "restore-host-terminal-windows-8-4": "tick-25d2a8",
+            "restore-host-terminal-windows-8-5": "tick-86f3c7",
+            "restore-host-terminal-windows-8-6": "tick-9c20d0",
+            "restore-host-terminal-windows-8-7": "tick-c5bcee",
+            "restore-host-terminal-windows-9": "tick-5ecf08",
+            "restore-host-terminal-windows-9-1": "tick-44fa9c",
+            "restore-host-terminal-windows-9-2": "tick-bf24fe",
+            "restore-host-terminal-windows-9-3": "tick-359b7d",
+            "restore-host-terminal-windows-9-4": "tick-2341dc",
+            "restore-host-terminal-windows-9-5": "tick-e27f08",
+            "restore-host-terminal-windows-9-6": "tick-284b53",
+            "restore-host-terminal-windows-9-7": "tick-04f9fa",
+            "restore-host-terminal-windows-9-8": "tick-c4daec",
+            "restore-host-terminal-windows-10": "tick-05038c",
+            "restore-host-terminal-windows-10-1": "tick-7314d9",
+            "restore-host-terminal-windows-10-2": "tick-5ae99f",
+            "restore-host-terminal-windows-10-3": "tick-52302e"
+          },
+          "external_id": "tick-9d3e8a",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-integrity-tracking-c5": "complete",
+            "review-integrity-tracking-c6": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete",
+            "review-traceability-tracking-c5": "complete",
+            "review-traceability-tracking-c6": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 5,
+          "analysis_cycle_session": 5,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 10,
+          "current_task": "~",
+          "completed_tasks": [
+            "restore-host-terminal-windows-1-1",
+            "restore-host-terminal-windows-1-2",
+            "restore-host-terminal-windows-1-3",
+            "restore-host-terminal-windows-1-4",
+            "restore-host-terminal-windows-1-5",
+            "restore-host-terminal-windows-1-6",
+            "restore-host-terminal-windows-2-1",
+            "restore-host-terminal-windows-2-2",
+            "restore-host-terminal-windows-2-3",
+            "restore-host-terminal-windows-2-4",
+            "restore-host-terminal-windows-2-5",
+            "restore-host-terminal-windows-2-6",
+            "restore-host-terminal-windows-2-7",
+            "restore-host-terminal-windows-3-1",
+            "restore-host-terminal-windows-3-2",
+            "restore-host-terminal-windows-3-3",
+            "restore-host-terminal-windows-3-4",
+            "restore-host-terminal-windows-3-5",
+            "restore-host-terminal-windows-3-6",
+            "restore-host-terminal-windows-3-7",
+            "restore-host-terminal-windows-4-1",
+            "restore-host-terminal-windows-4-2",
+            "restore-host-terminal-windows-4-3",
+            "restore-host-terminal-windows-4-4",
+            "restore-host-terminal-windows-4-5",
+            "restore-host-terminal-windows-4-6",
+            "restore-host-terminal-windows-5-1",
+            "restore-host-terminal-windows-5-2",
+            "restore-host-terminal-windows-5-3",
+            "restore-host-terminal-windows-5-4",
+            "restore-host-terminal-windows-5-5",
+            "restore-host-terminal-windows-5-6",
+            "restore-host-terminal-windows-5-7",
+            "restore-host-terminal-windows-5-8",
+            "restore-host-terminal-windows-6-1",
+            "restore-host-terminal-windows-6-2",
+            "restore-host-terminal-windows-6-3",
+            "restore-host-terminal-windows-6-4",
+            "restore-host-terminal-windows-6-5",
+            "restore-host-terminal-windows-6-6",
+            "restore-host-terminal-windows-6-7",
+            "restore-host-terminal-windows-6-8",
+            "restore-host-terminal-windows-6-9",
+            "restore-host-terminal-windows-6-10",
+            "restore-host-terminal-windows-6-11",
+            "restore-host-terminal-windows-7-1",
+            "restore-host-terminal-windows-7-2",
+            "restore-host-terminal-windows-7-3",
+            "restore-host-terminal-windows-7-4",
+            "restore-host-terminal-windows-7-5",
+            "restore-host-terminal-windows-7-6",
+            "restore-host-terminal-windows-8-1",
+            "restore-host-terminal-windows-8-2",
+            "restore-host-terminal-windows-8-3",
+            "restore-host-terminal-windows-8-4",
+            "restore-host-terminal-windows-8-5",
+            "restore-host-terminal-windows-8-6",
+            "restore-host-terminal-windows-8-7",
+            "restore-host-terminal-windows-9-1",
+            "restore-host-terminal-windows-9-2",
+            "restore-host-terminal-windows-9-3",
+            "restore-host-terminal-windows-9-4",
+            "restore-host-terminal-windows-9-5",
+            "restore-host-terminal-windows-9-6",
+            "restore-host-terminal-windows-9-7",
+            "restore-host-terminal-windows-9-8",
+            "restore-host-terminal-windows-10-1",
+            "restore-host-terminal-windows-10-2",
+            "restore-host-terminal-windows-10-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved",
+                "8": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "restore-host-terminal-windows": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "restore-host-terminal-windows-1-1",
+            "restore-host-terminal-windows-1-2",
+            "restore-host-terminal-windows-1-3",
+            "restore-host-terminal-windows-1-4",
+            "restore-host-terminal-windows-1-5",
+            "restore-host-terminal-windows-1-6",
+            "restore-host-terminal-windows-2-1",
+            "restore-host-terminal-windows-2-2",
+            "restore-host-terminal-windows-2-3",
+            "restore-host-terminal-windows-2-4",
+            "restore-host-terminal-windows-2-5",
+            "restore-host-terminal-windows-2-6",
+            "restore-host-terminal-windows-2-7",
+            "restore-host-terminal-windows-3-1",
+            "restore-host-terminal-windows-3-2",
+            "restore-host-terminal-windows-3-3",
+            "restore-host-terminal-windows-3-4",
+            "restore-host-terminal-windows-3-5",
+            "restore-host-terminal-windows-3-6",
+            "restore-host-terminal-windows-3-7",
+            "restore-host-terminal-windows-4-1",
+            "restore-host-terminal-windows-4-2",
+            "restore-host-terminal-windows-4-3",
+            "restore-host-terminal-windows-4-4",
+            "restore-host-terminal-windows-4-5",
+            "restore-host-terminal-windows-4-6",
+            "restore-host-terminal-windows-5-1",
+            "restore-host-terminal-windows-5-2",
+            "restore-host-terminal-windows-5-3",
+            "restore-host-terminal-windows-5-4",
+            "restore-host-terminal-windows-5-5",
+            "restore-host-terminal-windows-5-6",
+            "restore-host-terminal-windows-5-7",
+            "restore-host-terminal-windows-5-8",
+            "restore-host-terminal-windows-6-1",
+            "restore-host-terminal-windows-6-2",
+            "restore-host-terminal-windows-6-3",
+            "restore-host-terminal-windows-6-4",
+            "restore-host-terminal-windows-6-5",
+            "restore-host-terminal-windows-6-6",
+            "restore-host-terminal-windows-6-7",
+            "restore-host-terminal-windows-6-8",
+            "restore-host-terminal-windows-6-9",
+            "restore-host-terminal-windows-6-10",
+            "restore-host-terminal-windows-6-11",
+            "restore-host-terminal-windows-7-1",
+            "restore-host-terminal-windows-7-2",
+            "restore-host-terminal-windows-7-3",
+            "restore-host-terminal-windows-7-4",
+            "restore-host-terminal-windows-7-5",
+            "restore-host-terminal-windows-7-6",
+            "restore-host-terminal-windows-8-1",
+            "restore-host-terminal-windows-8-2",
+            "restore-host-terminal-windows-8-3",
+            "restore-host-terminal-windows-8-4",
+            "restore-host-terminal-windows-8-5",
+            "restore-host-terminal-windows-8-6",
+            "restore-host-terminal-windows-8-7",
+            "restore-host-terminal-windows-9-1",
+            "restore-host-terminal-windows-9-2",
+            "restore-host-terminal-windows-9-3",
+            "restore-host-terminal-windows-9-4",
+            "restore-host-terminal-windows-9-5",
+            "restore-host-terminal-windows-9-6",
+            "restore-host-terminal-windows-9-7",
+            "restore-host-terminal-windows-9-8",
+            "restore-host-terminal-windows-10-1",
+            "restore-host-terminal-windows-10-2",
+            "restore-host-terminal-windows-10-3"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-07-14"
+}

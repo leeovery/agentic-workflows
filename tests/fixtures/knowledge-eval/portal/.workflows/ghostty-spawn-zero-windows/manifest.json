@@ -1,0 +1,158 @@
+{
+  "name": "ghostty-spawn-zero-windows",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-07-16",
+  "description": "Native Ghostty spawn adapter AppleScript uses commands absent from Ghostty 1.3.1's scripting dictionary, so multi-window spawn compile-fails and opens zero windows; includes two riders (DEBUG-only failure logging, misleading total-failure banner copy)",
+  "phases": {
+    "investigation": {
+      "items": {
+        "ghostty-spawn-zero-windows": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "ghostty-spawn-zero-windows": {
+          "status": "completed",
+          "sources": {
+            "ghostty-spawn-zero-windows": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-17",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "ghostty-spawn-zero-windows": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "76f18ebc60ab6a832c443fe6c2cd7902ebc6193b",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 1,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "ghostty-spawn-zero-windows-1": "tick-d70f38",
+            "ghostty-spawn-zero-windows-1-1": "tick-d64577",
+            "ghostty-spawn-zero-windows-1-2": "tick-2a9dc7",
+            "ghostty-spawn-zero-windows-1-3": "tick-cbbbb0",
+            "ghostty-spawn-zero-windows-1-4": "tick-9c305a",
+            "ghostty-spawn-zero-windows-1-5": "tick-af1af8",
+            "ghostty-spawn-zero-windows-2": "tick-62192f",
+            "ghostty-spawn-zero-windows-2-1": "tick-e08d19",
+            "ghostty-spawn-zero-windows-2-2": "tick-b461d6"
+          },
+          "external_id": "tick-f00989",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "ghostty-spawn-zero-windows": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 3,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "ghostty-spawn-zero-windows-1-1",
+            "ghostty-spawn-zero-windows-1-2",
+            "ghostty-spawn-zero-windows-1-3",
+            "ghostty-spawn-zero-windows-1-4",
+            "ghostty-spawn-zero-windows-1-5",
+            "ghostty-spawn-zero-windows-2-1",
+            "ghostty-spawn-zero-windows-2-2"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "ghostty-spawn-zero-windows": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "ghostty-spawn-zero-windows-1-1",
+            "ghostty-spawn-zero-windows-1-2",
+            "ghostty-spawn-zero-windows-1-3",
+            "ghostty-spawn-zero-windows-1-4",
+            "ghostty-spawn-zero-windows-1-5",
+            "ghostty-spawn-zero-windows-2-1",
+            "ghostty-spawn-zero-windows-2-2"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-16-ghostty-spawn-zero-windows.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-07-16T18:29:51Z"
+    }
+  ],
+  "completed_at": "2026-07-17"
+}

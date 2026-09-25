@@ -1,0 +1,104 @@
+{
+  "name": "version-flag-help-and-alias",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-06-04",
+  "description": "List --version in top-level help and add a -V short alias",
+  "phases": {
+    "specification": {
+      "items": {
+        "version-flag-help-and-alias": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "version-flag-help-and-alias": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "147e1a3d89f66f6bdf447e52f21313759c82a88e",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "version-flag-help-and-alias-1-1": "tick-455f98",
+            "version-flag-help-and-alias-1-2": "tick-d27df6",
+            "version-flag-help-and-alias-2-1": "tick-285839",
+            "version-flag-help-and-alias-2-2": "tick-6f28e2"
+          },
+          "external_id": "tick-9fb257"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "version-flag-help-and-alias": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "version-flag-help-and-alias": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 2,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "version-flag-help-and-alias-1-1",
+            "version-flag-help-and-alias-1-2",
+            "version-flag-help-and-alias-2-1",
+            "version-flag-help-and-alias-2-2"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-05-23-list-version-in-help.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-04T13:15:34Z"
+    },
+    {
+      "path": "seeds/2026-05-23-version-short-alias.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-04T13:15:34Z"
+    }
+  ],
+  "completed_at": "2026-06-04"
+}

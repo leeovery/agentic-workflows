@@ -1,0 +1,16 @@
+{
+  "name": "tui-redesign",
+  "work_type": "feature",
+  "status": "cancelled",
+  "created": "2026-02-27",
+  "description": "tui-redesign work unit",
+  "phases": {
+    "discussion": {
+      "items": {
+        "tui-redesign": {
+          "status": "in-progress"
+        }
+      }
+    }
+  }
+}

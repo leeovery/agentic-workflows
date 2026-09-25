@@ -1,0 +1,124 @@
+{
+  "name": "kill-rename-prefix-collision",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-06-09",
+  "description": "KillSession and RenameSession issue bare -t target argv without tmux exact-match = prefix, risking prefix-collision that kills or renames the wrong session",
+  "phases": {
+    "investigation": {
+      "items": {
+        "kill-rename-prefix-collision": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "kill-rename-prefix-collision": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-06-09",
+          "sources": {
+            "kill-rename-prefix-collision": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "kill-rename-prefix-collision": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "2aa93372d87af51f1be2caeacff9aadd26e4f605",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "kill-rename-prefix-collision-1": "tick-eb3bc7",
+            "kill-rename-prefix-collision-1-1": "tick-6570c5",
+            "kill-rename-prefix-collision-1-2": "tick-6c9f54",
+            "kill-rename-prefix-collision-1-3": "tick-4dc323"
+          },
+          "external_id": "tick-233874",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "kill-rename-prefix-collision": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "kill-rename-prefix-collision-1-1",
+            "kill-rename-prefix-collision-1-2",
+            "kill-rename-prefix-collision-1-3"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "kill-rename-prefix-collision": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "kill-rename-prefix-collision-1-1",
+            "kill-rename-prefix-collision-1-2",
+            "kill-rename-prefix-collision-1-3"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-05-16-kill-rename-prefix-collision.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-06-09T14:51:57Z"
+    }
+  ],
+  "completed_at": "2026-06-09"
+}

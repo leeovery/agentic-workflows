@@ -1,0 +1,391 @@
+{
+  "name": "slow-open-empty-previews-and-zombie-sessions",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-22",
+  "description": "portal open is slow (5-8s), every session preview shows 'no saved content', and killed sessions resurrect on next open; observed under v0.5.6 with three concurrent stale daemons and a doom-looping _portal-saver",
+  "phases": {
+    "investigation": {
+      "items": {
+        "slow-open-empty-previews-and-zombie-sessions": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "slow-open-empty-previews-and-zombie-sessions": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-22",
+          "sources": {
+            "slow-open-empty-previews-and-zombie-sessions": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "slow-open-empty-previews-and-zombie-sessions": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "4000ef97ef6e353ed42653b6901a327edad4a94e",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 7,
+          "task": "~",
+          "task_map": {
+            "slow-open-empty-previews-and-zombie-sessions-1": "tick-53e717",
+            "slow-open-empty-previews-and-zombie-sessions-1-1": "tick-e53092",
+            "slow-open-empty-previews-and-zombie-sessions-1-2": "tick-e52aa4",
+            "slow-open-empty-previews-and-zombie-sessions-1-3": "tick-05681f",
+            "slow-open-empty-previews-and-zombie-sessions-1-4": "tick-010b76",
+            "slow-open-empty-previews-and-zombie-sessions-1-5": "tick-6a5127",
+            "slow-open-empty-previews-and-zombie-sessions-2-1": "tick-18c1fd",
+            "slow-open-empty-previews-and-zombie-sessions-2-2": "tick-fde39b",
+            "slow-open-empty-previews-and-zombie-sessions-2-3": "tick-1271e9",
+            "slow-open-empty-previews-and-zombie-sessions-2-4": "tick-6c8a71",
+            "slow-open-empty-previews-and-zombie-sessions-2-5": "tick-5beab7",
+            "slow-open-empty-previews-and-zombie-sessions-3-1": "tick-d84073",
+            "slow-open-empty-previews-and-zombie-sessions-3-2": "tick-aed438",
+            "slow-open-empty-previews-and-zombie-sessions-3-3": "tick-8320c6",
+            "slow-open-empty-previews-and-zombie-sessions-3-4": "tick-56baaf",
+            "slow-open-empty-previews-and-zombie-sessions-3-5": "tick-60af3f",
+            "slow-open-empty-previews-and-zombie-sessions-3-6": "tick-bfc152",
+            "slow-open-empty-previews-and-zombie-sessions-4-1": "tick-8d9dea",
+            "slow-open-empty-previews-and-zombie-sessions-4-2": "tick-47c72f",
+            "slow-open-empty-previews-and-zombie-sessions-4-3": "tick-f51726",
+            "slow-open-empty-previews-and-zombie-sessions-4-4": "tick-0ed34e",
+            "slow-open-empty-previews-and-zombie-sessions-4-5": "tick-2da460",
+            "slow-open-empty-previews-and-zombie-sessions-4-6": "tick-1bb17f",
+            "slow-open-empty-previews-and-zombie-sessions-4-7": "tick-69c450",
+            "slow-open-empty-previews-and-zombie-sessions-4-8": "tick-2cd2c5",
+            "slow-open-empty-previews-and-zombie-sessions-4-9": "tick-7f818e",
+            "slow-open-empty-previews-and-zombie-sessions-4-10": "tick-13fd93",
+            "slow-open-empty-previews-and-zombie-sessions-5-1": "tick-ee10a3",
+            "slow-open-empty-previews-and-zombie-sessions-5-2": "tick-958412",
+            "slow-open-empty-previews-and-zombie-sessions-5-3": "tick-d7c4bb",
+            "slow-open-empty-previews-and-zombie-sessions-5-4": "tick-83d879",
+            "slow-open-empty-previews-and-zombie-sessions-5-5": "tick-f2d841",
+            "slow-open-empty-previews-and-zombie-sessions-5-6": "tick-cd6368",
+            "slow-open-empty-previews-and-zombie-sessions-5-7": "tick-c3a6ab",
+            "slow-open-empty-previews-and-zombie-sessions-5-8": "tick-e2c650",
+            "slow-open-empty-previews-and-zombie-sessions-5-9": "tick-6a20fb",
+            "slow-open-empty-previews-and-zombie-sessions-6-1": "tick-09e3ba",
+            "slow-open-empty-previews-and-zombie-sessions-6-2": "tick-0182b2",
+            "slow-open-empty-previews-and-zombie-sessions-6-3": "tick-f6a3b4",
+            "slow-open-empty-previews-and-zombie-sessions-6-4": "tick-e12bfc",
+            "slow-open-empty-previews-and-zombie-sessions-6-5": "tick-699cb3",
+            "slow-open-empty-previews-and-zombie-sessions-6-6": "tick-604167",
+            "slow-open-empty-previews-and-zombie-sessions-6-7": "tick-de57c1",
+            "slow-open-empty-previews-and-zombie-sessions-6-8": "tick-ce0b05",
+            "slow-open-empty-previews-and-zombie-sessions-7": "tick-8c26ab",
+            "slow-open-empty-previews-and-zombie-sessions-7-1": "tick-f2e8c4",
+            "slow-open-empty-previews-and-zombie-sessions-7-2": "tick-51eebd",
+            "slow-open-empty-previews-and-zombie-sessions-7-3": "tick-f1093d",
+            "slow-open-empty-previews-and-zombie-sessions-7-4": "tick-cfd9ea",
+            "slow-open-empty-previews-and-zombie-sessions-7-5": "tick-cc3701",
+            "slow-open-empty-previews-and-zombie-sessions-7-6": "tick-44c0b1",
+            "slow-open-empty-previews-and-zombie-sessions-8": "tick-d63ece",
+            "slow-open-empty-previews-and-zombie-sessions-8-1": "tick-b4bda4",
+            "slow-open-empty-previews-and-zombie-sessions-8-2": "tick-7e31f5",
+            "slow-open-empty-previews-and-zombie-sessions-8-3": "tick-76e0ea",
+            "slow-open-empty-previews-and-zombie-sessions-8-4": "tick-1968a9",
+            "slow-open-empty-previews-and-zombie-sessions-8-5": "tick-805acf",
+            "slow-open-empty-previews-and-zombie-sessions-8-6": "tick-63015e",
+            "slow-open-empty-previews-and-zombie-sessions-8-7": "tick-a089ec",
+            "slow-open-empty-previews-and-zombie-sessions-8-8": "tick-001e78",
+            "slow-open-empty-previews-and-zombie-sessions-8-9": "tick-47a799",
+            "slow-open-empty-previews-and-zombie-sessions-9": "tick-de26b9",
+            "slow-open-empty-previews-and-zombie-sessions-9-1": "tick-ccc9fa",
+            "slow-open-empty-previews-and-zombie-sessions-9-2": "tick-c2bb4e",
+            "slow-open-empty-previews-and-zombie-sessions-9-3": "tick-4546a0",
+            "slow-open-empty-previews-and-zombie-sessions-9-4": "tick-aaf959",
+            "slow-open-empty-previews-and-zombie-sessions-9-5": "tick-e36f88",
+            "slow-open-empty-previews-and-zombie-sessions-9-6": "tick-15de3b",
+            "slow-open-empty-previews-and-zombie-sessions-9-7": "tick-6037f0",
+            "slow-open-empty-previews-and-zombie-sessions-10": "tick-829578",
+            "slow-open-empty-previews-and-zombie-sessions-10-1": "tick-2379ec",
+            "slow-open-empty-previews-and-zombie-sessions-10-2": "tick-6d627f",
+            "slow-open-empty-previews-and-zombie-sessions-10-3": "tick-3f5da5",
+            "slow-open-empty-previews-and-zombie-sessions-11": "tick-b7ac3f",
+            "slow-open-empty-previews-and-zombie-sessions-11-1": "tick-a188cc",
+            "slow-open-empty-previews-and-zombie-sessions-11-2": "tick-387a7e",
+            "slow-open-empty-previews-and-zombie-sessions-11-3": "tick-0bbe0f",
+            "slow-open-empty-previews-and-zombie-sessions-11-4": "tick-2dfb98",
+            "slow-open-empty-previews-and-zombie-sessions-12": "tick-386f40",
+            "slow-open-empty-previews-and-zombie-sessions-12-1": "tick-2defea"
+          },
+          "external_id": "tick-7da549",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "slow-open-empty-previews-and-zombie-sessions": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 12,
+          "current_task": "~",
+          "completed_tasks": [
+            "slow-open-empty-previews-and-zombie-sessions-1-1",
+            "slow-open-empty-previews-and-zombie-sessions-1-2",
+            "slow-open-empty-previews-and-zombie-sessions-1-3",
+            "slow-open-empty-previews-and-zombie-sessions-3-1",
+            "slow-open-empty-previews-and-zombie-sessions-3-2",
+            "slow-open-empty-previews-and-zombie-sessions-3-3",
+            "slow-open-empty-previews-and-zombie-sessions-4-3",
+            "slow-open-empty-previews-and-zombie-sessions-4-4",
+            "slow-open-empty-previews-and-zombie-sessions-4-6",
+            "slow-open-empty-previews-and-zombie-sessions-5-1",
+            "slow-open-empty-previews-and-zombie-sessions-1-4",
+            "slow-open-empty-previews-and-zombie-sessions-2-1",
+            "slow-open-empty-previews-and-zombie-sessions-5-2",
+            "slow-open-empty-previews-and-zombie-sessions-5-3",
+            "slow-open-empty-previews-and-zombie-sessions-2-2",
+            "slow-open-empty-previews-and-zombie-sessions-2-3",
+            "slow-open-empty-previews-and-zombie-sessions-2-5",
+            "slow-open-empty-previews-and-zombie-sessions-3-4",
+            "slow-open-empty-previews-and-zombie-sessions-3-5",
+            "slow-open-empty-previews-and-zombie-sessions-3-6",
+            "slow-open-empty-previews-and-zombie-sessions-4-1",
+            "slow-open-empty-previews-and-zombie-sessions-4-2",
+            "slow-open-empty-previews-and-zombie-sessions-4-5",
+            "slow-open-empty-previews-and-zombie-sessions-4-7",
+            "slow-open-empty-previews-and-zombie-sessions-4-9",
+            "slow-open-empty-previews-and-zombie-sessions-4-10",
+            "slow-open-empty-previews-and-zombie-sessions-6-1",
+            "slow-open-empty-previews-and-zombie-sessions-5-4",
+            "slow-open-empty-previews-and-zombie-sessions-5-5",
+            "slow-open-empty-previews-and-zombie-sessions-5-6",
+            "slow-open-empty-previews-and-zombie-sessions-5-7",
+            "slow-open-empty-previews-and-zombie-sessions-5-8",
+            "slow-open-empty-previews-and-zombie-sessions-6-2",
+            "slow-open-empty-previews-and-zombie-sessions-6-3",
+            "slow-open-empty-previews-and-zombie-sessions-6-4",
+            "slow-open-empty-previews-and-zombie-sessions-6-5",
+            "slow-open-empty-previews-and-zombie-sessions-6-6",
+            "slow-open-empty-previews-and-zombie-sessions-6-7",
+            "slow-open-empty-previews-and-zombie-sessions-6-8",
+            "slow-open-empty-previews-and-zombie-sessions-1-5",
+            "slow-open-empty-previews-and-zombie-sessions-2-4",
+            "slow-open-empty-previews-and-zombie-sessions-4-8",
+            "slow-open-empty-previews-and-zombie-sessions-5-9",
+            "slow-open-empty-previews-and-zombie-sessions-7-1",
+            "slow-open-empty-previews-and-zombie-sessions-7-2",
+            "slow-open-empty-previews-and-zombie-sessions-7-3",
+            "slow-open-empty-previews-and-zombie-sessions-7-4",
+            "slow-open-empty-previews-and-zombie-sessions-7-5",
+            "slow-open-empty-previews-and-zombie-sessions-7-6",
+            "slow-open-empty-previews-and-zombie-sessions-8-1",
+            "slow-open-empty-previews-and-zombie-sessions-8-2",
+            "slow-open-empty-previews-and-zombie-sessions-8-3",
+            "slow-open-empty-previews-and-zombie-sessions-8-4",
+            "slow-open-empty-previews-and-zombie-sessions-8-5",
+            "slow-open-empty-previews-and-zombie-sessions-8-6",
+            "slow-open-empty-previews-and-zombie-sessions-8-7",
+            "slow-open-empty-previews-and-zombie-sessions-8-8",
+            "slow-open-empty-previews-and-zombie-sessions-8-9",
+            "slow-open-empty-previews-and-zombie-sessions-9-1",
+            "slow-open-empty-previews-and-zombie-sessions-9-2",
+            "slow-open-empty-previews-and-zombie-sessions-9-3",
+            "slow-open-empty-previews-and-zombie-sessions-9-4",
+            "slow-open-empty-previews-and-zombie-sessions-9-5",
+            "slow-open-empty-previews-and-zombie-sessions-9-6",
+            "slow-open-empty-previews-and-zombie-sessions-9-7",
+            "slow-open-empty-previews-and-zombie-sessions-10-1",
+            "slow-open-empty-previews-and-zombie-sessions-10-2",
+            "slow-open-empty-previews-and-zombie-sessions-10-3",
+            "slow-open-empty-previews-and-zombie-sessions-11-1",
+            "slow-open-empty-previews-and-zombie-sessions-11-2",
+            "slow-open-empty-previews-and-zombie-sessions-11-3",
+            "slow-open-empty-previews-and-zombie-sessions-11-4",
+            "slow-open-empty-previews-and-zombie-sessions-12-1"
+          ],
+          "completed_phases": [
+            10,
+            11,
+            12
+          ],
+          "updated": "2026-05-25",
+          "analysis_cycle_total": 7,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved",
+                "8": "approved",
+                "9": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "slow-open-empty-previews-and-zombie-sessions": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "slow-open-empty-previews-and-zombie-sessions-1-1",
+            "slow-open-empty-previews-and-zombie-sessions-1-2",
+            "slow-open-empty-previews-and-zombie-sessions-1-3",
+            "slow-open-empty-previews-and-zombie-sessions-1-4",
+            "slow-open-empty-previews-and-zombie-sessions-1-5",
+            "slow-open-empty-previews-and-zombie-sessions-2-1",
+            "slow-open-empty-previews-and-zombie-sessions-2-2",
+            "slow-open-empty-previews-and-zombie-sessions-2-3",
+            "slow-open-empty-previews-and-zombie-sessions-2-4",
+            "slow-open-empty-previews-and-zombie-sessions-2-5",
+            "slow-open-empty-previews-and-zombie-sessions-3-1",
+            "slow-open-empty-previews-and-zombie-sessions-3-2",
+            "slow-open-empty-previews-and-zombie-sessions-3-3",
+            "slow-open-empty-previews-and-zombie-sessions-3-4",
+            "slow-open-empty-previews-and-zombie-sessions-3-5",
+            "slow-open-empty-previews-and-zombie-sessions-3-6",
+            "slow-open-empty-previews-and-zombie-sessions-4-1",
+            "slow-open-empty-previews-and-zombie-sessions-4-2",
+            "slow-open-empty-previews-and-zombie-sessions-4-3",
+            "slow-open-empty-previews-and-zombie-sessions-4-4",
+            "slow-open-empty-previews-and-zombie-sessions-4-5",
+            "slow-open-empty-previews-and-zombie-sessions-4-6",
+            "slow-open-empty-previews-and-zombie-sessions-4-7",
+            "slow-open-empty-previews-and-zombie-sessions-4-8",
+            "slow-open-empty-previews-and-zombie-sessions-4-9",
+            "slow-open-empty-previews-and-zombie-sessions-4-10",
+            "slow-open-empty-previews-and-zombie-sessions-5-1",
+            "slow-open-empty-previews-and-zombie-sessions-5-2",
+            "slow-open-empty-previews-and-zombie-sessions-5-3",
+            "slow-open-empty-previews-and-zombie-sessions-5-4",
+            "slow-open-empty-previews-and-zombie-sessions-5-5",
+            "slow-open-empty-previews-and-zombie-sessions-5-6",
+            "slow-open-empty-previews-and-zombie-sessions-5-7",
+            "slow-open-empty-previews-and-zombie-sessions-5-8",
+            "slow-open-empty-previews-and-zombie-sessions-5-9",
+            "slow-open-empty-previews-and-zombie-sessions-6-1",
+            "slow-open-empty-previews-and-zombie-sessions-6-2",
+            "slow-open-empty-previews-and-zombie-sessions-6-3",
+            "slow-open-empty-previews-and-zombie-sessions-6-4",
+            "slow-open-empty-previews-and-zombie-sessions-6-5",
+            "slow-open-empty-previews-and-zombie-sessions-6-6",
+            "slow-open-empty-previews-and-zombie-sessions-6-7",
+            "slow-open-empty-previews-and-zombie-sessions-6-8",
+            "slow-open-empty-previews-and-zombie-sessions-7-1",
+            "slow-open-empty-previews-and-zombie-sessions-7-2",
+            "slow-open-empty-previews-and-zombie-sessions-7-3",
+            "slow-open-empty-previews-and-zombie-sessions-7-4",
+            "slow-open-empty-previews-and-zombie-sessions-7-5",
+            "slow-open-empty-previews-and-zombie-sessions-7-6",
+            "slow-open-empty-previews-and-zombie-sessions-8-1",
+            "slow-open-empty-previews-and-zombie-sessions-8-2",
+            "slow-open-empty-previews-and-zombie-sessions-8-3",
+            "slow-open-empty-previews-and-zombie-sessions-8-4",
+            "slow-open-empty-previews-and-zombie-sessions-8-5",
+            "slow-open-empty-previews-and-zombie-sessions-8-6",
+            "slow-open-empty-previews-and-zombie-sessions-8-7",
+            "slow-open-empty-previews-and-zombie-sessions-8-8",
+            "slow-open-empty-previews-and-zombie-sessions-8-9",
+            "slow-open-empty-previews-and-zombie-sessions-9-1",
+            "slow-open-empty-previews-and-zombie-sessions-9-2",
+            "slow-open-empty-previews-and-zombie-sessions-9-3",
+            "slow-open-empty-previews-and-zombie-sessions-9-4",
+            "slow-open-empty-previews-and-zombie-sessions-9-5",
+            "slow-open-empty-previews-and-zombie-sessions-9-6",
+            "slow-open-empty-previews-and-zombie-sessions-9-7",
+            "slow-open-empty-previews-and-zombie-sessions-10-1",
+            "slow-open-empty-previews-and-zombie-sessions-10-2",
+            "slow-open-empty-previews-and-zombie-sessions-10-3",
+            "slow-open-empty-previews-and-zombie-sessions-11-1",
+            "slow-open-empty-previews-and-zombie-sessions-11-2",
+            "slow-open-empty-previews-and-zombie-sessions-11-3",
+            "slow-open-empty-previews-and-zombie-sessions-11-4",
+            "slow-open-empty-previews-and-zombie-sessions-12-1"
+          ],
+          "staging": {
+            "c1": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-26"
+}

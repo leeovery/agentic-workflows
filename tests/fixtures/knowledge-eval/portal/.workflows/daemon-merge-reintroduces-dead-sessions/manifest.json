@@ -1,0 +1,216 @@
+{
+  "name": "daemon-merge-reintroduces-dead-sessions",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-08",
+  "description": "Daemon's mergeSkippedPanes appends sessions from prior index without checking they still exist in tmux, causing killed sessions to be re-committed and resurrected on next bootstrap",
+  "phases": {
+    "investigation": {
+      "items": {
+        "daemon-merge-reintroduces-dead-sessions": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "daemon-merge-reintroduces-dead-sessions": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-09",
+          "sources": {
+            "daemon-merge-reintroduces-dead-sessions": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "daemon-merge-reintroduces-dead-sessions": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "96d56ae4e1ea2c41fd6d489c824a37ab58596e58",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "daemon-merge-reintroduces-dead-sessions": "tick-3b2193",
+            "daemon-merge-reintroduces-dead-sessions-1": "tick-a09980",
+            "daemon-merge-reintroduces-dead-sessions-1-1": "tick-3b8938",
+            "daemon-merge-reintroduces-dead-sessions-1-2": "tick-f66404",
+            "daemon-merge-reintroduces-dead-sessions-1-3": "tick-51b114",
+            "daemon-merge-reintroduces-dead-sessions-1-4": "tick-35304f",
+            "daemon-merge-reintroduces-dead-sessions-1-5": "tick-1e4710",
+            "daemon-merge-reintroduces-dead-sessions-2": "tick-23771c",
+            "daemon-merge-reintroduces-dead-sessions-2-1": "tick-0d5b47",
+            "daemon-merge-reintroduces-dead-sessions-2-2": "tick-417df5",
+            "daemon-merge-reintroduces-dead-sessions-2-3": "tick-d9332c",
+            "daemon-merge-reintroduces-dead-sessions-2-4": "tick-1c02dc",
+            "daemon-merge-reintroduces-dead-sessions-2-5": "tick-908e18",
+            "daemon-merge-reintroduces-dead-sessions-2-6": "tick-c8b80e",
+            "daemon-merge-reintroduces-dead-sessions-2-7": "tick-c38402",
+            "daemon-merge-reintroduces-dead-sessions-3": "tick-84cb17",
+            "daemon-merge-reintroduces-dead-sessions-3-1": "tick-6c8c03",
+            "daemon-merge-reintroduces-dead-sessions-3-2": "tick-a169b4",
+            "daemon-merge-reintroduces-dead-sessions-3-3": "tick-f8d4e6",
+            "daemon-merge-reintroduces-dead-sessions-3-4": "tick-1b0c38",
+            "daemon-merge-reintroduces-dead-sessions-3-5": "tick-043fa5",
+            "daemon-merge-reintroduces-dead-sessions-3-6": "tick-e7e469",
+            "daemon-merge-reintroduces-dead-sessions-4": "tick-05c3a6",
+            "daemon-merge-reintroduces-dead-sessions-4-1": "tick-ecace7",
+            "daemon-merge-reintroduces-dead-sessions-4-2": "tick-201d39",
+            "daemon-merge-reintroduces-dead-sessions-4-3": "tick-caf733",
+            "daemon-merge-reintroduces-dead-sessions-4-4": "tick-058e10",
+            "daemon-merge-reintroduces-dead-sessions-5": "tick-486e0a",
+            "daemon-merge-reintroduces-dead-sessions-5-1": "tick-9c9774",
+            "daemon-merge-reintroduces-dead-sessions-5-2": "tick-0b7481"
+          },
+          "external_id": "tick-3b2193",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "daemon-merge-reintroduces-dead-sessions": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "daemon-merge-reintroduces-dead-sessions-1-1",
+            "daemon-merge-reintroduces-dead-sessions-1-2",
+            "daemon-merge-reintroduces-dead-sessions-1-3",
+            "daemon-merge-reintroduces-dead-sessions-1-4",
+            "daemon-merge-reintroduces-dead-sessions-1-5",
+            "daemon-merge-reintroduces-dead-sessions-2-1",
+            "daemon-merge-reintroduces-dead-sessions-2-2",
+            "daemon-merge-reintroduces-dead-sessions-2-3",
+            "daemon-merge-reintroduces-dead-sessions-2-4",
+            "daemon-merge-reintroduces-dead-sessions-2-5",
+            "daemon-merge-reintroduces-dead-sessions-2-6",
+            "daemon-merge-reintroduces-dead-sessions-2-7",
+            "daemon-merge-reintroduces-dead-sessions-3-1",
+            "daemon-merge-reintroduces-dead-sessions-3-2",
+            "daemon-merge-reintroduces-dead-sessions-3-3",
+            "daemon-merge-reintroduces-dead-sessions-3-4",
+            "daemon-merge-reintroduces-dead-sessions-3-5",
+            "daemon-merge-reintroduces-dead-sessions-3-6",
+            "daemon-merge-reintroduces-dead-sessions-4-1",
+            "daemon-merge-reintroduces-dead-sessions-4-2",
+            "daemon-merge-reintroduces-dead-sessions-4-3",
+            "daemon-merge-reintroduces-dead-sessions-4-4",
+            "daemon-merge-reintroduces-dead-sessions-5-1",
+            "daemon-merge-reintroduces-dead-sessions-5-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "analysis_cycle_total": 4,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "daemon-merge-reintroduces-dead-sessions": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "daemon-merge-reintroduces-dead-sessions-1-1",
+            "daemon-merge-reintroduces-dead-sessions-1-2",
+            "daemon-merge-reintroduces-dead-sessions-1-3",
+            "daemon-merge-reintroduces-dead-sessions-1-4",
+            "daemon-merge-reintroduces-dead-sessions-1-5",
+            "daemon-merge-reintroduces-dead-sessions-2-1",
+            "daemon-merge-reintroduces-dead-sessions-2-2",
+            "daemon-merge-reintroduces-dead-sessions-2-3",
+            "daemon-merge-reintroduces-dead-sessions-2-4",
+            "daemon-merge-reintroduces-dead-sessions-2-5",
+            "daemon-merge-reintroduces-dead-sessions-2-6",
+            "daemon-merge-reintroduces-dead-sessions-2-7",
+            "daemon-merge-reintroduces-dead-sessions-3-1",
+            "daemon-merge-reintroduces-dead-sessions-3-2",
+            "daemon-merge-reintroduces-dead-sessions-3-3",
+            "daemon-merge-reintroduces-dead-sessions-3-4",
+            "daemon-merge-reintroduces-dead-sessions-3-5",
+            "daemon-merge-reintroduces-dead-sessions-3-6",
+            "daemon-merge-reintroduces-dead-sessions-4-1",
+            "daemon-merge-reintroduces-dead-sessions-4-2",
+            "daemon-merge-reintroduces-dead-sessions-4-3",
+            "daemon-merge-reintroduces-dead-sessions-4-4",
+            "daemon-merge-reintroduces-dead-sessions-5-1",
+            "daemon-merge-reintroduces-dead-sessions-5-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-09"
+}

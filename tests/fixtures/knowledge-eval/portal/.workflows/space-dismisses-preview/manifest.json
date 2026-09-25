@@ -1,0 +1,81 @@
+{
+  "name": "space-dismisses-preview",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-20",
+  "description": "Make Space toggle scrollback preview off (mirror Esc) in the TUI session list",
+  "phases": {
+    "specification": {
+      "items": {
+        "space-dismisses-preview": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "space-dismisses-preview": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "de643ac361823d324b955425102c80b5302f2f4f",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "space-dismisses-preview-1-1": "tick-5f3904"
+          },
+          "external_id": "tick-b23d15"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "space-dismisses-preview": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "space-dismisses-preview": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "space-dismisses-preview-1-1"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-20"
+}

@@ -1,0 +1,143 @@
+{
+  "name": "scrollback-not-restored-with-non-zero-base-index",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-04-30",
+  "description": "Restore predicts pane keys from default tmux indices, so scrollback hydration silently times out when users set non-zero base-index/pane-base-index.",
+  "phases": {
+    "investigation": {
+      "items": {
+        "scrollback-not-restored-with-non-zero-base-index": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "scrollback-not-restored-with-non-zero-base-index": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-04-30",
+          "sources": {
+            "scrollback-not-restored-with-non-zero-base-index": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-tracking-c1": "complete",
+            "review-gap-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "scrollback-not-restored-with-non-zero-base-index": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "65f198ea70f861394a6c47eef624664ba7c9b5a6",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 4,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "scrollback-not-restored-with-non-zero-base-index": "tick-5acb4a",
+            "scrollback-not-restored-with-non-zero-base-index-1": "tick-991fa9",
+            "scrollback-not-restored-with-non-zero-base-index-1-1": "tick-c029be",
+            "scrollback-not-restored-with-non-zero-base-index-1-2": "tick-4929cb",
+            "scrollback-not-restored-with-non-zero-base-index-1-3": "tick-a98c45",
+            "scrollback-not-restored-with-non-zero-base-index-2": "tick-0b31c9",
+            "scrollback-not-restored-with-non-zero-base-index-2-1": "tick-15b74c",
+            "scrollback-not-restored-with-non-zero-base-index-2-2": "tick-30d4fb",
+            "scrollback-not-restored-with-non-zero-base-index-3": "tick-76b703",
+            "scrollback-not-restored-with-non-zero-base-index-3-1": "tick-24ec98",
+            "scrollback-not-restored-with-non-zero-base-index-3-2": "tick-767b80",
+            "scrollback-not-restored-with-non-zero-base-index-3-3": "tick-3a375e",
+            "scrollback-not-restored-with-non-zero-base-index-3-4": "tick-9b2199",
+            "scrollback-not-restored-with-non-zero-base-index-3-5": "tick-260f03",
+            "scrollback-not-restored-with-non-zero-base-index-3-6": "tick-d8745b"
+          },
+          "external_id": "tick-5acb4a",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "scrollback-not-restored-with-non-zero-base-index": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 3,
+          "current_task": "~",
+          "completed_tasks": [
+            "scrollback-not-restored-with-non-zero-base-index-1-1",
+            "scrollback-not-restored-with-non-zero-base-index-1-2",
+            "scrollback-not-restored-with-non-zero-base-index-1-3",
+            "scrollback-not-restored-with-non-zero-base-index-2-1",
+            "scrollback-not-restored-with-non-zero-base-index-2-2",
+            "scrollback-not-restored-with-non-zero-base-index-3-1",
+            "scrollback-not-restored-with-non-zero-base-index-3-2",
+            "scrollback-not-restored-with-non-zero-base-index-3-3",
+            "scrollback-not-restored-with-non-zero-base-index-3-4",
+            "scrollback-not-restored-with-non-zero-base-index-3-5",
+            "scrollback-not-restored-with-non-zero-base-index-3-6"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-01"
+}

@@ -1,0 +1,88 @@
+{
+  "name": "cleanup-purge-test-no-state-isolation",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-06-04",
+  "description": "Apply temp-dir PORTAL_STATE_DIR isolation to all subtests of TestStateUserFacingSubcommandsExitZero so the cleanup and --purge cases stop running against the developer's real state dir",
+  "phases": {
+    "specification": {
+      "items": {
+        "cleanup-purge-test-no-state-isolation": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "cleanup-purge-test-no-state-isolation": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "cea666ee3eec5b6c7a5afd4e8bac5bac73bd7d9d",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "cleanup-purge-test-no-state-isolation-1-1": "tick-cb8a7e"
+          },
+          "external_id": "tick-dc0d91"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "cleanup-purge-test-no-state-isolation": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "cleanup-purge-test-no-state-isolation": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "cleanup-purge-test-no-state-isolation-1-1"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-02-cleanup-purge-test-no-state-isolation.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-06-04T14:26:38Z"
+    }
+  ],
+  "completed_at": "2026-06-04"
+}

@@ -1,0 +1,11 @@
+# Rethink the two border design-token names
+
+The MV theme (`internal/tui/theme`) carries two border tokens whose names were taken from their *first* use-site rather than their role: `border.separator` (`#292E42` dark / `#C9CDDB` light — the more-prominent tone, originally the title separator rule) and `border.footer` (`#20232E` dark / `#C9CDDB` light — the subtler tone, originally the footer rule).
+
+The naming has already started to lie. Spec §8.1 defines the modal panel as a "2-tone border (`border.separator` + `border.footer`)", so `border.separator` is now doing **panel-frame** duty as well as title-rule duty — its name no longer describes everything it does. `border.footer` is the more obvious offender: it's literally named after a place it appears, which is exactly the use-site-naming anti-pattern the token system is supposed to avoid (the system is about use-agnostic semantic roles, per §2.9).
+
+The goal is **not** to rename them to their current usage — that would just trade one use-site name for another. It's to pick names that describe the token's intrinsic quality (weight / prominence) and therefore stay honest as new surfaces reuse them. A candidate pairing: the more-prominent tone → `border.strong`, the subtler tone → `border.subtle`. The final names want a little design thought, not a mechanical swap — hence logging this as a thinking item rather than a ready quick-fix.
+
+This is a cross-cutting change once the names are settled: it touches the token definitions and every call-site in `internal/tui` (delegates, footer, header, the modal/help chrome), the closed-vocabulary guard test (which counts and names the ~20 tokens), and — importantly — the spec's §2.9 golden token table, since the token names are part of the spec. That spec edit is why it's a deliberate, separate piece of work.
+
+Context: surfaced during `spectrum-tui-design` task 3-4 (the `?` help-modal panel border), where Lee chose "fix now, rename later" — the functional border fix uses the existing token; this captures the rename for a later pass. The naming matters most for the deferred **user-overridable theme system**, where the role-token names become the public contract a user themes against, so it's worth getting them right before that ships.

@@ -1,0 +1,103 @@
+{
+  "name": "m-marks-highlighted-on-entry",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-07-15",
+  "description": "Pressing m on a highlighted session marks it as the first multi-select selection on entry, instead of entering multi-select mode with an empty set",
+  "phases": {
+    "specification": {
+      "items": {
+        "m-marks-highlighted-on-entry": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "m-marks-highlighted-on-entry": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "823a6d87186d12a78c64f17edece8aad980017a1",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "m-marks-highlighted-on-entry-1-1": "tick-f753e5",
+            "m-marks-highlighted-on-entry-1-2": "tick-9a3a4a"
+          },
+          "external_id": "tick-578e9f"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "m-marks-highlighted-on-entry": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "m-marks-highlighted-on-entry": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "m-marks-highlighted-on-entry-1-1",
+            "m-marks-highlighted-on-entry-1-2"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-14-m-marks-highlighted-on-entry.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-07-15T06:49:46Z"
+    }
+  ],
+  "completed_at": "2026-07-15"
+}

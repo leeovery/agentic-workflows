@@ -1,0 +1,178 @@
+{
+  "name": "cli-enhancements",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-02-27",
+  "description": "cli-enhancements work unit",
+  "phases": {
+    "discussion": {
+      "items": {
+        "cli-enhancements": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "cli-enhancements": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "gated",
+          "sources": {
+            "cli-enhancements": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "cli-enhancements": {
+          "status": "completed",
+          "format": "tick",
+          "external_id": "tick-db58ad",
+          "specification": "../../specification/cli-enhancements/specification.md",
+          "spec_commit": "8aae967aad70c57432f9d24dcd226594f295358a",
+          "finding_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "task_map": {
+            "cli-enhancements-1-1": "tick-9283bb",
+            "cli-enhancements-1-2": "tick-b45af0",
+            "cli-enhancements-1-3": "tick-9540a5",
+            "cli-enhancements-1-4": "tick-376da0",
+            "cli-enhancements-2-1": "tick-5a322f",
+            "cli-enhancements-2-2": "tick-9e1481",
+            "cli-enhancements-2-3": "tick-811654",
+            "cli-enhancements-2-4": "tick-3357ef",
+            "cli-enhancements-2-5": "tick-2a23a5",
+            "cli-enhancements-2-6": "tick-3e1ed5",
+            "cli-enhancements-3-1": "tick-7d56c4",
+            "cli-enhancements-3-2": "tick-17334e",
+            "cli-enhancements-3-3": "tick-d17558",
+            "cli-enhancements-3-4": "tick-f713ec",
+            "cli-enhancements-3-5": "tick-56001c",
+            "cli-enhancements-4-1": "tick-e7bb22",
+            "cli-enhancements-4-2": "tick-80ad02",
+            "cli-enhancements-4-3": "tick-6d5863",
+            "cli-enhancements-4-4": "tick-4b4e4b",
+            "cli-enhancements-4-5": "tick-6cd164",
+            "cli-enhancements-4-6": "tick-17373b",
+            "cli-enhancements-4-7": "tick-a4c883",
+            "cli-enhancements-4-8": "tick-7402d4",
+            "cli-enhancements-4-9": "tick-8b1edf",
+            "cli-enhancements-5-1": "tick-2d8194",
+            "cli-enhancements-5-2": "tick-8cf37e",
+            "cli-enhancements-5-3": "tick-219286",
+            "cli-enhancements-5-4": "tick-4dcb23",
+            "cli-enhancements-5-5": "tick-8bd9fb",
+            "cli-enhancements-6-1": "tick-34dd9f",
+            "cli-enhancements-6-2": "tick-de5bcc",
+            "cli-enhancements-6-3": "tick-2d2971",
+            "cli-enhancements-1": "tick-bc42b5",
+            "cli-enhancements-2": "tick-ccdecb",
+            "cli-enhancements-3": "tick-f33a8b",
+            "cli-enhancements-4": "tick-af518b",
+            "cli-enhancements-5": "tick-ebe119",
+            "cli-enhancements-6": "tick-c29eef"
+          },
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "cli-enhancements": {
+          "status": "completed",
+          "format": "tick",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "6",
+          "current_task": "~",
+          "completed_tasks": [
+            "cli-enhancements-1-1",
+            "cli-enhancements-1-2",
+            "cli-enhancements-1-3",
+            "cli-enhancements-1-4",
+            "cli-enhancements-2-1",
+            "cli-enhancements-2-2",
+            "cli-enhancements-2-3",
+            "cli-enhancements-2-4",
+            "cli-enhancements-2-5",
+            "cli-enhancements-2-6",
+            "cli-enhancements-3-1",
+            "cli-enhancements-3-2",
+            "cli-enhancements-3-3",
+            "cli-enhancements-3-4",
+            "cli-enhancements-3-5",
+            "cli-enhancements-4-1",
+            "cli-enhancements-4-2",
+            "cli-enhancements-4-3",
+            "cli-enhancements-4-4",
+            "cli-enhancements-4-5",
+            "cli-enhancements-4-6",
+            "cli-enhancements-4-7",
+            "cli-enhancements-4-8",
+            "cli-enhancements-4-9",
+            "cli-enhancements-5-1",
+            "cli-enhancements-5-2",
+            "cli-enhancements-5-3",
+            "cli-enhancements-5-4",
+            "cli-enhancements-5-5",
+            "cli-enhancements-6-1",
+            "cli-enhancements-6-2",
+            "cli-enhancements-6-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "cli-enhancements": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-13"
+}

@@ -1,0 +1,436 @@
+{
+  "name": "cli-verb-surface-redesign",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-07-15",
+  "description": "Intentional one-pass redesign of Portal's full CLI verb surface — reconciling open/attach/spawn and auditing every command, with a back-compat/deprecation story",
+  "phases": {
+    "discussion": {
+      "items": {
+        "cli-verb-surface-redesign": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "cli-verb-surface-redesign": {
+          "status": "completed",
+          "sources": {
+            "cli-verb-surface-redesign": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 5,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-18",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "cli-verb-surface-redesign": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "a701ad102328992b3538da3b88fef3082da39891",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 7,
+          "task": "~",
+          "task_map": {
+            "cli-verb-surface-redesign-1": "tick-e26a0e",
+            "cli-verb-surface-redesign-1-1": "tick-4f5f87",
+            "cli-verb-surface-redesign-1-2": "tick-9e7ff8",
+            "cli-verb-surface-redesign-1-3": "tick-1c23c8",
+            "cli-verb-surface-redesign-1-4": "tick-3201ba",
+            "cli-verb-surface-redesign-1-5": "tick-6a167d",
+            "cli-verb-surface-redesign-2": "tick-b4836e",
+            "cli-verb-surface-redesign-2-1": "tick-6eb980",
+            "cli-verb-surface-redesign-2-2": "tick-987a2a",
+            "cli-verb-surface-redesign-2-3": "tick-b93ee1",
+            "cli-verb-surface-redesign-2-4": "tick-713df7",
+            "cli-verb-surface-redesign-2-5": "tick-6db2fd",
+            "cli-verb-surface-redesign-2-6": "tick-8a3619",
+            "cli-verb-surface-redesign-2-7": "tick-c03428",
+            "cli-verb-surface-redesign-3": "tick-35cced",
+            "cli-verb-surface-redesign-3-1": "tick-cc1823",
+            "cli-verb-surface-redesign-3-2": "tick-c330ce",
+            "cli-verb-surface-redesign-3-3": "tick-79374e",
+            "cli-verb-surface-redesign-3-4": "tick-92f088",
+            "cli-verb-surface-redesign-3-5": "tick-8a54fd",
+            "cli-verb-surface-redesign-3-6": "tick-7ef14d",
+            "cli-verb-surface-redesign-3-7": "tick-f4d2d3",
+            "cli-verb-surface-redesign-3-8": "tick-82e424",
+            "cli-verb-surface-redesign-4": "tick-1fb18c",
+            "cli-verb-surface-redesign-4-1": "tick-2b7c97",
+            "cli-verb-surface-redesign-4-2": "tick-143dca",
+            "cli-verb-surface-redesign-4-3": "tick-b3e26f",
+            "cli-verb-surface-redesign-4-4": "tick-f91da8",
+            "cli-verb-surface-redesign-4-5": "tick-ee1c96",
+            "cli-verb-surface-redesign-4-6": "tick-954477",
+            "cli-verb-surface-redesign-4-7": "tick-7b6781",
+            "cli-verb-surface-redesign-5": "tick-ad8f15",
+            "cli-verb-surface-redesign-5-1": "tick-8afc97",
+            "cli-verb-surface-redesign-5-2": "tick-2397ae",
+            "cli-verb-surface-redesign-5-3": "tick-5bb8b9",
+            "cli-verb-surface-redesign-6": "tick-8b9569",
+            "cli-verb-surface-redesign-6-1": "tick-9ff005",
+            "cli-verb-surface-redesign-6-2": "tick-21f6a3",
+            "cli-verb-surface-redesign-6-3": "tick-fe6649",
+            "cli-verb-surface-redesign-6-4": "tick-02e402",
+            "cli-verb-surface-redesign-6-5": "tick-4742cc",
+            "cli-verb-surface-redesign-4-8": "tick-fa598d",
+            "cli-verb-surface-redesign-7": "tick-8cdec0",
+            "cli-verb-surface-redesign-7-1": "tick-e7f997",
+            "cli-verb-surface-redesign-7-2": "tick-b708ab",
+            "cli-verb-surface-redesign-7-3": "tick-788543",
+            "cli-verb-surface-redesign-7-4": "tick-0120cd",
+            "cli-verb-surface-redesign-7-5": "tick-0126fb",
+            "cli-verb-surface-redesign-7-6": "tick-4f7b7b",
+            "cli-verb-surface-redesign-7-7": "tick-3f22f1",
+            "cli-verb-surface-redesign-7-8": "tick-284168",
+            "cli-verb-surface-redesign-8": "tick-c20a18",
+            "cli-verb-surface-redesign-8-1": "tick-706cc9",
+            "cli-verb-surface-redesign-8-2": "tick-30fcf0",
+            "cli-verb-surface-redesign-8-3": "tick-9e534f",
+            "cli-verb-surface-redesign-10": "tick-b909f8",
+            "cli-verb-surface-redesign-10-1": "tick-e5826e",
+            "cli-verb-surface-redesign-11": "tick-e16171",
+            "cli-verb-surface-redesign-11-1": "tick-af054b",
+            "cli-verb-surface-redesign-12": "tick-13714e",
+            "cli-verb-surface-redesign-12-1": "tick-6bd1c6",
+            "cli-verb-surface-redesign-13": "tick-a0f04f",
+            "cli-verb-surface-redesign-13-1": "tick-406704",
+            "cli-verb-surface-redesign-13-2": "tick-0019c7",
+            "cli-verb-surface-redesign-13-3": "tick-816613",
+            "cli-verb-surface-redesign-13-4": "tick-1984f5",
+            "cli-verb-surface-redesign-13-5": "tick-e38548",
+            "cli-verb-surface-redesign-13-6": "tick-a0ee34",
+            "cli-verb-surface-redesign-14": "tick-3b8de7",
+            "cli-verb-surface-redesign-14-1": "tick-deef2b",
+            "cli-verb-surface-redesign-14-2": "tick-ad8fff",
+            "cli-verb-surface-redesign-14-3": "tick-27c8e7",
+            "cli-verb-surface-redesign-14-4": "tick-81d3a5",
+            "cli-verb-surface-redesign-15": "tick-e955f3",
+            "cli-verb-surface-redesign-15-1": "tick-1f7a9a",
+            "cli-verb-surface-redesign-16": "tick-87af64",
+            "cli-verb-surface-redesign-16-1": "tick-5d7d29",
+            "cli-verb-surface-redesign-16-2": "tick-24eff2",
+            "cli-verb-surface-redesign-17": "tick-d8bf21",
+            "cli-verb-surface-redesign-17-1": "tick-8999be"
+          },
+          "external_id": "tick-4f7acf",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "cli-verb-surface-redesign": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 12,
+          "analysis_cycle_session": 5,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 17,
+          "current_task": "~",
+          "completed_tasks": [
+            "cli-verb-surface-redesign-1-1",
+            "cli-verb-surface-redesign-1-2",
+            "cli-verb-surface-redesign-1-3",
+            "cli-verb-surface-redesign-1-4",
+            "cli-verb-surface-redesign-1-5",
+            "cli-verb-surface-redesign-2-1",
+            "cli-verb-surface-redesign-2-2",
+            "cli-verb-surface-redesign-2-3",
+            "cli-verb-surface-redesign-2-4",
+            "cli-verb-surface-redesign-2-5",
+            "cli-verb-surface-redesign-2-6",
+            "cli-verb-surface-redesign-2-7",
+            "cli-verb-surface-redesign-3-1",
+            "cli-verb-surface-redesign-3-2",
+            "cli-verb-surface-redesign-3-3",
+            "cli-verb-surface-redesign-3-4",
+            "cli-verb-surface-redesign-3-5",
+            "cli-verb-surface-redesign-3-6",
+            "cli-verb-surface-redesign-3-7",
+            "cli-verb-surface-redesign-3-8",
+            "cli-verb-surface-redesign-4-1",
+            "cli-verb-surface-redesign-4-2",
+            "cli-verb-surface-redesign-4-3",
+            "cli-verb-surface-redesign-4-4",
+            "cli-verb-surface-redesign-4-5",
+            "cli-verb-surface-redesign-4-6",
+            "cli-verb-surface-redesign-4-7",
+            "cli-verb-surface-redesign-4-8",
+            "cli-verb-surface-redesign-5-1",
+            "cli-verb-surface-redesign-5-2",
+            "cli-verb-surface-redesign-5-3",
+            "cli-verb-surface-redesign-6-1",
+            "cli-verb-surface-redesign-6-2",
+            "cli-verb-surface-redesign-6-3",
+            "cli-verb-surface-redesign-6-4",
+            "cli-verb-surface-redesign-6-5",
+            "cli-verb-surface-redesign-7-1",
+            "cli-verb-surface-redesign-7-2",
+            "cli-verb-surface-redesign-7-3",
+            "cli-verb-surface-redesign-7-4",
+            "cli-verb-surface-redesign-7-5",
+            "cli-verb-surface-redesign-7-6",
+            "cli-verb-surface-redesign-7-7",
+            "cli-verb-surface-redesign-7-8",
+            "cli-verb-surface-redesign-8-1",
+            "cli-verb-surface-redesign-8-2",
+            "cli-verb-surface-redesign-8-3",
+            "cli-verb-surface-redesign-9-1",
+            "cli-verb-surface-redesign-10-1",
+            "cli-verb-surface-redesign-11-1",
+            "cli-verb-surface-redesign-12-1",
+            "cli-verb-surface-redesign-13-1",
+            "cli-verb-surface-redesign-13-2",
+            "cli-verb-surface-redesign-13-3",
+            "cli-verb-surface-redesign-13-4",
+            "cli-verb-surface-redesign-13-5",
+            "cli-verb-surface-redesign-13-6",
+            "cli-verb-surface-redesign-14-1",
+            "cli-verb-surface-redesign-14-2",
+            "cli-verb-surface-redesign-14-3",
+            "cli-verb-surface-redesign-14-4",
+            "cli-verb-surface-redesign-15-1",
+            "cli-verb-surface-redesign-16-1",
+            "cli-verb-surface-redesign-16-2",
+            "cli-verb-surface-redesign-17-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "updated": "2026-07-20",
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved",
+                "8": "approved"
+              }
+            },
+            "c10": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c11": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c6": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c8": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c9": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "cli-verb-surface-redesign": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "cli-verb-surface-redesign-1-1",
+            "cli-verb-surface-redesign-1-2",
+            "cli-verb-surface-redesign-1-3",
+            "cli-verb-surface-redesign-1-4",
+            "cli-verb-surface-redesign-1-5",
+            "cli-verb-surface-redesign-2-1",
+            "cli-verb-surface-redesign-2-2",
+            "cli-verb-surface-redesign-2-3",
+            "cli-verb-surface-redesign-2-4",
+            "cli-verb-surface-redesign-2-5",
+            "cli-verb-surface-redesign-2-6",
+            "cli-verb-surface-redesign-2-7",
+            "cli-verb-surface-redesign-3-1",
+            "cli-verb-surface-redesign-3-2",
+            "cli-verb-surface-redesign-3-3",
+            "cli-verb-surface-redesign-3-4",
+            "cli-verb-surface-redesign-3-5",
+            "cli-verb-surface-redesign-3-6",
+            "cli-verb-surface-redesign-3-7",
+            "cli-verb-surface-redesign-3-8",
+            "cli-verb-surface-redesign-4-1",
+            "cli-verb-surface-redesign-4-2",
+            "cli-verb-surface-redesign-4-3",
+            "cli-verb-surface-redesign-4-4",
+            "cli-verb-surface-redesign-4-5",
+            "cli-verb-surface-redesign-4-6",
+            "cli-verb-surface-redesign-4-7",
+            "cli-verb-surface-redesign-4-8",
+            "cli-verb-surface-redesign-5-1",
+            "cli-verb-surface-redesign-5-2",
+            "cli-verb-surface-redesign-5-3",
+            "cli-verb-surface-redesign-6-1",
+            "cli-verb-surface-redesign-6-2",
+            "cli-verb-surface-redesign-6-3",
+            "cli-verb-surface-redesign-6-4",
+            "cli-verb-surface-redesign-6-5",
+            "cli-verb-surface-redesign-7-1",
+            "cli-verb-surface-redesign-7-2",
+            "cli-verb-surface-redesign-7-3",
+            "cli-verb-surface-redesign-7-4",
+            "cli-verb-surface-redesign-7-5",
+            "cli-verb-surface-redesign-7-6",
+            "cli-verb-surface-redesign-7-7",
+            "cli-verb-surface-redesign-7-8",
+            "cli-verb-surface-redesign-8-1",
+            "cli-verb-surface-redesign-8-2",
+            "cli-verb-surface-redesign-8-3",
+            "cli-verb-surface-redesign-9-1",
+            "cli-verb-surface-redesign-10-1",
+            "cli-verb-surface-redesign-11-1",
+            "cli-verb-surface-redesign-12-1",
+            "cli-verb-surface-redesign-13-1",
+            "cli-verb-surface-redesign-13-2",
+            "cli-verb-surface-redesign-13-3",
+            "cli-verb-surface-redesign-13-4",
+            "cli-verb-surface-redesign-13-5",
+            "cli-verb-surface-redesign-13-6",
+            "cli-verb-surface-redesign-14-1",
+            "cli-verb-surface-redesign-14-2",
+            "cli-verb-surface-redesign-14-3",
+            "cli-verb-surface-redesign-14-4",
+            "cli-verb-surface-redesign-15-1",
+            "cli-verb-surface-redesign-16-1",
+            "cli-verb-surface-redesign-16-2",
+            "cli-verb-surface-redesign-17-1"
+          ],
+          "staging": {
+            "c1": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-09-cli-verb-surface-redesign.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-07-15T17:49:50Z"
+    }
+  ],
+  "completed_at": "2026-07-20"
+}

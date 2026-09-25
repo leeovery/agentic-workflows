@@ -1,0 +1,163 @@
+{
+  "name": "resume-hooks-lost-on-server-restart",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-04-01",
+  "description": "CleanStale() destroys resume hooks after tmux server restart because old pane IDs no longer exist in the new server",
+  "phases": {
+    "investigation": {
+      "items": {
+        "resume-hooks-lost-on-server-restart": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "resume-hooks-lost-on-server-restart": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-04-03",
+          "sources": {
+            "resume-hooks-lost-on-server-restart": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "resume-hooks-lost-on-server-restart": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "c1d3d83e49a068e5811ff048b5c23b165bcb5923",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "resume-hooks-lost-on-server-restart-1-1": "tick-303a31",
+            "resume-hooks-lost-on-server-restart-1": "tick-61bebb",
+            "resume-hooks-lost-on-server-restart-2-1": "tick-29f81a",
+            "resume-hooks-lost-on-server-restart-2": "tick-d34cbe",
+            "resume-hooks-lost-on-server-restart-2-2": "tick-a415a7",
+            "resume-hooks-lost-on-server-restart-2-3": "tick-77abcf",
+            "resume-hooks-lost-on-server-restart-2-4": "tick-6f568e",
+            "resume-hooks-lost-on-server-restart-3-1": "tick-e2081d",
+            "resume-hooks-lost-on-server-restart-3": "tick-466a6d",
+            "resume-hooks-lost-on-server-restart-3-2": "tick-310fb7",
+            "resume-hooks-lost-on-server-restart-3-3": "tick-bd2554",
+            "resume-hooks-lost-on-server-restart-3-4": "tick-557972",
+            "resume-hooks-lost-on-server-restart-3-5": "tick-4056c4",
+            "resume-hooks-lost-on-server-restart-4": "tick-dff7f3",
+            "resume-hooks-lost-on-server-restart-4-1": "tick-76eb73",
+            "resume-hooks-lost-on-server-restart-4-2": "tick-3c7af9",
+            "resume-hooks-lost-on-server-restart-4-3": "tick-0a981c"
+          },
+          "external_id": "tick-8e68d6",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "in-progress",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "in-progress",
+            "review-traceability-tracking-c3": "in-progress"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "resume-hooks-lost-on-server-restart": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 4,
+          "current_task": "~",
+          "completed_tasks": [
+            "resume-hooks-lost-on-server-restart-1-1",
+            "resume-hooks-lost-on-server-restart-2-1",
+            "resume-hooks-lost-on-server-restart-2-2",
+            "resume-hooks-lost-on-server-restart-2-3",
+            "resume-hooks-lost-on-server-restart-2-4",
+            "resume-hooks-lost-on-server-restart-3-1",
+            "resume-hooks-lost-on-server-restart-3-2",
+            "resume-hooks-lost-on-server-restart-3-3",
+            "resume-hooks-lost-on-server-restart-3-4",
+            "resume-hooks-lost-on-server-restart-3-5",
+            "resume-hooks-lost-on-server-restart-4-1",
+            "resume-hooks-lost-on-server-restart-4-2",
+            "resume-hooks-lost-on-server-restart-4-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "resume-hooks-lost-on-server-restart": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "resume-hooks-lost-on-server-restart-1-1",
+            "resume-hooks-lost-on-server-restart-2-1",
+            "resume-hooks-lost-on-server-restart-2-2",
+            "resume-hooks-lost-on-server-restart-2-3",
+            "resume-hooks-lost-on-server-restart-2-4",
+            "resume-hooks-lost-on-server-restart-3-1",
+            "resume-hooks-lost-on-server-restart-3-2",
+            "resume-hooks-lost-on-server-restart-3-3",
+            "resume-hooks-lost-on-server-restart-3-4",
+            "resume-hooks-lost-on-server-restart-3-5",
+            "resume-hooks-lost-on-server-restart-4-1",
+            "resume-hooks-lost-on-server-restart-4-2",
+            "resume-hooks-lost-on-server-restart-4-3"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-04-03"
+}

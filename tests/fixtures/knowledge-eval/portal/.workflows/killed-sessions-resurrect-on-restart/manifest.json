@@ -1,0 +1,295 @@
+{
+  "name": "killed-sessions-resurrect-on-restart",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-09",
+  "description": "Hydrate timeout cascade leaves stuck @portal-skeleton markers, causing killed sessions to resurrect on restart and on-resume hooks to silently skip",
+  "phases": {
+    "investigation": {
+      "items": {
+        "killed-sessions-resurrect-on-restart": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "killed-sessions-resurrect-on-restart": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-10",
+          "sources": {
+            "killed-sessions-resurrect-on-restart": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "killed-sessions-resurrect-on-restart": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "6fa133bbf4e420a6a9d393f4a9767bb3e441e838",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "killed-sessions-resurrect-on-restart": "tick-5782dd",
+            "killed-sessions-resurrect-on-restart-1": "tick-a0fe00",
+            "killed-sessions-resurrect-on-restart-1-1": "tick-d90425",
+            "killed-sessions-resurrect-on-restart-1-2": "tick-080b3c",
+            "killed-sessions-resurrect-on-restart-1-3": "tick-ff2dee",
+            "killed-sessions-resurrect-on-restart-1-4": "tick-9ad179",
+            "killed-sessions-resurrect-on-restart-1-5": "tick-142ea7",
+            "killed-sessions-resurrect-on-restart-1-6": "tick-1e5bad",
+            "killed-sessions-resurrect-on-restart-1-7": "tick-588203",
+            "killed-sessions-resurrect-on-restart-2": "tick-46bdca",
+            "killed-sessions-resurrect-on-restart-2-1": "tick-2c2721",
+            "killed-sessions-resurrect-on-restart-2-2": "tick-424b7f",
+            "killed-sessions-resurrect-on-restart-2-3": "tick-696dbc",
+            "killed-sessions-resurrect-on-restart-2-4": "tick-991ecd",
+            "killed-sessions-resurrect-on-restart-2-5": "tick-b0fbaa",
+            "killed-sessions-resurrect-on-restart-2-6": "tick-c0a8c9",
+            "killed-sessions-resurrect-on-restart-3": "tick-5d7638",
+            "killed-sessions-resurrect-on-restart-3-1": "tick-4a8274",
+            "killed-sessions-resurrect-on-restart-3-2": "tick-6ef57a",
+            "killed-sessions-resurrect-on-restart-3-3": "tick-adbcc0",
+            "killed-sessions-resurrect-on-restart-1-8": "tick-58db96",
+            "killed-sessions-resurrect-on-restart-3-4": "tick-f7d01d",
+            "killed-sessions-resurrect-on-restart-4": "tick-531dd1",
+            "killed-sessions-resurrect-on-restart-4-1": "tick-d274be",
+            "killed-sessions-resurrect-on-restart-4-2": "tick-88848d",
+            "killed-sessions-resurrect-on-restart-4-3": "tick-cab144",
+            "killed-sessions-resurrect-on-restart-4-4": "tick-401560",
+            "killed-sessions-resurrect-on-restart-4-5": "tick-51d2d5",
+            "killed-sessions-resurrect-on-restart-4-6": "tick-ba6300",
+            "killed-sessions-resurrect-on-restart-4-7": "tick-c096b5",
+            "killed-sessions-resurrect-on-restart-5": "tick-96b525",
+            "killed-sessions-resurrect-on-restart-5-1": "tick-370595",
+            "killed-sessions-resurrect-on-restart-5-2": "tick-86842f",
+            "killed-sessions-resurrect-on-restart-5-3": "tick-9b3467",
+            "killed-sessions-resurrect-on-restart-5-4": "tick-3fbc2c",
+            "killed-sessions-resurrect-on-restart-6": "tick-bf48c0",
+            "killed-sessions-resurrect-on-restart-6-1": "tick-ea3b21",
+            "killed-sessions-resurrect-on-restart-6-2": "tick-47f473",
+            "killed-sessions-resurrect-on-restart-7": "tick-543397",
+            "killed-sessions-resurrect-on-restart-7-1": "tick-30a27e",
+            "killed-sessions-resurrect-on-restart-7-2": "tick-d73336",
+            "killed-sessions-resurrect-on-restart-8": "tick-be72a5",
+            "killed-sessions-resurrect-on-restart-8-1": "tick-541996",
+            "killed-sessions-resurrect-on-restart-8-2": "tick-09c1f4",
+            "killed-sessions-resurrect-on-restart-9": "tick-55d8f5",
+            "killed-sessions-resurrect-on-restart-9-1": "tick-567681",
+            "killed-sessions-resurrect-on-restart-9-2": "tick-5984f0",
+            "killed-sessions-resurrect-on-restart-10": "tick-f73743",
+            "killed-sessions-resurrect-on-restart-10-1": "tick-863b70",
+            "killed-sessions-resurrect-on-restart-10-2": "tick-134a6c"
+          },
+          "external_id": "tick-5782dd",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "killed-sessions-resurrect-on-restart": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 10,
+          "current_task": "~",
+          "completed_tasks": [
+            "killed-sessions-resurrect-on-restart-1-1",
+            "killed-sessions-resurrect-on-restart-1-2",
+            "killed-sessions-resurrect-on-restart-1-3",
+            "killed-sessions-resurrect-on-restart-1-4",
+            "killed-sessions-resurrect-on-restart-1-5",
+            "killed-sessions-resurrect-on-restart-1-6",
+            "killed-sessions-resurrect-on-restart-1-7",
+            "killed-sessions-resurrect-on-restart-1-8",
+            "killed-sessions-resurrect-on-restart-2-1",
+            "killed-sessions-resurrect-on-restart-2-2",
+            "killed-sessions-resurrect-on-restart-2-3",
+            "killed-sessions-resurrect-on-restart-2-4",
+            "killed-sessions-resurrect-on-restart-2-5",
+            "killed-sessions-resurrect-on-restart-2-6",
+            "killed-sessions-resurrect-on-restart-3-1",
+            "killed-sessions-resurrect-on-restart-3-2",
+            "killed-sessions-resurrect-on-restart-3-3",
+            "killed-sessions-resurrect-on-restart-4-1",
+            "killed-sessions-resurrect-on-restart-4-4",
+            "killed-sessions-resurrect-on-restart-4-2",
+            "killed-sessions-resurrect-on-restart-4-3",
+            "killed-sessions-resurrect-on-restart-4-5",
+            "killed-sessions-resurrect-on-restart-4-6",
+            "killed-sessions-resurrect-on-restart-4-7",
+            "killed-sessions-resurrect-on-restart-5-1",
+            "killed-sessions-resurrect-on-restart-5-2",
+            "killed-sessions-resurrect-on-restart-5-3",
+            "killed-sessions-resurrect-on-restart-5-4",
+            "killed-sessions-resurrect-on-restart-6-1",
+            "killed-sessions-resurrect-on-restart-6-2",
+            "killed-sessions-resurrect-on-restart-7-1",
+            "killed-sessions-resurrect-on-restart-7-2",
+            "killed-sessions-resurrect-on-restart-8-1",
+            "killed-sessions-resurrect-on-restart-8-2",
+            "killed-sessions-resurrect-on-restart-9-1",
+            "killed-sessions-resurrect-on-restart-9-2",
+            "killed-sessions-resurrect-on-restart-10-1",
+            "killed-sessions-resurrect-on-restart-10-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "analysis_cycle_total": 8,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c6": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c7": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "killed-sessions-resurrect-on-restart": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "killed-sessions-resurrect-on-restart-1-1",
+            "killed-sessions-resurrect-on-restart-1-2",
+            "killed-sessions-resurrect-on-restart-1-3",
+            "killed-sessions-resurrect-on-restart-1-4",
+            "killed-sessions-resurrect-on-restart-1-5",
+            "killed-sessions-resurrect-on-restart-1-6",
+            "killed-sessions-resurrect-on-restart-1-7",
+            "killed-sessions-resurrect-on-restart-1-8",
+            "killed-sessions-resurrect-on-restart-2-1",
+            "killed-sessions-resurrect-on-restart-2-2",
+            "killed-sessions-resurrect-on-restart-2-3",
+            "killed-sessions-resurrect-on-restart-2-4",
+            "killed-sessions-resurrect-on-restart-2-5",
+            "killed-sessions-resurrect-on-restart-2-6",
+            "killed-sessions-resurrect-on-restart-3-1",
+            "killed-sessions-resurrect-on-restart-3-2",
+            "killed-sessions-resurrect-on-restart-3-3",
+            "killed-sessions-resurrect-on-restart-4-1",
+            "killed-sessions-resurrect-on-restart-4-2",
+            "killed-sessions-resurrect-on-restart-4-3",
+            "killed-sessions-resurrect-on-restart-4-4",
+            "killed-sessions-resurrect-on-restart-4-5",
+            "killed-sessions-resurrect-on-restart-4-6",
+            "killed-sessions-resurrect-on-restart-4-7",
+            "killed-sessions-resurrect-on-restart-5-1",
+            "killed-sessions-resurrect-on-restart-5-2",
+            "killed-sessions-resurrect-on-restart-5-3",
+            "killed-sessions-resurrect-on-restart-5-4",
+            "killed-sessions-resurrect-on-restart-6-1",
+            "killed-sessions-resurrect-on-restart-6-2",
+            "killed-sessions-resurrect-on-restart-7-1",
+            "killed-sessions-resurrect-on-restart-7-2",
+            "killed-sessions-resurrect-on-restart-8-1",
+            "killed-sessions-resurrect-on-restart-8-2",
+            "killed-sessions-resurrect-on-restart-9-1",
+            "killed-sessions-resurrect-on-restart-9-2",
+            "killed-sessions-resurrect-on-restart-10-1",
+            "killed-sessions-resurrect-on-restart-10-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-11"
+}

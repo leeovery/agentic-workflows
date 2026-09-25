@@ -1,0 +1,182 @@
+{
+  "name": "killed-session-resurrects-within-tick-window",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-21",
+  "description": "Killed tmux session reappears in Portal list and is reconstructed within a ~2-5s window after kill, due to async daemon-tick persistence.",
+  "phases": {
+    "investigation": {
+      "items": {
+        "killed-session-resurrects-within-tick-window": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "killed-session-resurrects-within-tick-window": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-21",
+          "sources": {
+            "killed-session-resurrects-within-tick-window": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "killed-session-resurrects-within-tick-window": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "242564fc1248b0802405616af4391f447ec707e2",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "killed-session-resurrects-within-tick-window-1": "tick-97ba75",
+            "killed-session-resurrects-within-tick-window-1-1": "tick-9cd5b3",
+            "killed-session-resurrects-within-tick-window-1-2": "tick-aae24b",
+            "killed-session-resurrects-within-tick-window-1-3": "tick-5376d9",
+            "killed-session-resurrects-within-tick-window-1-4": "tick-a72110",
+            "killed-session-resurrects-within-tick-window-1-5": "tick-35abd9",
+            "killed-session-resurrects-within-tick-window-1-6": "tick-ccb30a",
+            "killed-session-resurrects-within-tick-window-1-7": "tick-ef8750",
+            "killed-session-resurrects-within-tick-window-2": "tick-2080ee",
+            "killed-session-resurrects-within-tick-window-2-1": "tick-5da4df",
+            "killed-session-resurrects-within-tick-window-2-2": "tick-3caa54",
+            "killed-session-resurrects-within-tick-window-2-3": "tick-7ef6c9",
+            "killed-session-resurrects-within-tick-window-2-4": "tick-646280",
+            "killed-session-resurrects-within-tick-window-2-5": "tick-2dfddd",
+            "killed-session-resurrects-within-tick-window-2-6": "tick-8817d4",
+            "killed-session-resurrects-within-tick-window-2-7": "tick-80a45c",
+            "killed-session-resurrects-within-tick-window-3": "tick-fa7235",
+            "killed-session-resurrects-within-tick-window-3-1": "tick-3ce610",
+            "killed-session-resurrects-within-tick-window-3-2": "tick-8ca2f1",
+            "killed-session-resurrects-within-tick-window-3-3": "tick-ee90c4"
+          },
+          "external_id": "tick-44c1c5",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "killed-session-resurrects-within-tick-window": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 3,
+          "current_task": "~",
+          "completed_tasks": [
+            "killed-session-resurrects-within-tick-window-1-1",
+            "killed-session-resurrects-within-tick-window-1-2",
+            "killed-session-resurrects-within-tick-window-1-3",
+            "killed-session-resurrects-within-tick-window-1-4",
+            "killed-session-resurrects-within-tick-window-1-5",
+            "killed-session-resurrects-within-tick-window-1-6",
+            "killed-session-resurrects-within-tick-window-1-7",
+            "killed-session-resurrects-within-tick-window-2-1",
+            "killed-session-resurrects-within-tick-window-2-2",
+            "killed-session-resurrects-within-tick-window-2-3",
+            "killed-session-resurrects-within-tick-window-2-4",
+            "killed-session-resurrects-within-tick-window-2-5",
+            "killed-session-resurrects-within-tick-window-2-6",
+            "killed-session-resurrects-within-tick-window-2-7",
+            "killed-session-resurrects-within-tick-window-3-1",
+            "killed-session-resurrects-within-tick-window-3-2",
+            "killed-session-resurrects-within-tick-window-3-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "killed-session-resurrects-within-tick-window": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "killed-session-resurrects-within-tick-window-1-1",
+            "killed-session-resurrects-within-tick-window-1-2",
+            "killed-session-resurrects-within-tick-window-1-3",
+            "killed-session-resurrects-within-tick-window-1-4",
+            "killed-session-resurrects-within-tick-window-1-5",
+            "killed-session-resurrects-within-tick-window-1-6",
+            "killed-session-resurrects-within-tick-window-1-7",
+            "killed-session-resurrects-within-tick-window-2-1",
+            "killed-session-resurrects-within-tick-window-2-2",
+            "killed-session-resurrects-within-tick-window-2-3",
+            "killed-session-resurrects-within-tick-window-2-4",
+            "killed-session-resurrects-within-tick-window-2-5",
+            "killed-session-resurrects-within-tick-window-2-6",
+            "killed-session-resurrects-within-tick-window-2-7",
+            "killed-session-resurrects-within-tick-window-3-1",
+            "killed-session-resurrects-within-tick-window-3-2",
+            "killed-session-resurrects-within-tick-window-3-3"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-22"
+}

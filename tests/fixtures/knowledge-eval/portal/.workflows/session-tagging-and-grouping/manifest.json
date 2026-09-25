@@ -1,0 +1,296 @@
+{
+  "name": "session-tagging-and-grouping",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-06-06",
+  "description": "Tag-based organization for the session list: projects carry tags inherited by their sessions, with optional per-session tags, and the picker can group/aggregate sessions by tag via a toggle",
+  "phases": {
+    "discussion": {
+      "items": {
+        "session-tagging-and-grouping": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "session-tagging-and-grouping": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-06-07",
+          "sources": {
+            "session-tagging-and-grouping": {
+              "status": "incorporated"
+            }
+          },
+          "construction_gate_mode": "auto",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "session-tagging-and-grouping": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "47b8df4579891795fae8df5efdc710f7f14e33ef",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 5,
+          "task": "~",
+          "task_map": {
+            "session-tagging-and-grouping-1": "tick-6a2ca8",
+            "session-tagging-and-grouping-1-1": "tick-9738f6",
+            "session-tagging-and-grouping-1-2": "tick-b97407",
+            "session-tagging-and-grouping-1-3": "tick-25f4ad",
+            "session-tagging-and-grouping-1-4": "tick-5a49ee",
+            "session-tagging-and-grouping-1-5": "tick-2304e5",
+            "session-tagging-and-grouping-1-6": "tick-596ae9",
+            "session-tagging-and-grouping-1-7": "tick-81e275",
+            "session-tagging-and-grouping-1-8": "tick-d887e4",
+            "session-tagging-and-grouping-2": "tick-192993",
+            "session-tagging-and-grouping-2-1": "tick-0ccac8",
+            "session-tagging-and-grouping-2-2": "tick-4358f8",
+            "session-tagging-and-grouping-2-3": "tick-dc8a90",
+            "session-tagging-and-grouping-2-4": "tick-fc4301",
+            "session-tagging-and-grouping-2-5": "tick-ab7de2",
+            "session-tagging-and-grouping-2-6": "tick-b6bb03",
+            "session-tagging-and-grouping-3": "tick-db26c4",
+            "session-tagging-and-grouping-3-1": "tick-c6bd78",
+            "session-tagging-and-grouping-3-2": "tick-a2e0de",
+            "session-tagging-and-grouping-3-3": "tick-628169",
+            "session-tagging-and-grouping-3-4": "tick-bb3f68",
+            "session-tagging-and-grouping-3-5": "tick-ebcc6e",
+            "session-tagging-and-grouping-3-6": "tick-40234a",
+            "session-tagging-and-grouping-3-7": "tick-b6dc81",
+            "session-tagging-and-grouping-3-8": "tick-0c8cea",
+            "session-tagging-and-grouping-3-9": "tick-0bcebc",
+            "session-tagging-and-grouping-4": "tick-d3c291",
+            "session-tagging-and-grouping-4-1": "tick-a763f1",
+            "session-tagging-and-grouping-4-2": "tick-2ae5fd",
+            "session-tagging-and-grouping-4-3": "tick-6b9dad",
+            "session-tagging-and-grouping-4-4": "tick-a40c85",
+            "session-tagging-and-grouping-4-5": "tick-08eb39",
+            "session-tagging-and-grouping-4-6": "tick-732c41",
+            "session-tagging-and-grouping-4-7": "tick-293de5",
+            "session-tagging-and-grouping-5": "tick-052353",
+            "session-tagging-and-grouping-5-1": "tick-81a6fc",
+            "session-tagging-and-grouping-5-2": "tick-587c1c",
+            "session-tagging-and-grouping-5-3": "tick-e71d73",
+            "session-tagging-and-grouping-5-4": "tick-863b2d",
+            "session-tagging-and-grouping-6": "tick-e7a1d9",
+            "session-tagging-and-grouping-6-1": "tick-d23867",
+            "session-tagging-and-grouping-6-2": "tick-bc0a66",
+            "session-tagging-and-grouping-6-3": "tick-5397af",
+            "session-tagging-and-grouping-6-4": "tick-54b9f7",
+            "session-tagging-and-grouping-7": "tick-625909",
+            "session-tagging-and-grouping-7-1": "tick-5b62f3",
+            "session-tagging-and-grouping-8": "tick-61dc3e",
+            "session-tagging-and-grouping-8-1": "tick-3d9629",
+            "session-tagging-and-grouping-8-2": "tick-0e69cb",
+            "session-tagging-and-grouping-8-3": "tick-785dc4",
+            "session-tagging-and-grouping-9": "tick-4b5f81",
+            "session-tagging-and-grouping-9-1": "tick-ccc036",
+            "session-tagging-and-grouping-9-2": "tick-a10690"
+          },
+          "external_id": "tick-7d0ed3",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "session-tagging-and-grouping": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 6,
+          "analysis_cycle_session": 6,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 9,
+          "current_task": "~",
+          "completed_tasks": [
+            "session-tagging-and-grouping-1-2",
+            "session-tagging-and-grouping-1-4",
+            "session-tagging-and-grouping-1-6",
+            "session-tagging-and-grouping-2-1",
+            "session-tagging-and-grouping-2-2",
+            "session-tagging-and-grouping-3-1",
+            "session-tagging-and-grouping-1-1",
+            "session-tagging-and-grouping-2-3",
+            "session-tagging-and-grouping-3-3",
+            "session-tagging-and-grouping-1-3",
+            "session-tagging-and-grouping-1-5",
+            "session-tagging-and-grouping-1-7",
+            "session-tagging-and-grouping-1-8",
+            "session-tagging-and-grouping-2-4",
+            "session-tagging-and-grouping-2-5",
+            "session-tagging-and-grouping-2-6",
+            "session-tagging-and-grouping-3-2",
+            "session-tagging-and-grouping-3-4",
+            "session-tagging-and-grouping-3-5",
+            "session-tagging-and-grouping-3-6",
+            "session-tagging-and-grouping-3-7",
+            "session-tagging-and-grouping-3-8",
+            "session-tagging-and-grouping-3-9",
+            "session-tagging-and-grouping-4-1",
+            "session-tagging-and-grouping-4-2",
+            "session-tagging-and-grouping-4-3",
+            "session-tagging-and-grouping-4-4",
+            "session-tagging-and-grouping-4-5",
+            "session-tagging-and-grouping-4-6",
+            "session-tagging-and-grouping-4-7",
+            "session-tagging-and-grouping-5-1",
+            "session-tagging-and-grouping-5-2",
+            "session-tagging-and-grouping-5-3",
+            "session-tagging-and-grouping-5-4",
+            "session-tagging-and-grouping-6-1",
+            "session-tagging-and-grouping-6-2",
+            "session-tagging-and-grouping-6-3",
+            "session-tagging-and-grouping-6-4",
+            "session-tagging-and-grouping-7-1",
+            "session-tagging-and-grouping-8-1",
+            "session-tagging-and-grouping-8-2",
+            "session-tagging-and-grouping-8-3",
+            "session-tagging-and-grouping-9-1",
+            "session-tagging-and-grouping-9-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "session-tagging-and-grouping": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "session-tagging-and-grouping-1-1",
+            "session-tagging-and-grouping-1-2",
+            "session-tagging-and-grouping-1-3",
+            "session-tagging-and-grouping-1-4",
+            "session-tagging-and-grouping-1-5",
+            "session-tagging-and-grouping-1-6",
+            "session-tagging-and-grouping-1-7",
+            "session-tagging-and-grouping-1-8",
+            "session-tagging-and-grouping-2-1",
+            "session-tagging-and-grouping-2-2",
+            "session-tagging-and-grouping-2-3",
+            "session-tagging-and-grouping-2-4",
+            "session-tagging-and-grouping-2-5",
+            "session-tagging-and-grouping-2-6",
+            "session-tagging-and-grouping-3-1",
+            "session-tagging-and-grouping-3-2",
+            "session-tagging-and-grouping-3-3",
+            "session-tagging-and-grouping-3-4",
+            "session-tagging-and-grouping-3-5",
+            "session-tagging-and-grouping-3-6",
+            "session-tagging-and-grouping-3-7",
+            "session-tagging-and-grouping-3-8",
+            "session-tagging-and-grouping-3-9",
+            "session-tagging-and-grouping-4-1",
+            "session-tagging-and-grouping-4-2",
+            "session-tagging-and-grouping-4-3",
+            "session-tagging-and-grouping-4-4",
+            "session-tagging-and-grouping-4-5",
+            "session-tagging-and-grouping-4-6",
+            "session-tagging-and-grouping-4-7",
+            "session-tagging-and-grouping-5-1",
+            "session-tagging-and-grouping-5-2",
+            "session-tagging-and-grouping-5-3",
+            "session-tagging-and-grouping-5-4",
+            "session-tagging-and-grouping-6-1",
+            "session-tagging-and-grouping-6-2",
+            "session-tagging-and-grouping-6-3",
+            "session-tagging-and-grouping-6-4",
+            "session-tagging-and-grouping-7-1",
+            "session-tagging-and-grouping-8-1",
+            "session-tagging-and-grouping-8-2",
+            "session-tagging-and-grouping-8-3",
+            "session-tagging-and-grouping-9-1",
+            "session-tagging-and-grouping-9-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-06-08"
+}

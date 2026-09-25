@@ -1,0 +1,115 @@
+{
+  "name": "config-dir-wrong-path-macos",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-03-28",
+  "description": "os.UserConfigDir() returns ~/Library/Application Support on macOS instead of ~/.config, causing config files to be written to wrong path",
+  "phases": {
+    "investigation": {
+      "items": {
+        "config-dir-wrong-path-macos": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "config-dir-wrong-path-macos": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-03-28",
+          "sources": {
+            "config-dir-wrong-path-macos": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "config-dir-wrong-path-macos": {
+          "status": "completed",
+          "format": "tick",
+          "spec_commit": "a5d93015bf80222393fab1260af1677ab8a858c8",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "config-dir-wrong-path-macos-1-1": "tick-7bd039",
+            "config-dir-wrong-path-macos-1": "tick-b265f3",
+            "config-dir-wrong-path-macos-1-2": "tick-6a3514"
+          },
+          "external_id": "tick-c1a482",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "in-progress",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "config-dir-wrong-path-macos": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "config-dir-wrong-path-macos-1-1",
+            "config-dir-wrong-path-macos-1-2"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "config-dir-wrong-path-macos": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "config-dir-wrong-path-macos-1-1",
+            "config-dir-wrong-path-macos-1-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-28"
+}
