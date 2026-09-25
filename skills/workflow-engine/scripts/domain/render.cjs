@@ -4852,8 +4852,7 @@ function codeGate(cwd, { dotpath }) {
 
 // ---------------------------------------------------------------------------
 // Task-loop surfaces — the brief, the result header, and the gates, fetched
-// by the implementation loop at the exact stage that displays them, so the
-// section always sits in the tool result directly above its emission.
+// by the implementation loop at the exact stage that displays them.
 // State-backed: the in-flight task, gate modes, and fix attempts come from
 // the implementation item; gate-mode branching renders inside the gate
 // surfaces. `blocked-tasks` and `cycle-gate` are static menus and take no
