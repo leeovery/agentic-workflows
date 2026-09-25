@@ -525,6 +525,28 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   run in the foreground says `run_in_background: false`, and one the
   conversation carries on past carries none (CONVENTIONS' Dispatch
   Lines).
+- **R23 — a code block names its language on the fence.** Claude Code
+  paints a fence with no language entirely in the theme's `permission`
+  colour, the lilac of the menus, so every plain display (a dashboard, a
+  tree, the phase structure) drew in the gate's colour and the gate lost
+  the contrast that marks it out (finding 53). What the workflows show is
+  markdown, or a code block whose fence names its language: `text` for a
+  plain display, which renders in the normal text colour with no label
+  (`text` is highlight.js's alias of `plaintext`), and `properties` or
+  `diff` where the colour is wanted (a blocker, the start banner, a
+  diff). No fence goes untagged.
+  - The engine's markers name the fence, as its `properties` and `diff`
+    markers already do: a plain display is "emit verbatim as a text code
+    block (```` ```text ```` fence)".
+  - A prose template's fence carries its own tag (```` ```text ````,
+    ```` ```properties ````) beneath the one instruction "Output the next
+    fenced block as a code block"; the bare `properties` template fences
+    gain theirs.
+  - CONVENTIONS' output vocabulary becomes markdown, or a code block whose
+    fence names `text`, `properties` or `diff`; a model-drawn diagram goes
+    in a `text` fence too; and a conventions lint check refuses a bare
+    fence beneath a code-block instruction.
+  The same form holds whichever way a block reaches the screen (R21).
 
 ## The stack
 
@@ -538,16 +560,18 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     person, R19);
   - the gate surface on top of it — #1289 the payload (rows from parts,
     strict audit) → #1290 the band → #1292 the mod set up on the first
-    run (R9) → #1294 the rows mod;
+    run (R9) → #1294 the rows mod. Where the payload meets the migration's
+    menus, each layer closes on `sync:` commits: the spec-confirm gate's
+    per-render `yesNo()`, one glyph helper and a menu asking on its
+    glyphed line alone, the migration's pick rows built from parts, the
+    payload suite re-pinned to menus that always ask (#1289); the band's
+    question-less and row-less paths removed, the audit asserting a
+    question and a row to press (#1290); the rows mod's question-less line
+    removed (#1294);
   - display delivery on top of that — #1303 the workflow session's
     harness (R20) → #1304 what a step shows reaches the person, with the
-    dispatch sentence (R21, R22). Where the payload meets the migration's menus, each layer closes
-    on `sync:` commits: the spec-confirm gate's per-render `yesNo()`, one
-    glyph helper and a menu asking on its glyphed line alone, the
-    migration's pick rows built from parts, the payload suite re-pinned
-    to menus that always ask (#1289); the band's question-less and
-    row-less paths removed, the audit asserting a question and a row to
-    press (#1290); the rows mod's question-less line removed (#1294).
+    dispatch sentence (R21, R22) → displays in fences that name their
+    language (R23).
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
@@ -691,6 +715,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     bringing it forward at the boot landed only at the person's next
     message, after the workflow had already searched for it. Hence one
     answer for every session (R20).
+53. From 2.1.280 (still in 2.1.282) Claude Code's markdown renderer paints
+    a fenced block with no language in the `permission` colour, line by
+    line; 2.1.278 left it uncoloured. A tag highlight.js knows (`text`,
+    `txt`, `plaintext`) takes the old path and renders in the normal
+    colour; an unknown one renders the same with its name dimmed on a line
+    above. Hence R23.
 
 ## Log
 
@@ -739,3 +769,5 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   its opt-in gone (R2, R9); the lab spikes settled the harness settings,
   the tool kept behind ToolSearch, and one rule for shown text with every
   turn ending on text (R20–R22). Findings 48–52.
+- 2026-09-25 — fences that name their language brought onto the stack
+  from a parked session's diagnosis (R23, finding 53).
