@@ -22,6 +22,8 @@ Invoke `workflow-implementation-task-reviewer` with:
 6. **finding-floor.md path**: `.claude/skills/workflow-implementation-process/references/finding-floor.md` — the floor every BANK entry clears
 7. **Executor's report**: the structured result the executor returned for this attempt — the claims under review, to be verified against the code, never trusted
 
+The dispatch ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.` — `{phase}.{task}` the plan phase and task numbers the internal id ends in (`{topic}-{phase}-{task}`), never the id itself or the topic.
+
 ---
 
 ## B. Expected Result
@@ -69,6 +71,8 @@ Dispatched from the fix gate when the user challenges a finding rather than dire
 
 8. **Challenged findings** — the disputed ISSUES, verbatim from the review under challenge
 9. **The user's challenge** — their argument, verbatim
+
+The dispatch ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`, numbered as in **A. Invoke the Agent**.
 
 The agent adjudicates (see the charter's Confirmation Dispatch) and returns:
 
