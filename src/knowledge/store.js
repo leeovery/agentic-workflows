@@ -160,19 +160,6 @@ async function searchAllFulltext(db) {
 }
 
 /**
- * Find all internal document IDs whose (work_unit, phase, topic) matches
- * the given identity key. Internal IDs are what `removeMultiple` accepts.
- */
-async function findInternalIdsByIdentity(db, { work_unit, phase, topic }) {
-  const hits = await filteredHits(db, {
-    work_unit: { eq: work_unit },
-    phase: { eq: phase },
-    topic: { eq: topic },
-  });
-  return hits.map((h) => h.id);
-}
-
-/**
  * Remove every document matching the identity key (work_unit + phase +
  * topic). This is the re-index primitive: remove existing chunks for an
  * identity, then insert fresh ones. No-op if nothing matches.
