@@ -196,15 +196,17 @@ constraint on the query's subject, never a passing mention. Each passage is
 graded **primary**, where the answer is recorded (the decision or finding in
 its home document), or **supporting**, a passage that restates, summarises
 or bears on it; a superseded ruling is supporting and the current one
-primary. The top ten of both legs, keyword and hybrid, is then pooled, and
+primary. The top ten of both modes, keyword and hybrid, is then pooled, and
 any result not yet judged is read and adjudicated to the same bar. Pooling
 completes the judgments without letting the system define them.
 
 A judgment names a source file and an **anchor**: a short verbatim phrase
 from one line of the relevant passage. A returned chunk matches when it
 comes from that file and contains the anchor, so the judgments survive any
-change to chunk size or boundaries. The test fails if an anchor is missing
-from its file, which keeps the judgments honest when the corpus moves.
+change to chunk size or boundaries. Validation keeps the judgments honest
+when the corpus moves: an anchor must occur exactly once in its file, a
+primary must sit inside its case's filters, and after the build every
+judgment must match an indexed chunk.
 
 ### Metrics
 
@@ -222,11 +224,11 @@ Over every case, the **output size**: the mean bytes of the CLI's rendered
 result, which is what an agent pays for. Over the negative cases, the
 **results returned** and their bytes, where lower is better.
 
-Every metric is reported per project and overall.
+Every metric is reported per project and overall; overall pools the cases.
 
 ### The pinned baseline
 
-The keyword leg is deterministic, so its numbers are pinned in
+The keyword mode is deterministic, so its numbers are pinned in
 `tests/fixtures/knowledge-eval/baseline.json`, and the test fails on any
 movement, in either direction. Re-pinning is deliberate: the harness
 script's `--pin` rewrites the baseline, so the PR that moves retrieval
@@ -236,24 +238,32 @@ that moved, and each case whose best rank changed.
 ### Where it runs
 
 - **`npm test`**: `tests/scripts/test-knowledge-eval.cjs`, hermetic and
-  keyword-only. It validates the corpus (case ids unique, every anchor
-  present in its file), builds the three stores, runs every case in
-  process, and compares against the baseline.
+  keyword-only. It validates the cases, builds the three stores, runs every
+  case in process, and compares against the baseline.
 - **By hand**: `node tests/scripts/knowledge-eval.cjs`, the same run with a
   per-case report. `--pin` rewrites the baseline, `--case <id>` shows one
   case's ranking against its judgments, `--pool` lists unjudged results for
-  adjudication, and `--vector` runs the hybrid leg. The hybrid leg needs an
-  API key and is outside the gate, like the OpenAI smoke test. It embeds
-  the corpus once into a gitignored cache and pins its own numbers in
-  `baseline-vector.json`.
+  adjudication, and `--hybrid` runs the hybrid mode. The hybrid mode needs
+  an API key and is outside the gate, like the OpenAI smoke test:
+  - it takes only the provider identity from the machine, and runs on
+    default tuning;
+  - it builds the projects one at a time, each under the provider's
+    per-minute limit;
+  - its embedded stores are cached in a gitignored directory, keyed on the
+    chunk set, the store format and the provider identity, so a ranking
+    change reuses the embeddings and a chunking change re-embeds;
+  - `baseline-hybrid.json` records the provider it was pinned with, and a
+    run under another provider refuses to compare.
 
 ### The query function
 
 The harness calls retrieval in process, not through the CLI. `cmdQuery`
-splits into a search function (terms, filters, boosts and limit in; ranked
-results out) and the renderer that prints them. The CLI's output stays
-byte-identical. Every later step changes what happens inside the search
-function; none changes how the harness calls it.
+splits into `querySettings` (the mode and ranking settings a store and
+config resolve to), `queryStore(db, settings, { terms, options, workUnits })`
+(ranked results, taking the options exactly as the CLI parses them) and
+`renderQuery` (the text `query` prints). The CLI and the harness call
+`queryStore` the same way. Every later step changes what happens inside it;
+none changes how it is called.
 
 `query --explain` (each result's rank in each leg, and what fusion, decay
 and boosts did to it) belongs to step 2, where the legs first exist
@@ -261,8 +271,8 @@ separately.
 
 ### The measured baseline
 
-58 cases (49 positive, 9 negative) and 698 judged passages, pinned on both
-legs:
+58 cases (49 positive, 9 negative) and 698 judged passages, pinned in both
+modes (the negatives at their harvested limits):
 
 | metric | keyword | hybrid |
 |---|---|---|
@@ -271,8 +281,8 @@ legs:
 | MRR@10 | 0.691 | 0.934 |
 | recall@10 | 0.431 | 0.678 |
 | file hit@5 | 0.959 | 1.000 |
-| bytes per query | 49.5 KB | 41.9 KB |
-| results on a negative | 10 | 10 |
+| bytes per query | 49.4 KB | 42.0 KB |
+| results on a negative (mean) | 9.4 | 9.4 |
 
 ### What the eval showed
 
@@ -290,8 +300,8 @@ A cut at 0.44 turns away every negative framing and keeps 111 of the 118
 positive ones; at 0.42 it keeps 115 and lets 2 of 16 negatives through.
 Today nothing is turned away: the configured vector threshold is 0.3, below
 most negatives' best score, and when the vector side comes back empty the
-keyword side still fills all ten slots — every negative, on either leg,
-returns ten results and 40–47 KB. The threshold's calibration note (noise
+keyword side still fills every slot — every negative, in either mode,
+returns its full limit, averaging 39–46 KB. The threshold's calibration note (noise
 peaking near 0.2) does not hold for the long natural-language framings
 agents write: off-topic noise reaches 0.43. The nine negatives are all
 clearly off-topic; a floor is set only after the set gains near-miss
@@ -308,7 +318,7 @@ stemming. The right file is in the keyword top five 96% of the time, but:
   top ten (hybrid: 3 of 105);
 - when its first result is relevant, a restatement (a summary or
   current-state section) beats the passage where the answer is recorded,
-  16 to 12. Hybrid ranks the other way, 30 to 14.
+  15 to 13. Hybrid ranks the other way, 32 to 12.
 
 **Supersession lives inside documents.** A decision amended in place keeps
 its old text beside the new — a platform floor moved from macOS 14 to 15, a
@@ -317,7 +327,7 @@ login-item default turned to opt-in, a component count corrected from 15 to
 document above another's does not reach it.
 
 **Restatement-heavy documents are not crowding the top.** Discovery logs and
-seeds rank first in 1–2 of 49 cases. On the hybrid leg 61% of the returned
+seeds rank first in 1–2 of 49 cases. In the hybrid mode 61% of the returned
 text is judged passages (keyword: 33%). The byte cost is chunk size: the
 median returned chunk is 3.1–3.7k characters and a quarter run past 5.7–8k.
 
@@ -330,7 +340,9 @@ median returned chunk is 3.1–3.7k characters and a quarter run past 5.7–8k.
   It is 10 of the 155 real queries harvested.
 - Embedding a large corpus hit OpenAI's rate limit (1M tokens a minute at
   the lowest tier; portal's corpus is ~0.93M), and the retry ignored the
-  wait the provider named. Fixed separately (#1309).
+  wait the provider named. Fixed separately (#1309): a rate-limited request
+  waits the time named, and a command waits at most 60 s in all, so a rate
+  limit never outlasts the time limit of the call running it.
 
 ## Step 2 — ranking in our own code
 
@@ -350,6 +362,10 @@ Open:
 - Whether the relevance floor comes forward into this step as a gate on
   vector scores (the evidence is in step 1's findings), and what it does on
   a keyword-only store, which has no vector score to gate on.
+- How strongly `--boost:work-unit` counts once scores are ranks. The case
+  set cannot judge that yet: 11 of its 12 boosted cases have their answer
+  inside the boosted unit, so a stronger boost only ever looks better. Tuning
+  it needs cases where the boosted unit holds nothing the query wants.
 
 ## Step 3 — store benchmark and decision
 
@@ -395,8 +411,8 @@ size, install footprint, and the Node version it requires.
 
 Known before measuring: Orama's filtered reads pre-allocated their `limit`,
 fixed separately (#1305). Insert and save remain most of a fresh index's
-time. A rate-limited embed now waits the time the provider names, request
-by request (#1309).
+time. A rate-limited embed waits the time the provider names, request by
+request, within 60 s per command (#1309).
 
 ## Step 4 — the KB in the engine
 
