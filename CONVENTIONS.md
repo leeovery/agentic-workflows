@@ -486,6 +486,8 @@ Two categories:
 
 Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before ending.`, or other variations.
 
+**A gate's step shows its own lead-in.** A display or summary that leads into a gate sits in the gate's own step, never in the step before it, so the step that ends the turn always has something to write when a gate surface draws the menu itself. A lead-in that applies on some paths only is written inline inside that step — `Where X, load Y before the gate.`, the shape the task loop's convergence line and the review gate's out-of-scope line take — and an H4 branch never stands in for it. Any arrival at a gate but its first — a return from a lens or an answer, a pause for a backlog, postpone or cancel request, a put-back — re-runs the gate fetch alone.
+
 ### Dispatch Lines
 
 Claude Code runs an agent in the background unless the dispatch passes `run_in_background: false`, so every dispatch names its mode. A background dispatch the flow waits on ends the turn there: it says `run_in_background: true` and prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
