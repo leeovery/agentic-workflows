@@ -100,10 +100,14 @@ conversation itself rather than in a subagent, the mod sets
 Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
 Claude is doing; project settings cannot set the second. Claude Code reads
-both per request. A `/clear` or a resume unsets them, and a conversation whose
-transcript holds the boot gets them back when the mod next follows it, whether
-`claude --resume`, a restart or `/resume` in the same process brings it back.
-A plain conversation in the same project keeps Claude Code's defaults.
+both per request. What they replace, the person's own value or none, is kept
+in the process's environment (`WORKFLOWS_HARNESS_REPLACED`), which a reload of
+the mod's files keeps, and a `/clear` or a resume puts it back exactly. A
+conversation whose transcript holds the boot gets the workflow values back when
+the mod next follows it, whether `claude --resume`, a restart or `/resume` in
+the same process brings it back. A plain conversation in the same project
+keeps Claude Code's defaults and the person's own settings: the mod never
+touches either there.
 
 ## Working on it
 

@@ -19,7 +19,9 @@
  * The module also sets Claude Code's harness for the workflows: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
  * that has run the engine's boot goes without Claude's thinking summarised as
- * output and without the nudge to say what it is doing.
+ * output and without the nudge to say what it is doing, the person's own
+ * values of both put back as it ends. A conversation that has not run the
+ * boot keeps them untouched.
  */
 import type {
   AgentLoop,
@@ -421,16 +423,63 @@ async function hasBooted($: EngineInterface): Promise<boolean> {
 }
 
 /**
- * Sets Claude Code's harness for a workflow session, one whose conversation
- * has run the engine's boot, or puts back Claude Code's own: no summary of
- * Claude's thinking printed as if it were output, and no nudge to say what it
- * is doing. Claude Code reads both per request.
+ * The person's own values of the settings the harness sets, absent where
+ * unset: what the harness replaced, kept while it is on.
  */
-async function setHarness($: EngineInterface, isWorkflow: boolean) {
-  const value = isWorkflow ? 'false' : undefined
+type Replaced = {
+  CLAUDE_CODE_THINKING_DISPLAY_UPDATES?: string
+  CLAUDE_CODE_SILENT_TURN_REMINDER?: string
+}
 
-  await $.env.set('CLAUDE_CODE_THINKING_DISPLAY_UPDATES', value)
-  await $.env.set('CLAUDE_CODE_SILENT_TURN_REMINDER', value)
+/**
+ * Puts Claude Code's harness on for a workflow session, one whose
+ * conversation has run the engine's boot: no summary of Claude's thinking
+ * printed as if it were output, and no nudge to say what it is doing. Claude
+ * Code reads both per request. What it replaces is kept in the process's
+ * environment, which a reload of the module's files keeps, and only where
+ * nothing is kept yet: the values are read before that is looked at, so a
+ * harness another call has just put on is never kept as the person's.
+ */
+async function harnessOn($: EngineInterface) {
+  const replaced: Replaced = {
+    CLAUDE_CODE_THINKING_DISPLAY_UPDATES: await $.env.get(
+      'CLAUDE_CODE_THINKING_DISPLAY_UPDATES',
+    ),
+    CLAUDE_CODE_SILENT_TURN_REMINDER: await $.env.get(
+      'CLAUDE_CODE_SILENT_TURN_REMINDER',
+    ),
+  }
+
+  if ((await $.env.get('WORKFLOWS_HARNESS_REPLACED')) === undefined) {
+    await $.env.set('WORKFLOWS_HARNESS_REPLACED', JSON.stringify(replaced))
+  }
+
+  await $.env.set('CLAUDE_CODE_THINKING_DISPLAY_UPDATES', 'false')
+  await $.env.set('CLAUDE_CODE_SILENT_TURN_REMINDER', 'false')
+}
+
+/**
+ * Takes the harness off, putting back exactly what it replaced: the person's
+ * value, or none. Where the harness is not on, nothing is touched.
+ */
+async function harnessOff($: EngineInterface) {
+  const kept = await $.env.get('WORKFLOWS_HARNESS_REPLACED')
+
+  if (kept === undefined) {
+    return
+  }
+
+  const replaced = JSON.parse(kept) as Replaced
+
+  await $.env.set(
+    'CLAUDE_CODE_THINKING_DISPLAY_UPDATES',
+    replaced.CLAUDE_CODE_THINKING_DISPLAY_UPDATES,
+  )
+  await $.env.set(
+    'CLAUDE_CODE_SILENT_TURN_REMINDER',
+    replaced.CLAUDE_CODE_SILENT_TURN_REMINDER,
+  )
+  await $.env.set('WORKFLOWS_HARNESS_REPLACED', undefined)
 }
 
 /**
@@ -461,7 +510,7 @@ async function readBack(
   }
 
   if ((await hasBooted($)) && owing() === asked) {
-    await setHarness($, true)
+    await harnessOn($)
   }
 
   const kept = place.key === null ? undefined : await $.store.get(place.key)
@@ -636,7 +685,7 @@ export const register: Register = on => {
       owed = { ended: seen }
       seen = null
       $.ui.invalidate('ui.render')
-      await setHarness($, false)
+      await harnessOff($)
     }
 
     return next(e)
@@ -658,7 +707,7 @@ export const register: Register = on => {
     }
 
     if (inConversation(e) && isBoot(e.command)) {
-      await setHarness($, true)
+      await harnessOn($)
     }
 
     const record = result.result
