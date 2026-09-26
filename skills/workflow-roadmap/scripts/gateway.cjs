@@ -49,8 +49,7 @@ function stateLines(s) {
 }
 
 // The home snapshot: derived state (DATA), the map (DISPLAY), the
-// converse/pull menu (MENU) — the `r/roadmap` row's landing and the
-// session's "show roadmap" anchor.
+// converse/pull menu (MENU) — the `r/roadmap` row's landing.
 function view() {
   const s = state(process.cwd());
   const menu = engine.project.roadmapHomeMenu(s);
@@ -144,7 +143,6 @@ function proposal(...rest) {
 
 if (require.main === module) {
   engine.gateway.runGateway({
-    index: () => view(),
     view,
     'pull-set': pullSet,
     proposal: (...rest) => {

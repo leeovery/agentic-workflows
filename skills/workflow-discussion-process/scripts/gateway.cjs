@@ -9,8 +9,6 @@
 //   gateway.cjs map {work_unit} {topic}
 //     → DATA (counts, all_decided, unresolved, review_arming)
 //       + DISPLAY (the Discussion Map block)
-//       + MENU: defer gate (while undecided subtopics remain — emitted only
-//         at the concluding step, per its marker)
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
@@ -32,9 +30,6 @@ function map(workUnit, topic) {
       review_arming: engine.agents.reviewArming(cwd, workUnit, topic),
     }),
     engine.gateway.displayBlock(engine.project.discussionMap(topic, manifest)),
-    ...(state.unresolved.length > 0
-      ? [engine.project.discussionDeferGate(state.unresolved.length)]
-      : []),
   ].join('\n');
 }
 

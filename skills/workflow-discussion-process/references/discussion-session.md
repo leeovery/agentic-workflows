@@ -36,7 +36,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
-   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened ends it at **H. The Map Gate**. Nothing else ends it.
+   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened, or one with nothing on it, ends it at **H. The Map Gate**. Nothing else ends it.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -219,7 +219,7 @@ Run the map call:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so. First match wins.
+Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted. First match wins.
 
 #### If `all_decided` is true
 
@@ -233,9 +233,21 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 → On return, proceed as the reference directed.
 
+#### If `all_decided` is false and `unresolved` is empty
+
+Nothing is on the map yet — no subtopic has been recorded, so there is nothing to settle, nothing to set aside, and nothing to conclude over. Say so in one line and carry on: what the conversation has covered goes on the map as the loop records it (session loop step 2). The ceremony ends here; the next signal or settling set re-enters.
+
+→ Return to **B. Session Loop**.
+
 #### If `all_decided` is false and this entry is the user's signal
 
-Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
+Fetch the defer gate — the map, then the consent to set aside what it still holds undecided:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render defer-gate {work_unit}.discussion.{topic}
+```
+
+Emit its sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

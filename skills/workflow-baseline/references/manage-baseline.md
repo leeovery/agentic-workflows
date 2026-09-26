@@ -22,6 +22,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-manage-ga
 
 **STOP.** Wait for user response.
 
+→ Proceed to **B. Handle Selection**.
+
 ## B. Handle Selection
 
 #### If `expand`

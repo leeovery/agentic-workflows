@@ -308,6 +308,7 @@ Commands:
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
   render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
+  render defer-gate       <wu.discussion.topic>
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
@@ -336,7 +337,7 @@ Commands:
   render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
-  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
+  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]

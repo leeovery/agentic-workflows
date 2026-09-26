@@ -31,25 +31,21 @@ Emit the DISPLAY section.
 
 #### Otherwise
 
-→ Proceed to **B. Select**.
-
-## B. Select
-
-Emit the MENU section.
+Emit the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If user chose `b/back`
+**If user chose `b/back`:**
 
 → Return to caller.
 
-#### If user chose a number
+**If user chose a number:**
 
 Store the selected work unit's name from its `UNITS` row.
 
-→ Proceed to **C. Action Menu**.
+→ Proceed to **B. Action Menu**.
 
-## C. Action Menu
+## B. Action Menu
 
 Fetch the action menu over the selected unit:
 
@@ -85,4 +81,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 Answer the question.
 
-→ Return to **C. Action Menu**.
+→ Return to **B. Action Menu**.

@@ -103,7 +103,7 @@ New summary for "{item.name:(titlecase)}":
 
 **STOP.** Wait for user response.
 
-Update the in-memory summary for that item with the user's response. Re-render the batch from **B** so the user can see the updated state, then return to the prompt at the top of this section.
+Update the in-memory summary for that item with the user's response, then output the batch display from **B** again with the updated state — its fenced block alone, never the gate call beneath it; the prompt at the top of this section takes the next answer.
 
 → Return to **C. Edit Loop**.
 

@@ -10,7 +10,9 @@ The prose should have taken this path:
    the whole reconcile through one `manifest apply`
 4. the same reconcile assigns the build order: every specification
    item it creates carries an `order` field
-5. the groupings menu is presented and the walk stops there
+5. the flow reads the routing state afresh — the reconcile moved it —
+   and, the scenario now groupings, presents the groupings menu from the
+   display's own snapshot; the walk stops there
 
 Further claims about the end state:
 

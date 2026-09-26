@@ -4,11 +4,17 @@
 
 ---
 
-Validate the selected work unit against the discovery output, then load its state surface.
+Validate the selected work unit against the discovery index, then load its state surface. Read the index from the `select` response when the user picked at Step 3, from the Step 1 dump when the work unit arrived as an argument.
 
-#### If `work_unit` not found in the `=== EPICS (N) ===` section
+#### If `work_unit` not found in that index's `=== EPICS (N) ===` section
 
-The scoped snapshot for an unknown name carries the terminal display. Emit its `DISPLAY: not found` section verbatim per its marker.
+Fetch the terminal display — the `view` snapshot for an unknown name carries it:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit}
+```
+
+Emit its `DISPLAY: not found` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
