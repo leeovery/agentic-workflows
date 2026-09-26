@@ -525,28 +525,44 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   run in the foreground says `run_in_background: false`, and one the
   conversation carries on past carries none (CONVENTIONS' Dispatch
   Lines).
-- **R23 — a code block names its language on the fence.** Claude Code
-  paints a fence with no language entirely in the theme's `permission`
-  colour, the lilac of the menus, so every plain display (a dashboard, a
-  tree, the phase structure) drew in the gate's colour and the gate lost
-  the contrast that marks it out (finding 53). What the workflows show is
-  markdown, or a code block whose fence names its language: `text` for a
-  plain display, which renders in the normal text colour with no label
-  (`text` is highlight.js's alias of `plaintext`), and `properties` or
-  `diff` where the colour is wanted (a blocker, the start banner, a
-  diff). No fence goes untagged.
-  - The engine's markers name the fence, as its `properties` and `diff`
-    markers already do: a plain display is "emit verbatim as a text code
-    block (```` ```text ```` fence)".
-  - A prose template's fence carries its own tag (```` ```text ````,
-    ```` ```properties ````) beneath the one instruction "Output the next
-    fenced block as a code block"; the bare `properties` template fences
-    gain theirs.
-  - CONVENTIONS' output vocabulary becomes markdown, or a code block whose
-    fence names `text`, `properties` or `diff`; a model-drawn diagram goes
-    in a `text` fence too; and a conventions lint check refuses a bare
-    fence beneath a code-block instruction.
-  The same form holds whichever way a block reaches the screen (R21).
+- **R23 — one vocabulary for how a block renders, and every code block
+  names its language.** Claude Code paints a fence with no language
+  entirely in the theme's `permission` colour, the lilac of the menus, so
+  every plain display (a dashboard, a tree, the phase structure) drew in
+  the gate's colour and the gate lost the contrast that marks it out
+  (finding 53). What the workflows show is one of four forms, said the
+  same way wherever an instruction names one:
+  - `markdown (not a code block)`, for chrome, signposts, menus and
+    anything whose formatting must render;
+  - `a text code block (```` ```text ```` fence)`, for a plain display
+    whose indentation must hold (a tree, aligned columns); `text` is
+    highlight.js's alias of `plaintext`, so it renders in the normal
+    colour with no label;
+  - `a properties code block (```` ```properties ```` fence)` and `a diff
+    code block (```` ```diff ```` fence)`, where the colour is the point (the
+    start banner and blockers, change content).
+
+  No bare "code block" remains: every code block says so and names its
+  fence, which keeps a tree from ever being written as markdown.
+  - A prose template's instruction names the form in full ("Output the
+    next fenced block as a text code block (```` ```text ```` fence):"), and
+    the template's own fence carries the same tag, so the template is
+    what gets written; a markdown template's fence stays bare.
+  - The engine's markers use the same four forms ahead of their behaviour
+    clauses ("emit verbatim as a text code block (```` ```text ```` fence) —
+    do not stop; continue as the workflow instructs").
+  - Content Claude composes itself says the same: a report or summary
+    written "as markdown (not a code block)", and a code block Claude
+    writes (a diagram, a sample) names its language, `text` for plain
+    (`instructions.md`, beside R21).
+  - The conventions lint allows only the four template forms, each over a
+    fence carrying its tag (bare for markdown), and the engine's render
+    sweep requires every section marker to open with one of them, so no
+    older or reworded form comes back.
+
+  The form holds whichever way a block reaches the screen: a bare fence
+  draws lilac and a `text` fence white through `SendUserMessage` exactly
+  as in Claude's own text (R21, tested in the lab).
 
 ## The stack
 
