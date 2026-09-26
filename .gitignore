@@ -10,3 +10,4 @@ node_modules/
 .npm-cache/
 .workflows/.knowledge/store.msp
 tests/.cache/
+skills/workflow-gates/types/
