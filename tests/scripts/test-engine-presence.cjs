@@ -16,6 +16,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { auditMarkers } = require('./gate-audit.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-'));
@@ -60,6 +61,7 @@ describe('engine presence', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    auditMarkers(sections, 'presence scan');
     assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'held_sources', 'sessions'],
       'one verdict — no live total, no staleness window');
     assert.strictEqual(res.held, 1);
