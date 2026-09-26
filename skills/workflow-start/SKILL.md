@@ -149,7 +149,7 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The workflows come with a Claude Mod, an experimental Claude Code feature. It shows each menu as buttons above the prompt — click a row or press its key to answer — and in a workflow session it makes sure what the workflow shows you reaches the screen as written. Your other Claude sessions in this project are left as they are. It's switched on in this project's `.claude/settings.json`.
+> The workflows come with a Claude Code mod that shows each menu as buttons above the prompt — click a row to pick it, click again to send. Mods are an experimental Claude Code feature, switched on for this project in its `.claude/settings.json`. Your other Claude sessions in this project are left as they are.
 ```
 
 > *Output the next fenced block as a properties code block (```properties fence):*

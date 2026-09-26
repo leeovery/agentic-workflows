@@ -10,7 +10,7 @@ A gate is a stop where a decision is yours. The system shows you a menu and wait
       Or …      → a prompt row: answer in plain language
 ```
 
-Every menu row has a key and a word, and typing either works. Where a row begins "Or", plain language is invited, and anywhere else a plain-language answer is understood too. What a gate shows you is written for the person deciding: reports arrive in the product's terms first, telling you what you would see happen and where, and the code's retelling is one option away. The facts are identical through both lenses.
+Every menu row has a key and a word. In the terminal, menus are drawn as buttons above the prompt — click a row to pick it, click again to send; typing a key or plain words always works. Where a row begins "Or", plain language is invited, and anywhere else a plain-language answer is understood too. What a gate shows you is written for the person deciding: reports arrive in the product's terms first, telling you what you would see happen and where, and the code's retelling is one option away. The facts are identical through both lenses.
 
 How often the system stops depends on the stage. Discovery-stage phases are conversations and stop constantly, because a wrong turn there costs a sentence to correct. Definition-stage phases stop for you to approve documents. Delivery-stage phases run largely on their own and stop at the gates built into their loops: a task list to approve, a finished task to accept, a finding to act on.
 
