@@ -56,7 +56,7 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /  ordering {2}mvp {2}in-flight {2}mvp/);
     assert.match(res.stdout, /  loyalty {2}v1 {2}waiting {2}—/);
     assert.match(res.stdout, /SESSIONS \(number {2}path\):/);
-    assert.match(res.stdout, /ACTIONS \(key {2}action\):/);
+    assert.match(res.stdout, /ACTIONS \(key {2}word {2}action\):/);
     assert.match(res.stdout, /  c {2}converse/);
     assert.match(res.stdout, /  p {2}pull/);
     assert.match(res.stdout, /  b {2}back/);
@@ -83,7 +83,7 @@ describe('workflow-roadmap gateway: view', () => {
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(!/ {2}p {2}pull/.test(res.stdout), 'no pull action over zero waiting items');
+    assert.ok(!/ {2}p {2}pull {2}pull/.test(res.stdout), 'no pull action over zero waiting items');
     assert.match(res.stdout, /Talk about the product, add or re-sort items/);
   });
 });

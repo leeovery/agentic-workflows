@@ -19,7 +19,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
@@ -331,11 +331,11 @@ function emptyMenu(detail) {
 // Inbox pickup + archived store
 // ---------------------------------------------------------------------------
 
-/** The `n  type  date  slug  → path` table under a header line. @param {string} header @param {PickupItem[]} items */
+/** The `n  type  date  slug  → path  — title` table under a header line. @param {string} header @param {PickupItem[]} items */
 function itemTable(header, items) {
-  const lines = [`${header} (n  type  date  slug  → path):`];
+  const lines = [`${header} (n  type  date  slug  → path  — title):`];
   for (const item of items) {
-    lines.push(`  ${item.n}  ${item.type}  ${item.date}  ${item.slug}  → ${item.path}`);
+    lines.push(`  ${item.n}  ${item.type}  ${item.date}  ${item.slug}  → ${item.path}  — ${item.title}`);
   }
   return lines;
 }
@@ -632,31 +632,20 @@ function manageListView(detail) {
  * @returns {{data: string, menu: string}}
  */
 function manageUnitView(md) {
-  /** @type {[string, string][]} */
-  const actions = [];
-  const options = [];
-  if (md.implementation_completed) {
-    actions.push(['d', 'mark_completed']);
-    options.push(cmdOption('d', 'done', 'Mark as completed'));
-  }
-  if (md.work_type === 'feature') {
-    actions.push(['p', 'pivot']);
-    options.push(cmdOption('p', 'pivot', 'Convert to epic (enables multiple topics)'));
-  }
-  if (md.absorb_available) {
-    actions.push(['a', 'absorb']);
-    options.push(cmdOption('a', 'absorb', 'Merge into an existing epic'));
-  }
-  if (md.has_plan) {
-    actions.push(['v', 'view_plan']);
-    options.push(cmdOption('v', 'view-plan', 'View the implementation plan'));
-  }
-  actions.push(['c', 'cancel'], ['b', 'back']);
-  options.push(
-    cmdOption('c', 'cancel', 'Mark as cancelled'),
-    cmdOption('b', 'back', 'Return'),
-    promptOption('Ask', 'Ask a question about this work unit'),
+  /** @type {{key: string, word: string, action: string, label: string}[]} */
+  const keys = [];
+  if (md.implementation_completed) keys.push({ key: 'd', word: 'done', action: 'mark_completed', label: 'Mark as completed' });
+  if (md.work_type === 'feature') keys.push({ key: 'p', word: 'pivot', action: 'pivot', label: 'Convert to epic (enables multiple topics)' });
+  if (md.absorb_available) keys.push({ key: 'a', word: 'absorb', action: 'absorb', label: 'Merge into an existing epic' });
+  if (md.has_plan) keys.push({ key: 'v', word: 'view-plan', action: 'view_plan', label: 'View the implementation plan' });
+  keys.push(
+    { key: 'c', word: 'cancel', action: 'cancel', label: 'Mark as cancelled' },
+    { key: 'b', word: 'back', action: 'back', label: 'Return' },
   );
+  const options = [
+    ...keys.map((k) => cmdOption(k.key, k.word, k.label)),
+    promptOption('Ask', 'Ask a question about this work unit'),
+  ];
 
   const data = [
     `work_unit: ${md.work_unit}`,
@@ -669,8 +658,7 @@ function manageUnitView(md) {
     `absorb_available: ${md.absorb_available}`,
     `available_epics: ${md.available_epics.join(', ') || '(none)'}`,
     `planning_topics: ${md.planning_topics.map((t) => `${t.name} [${t.status}]`).join(', ') || '(none)'}`,
-    'ACTIONS (key  action):',
-    ...actions.map(([k, a]) => `  ${k}  ${a}`),
+    ...actionsTable(['action'], keys, (k) => [k.action]),
   ].join('\n');
 
   return { data, menu: menu(`**${titlecase(md.work_unit)}** (${md.work_type})`, options, { question: 'What would you like to do?' }) };

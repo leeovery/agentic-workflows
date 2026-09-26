@@ -14,7 +14,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
-const { menu, menuFrame, cmdOption } = require('./surfaces.cjs');
+const { menu, menuFrame, cmdOption, actionsTable } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -163,7 +163,7 @@ function workUnitMenu(type, unit) {
 
 /**
  * The DATA body for the view snapshot: flow flags plus the ACTIONS key table
- * (`key  action  topic  → route` lines). Reasoning surface — never displayed.
+ * (`key  word  action  topic  → route` lines). Reasoning surface — never displayed.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
  * @param {{keys: WorkUnitMenuKey[]}} menu  the workUnitMenu result for the same unit
@@ -185,10 +185,7 @@ function workUnitData(type, unit, menu) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);
     lines.push(`imports_count: ${unit.imports_count || 0}`);
   }
-  lines.push('ACTIONS (key  action  topic  → route):');
-  for (const k of menu.keys) {
-    lines.push(`  ${k.key}  ${k.action}  ${k.topic}  → ${k.route || '(internal)'}`);
-  }
+  lines.push(...actionsTable(['action', 'topic', '→ route'], menu.keys, (k) => [k.action, k.topic, `→ ${k.route || '(internal)'}`]));
   return lines.join('\n');
 }
 

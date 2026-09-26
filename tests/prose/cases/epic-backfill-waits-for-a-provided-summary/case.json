@@ -1,0 +1,52 @@
+{
+  "origin": "the unsourced-topics gate's provide row asks the user to tell — a bare press carries no text, and the branch wrote whatever it had; it must ask for the summary and wait for it before anything lands",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-continue-epic/references/backfill-checks.md",
+    "skills/workflow-continue-epic/references/summary-backfill.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "y — accept them",
+    "p",
+    "Type-ahead suggestions in the search box, drawn from what shoppers actually search for."
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "legacy-research-split/scripts/detect.cjs search-relevance",
+      "render summary-backfill-gate search-relevance --variant batch",
+      "render summary-backfill-gate search-relevance --variant unsourced",
+      "manifest apply search-relevance"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "render summary-backfill-gate search-relevance --variant batch",
+      "render summary-backfill-gate search-relevance --variant unsourced",
+      "manifest apply search-relevance",
+      "discovery(search-relevance): backfill"
+    ],
+    "calls_exclude": [
+      "discovery-map sequence",
+      "discovery-map add",
+      "discovery-map edit",
+      "workflow-continue-epic/scripts/gateway.cjs view",
+      "topic start",
+      "workunit create"
+    ]
+  }
+}

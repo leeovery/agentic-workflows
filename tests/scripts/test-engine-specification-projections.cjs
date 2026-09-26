@@ -1021,8 +1021,8 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
     assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
-    assert.ok(out.includes('ACTIONS (key  action  topic  verb):'));
-    assert.ok(out.includes('  1  start_spec  auth-flow  Creating'));
+    assert.ok(out.includes('ACTIONS (key  word  action  topic  verb):'));
+    assert.ok(out.includes('  1  —  start_spec  auth-flow  Creating'));
     assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\), 1\*\n\u00a0+\*consult ref\(s\) pending\*/.test(out));
   });
 
@@ -1081,7 +1081,7 @@ describe('specification adapter: gateway verbs', () => {
     });
     createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# X');
     const out = run(['completed-menu', 'v1']);
-    assert.ok(out.includes('  1  refine_spec  done-spec  Refining'));
+    assert.ok(out.includes('  1  —  refine_spec  done-spec  Refining'));
     assert.ok(out.includes('# **`■ Completed Specifications`**'));
     assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — \*completed\*/.test(out));
     assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
@@ -1115,7 +1115,7 @@ describe('specification adapter: gateway verbs', () => {
     createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
     createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
     const out = run(['view', 'v1']);
-    assert.ok(out.includes('  1  blocked_spec  a-spec  —'));
+    assert.ok(out.includes('  1  —  blocked_spec  a-spec  —'));
     assert.ok(out.includes('a-spec: in-progress, has_pending_sources=true, blocked_by=a'));
     assert.ok(out.includes('=== MENU'));
   });

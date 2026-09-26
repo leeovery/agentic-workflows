@@ -216,6 +216,24 @@ function dataSection(lines) {
 }
 
 /**
+ * The `ACTIONS` key table a flow resolves a menu's answer through — one row
+ * per key, its `key` and `word` leading (`—` for a row with no word), then
+ * the caller's cells. A pressed row sends its word, or its key where it has
+ * none, so both stand in the table.
+ * @template {{key: string, word?: string | null}} K
+ * @param {string[]} columns  the column names after `key  word`
+ * @param {K[]} keys
+ * @param {(k: K) => string[]} cells
+ * @returns {string[]}
+ */
+function actionsTable(columns, keys, cells) {
+  return [
+    `ACTIONS (${['key', 'word', ...columns].join('  ')}):`,
+    ...keys.map((k) => `  ${[k.key, k.word || '—', ...cells(k)].join('  ')}`),
+  ];
+}
+
+/**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
  * the block more definitively than a drawn rule could. Projections with
@@ -434,5 +452,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 
