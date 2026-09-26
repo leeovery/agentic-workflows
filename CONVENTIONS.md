@@ -535,7 +535,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 → Proceed to **Step 0.5**.
 
 ### Step 0.5: Knowledge Gate
-[branch on the boot response: not-ready → terminal stop; ready → proceed]
+[branch on the boot response: not-ready → the loaded knowledge gate sets the store up in conversation and returns to Step 0.6; ready → proceed]
 → Proceed to **Step 0.6**.
 
 ### Step 0.6: Baseline Judgment
