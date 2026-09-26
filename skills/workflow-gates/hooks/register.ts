@@ -9,8 +9,9 @@
  * row's answer into the prompt box; a second press on that row sends it as the
  * next message, which the workflows' prose reads as the answer, or while
  * Claude works on anything else holds it until Claude finishes. In a session
- * that announced, what the band shows is kept across a restart, so a
- * conversation resumed where nothing has happened since shows its gate again.
+ * that announced, what the band shows is kept in the conversation's folder
+ * across a restart, so a conversation resumed where nothing has happened
+ * since shows its gate again.
  *
  * Every path up to the cut fails open: the engine emits the menu regardless,
  * so where the module never loads, or a cut throws or overruns, the model
@@ -18,10 +19,10 @@
  *
  * The module also sets Claude Code's harness for the workflows: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
- * that has run the engine's boot goes without Claude's thinking summarised as
- * output and without the nudge to say what it is doing, the person's own
- * values of both put back as it ends. A conversation that has not run the
- * boot keeps them untouched.
+ * the engine has marked as running the workflows goes without Claude's
+ * thinking summarised as output and without the nudge to say what it is
+ * doing, the person's own values of both put back as it ends. A conversation
+ * the engine has not marked keeps them untouched.
  */
 import type {
   AgentLoop,
@@ -55,17 +56,14 @@ const SENT = '.workflows/.cache/.gates/sent.json'
 /** The record that claims no send, which that mod draws nothing from. */
 const NOTHING_SENT = 'null'
 
-/** The prefix of the store key a conversation's band is kept under. */
-const KEPT = 'band:'
+/** Where each conversation that runs the workflows keeps what belongs to it. */
+const CONVERSATIONS = '.workflows/.cache/.conversations'
 
-/**
- * How long Claude Code keeps a transcript to resume unless told otherwise:
- * a band kept longer belongs to a conversation that cannot come back.
- */
-const KEPT_FOR_MS = 30 * 24 * 60 * 60 * 1000
+/** The file the engine marks a conversation that runs the workflows with. */
+const MARKER = 'workflow'
 
-/** The engine's boot, as a Bash command runs it. */
-const BOOT = /engine\.cjs\s+boot\b/
+/** The file a conversation's band is kept in for a resume. */
+const KEPT = 'gate.json'
 
 const STOP_NOTE =
   "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
@@ -286,17 +284,15 @@ async function send($: EngineInterface, gate: Gate, option: Option) {
 }
 
 /**
- * Where a conversation stands, as its transcript reads: the key its band is
- * kept under, named by its first tool call, which no other conversation
- * makes and no change of session id moves (null before its first call); and
- * the stamp of the step it ends on.
+ * Where a conversation stands: its session id, which names its folder, and
+ * the stamp of the step its transcript ends on.
  */
-type Place = { key: string | null; stamp: string }
+type Place = { id: string; stamp: string }
 
-/** What the store keeps of a conversation's band: its gate, and when. */
-type Kept = { stamp: string; gate: Gate; keptAt: number }
+/** What a conversation's folder keeps of its band: its gate, and where the transcript ended. */
+type Kept = { stamp: string; gate: Gate }
 
-/** A band read back from the store: where the conversation stands, its gate. */
+/** A band read back from its folder: where the conversation stands, its gate. */
 type ReadBack = { place: Place; gate: Gate | null }
 
 /**
@@ -332,6 +328,7 @@ const isInterruption = (message: SessionMessage) =>
  * rest on the same words is told apart.
  */
 async function placeOf($: EngineInterface): Promise<Place | null> {
+  const id = await $.session.id()
   const steps = (await $.session.messages()).filter(
     message => !isInterruption(message),
   )
@@ -342,10 +339,9 @@ async function placeOf($: EngineInterface): Promise<Place | null> {
   }
 
   const calls = steps.flatMap(callsOf)
-  const [first] = calls
 
   return {
-    key: first === undefined ? null : `${KEPT}${first}`,
+    id,
     stamp: JSON.stringify([
       last.role,
       last.text,
@@ -356,70 +352,55 @@ async function placeOf($: EngineInterface): Promise<Place | null> {
 }
 
 const isSamePlace = (place: Place, other: Place | null) =>
-  other !== null && place.key === other.key && place.stamp === other.stamp
+  other !== null && place.id === other.id && place.stamp === other.stamp
 
-/** Whether `place` is the keyed conversation `seen` read, however far on. */
+/** Whether `place` is the conversation `seen` read, however far on. */
 const isSameConversation = (place: Place | null, seen: Place | null) =>
-  place !== null && seen !== null && seen.key !== null && place.key === seen.key
+  place !== null && seen !== null && place.id === seen.id
 
 const isKept = (value: unknown): value is Kept =>
   typeof value === 'object' &&
   value !== null &&
-  typeof (value as Kept).stamp === 'string' &&
-  typeof (value as Kept).keptAt === 'number'
+  typeof (value as Kept).stamp === 'string'
+
+/**
+ * A file in the folder of the conversation `id`, which the engine names by
+ * the id's safe characters alone.
+ */
+const inFolder = (id: string, file: string) =>
+  `${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}/${file}`
+
+/** Whether the engine has marked the conversation `id` as one that runs the workflows. */
+async function isWorkflow($: EngineInterface, id: string): Promise<boolean> {
+  return $.fs.exists(inFolder(id, MARKER))
+}
 
 /**
  * Keeps what the band shows for the conversation at `place` — the gate, or
- * nothing — in a session that announced, dropping what was kept for it under
- * a key `before` it has since left, as a compaction or a transcript past
- * what `$.session.messages()` answers moves its first call.
+ * nothing — in its folder, in a session that announced and a conversation
+ * that runs the workflows: any other conversation gets no folder.
  */
-async function keep(
-  $: EngineInterface,
-  place: Place | null,
-  gate: Gate | null,
-  before: Place | null,
-) {
-  if (!(await isAnnounced($))) {
+async function keep($: EngineInterface, place: Place | null, gate: Gate | null) {
+  if (
+    place === null ||
+    !(await isAnnounced($)) ||
+    !(await isWorkflow($, place.id))
+  ) {
     return
   }
 
-  const key = place?.key ?? null
-  const left = before?.key ?? null
+  const kept: Kept | null = gate === null ? null : { stamp: place.stamp, gate }
 
-  if (left !== null && left !== key) {
-    await $.store.delete(left)
-  }
-
-  if (place === null || key === null) {
-    return
-  }
-
-  if (gate === null) {
-    await $.store.delete(key)
-  } else {
-    const kept: Kept = { stamp: place.stamp, gate, keptAt: await $.clock.now() }
-
-    await $.store.set(key, kept)
-  }
+  await $.fs.write(inFolder(place.id, KEPT), JSON.stringify(kept))
 }
 
-/** Whether a Bash command runs the engine's boot. */
-const isBoot = (command: unknown) =>
-  typeof command === 'string' && BOOT.test(command)
-
-/** Whether the conversation's transcript holds a boot that did not fail. */
-async function hasBooted($: EngineInterface): Promise<boolean> {
-  const messages = await $.session.messages()
-
-  return messages.some(message =>
-    message.toolUses.some(
-      use =>
-        use.tool === 'Bash' &&
-        use.isError !== true &&
-        isBoot(use.input.command),
-    ),
-  )
+/** What the folder of the conversation `id` keeps; undefined where it keeps nothing readable. */
+async function keptFor($: EngineInterface, id: string): Promise<unknown> {
+  try {
+    return JSON.parse(await $.fs.read(inFolder(id, KEPT)))
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -433,7 +414,7 @@ type Replaced = {
 
 /**
  * Puts Claude Code's harness on for a workflow session, one whose
- * conversation has run the engine's boot: no summary of Claude's thinking
+ * conversation the engine has marked: no summary of Claude's thinking
  * printed as if it were output, and no nudge to say what it is doing. Claude
  * Code reads both per request. What it replaces is kept in the process's
  * environment, which a reload of the module's files keeps, and only where
@@ -486,8 +467,8 @@ async function harnessOff($: EngineInterface) {
  * Settles the read-back the band owes, if `owing` says it owes one: `take`
  * gets the conversation the transcript holds now, with its kept gate where
  * the transcript still ends where it was kept, or none where it has moved
- * on, the kept band dropped while the read-back is still owed. A
- * conversation that has run the boot gets the workflow harness back, again
+ * on, the kept gate dropped while the read-back is still owed. A
+ * conversation the engine has marked gets the workflow harness back, again
  * while the read-back is still owed. Nothing settles in a session that did
  * not announce, while the transcript is empty, or while it still holds the
  * conversation that ended in this process.
@@ -509,11 +490,11 @@ async function readBack(
     return
   }
 
-  if ((await hasBooted($)) && owing() === asked) {
+  if ((await isWorkflow($, place.id)) && owing() === asked) {
     await harnessOn($)
   }
 
-  const kept = place.key === null ? undefined : await $.store.get(place.key)
+  const kept = await keptFor($, place.id)
 
   if (isKept(kept) && kept.stamp === place.stamp) {
     take(asked, { place, gate: kept.gate })
@@ -521,28 +502,11 @@ async function readBack(
     return
   }
 
-  if (kept !== undefined && place.key !== null && owing() === asked) {
-    await $.store.delete(place.key)
+  if (isKept(kept) && owing() === asked) {
+    await $.fs.write(inFolder(place.id, KEPT), JSON.stringify(null))
   }
 
   take(asked, { place, gate: null })
-}
-
-/** Drops every band kept longer than a transcript is kept to resume. */
-async function forgetExpired($: EngineInterface) {
-  const now = await $.clock.now()
-
-  for (const key of await $.store.keys()) {
-    if (!key.startsWith(KEPT)) {
-      continue
-    }
-
-    const kept = await $.store.get(key)
-
-    if (!isKept(kept) || now - kept.keptAt >= KEPT_FOR_MS) {
-      await $.store.delete(key)
-    }
-  }
 }
 
 export const register: Register = on => {
@@ -647,7 +611,7 @@ export const register: Register = on => {
   // Announced, never always-on: the engine collects a gate only for a session
   // that asked for one, and every Bash child inherits this. A fresh load
   // comes back to a conversation this module has not followed, so the band
-  // is read back from the store, and bands kept past any resume are dropped.
+  // is read back from the conversation's folder.
   on('session.start', async ($, e, next) => {
     await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
 
@@ -662,22 +626,20 @@ export const register: Register = on => {
       $.ui.invalidate('ui.render')
     }
 
-    await forgetExpired($)
-
     return next(e)
   }).catch(($, e, next) => next(e))
 
   // A /clear or a resume goes on in this process as another conversation,
   // which no gate of this one answers and which is no workflow session until
-  // it boots or is read back as one that has. What the band showed is kept for
-  // this one first, stamped where its transcript ends now, which can have
-  // moved since its last turn's end.
+  // the engine marks it or it is read back as one it has marked. What the
+  // band showed is kept for this one first, stamped where its transcript
+  // ends now, which can have moved since its last turn's end.
   on('session.end', async ($, e, next) => {
     try {
       const place = await placeOf($)
 
       if (isSameConversation(place, seen)) {
-        await keep($, place, band.drawn, seen)
+        await keep($, place, band.drawn)
         seen = place
       }
     } finally {
@@ -699,15 +661,18 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  // Every engine call marks the conversation that made it, whatever its exit,
+  // so after each of the conversation's own commands the mark says whether it
+  // runs the workflows; a command that only mentions the engine marks nothing.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
 
-    if (result.deny !== undefined || result.isError === true) {
-      return result
+    if (inConversation(e) && (await isWorkflow($, await $.session.id()))) {
+      await harnessOn($)
     }
 
-    if (inConversation(e) && isBoot(e.command)) {
-      await harnessOn($)
+    if (result.deny !== undefined || result.isError === true) {
+      return result
     }
 
     const record = result.result
@@ -757,7 +722,7 @@ export const register: Register = on => {
 
     const place = await placeOf($)
 
-    await keep($, place, drawn, seen)
+    await keep($, place, drawn)
     seen = place
 
     const answered = await next(e)

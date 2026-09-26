@@ -27,6 +27,7 @@
  */
 
 const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
+const { markConversation } = require('./domain/conversation.cjs');
 
 const SECTION = {
   title:   `=== TITLE (${TITLE_INSTRUCTION}) ===`,
@@ -71,13 +72,15 @@ function dataLines(obj) {
 
 /**
  * Dispatch argv against the registered handlers and write the result to
- * stdout. Exits non-zero with a usage line on an unknown verb.
+ * stdout, the calling conversation marked as one that runs the workflows.
+ * Exits non-zero with a usage line on an unknown verb.
  * @param {GatewayHandlers} handlers
  * @param {string[]} [argv] defaults to process.argv.slice(2)
  */
 function runGateway(handlers, argv = process.argv.slice(2)) {
   const [first, ...rest] = argv;
   openGate();
+  markConversation(process.cwd());
 
   let out;
   if (first === undefined) {
