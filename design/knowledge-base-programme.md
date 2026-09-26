@@ -337,7 +337,8 @@ median returned chunk is 3.1–3.7k characters and a quarter run past 5.7–8k.
   (`workflow-planning-entry/references/cross-cutting-context.md`) runs its
   knowledge query, filtered to `--work-type cross-cutting`, even when the
   project has no cross-cutting unit — a query that can only return nothing.
-  It is 10 of the 155 real queries harvested.
+  It is 10 of the 155 real queries harvested. Fixed separately (#1311): the
+  query runs only when a cross-cutting unit has a completed specification.
 - Embedding a large corpus hit OpenAI's rate limit (1M tokens a minute at
   the lowest tier; portal's corpus is ~0.93M), and the retry ignored the
   wait the provider named. Fixed separately (#1309): a rate-limited request
@@ -408,6 +409,13 @@ measures it against OpenAI.
 Measured for each, behind the line step 2 draws: eval quality (must hold or
 improve), query time including load, full and single-file index time, store
 size, install footprint, and the Node version it requires.
+
+The conversation is prepared by research, not reached for: for each
+candidate, how it fits behind step 2's line, how much control it gives the
+keyword side, its Node floor and install footprint, and what is already
+known of its speed at this scale; for a local embedder, the model's size,
+its indexing time, and its standing against OpenAI's model. The literature
+gathered so far is thin on storage, so this research is new work.
 
 Known before measuring: Orama's filtered reads pre-allocated their `limit`,
 fixed separately (#1305). Insert and save remain most of a fresh index's
