@@ -14,7 +14,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > This will move the feature's discussion, research, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
-Fetch and emit the `MENU: absorb target` section (its numbering follows the DATA `available_epics` order):
+Fetch and emit the `MENU: absorb target` section verbatim per its marker (its numbering follows the DATA `available_epics` order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-target {selected.name}
@@ -118,7 +118,7 @@ The command succeeded.
 
 ## E. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the documents it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the documents it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]

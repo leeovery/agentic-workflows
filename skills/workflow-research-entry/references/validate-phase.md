@@ -20,7 +20,7 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} research {topic}
 ```
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.research.{topic} --verb Reopening
@@ -34,7 +34,7 @@ Set source="continue".
 
 #### If status is `in-progress`
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.research.{topic} --verb Resuming

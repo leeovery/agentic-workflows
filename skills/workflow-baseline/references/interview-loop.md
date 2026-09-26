@@ -22,7 +22,7 @@ Research hasn't covered it yet.
 
 #### If any area is `completed`
 
-A resumed interview — fetch the progress snapshot and emit its `DISPLAY: baseline progress` section verbatim as a code block:
+A resumed interview — fetch the progress snapshot and emit its `DISPLAY: baseline progress` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
@@ -67,7 +67,7 @@ Every area is `completed`.
 Read the area's agenda (`.workflows/.baseline/.state/agenda-{area}.md`) and interview in rounds until no `pending` questions remain:
 
 1. **Compose the round** — 1–4 pending questions that are independent of one another. A question whose premises could be reshaped by another's answer waits for a later round.
-2. **Ask conversationally** — per question: the observation first, then the ask. Evidence is what jogs memory ("why polling?" retrieves nothing; "the dispatcher polls behind four separate guards — that layering usually accretes from incidents; what's the story?" retrieves everything), and a wrong candidate jogs memory better than an open prompt. Write the round payload to `.workflows/.cache/baseline/round.json` with the Write tool — `{"area": "{area}", "questions": [{"text": "{the question, evidence woven in}", "candidates": ["{plausible answer}", "…"]}]}` — then fetch the round and emit its `DISPLAY: baseline round` section verbatim as a code block:
+2. **Ask conversationally** — per question: the observation first, then the ask. Evidence is what jogs memory ("why polling?" retrieves nothing; "the dispatcher polls behind four separate guards — that layering usually accretes from incidents; what's the story?" retrieves everything), and a wrong candidate jogs memory better than an open prompt. Write the round payload to `.workflows/.cache/baseline/round.json` with the Write tool — `{"area": "{area}", "questions": [{"text": "{the question, evidence woven in}", "candidates": ["{plausible answer}", "…"]}]}` — then fetch the round and emit its `DISPLAY: baseline round` section verbatim per its marker:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-round --file .workflows/.cache/baseline/round.json
@@ -106,7 +106,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 
 #### If areas remain
 
-Fetch the gate and emit its `MENU: baseline area gate` section verbatim as markdown (not a code block):
+Fetch the gate and emit its `MENU: baseline area gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate --area {area}
@@ -134,7 +134,7 @@ Commit whatever the ledger holds:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: pause the interview"
 ```
 
-Fetch the pause receipt and emit its `DISPLAY: baseline paused` section verbatim as a code block:
+Fetch the pause receipt and emit its `DISPLAY: baseline paused` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-paused

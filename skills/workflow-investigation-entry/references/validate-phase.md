@@ -8,7 +8,7 @@ Branch on the `phase_status` the caller read in Step 1 — no re-read.
 
 #### If status is `in-progress`
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Resuming
@@ -26,7 +26,7 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} investigation {topic}
 ```
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Reopening

@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 
 **If output is `[]` (previously skipped):**
 
-Fetch the gate, emitting each section verbatim at its marked instruction:
+Fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --variant skipped
@@ -60,7 +60,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 ## B. Confirm Linters
 
-Write the linter names from the project default to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": ["{name}", ...]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the linter names from the project default to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": ["{name}", ...]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant confirm
@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 #### If the analysis finds candidate linters
 
-Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `installed` is what the check above actually found, and `recommendations` (omit it when there are none) carries any install commands as one line: `{"linters": [{"name": "{tool}", "detail": "{command}", "installed": true|false}], "recommendations": "{suggested tools with their install commands}"}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `installed` is what the check above actually found, and `recommendations` (omit it when there are none) carries any install commands as one line: `{"linters": [{"name": "{tool}", "detail": "{command}", "installed": true|false}], "recommendations": "{suggested tools with their install commands}"}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant discovery

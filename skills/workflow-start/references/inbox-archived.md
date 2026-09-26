@@ -17,21 +17,21 @@ node .claude/skills/workflow-start/scripts/gateway.cjs archived
 The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown.
-- **MENU** — the archived items as a numbered pick list. Emit verbatim as markdown (not a code block). Absent when nothing is archived.
-- **DISPLAY** — only when nothing is archived: the empty-store line. Emit verbatim as a code block.
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker.
+- **MENU** — the archived items as a numbered pick list. Emit verbatim per its marker. Absent when nothing is archived.
+- **DISPLAY** — only when nothing is archived: the empty-store line. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown). A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section verbatim per its marker.
 
 #### If `archived_count` is 0
 
-Emit the DISPLAY section.
+Emit the DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
 #### Otherwise
 
-Emit the MENU section.
+Emit the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -47,7 +47,7 @@ Store the selected item's `ITEMS` row — its type, slug, date, and path.
 
 ## B. Action Menu
 
-Fetch the menu over the selected item and emit its `MENU: archived actions` section verbatim as markdown (not a code block):
+Fetch the menu over the selected item and emit its `MENU: archived actions` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions --path {item.path}
@@ -89,7 +89,7 @@ Restored "{item.title}" to the inbox.
 
 #### If user chose `d/delete`
 
-Confirm before deleting — fetch the gate and emit its `MENU: archived delete gate` section verbatim as markdown (not a code block):
+Confirm before deleting — fetch the gate and emit its `MENU: archived delete gate` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-gate --path {item.path}

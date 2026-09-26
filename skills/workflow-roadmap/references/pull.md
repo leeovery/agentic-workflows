@@ -14,7 +14,7 @@ Render the pull working set:
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs pull-set
 ```
 
-The output arrives in demarcated sections: read `=== DATA` to reason from (the `ITEMS` table resolves selection numbers — never display it); emit the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown.
+The output arrives in demarcated sections: read `=== DATA` to reason from (the `ITEMS` table resolves selection numbers — never display it); emit the DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 

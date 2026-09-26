@@ -21,11 +21,11 @@ node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs view {work_un
 The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: state flags (`next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  action  topic  → route`. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the status block. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise. Emit verbatim as markdown (not a code block).
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
+- **DISPLAY** — the status block. Emit verbatim per its marker. Never redraw, reflow, or trim it.
+- **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown), then the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
 #### If `revisit_available` is `false`
 
@@ -61,7 +61,7 @@ Complete the work unit — one command sets `status: completed`, stamps `complet
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline"
 ```
 
-Fetch and emit the receipt's `DISPLAY: confirmation` section:
+Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
@@ -77,7 +77,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 ## C. Select Phase
 
-Fetch and emit the `MENU: revisit phases` section (its numbering matches the `revisit_phase` keys in `ACTIONS`):
+Fetch and emit the `MENU: revisit phases` section verbatim per its marker (its numbering matches the `revisit_phase` keys in `ACTIONS`):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {work_unit}

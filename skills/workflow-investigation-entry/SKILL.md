@@ -75,7 +75,7 @@ Decide whether a context interview is needed — the durable carrier is seeded b
 
 The bug was shaped in discovery — the durable carrier (manifest `description` + that session log) is read by the processing skill at initialisation. Nothing to gather.
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting

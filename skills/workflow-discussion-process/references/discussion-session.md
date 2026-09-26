@@ -126,9 +126,7 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 The output is one snapshot in two demarcated sections:
 
 - **DATA** — reasoning surface: `counts`, `all_decided`, `unresolved`, `review_arming`. Reason from it; never display or restate it.
-- **DISPLAY** — the rendered map. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-
-A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+- **DISPLAY** — the rendered map. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 
 Don't render the map after every exchange — do it at meaningful transitions. If the user has just seen a similar state, skip it.
 
