@@ -369,17 +369,17 @@ class Sim {
   /**
    * One engine call, in this process: the CLI's argv contract without a
    * process per assertion. Answers what the spawned CLI answered.
-   * @param {string[]} args @param {object|null} [identity]
+   * @param {string[]} args @param {object|null} [identity] @param {string} [stdin] what a hook target reads
    */
-  engine(args, identity = null) {
-    return engine.run(args, { cwd: this.dir, env: this.envOf(identity) });
+  engine(args, identity = null, stdin = '') {
+    return engine.run(args, { cwd: this.dir, env: this.envOf(identity), stdin });
   }
 
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
-  run(args, identity = null) {
+  run(args, identity = null, stdin = '') {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
-    const res = this.engine(args, identity);
+    const res = this.engine(args, identity, stdin);
     assert.strictEqual(res.code, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     const nl = res.stdout.indexOf('\n');
@@ -1635,19 +1635,25 @@ describe('pipeline simulation', () => {
     assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), 'the peer\'s heartbeat is left alone');
     sim.run(['presence', 'cleanup', 'peer-sess']);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), undefined);
+    // The same hook records the ending conversation's transcript in its
+    // folder, which every call the sim makes has marked; a conversation that
+    // never ran the workflows has no folder and gets none.
+    const ending = (/** @type {string} */ id) => JSON.stringify({ session_id: id, transcript_path: `/transcripts/${id}.jsonl`, hook_event_name: 'SessionEnd', reason: 'clear' });
+    assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('sim-session')), { ok: true, recorded: true });
+    assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('plain-sess')), { ok: true, recorded: false });
     // Session labels, as every process skill's Step 0 issues them: an
     // unrecorded opt-in answers a disabled no-op — even on a bad argument,
     // since the enable check precedes validation; opted in (the choice
     // lands on the project manifest, and the project's settings gain
-    // `session cleanup` beside the `presence cleanup` every project's
-    // SessionEnd hook carries, plus a SessionStart `session resume`
+    // `session cleanup` beside the `presence cleanup` and `conversation end`
+    // every project's SessionEnd hook carries, plus a SessionStart `session resume`
     // matched to resume, committed together) but outside tmux (the sim
     // strips the identity) answers no-tmux; an unknown phase from an
     // enabled call site refuses; a hand-stamped manifest false disables;
     // the SessionEnd restore sweep answers with nothing to restore and the
     // SessionStart resume — on stderr, its stdout being conversation
     // context — with nothing to resume; opting out takes `session cleanup`
-    // and `session resume` back out and leaves `presence cleanup`.
+    // and `session resume` back out and leaves the workflows' own.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     assert.deepStrictEqual(sim.run(['session', 'label', wu, 'deploying', 'alpha']),
@@ -1658,7 +1664,7 @@ describe('pipeline simulation', () => {
       Object.entries(JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8')).hooks)
         .map(([event, groups]) => [event, groups.flatMap((g) => g.hooks.map((h) => h.command.slice(h.command.indexOf('engine.cjs"'))))]));
     assert.deepStrictEqual(hookVerbs(), {
-      SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup'],
+      SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
     }, 'the opt-in installs the session hooks on both events');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice');
@@ -1683,7 +1689,8 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.runOnStderr(['session', 'resume', 'sim-sess']), { ok: true, resumed: false });
     sim.run(['session', 'label-config', 'false']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
-    assert.deepStrictEqual(hookVerbs(), { SessionEnd: ['engine.cjs" presence cleanup'] }, 'opting out leaves the presence sweep in place');
+    assert.deepStrictEqual(hookVerbs(), { SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'] },
+      'opting out leaves the workflows\' own in place');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

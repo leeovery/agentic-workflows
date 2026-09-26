@@ -42,6 +42,7 @@ const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
+const { markConversation, endConversation } = require('./domain/conversation.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -214,6 +215,7 @@ Commands:
   session repair
   session cleanup [session-id]
   session resume [session-id]
+  conversation end
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -875,17 +877,28 @@ const TOPIC_BEATS = ['start'];
 const UNIT_VERBS = ['cancel', 'reactivate'];
 
 /**
+ * The JSON Claude Code hands a session hook on stdin; empty where none
+ * arrived or it does not parse.
+ * @param {Call} call @returns {Record<string, unknown>}
+ */
+function hookInput(call) {
+  try {
+    const input = JSON.parse(call.stdin());
+    return input && typeof input === 'object' ? input : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
  * A session hook target's session id: the argument when given, else the
  * hook's stdin JSON.
  * @param {Call} call @param {string[]} rest @param {string} usage @returns {string|null}
  */
 function hookSessionId(call, rest, usage) {
   if (rest.length > 1) throw new Error(usage);
-  let sessionId = rest[0] || null;
-  if (!sessionId) {
-    try { sessionId = (JSON.parse(call.stdin()) || {}).session_id || null; } catch { sessionId = null; }
-  }
-  return sessionId;
+  const sessionId = rest[0] || hookInput(call).session_id;
+  return typeof sessionId === 'string' && sessionId ? sessionId : null;
 }
 
 /**
@@ -982,6 +995,22 @@ function runSession(call, argv) {
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+/** @param {Call} call @param {string[]} argv */
+function runConversation(call, argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command === 'end' && rest.length === 0) {
+      // The SessionEnd hook's target.
+      const input = hookInput(call);
+      respond(call, endConversation(hookProjectDir(call.cwd), input.session_id, input.transcript_path));
+      return;
+    }
+    throw new Error('Usage: engine conversation end');
   } catch (err) {
     failJson(call, err);
   }
@@ -1998,6 +2027,9 @@ function runCli(call, argv) {
     case 'session':
       runSession(call, rest);
       break;
+    case 'conversation':
+      runConversation(call, rest);
+      break;
     case 'task':
       runTask(call, rest);
       break;
@@ -2030,11 +2062,18 @@ function runCli(call, argv) {
   }
 }
 
+// The commands Claude Code's own hooks run as any conversation in the project
+// ends or resumes, whether it ran the workflows or not.
+const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end'];
+
 /**
  * One command against a bound call, answering its exit code. Every stop a
  * handler takes arrives here as an ExitSignal; anything else that escapes is
  * a handler that threw without answering, and gets the CLI's last word — the
- * message on stderr, exit 1.
+ * message on stderr, exit 1. Whatever the exit, a command the conversation
+ * ran marks it as one that runs the workflows — after the command, which
+ * may clear the cache the mark lives in: a first boot's migrations purge
+ * every cache no work unit owns.
  * @param {Call} call @param {string[]} argv @returns {number}
  */
 function dispatch(call, argv) {
@@ -2044,6 +2083,8 @@ function dispatch(call, argv) {
     if (err instanceof ExitSignal) return err.code;
     call.err(messageOf(err) + '\n');
     return 1;
+  } finally {
+    if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
   }
   return 0;
 }
