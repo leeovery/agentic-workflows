@@ -3,10 +3,12 @@
 //
 // Tests for the conversation folder, `.workflows/.cache/.conversations/
 // {session-id}/`: the mark every engine and gateway call leaves where Claude
-// Code handed it a session id — once, never without an id, never from the
-// commands Claude Code's own hooks run — `conversation end`, the SessionEnd
-// hook's record of the transcript path, written only where the folder
-// exists, and the tidy boot runs over the folders.
+// Code handed it a session id — once, never without an id, never outside a
+// workflows project, never from the commands Claude Code's own hooks run —
+// `conversation end`, the SessionEnd hook's record of the transcript path as
+// the hook hands it, written only where the folder exists, and the tidy boot
+// runs over the folders, reading a leading `~` as the home directory and a
+// relative path as naming no file.
 //
 
 require('./hermetic-env.cjs');
