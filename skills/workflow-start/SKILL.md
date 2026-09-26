@@ -132,7 +132,69 @@ All documents up to date.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Walkthrough
+### Step 0.2: Workflow Mod
+
+Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `not-running` means it was already switched on and this session did not load it; `on` and `unavailable` render nothing.
+
+#### If `gate_surface` is `restart`
+
+If the boot response carries `warnings`, surface them first.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Workflow Mod`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The workflows come with a Claude Code mod that shows each menu as buttons above the prompt — click a row to pick it, click again to send. Mods are an experimental Claude Code feature, switched on for this project in its `.claude/settings.json`. Your other Claude sessions in this project are left as they are.
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```
+⚑ Restart Claude Code to finish setting up
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Claude Code reads its settings only when it starts. Exit Claude Code, start it again in this project, then run `/workflow-start`.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `gate_surface` is `not-running`
+
+If the boot response carries `warnings`, surface them first.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Workflow Mod`**
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```
+⚑ The workflows' Claude Code mod isn't running
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> It's switched on in this project's `.claude/settings.json`, but this session didn't load it. Usually Claude Code was already running when it was switched on — exit Claude Code, start it again in this project, then run `/workflow-start` — or a setting of your own turns function hooks off (`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`).
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Walkthrough
 
 Branch on the boot response's `walkthrough` — the one-time offer of a short walk through how the workflows work. A recorded answer (`walked` or `skipped`) never re-offers, and the walk stays reachable from the `h/help` row on the start menu either way.
 
@@ -140,17 +202,23 @@ Branch on the boot response's `walkthrough` — the one-time offer of a short wa
 
 The offer is the walk's first screen, which records the answer. Load **[walk.md](../workflow-help/references/walk.md)** with origin = `first-run`.
 
-→ On return, proceed to **Step 0.3**.
+→ On return, proceed to **Step 0.4**.
 
 #### Otherwise
 
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.4**.
 
-### Step 0.3: Session Labels
+### Step 0.4: Session Labels
 
 Branch on the boot response's `tmux_labels` — `prompt` means the session runs inside tmux and the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts; `no-tmux` records nothing, so a later session inside tmux still asks.
 
 #### If `tmux_labels` is `prompt`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Session Labels`**
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -174,7 +242,7 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 ```
 
-→ Proceed to **Step 0.4**.
+→ Proceed to **Step 0.5**.
 
 **If `no`:**
 
@@ -184,13 +252,13 @@ Record the choice. If the command fails (`ok: false`), surface its error and con
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
 ```
 
-→ Proceed to **Step 0.4**.
+→ Proceed to **Step 0.5**.
 
 #### Otherwise
 
-→ Proceed to **Step 0.4**.
+→ Proceed to **Step 0.5**.
 
-### Step 0.4: Knowledge Gate
+### Step 0.5: Knowledge Gate
 
 Branch on the boot response — run no further commands (the bulk `knowledge index` and `compact` already ran inside boot when the knowledge base was ready, the index building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
 
@@ -200,9 +268,9 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 #### If `knowledge` is `ready`
 
-→ Proceed to **Step 0.5**.
+→ Proceed to **Step 0.6**.
 
-### Step 0.5: Baseline Judgment
+### Step 0.6: Baseline Judgment
 
 Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
 
@@ -219,6 +287,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
 → Proceed to **Step 1**.
 
 #### If `baseline` is `none` and the codebase predates the workflows
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Baseline Assessment`**
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 

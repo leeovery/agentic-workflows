@@ -21,6 +21,7 @@ const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
 const { createVerifyPool } = require('../prose/lib/verify-pool.cjs');
 const { scanPresence, ownsRow } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+const { MOD_DIR } = require('../../skills/workflow-engine/scripts/domain/gate-surface.cjs');
 
 /** `git status --porcelain` in a materialised world. */
 function statusLines(dir) {
@@ -146,6 +147,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
+  const FLAG = { CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: '1' };
 
   it('a fixture recording neither one-time answer is stamped both, and the stamps are stripped back out', () => {
     const dir = scratch();
@@ -230,34 +232,35 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     });
   });
 
-  it('a world with no settings file is seeded the presence hook alone, and the marker records the file as the harness\'s', () => {
+  it('a world with no settings file is seeded the presence hook, and the marker records the file as the harness\'s', () => {
     const dir = scratch();
     try {
       const stamped = worlds.stampHarnessState(dir);
       assert.strictEqual(stamped.settings_created, true);
       const settings = settingsOf(worlds.collectTree(dir));
       assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK], 'presence cleanup, never session cleanup under the label kill');
-      assert.deepStrictEqual(Object.keys(settings), ['hooks'], 'and nothing the harness invented');
+      assert.deepStrictEqual(Object.keys(settings), ['hooks'], 'and nothing the harness invented — no function-hooks flag either');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('a fixture\'s own settings file keeps its permissions around the seeded hook', () => {
+  it('a fixture\'s own settings file keeps its permissions and env around the seeded hook', () => {
     const dir = scratch();
     try {
-      writeSettings(dir, { permissions: PERMISSIONS });
+      writeSettings(dir, { permissions: PERMISSIONS, env: { EDITOR: 'vim' } });
       const stamped = worlds.stampHarnessState(dir);
       assert.strictEqual(stamped.settings_created, false);
       const settings = settingsOf(worlds.collectTree(dir));
       assert.deepStrictEqual(settings.permissions, PERMISSIONS);
       assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK]);
+      assert.deepStrictEqual(settings.env, { EDITOR: 'vim' });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('the strip removes our hooks and drops a harness-created file, but a permission the walk edited and a foreign hook stand', () => {
+  it('the strip removes our hooks and drops a harness-created file, but a permission the walk edited, a foreign hook and an env key stand — the function-hooks flag among them, which materialise never seeds', () => {
     const dir = scratch();
     try {
       // A harness-created file the walk never touched goes entirely.
@@ -267,8 +270,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.strictEqual(tree.has(worlds.SETTINGS), false, 'nothing but the seed — the file was never the world\'s');
 
       // The walk turned labels on (a session hook joined ours), edited a
-      // permission and the user's own hook sits in its own group: only
-      // ours go, and the file stays because the fixture brought it.
+      // permission and the user's own hook sits in its own group, beside an
+      // env key of the project's own: only ours go, and the file stays
+      // because the fixture brought it.
       writeSettings(dir, {
         permissions: PERMISSIONS,
         hooks: {
@@ -277,10 +281,15 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
             { hooks: [{ type: 'command', command: PRESENCE_HOOK }, { type: 'command', command: SESSION_HOOK }] },
           ],
         },
+        env: { EDITOR: 'vim', ...FLAG },
       });
       tree = worlds.collectTree(dir);
       worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: false });
-      assert.deepStrictEqual(settingsOf(tree), { permissions: PERMISSIONS, hooks: { SessionEnd: [{ hooks: [FOREIGN_HOOK] }] } });
+      assert.deepStrictEqual(settingsOf(tree), {
+        permissions: PERMISSIONS,
+        hooks: { SessionEnd: [{ hooks: [FOREIGN_HOOK] }] },
+        env: { EDITOR: 'vim', ...FLAG },
+      });
 
       // A harness-created file the walk filled stays, minus our hooks.
       writeSettings(dir, { permissions: PERMISSIONS, hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: PRESENCE_HOOK }] }] } });
@@ -305,17 +314,30 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       /cannot strip the session hooks: .*not valid JSON/);
   });
 
-  it('a live boot — no skip switch, the walker\'s real environment — finds the hooks it wants and writes nothing', function () {
+  it('a world carries every skill but the gate mod', function () {
     if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(NATIVE_CASE);
     try {
-      const env = worlds.recipeEnv();
-      delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
+      assert.ok(fs.existsSync(path.join(dir, '.claude/skills/workflow-start/SKILL.md')), 'the skills are there');
+      assert.ok(!fs.existsSync(path.join(dir, MOD_DIR)), 'the mod is not');
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+
+  it('a live boot — no settings hold, the walker\'s real environment in the terminal app — finds the hooks it wants, no mod to set up, and writes nothing', function () {
+    if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
+    const dir = worlds.buildWorld(NATIVE_CASE);
+    try {
+      const env = { ...worlds.recipeEnv(), CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-282_agent' };
+      delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
+      delete env.CLAUDE_CODE_REMOTE;
       const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
       const before = head();
       const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
       const boot = JSON.parse(out.trim());
       assert.strictEqual(boot.session_hooks_installed, false, 'the seeded set is exactly what boot wants');
+      assert.strictEqual(boot.gate_surface, 'unavailable', 'the world does not carry the mod, so no flag and no stop');
       assert.deepStrictEqual(boot.warnings, []);
       assert.deepStrictEqual(statusLines(dir), [], 'nothing written');
       assert.strictEqual(head(), before, 'nothing committed');
@@ -324,9 +346,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     }
   });
 
-  it('the recipe env carries the engine\'s test-only hook switch, so a recipe\'s boot never writes a world\'s settings', () => {
+  it('the recipe env carries the engine\'s test-only settings hold, so a recipe\'s boot never writes a world\'s settings', () => {
     const env = worlds.recipeEnv();
-    assert.strictEqual(env.WORKFLOWS_SKIP_SESSION_HOOKS, '1');
+    assert.strictEqual(env.WORKFLOWS_HOLD_PROJECT_SETTINGS, '1');
     assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
     assert.ok(!('TMUX' in env), 'and no tmux identity');
   });
@@ -347,8 +369,8 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
         'the walkthrough the fixture says nothing about is stamped with the layer');
       assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false, walkthrough: true, settings_created: false },
         'the fixture brought its own settings file, and its own baseline');
-      assert.deepStrictEqual(hooksOf(JSON.parse(fs.readFileSync(path.join(dir, worlds.SETTINGS), 'utf8'))), [PRESENCE_HOOK],
-        'the seeded hook lands with the manifest layer');
+      const settings = JSON.parse(fs.readFileSync(path.join(dir, worlds.SETTINGS), 'utf8'));
+      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK], 'the seeded hook lands with the manifest layer');
       assert.strictEqual(statusLines(dir).length, 0, 'no dirt for the walk to sweep up');
     } finally {
       worlds.destroyWorld(dir);

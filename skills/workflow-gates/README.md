@@ -9,8 +9,9 @@ the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
 scrolls; while any screen but the terminal is attached, it leaves the menu as
 text so every screen shows it, though a screen that attaches after a menu was
-drawn on the terminal does not get that menu. The workflows' prose never names
-the mod.
+drawn on the terminal does not get that menu. No gate's prose names the mod;
+only workflow-start's setup step does, when the mod is switched on but not
+yet running.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
@@ -60,12 +61,26 @@ interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
 or picked up again by a restart or a reload of the mod's files, gets its gate
 back as long as its transcript still ends there, with nothing picked or held —
 a held answer waits on a turn that does not come back; one that moved on while
-the mod was not loaded gets nothing. The store holds at most one entry per
-conversation, and each session's start drops any older than 30 days, how long
-Claude Code keeps a transcript unless told otherwise.
+the mod was not loaded gets nothing. A session the mod was loaded into after it
+started carries no announcement, so there it keeps and reads back nothing. The
+store holds at most one entry per conversation, and each session's start drops
+any older than 30 days, how long Claude Code keeps a transcript unless told
+otherwise.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
+
+The mod is part of the workflows, and the first `/workflow-start` in a
+project switches it on wherever it can run: Claude Code's terminal app, from
+2.1.282, with this directory installed in the project. There every
+`/workflow-start` puts `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` of
+the project's `.claude/settings.json` wherever it is not already `"1"`.
+Claude Code reads its settings only when it starts, so a start that writes it
+ends by asking for a restart, and the next session loads the mod; a start
+that finds it there with the mod not running stops and says why. Anywhere
+else — the web, another Claude Code app, an older version, a project without
+this directory — nothing is written, and the workflows carry on with the text
+menus.
 
 ## Working on it
 

@@ -66,9 +66,8 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../kernel/manifest-schema.
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { SETTINGS_SPEC, isObject, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 
-/** The project's committed Claude Code settings — where the session hooks live. */
-const SETTINGS_SPEC = '.claude/settings.json';
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
 const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
@@ -79,11 +78,6 @@ const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 // closing quote is part of the mark, so a re-quoted command is not.
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
 const HOOK_MARKS = wantedByEvent({ session: true, presence: true }).flatMap((e) => e.commands.map(hookMark));
-
-/** @param {unknown} v @returns {v is Record<string, any>} */
-function isObject(v) {
-  return v !== null && typeof v === 'object' && !Array.isArray(v);
-}
 
 /**
  * The opt-in for this project — `defaults.tmux_labels` when it is a
@@ -178,25 +172,13 @@ function reconcileEventGroups(groups, commands, matcher) {
  * not parse is left untouched and reported rather than thrown: neither
  * caller may fail over hook plumbing it cannot read.
  * @param {string} cwd @param {{session: boolean, presence: boolean}} want
- * @returns {{changed: boolean, error?: string}}
+ * @returns {import('./settings.cjs').SettingsSync}
  */
 function syncSessionHooks(cwd, want) {
-  // WORKFLOWS_SKIP_SESSION_HOOKS is the test harness's hermeticity switch —
-  // a walk's boot must never write the world's settings file. Real projects
-  // never set it: the hooks are infrastructure, not a setting.
-  if (process.env.WORKFLOWS_SKIP_SESSION_HOOKS) return { changed: false };
-  const file = path.join(cwd, SETTINGS_SPEC);
-  /** @type {Record<string, any>} */
-  let settings = {};
-  if (fs.existsSync(file)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (!isObject(parsed)) throw new Error('root is not an object');
-      settings = parsed;
-    } catch (err) {
-      return { changed: false, error: `${SETTINGS_SPEC} is not valid JSON — ${err instanceof Error ? err.message : String(err)}` };
-    }
-  }
+  if (settingsHeld()) return { changed: false };
+  const read = readProjectSettings(cwd);
+  if (read.error) return { changed: false, error: read.error };
+  const settings = read.settings;
   const hooks = isObject(settings.hooks) ? settings.hooks : {};
   const nextHooks = { ...hooks };
   let changed = false;
@@ -211,8 +193,7 @@ function syncSessionHooks(cwd, want) {
   const next = { ...settings };
   if (Object.keys(nextHooks).length > 0) next.hooks = nextHooks;
   else delete next.hooks;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, next);
+  writeProjectSettings(cwd, next);
   return { changed: true };
 }
 
@@ -693,5 +674,4 @@ function repairSessionLabels(cwd) {
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
   resolveEnabled, labelConfigStatus, syncSessionHooks, recordLabelChoice,
-  SETTINGS_SPEC,
 };

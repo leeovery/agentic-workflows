@@ -48,6 +48,9 @@ const BENEATH: RenderElement = { type: 'Text', children: ['? for shortcuts'] }
 
 const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 
+/** A process whose session announced the gate surface before the mod loaded. */
+const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
+
 /** Where a send leaves what it answered, under the session's working directory. */
 const SENT = '/.workflows/.cache/.gates/sent.json'
 
@@ -387,10 +390,13 @@ const MOUNT = {
 const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
 
 /**
- * The world beneath the mod: the session it starts in, the surfaces attached,
- * its transcript, what a Bash call answers, the prompt box, the files it
- * writes, the prompts it submits, and the plugin's store.
+ * The world beneath the mod: the session it starts in, the process's
+ * environment, the surfaces attached, its transcript, what a Bash call
+ * answers, the prompt box, the files it writes, the prompts it submits, and
+ * the plugin's store.
  *
+ * `env` is the environment the process holds at the start, which each
+ * `$.env.set` changes and `written` records.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -406,15 +412,15 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
- * @param options the surfaces attached, whether the box and a submission
- *   take, the clock a slow disk writes on, what holds a read up, and what
- *   the store holds
+ * @param options the process's environment, the surfaces attached, whether the box and a submission take, the clock a
+ *   slow disk writes on, what holds a read up, and what the store holds
  */
 function world(
   engine: Engine,
   on: On,
   stdout = '',
   options: {
+    env?: Readonly<Record<string, string>>
     surfaces?: readonly RenderSurface[]
     fills?: boolean
     submits?: boolean
@@ -425,6 +431,7 @@ function world(
   } = {},
 ) {
   const {
+    env = {},
     surfaces = ['terminal'],
     fills = true,
     submits: isSubmitting = true,
@@ -439,6 +446,7 @@ function world(
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>()
+  const environment = new Map(Object.entries(env))
   const stored = new Map(Object.entries(kept))
   const clock = disk ?? mock.clock(on)
 
@@ -489,8 +497,16 @@ function world(
     return next(e)
   })
 
+  on('env.get', ($, e) => ({ value: environment.get(e.name) }))
+
   on('env.set', ($, e) => {
     written.push({ name: e.name, value: e.value })
+
+    if (e.value === undefined) {
+      environment.delete(e.name)
+    } else {
+      environment.set(e.name, e.value)
+    }
 
     return { value: undefined }
   })
@@ -745,12 +761,14 @@ async function cursorOf(ui: Band) {
 }
 
 describe('register', () => {
-  test('the session announces the gate surface to every child it starts', async ($, on) => {
+  test('every session start announces the gate surface to every child it starts', async ($, on) => {
     const { written } = world($, on)
+    const announcement = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
 
     await $.session.start(SESSION)
+    await quitAndResume($)
 
-    expect(written).toEqual([{ name: 'WORKFLOWS_GATE_SURFACE', value: '1' }])
+    expect(written).toEqual([announcement, announcement])
   })
 
   test('a stated gate is cut out of what the model reads, the rest left alone', async ($, on) => {
@@ -2848,7 +2866,10 @@ describe('register', () => {
   })
 
   test('a module loaded into a conversation at a gate, as a reload of its files does, draws the gate at its first drawing', async ($, on) => {
-    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+    const { reads } = world($, on, announced(), {
+      env: ANNOUNCING,
+      kept: KEPT_AT_GATE,
+    })
 
     reads(AT_GATE)
 
@@ -2857,6 +2878,51 @@ describe('register', () => {
     expect(await lineOf(ui, 'Approve this task?')).toBe(2)
 
     await ui.unmount()
+  })
+
+  const unannounced: Record<string, string>[] = [
+    {},
+    { WORKFLOWS_GATE_SURFACE: '0' },
+  ]
+
+  for (const env of unannounced) {
+    test(`a reload in a session whose environment holds ${JSON.stringify(env)} draws no kept gate`, async ($, on) => {
+      const { reads } = world($, on, announced(), { env, kept: KEPT_AT_GATE })
+
+      reads(AT_GATE)
+
+      expect(await isDrawn($)).toBe(false)
+    })
+  }
+
+  test('a fresh load announces before it reads back, so a band already on screen draws the kept gate', async ($, on) => {
+    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+
+    reads(AT_GATE)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await $.session.start(SESSION)
+
+    expect(await lineOf(ui, 'Approve this task?')).toBe(2)
+
+    await ui.unmount()
+  })
+
+  test('a session that never announced — the module loaded after it started — keeps nothing, and leaves the store as it was', async ($, on) => {
+    const { stored, reads } = world($, on, '', { kept: KEPT_AT_GATE })
+
+    reads(AT_GATE)
+
+    expect(await isDrawn($)).toBe(false)
+
+    reads(MOVED_ON)
+
+    await submitFrom($, { kind: 'composer' }, 'carry on')
+    await $.turn.complete(TURN_END)
+    await $.session.end(QUIT)
+
+    expect(Object.fromEntries(stored)).toEqual(KEPT_AT_GATE)
   })
 
   test('a turn that starts while the band is read back takes no gate from before it', async ($, on) => {

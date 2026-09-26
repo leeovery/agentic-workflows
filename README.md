@@ -89,7 +89,7 @@ Every completed artifact is indexed: research, discussions, investigations, spec
 
 ## Starting in an existing codebase
 
-A project that grew up on the workflows accumulates that record as it goes. A project you install them into has none of it — so the first run offers a **baseline assessment**. Research agents fan out over the code, then the system interviews you about what they found: the intent, constraints, and history only you can supply, with the evidence woven into every question. The answers land as a doc set the knowledge base surfaces in every later phase — observed structure, your stated reasoning, and honest open questions kept separate. Pausable mid-interview, resumable from the start menu, expandable as the product grows.
+A project that grew up on the workflows accumulates that record as it goes. A project you install them into has none of it — so your first working session offers a **baseline assessment**. Research agents fan out over the code, then the system interviews you about what they found: the intent, constraints, and history only you can supply, with the evidence woven into every question. The answers land as a doc set the knowledge base surfaces in every later phase — observed structure, your stated reasoning, and honest open questions kept separate. Pausable mid-interview, resumable from the start menu, expandable as the product grows.
 
 ## An expert in the room
 
@@ -121,6 +121,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases and the menus between them, restoring the original name on exit and bringing the label back when you resume a session.
+- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it. In Claude Code's terminal app, the first run switches it on in the project's settings and asks you to restart Claude Code once.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation
@@ -139,7 +140,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 
-**Setup:** Node 18+. There is no setup procedure; the first run configures itself in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
+**Setup:** Node 18+. There is no setup procedure: where the workflows' mod runs, the first run switches it on and asks for one restart of Claude Code, and your first working session sets everything else up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
 

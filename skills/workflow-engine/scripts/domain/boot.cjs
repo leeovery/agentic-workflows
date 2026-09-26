@@ -32,7 +32,9 @@ const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
 const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR } = require('./kb.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, SETTINGS_SPEC } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
+const { syncGateSurface } = require('./gate-surface.cjs');
+const { SETTINGS_SPEC } = require('./settings.cjs');
 const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
@@ -95,6 +97,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {boolean} worktree_include_installed this boot wrote the knowledge files into `.worktreeinclude`; false when it already listed them
+ * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, a version before 2.1.282, the mod not installed) and boot wrote nothing; where it can: `on` where it is running, its announcement in boot's own environment; `restart` where this boot wrote the function-hooks flag into `.claude/settings.json` and the mod is not running; `not-running` where the flag was already there and the mod is not running — workflow-start stops on both
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -208,6 +211,18 @@ function trimReport(stdout) {
 }
 
 /**
+ * What this boot's syncs wrote into the project's settings, as a commit
+ * subject — the session hooks and the function-hooks flag share the file,
+ * so one commit carries whichever of them moved.
+ * @param {boolean} hooks @param {boolean} gate
+ * @returns {string}
+ */
+function settingsCommitMessage(hooks, gate) {
+  if (hooks && gate) return 'chore: sync workflow project settings';
+  return hooks ? 'chore: install workflow session hooks' : 'chore: sync workflow gate surface';
+}
+
+/**
  * Run the boot pipeline against the project at `cwd`.
  * @param {string} cwd project root
  * @returns {BootResult}
@@ -284,22 +299,27 @@ function boot(cwd) {
   // re-syncs them: SessionEnd's `presence cleanup` for every project — a
   // /clear'd session's heartbeats otherwise read held until its process
   // exits — with `session cleanup` and SessionStart's `session resume`
-  // while labels are on. A checkout that predates the hooks, or lost them
-  // to a hand edit, gets them back here. The file is written either way,
-  // and the commit failing is a warning, never a block.
-  let sessionHooksInstalled = false;
-  // The opt-in read and the sync share one hold: a `label-config` landing
+  // while labels are on. The function-hooks flag the gate mod loads under
+  // lives in the same file and is put back the same way wherever the mod
+  // can run: it is part of the workflows. A checkout that predates either,
+  // or lost it to a hand edit, gets it back here. The file is written
+  // either way, and the commit failing is a warning, never a block.
+  //
+  // The opt-in read and the writes share one hold: a `label-config` landing
   // between them would have this boot strip the hook it just installed.
   // The commit stays outside the lock.
-  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }));
-  if (sync.error) {
-    warnings.push(`session hooks not installed: ${sync.error}`);
-  } else if (sync.changed) {
-    sessionHooksInstalled = true;
+  const synced = withProjectLock(cwd, () => ({
+    hooks: syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, presence: true }),
+    gate: syncGateSurface(cwd),
+  }));
+  if (synced.hooks.error) warnings.push(`session hooks not installed: ${synced.hooks.error}`);
+  if (synced.gate.error) warnings.push(`gate surface not synced: ${synced.gate.error}`);
+  const sessionHooksInstalled = synced.hooks.changed;
+  if (synced.hooks.changed || synced.gate.changed) {
     try {
-      commitPathspecScoped(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks');
+      commitPathspecScoped(cwd, SETTINGS_SPEC, settingsCommitMessage(synced.hooks.changed, synced.gate.changed));
     } catch (err) {
-      warnings.push(`session hooks commit failed: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(`project settings commit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -307,7 +327,7 @@ function boot(cwd) {
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: synced.gate.status, baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

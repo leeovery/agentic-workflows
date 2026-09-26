@@ -522,19 +522,23 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [up-to-date display]
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Walkthrough
-[one-time offer when the boot response says so — the loaded walk records the answer; otherwise silent]
+### Step 0.2: Workflow Mod
+[terminal stop when the boot response says the mod can run here but is not running — this boot switched it on, or it was on already; otherwise silent]
 → Proceed to **Step 0.3**.
 
-### Step 0.3: Session Labels
-[one-time prompt when the boot response says so; otherwise silent]
+### Step 0.3: Walkthrough
+[one-time offer when the boot response says so — the loaded walk records the answer; otherwise silent]
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Knowledge Gate
-[branch on the boot response: not-ready → terminal stop; ready → proceed]
+### Step 0.4: Session Labels
+[one-time prompt when the boot response says so; otherwise silent]
 → Proceed to **Step 0.5**.
 
-### Step 0.5: Baseline Judgment
+### Step 0.5: Knowledge Gate
+[branch on the boot response: not-ready → the loaded knowledge gate sets the store up in conversation and returns to Step 0.6; ready → proceed]
+→ Proceed to **Step 0.6**.
+
+### Step 0.6: Baseline Judgment
 [one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
 → Proceed to **Step 1**.
 ```
