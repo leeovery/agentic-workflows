@@ -494,7 +494,7 @@ Claude Code runs an agent in the background unless the dispatch passes `run_in_b
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
 ```
 
-One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence.
+One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence. Lint check 25 holds all three.
 
 ### Heading Hierarchy
 
