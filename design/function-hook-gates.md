@@ -342,7 +342,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   than 2.1.282 (read from `AI_AGENT`; absent or unreadable counts as
   older), and not where the mod is not installed in the project. Where it
   does not apply, boot writes nothing and reports `unavailable`, and the
-  workflow carries on in text with the shortcomings that brings. Where it
+  workflow carries on in text with the shortcomings that brings; the mod
+  itself, which a host that honours the committed flag still loads, reads
+  the same signals at `session.start` and sets nothing there. Where it
   applies, boot puts `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"` into the
   project's committed `.claude/settings.json` wherever it is not already
   `"1"` (`domain/gate-surface.cjs`, writing through the
@@ -525,12 +527,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     instruction names; what comes one after another shares one call.
   - The step that ends the turn (at a gate, a STOP, or a background
     dispatch the flow waits on) holds what it shows and writes it after
-    its last call, in order, as Claude's own text. A gate's step shows its
-    own lead-in: a display or summary that leads into a gate sits in the
-    gate's step, never in the step before it, and an answer given while a
-    gate is set aside (R19) is written with the gate presented again — so
-    the gate's step always has something to write when the band draws its
-    menu. A turn always ends on text: one that ends
+    its last call, in order, as Claude's own text, the references it loads
+    included. A gate's step shows its own lead-in (an authoring rule, in
+    CONVENTIONS): a display or summary that leads into a gate sits in the
+    gate's step, never in the step before it, a lead-in on some paths only
+    written inline there; an answer given while a gate is set aside (R19)
+    is written with the gate presented again; and any arrival but the
+    gate's first re-runs its fetch alone — so the gate's step always has
+    something to write when the band draws its menu. A turn always ends on text: one that ends
     on a tool call alone draws Claude Code's "no visible output" nudge,
     and a gate whose lead-in all went through the tool left Claude
     narrating the buttons (finding 51).
@@ -619,7 +623,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   `null` when there is none to keep; and the rows mod's redrawn answers
   (`rows.json`, R15). The mod names the folder the engine's
   way, so both always reach the same one. One tidy-up, at boot, deletes a
-  folder once the transcript file it names is gone: whatever retention the
+  folder once the transcript file it names is gone (a leading `~` read as
+  the home directory; an empty or relative path is unknown, and the folder
+  stays): whatever retention the
   person set — thirty days, ten years — is the retention these records
   keep, and no period is assumed anywhere. A folder whose conversation
   ended without the hook running keeps no path and stays; it is a few
@@ -811,7 +817,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     it. `/clear`, a fork and `/resume` go on under another session id;
     `claude --resume` keeps the id, and Claude Code sets
     `CLAUDE_CODE_SESSION_ID` for every command at the moment it runs.
-55. Every hook input carries the conversation's `transcript_path`, and
+55. Every hook input carries the conversation's `transcript_path` (an
+    empty string on some paths), and
     resuming a conversation from another directory moves its transcript
     under that directory's project. Claude Code's session retention is
     the person's setting, not a constant. Hence R24's tidy-up by the
@@ -820,6 +827,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     (`cli`, `claude-vscode`, the SDK's own) and `CLAUDE_CODE_REMOTE` (set
     on the web) reach every command Claude Code runs. Hence R9's
     applicability.
+57. A fork runs under a new session id, and a conversation resumed from
+    another directory carries its transcript to that project: either
+    comes back with no saved gate and no mark until its next engine call,
+    and the mod API names no parent to carry them over. Accepted — typing
+    still answers the gate, and the next engine call marks the
+    conversation.
 
 ## Log
 
@@ -879,3 +892,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   harness values put back (R20); one folder per conversation with one
   tidy-up that follows the person's retention (R24). Findings 54–56. The
   mod's handoff in place of plan mode queued as the next piece of work.
+- 2026-09-26 — the fourth review pass, over the third's fixes and the
+  conversation folder: the rows mod's redraws moved into the folder (R15);
+  the lead-in rule written where authors read it, every return to a gate
+  re-running its fetch alone (R21); the mod inert where it does not apply
+  (R9); the tidy-up reading only a path it can trust (R24). Finding 57. A
+  gate drawn with nothing else to write — a put-back, the discussion's
+  final review — goes to the lab.
