@@ -942,14 +942,16 @@ function checkQuestionsSetGatesAside(files) {
 // Check 25 — a dispatch names its mode, and a waited-on background dispatch
 // names its turn's closing sentence (CONVENTIONS' Dispatch Lines). Claude
 // Code runs an agent in the background unless told otherwise, so every
-// dispatch of a workflow-* agent states `run_in_background: true` or
-// `false`. A foreground dispatch carries no sentence, and nor does a
+// dispatch — of a workflow-* agent, or of ad-hoc sub-agents through the
+// Agent tool — states `run_in_background: true` or `false`. A foreground
+// dispatch carries no sentence, and nor does a
 // background dispatch the conversation carries on past (the agents below);
 // every other background dispatch ends the turn on exactly one sentence of
 // the canonical shape — "The … agent has been dispatched for …." or "The …
 // agents have been dispatched for …." — naming no topic, work unit, or
 // internal id. A dispatch is the section (H1–H2) that names the agent — its
-// Agent path or file, or an Invoke / Dispatch of the agent by name; a file
+// Agent path or file, an Invoke / Dispatch of the agent by name, or
+// `sub-agents (Agent tool)` for ad-hoc ones; a file
 // holding one answers as a whole, a file holding several is split at each
 // dispatch's section heading.
 // ---------------------------------------------------------------------------
@@ -963,6 +965,7 @@ const CARRIED_PAST_AGENTS = new Set([
 const DISPATCH_NAMES = [
   /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `[./]*agents\/(workflow-[a-z-]+)\.md`/,
   /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(workflow-[a-z-]+)`/,
+  /\b((?:ad-hoc )?sub-agents?) \(Agent tool\)/,
 ];
 const CLOSING_SENTENCE = /\bends? the turn on exactly `([^`]+)`/g;
 const CANONICAL_SENTENCE = /^The [a-z][a-z ,-]* (?:agent has|agents have) been dispatched for [^`]+\.$/;
@@ -1805,7 +1808,7 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
   });
 });
 
-test('check 25 (dispatch lines) — catches a dispatch with no mode, a waited-on background dispatch with no sentence, two sentences, an off-shape sentence or one naming a topic, work unit or internal id, and a sentence on a foreground or carried-past dispatch; permits each mode in its own shape, per dispatch section', () => {
+test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc sub-agent dispatch included, a waited-on background dispatch with no sentence, two sentences, an off-shape sentence or one naming a topic, work unit or internal id, and a sentence on a foreground or carried-past dispatch; permits each mode in its own shape, per dispatch section', () => {
   withTemp((dir) => {
     const clean = write(dir, 'skills/x/clean.md', [
       '# Clean',
@@ -1843,6 +1846,10 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, a waited-on
       '```',
       'Invoke `workflow-x-fenced` — fenced content is never a dispatch.',
       '```',
+      '',
+      '## E. Measure',
+      '',
+      'Run it directly, or use ad-hoc sub-agents (Agent tool) for independent legs, in the foreground (`run_in_background: false`).',
       '',
     ].join('\n'));
     const single = write(dir, 'skills/x/single.md', [
@@ -1907,9 +1914,13 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, a waited-on
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
       '',
+      '## I. Ad-Hoc With No Mode',
+      '',
+      'Run it directly, or use ad-hoc sub-agents (Agent tool) for independent legs.',
+      '',
     ].join('\n'));
     const v = checkDispatchLines([broken]);
-    assert.deepStrictEqual(v.map((x) => x.line), [5, 9, 13, 20, 26, 32, 38, 44], `each broken dispatch is caught once, at its naming line, got ${report(v)}`);
+    assert.deepStrictEqual(v.map((x) => x.line), [5, 9, 13, 20, 26, 32, 38, 44, 50], `each broken dispatch is caught once, at its naming line, got ${report(v)}`);
     const messages = v.map((x) => x.message);
     assert.match(messages[0], /names its mode/);
     assert.match(messages[1], /exactly one sentence .*found 0/);
@@ -1919,6 +1930,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, a waited-on
     assert.match(messages[5], /never a topic, work unit, or internal id/);
     assert.match(messages[6], /foreground dispatch .* carries no closing sentence/);
     assert.match(messages[7], /carries on past carries no closing sentence/);
+    assert.match(messages[8], /^ad-hoc sub-agents: a dispatch names its mode/);
   });
 });
 
