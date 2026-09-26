@@ -468,10 +468,11 @@ type Replaced = {
  * Puts Claude Code's harness on for a workflow session, one whose
  * conversation the engine has marked in a session that announced: no
  * summary of Claude's thinking printed as if it were output, and no nudge to
- * say what it is doing. Claude Code reads both per request. What it replaces is kept in the process's
- * environment, which a reload of the module's files keeps, and only where
- * nothing is kept yet: the values are read before that is looked at, so a
- * harness another call has just put on is never kept as the person's.
+ * say what it is doing. Claude Code reads both per request. What it replaces
+ * is kept in the process's environment, which a reload of the module's files
+ * keeps, and only where nothing is kept yet: the values are read before that
+ * is looked at, so a harness another call has just put on is never kept as
+ * the person's.
  */
 async function harnessOn($: EngineInterface) {
   if (!(await isAnnounced($))) {
