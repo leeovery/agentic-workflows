@@ -27,7 +27,7 @@ Invoke `workflow-planning-task-designer` with these file paths:
 6. **All approved phases**: the complete phase structure from the planning file
 7. **Target phase number**: the phase being broken into tasks
 
-This dispatch and every re-invocation of the designer below end the turn on exactly `The task designer agent has been dispatched for phase {N}.`
+This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The task designer agent has been dispatched for phase {N}.`
 
 ### Present the Output
 

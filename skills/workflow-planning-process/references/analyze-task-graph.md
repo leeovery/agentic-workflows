@@ -29,7 +29,7 @@ Invoke `workflow-planning-dependency-grapher` with these inputs:
 
 The agent clears any existing dependencies/priorities, analyzes all tasks, and — if no cycles — applies the new graph data directly. It returns a structured summary of what was done.
 
-This dispatch and every re-invocation of the grapher below end the turn on exactly `The dependency grapher agent has been dispatched for the plan's task graph.`
+This dispatch and every re-invocation of the grapher below run in the background (`run_in_background: true`) and end the turn on exactly `The dependency grapher agent has been dispatched for the plan's task graph.`
 
 → Proceed to **B. Review and Approve**.
 

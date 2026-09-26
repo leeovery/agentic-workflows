@@ -292,7 +292,7 @@ Pass via the orchestrator's prompt:
 
 The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present).
 
-The dispatch ends the turn on exactly `The task writer agent has been dispatched for phase {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task writer agent has been dispatched for phase {N}.`
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 

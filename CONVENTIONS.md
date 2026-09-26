@@ -488,13 +488,13 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 ### Dispatch Lines
 
-An agent dispatched in the background while the flow waits on its report ends the turn there, so the dispatch prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
+Claude Code runs an agent in the background unless the dispatch passes `run_in_background: false`, so every dispatch names its mode. A background dispatch the flow waits on ends the turn there: it says `run_in_background: true` and prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
 
 ```
-The dispatch ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
 ```
 
-One sentence in that shape, naming the agent and what it works on in the plan's own terms — `task {phase}.{task}`, `phase {N}`, `review cycle {N}` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below end the turn on exactly …`). A background dispatch the conversation carries on past carries none.
+One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence.
 
 ### Heading Hierarchy
 

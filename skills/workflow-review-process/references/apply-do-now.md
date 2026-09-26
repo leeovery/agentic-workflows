@@ -56,7 +56,7 @@ Each applier receives:
 
 Appliers edit and compile-check; they never run the suite and never touch git.
 
-Each batch's dispatch ends the turn on exactly `The fix applier agent has been dispatched for batch {n} of {total}.`
+Each batch's dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The fix applier agent has been dispatched for batch {n} of {total}.`
 
 Record each applier's status — a skip or a revert is a result, carried forward to the report.
 
@@ -72,7 +72,7 @@ The corrections were each made alone; nobody has yet seen them together. Dispatc
 
 It receives the action list and the guard inventory, reads the complete diff itself, repairs damage, normalises the artefacts of piecemeal editing, and runs the project's suite. It never commits; anything it cannot repair it reverts and reports, and a reverted action returns to the record as still owed.
 
-The dispatch ends the turn on exactly `The fix verifier agent has been dispatched for the applied fixes.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The fix verifier agent has been dispatched for the applied fixes.`
 
 > **CHECKPOINT**: Do not proceed until the verifier reports the suite green, or red with every remaining failure named as a reported revert.
 

@@ -29,7 +29,7 @@ Pass via the orchestrator's prompt:
 7. **Phase placement** — the phase label `Review Remediation (Cycle {N})`
 8. **Approved task numbers** — read `manifest get {work_unit}.review.{topic} staging.c{N}` and pass the task numbers whose rows are `approved`
 
-The dispatch ends the turn on exactly `The task writer agent has been dispatched for review cycle {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task writer agent has been dispatched for review cycle {N}.`
 
 ---
 
