@@ -178,7 +178,7 @@ If the boot response carries `warnings`, surface them first.
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ Claude Code hasn't picked up the workflows' setup
 ```
 

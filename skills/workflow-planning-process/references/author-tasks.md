@@ -47,9 +47,9 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 The agent writes all tasks to the task detail file and returns.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Authoring {count} tasks for Phase {N}: {Phase Name}...
 ```
 
