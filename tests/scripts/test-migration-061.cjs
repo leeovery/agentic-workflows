@@ -7,7 +7,9 @@
 // emptied store directory goes), skip with nothing to move, idempotency,
 // content preservation (the position's bytes, the stashes beside it, the
 // folder's other files), and the guards: a folder already holding a newer
-// position, entries that are not position files, a store path that is a file.
+// position, entries that are not position files, a store path that is a file,
+// a position another boot's run moved first, and a move that fails with its
+// position still there.
 //
 
 require('./hermetic-env.cjs');
@@ -38,6 +40,20 @@ function folderFile(sessionId, name) {
 }
 function read(file) {
   return fs.readFileSync(file, 'utf8');
+}
+/** Run while another boot's run of the migration acts between this run's read of the store and its moves. */
+function runBeside(other) {
+  const readdirSync = fs.readdirSync;
+  fs.readdirSync = function (...args) {
+    const entries = readdirSync.apply(this, args);
+    if (args[0] === cachePath('.session-labels', 'positions')) other();
+    return entries;
+  };
+  try {
+    run();
+  } finally {
+    fs.readdirSync = readdirSync;
+  }
 }
 
 const POSITION = '{\n  "name": "pay",\n  "phase": "discussion",\n  "topic": "refunds",\n  "at": "2026-09-01T10:00:00.000Z"\n}\n';
@@ -121,6 +137,36 @@ describe('migration 061: label positions move into the conversation folders', ()
     assert.deepStrictEqual(fs.readdirSync(cachePath('.session-labels', 'positions')).sort(), ['.json', 'notes.txt', 'odd name.json', 'sess-dir.json']);
     assert.deepStrictEqual(fs.readdirSync(cachePath('.conversations')), ['sess-1']);
     assert.strictEqual(updates, 1);
+  });
+
+  it('a position another boot moved first is left to it — no error, and not counted here', () => {
+    legacy('sess-1.json', POSITION);
+    legacy('sess-2.json', '{"name":"roadmap"}');
+    runBeside(() => {
+      fs.mkdirSync(cachePath('.conversations', 'sess-1'), { recursive: true });
+      fs.renameSync(cachePath('.session-labels', 'positions', 'sess-1.json'), folderFile('sess-1', 'position.json'));
+    });
+    assert.strictEqual(read(folderFile('sess-1', 'position.json')), POSITION);
+    assert.strictEqual(read(folderFile('sess-2', 'position.json')), '{"name":"roadmap"}');
+    assert.strictEqual(fs.existsSync(cachePath('.session-labels', 'positions')), false);
+    assert.strictEqual(updates, 1);
+    assert.strictEqual(skips, 0);
+  });
+
+  it('a position gone before its folder is there is left too — the other boot\'s move is still landing', () => {
+    legacy('sess-1.json', POSITION);
+    runBeside(() => fs.unlinkSync(cachePath('.session-labels', 'positions', 'sess-1.json')));
+    assert.strictEqual(fs.existsSync(folderFile('sess-1', 'position.json')), false);
+    assert.strictEqual(updates, 0);
+    assert.strictEqual(skips, 1);
+  });
+
+  it('a move that fails with its position still in the store fails the run', () => {
+    legacy('sess-1.json', POSITION);
+    fs.mkdirSync(cachePath('.conversations'), { recursive: true });
+    fs.writeFileSync(cachePath('.conversations', 'sess-1'), 'a file where the folder must go');
+    assert.throws(() => run());
+    assert.strictEqual(read(cachePath('.session-labels', 'positions', 'sess-1.json')), POSITION);
   });
 
   it('skips a store path that is a file rather than a directory, leaving it', () => {

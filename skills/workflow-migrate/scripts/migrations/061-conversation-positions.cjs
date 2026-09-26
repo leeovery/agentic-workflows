@@ -16,7 +16,9 @@
 // position file the engine wrote stays where it is, and so does the
 // directory holding it.
 //
-// Idempotent: once moved, nothing is left to move.
+// Idempotent: once moved, nothing is left to move. Two boots running it at
+// once never fail over a position: one the other moved first is left to it,
+// counted by the run that moved it.
 //
 
 const fs = require('fs');
@@ -42,11 +44,16 @@ module.exports = {
       if (!entry.isFile() || !POSITION_FILE.test(entry.name)) continue;
       const from = path.join(legacy, entry.name);
       const to = path.join(cache, '.conversations', path.basename(entry.name, '.json'), 'position.json');
-      if (fs.existsSync(to)) {
-        fs.unlinkSync(from);
-      } else {
-        fs.mkdirSync(path.dirname(to), { recursive: true });
-        fs.renameSync(from, to);
+      try {
+        if (fs.existsSync(to)) {
+          fs.unlinkSync(from);
+        } else {
+          fs.mkdirSync(path.dirname(to), { recursive: true });
+          fs.renameSync(from, to);
+        }
+      } catch (err) {
+        if (fs.existsSync(from)) throw err;
+        continue;
       }
       reportUpdate();
       moved++;
