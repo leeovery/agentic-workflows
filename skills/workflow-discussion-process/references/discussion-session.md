@@ -337,7 +337,7 @@ Move it from `items` to `pulled` in the queue file — durable until its raise l
 
 **If the user asks about a number:**
 
-Answer it — the derivation in full, what it rests on. Expanding is not objecting; the screen stands.
+Answer it — the derivation in full, what it rests on. Expanding is not objecting; the screen stands. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **J. Flush the Calls Queue**.
 

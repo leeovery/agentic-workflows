@@ -155,7 +155,7 @@ Write that finding's payload per **The Finding Payload** with `move` = `settled`
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
-A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged.
+A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged. The ask sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **C. The Settled Batch**.
 
@@ -242,10 +242,10 @@ Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause
 
 **If comment:**
 
-Work the point through in conversation.
+Work the point through in conversation — the comment sets the gate aside.
 
-- **The exchange settles on a side**: land it as the numbered pick lands one. → Return to **D. The Choices**.
-- **The choice stands**: re-present it. → Return to **D. The Choices**.
+- **The exchange settles on a side**: confirm it with the person, then land it as the numbered pick lands one. → Return to **D. The Choices**.
+- **The choice stands**: once the person is ready to move on, re-present it. → Return to **D. The Choices**.
 - **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **D. The Choices**.
 - **The exchange shows the gap needs work this specification cannot do in place**: → Proceed to **The Gap Door**.
 

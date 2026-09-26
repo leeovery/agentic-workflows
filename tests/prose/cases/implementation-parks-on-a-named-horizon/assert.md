@@ -54,10 +54,14 @@ The prose should have taken this path:
 13. implementation keeps no running record, so nothing is noted in any
     document; the user is told in one line what was parked and where
 14. control returns to the caller. The interrupted flow is the task
-    loop at its gate, so the gate is re-fetched from the engine and
-    re-presented, never replayed from memory, and the walk never falls
-    through to the skill's Step 0. It stops there: the gate
-    unanswered, pay-1-1 never completed, no further task started
+    loop at its gate, which the aside set aside: the session asks in
+    conversation — no gate, no menu — whether the user is ready to move
+    on, and the walk never falls through to the skill's Step 0. The
+    walk STOPS
+15. the fifth scripted answer says they are ready — never the gate's
+    answer — so the gate is re-fetched from the engine and re-presented,
+    never replayed from memory. It stops there: the gate unanswered, pay-1-1 never
+    completed, no further task started
 
 The end world's claims:
 

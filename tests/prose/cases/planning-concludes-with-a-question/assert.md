@@ -46,12 +46,17 @@ The prose should have taken this path:
    and no engine transaction runs on the answer. The flow does not
    return to plan construction — no second phase tree is rendered and
    no task list is — nor to the review: no second review cycle is
-   recorded and no review agent fires again. The conclude gate is then
-   fetched again through the engine — a second fetch, the same address
-   — its MENU section re-emitted, and the walk STOPS again. The wait
-   gate is **not** re-fetched: the Ask arm returns to the conclude
-   gate, not back past the wait. The fifth scripted answer concludes
-   the plan
+   recorded and no review agent fires again. The question set the gate
+   aside: the answer is followed by a question in conversation — no
+   gate, no menu — asking whether they are ready to move on, and the
+   walk STOPS. The gate is **not** fetched again straight after the
+   answer. The fifth scripted answer says they are ready; a yes to
+   being ready is never the gate's answer, one way forward or not, so
+   the conclude gate is then fetched again through the engine — a
+   second fetch, the same address — its MENU section re-emitted, and
+   the walk STOPS again. The wait gate is **not** re-fetched: the Ask
+   arm returns to the conclude gate, not back past the wait. The sixth
+   scripted answer concludes the plan
 10. the yes arm: the plan completes through the engine first, the spec
     baseline is re-stamped from the current commit after it, and the
     final commit lands
@@ -61,12 +66,14 @@ The prose should have taken this path:
 Further claims:
 
 - the conclude gate was fetched through the engine exactly twice, both
-  before the completion, with nothing between them but the answer; the
-  review cycle was recorded exactly once, before the first fetch, and
-  nothing construction- or review-shaped ran after it
-- the five scripted answers were consumed by the resume gate, the phase
-  structure gate, the graph approval gate, and the conclude gate twice
-  — the question, then the yes — in that order and nowhere else
+  before the completion, with nothing between them but the answer and
+  the readiness exchange; the review cycle was recorded exactly once,
+  before the first fetch, and nothing construction- or review-shaped
+  ran after it
+- the six scripted answers were consumed by the resume gate, the phase
+  structure gate, the graph approval gate, the conclude gate's question,
+  the readiness question, and the conclude gate again — the yes — in
+  that order and nowhere else
 - no finding is ever presented and no findings summary is rendered —
   both reviews returned clean
 - nothing is re-authored: no staging subtree, no task gates, no task
