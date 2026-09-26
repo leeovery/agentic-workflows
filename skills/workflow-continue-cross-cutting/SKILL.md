@@ -60,9 +60,9 @@ Anything richer (next phase, completed phases, revisit routes) comes from the `v
 
 #### If `count` is 0
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No cross-cutting concerns in progress.
 
 Run /workflow-start to begin a new one.

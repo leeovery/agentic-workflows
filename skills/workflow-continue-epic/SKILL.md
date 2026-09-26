@@ -60,9 +60,9 @@ The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, 
 
 #### If `count` is 0
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No epics in progress.
 
 Run /workflow-start to begin a new one.

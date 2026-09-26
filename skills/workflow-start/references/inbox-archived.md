@@ -79,9 +79,9 @@ Move the file back into its inbox folder and commit — one command:
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore {item.path}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Restored "{item.title}" to the inbox.
 ```
 
@@ -107,9 +107,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-ga
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Deleted "{item.title}".
 ```
 

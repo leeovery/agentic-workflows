@@ -20,9 +20,9 @@
 
 Ask each question below **one at a time**. After each, stop and wait for the user's response before proceeding.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 What's on your mind?
 
 - What idea or topic do you want to explore?
@@ -37,9 +37,9 @@ What's on your mind?
 
 ## B. Current Knowledge
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 What do you already know?
 
 - Any initial thoughts or research you've done?
@@ -54,9 +54,9 @@ What do you already know?
 
 ## C. Starting Point
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Where should we start?
 
 - Technical feasibility? Market landscape? Business model?
