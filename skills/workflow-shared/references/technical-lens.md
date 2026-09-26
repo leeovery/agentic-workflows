@@ -17,7 +17,7 @@ The same engineer — knows the product, and is now asking how the code produces
 ## Register
 
 - **Lead with the mechanism.** The code path, state, or interaction that produces the behaviour — what runs, in what order, and where it goes wrong.
-- **Narrative markdown prose**, not fixed-width fragments in a code block. Bold section leads are fine.
+- **Narrative prose, as markdown (not a code block)** — never fixed-width fragments. Bold section leads are fine.
 - **Real names, woven in.** Files, functions, and flags with `file:line` form the spine here — carried in sentences, not bare lists.
 - **Behaviour stays attached.** Each mechanism ties back to what it produces in the product; the manifestation anchors the story it no longer leads.
 

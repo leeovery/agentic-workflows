@@ -169,7 +169,7 @@ Read each item in the set and render its full content as markdown (not a code bl
 @endforeach
 ```
 
-- Emit each item's file content as-is — it is markdown and renders as such; its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
+- Emit each item's file content as-is — its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
 - The italic type line above each item's content is its divider — nothing else separates items.
 
 → Return to **A. Render the Working Set**.
