@@ -85,17 +85,23 @@ else — the web, another Claude Code app, an older version, a project without
 this directory — nothing is written, and the workflows carry on with the text
 menus.
 
+The flag is committed, so a teammate's IDE extension or Claude Code on the
+web can still load the mod. At the session's start it reads the signals the
+boot reads: where `CLAUDE_CODE_ENTRYPOINT` is other than `cli`, or
+`CLAUDE_CODE_REMOTE` is set, it announces nothing, so it draws, keeps and sets
+nothing — the menus stay text, and Claude Code runs as it would without it.
+
 ## What it sets in Claude Code
 
-Every session starts with Claude Code's `SendUserMessage` tool switched on
-(`CLAUDE_CODE_PEWTER_OWL_TOOL=true`): Claude Code builds its tool list just
-after the session starts, so that is the only moment the switch counts. The
-mod keeps the tool behind ToolSearch in every session, one answer that never
-changes and so never spends the prompt cache; a plain session's tool list is
-Claude Code's own.
+Every session in Claude Code's terminal app starts with Claude Code's
+`SendUserMessage` tool switched on (`CLAUDE_CODE_PEWTER_OWL_TOOL=true`):
+Claude Code builds its tool list just after the session starts, so that is
+the only moment the switch counts. The mod keeps the tool behind ToolSearch
+in every such session, one answer that never changes and so never spends the
+prompt cache; a plain session's tool list is Claude Code's own.
 
-When the engine's boot, which only `/workflow-start` runs, succeeds in the
-conversation itself rather than in a subagent, the mod sets
+When the engine's boot, which only `/workflow-start` runs, succeeds there in
+the conversation itself rather than in a subagent, the mod sets
 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
 Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what

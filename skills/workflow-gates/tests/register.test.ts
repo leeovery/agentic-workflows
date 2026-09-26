@@ -51,6 +51,9 @@ const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 /** A process whose session announced the gate surface before the mod loaded. */
 const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
 
+/** Claude Code's terminal app, as its process holds it: where the mod applies. */
+const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli' }
+
 /** Where a send leaves what it answered, under the session's working directory. */
 const SENT = '/.workflows/.cache/.gates/sent.json'
 
@@ -466,9 +469,9 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * answers, the prompt box, the files it writes, the prompts it submits, and
  * the plugin's store.
  *
- * `env` is the environment the process holds at the start, which each
- * `$.env.set` changes and `written` records; `environment` holds it as it
- * stands.
+ * `env` is what the process holds at the start over the terminal app's own
+ * environment, a name given `undefined` unset; each `$.env.set` changes it
+ * and `written` records it, and `environment` holds it as it stands.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -492,7 +495,7 @@ function world(
   on: On,
   stdout = '',
   options: {
-    env?: Readonly<Record<string, string>>
+    env?: Readonly<Record<string, string | undefined>>
     surfaces?: readonly RenderSurface[]
     fills?: boolean
     submits?: boolean
@@ -518,7 +521,11 @@ function world(
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>()
-  const environment = new Map(Object.entries(env))
+  const environment = new Map(
+    Object.entries({ ...TERMINAL_APP, ...env }).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  )
   const stored = new Map(Object.entries(kept))
   const clock = disk ?? mock.clock(on)
 
@@ -834,7 +841,7 @@ async function cursorOf(ui: Band) {
 }
 
 describe('register', () => {
-  test('every session start announces the gate surface to every child it starts', async ($, on) => {
+  test('every session start in Claude Code’s terminal app announces the gate surface to every child it starts', async ($, on) => {
     const { written } = world($, on)
     const announcement = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
 
@@ -848,6 +855,58 @@ describe('register', () => {
       DISPLAY_TOOL,
     ])
   })
+
+  const elsewhere: {
+    where: string
+    env: Readonly<Record<string, string | undefined>>
+  }[] = [
+    { where: 'on Claude Code on the web', env: { CLAUDE_CODE_REMOTE: 'true' } },
+    {
+      where: 'in an IDE extension',
+      env: { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' },
+    },
+    {
+      where: 'naming no entrypoint',
+      env: { CLAUDE_CODE_ENTRYPOINT: undefined },
+    },
+  ]
+
+  for (const { where, env } of elsewhere) {
+    test(`a session ${where} is left untouched: nothing announced, no display tool, no harness, no band`, async ($, on) => {
+      on('tool.describe', ($, e) => ({ description: e.description }))
+
+      const [record] = Object.values(KEPT_AT_GATE)
+      const kept = {
+        'band:toolu_1': { ...record, keptAt: 2 * DAY_MS },
+        'band:toolu_old': { ...record, keptAt: 0 },
+      }
+      const { written, stored, reads, clock } = world($, on, '', { env, kept })
+
+      reads(AT_GATE)
+
+      await clock.set(31 * DAY_MS)
+      await $.session.start(SESSION)
+
+      expect(await isDrawn($), 'the kept gate is not drawn').toBe(false)
+
+      await $.tool.call(BOOT_CALL)
+      await $.turn.complete(TURN_END)
+
+      expect(
+        await $.tool.describe({
+          tool: 'SendUserMessage',
+          description: 'The SendUserMessage tool.',
+          provider: BUILT_IN,
+        }),
+        'the display tool keeps Claude Code’s own place',
+      ).toEqual({ description: 'The SendUserMessage tool.' })
+
+      await $.session.end(CLEARED)
+
+      expect(written).toEqual([])
+      expect(Object.fromEntries(stored)).toEqual(kept)
+    })
+  }
 
   test('a stated gate is cut out of what the model reads, the rest left alone', async ($, on) => {
     world($, on, announced())

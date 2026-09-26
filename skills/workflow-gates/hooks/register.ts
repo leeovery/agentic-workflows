@@ -22,6 +22,10 @@
  * output and without the nudge to say what it is doing, the person's own
  * values of both put back as it ends. A conversation that has not run the
  * boot keeps them untouched.
+ *
+ * All of it happens in Claude Code's terminal app alone. Elsewhere — an IDE
+ * extension, Claude Code on the web — the session is not announced, and the
+ * module draws, keeps and sets nothing.
  */
 import type {
   AgentLoop,
@@ -170,10 +174,24 @@ function gateIn(
 }
 
 /**
+ * Whether the session runs in Claude Code's terminal app, the one place the
+ * mod applies, read off the signals the engine's boot reads: the `cli`
+ * entrypoint, and not Claude Code on the web. The flag that loads the mod is
+ * committed, so a teammate's IDE extension or the web can load it too.
+ */
+async function isTerminalApp($: EngineInterface): Promise<boolean> {
+  return (
+    (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) === 'cli' &&
+    !(await $.env.get('CLAUDE_CODE_REMOTE'))
+  )
+}
+
+/**
  * Whether the session announces the gate surface: set at its start, and
- * still set after a reload of the module. The band is kept and read back
- * only where it is, so a process whose session never announced — one this
- * module was loaded into after it started — never gets a kept gate back.
+ * still set after a reload of the module. The band is kept and read back,
+ * and the harness put on, only where it is, so a process whose session
+ * never announced — one outside Claude Code's terminal app, or one this
+ * module was loaded into after it started — never gets either.
  */
 async function isAnnounced($: EngineInterface): Promise<boolean> {
   return (await $.env.get('WORKFLOWS_GATE_SURFACE')) === '1'
@@ -433,14 +451,19 @@ type Replaced = {
 
 /**
  * Puts Claude Code's harness on for a workflow session, one whose
- * conversation has run the engine's boot: no summary of Claude's thinking
- * printed as if it were output, and no nudge to say what it is doing. Claude
- * Code reads both per request. What it replaces is kept in the process's
- * environment, which a reload of the module's files keeps, and only where
- * nothing is kept yet: the values are read before that is looked at, so a
- * harness another call has just put on is never kept as the person's.
+ * conversation has run the engine's boot in a session that announced: no
+ * summary of Claude's thinking printed as if it were output, and no nudge to
+ * say what it is doing. Claude Code reads both per request. What it replaces
+ * is kept in the process's environment, which a reload of the module's files
+ * keeps, and only where nothing is kept yet: the values are read before that
+ * is looked at, so a harness another call has just put on is never kept as
+ * the person's.
  */
 async function harnessOn($: EngineInterface) {
+  if (!(await isAnnounced($))) {
+    return
+  }
+
   const replaced: Replaced = {
     CLAUDE_CODE_THINKING_DISPLAY_UPDATES: await $.env.get(
       'CLAUDE_CODE_THINKING_DISPLAY_UPDATES',
@@ -645,10 +668,16 @@ export const register: Register = on => {
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this. A fresh load
-  // comes back to a conversation this module has not followed, so the band
-  // is read back from the store, and bands kept past any resume are dropped.
+  // that asked for one, and every Bash child inherits this. Outside Claude
+  // Code's terminal app nothing is announced, which leaves the mod inert
+  // there. A fresh load comes back to a conversation this module has not
+  // followed, so the band is read back from the store, and bands kept past
+  // any resume are dropped.
   on('session.start', async ($, e, next) => {
+    if (!(await isTerminalApp($))) {
+      return next(e)
+    }
+
     await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
 
     // Claude Code builds its tool catalogue just after this hook, so only
@@ -728,13 +757,16 @@ export const register: Register = on => {
     }
   }).catch(($, e, next) => next(e))
 
-  // The tool waits behind ToolSearch in every session, workflow or not: one
-  // answer, since a changed answer sends the tool list again and spends the
-  // prompt cache.
-  on('tool.describe', { tool: 'SendUserMessage' }, async ($, e, next) => ({
-    ...(await next(e)),
-    isDeferred: true,
-  })).catch(($, e, next) => next(e))
+  // The tool waits behind ToolSearch in every session that announced,
+  // workflow or not: one answer, since a changed answer sends the tool list
+  // again and spends the prompt cache.
+  on('tool.describe', { tool: 'SendUserMessage' }, async ($, e, next) => {
+    const described = await next(e)
+
+    return (await isAnnounced($))
+      ? { ...described, isDeferred: true }
+      : described
+  }).catch(($, e, next) => next(e))
 
   // Drawn at the turn's end, once what the rows choose between is on screen,
   // and kept with where the transcript ends, which a resume must still match.
