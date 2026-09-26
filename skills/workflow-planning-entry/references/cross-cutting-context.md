@@ -87,13 +87,13 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "{query_text}
 → Load **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
 
 - **If the user chose `skip`** — the plan proceeds without cross-cutting context. → Return to caller.
-- **If a retry succeeded** — results are now available. → Proceed to **D. Interpret the results**.
+- **If a retry succeeded** — results are now available. → Proceed to **E. Interpret the results**.
 
 #### Otherwise
 
-→ Proceed to **D. Interpret the results**.
+→ Proceed to **E. Interpret the results**.
 
-## D. Interpret the results
+## E. Interpret the results
 
 #### If stdout is `[0 results]`
 
