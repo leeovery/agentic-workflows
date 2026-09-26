@@ -101,9 +101,9 @@ A defect the author still reports after one re-run is left to the review walk, w
 
 #### If `mismatch` after 2 agent invocations
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Task count mismatch persists after 2 authoring attempts.
 
 Planning file task table: {N} tasks — {internal IDs from the table}
@@ -147,9 +147,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 Approve every `pending` row in one batched write — skip the call entirely when none are `pending` (an all-approved crash resume): `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id}=approved …`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Phase {N}: {count} tasks authored. Auto-approved. Writing to plan.
 ```
 
@@ -247,9 +247,9 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 
 #### If rejected tasks exist
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 {count} tasks need revision. Re-invoking author agent...
 ```
 
@@ -278,9 +278,9 @@ For each approved task in the task detail file, in order (crash-resume guard: a 
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): author task {internal_id} ({task name})" --plan {topic}
    ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Task {M} of {total}: {Task Name} — authored.
 ```
 

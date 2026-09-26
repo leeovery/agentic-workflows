@@ -45,9 +45,9 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
 
 Confirm the spec was written:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Specification written: .workflows/{work_unit}/specification/{topic}/specification.md
 ```
 

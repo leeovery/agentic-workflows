@@ -73,9 +73,9 @@ The review agent receives:
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 3. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Background review dispatched. Results will be surfaced when available.
 ```
 

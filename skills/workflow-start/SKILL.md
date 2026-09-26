@@ -18,9 +18,9 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 ## Step 0: Initialisation
 
-> *Output the next fenced block as a properties code block (```properties fence — it colours the art; the space between the two words is the token break that splits the colours, so emit every line byte-for-byte, the version stamp included):*
+> *Output the next fenced block as a properties code block (```properties fence) — it colours the art; the space between the two words is the token break that splits the colours, so emit every line byte-for-byte, the version stamp included:*
 
-```
+```properties
 █▀█░█▀▀░█▀▀░█▀█░▀█▀░▀█▀░█▀▀ █░█░█▀█░█▀▄░█░█░█▀▀░█░░░█▀█░█░█░█▀▀
 █▀█░█░█░█▀▀░█░█░░█░░░█░░█░░ █▄█░█░█░█▀▄░█▀▄░█▀▀░█░░░█░█░█▄█░▀▀█
 ▀░▀░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀ ▀░▀░▀▀▀░▀░▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀
@@ -73,9 +73,9 @@ Files were updated, or a migration handed over checks its code could not perform
 
    **If nothing changed** (the migrations skipped everything and verification found nothing to fix):
 
-   > *Output the next fenced block as a code block:*
+   > *Output the next fenced block as a text code block (```text fence):*
 
-   ```
+   ```text
    All documents up to date.
    ```
 
@@ -86,9 +86,9 @@ Files were updated, or a migration handed over checks its code could not perform
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
 4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Migrations Applied
 
 {your natural language summary}
@@ -122,9 +122,9 @@ Answer the user's question. The question sets the gate aside until the person is
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 All documents up to date.
 ```
 
@@ -154,7 +154,7 @@ If the boot response carries `warnings`, surface them first.
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ Restart Claude Code to finish setting up
 ```
 

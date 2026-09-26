@@ -16,9 +16,9 @@
 > Collecting information about the bug — what's broken, how it manifests, and any initial context.
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Starting investigation: {work_unit:(titlecase)}
 
 What bug are you investigating? Please provide:

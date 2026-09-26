@@ -248,9 +248,9 @@ Emit nothing here — no recap, no pause for permission. The absorb is the next 
 
 Emit the clear line — no recap of the walk:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Triage queue clear — every rerouted concern is folded in.
 ```
 
@@ -288,9 +288,9 @@ Announce the move in one line carrying every fact that applies: the concern now 
 
 Announce the move in the same one line, then emit the clear line — no recap of the walk:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Triage queue clear — nothing further queued for this topic.
 ```
 
