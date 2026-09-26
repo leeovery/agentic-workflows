@@ -12,7 +12,8 @@
 //
 //   workflow       the mark that the conversation runs the workflows, which
 //                  the gate mod reads to set the workflow harness — written
-//                  by every engine and gateway call that carries a session id
+//                  by every engine and gateway call that carries a session
+//                  id, in a project whose `.workflows/` already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
 //   position.json  the tmux label's resume position (session-label.cjs)
@@ -46,14 +47,15 @@ function conversationDir(cwd, sessionId) {
 }
 
 /**
- * Mark the calling conversation as one that runs the workflows — once, and
- * only where Claude Code handed the command a session id. A mark that
- * cannot be written costs the command nothing.
+ * Mark the calling conversation as one that runs the workflows — once, only
+ * where Claude Code handed the command a session id, and only inside a
+ * workflows project: a directory with no `.workflows/` gets none made. A
+ * mark that cannot be written costs the command nothing.
  * @param {string} cwd
  */
 function markConversation(cwd) {
   const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId) return;
+  if (!sessionId || !fs.existsSync(path.join(cwd, '.workflows'))) return;
   const marker = path.join(conversationDir(cwd, sessionId), MARKER);
   if (fs.existsSync(marker)) return;
   try {

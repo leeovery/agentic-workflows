@@ -114,6 +114,18 @@ describe('the mark', () => {
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), gateways.map((g) => `via-${g}`).sort());
   });
 
+  it('marks only inside a workflows project — an engine call or a gateway run where no `.workflows/` exists makes none', () => {
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-bare-'));
+    try {
+      harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
+      spawnSync('node', [path.join(SKILLS, 'workflow-start', 'scripts/gateway.cjs')],
+        { cwd: bare, encoding: 'utf8', env: { ...process.env, ...session('sess-1') } });
+      assert.deepStrictEqual(fs.readdirSync(bare), []);
+    } finally {
+      fs.rmSync(bare, { recursive: true, force: true });
+    }
+  });
+
   it('the folder is named by the id\'s safe characters alone — never outside the root', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('a/../../evil') });
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['aevil']);
