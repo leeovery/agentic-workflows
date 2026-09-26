@@ -104,9 +104,9 @@ The deep-dive agent receives:
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
 3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown in its definition's report contract, never frontmatter.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Deep dive dispatched on {the thread's question}. It folds in when it lands.
 ```
 

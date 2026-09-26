@@ -112,9 +112,9 @@ Categorize the dirty code files:
 - **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Pre-analysis checkpoint — unexpected files detected:
 - {file} ({status: modified/untracked})
 - ...

@@ -221,9 +221,9 @@ Read `all_decided` and `unresolved` from its DATA section; nothing from this cal
 
 #### If `all_decided` is true
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Every subtopic on the Discussion Map is settled — decided or deferred.
 ```
 

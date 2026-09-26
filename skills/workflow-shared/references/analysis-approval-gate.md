@@ -31,9 +31,9 @@ A processed gate's state is spent — approved candidates live on the map, skipp
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Nothing new to review.
 ```
 
@@ -41,9 +41,9 @@ Nothing new to review.
 
 #### If `K` is `1` or more
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Gap analysis surfaced {K} candidate topic(s).
 ```
 

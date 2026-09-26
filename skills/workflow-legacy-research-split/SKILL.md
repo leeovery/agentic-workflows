@@ -56,9 +56,9 @@ Surface detect's advisories before routing on the qualifying set. Both are infor
 
 **If `stranded_sentinels` is non-empty:** a prior apply crashed mid-split, leaving these items marked in-progress. Detection excludes them, so they surface only here and need manual recovery.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
   ⚑ Interrupted split(s) detected — a prior apply crashed mid-flight.
     Clear each, then reopen the epic via /workflow-start to retry:
 
@@ -72,9 +72,9 @@ Surface detect's advisories before routing on the qualifying set. Both are infor
 
 **If `unsplittable` is non-empty:** one or more migration-seeded sources carry names the split can't process — the engine rejects dots and slashes in map paths.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
   ⚑ Unsplittable source(s) — rename each on the discovery map to a
     kebab name, then reopen the epic to split:
 
@@ -91,9 +91,9 @@ Surface detect's advisories before routing on the qualifying set. Both are infor
 
 Set `remaining = qualifying_sources` (an ordered queue). Display the list.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Qualifying source files (in-progress, migration-seeded):
 
 @foreach(name in qualifying_sources)

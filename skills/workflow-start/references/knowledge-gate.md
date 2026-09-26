@@ -93,9 +93,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 
 #### If `openai`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Which OpenAI embedding model?
 
 - Reply with a model name, or "default" for text-embedding-3-small.
@@ -113,9 +113,9 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider op
 
 #### If `compatible`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Where is the embeddings endpoint?
 
 - Base URL (e.g. http://localhost:1234/v1)
@@ -153,9 +153,9 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-onl
 
 The setup command refused or was rejected because no working API key is available for the provider it targeted. The key goes straight from the user's terminal into a private store — it never touches this chat.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 @if(provider is openai)
 No OpenAI API key was found. Store one without it touching this
 chat — run ONE of these in your terminal, then come back:

@@ -112,9 +112,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 #### If the response's `mode` is `resumed`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Found existing implementation for "{topic:(titlecase)}". Resuming from previous session.
 ```
 

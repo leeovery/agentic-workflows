@@ -48,7 +48,7 @@ Every area is `completed`.
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block — `{n}` is this area's position across all areas, `{total}` the area count):*
+> *Output the next fenced block as markdown (not a code block) — `{n}` is this area's position across all areas, `{total}` the area count:*
 
 ```
 **`□ Interviewing {area:(titlecase)} ({n} of {total})`**

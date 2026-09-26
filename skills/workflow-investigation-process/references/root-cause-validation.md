@@ -42,9 +42,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 
 **Agent path**: `../../../agents/workflow-investigation-root-cause-validation.md`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Validating root cause hypothesis... (validation agent running)
 ```
 

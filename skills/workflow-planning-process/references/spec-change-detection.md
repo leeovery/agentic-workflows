@@ -22,9 +22,9 @@ Also check for new cross-cutting specification files that didn't exist at that c
 
 #### If no changes detected
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Specification unchanged since planning started.
 ```
 

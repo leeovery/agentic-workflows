@@ -75,9 +75,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {ph
 
 The engine incorporates the row. No menu needed — append this single line at the end of your current turn, above the gate where one is waiting on the user:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Background {agent_type} returned — nothing new beyond what we've already covered.
 ```
 

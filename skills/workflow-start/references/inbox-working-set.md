@@ -70,9 +70,9 @@ The `ADDABLE` table in the working-set DATA lists the inbox items not already in
 
 #### If `addable_count` is 0
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
   Every inbox item is already in the set.
 ```
 
@@ -144,9 +144,9 @@ Archive every item in the working set out of the inbox — one command moves eac
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox archive {path} [{path} …]
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Archived {count} item{s} from the inbox.
 ```
 

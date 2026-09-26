@@ -46,9 +46,9 @@ If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not 
 3. Offer two options — fix and retry, or explicitly proceed without knowledge.
 4. If the user chooses to proceed, continue the phase but record that knowledge retrieval was skipped so the user knows context may be missing.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 ⚑ Knowledge query failed
   {error output}
 

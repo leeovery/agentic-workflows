@@ -122,9 +122,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_
 
 **If plan status is `completed` and scoping status is not `in-progress`:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Scoping already completed for "{topic:(titlecase)}". Spec and plan are in place.
 ```
 
