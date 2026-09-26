@@ -494,7 +494,7 @@ describe('gate payload — every gateway verb', () => {
       fallback: [ungated('v2')],
     },
     'workflow-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
-    'workflow-bridge': { fallback: [ungated('checkout')] },
+    'workflow-bridge': { index: [refused()], fallback: [ungated('checkout')] },
     'workflow-discussion-process': { map: [ungated('map', 'v1', 'auth')] },
     'workflow-roadmap': {
       view: [gated('view')],
