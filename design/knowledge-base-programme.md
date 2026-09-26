@@ -1,10 +1,10 @@
 # Knowledge Base Programme — measured retrieval, a chosen store, a module in the engine
 
 The knowledge base was built early, before the engine existed in its current
-form, and it has not been revisited since. This is the design log for bringing it forward: first
-measuring what it retrieves, then choosing its store on measured merit, then
-moving it into the engine, then improving what it hands back. Opened
-2026-09-25.
+form, and it has not been revisited since. This is the design log for
+bringing it forward: first measuring what it retrieves, then choosing its
+store on measured merit, then moving it into the engine, then improving what
+it hands back. Opened 2026-09-25.
 
 ## Motivation
 
@@ -88,12 +88,13 @@ Drawn from the owner's dex-engineering knowledge base:
   place of it.
 - **The knowledge directory is local to each checkout.** Store, metadata and
   config alike are never committed.
-- **Semantic search stays, and keyword-only is a first-class mode.** Either
-  store runs OpenAI vectors through a brute-force cosine scan. Keyword-only
-  is supported, never merely tolerated.
-- **The store is decided on measured merit.** Trimmed Orama against
-  `node:sqlite`, by benchmark, with retrieval quality held by the eval
-  harness.
+- **Semantic search stays, and keyword-only is a first-class mode.** Any
+  store runs the vectors through a brute-force cosine scan. Keyword-only is
+  supported, never merely tolerated.
+- **The store is decided on measured merit.** The candidates are talked
+  through properly before anything is built, keeping today's store is a
+  valid outcome, and the decision rests on a benchmark with retrieval
+  quality held by the eval harness.
 - **The KB becomes an engine module.** It is controlled by the engine and
   runs in process. It was kept separate only while the engine itself was in
   flux.
@@ -111,16 +112,20 @@ Drawn from the owner's dex-engineering knowledge base:
    could not tell which moved a result. Two separate searches also give the
    keyword fallback for free: a failed embed leaves the keyword results
    standing, with a note, and nobody is stopped.
-3. **Store benchmark and decision.** The same ranking code runs over both
-   candidates: load, query and index time, and file size, at ~3,000
-   chunks. The harness holds retrieval quality equal or better.
+3. **Store benchmark and decision.** The conversation comes first, ahead of
+   step 2: which candidates, which criteria, and whether the store changes at
+   all. Step 2 draws the line between our ranking code and the store, and
+   that line has to fit every candidate on the table. The measurement comes
+   after step 2, each candidate behind the same line: eval quality, load,
+   query and index time, and size. Keeping Orama is a valid outcome.
 4. **KB into the engine**, on the winning store. The retrieval work that
    follows lands in its final home.
 5. **The rest of retrieval quality:** the relevance floor, printed scores,
    content-only search, heading paths and line ranges, a per-file cap,
-   excerpts, and lifecycle markers. The floor's stop words and stemming
-   are settings of the store's own tokenizer, so they wait for the store
-   decision.
+   excerpts, and lifecycle markers. The keyword side's stop words and
+   stemming are settings of the store's own tokenizer, so they wait for the
+   store decision. A floor drawn from vector scores needs neither, and may
+   come forward into step 2 (see step 1's findings).
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -128,6 +133,11 @@ Drawn from the owner's dex-engineering knowledge base:
 
 Each step is designed in full here when it is reached. Steps 2–7 below
 record only what is already decided and what is known to be open.
+
+Each step ships as its own stack and its own release, never as one
+programme-long branch. A store change is a release of its own, because every
+install rebuilds its store once on first start. A fix found along the way
+ships standalone.
 
 ## Step 1 — the eval harness
 
@@ -264,18 +274,63 @@ legs:
 | bytes per query | 49.5 KB | 41.9 KB |
 | results on a negative | 10 | 10 |
 
-What it says for the steps ahead:
+### What the eval showed
 
-- **The vector leg carries retrieval.** Keyword-only finds the right file
-  almost every time but the passage holding the answer in its top five
-  only 59% of the time. A first-class keyword mode has to close most of
-  that gap: the target of step 5's stemming, stop words and content-only
-  indexing.
-- **Nothing is ever turned away.** Every negative, on either leg, returns a
-  full ten results and 40–47 KB. The floor is measured from zero.
-- **Recall is the weakest number on both legs**, because a multi-framing
-  query's answer spans several passages and the top ten is shared among
-  the framings.
+Measured over the pinned cases and the cached embedded stores.
+
+**Vector scores separate a question with an answer from one without.** The
+best vector score each query framing reaches:
+
+| | lowest | median | highest |
+|---|---|---|---|
+| positive framings (118) | 0.36 | 0.55 | 0.71 |
+| negative framings (16) | 0.23 | 0.37 | 0.43 |
+
+A cut at 0.44 turns away every negative framing and keeps 111 of the 118
+positive ones; at 0.42 it keeps 115 and lets 2 of 16 negatives through.
+Today nothing is turned away: the configured vector threshold is 0.3, below
+most negatives' best score, and when the vector side comes back empty the
+keyword side still fills all ten slots — every negative, on either leg,
+returns ten results and 40–47 KB. The threshold's calibration note (noise
+peaking near 0.2) does not hold for the long natural-language framings
+agents write: off-topic noise reaches 0.43. The nine negatives are all
+clearly off-topic; a floor is set only after the set gains near-miss
+negatives — a related subject the project never decided.
+
+**Keyword-only has a real gap, not a tuning problem.** Agents write long
+natural-language framings, as the query guidance asks, and batch three or
+four in one call: the worst case for BM25 with no stop words and no
+stemming. The right file is in the keyword top five 96% of the time, but:
+
+- its first result is one the adjudication ruled irrelevant in 21 of 49
+  positive cases;
+- in multi-framing queries, 29 of 105 framings get no judged passage in the
+  top ten (hybrid: 3 of 105);
+- when its first result is relevant, a restatement (a summary or
+  current-state section) beats the passage where the answer is recorded,
+  16 to 12. Hybrid ranks the other way, 30 to 14.
+
+**Supersession lives inside documents.** A decision amended in place keeps
+its old text beside the new — a platform floor moved from macOS 14 to 15, a
+login-item default turned to opt-in, a component count corrected from 15 to
+18 by corrigendum. Judges in all three projects met it. Ranking one phase's
+document above another's does not reach it.
+
+**Restatement-heavy documents are not crowding the top.** Discovery logs and
+seeds rank first in 1–2 of 49 cases. On the hybrid leg 61% of the returned
+text is judged passages (keyword: 33%). The byte cost is chunk size: the
+median returned chunk is 3.1–3.7k characters and a quarter run past 5.7–8k.
+
+**Two defects surfaced in the harvest and the build.**
+
+- Planning entry's cross-cutting check
+  (`workflow-planning-entry/references/cross-cutting-context.md`) runs its
+  knowledge query, filtered to `--work-type cross-cutting`, even when the
+  project has no cross-cutting unit — a query that can only return nothing.
+  It is 10 of the 155 real queries harvested.
+- Embedding a large corpus hit OpenAI's rate limit (1M tokens a minute at
+  the lowest tier; portal's corpus is ~0.93M), and the retry ignored the
+  wait the provider named. Fixed separately (#1309).
 
 ## Step 2 — ranking in our own code
 
@@ -288,26 +343,60 @@ Decided:
 - A failed embed degrades to keyword-only with a note, and `query` exits 0.
 - `query --explain` shows each result's journey.
 
-Open: the RRF constant, and whether the original framing is weighted above
-the others.
+Open:
+
+- The RRF constant, and whether the original framing is weighted above the
+  others.
+- Whether the relevance floor comes forward into this step as a gate on
+  vector scores (the evidence is in step 1's findings), and what it does on
+  a keyword-only store, which has no vector score to gate on.
 
 ## Step 3 — store benchmark and decision
 
+The eval narrows the question. Hybrid retrieval on today's Orama store finds
+the passage holding the answer in its top five 96% of the time, and nearly
+every weakness found — no floor, a weak keyword side, oversized results —
+sits in ranking and rendering, above the store. What the store decides:
+
+- **Speed.** The whole store loads on every query, and every index rewrites
+  the whole file.
+- **Size.** Fumi's store is 15 MB, ~49 KB per chunk against ~6 KB of text.
+- **Footprint.** Dependencies, and what the KB becomes once it is an engine
+  module.
+- **Control of the keyword side.** Stop words and stemming, where the
+  keyword gap lives.
+
 The candidates:
 
-- **Trimmed Orama**: float32 vectors stored once, no sort index, only
-  content full-text indexed.
-- **`node:sqlite`**: FTS5 for the keyword leg, vectors as float32 blobs
-  scanned by our own cosine, and no dependency.
+- **Orama, trimmed.** Float32 vectors stored once, no sort index, only
+  content full-text indexed. The least change.
+- **`node:sqlite`.** FTS5 for the keyword side, vectors as float32 blobs
+  scanned by our own cosine; writes incrementally; no dependency. Needs
+  Node ≥ 22.13 unflagged, a floor weighed in the decision.
+- **No database.** Chunks plus a vector file, our own BM25 and a
+  brute-force vector scan. At this scale — portal is ~1,100 chunks — it
+  all fits in memory and a scan takes milliseconds. No dependency, full
+  control of the tokenizer; the cost is owning BM25's correctness.
+- **A smaller search library** (MiniSearch or similar) with our own vector
+  scan. A middle ground.
 
-Measured at ~3,000 chunks: load, query and index time, and file size.
-`node:sqlite` needs Node ≥ 22.13 unflagged, and the floor it sets is
-weighed in the decision. The harness must hold retrieval equal or better
-across the switch.
+Ruled out: native add-ons (sqlite-vec, LanceDB, DuckDB). An install copies
+files with no build step, so a native binary cannot ship.
+
+Beside the store, one question the eval can answer: **where embeddings come
+from.** A local embedding model would give every install semantic search
+without an API key — which matters now that keyword-only is measured this
+far behind. It costs a model download and CPU time at indexing; the eval
+measures it against OpenAI.
+
+Measured for each, behind the line step 2 draws: eval quality (must hold or
+improve), query time including load, full and single-file index time, store
+size, install footprint, and the Node version it requires.
 
 Known before measuring: Orama's filtered reads pre-allocated their `limit`,
 fixed separately (#1305). Insert and save remain most of a fresh index's
-time.
+time. A rate-limited embed now waits the time the provider names, request
+by request (#1309).
 
 ## Step 4 — the KB in the engine
 
@@ -332,6 +421,10 @@ chunks. Contextual chunk headers are measured here.
 Within one topic, the later record outranks the earlier: specification
 over discussion over research, with a reopened topic marked. This sits
 alongside progress decay across work units and never replaces it.
+
+Open: supersession inside a single document. The eval found decisions
+amended in place, old text beside new, in all three projects; ranking one
+phase's document above another's does not reach it.
 
 ## Step 7 — catalogue and decisions register
 
