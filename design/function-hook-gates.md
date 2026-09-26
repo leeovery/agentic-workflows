@@ -608,10 +608,15 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   goes when the unit closes. Each conversation that runs the workflows
   has one folder, `.workflows/.cache/.conversations/{session-id}/`, and
   each concern writes its own file there: the workflow marker (R20),
-  written by the engine; the conversation's transcript path, written by
-  the session-end hook the workflows already install, from the path
-  Claude Code hands every hook; the tmux label's resume position; and the
-  gate the mod saves for a resume (R6). One tidy-up, at boot, deletes a
+  written once by any engine or gateway call that carries a session id,
+  after the command whatever its exit — never by the session hooks, which
+  run for every conversation in the project; the conversation's
+  transcript path, written by `engine conversation end`, which the
+  session-end hook runs from the path Claude Code hands every hook, and
+  only where the folder exists; the tmux label's resume position (moved
+  here by migration 061); and the gate the mod saves for a resume (R6),
+  `null` when there is none to keep. The mod names the folder the engine's
+  way, so both always reach the same one. One tidy-up, at boot, deletes a
   folder once the transcript file it names is gone: whatever retention the
   person set — thirty days, ten years — is the retention these records
   keep, and no period is assumed anywhere. A folder whose conversation
@@ -642,8 +647,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - display delivery on top of that — #1303 the workflow session's
     harness (R20) → #1304 what a step shows reaches the person, with the
     dispatch sentence (R21, R22) → #1310 one vocabulary for how a block
-    renders, every code block naming its fence (R23) → the conversation
-    folder (R24), the one home and one tidy-up for what belongs to a
+    renders, every code block naming its fence (R23) → #1312 the
+    conversation folder (R24), the one home and one tidy-up for what belongs to a
     conversation, replacing the boot recognition, the mod's own store for
     saved gates and the label store's resume positions.
   - **Next, after landing:** the bridge's handoff taken over by the mod —
