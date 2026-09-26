@@ -4,10 +4,8 @@ The prose should have taken this path:
    phase status reads empty, and the late-context menu is put to the
    user, whose continue sets a fresh start with no extra context
 2. cross-cutting context runs: the manifest list finds no cross-cutting
-   work units, and the knowledge query — filtered to cross-cutting
-   specifications — returns nothing on the empty store; the walk
-   proceeds silently and hands off a fresh-plan payload naming the
-   specification
+   work units, so no knowledge query runs; the walk proceeds silently
+   and hands off a fresh-plan payload naming the specification
 3. the process finds no planning entry — no resume choice
 4. with no project default recorded, the format menu is put to the
    user; their choice registers the plan: the planning file created,
