@@ -28,6 +28,8 @@ Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/referen
 
 ## Invoke the Agent
 
+Every dispatch below runs in the background (`run_in_background: true`), and every dispatch and send ends the turn on exactly `The executor agent has been dispatched for task {phase}.{task}.` — `{phase}.{task}` the plan phase and task numbers the internal id ends in (`{topic}-{phase}-{task}`), never the id itself or the topic.
+
 #### If this is the current task's first executor dispatch
 
 Dispatch a **fresh** `workflow-implementation-task-executor` agent via the Task tool. Never continue an executor from an earlier task — the task content below is this task's complete framing, and an executor still carrying the previous task's context erodes that boundary.

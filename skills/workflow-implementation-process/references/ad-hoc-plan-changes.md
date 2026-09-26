@@ -212,6 +212,8 @@ TASKS_CREATED: {N}
 SUMMARY: {1 sentence}
 ```
 
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task writer agent has been dispatched for the ad hoc tasks.`
+
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
 **If the planning item carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).

@@ -10,12 +10,6 @@ This step uses the `workflow-planning-dependency-grapher` agent (`../../../agent
 
 ## A. Analyze
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-All tasks are authored. Now I'll analyze internal dependencies and priorities across the full plan.
-```
-
 Read the `format`, the plan's `external_id`, and the `task_map` from the manifest:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
@@ -34,6 +28,14 @@ Invoke `workflow-planning-dependency-grapher` with these inputs:
 5. **Task map**: the `task_map` value read above
 
 The agent clears any existing dependencies/priorities, analyzes all tasks, and — if no cycles — applies the new graph data directly. It returns a structured summary of what was done.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+All tasks are authored. Now I'll analyze internal dependencies and priorities across the full plan.
+```
+
+This dispatch and every re-invocation of the grapher below run in the background (`run_in_background: true`) and end the turn on exactly `The dependency grapher agent has been dispatched for the plan's task graph.`
 
 → Proceed to **B. Review and Approve**.
 

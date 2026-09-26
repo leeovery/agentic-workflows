@@ -68,7 +68,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 Section content is never redrawn, reflowed, trimmed, or re-derived — its marker says how it is emitted. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
-**A section is emitted directly beneath the call that produced it — always.** Transaction verbs answer with one JSON line and render nothing; every gate, menu, receipt, and advisory is served by a render surface (`engine render …`) or a snapshot verb, fetched by the prose at the exact point that displays it, so the section always sits in the tool result immediately above its emission. Never author a flow that carries a section forward — "emit the section from the earlier response" is the displays-at-a-distance pattern that render surfaces exist to kill; when a later step needs a section, that step runs its own fetch. The one sanctioned variant: a surface's contract may prescribe session-composed content between its DISPLAY and MENU emissions from one call — composed and emitted in the same turn as the call, never carried across steps. **A MENU in a tool result is a live gate at that call**: a call returns a MENU only where the prose shows that gate at that call — a gate shown later, or a view fetched only for its data or display, is fetched through a call that carries no MENU, and a response with no gate carries no MENU section at all. The same verbatim rules apply to every form.
+**A section is emitted from the call that produced it, in the step that shows it — always.** Transaction verbs answer with one JSON line and render nothing; every gate, menu, receipt, and advisory is served by a render surface (`engine render …`) or a snapshot verb, fetched by the prose at the exact point that displays it. Never author a flow that carries a section forward — "emit the section from the earlier response" is the displays-at-a-distance pattern that render surfaces exist to kill; when a later step needs a section, that step runs its own fetch. The one sanctioned variant: a surface's contract may prescribe session-composed content between its DISPLAY and MENU emissions from one call — composed and emitted in the same turn as the call, never carried across steps. **A MENU in a tool result is a live gate at that call**: a call returns a MENU only where the prose shows that gate at that call — a gate shown later, or a view fetched only for its data or display, is fetched through a call that carries no MENU, and a response with no gate carries no MENU section at all. The same verbatim rules apply to every form.
 
 ### Phase Titles
 
@@ -485,6 +485,16 @@ Two categories:
 ```
 
 Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before ending.`, or other variations.
+
+### Dispatch Lines
+
+Claude Code runs an agent in the background unless the dispatch passes `run_in_background: false`, so every dispatch names its mode. A background dispatch the flow waits on ends the turn there: it says `run_in_background: true` and prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
+
+```
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
+```
+
+One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence. Lint check 25 holds all three.
 
 ### Heading Hierarchy
 

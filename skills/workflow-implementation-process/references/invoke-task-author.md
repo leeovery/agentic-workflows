@@ -22,6 +22,8 @@ Pass via the orchestrator's prompt:
 6. **Specification path** — `.workflows/{work_unit}/specification/{topic}/specification.md` (if the unit has one)
 7. **task-design.md path** — `../../workflow-planning-process/references/task-design.md`
 
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for the approved proposals.`
+
 ---
 
 ## Expected Result

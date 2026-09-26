@@ -22,7 +22,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 → loop back to A until done
 ```
 
-**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls. Each stage below fetches its own section at the moment it displays it and emits it verbatim per its marker, so the section always sits in the tool result directly above its emission; its content is never redrawn, reflowed, or re-derived.
+**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls. Each stage below fetches its own section at the moment it displays it and emits it verbatim per its marker; its content is never redrawn, reflowed, or re-derived.
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
@@ -115,13 +115,7 @@ The `start` response's `mode` says whether this task is being taken up or resume
 
 **If `mode` is `resumed`** — a previous session left the task mid-fix-round, its recorded findings unanswered:
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
-
-Present the findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary), reading the last `## Attempt` section of `.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md` — the session that wrote them is gone, and the record is what the user answers the gate on.
-
-The turn does not end here — the gate menu follows in the same turn.
-
-→ On return, proceed to **F. Fix Approval Gate**.
+→ Proceed to **F. Fix Approval Gate**.
 
 **If `mode` is `started`:**
 
@@ -313,25 +307,19 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
-
 #### If the response's `threshold_reached` is `true`
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`, render_when = `always`.
-
-Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
-
-The turn does not end here — the gate menu follows in the same turn.
-
-→ On return, proceed to **F. Fix Approval Gate**.
+→ Proceed to **F. Fix Approval Gate**.
 
 #### If the response's `threshold_reached` is `false`
-
-Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
 
 Branch on the response's `fix_gate_mode`.
 
 **If `fix_gate_mode` is `auto` or `bounded`:**
+
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
+
+Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
 
 After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section verbatim per its marker:
 
@@ -345,15 +333,21 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 **If `fix_gate_mode` is `gated`:**
 
-The turn does not end here — the gate menu follows in the same turn.
-
 → Proceed to **F. Fix Approval Gate**.
 
 ---
 
 ## F. Fix Approval Gate
 
-On every arrival — from **E**, and back from a lens, the page, an answer, or a standing challenge alike — fetch the fix gate in that same turn and emit its `MENU: fix gate` section verbatim per its marker (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
+A return from a lens, the page, an answer, or a standing challenge re-runs the gate fetch below alone — the presentation belongs to the gate's first arrival, from **A** or **E**.
+
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
+
+When **E**'s fix attempt reached its threshold, load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** beneath the header with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`, render_when = `always`.
+
+Present the findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary) — the reviewer's, or, for a task resumed at **A**, the last `## Attempt` section of `.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`: the session that wrote them is gone, and the record is what the user answers the gate on.
+
+Fetch the fix gate and emit its `MENU: fix gate` section verbatim per its marker (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
