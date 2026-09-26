@@ -12,7 +12,7 @@ const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
 const { OpenAIProvider } = require('./providers/openai');
-const { AuthError, InvalidRequestError, ConfigError } = require('./providers/openai-engine');
+const { AuthError, InvalidRequestError, ConfigError, RateLimitError } = require('./providers/openai-engine');
 const config = require('./config');
 const setup = require('./setup');
 const setupForms = require('./setup-forms');
@@ -274,11 +274,21 @@ function resolveArtifactPath(p) {
 }
 
 // ---------------------------------------------------------------------------
-// Retry wrapper — single-layer retry for all operations
+// Retry wrapper — operation-level retry for transient failures
 // ---------------------------------------------------------------------------
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Whether repeating the whole operation could change a failure's outcome —
+ * never for a permanent failure, nor for a rate limit the provider has
+ * already waited out request by request.
+ * @param {unknown} err
+ */
+function isRetryable(err) {
+  return !isPermanentError(err) && !(err instanceof RateLimitError);
 }
 
 /**
@@ -295,7 +305,7 @@ async function withRetry(fn, opts) {
     try {
       return await fn();
     } catch (err) {
-      if (isPermanentError(err)) throw err;
+      if (!isRetryable(err)) throw err;
       lastErr = err;
       if (attempt < maxAttempts - 1) {
         const delay = backoff[attempt] || backoff[backoff.length - 1];

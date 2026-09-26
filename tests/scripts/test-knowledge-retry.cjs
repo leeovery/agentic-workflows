@@ -13,6 +13,7 @@ const {
   InvalidRequestError,
   ConfigError,
 } = require('../../src/knowledge/index');
+const { RateLimitError } = require('../../src/knowledge/providers/openai-engine');
 
 describe('withRetry', () => {
   it('succeeds on first attempt', async () => {
@@ -70,6 +71,15 @@ describe('withRetry', () => {
       /fail/
     );
     assert.strictEqual(calls, 3, 'exactly 3 attempts, not 9 (no compounding)');
+  });
+
+  it('does not repeat an operation after a rate limit the provider already waited out', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new RateLimitError('rate limit exceeded (HTTP 429)', null); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      RateLimitError
+    );
+    assert.strictEqual(calls, 1);
   });
 
   it('uses defaults when opts are minimal', async () => {

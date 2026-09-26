@@ -15,9 +15,12 @@ const {
   OpenAIEmbeddingsEngine,
   InvalidRequestError,
   ConfigError,
+  RateLimitError,
   MAX_BATCH_SIZE,
   MAX_BATCH_CHARS,
   REQUEST_TIMEOUT_MS,
+  RATE_LIMIT_WAITS_MS,
+  MAX_RATE_LIMIT_WAIT_MS,
 } = require('../../src/knowledge/providers/openai-engine');
 const { isPermanentError } = require('../../src/knowledge/index');
 
@@ -136,7 +139,7 @@ describe('OpenAIProvider embed (mocked)', () => {
     });
   }
 
-  for (const status of [429, 500, 503]) {
+  for (const status of [500, 503]) {
     it(`throws a plain Error on ${status} — a transient failure a retry may clear`, async () => {
       globalThis.fetch = mockFetchError(status, 'try again');
       const p = new OpenAIProvider({ apiKey: 'sk-test' });
@@ -186,16 +189,6 @@ describe('OpenAIProvider embed (mocked)', () => {
     );
   });
 
-  it('throws on 429 with rate limit message (no internal retry)', async () => {
-    globalThis.fetch = mockFetchError(429, 'Rate limit exceeded');
-    const p = new OpenAIProvider({ apiKey: 'sk-test' });
-
-    await assert.rejects(
-      () => p.embed('hello'),
-      /rate limit exceeded/i
-    );
-  });
-
   it('throws on network error with descriptive message', async () => {
     globalThis.fetch = mockFetchNetworkError('ECONNREFUSED');
     const p = new OpenAIProvider({ apiKey: 'sk-test' });
@@ -214,6 +207,126 @@ describe('OpenAIProvider embed (mocked)', () => {
       () => p.embed('hello'),
       /HTTP 500/
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rate limits (mocked fetch)
+// ---------------------------------------------------------------------------
+
+describe('OpenAIEmbeddingsEngine rate limits (mocked)', () => {
+  let originalFetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  const VECTOR = [0.1, 0.2];
+
+  /** An engine whose waits are recorded, not slept. */
+  function engineRecording(waits) {
+    return new OpenAIEmbeddingsEngine({
+      baseUrl: 'https://api.example.test/v1',
+      apiKey: 'sk-test',
+      model: 'm',
+      dimensions: 2,
+      sendDimensionsParam: false,
+      errorContext: { label: 'OpenAI' },
+      sleep: async (ms) => { waits.push(ms); },
+    });
+  }
+
+  function limited(headers = {}, body = 'Rate limit reached') {
+    return { ok: false, status: 429, headers: new Headers(headers), text: async () => body };
+  }
+
+  function answered(count = 1) {
+    const data = Array.from({ length: count }, (_, index) => ({ index, embedding: VECTOR }));
+    return { ok: true, status: 200, json: async () => ({ data }) };
+  }
+
+  /** Answer each request with the next response; the last one repeats. */
+  function respondInTurn(responses, bodies = []) {
+    return async (_url, init) => {
+      bodies.push(init.body);
+      return responses[Math.min(bodies.length, responses.length) - 1];
+    };
+  }
+
+  it('waits the retry-after-ms the endpoint names, then retries the request', async () => {
+    const waits = [];
+    const bodies = [];
+    globalThis.fetch = respondInTurn([limited({ 'retry-after-ms': '250' }), answered()], bodies);
+
+    assert.deepStrictEqual(await engineRecording(waits).embed('hello'), VECTOR);
+    assert.deepStrictEqual(waits, [250]);
+    assert.strictEqual(bodies.length, 2);
+  });
+
+  it('reads retry-after in seconds', async () => {
+    const waits = [];
+    globalThis.fetch = respondInTurn([limited({ 'retry-after': '2' }), answered()]);
+
+    await engineRecording(waits).embed('hello');
+    assert.deepStrictEqual(waits, [2000]);
+  });
+
+  it('reads the wait from the message when no header names it', async () => {
+    const waits = [];
+    const body = JSON.stringify({ error: { message: 'Rate limit reached for text-embedding-3-small on tokens per min (TPM): Limit 1000000. Please try again in 6.007s.', type: 'tokens', code: 'rate_limit_exceeded' } });
+    globalThis.fetch = respondInTurn([limited({}, body), answered()]);
+
+    await engineRecording(waits).embed('hello');
+    assert.deepStrictEqual(waits, [6007]);
+  });
+
+  it('caps a named wait at a minute', async () => {
+    const waits = [];
+    globalThis.fetch = respondInTurn([limited({ 'retry-after': '300' }), answered()]);
+
+    await engineRecording(waits).embed('hello');
+    assert.deepStrictEqual(waits, [MAX_RATE_LIMIT_WAIT_MS]);
+  });
+
+  it('falls back to growing waits when none is named, then throws RateLimitError', async () => {
+    const waits = [];
+    const bodies = [];
+    globalThis.fetch = respondInTurn([limited()], bodies);
+
+    await assert.rejects(
+      () => engineRecording(waits).embed('hello'),
+      (err) =>
+        err instanceof RateLimitError &&
+        /^OpenAI rate limit exceeded \(HTTP 429\)\. Rate limit reached$/.test(err.message) &&
+        isPermanentError(err) === false
+    );
+    assert.deepStrictEqual(waits, RATE_LIMIT_WAITS_MS);
+    assert.strictEqual(bodies.length, RATE_LIMIT_WAITS_MS.length + 1);
+  });
+
+  it('an account out of quota fails at once — no wait restores it', async () => {
+    const waits = [];
+    const bodies = [];
+    const body = JSON.stringify({ error: { message: 'You exceeded your current quota.', type: 'insufficient_quota', code: 'insufficient_quota' } });
+    globalThis.fetch = respondInTurn([limited({ 'retry-after': '1' }, body)], bodies);
+
+    await assert.rejects(
+      () => engineRecording(waits).embed('hello'),
+      (err) => err.constructor === Error && /rate limit exceeded \(HTTP 429\)/.test(err.message)
+    );
+    assert.deepStrictEqual(waits, []);
+    assert.strictEqual(bodies.length, 1);
+  });
+
+  it('a rate-limited batch retries only the request refused, not those answered', async () => {
+    const waits = [];
+    const bodies = [];
+    const first = 'a'.repeat(MAX_BATCH_CHARS);
+    const second = 'b'.repeat(MAX_BATCH_CHARS);
+    globalThis.fetch = respondInTurn([answered(), limited({ 'retry-after-ms': '5' }), answered()], bodies);
+
+    const vectors = await engineRecording(waits).embedBatch([first, second]);
+    assert.deepStrictEqual(vectors, [VECTOR, VECTOR]);
+    assert.deepStrictEqual(waits, [5]);
+    assert.deepStrictEqual(bodies.map((b) => JSON.parse(b).input[0][0]), ['a', 'b', 'b']);
   });
 });
 

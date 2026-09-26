@@ -20,8 +20,9 @@
 //     "server not running".
 //
 // Uses Node's built-in fetch (Node 18+) — keeps existing test mocks of
-// globalThis.fetch working. Throws on ALL failures; never retries internally
-// (the operation-level retry wrapper is the single source of retry logic).
+// globalThis.fetch working. Throws on every failure but a rate limit, which it
+// waits out request by request: the operation-level retry wrapper repeats a
+// whole job, re-sending every request already answered.
 
 'use strict';
 
@@ -38,6 +39,11 @@ const REQUEST_TIMEOUT_MS = 60000;
 // HTTP statuses where the endpoint refused the request itself — an input
 // over the model's limit, a malformed body.
 const INVALID_REQUEST_STATUSES = new Set([400, 413, 422]);
+
+// A rate-limited request is retried after the wait the endpoint names, or
+// after these when it names none, each wait capped at a minute.
+const RATE_LIMIT_WAITS_MS = [1000, 2000, 4000, 8000, 16000];
+const MAX_RATE_LIMIT_WAIT_MS = 60000;
 
 // AuthError — marker class for HTTP 401/403 from the embeddings API.
 // Bad/expired keys do not fix themselves between retries, so withRetry
@@ -68,6 +74,18 @@ class ConfigError extends Error {
   }
 }
 
+// RateLimitError — HTTP 429 from a saturated rate limit, carrying the wait the
+// endpoint named (null when it named none). Thrown out of the engine only once
+// its own retries are spent.
+class RateLimitError extends Error {
+  /** @param {string} message @param {number|null} retryAfterMs */
+  constructor(message, retryAfterMs) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 class OpenAIEmbeddingsEngine {
   /**
    * @param {{
@@ -77,6 +95,7 @@ class OpenAIEmbeddingsEngine {
    *   dimensions: number,
    *   sendDimensionsParam: boolean,
    *   timeoutMs?: number,
+   *   sleep?: (ms: number) => Promise<void>,
    *   errorContext: {
    *     label: string,
    *     authHint: string,
@@ -97,6 +116,7 @@ class OpenAIEmbeddingsEngine {
     this._dimensions = policy.dimensions;
     this._sendDimensionsParam = policy.sendDimensionsParam === true;
     this._timeoutMs = policy.timeoutMs || REQUEST_TIMEOUT_MS;
+    this._sleep = policy.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this._errorContext = policy.errorContext || {};
   }
 
@@ -206,13 +226,31 @@ class OpenAIEmbeddingsEngine {
   }
 
   /**
+   * Internal: one request, retried while it is rate-limited — after the wait
+   * the endpoint names, else the next of RATE_LIMIT_WAITS_MS, each capped at
+   * MAX_RATE_LIMIT_WAIT_MS. The RateLimitError propagates once they are spent.
+   * @param {string} body JSON-encoded request body
+   * @returns {Promise<object>} parsed response JSON
+   */
+  async _fetch(body) {
+    for (let retry = 0; ; retry++) {
+      try {
+        return await this._request(body);
+      } catch (err) {
+        if (!(err instanceof RateLimitError) || retry === RATE_LIMIT_WAITS_MS.length) throw err;
+        await this._sleep(Math.min(err.retryAfterMs ?? RATE_LIMIT_WAITS_MS[retry], MAX_RATE_LIMIT_WAIT_MS));
+      }
+    }
+  }
+
+  /**
    * Internal: POST to the embeddings endpoint and parse the response.
    * Throws on any failure with a descriptive message built from the policy
    * error context.
    * @param {string} body JSON-encoded request body
    * @returns {Promise<object>} parsed response JSON
    */
-  async _fetch(body) {
+  async _request(body) {
     const ctx = this._errorContext;
     const headers = { 'Content-Type': 'application/json' };
     // Send Authorization only when a key is present — local servers omit it.
@@ -244,16 +282,16 @@ class OpenAIEmbeddingsEngine {
     }
 
     if (!res.ok) {
-      let detail = '';
+      let text = '';
       try {
-        detail = await res.text();
+        text = await res.text();
       } catch (_) {
         // ignore body read failures
       }
       // Upstream bodies are untrusted and may reflect request headers —
       // including the Authorization bearer. Redact any credential-shaped
       // material and cap the length before it can reach an error message.
-      detail = detail
+      const detail = text
         .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer [redacted]')
         .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[redacted-key]')
         .slice(0, 300);
@@ -265,7 +303,10 @@ class OpenAIEmbeddingsEngine {
         throw new AuthError(`${ctx.label} request lacks permission (HTTP 403). ${ctx.permissionHint} ${detail}`.trim());
       }
       if (res.status === 429) {
-        throw new Error(`${ctx.label} rate limit exceeded (HTTP 429). ${detail}`.trim());
+        const limited = `${ctx.label} rate limit exceeded (HTTP 429). ${detail}`.trim();
+        // An account out of quota answers 429 too, and no wait restores it.
+        if (quotaExhausted(text)) throw new Error(limited);
+        throw new RateLimitError(limited, namedWait(res.headers, text));
       }
       const failed = `${ctx.label} embedding request failed (HTTP ${res.status}): ${detail}`;
       throw INVALID_REQUEST_STATUSES.has(res.status) ? new InvalidRequestError(failed) : new Error(failed);
@@ -280,6 +321,40 @@ class OpenAIEmbeddingsEngine {
 
     return json;
   }
+}
+
+/**
+ * Whether a 429 body says the account is out of quota.
+ * @param {string} text
+ */
+function quotaExhausted(text) {
+  try {
+    const { error } = JSON.parse(text);
+    return Boolean(error) && (error.code === 'insufficient_quota' || error.type === 'insufficient_quota');
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * The wait a 429 names, in whole milliseconds — the `retry-after-ms` header,
+ * else `retry-after` in seconds, else the message's "try again in 6.007s" —
+ * or null when it names none.
+ * @param {Headers} headers @param {string} text
+ * @returns {number|null}
+ */
+function namedWait(headers, text) {
+  const header = (/** @type {string} */ name) => {
+    const value = headers.get(name);
+    return value === null || value.trim() === '' ? NaN : Number(value);
+  };
+  const ms = header('retry-after-ms');
+  if (ms >= 0) return Math.ceil(ms);
+  const seconds = header('retry-after');
+  if (seconds >= 0) return Math.ceil(seconds * 1000);
+  const said = /try again in (\d+(?:\.\d+)?)(ms|s)\b/i.exec(text);
+  if (said) return Math.ceil(Number(said[1]) * (said[2].toLowerCase() === 'ms' ? 1 : 1000));
+  return null;
 }
 
 /**
@@ -314,7 +389,10 @@ module.exports = {
   AuthError,
   InvalidRequestError,
   ConfigError,
+  RateLimitError,
   MAX_BATCH_SIZE,
   MAX_BATCH_CHARS,
   REQUEST_TIMEOUT_MS,
+  RATE_LIMIT_WAITS_MS,
+  MAX_RATE_LIMIT_WAIT_MS,
 };
