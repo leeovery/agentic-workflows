@@ -17,6 +17,7 @@
 //                  the SessionEnd hook
 //   position.json  the tmux label's resume position (session-label.cjs)
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
+//   rows.json      each answer row the rows mod redrew, by message id (its own)
 //
 // A folder goes at boot once the transcript it names is gone: Claude Code
 // has deleted the conversation, so nothing can resume it, and whatever
