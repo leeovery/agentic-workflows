@@ -187,12 +187,12 @@ const RANGE = {
 }
 
 const RESULT_SECTION = [
-  '=== DISPLAY: task result (emit verbatim as a code block) ===',
+  '=== DISPLAY: task result (emit verbatim as a text code block (```text fence)) ===',
   'Task 1.1 — the login form validates',
 ]
 
 const MENU_SECTION = [
-  "=== MENU: task gate (emit verbatim as markdown, then STOP for the user's response) ===",
+  "=== MENU: task gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
   '· · · · · · · · · · · ·',
   '**`◆ Approve this task?`**',
   '',
@@ -861,7 +861,7 @@ describe('register', () => {
 
   test('a section under the menu stands where the menu stood', async ($, on) => {
     const after = [
-      '=== DISPLAY: what follows (emit verbatim) ===',
+      '=== DISPLAY: what follows (emit verbatim as a text code block (```text fence)) ===',
       'Still here.',
     ]
     world($, on, announced({}, after))

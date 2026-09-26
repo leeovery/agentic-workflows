@@ -175,7 +175,7 @@ describe('workflow-continue-bugfix format', () => {
       '  fixed (last phase: review)',
       '=== CANCELLED (1) ===',
       '  wontfix (last phase: investigation)',
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 bugfix(es) in progress',
       '  ├─ 1. Crash',
       '  │   Specification (In-Progress)',
@@ -184,7 +184,7 @@ describe('workflow-continue-bugfix format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
@@ -245,7 +245,7 @@ describe('workflow-continue-bugfix CLI dispatch', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { 'crash': { status: 'completed' } } }, specification: { items: { 'crash': { status: 'in-progress' } } } } });
     const later = run(['view', 'crash']);
     assert.strictEqual(later.status, 0);
-    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown \(not a code block\)\) ===\n· · ·/);
   });
 
   it('select answers the select step: the dump, then the pick list and its menu', () => {

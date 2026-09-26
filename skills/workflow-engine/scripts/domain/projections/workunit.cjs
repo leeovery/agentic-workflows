@@ -213,7 +213,7 @@ function revisitPhasesSection(phases) {
   if (phases.length === 0) return '';
   return section(
     'MENU: revisit phases',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menuFrame([
       'Which phase would you like to revisit?',
       '',

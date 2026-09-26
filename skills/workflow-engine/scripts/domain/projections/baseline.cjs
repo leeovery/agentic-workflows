@@ -12,8 +12,8 @@ const { displayWidth } = require('../../kernel/terminal.cjs');
 const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 
-const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
-const ASK_INSTRUCTION = "emit verbatim as a code block, then STOP for the user's response";
+const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
+const ASK_INSTRUCTION = "emit verbatim as a text code block (```text fence), then STOP for the user's response";
 
 /** @typedef {import('../baseline.cjs').BaselineState} BaselineState */
 

@@ -284,7 +284,7 @@ describe('gateway.cjs adapter: map-view', () => {
     const res = run(['map-view', 'payments']);
     assert.strictEqual(res.status, 0);
     assert.ok(res.stdout.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a code block) ==='));
+    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
     assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled, 0 postponed/);

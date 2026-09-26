@@ -441,7 +441,7 @@ function archivedView(items) {
 function archivedActions(item) {
   return labelled(
     'MENU: archived actions',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`Selected: **${escapeMarkdown(item.title)}** (${item.type}, archived)`, [
       cmdOption('v', 'view', 'View full content'),
       cmdOption('u', 'unarchive', 'Restore to the inbox'),
@@ -460,7 +460,7 @@ function archivedActions(item) {
 function archivedDeleteGate(item) {
   return labelled(
     'MENU: archived delete gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`Permanently deleting "${escapeMarkdown(item.title)}" removes the file from the repo and cannot be undone.`, [
       cmdOption('y', 'yes', 'Delete permanently'),
       cmdOption('n', 'no', 'Return'),
@@ -526,7 +526,7 @@ function workingSetView(ws, summaries = {}) {
   if (!ws.uniform) {
     sections.push(labelled(
       'DISPLAY: blocker',
-      'emit verbatim as a properties code block (```properties fence — it renders the blocker red) directly after the display',
+      'emit verbatim as a properties code block (```properties fence), directly after the display — it renders the blocker red',
       '⚑ Work is unavailable while the set mixes types — drop to a single type to enable it.',
     ));
   }
@@ -556,7 +556,7 @@ function workingSetAddGate(ws) {
   }
   return labelled(
     'MENU: add gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     workingSetPick('Add which?', ws.addable, (item) => `${item.type}, ${item.date}`),
   );
 }
@@ -570,7 +570,7 @@ function workingSetAddGate(ws) {
 function workingSetDropGate(ws) {
   return labelled(
     'MENU: drop gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     workingSetPick('Drop which?', ws.items, (item) => item.type),
   );
 }
@@ -676,7 +676,7 @@ function manageUnitView(md) {
 function absorbTargetMenu(md) {
   return labelled(
     'MENU: absorb target',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     dotMenu([
       'Which epic should absorb it?',
       '',
@@ -695,7 +695,7 @@ function absorbTargetMenu(md) {
 function absorbConfirmGate() {
   return labelled(
     'MENU: absorb confirm gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu('', [bareOption('y', 'yes'), bareOption('n', 'no')], { question: 'Proceed?' }),
   );
 }
@@ -709,7 +709,7 @@ function absorbConfirmGate() {
 function planTopicsMenu(md) {
   return labelled(
     'MENU: plan topics',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     dotMenu([
       'Which plan would you like to view?',
       '',
@@ -796,7 +796,7 @@ function completedView(detail, filter) {
 function completedActions(workUnit, status) {
   return labelled(
     'MENU: completed actions',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`**${titlecase(workUnit)}** (${status})`, [
       cmdOption('r', 'reactivate', 'Set status back to in-progress'),
       cmdOption('b', 'back', 'Return to the list'),

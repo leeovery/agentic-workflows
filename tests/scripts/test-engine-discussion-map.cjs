@@ -409,7 +409,7 @@ describe('discussion adapter: map verb', () => {
       'unresolved: ["token-refresh"]',
       'review_arming: {"armed":true,"cycles":1,"map_moves_seen":null,"map_moves_needed":1,"reason":"no snapshot on record — armed; this dispatch stamps one"}',
       '',
-      '=== DISPLAY (emit verbatim as a code block) ===',
+      '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
       'Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
       'exploring)',
       '  ├─ ✓ Session Storage    [decided]',

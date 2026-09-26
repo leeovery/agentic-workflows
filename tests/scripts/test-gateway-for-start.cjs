@@ -555,7 +555,7 @@ describe('workflow-start sub-view sections', () => {
     ])) {
       const out = run(args);
       assert.ok(out.includes(`# **\`■ ${title}\`**`), `${args[0]}: ${out}`);
-      const display = out.split('=== DISPLAY (emit verbatim as a code block) ===\n')[1];
+      const display = out.split('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\n')[1];
       assert.ok(display, `${args[0]} has no DISPLAY section: ${out}`);
       assert.strictEqual(display.split('\n')[0], firstDisplayLine, `${args[0]}: ${out}`);
       assert.ok(!display.startsWith(title), `${args[0]} redraws its heading inside the fence: ${out}`);
@@ -573,13 +573,13 @@ describe('workflow-start sub-view sections', () => {
       [['completed'], 'Completed & Cancelled', '**`1`**      → Done Feat — *completed after review*'],
     ])) {
       const out = run(args);
-      assert.ok(out.includes(`=== TITLE (emit verbatim as markdown — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU (emit verbatim as markdown) ===\n`), `${args[0]}: ${out}`);
+      assert.ok(out.includes(`=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU (emit verbatim as markdown (not a code block)) ===\n`), `${args[0]}: ${out}`);
       assert.ok(!out.includes('=== DISPLAY'), `${args[0]} draws a display beside its list: ${out}`);
       assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
     }
 
     const empty = run(['completed', 'bugfix']);
-    assert.ok(empty.includes('=== DISPLAY (emit verbatim as a code block) ===\nNo completed or cancelled work units found.\n'), empty);
+    assert.ok(empty.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo completed or cancelled work units found.\n'), empty);
     assert.ok(!empty.includes('=== MENU'), empty);
   });
 
@@ -587,7 +587,7 @@ describe('workflow-start sub-view sections', () => {
     createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     const out = run(['inbox']);
     assert.ok(out.includes('inbox_count: 0\n'), out);
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ===\nNo inbox items.\n'), out);
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo inbox items.\n'), out);
     assert.ok(!out.includes('=== MENU'), out);
   });
 

@@ -420,15 +420,27 @@ function section(name, instruction, body) {
 // source to keep in sync. The markdown variants serve surfaces whose
 // register cannot live in a fence — worklist strikethrough and code-span
 // tags, the task brief's and result header's emphasis.
-const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
-const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
-const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
-const AUTO_GATE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — the user set this gate to auto: do not stop; continue as the workflow instructs';
+const CONTINUE_INSTRUCTION = 'emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs';
+const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs';
+const AUTO_GATE_INSTRUCTION = 'emit verbatim as a text code block (```text fence) — the user set this gate to auto: do not stop; continue as the workflow instructs';
+const AUTO_GATE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown (not a code block) — the user set this gate to auto: do not stop; continue as the workflow instructs';
+
+/**
+ * One of the instructions above held to a moment in the flow — the moment
+ * set after the form, so the marker still opens on it.
+ * @param {string} instruction  a continue or auto-gate instruction
+ * @param {string} when  e.g. `after the result summary`
+ * @returns {string}
+ */
+function timedInstruction(instruction, when) {
+  const at = instruction.indexOf(' — ');
+  return `${instruction.slice(0, at)} ${when}${instruction.slice(at)}`;
+}
 
 // The view's chrome heading (CONVENTIONS.md: Phase Titles): one markdown H1
 // in the chrome family's heaviest register — bold inline code with the
 // filled square, so the renderer styles it at any terminal width.
-const TITLE_INSTRUCTION = "emit verbatim as markdown — the view's chrome heading";
+const TITLE_INSTRUCTION = "emit verbatim as markdown (not a code block) — the view's chrome heading";
 
 /**
  * A TITLE section carrying `text` as the view's chrome heading.
@@ -704,5 +716,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
 
