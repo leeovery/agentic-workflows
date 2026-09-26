@@ -939,6 +939,97 @@ function checkQuestionsSetGatesAside(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 25 — a dispatch names its mode, and a waited-on background dispatch
+// names its turn's closing sentence (CONVENTIONS' Dispatch Lines). Claude
+// Code runs an agent in the background unless told otherwise, so every
+// dispatch of a workflow-* agent states `run_in_background: true` or
+// `false`. A foreground dispatch carries no sentence, and nor does a
+// background dispatch the conversation carries on past (the agents below);
+// every other background dispatch ends the turn on exactly one sentence of
+// the canonical shape — "The … agent has been dispatched for …." or "The …
+// agents have been dispatched for …." — naming no topic, work unit, or
+// internal id. A dispatch is the section (H1–H2) that names the agent — its
+// Agent path or file, or an Invoke / Dispatch of the agent by name; a file
+// holding one answers as a whole, a file holding several is split at each
+// dispatch's section heading.
+// ---------------------------------------------------------------------------
+
+const CARRIED_PAST_AGENTS = new Set([
+  'workflow-discussion-review',
+  'workflow-discussion-perspective',
+  'workflow-discussion-synthesis',
+  'workflow-research-deep-dive',
+]);
+const DISPATCH_NAMES = [
+  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `[./]*agents\/(workflow-[a-z-]+)\.md`/,
+  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(workflow-[a-z-]+)`/,
+];
+const CLOSING_SENTENCE = /\bends? the turn on exactly `([^`]+)`/g;
+const CANONICAL_SENTENCE = /^The [a-z][a-z ,-]* (?:agent has|agents have) been dispatched for [^`]+\.$/;
+const FORBIDDEN_PLACEHOLDER = /\{(?:topic|work_unit|internal_id)\}/;
+
+function dispatchUnits(lines, inFence) {
+  const sections = [];
+  let current = 0;
+  const found = new Map();
+  lines.forEach((line, i) => {
+    if (inFence[i]) return;
+    if (/^#{1,2}\s/.test(line)) current = i;
+    for (const re of DISPATCH_NAMES) {
+      const m = line.match(re);
+      if (!m) continue;
+      if (!found.has(current)) {
+        found.set(current, { start: current, line: i, agents: new Set() });
+        sections.push(current);
+      }
+      found.get(current).agents.add(m[1]);
+    }
+  });
+  return sections.map((start, k) => {
+    const unit = found.get(start);
+    const from = k === 0 ? 0 : start;
+    const to = k + 1 < sections.length ? sections[k + 1] : lines.length;
+    return { ...unit, from, to };
+  });
+}
+
+function checkDispatchLines(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    for (const unit of dispatchUnits(lines, inFence)) {
+      const body = lines.slice(unit.from, unit.to).filter((_, k) => !inFence[unit.from + k]).join('\n');
+      const sentences = [...body.matchAll(CLOSING_SENTENCE)].map((m) => m[1]);
+      const agents = [...unit.agents].join(', ');
+      const fault = (message) => out.push({ file, line: unit.line + 1, message: `${agents}: ${message}` });
+      if (/run_in_background: false/.test(body)) {
+        if (sentences.length) fault('a foreground dispatch (`run_in_background: false`) carries no closing sentence');
+        continue;
+      }
+      if (!/run_in_background: true/.test(body)) {
+        fault('a dispatch names its mode — `run_in_background: true`, or `false` for the foreground');
+        continue;
+      }
+      if ([...unit.agents].every((a) => CARRIED_PAST_AGENTS.has(a))) {
+        if (sentences.length) fault('a background dispatch the conversation carries on past carries no closing sentence');
+        continue;
+      }
+      if (sentences.length !== 1) {
+        fault(`a waited-on background dispatch ends the turn on exactly one sentence ("The dispatch runs in the background (\`run_in_background: true\`) and ends the turn on exactly \`The … agent has been dispatched for ….\`"), found ${sentences.length}`);
+        continue;
+      }
+      if (!CANONICAL_SENTENCE.test(sentences[0])) {
+        fault(`the closing sentence takes the shape "The … agent has been dispatched for …." (or "agents have"), got "${sentences[0]}"`);
+      } else if (FORBIDDEN_PLACEHOLDER.test(sentences[0])) {
+        fault(`the closing sentence names what the agent works on, never a topic, work unit, or internal id — got "${sentences[0]}"`);
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -963,6 +1054,7 @@ const CHECKS = [
   ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
   ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
+  ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1710,6 +1802,123 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
     const v = checkQuestionsSetGatesAside([blind]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 7, 13, 19, 23, 27, 38], `each question branch that puts its gate straight back is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /without the set-aside rule/.test(x.message)), `the fault is named, got ${report(v)}`);
+  });
+});
+
+test('check 25 (dispatch lines) — catches a dispatch with no mode, a waited-on background dispatch with no sentence, two sentences, an off-shape sentence or one naming a topic, work unit or internal id, and a sentence on a foreground or carried-past dispatch; permits each mode in its own shape, per dispatch section', () => {
+  withTemp((dir) => {
+    const clean = write(dir, 'skills/x/clean.md', [
+      '# Clean',
+      '',
+      '## A. Dispatch the Worker',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-worker.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
+      '',
+      '## B. Dispatch Two in Parallel',
+      '',
+      '### Agent 1',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-left.md`',
+      '',
+      '### Agent 2',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-right.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The left and right agents have been dispatched for review cycle {N}.`',
+      '',
+      '## C. Check in the Foreground',
+      '',
+      '**Agent path**: `../../../agents/workflow-x-checker.md`',
+      '',
+      'Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).',
+      '',
+      '## D. Dive',
+      '',
+      '**Agent path**: `../../../agents/workflow-research-deep-dive.md`',
+      '',
+      'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
+      '',
+      '```',
+      'Invoke `workflow-x-fenced` — fenced content is never a dispatch.',
+      '```',
+      '',
+    ].join('\n'));
+    const single = write(dir, 'skills/x/single.md', [
+      '# Single',
+      '',
+      'Invoke `workflow-x-designer` with these file paths:',
+      '',
+      '## Wait for Completion',
+      '',
+      'This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The designer agent has been dispatched for the plan\'s phases.`',
+      '',
+      'Re-invoke `workflow-x-designer` with the feedback.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkDispatchLines([clean, single]).length, 0, `each mode in its own shape is clean, got ${report(checkDispatchLines([clean, single]))}`);
+
+    const broken = write(dir, 'skills/x/broken.md', [
+      '# Broken',
+      '',
+      '## A. No Mode',
+      '',
+      'Dispatch the `workflow-x-a` agent via the Task tool.',
+      '',
+      '## B. No Sentence',
+      '',
+      'Dispatch the `workflow-x-b` agent via the Task tool with `run_in_background: true`.',
+      '',
+      '## C. Two Sentences',
+      '',
+      'Invoke `workflow-x-c` with:',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The c agent has been dispatched for phase {N}.`',
+      'The dispatch ends the turn on exactly `The c agent has been dispatched for phase {N} again.`',
+      '',
+      '## D. Off Shape',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-d.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `Dispatched the d agent.`',
+      '',
+      '## E. Names the Topic',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-e.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The e agent has been dispatched for {topic}.`',
+      '',
+      '## F. Names the Internal Id',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-f.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The f agents have been dispatched for {internal_id}.`',
+      '',
+      '## G. Foreground With a Sentence',
+      '',
+      '**Agent path**: `../../../agents/workflow-x-g.md`',
+      '',
+      'Dispatch **one agent** (pass `run_in_background: false`) — the dispatch ends the turn on exactly `The g agent has been dispatched for the record.`',
+      '',
+      '## H. Carried Past With a Sentence',
+      '',
+      '**Agent path**: `../../../agents/workflow-discussion-review.md`',
+      '',
+      'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
+      '',
+    ].join('\n'));
+    const v = checkDispatchLines([broken]);
+    assert.deepStrictEqual(v.map((x) => x.line), [5, 9, 13, 20, 26, 32, 38, 44], `each broken dispatch is caught once, at its naming line, got ${report(v)}`);
+    const messages = v.map((x) => x.message);
+    assert.match(messages[0], /names its mode/);
+    assert.match(messages[1], /exactly one sentence .*found 0/);
+    assert.match(messages[2], /exactly one sentence .*found 2/);
+    assert.match(messages[3], /takes the shape/);
+    assert.match(messages[4], /never a topic, work unit, or internal id/);
+    assert.match(messages[5], /never a topic, work unit, or internal id/);
+    assert.match(messages[6], /foreground dispatch .* carries no closing sentence/);
+    assert.match(messages[7], /carries on past carries no closing sentence/);
   });
 });
 
