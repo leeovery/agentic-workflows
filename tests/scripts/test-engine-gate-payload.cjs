@@ -443,6 +443,7 @@ describe('gate payload — every gateway verb', () => {
   const SKILLS = path.resolve(__dirname, '../../skills');
   const ENGINE_GATEWAY = path.join(SKILLS, 'workflow-engine/scripts/gateway.cjs');
   const SET_ITEM = '.workflows/.inbox/ideas/2026-06-01--user-id.md';
+  const BUG_ITEM = '.workflows/.inbox/bugs/2026-06-02--login-timeout.md';
 
   /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
 
@@ -462,21 +463,21 @@ describe('gate payload — every gateway verb', () => {
       view: [gated('view')],
       inbox: [gated('inbox')],
       archived: [gated('archived')],
-      'working-set': [gated('working-set', SET_ITEM)],
+      'working-set': [gated('working-set', SET_ITEM), gated('working-set', SET_ITEM, BUG_ITEM)],
       'working-set-add-gate': [gated('working-set-add-gate', SET_ITEM)],
       'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
       manage: [gated('manage'), gated('manage', 'checkout')],
       completed: [gated('completed')],
       fallback: [ungated('checkout')],
     },
-    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout')], fallback: [refused('checkout')] },
-    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix')], fallback: [refused('crash-fix')] },
-    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo')], fallback: [refused('typo')] },
-    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging')], fallback: [refused('logging')] },
+    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout'), ungated('view', 'nowhere')], fallback: [refused('checkout')] },
+    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix'), ungated('view', 'nowhere')], fallback: [refused('crash-fix')] },
+    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo'), ungated('view', 'nowhere')], fallback: [refused('typo')] },
+    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging'), ungated('view', 'nowhere')], fallback: [refused('logging')] },
     'workflow-continue-epic': {
       index: [ungated()],
       select: [gated('select')],
-      view: [gated('view', 'v1')],
+      view: [gated('view', 'v1'), ungated('view', 'nowhere')],
       'completed-menu': [gated('completed-menu', 'v1')],
       'cancel-menu': [gated('cancel-menu', 'v1')],
       'reactivate-menu': [gated('reactivate-menu', 'v1')],
@@ -538,7 +539,7 @@ describe('gate payload — every gateway verb', () => {
       },
     }));
     createFile(dir, SET_ITEM, '# Fix user_id in *auth* [draft]\n');
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-02--login-timeout.md', '# Login_timeout *spikes* [prod]\n');
+    createFile(dir, BUG_ITEM, '# Login_timeout *spikes* [prod]\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
     createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
     createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
@@ -656,6 +657,13 @@ describe('gate payload — every gateway verb', () => {
       }
     });
   }
+
+  it('the sweep reaches the displays only a mixed-type set and a missing unit draw', () => {
+    const drawn = [...responses.values()].map(({ stdout }) => stdout).join('\n');
+    for (const marker of ['=== DISPLAY: blocker (', '=== DISPLAY: not found (']) {
+      assert.ok(drawn.includes(marker), `no gateway call drew ${marker}`);
+    }
+  });
 
   it('the world reaches every row shape the menu builders draw', () => {
     const gates = [...responses.values()].map(({ stdout }) => auditGate(stdout, 'shape')).filter((g) => g !== null);
