@@ -8,8 +8,8 @@
 // The one sibling: the worklist shape (CONVENTIONS.md: Worklists) lives in
 // worklist.cjs — markdown-emitted, so none of the fenced primitives here
 // serve it.
-// Artefact content is framed by its emission fence, never by drawn borders
-// (D8) — fences re-flow with the terminal; fixed-width borders cannot.
+// Drawn borders never frame content — markdown and fences re-flow with the
+// terminal; fixed-width borders cannot.
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');

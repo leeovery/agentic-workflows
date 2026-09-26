@@ -5061,7 +5061,7 @@ describe('single-source invariants', () => {
       'a fenced line renders as drawn — past the narrowest pane it wraps and the diagram breaks');
   });
 
-  it('box-glyph frames are retired everywhere — drawn borders never frame content (D8)', () => {
+  it('box-glyph frames are retired everywhere — drawn borders never frame content', () => {
     const skillsRoot = path.join(__dirname, '..', '..', 'skills');
     const offenders = [];
     (function walk(dir) {
@@ -5074,7 +5074,7 @@ describe('single-source invariants', () => {
       }
     })(skillsRoot);
     assert.deepStrictEqual(offenders, [],
-      'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+      'drawn borders never frame content — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
   });
 });
 
