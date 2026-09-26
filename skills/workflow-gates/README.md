@@ -85,6 +85,30 @@ else — the web, another Claude Code app, an older version, a project without
 this directory — nothing is written, and the workflows carry on with the text
 menus.
 
+## What it sets in Claude Code
+
+Every session starts with Claude Code's `SendUserMessage` tool switched on
+(`CLAUDE_CODE_PEWTER_OWL_TOOL=true`): Claude Code builds its tool list just
+after the session starts, so that is the only moment the switch counts. The
+mod keeps the tool behind ToolSearch in every session, one answer that never
+changes and so never spends the prompt cache; a plain session's tool list is
+Claude Code's own.
+
+When the engine's boot, which only `/workflow-start` runs, succeeds in the
+conversation itself rather than in a subagent, the mod sets
+`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
+Claude's thinking printing as if they were output, and
+`CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
+Claude is doing; project settings cannot set the second. Claude Code reads
+both per request. What they replace, the person's own value or none, is kept
+in the process's environment (`WORKFLOWS_HARNESS_REPLACED`), which a reload of
+the mod's files keeps, and a `/clear` or a resume puts it back exactly. A
+conversation whose transcript holds the boot gets the workflow values back when
+the mod next follows it, whether `claude --resume`, a restart or `/resume` in
+the same process brings it back. A plain conversation in the same project
+keeps Claude Code's defaults and the person's own settings: the mod never
+touches either there.
+
 ## Working on it
 
     npm run mod:types       # fetch the API declarations into types/ (gitignored)

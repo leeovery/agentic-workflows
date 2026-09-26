@@ -252,6 +252,53 @@ const READ_CALL = { tool: 'Read' as const, file_path: '/work/README.md' }
 /** The same read made inside a subagent's loop. */
 const SUBAGENT_READ = { ...READ_CALL, agentId: 'a1' }
 
+/** The engine's boot, as `/workflow-start` runs it. */
+const BOOT_CALL = {
+  tool: 'Bash' as const,
+  command: 'node .claude/skills/workflow-engine/scripts/engine.cjs boot',
+}
+
+/** The same boot run inside a subagent's loop. */
+const SUBAGENT_BOOT = { ...BOOT_CALL, agentId: 'a1' }
+
+/** The switch that gives the session Claude Code's SendUserMessage tool. */
+const DISPLAY_TOOL = { name: 'CLAUDE_CODE_PEWTER_OWL_TOOL', value: 'true' }
+
+/** The settings a workflow session runs under, as the mod writes them. */
+const HARNESS_ON = [
+  { name: 'CLAUDE_CODE_THINKING_DISPLAY_UPDATES', value: 'false' },
+  { name: 'CLAUDE_CODE_SILENT_TURN_REMINDER', value: 'false' },
+]
+
+/** The same settings unset, which puts Claude Code's own back. */
+const HARNESS_OFF = HARNESS_ON.map(({ name }) => ({ name, value: undefined }))
+
+/** What the mod wrote of those settings, in order. */
+const harnessIn = (written: readonly { name: string; value?: string }[]) =>
+  written.filter(({ name }) =>
+    HARNESS_ON.some(setting => setting.name === name),
+  )
+
+/** A person's own values of those settings, set before Claude Code started. */
+const OWN = {
+  CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1',
+  CLAUDE_CODE_SILENT_TURN_REMINDER: 'true',
+}
+
+/**
+ * Those settings as the process holds them, and whatever the mod keeps of
+ * them there: a name it does not hold is left out.
+ */
+const harnessHeld = (environment: ReadonlyMap<string, string>) =>
+  Object.fromEntries(
+    [...environment].filter(
+      ([name]) => name.startsWith('WORKFLOWS_HARNESS') || name in OWN,
+    ),
+  )
+
+/** How Claude Code names its own tools as it describes them. */
+const BUILT_IN = { plugin: 'engine', tier: 'core' as const }
+
 /** The session ending for a /clear, which goes on in the same process. */
 const CLEARED = {
   reason: 'clear' as const,
@@ -289,19 +336,28 @@ const said = (role: SessionMessage['role'], text: string): SessionMessage => ({
 })
 
 /** A Bash call the model made and its answer, as the transcript holds them. */
-const called = (id: string): SessionMessage[] => [
+const called = (
+  id: string,
+  command = ENGINE_CALL.command,
+  isError = false,
+): SessionMessage[] => [
   {
     role: 'assistant',
     text: '',
     toolUses: [
-      { tool_use_id: id, tool: 'Bash', input: { command: ENGINE_CALL.command } },
+      {
+        tool_use_id: id,
+        tool: 'Bash',
+        input: { command },
+        ...(isError ? { isError: true as const } : {}),
+      },
     ],
   },
   {
     role: 'user',
     text: '',
     toolUses: [],
-    toolResults: [{ tool_use_id: id, text: '', isError: false }],
+    toolResults: [{ tool_use_id: id, text: '', isError }],
   },
 ]
 
@@ -357,6 +413,21 @@ const ELSEWHERE_AT_GATE = [
   said('assistant', TURN_END.answer),
 ]
 
+/** A conversation that ran the engine's boot, then came to the task gate. */
+const BOOTED = [
+  said('user', '/workflow-start'),
+  ...called('toolu_0', BOOT_CALL.command),
+  ...called('toolu_1'),
+  said('assistant', TURN_END.answer),
+]
+
+/** A conversation whose boot failed. */
+const BOOT_FAILED = [
+  said('user', '/workflow-start'),
+  ...called('toolu_0', BOOT_CALL.command, true),
+  said('assistant', 'The boot failed.'),
+]
+
 /** The task gate as the payload states it, less its name. */
 const TASK_GATE = {
   question: 'Approve this task?',
@@ -396,7 +467,8 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * the plugin's store.
  *
  * `env` is the environment the process holds at the start, which each
- * `$.env.set` changes and `written` records.
+ * `$.env.set` changes and `written` records; `environment` holds it as it
+ * stands.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -595,6 +667,7 @@ function world(
     filled,
     submitted,
     written,
+    environment,
     files,
     stored,
     clock,
@@ -768,7 +841,12 @@ describe('register', () => {
     await $.session.start(SESSION)
     await quitAndResume($)
 
-    expect(written).toEqual([announcement, announcement])
+    expect(written).toEqual([
+      announcement,
+      DISPLAY_TOOL,
+      announcement,
+      DISPLAY_TOOL,
+    ])
   })
 
   test('a stated gate is cut out of what the model reads, the rest left alone', async ($, on) => {
@@ -3052,5 +3130,275 @@ describe('register', () => {
     await $.session.start(SESSION)
 
     expect([...stored.keys()]).toEqual(['band:toolu_new'])
+  })
+
+  test('a session starts with the display tool switched on, the one moment Claude Code reads the switch', async ($, on) => {
+    const { written } = world($, on)
+
+    await $.session.start(SESSION)
+
+    expect(written).toContainEqual(DISPLAY_TOOL)
+  })
+
+  test('the display tool waits behind ToolSearch before the boot and after it, and every other tool keeps its place', async ($, on) => {
+    on('tool.describe', ($, e) => ({ description: e.description }))
+    world($, on)
+
+    const placing = (tool: string) =>
+      $.tool.describe({
+        tool,
+        description: `The ${tool} tool.`,
+        provider: BUILT_IN,
+      })
+    const deferred = {
+      description: 'The SendUserMessage tool.',
+      isDeferred: true,
+    }
+
+    await $.session.start(SESSION)
+
+    expect(await placing('SendUserMessage')).toEqual(deferred)
+
+    await $.tool.call(BOOT_CALL)
+
+    expect(await placing('SendUserMessage')).toEqual(deferred)
+    expect(await placing('Bash')).toEqual({ description: 'The Bash tool.' })
+  })
+
+  test('the boot in the conversation’s own call sets the workflow harness, and no other call does', async ($, on) => {
+    const { written } = world($, on)
+
+    await $.session.start(SESSION)
+    await $.tool.call(ENGINE_CALL)
+
+    expect(harnessIn(written), 'a render is no boot').toEqual([])
+
+    await $.tool.call(BOOT_CALL)
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+  })
+
+  test('a subagent’s boot sets no harness', async ($, on) => {
+    const { written } = world($, on)
+
+    await $.session.start(SESSION)
+    await $.tool.call(SUBAGENT_BOOT)
+
+    expect(harnessIn(written)).toEqual([])
+  })
+
+  const unanswered = [
+    { how: 'was refused', answer: { deny: 'Bash is not allowed here' } },
+    {
+      how: 'failed',
+      answer: {
+        isError: true as const,
+        result: 'Exit code 1',
+        text: 'Exit code 1',
+      },
+    },
+  ]
+
+  for (const { how, answer } of unanswered) {
+    test(`a boot that ${how} sets no harness`, async ($, on) => {
+      on('tool.call', { tool: 'Bash' }, () => answer)
+      const { written } = world($, on)
+
+      await $.session.start(SESSION)
+      await $.tool.call(BOOT_CALL)
+
+      expect(harnessIn(written)).toEqual([])
+    })
+  }
+
+  test('the conversation’s end puts Claude Code’s own harness back', async ($, on) => {
+    const { written } = world($, on)
+
+    await $.session.start(SESSION)
+    await $.tool.call(BOOT_CALL)
+    await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('the conversation’s end puts Claude Code’s own harness back even where keeping the band fails', async ($, on) => {
+    const { written } = world($, on, '', {
+      lag: async read => {
+        if (read === 'transcript') {
+          throw new Error('the transcript could not be read')
+        }
+      },
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(BOOT_CALL)
+    await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('a plain conversation’s /clear leaves the person’s own values untouched', async ($, on) => {
+    const { written, environment } = world($, on, '', { env: OWN })
+
+    await $.session.start(SESSION)
+    await $.tool.call(ENGINE_CALL)
+    await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([])
+    expect(harnessHeld(environment)).toEqual(OWN)
+  })
+
+  test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none', async ($, on) => {
+    const own = { CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1' }
+    const { environment } = world($, on, '', { env: own })
+
+    await $.session.start(SESSION)
+    await $.tool.call(BOOT_CALL)
+
+    expect(harnessHeld(environment)).toMatchObject({
+      CLAUDE_CODE_THINKING_DISPLAY_UPDATES: 'false',
+      CLAUDE_CODE_SILENT_TURN_REMINDER: 'false',
+    })
+
+    await $.session.end(CLEARED)
+
+    expect(harnessHeld(environment)).toEqual(own)
+  })
+
+  const againOn = [
+    { how: 'a second boot', again: ($: Engine) => $.tool.call(BOOT_CALL) },
+    {
+      how: 'a reload of the module’s files',
+      again: ($: Engine) => $.session.start(SESSION),
+    },
+  ]
+
+  for (const { how, again } of againOn) {
+    test(`the harness put on again by ${how} still puts the person’s own values back`, async ($, on) => {
+      const { environment, reads } = world($, on, '', { env: OWN })
+
+      reads(BOOTED)
+
+      await $.session.start(SESSION)
+      await again($)
+      await $.session.end(CLEARED)
+
+      expect(harnessHeld(environment)).toEqual(OWN)
+    })
+  }
+
+  test('a conversation that ran the boot gets the workflow harness back when a fresh load resumes it', async ($, on) => {
+    const { written, reads } = world($, on)
+
+    reads(BOOTED)
+
+    await $.session.start(SESSION)
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+  })
+
+  const unbooted: { what: string; transcript: readonly SessionMessage[] }[] = [
+    { what: 'a plain conversation', transcript: AT_GATE },
+    { what: 'a conversation whose boot failed', transcript: BOOT_FAILED },
+    {
+      what: 'a conversation that ran the boot’s command through another tool',
+      transcript: [
+        said('user', '/workflow-start'),
+        {
+          role: 'assistant',
+          text: '',
+          toolUses: [
+            {
+              tool_use_id: 'toolu_0',
+              tool: 'PowerShell',
+              input: { command: BOOT_CALL.command },
+            },
+          ],
+        },
+      ],
+    },
+  ]
+
+  for (const { what, transcript } of unbooted) {
+    test(`${what}, resumed by a fresh load, keeps Claude Code’s own harness`, async ($, on) => {
+      const { written, reads } = world($, on)
+
+      reads(transcript)
+
+      await $.session.start(SESSION)
+
+      expect(harnessIn(written)).toEqual([])
+    })
+  }
+
+  test('a conversation that ran the boot, resumed in this process, gets the workflow harness back at the next drawing', async ($, on) => {
+    const { written, reads } = world($, on)
+
+    reads(MOVED_ON)
+
+    await $.session.start(SESSION)
+    await $.session.end(RESUMED)
+
+    reads(BOOTED)
+
+    await isDrawn($)
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+  })
+
+  test('a plain conversation resumed in this process after one that ran the boot keeps Claude Code’s own harness', async ($, on) => {
+    const { written, reads } = world($, on)
+
+    reads(BOOTED)
+
+    await $.session.start(SESSION)
+    await $.session.end(RESUMED)
+
+    reads(ELSEWHERE_AT_GATE)
+
+    await isDrawn($)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('a /clear gets no harness back from the conversation it cleared while the transcript still holds it', async ($, on) => {
+    const { written, reads } = world($, on)
+
+    reads(BOOTED)
+
+    await $.session.start(SESSION)
+    await $.session.end(CLEARED)
+    await isDrawn($)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('a read-back a conversation’s end overtakes gives the next conversation no harness', async ($, on) => {
+    const clock = mock.clock(on)
+    let isSlow = false
+
+    const { written, reads } = world($, on, '', {
+      disk: clock,
+      lag: async read => {
+        if (isSlow && read === 'transcript') {
+          await clock.sleep(1000)
+        }
+      },
+    })
+
+    reads(BOOTED)
+    isSlow = true
+
+    const starting = $.session.start(SESSION)
+
+    await clock.settle()
+
+    isSlow = false
+
+    await $.session.end(CLEARED)
+    await clock.advance(1000)
+    await starting
+
+    expect(harnessIn(written)).toEqual([])
   })
 })
