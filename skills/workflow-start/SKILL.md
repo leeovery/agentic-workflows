@@ -134,9 +134,11 @@ All documents up to date.
 
 ### Step 0.2: Workflow Mod
 
-Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `on` and `off` render nothing.
+Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `not-running` means it was already switched on and this session did not load it; `on` and `unavailable` render nothing.
 
 #### If `gate_surface` is `restart`
+
+If the boot response carries `warnings`, surface them first.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -160,6 +162,30 @@ Branch on the boot response's `gate_surface` — `restart` means this boot switc
 
 ```
 > Claude Code reads its settings only when it starts. Exit Claude Code, start it again in this project, then run `/workflow-start`.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `gate_surface` is `not-running`
+
+If the boot response carries `warnings`, surface them first.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Workflow Mod`**
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```
+⚑ The workflows' Claude Code mod isn't running
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> It's switched on in this project's `.claude/settings.json`, but this session didn't load it. Usually Claude Code was already running when it was switched on — exit Claude Code, start it again in this project, then run `/workflow-start` — or a setting of your own turns function hooks off (`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`).
 ```
 
 **STOP.** Do not proceed — terminal condition.

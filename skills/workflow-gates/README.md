@@ -69,12 +69,17 @@ otherwise.
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
 
-The mod is part of the workflows, and nothing asks whether to use it: every
+The mod is part of the workflows, and the first `/workflow-start` in a
+project switches it on wherever it can run: Claude Code's terminal app, from
+2.1.282, with this directory installed in the project. There every
 `/workflow-start` puts `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the `env` of
-the project's `.claude/settings.json` where it is missing. Claude Code reads
-its settings only when it starts, so a start that writes it while the mod is
-not yet running ends by asking for a restart, and the next session loads the
-mod.
+the project's `.claude/settings.json` wherever it is not already `"1"`.
+Claude Code reads its settings only when it starts, so a start that writes it
+ends by asking for a restart, and the next session loads the mod; a start
+that finds it there with the mod not running stops and says why. Anywhere
+else — the web, another Claude Code app, an older version, a project without
+this directory — nothing is written, and the workflows carry on with the text
+menus.
 
 ## Working on it
 

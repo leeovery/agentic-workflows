@@ -23,21 +23,20 @@ function writeFile(dir, rel, content) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The session hooks and the function-hooks flag boot keeps in every
-// project's `.claude/settings.json`.
+// The session hooks boot keeps in every project's `.claude/settings.json`,
+// and the function-hooks flag it keeps beside them where the mod can run.
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
 const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
-/** Settings as boot leaves them: `rest`, `hooks` in boot's one SessionEnd group, then the flag. */
+/** Settings as boot leaves a project the mod cannot run in: `rest`, then `hooks` in boot's one SessionEnd group. */
 function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] }, env: { [FLAG]: '1' } }, null, 2) + '\n';
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] } }, null, 2) + '\n';
 }
-/** The settings a project reaches with labels on: both SessionEnd hooks, the SessionStart resume hook, and the flag. */
+/** The settings such a project reaches with labels on: both SessionEnd hooks and the SessionStart resume hook. */
 const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
-  env: { [FLAG]: '1' },
 }, null, 2) + '\n';
 
 /** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
@@ -47,11 +46,12 @@ const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
  * A project fixture: a real git repo with a `.workflows/` tree, its
- * settings already carrying the presence sweep and the function-hooks flag,
- * and its `.worktreeinclude` already listing the store — the state every
- * booted project reaches, so boot's own plumbing commits never join the
- * history a test reads. A test about either install takes its file away
- * first.
+ * settings already carrying the presence sweep, and its `.worktreeinclude`
+ * already listing the store — the state every booted project reaches, so
+ * boot's own plumbing commits never join the history a test reads. A test
+ * about either install takes its file away first. The gate mod is not
+ * installed, so boot leaves the function-hooks flag alone; a test about the
+ * flag installs it.
  */
 function setupProject(root) {
   const project = path.join(root, 'project');
@@ -228,7 +228,7 @@ describe('engine boot', () => {
       label_repaired: false,
       session_hooks_installed: false,
       worktree_include_installed: false,
-      gate_surface: 'off',
+      gate_surface: 'unavailable',
       baseline: 'none',
       walkthrough: 'none',
       // The fixture's one commit carries `.workflows/` — nothing came before,
@@ -490,10 +490,10 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     // Boot commits exactly the two config paths the skill's .workflows-scoped
     // migration commit would otherwise leave dirty — then, the migration
-    // having rewritten settings.json without the session hooks and the
-    // function-hooks flag, puts them back in a commit of their own.
+    // having rewritten settings.json without the session hooks, puts them
+    // back in a commit of their own.
     const subjects = git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n');
-    assert.deepStrictEqual(subjects, ['chore: sync workflow project settings', 'chore: apply workflow migration config changes']);
+    assert.deepStrictEqual(subjects, ['chore: install workflow session hooks', 'chore: apply workflow migration config changes']);
     assert.strictEqual(res.session_hooks_installed, true);
     const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD~1']).trim().split('\n').sort();
     assert.deepStrictEqual(show, ['.claude/settings.json', '.gitignore']);
@@ -724,7 +724,7 @@ describe('engine boot', () => {
     const shas = git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 4);
     assert.deepStrictEqual(shas.map((sha) => git(fix.project, ['log', '-1', '--pretty=%s', sha]).trim()), [
       'chore: copy the knowledge store into new worktrees',
-      'chore: sync workflow project settings',
+      'chore: install workflow session hooks',
       'chore(knowledge): stop tracking the store',
       'chore: apply workflow migration config changes',
     ]);
@@ -1322,13 +1322,13 @@ describe('engine boot: the project settings — session hooks and the function-h
     }
   });
 
-  it('a project with no settings gets `presence cleanup` installed beside the function-hooks flag, committed confined — and a second boot changes nothing', () => {
+  it('a project with no settings gets `presence cleanup` installed, committed confined — and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked([PRESENCE_HOOK]));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: sync workflow project settings');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
@@ -1394,15 +1394,12 @@ describe('engine boot: the project settings — session hooks and the function-h
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
       hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] },
-      env: { [FLAG]: '1' },
     });
   });
 
   it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
-    const held = bootWith({ holdSettings: true });
-    assert.strictEqual(held.session_hooks_installed, false);
-    assert.strictEqual(held.gate_surface, 'off', 'and no flag written');
+    assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     recordChoice(true);
     assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
@@ -1416,17 +1413,18 @@ describe('engine boot: the project settings — session hooks and the function-h
     const res = bootWith();
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.session_hooks_installed, false);
-    assert.strictEqual(res.warnings.length, 2);
+    assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /session hooks not installed: \.claude\/settings\.json is not valid JSON/);
-    assert.match(res.warnings[1], /gate surface not synced: \.claude\/settings\.json is not valid JSON/);
-    assert.strictEqual(res.gate_surface, 'off', 'nothing written, so nothing owed a restart');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 
-  /** The fixture's hooks with the function-hooks flag taken away — a project boot has not yet reached. */
+  /** The fixture's own settings, as boot leaves a project the mod cannot run in. */
   const HOOKS_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
+  const FLAGGED = { ...HOOKS_ONLY, env: { [FLAG]: '1' } };
   /** @param {object} value */
   const json = (value) => JSON.stringify(value, null, 2) + '\n';
+  /** Claude Code's terminal app, at the oldest version the mod runs on. */
+  const TERMINAL = { CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-282_agent', CLAUDE_CODE_REMOTE: undefined };
   /** HEAD's subject and the sorted paths it touched. */
   function head() {
     return {
@@ -1434,65 +1432,143 @@ describe('engine boot: the project settings — session hooks and the function-h
       files: git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
     };
   }
+  /** Install the mod where an install puts it, committed, so boot's commits are the only new ones. */
+  function installMod() {
+    writeFile(fix.project, '.claude/skills/workflow-gates/.claude-plugin/plugin.json', '{"name":"workflow-gates"}\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'install the mod']);
+  }
+  /** Boot in the terminal app, `env` layered over it. */
+  const bootTerminal = (env = {}) => bootWith({ env: { ...TERMINAL, ...env } });
 
-  it('a project without the function-hooks flag gets it, committed confined, and reports restart — the next boot writes nothing and reports off', () => {
-    commitSettings(json(HOOKS_ONLY));
+  it('where the mod can run, a project without the function-hooks flag gets it, committed confined, and reports restart — the next boot writes nothing and reports not-running', () => {
+    installMod();
     fs.writeFileSync(path.join(fix.project, 'peer-dirt.txt'), 'a peer session\'s file\n');
-    const res = bootWith();
+    const res = bootTerminal();
     assert.strictEqual(res.gate_surface, 'restart');
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    assert.deepStrictEqual(settings(), FLAGGED);
     assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the commit takes its own path and nothing else');
 
     const at = git(fix.project, ['rev-parse', 'HEAD']);
-    assert.strictEqual(bootWith().gate_surface, 'off', 'the flag is there, and the mod did not announce itself');
+    assert.strictEqual(bootTerminal().gate_surface, 'not-running', 'the flag is there, and the mod did not announce itself');
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), at, 'nothing new to commit');
   });
 
+  it('a flag set to anything but "1" is rewritten — the restart owed all the same', () => {
+    installMod();
+    commitSettings(json({ ...HOOKS_ONLY, env: { [FLAG]: '0' } }));
+    assert.strictEqual(bootTerminal().gate_surface, 'restart');
+    assert.deepStrictEqual(settings(), FLAGGED);
+    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
+  });
+
+  it('where the mod cannot run, boot writes nothing and reports unavailable', () => {
+    const before = fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8');
+    assert.strictEqual(bootTerminal().gate_surface, 'unavailable', 'the mod not installed in the project');
+    installMod();
+    const elsewhere = [
+      ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
+      ['another entrypoint than the terminal app', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
+      ['no entrypoint', { CLAUDE_CODE_ENTRYPOINT: undefined }],
+      ['a version before 2.1.282', { AI_AGENT: 'claude-code_2-1-281_agent' }],
+      ['an older minor', { AI_AGENT: 'claude-code_2-0-999_agent' }],
+      ['an older major', { AI_AGENT: 'claude-code_1-9-999_agent' }],
+      ['no version', { AI_AGENT: undefined }],
+      ['a version that does not parse', { AI_AGENT: 'claude-code_2-1_agent' }],
+      ['an identity in another shape', { AI_AGENT: 'claude-code_2-1-300_sdk' }],
+      ['another agent', { AI_AGENT: 'cursor' }],
+    ];
+    for (const [where, env] of elsewhere) {
+      assert.strictEqual(bootTerminal(env).gate_surface, 'unavailable', where);
+      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), before, `${where}: the settings stand`);
+    }
+    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
+  });
+
+  it('every version from 2.1.282 on is one the mod runs on', () => {
+    installMod();
+    for (const version of ['2-1-282', '2-1-300', '2-2-0', '3-0-0']) {
+      writeFile(fix.project, '.claude/settings.json', json(HOOKS_ONLY));
+      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` }).gate_surface, 'restart', version);
+    }
+  });
+
   it('the mod announced in boot\'s environment reports on — the boot that wrote the flag included', () => {
-    commitSettings(json(HOOKS_ONLY));
-    const announced = { env: { WORKFLOWS_GATE_SURFACE: '1' } };
-    assert.strictEqual(bootWith(announced).gate_surface, 'on', 'the flag came from elsewhere — the user\'s settings, the shell');
-    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } }, 'and the project gets it all the same');
-    assert.strictEqual(bootWith(announced).gate_surface, 'on');
-    assert.strictEqual(bootWith({ env: { WORKFLOWS_GATE_SURFACE: '0' } }).gate_surface, 'off', 'only `1` is the announcement');
+    installMod();
+    const announced = { WORKFLOWS_GATE_SURFACE: '1' };
+    assert.strictEqual(bootTerminal(announced).gate_surface, 'on', 'the flag came from elsewhere — the user\'s settings, the shell');
+    assert.deepStrictEqual(settings(), FLAGGED, 'and the project gets it all the same');
+    assert.strictEqual(bootTerminal(announced).gate_surface, 'on');
+    assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '0' }).gate_surface, 'not-running', 'only `1` is the announcement');
   });
 
   it('the flag joins every other env key and every other setting, all standing', () => {
+    installMod();
     const permissions = { allow: ['Bash(ls)'] };
     commitSettings(json({ permissions, env: { EDITOR: 'vim' }, ...HOOKS_ONLY }));
-    assert.strictEqual(bootWith().gate_surface, 'restart');
+    assert.strictEqual(bootTerminal().gate_surface, 'restart');
     assert.deepStrictEqual(settings(), { permissions, env: { EDITOR: 'vim', [FLAG]: '1' }, ...HOOKS_ONLY });
   });
 
   it('the flag never comes out — not when the session hooks beside it move', () => {
-    commitSettings(LABELS_ON);
-    const res = bootWith();
+    installMod();
+    commitSettings(json({ ...JSON.parse(LABELS_ON), env: { [FLAG]: '1' } }));
+    const res = bootTerminal();
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.gate_surface, 'off');
-    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    assert.strictEqual(res.gate_surface, 'not-running');
+    assert.deepStrictEqual(settings(), FLAGGED);
     assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
   });
 
+  it('both syncs moving in one boot make one commit that says so', () => {
+    installMod();
+    dropSettings();
+    const res = bootTerminal();
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.strictEqual(res.gate_surface, 'restart');
+    assert.deepStrictEqual(settings(), FLAGGED);
+    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow project settings', files: ['.claude/settings.json'] });
+  });
+
+  it('a settings file that does not parse holds no flag boot can read — a warning, unavailable, left as found', () => {
+    installMod();
+    writeFile(fix.project, '.claude/settings.json', '{not json');
+    const res = bootTerminal();
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.gate_surface, 'unavailable');
+    assert.strictEqual(res.warnings.filter((w) => /^gate surface not synced: \.claude\/settings\.json is not valid JSON/.test(w)).length, 1);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
+  });
+
   it('a settings commit git refuses is a warning, never a block — the flag is on disk and the restart still owed', () => {
-    commitSettings(json(HOOKS_ONLY));
+    installMod();
     writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
     fs.chmodSync(path.join(fix.project, '.git/hooks/pre-commit'), 0o755);
-    const res = bootWith();
+    const res = bootTerminal();
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.gate_surface, 'restart');
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^project settings commit failed: /);
-    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
-    assert.strictEqual(head().subject, 'settings', 'nothing landed');
+    assert.deepStrictEqual(settings(), FLAGGED);
+    assert.strictEqual(head().subject, 'install the mod', 'nothing landed');
+  });
+
+  it('the harness switch holds the settings file still where the mod could run — no flag, no commit, unavailable', () => {
+    installMod();
+    const before = fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8');
+    assert.strictEqual(bootWith({ holdSettings: true, env: TERMINAL }).gate_surface, 'unavailable');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), before);
+    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
   });
 
   it('the flag is read inside the hold its write takes — one a peer wrote while boot waited on the lock is never written twice', async () => {
-    commitSettings(json(HOOKS_ONLY));
+    installMod();
     const lock = path.join(fix.project, '.workflows', '.project-lock');
     fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
-    const env = { ...process.env };
+    const env = { ...process.env, ...TERMINAL };
+    delete env.CLAUDE_CODE_REMOTE;
     delete env.TMUX;
     delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
     const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
@@ -1501,13 +1577,13 @@ describe('engine boot: the project settings — session hooks and the function-h
     const exit = new Promise((resolve) => child.on('close', resolve));
 
     await sleep(500);
-    const peer = json({ ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    const peer = json(FLAGGED);
     writeFile(fix.project, '.claude/settings.json', peer);
     fs.unlinkSync(lock);
     assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).gate_surface, 'off');
+    assert.strictEqual(JSON.parse(stdout.trim()).gate_surface, 'not-running', 'a peer switched it on after this session started');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), peer);
-    assert.strictEqual(head().subject, 'settings', 'nothing of boot\'s landed');
+    assert.strictEqual(head().subject, 'install the mod', 'nothing of boot\'s landed');
   });
 });
 

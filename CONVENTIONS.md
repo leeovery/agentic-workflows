@@ -523,7 +523,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 → Proceed to **Step 0.2**.
 
 ### Step 0.2: Workflow Mod
-[terminal restart stop when the boot response says this boot switched the mod on; otherwise silent]
+[terminal stop when the boot response says the mod can run here but is not running — this boot switched it on, or it was on already; otherwise silent]
 → Proceed to **Step 0.3**.
 
 ### Step 0.3: Walkthrough
