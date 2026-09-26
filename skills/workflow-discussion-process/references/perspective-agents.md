@@ -86,9 +86,9 @@ RESTATEMENT: {one sentence}
 SUMMARY: {1 sentence}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Dispatched 2 perspective agents: {lens A}, {lens B}.
 Results will be surfaced when available.
 ```

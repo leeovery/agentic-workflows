@@ -37,9 +37,9 @@ Read the referenced task's status from the dependency's plan. Read the dep plan'
 
 #### If the blocking list is empty
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 External dependencies satisfied.
 ```
 
@@ -71,7 +71,7 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ "{topic:(titlecase)}" is blocked until these dependencies are resolved
 ```
 
@@ -89,9 +89,9 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **If only one dependency in the blocking list:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Automatically proceeding with "{dep_topic:(titlecase)}".
 ```
 

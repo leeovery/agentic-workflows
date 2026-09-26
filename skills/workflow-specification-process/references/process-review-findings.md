@@ -12,9 +12,9 @@ Check if the tracking file exists at the expected path.
 
 #### If no tracking file exists (no findings)
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 {review_type} complete — no findings.
 ```
 
@@ -232,9 +232,9 @@ On return, land by what the reference did — the three outcomes **Landing a Set
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the choice settled}" --topic specification/{topic}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause}.
 ```
 
@@ -289,9 +289,9 @@ Then update the tracking file — Resolution `Routed` with a note naming what la
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 {review_type} complete — {N} findings processed.
 ```
 

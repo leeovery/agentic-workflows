@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
 const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
@@ -426,7 +426,7 @@ describe('the experiment surfaces', () => {
   it('renders the empty register with the none-yet line — no caller branch needed', () => {
     labWith({});
     const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== DISPLAY: experiment register \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===/);
+    assert.match(out, /=== DISPLAY: experiment register \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===/);
     assert.match(out, /Experiments — Timing \(0 experiments\)/);
     assert.match(out, /\(none yet — the series starts at E1\)/);
   });
@@ -473,7 +473,7 @@ describe('the experiment surfaces', () => {
   it('renders the approval gate over a designed record — commands first, the prompt last', () => {
     labWith({ E1: { slug: 'window-placement', status: 'designed' } });
     const out = renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' });
-    assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /◆ Approve E1's design\?/);
     const a = out.indexOf('**`y/yes`**');
     const b = out.indexOf('**`b/abandon`**');
@@ -512,7 +512,7 @@ describe('the experiment surfaces', () => {
       E3: { slug: 'warm-cache', status: 'conceived' },
     });
     assert.strictEqual(renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }), [
-      "=== MENU: experiment pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: experiment pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which experiment?`**',
       '',
@@ -539,7 +539,7 @@ describe('the experiment surfaces', () => {
       E3: { slug: 'focus-order', status: 'conceived' },
     });
     const out = renderSurface(dir, 'experiment-next-gate', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== MENU: experiment next gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /=== MENU: experiment next gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /The series still holds E2 multi-monitor, E3 focus-order\./,
       'the statement names the live ids — terminal rows and subs stay out');
     assert.match(out, /◆ Work the next experiment\?/);
@@ -574,7 +574,7 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
   it('renders the now-or-later choice over a recorded spawn, consequences named', () => {
     holderWith('research', ['E1']);
     const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing', id: 'E1' });
-    assert.match(out, /=== MENU: experiment spawn gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /=== MENU: experiment spawn gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /◆ Work E1 now\?/);
     const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
@@ -603,11 +603,11 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
   it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the yes/keep menu', () => {
     holderWith('discussion', ['E1', 'E2']);
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' });
-    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
+    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block \(```properties fence\)\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
-    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
+    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown \(not a code block\)\) ===/);
     assert.match(out, /> The wait releases when each experiment ends\. The epic menu carries the way in\./);
-    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
     assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1, E2 queued/);
     assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
@@ -639,11 +639,11 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   it('a research wait — the blocker names the topic and that the research is in flight, the guidance the ways out', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress' });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
-    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
+    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block \(```properties fence\)\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\)\n/);
-    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
+    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown \(not a code block\)\) ===/);
     assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The epic menu carries the way in\.\n/);
-    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and return to the epic menu with the research queued/);
     assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
@@ -743,7 +743,7 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
 
-  const HEADER = '=== DISPLAY: phase paused (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===';
+  const HEADER = '=== DISPLAY: phase paused (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 
   it('a linear unit names what its one conversation awaits, the topic name dropped — the unit is the topic', () => {
     writeManifest(dir, 'ledger', {
@@ -958,6 +958,17 @@ describe('epic-soft-gate', () => {
 });
 
 describe('surfaces primitives', () => {
+  it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
+    assert.strictEqual(timedInstruction('text', 'after the result summary', AUTO_GATE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs');
+    assert.strictEqual(timedInstruction('text', 'only at an analysis deferral', CONTINUE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs');
+    assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
+      "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
+    assert.strictEqual(timedInstruction('text', 'after the response'),
+      'emit verbatim as a text code block (```text fence) after the response');
+  });
+
   it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
     assert.strictEqual(
       menu('Approve?', ['**`y/yes`**', '**`n/no`**']),
@@ -1202,7 +1213,7 @@ describe('render resume-gate', () => {
   it('renders the menu byte-exactly, artifact from the phase segment, topic titlecased', () => {
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow' });
     assert.strictEqual(out, [
-      '=== MENU: resume gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: resume gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       'Found existing discussion for **Auth Flow**.',
       '',
@@ -1217,7 +1228,7 @@ describe('render resume-gate', () => {
   it('prepends the triage warning display when --triage is passed', () => {
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', triage: '3' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage warning (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: triage warning (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       "  ⚑ 3 rerouted concern(s) from other topics wait in this topic's",
       '    triage queue. Restart leaves them queued — the restarted',
       '    session raises them.',
@@ -1378,7 +1389,7 @@ describe('render task-list', () => {
     const file = writePayload(dir, 'tl.json', payload);
     const out = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: task list (emit verbatim as a code block) ===',
+      '=== DISPLAY: task list (emit verbatim as a text code block (```text fence)) ===',
       'Phase 1: Adapter Wrapper — 2 tasks.',
       '',
       '1. Wrap command',
@@ -1391,7 +1402,7 @@ describe('render task-list', () => {
       '   · Remove wait-after-command',
       '   · Edge cases: none',
       '',
-      '=== MENU: task list gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: task list gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task list?`**',
       '',
@@ -1411,7 +1422,7 @@ describe('render task-list', () => {
     const file = writePayload(dir, 'tl.json', { ...payload, tasks: [payload.tasks[0]] });
     const out = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.includes('Phase 1: Adapter Wrapper — 1 task.'));
-    assert.ok(out.includes('=== DISPLAY: task list auto-approved (emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ==='));
+    assert.ok(out.includes('=== DISPLAY: task list auto-approved (emit verbatim as a text code block (```text fence) — the user set this gate to auto: do not stop; continue as the workflow instructs) ==='));
     assert.ok(out.includes('Phase 1: Adapter Wrapper — task list approved. Proceeding to authoring.'));
     assert.ok(!out.includes('MENU: task list gate'));
   });
@@ -1480,7 +1491,7 @@ describe('render findings-summary', () => {
     });
     const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: findings summary (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: findings summary (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**Integrity Review** — 2 findings',
       '',
       '○ 1. Missing Outcome field `[Minor]`',
@@ -1504,7 +1515,7 @@ describe('render findings-summary', () => {
     });
     const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: findings summary (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: findings summary (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**Integrity Review** — 3 findings · 1 remaining',
       '',
       '✓ 1. ~~Missing Outcome field~~ `[Minor]`',
@@ -1720,7 +1731,7 @@ describe('render research-conclude-gate', () => {
     });
     for (const args of [{ dotpath: 'pay.research.checkout' }, { dotpath: 'pay.research.checkout', 'dead-end': '1' }]) {
       const out = renderSurface(dir, 'research-conclude-gate', args);
-      assert.ok(out.startsWith('=== DISPLAY: research threads (emit verbatim as a code block) ===\n'), 'the display opens the response — a menu follows, so it carries no continue instruction');
+      assert.ok(out.startsWith('=== DISPLAY: research threads (emit verbatim as a text code block (```text fence)) ===\n'), 'the display opens the response — a menu follows, so it carries no continue instruction');
       assert.ok(out.indexOf('DISPLAY: research threads') < out.indexOf('=== MENU: research conclude gate'), 'display above the menu');
       assert.match(out, /Research Threads — Checkout \(2 threads — 1 open · 1 learned\)/);
       assert.match(out, /├─ ○ Can a guest check out at all\?\s+\[brief\]\n {2}└─ ● Does the cart survive a session\?\s+\[seed\]/);
@@ -1747,11 +1758,11 @@ describe('render defer-gate', () => {
       'session-storage': { status: 'decided', parent: null },
     });
     assert.strictEqual(renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }), [
-      '=== DISPLAY: discussion map (emit verbatim as a code block) ===',
+      '=== DISPLAY: discussion map (emit verbatim as a text code block (```text fence)) ===',
       'Discussion Map — Checkout (2 subtopics — 1 decided · 1 exploring)',
       '  ├─ ✓ Session Storage    [decided]',
       '  └─ ◐ Token Refresh      [exploring]',
-      "=== MENU: defer gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: defer gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'There is still 1 subtopic not yet decided — shown on the map above.',
       '',
@@ -1802,7 +1813,7 @@ describe('render research-threads', () => {
   it('renders the register as one DISPLAY section — the whole response, so it carries the continue instruction', () => {
     const out = renderSurface(dir, 'research-threads', { dotpath: 'pay.research.checkout' });
     assert.strictEqual(out, [
-      '=== DISPLAY: research threads (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: research threads (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Research Threads — Checkout (1 thread)',
       '  └─ ◌ Does the cart survive a session?    [seed]',
       '       ↳ Needs a device cycle',
@@ -1838,7 +1849,7 @@ describe('render reroute-offer', () => {
     });
     const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
       'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `r discussion`).',
@@ -1868,7 +1879,7 @@ describe('render reroute-offer', () => {
     });
     const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
       "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
@@ -1892,7 +1903,7 @@ describe('render reroute-offer', () => {
     });
     const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**Whether the pipeline can expose click windows** has grown into its own topic here.',
       'Rerouting creates **behavioural-ranking** on the map, landing research-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. `r discussion`).',
@@ -1943,7 +1954,7 @@ describe('render reroute-candidates', () => {
     });
     const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute candidates (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: reroute candidates (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       "**Click-window feasibility** belongs to a different topic, not this one. It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
       '',
@@ -2018,7 +2029,7 @@ describe('render finding-announce', () => {
     });
     const out = renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== MENU: finding announce (emit verbatim as markdown) ===',
+      '=== MENU: finding announce (emit verbatim as markdown (not a code block)) ===',
       DOTS,
       'Background review returned — 16 finding(s): 3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere.',
       '',
@@ -2062,7 +2073,7 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
+      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "The fix follows from what's already decided. Nothing here is a choice.",
       '',
       '1\\. Self-containment is holed by \\`excluded\\`',
@@ -2070,7 +2081,7 @@ describe('render finding-batch', () => {
       '2\\. A retracted rationale survives unmarked',
       `${NB(5)}↳ Superseded when copy-only won; mark it superseded.`,
       '',
-      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Apply them?`**',
       '',
@@ -2092,7 +2103,7 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
+      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "Each of these is a call I've made, with what it rests on named beside it.",
       '',
       '1\\. A repeated field name resolves to its last occurrence',
@@ -2102,7 +2113,7 @@ describe('render finding-batch', () => {
       `${NB(5)}↳ The output contract leans this way; zero bytes also fits`,
       `${NB(7)}the record.`,
       '',
-      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Document them?`**',
       '',
@@ -2120,7 +2131,7 @@ describe('render finding-batch', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
     const two = writePayload(dir, 'auto.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: two });
-    assert.ok(out.startsWith('=== DISPLAY: finding batch auto-approved (emit verbatim as markdown — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\n'));
+    assert.ok(out.startsWith('=== DISPLAY: finding batch auto-approved (emit verbatim as markdown (not a code block) — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\n'));
     assert.ok(out.includes("Each of these is a call I've made"), 'the screen still shows what landed');
     assert.ok(out.endsWith('\nDocumenting all 2 [auto].\n'), 'the line is true when it is emitted — the landings follow it');
     assert.ok(!out.includes('MENU'), 'the lane that carries the flip never stops once it is set');
@@ -2187,7 +2198,7 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
+      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "Each of these is a call I've made, with what it rests on named beside it.",
       '',
       '1\\. The drain signal carries intent',
@@ -2197,7 +2208,7 @@ describe('render finding-batch', () => {
       `${NB(5)}↳ A script you wired up is the same class as the CLI;`,
       `${NB(7)}determined by the enum.`,
       '',
-      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Document them?`**',
       '',
@@ -2312,7 +2323,7 @@ describe('render triage surfaces', () => {
     assert.throws(() => renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing to announce/);
     writeQueue('measurement', { '001-a.md': 'x' });
     const one = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
-    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a code block — do not stop; continue as the workflow instructs) ==='), one);
+    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
     assert.ok(one.includes('1 rerouted concern from another topic waits'), one);
     writeQueue('measurement', { '002-b.md': 'y' });
     const two = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
@@ -2327,7 +2338,7 @@ describe('render triage surfaces', () => {
     ] });
     const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage agenda (emit verbatim as markdown) ===',
+      '=== DISPLAY: triage agenda (emit verbatim as markdown (not a code block)) ===',
       '**Triage queue** — 2 concerns',
       '',
       '○ 1. Offline metrics',
@@ -2335,7 +2346,7 @@ describe('render triage surfaces', () => {
       '○ 2. Expansion tracking',
       `${NB(7)}↳ From synonyms · discussion · 2026-08-02`,
     ].join('\n')), out);
-    assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
+    assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
     assert.ok(/\*\*`y\/yes`\*\* +→ Surface and discuss them one at a time/.test(out));
     assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
@@ -2383,7 +2394,7 @@ describe('render triage surfaces', () => {
       file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
     });
     const out = renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file });
-    assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown, then STOP for the user's response) ==="), out);
+    assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), out);
     assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
     assert.ok(out.includes('**`◆ Move it to research?`**'), out);
     assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research queue/.test(out), out);
@@ -2413,10 +2424,10 @@ describe('render triage surfaces', () => {
     writeQueue('measurement', { '001-a.md': 'x' });
     const out = renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage block (emit verbatim as a properties code block — ```properties fence) ===',
+      '=== DISPLAY: triage block (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ Triage queue not empty — 1 rerouted concern awaiting discussion',
       '',
-      '=== DISPLAY: triage block guidance (emit verbatim as markdown) ===',
+      '=== DISPLAY: triage block guidance (emit verbatim as markdown (not a code block)) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
     const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
@@ -2480,7 +2491,7 @@ describe('render convergence-diagnostic', () => {
   it('renders the head, streams, signed growth, finding sections, and the growth note', () => {
     const file = writePayload(dir, 'c.json', base);
     const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: convergence diagnostic (emit verbatim as a code block) ==='));
+    assert.ok(out.includes('=== DISPLAY: convergence diagnostic (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(out.includes('===\n── Spec Review — cycle 5 diagnostic ─'), 'the heading is the drawn in-fence divider');
     assert.strictEqual([...out.split('\n')[1]].length, 65, 'the divider fills the display width');
     assert.ok(out.includes('  Trend: converging'));
@@ -2585,7 +2596,7 @@ describe('render convergence-diagnostic', () => {
     });
     const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: convergence diagnostic (emit verbatim as a code block) ===',
+      '=== DISPLAY: convergence diagnostic (emit verbatim as a text code block (```text fence)) ===',
       `── Fix Loop — cycle 2 diagnostic ${'─'.repeat(32)}`,
       '',
       '  Trend: converging',
@@ -2726,7 +2737,7 @@ describe('render hypothesis-board', () => {
 
   it('check-in names what resolved, counts the board, and gates', () => {
     const out = render('check-in', { hypotheses: [ruledOut, confirmed, tracing], resolved_now: ['H1', 'H2'], next: 'Synthesise the root cause' });
-    assert.ok(out.includes('=== DISPLAY: hypothesis board (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY: hypothesis board (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('**Hypothesis board — Resume Hooks Silently Lost** (3 tracked, 1 confirmed, 1 ruled out, 1 open)'));
     assert.ok(out.includes('Resolved this check-in: H1, H2'));
     assert.ok(out.includes("**H2 — Coordinate drift orphans a live pane's hook** — *confirmed*"));
@@ -2751,7 +2762,7 @@ describe('render hypothesis-board', () => {
       trace_lines: ['daemon/reaper.go — the prune pass', 'hooks/key.go — the key-producing sites'],
       depth: 'check-ins', depth_reasoning: 'two systems and an intermittent symptom',
     });
-    assert.ok(out.includes('=== DISPLAY: investigation plan (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY: investigation plan (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('**Investigation plan — Resume Hooks Silently Lost**'));
     assert.ok(out.includes('**Trace lines**\n- daemon/reaper.go — the prune pass\n- hooks/key.go — the key-producing sites'));
     assert.ok(out.includes('**Depth**: check-ins — two systems and an intermittent symptom'));
@@ -2763,7 +2774,7 @@ describe('render hypothesis-board', () => {
 
   it('resume re-renders the ledger with what is left', () => {
     const out = render('resume', { hypotheses: [ruledOut, tracing], depth: 'check-ins', remaining: 'H3 is mid-trace' });
-    assert.ok(out.includes('=== DISPLAY: resumed plan (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY: resumed plan (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('**Investigation plan — Resume Hooks Silently Lost · resumed** (2 tracked, 1 ruled out, 1 open)'));
     assert.ok(out.includes('**Depth**: check-ins\n**Remaining**: H3 is mid-trace'));
     assert.ok(out.includes('**`◆ Picking up where we left off — still good?`**'));
@@ -2776,7 +2787,7 @@ describe('render hypothesis-board', () => {
       hypotheses: [{ ...tracing, status: 'suspected' }],
       trace_lines: ['hooks/key.go — the four key-producing sites'],
     });
-    assert.ok(out.includes('=== DISPLAY: plan pivot (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY: plan pivot (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('**Plan pivot — Resume Hooks Silently Lost**'));
     assert.ok(out.includes('**What changed**: The key format itself is malformed.'));
     assert.ok(out.includes('**Proposed direction**'));
@@ -2875,7 +2886,7 @@ describe('render findings-signoff-gate', () => {
   it('asks the sign-off over the retelling, the technical lens and the record itself', () => {
     record();
     assert.strictEqual(renderSurface(dir, 'findings-signoff-gate', { dotpath: dot }), [
-      "=== MENU: findings sign-off gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: findings sign-off gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Do these findings match your understanding?`**',
       '',
@@ -3106,7 +3117,7 @@ describe('render fix-direction', () => {
 
   it('a lone option is unlettered and uncounted', () => {
     const out = render({ options: [{ name: 'Make the address optional', rows }] });
-    assert.ok(out.includes('=== DISPLAY: fix direction (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY: fix direction (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('**Fix direction — Checkout Crash**\n'));
     assert.ok(!out.includes('approaches)'), 'one approach is not a comparison');
     assert.ok(out.includes('**Make the address optional**\n'), 'no letter where there is nothing to compare against');
@@ -3196,7 +3207,7 @@ describe('render finding', () => {
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.startsWith([
-      '=== DISPLAY: finding (emit verbatim as markdown) ===',
+      '=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ===',
       '**Finding 1 of 2: Missing Outcome field**',
       '',
       '- **Severity**: Minor',
@@ -3208,7 +3219,7 @@ describe('render finding', () => {
       '',
     ].join('\n')));
     assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
-    assert.ok(!/frame|╭|╰/.test(out), 'the fence is the frame — no drawn borders, no frame sections');
+    assert.ok(!/frame|╭|╰/.test(out), 'drawn borders never frame content — no drawn borders, no frame sections');
     assert.ok(out.includes('=== MENU: finding gate'));
     assert.ok(/\*\*`◆ Apply this\?`\*\*/.test(out), 'the menu opens with a question, never a second copy of the heading');
     assert.strictEqual(out.match(/\*\*Finding 1 of 2: Missing Outcome field\*\*/g).length, 1, 'the heading renders exactly once');
@@ -3242,7 +3253,7 @@ describe('render finding', () => {
       apply_label: 'Apply to the specification verbatim',
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file, view: 'full' });
-    assert.ok(out.startsWith('=== DISPLAY: finding wording (emit verbatim as markdown) ===\n**Proposed Addition**\n\n## Delivery'));
+    assert.ok(out.startsWith('=== DISPLAY: finding wording (emit verbatim as markdown (not a code block)) ===\n**Proposed Addition**\n\n## Delivery'));
     assert.ok(!out.includes('DISPLAY: finding ('), 'the report is not re-rendered — one finding never fills a screen twice');
     assert.ok(out.includes('MENU: finding gate'));
     assert.ok(!/`v\/view`/.test(out), 'the view row is spent');
@@ -3302,8 +3313,8 @@ describe('render finding', () => {
       applied_label: 'approved. Added to the plan.',
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
-    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), 'auto drops the stop, never the showing');
-    assert.ok(out.includes('=== DISPLAY: finding auto-approved (after applying the fix: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to the plan.'));
+    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ==='), 'auto drops the stop, never the showing');
+    assert.ok(out.includes('=== DISPLAY: finding auto-approved (emit verbatim as a text code block (```text fence) after applying the fix — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to the plan.'));
     assert.ok(!out.includes('MENU: finding'));
   });
 
@@ -3315,7 +3326,7 @@ describe('render finding', () => {
         diff: { current: ['old'], proposed: ['new'] },
       });
       const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-      assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), `${mode}: the expansion still shows the report`);
+      assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ==='), `${mode}: the expansion still shows the report`);
       assert.ok(out.includes('=== DISPLAY: diff ('), `${mode}: the diff rides along — the expansion is problem, call, and change`);
       assert.ok(!out.includes('DISPLAY: finding wording'), `${mode}: a diff finding has no wording to show`);
       assert.ok(!out.includes('MENU: finding'), `${mode}: the batch already asked`);
@@ -3330,8 +3341,8 @@ describe('render finding', () => {
       content: { label: 'Proposed Addition', lines: ['## Delivery', '', 'Retries are bounded at four attempts.'] },
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), 'the report leads');
-    assert.ok(out.endsWith('=== DISPLAY: finding wording (emit verbatim as markdown) ===\n**Proposed Addition**\n\n## Delivery\n\nRetries are bounded at four attempts.\n'),
+    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ==='), 'the report leads');
+    assert.ok(out.endsWith('=== DISPLAY: finding wording (emit verbatim as markdown (not a code block)) ===\n**Proposed Addition**\n\n## Delivery\n\nRetries are bounded at four attempts.\n'),
       `the wording closes the expansion: ${out}`);
     assert.ok(!out.includes('MENU: finding'), 'the batch screen is the gate — the expansion asks nothing');
     assert.ok(!/`v\/view`/.test(out), 'there is no row left to ask the wording with');
@@ -3341,7 +3352,7 @@ describe('render finding', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
     const file = writePayload(dir, 'sv.json', { ...settled, content: { label: 'Proposed Addition', lines: ['Retries are bounded at four attempts.'] } });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file, view: 'full' });
-    assert.strictEqual(out, '=== DISPLAY: finding wording (emit verbatim as markdown) ===\n**Proposed Addition**\n\nRetries are bounded at four attempts.\n');
+    assert.strictEqual(out, '=== DISPLAY: finding wording (emit verbatim as markdown (not a code block)) ===\n**Proposed Addition**\n\nRetries are bounded at four attempts.\n');
   });
 
   it('a choice stops over auto, numbers its options recommended-first, and offers no a/auto row', () => {
@@ -3443,7 +3454,7 @@ describe('render proposed-task', () => {
     const file = writePayload(dir, 'p.json', payload);
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.strictEqual(out, [
-      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '=== DISPLAY: proposed task (emit verbatim as markdown (not a code block)) ===',
       '**`▪ Fix adapter leak (2 of 3)`** (Important)',
       'Sources: reviewer cycle 1',
       '',
@@ -3460,7 +3471,7 @@ describe('render proposed-task', () => {
       '1. Add Close()',
       '2. Call it on detach',
       '',
-      '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: task approval (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task?`**',
       '',
@@ -3478,7 +3489,7 @@ describe('render proposed-task', () => {
     const gated = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated', 'comment-hint': 'Provide feedback to adjust' });
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(gated));
     const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
-    assert.ok(auto.includes('=== DISPLAY: task auto-approved (after recording the approval: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
+    assert.ok(auto.includes('=== DISPLAY: task auto-approved (emit verbatim as a text code block (```text fence) after recording the approval — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
     assert.ok(!auto.includes('MENU: task approval'));
   });
 
@@ -3506,7 +3517,7 @@ describe('render proposed-task', () => {
     const file = writePayload(dir, 'pr.json', proposal);
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.strictEqual(out, [
-      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '=== DISPLAY: proposed task (emit verbatim as markdown (not a code block)) ===',
       '**`▪ Merge the near-miss helpers (1 of 4)`** (near-miss)',
       'Placement: phase 3',
       '',
@@ -3514,7 +3525,7 @@ describe('render proposed-task', () => {
       '',
       '**Solution**: Fold them into one and take the caller-supplied message.',
       '',
-      '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: task approval (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task?`**',
       '',
@@ -3534,7 +3545,7 @@ describe('render proposed-task', () => {
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '=== DISPLAY: proposed task (emit verbatim as markdown (not a code block)) ===',
       '**`▪ Drop the dead formatter (2 of 4)`** (dead-code)',
       '',
       '**Problem**: Nothing calls it.',
@@ -3584,12 +3595,12 @@ describe('render proposed-task', () => {
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.strictEqual(out, [
-      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '=== DISPLAY: proposed task (emit verbatim as markdown (not a code block)) ===',
       '**`▪ Settle the page size (3 of 4)`** (behaviour)',
       'Sources: finder cycle 1',
       'Placement: phase 1',
       '',
-      '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: task decision (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Decision**: Which page size stands?',
       '',
@@ -3759,7 +3770,7 @@ describe('render proposed-task', () => {
     });
     const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'conflict' });
     assert.strictEqual(out, [
-      '=== DISPLAY: incoherence conflict (emit verbatim as markdown) ===',
+      '=== DISPLAY: incoherence conflict (emit verbatim as markdown (not a code block)) ===',
       '**Conflict — Expansion freshness rests on a stream that will not be built**',
       '',
       '- **behavioural-ranking · Signal Ingestion · Decision**: "No live signal stream will be built."',
@@ -3769,7 +3780,7 @@ describe('render proposed-task', () => {
       '',
       'A spec extracting both sides describes a panel the record cannot produce.',
       '',
-      "=== MENU: incoherence conflict (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: incoherence conflict (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which decision stands?`**',
       '',
@@ -3791,7 +3802,7 @@ describe('render proposed-task', () => {
     });
     const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
     assert.strictEqual(gap, [
-      '=== DISPLAY: incoherence gap (emit verbatim as markdown) ===',
+      '=== DISPLAY: incoherence gap (emit verbatim as markdown (not a code block)) ===',
       '**Gap — Ranking interaction is undecided**',
       '',
       '- **behavioural-ranking · Scoring · Decision**: "Score blending is out of scope."',
@@ -3800,7 +3811,7 @@ describe('render proposed-task', () => {
       '',
       'The ranking chapter cannot be written until this is decided.',
       '',
-      "=== MENU: incoherence gap (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: incoherence gap (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       'The gap needs the room. Reopening "synonym-handling" with it pauses this specification until the answer lands; the map offers two other homes.',
       '',
@@ -3936,7 +3947,7 @@ describe('render proposed-task', () => {
       full: ['Full updated section body'],
     });
     const out = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file });
-    assert.ok(out.includes('=== DISPLAY: resurfacing (emit verbatim as markdown) ===\n**Resurfacing: Expansion Source**'));
+    assert.ok(out.includes('=== DISPLAY: resurfacing (emit verbatim as markdown (not a code block)) ===\n**Resurfacing: Expansion Source**'));
     assert.ok(out.includes('=== DISPLAY: resurfacing diff (emit verbatim as a diff code block (```diff fence)) ===\n ctx above\n-old line\n+new line\n ctx below'));
     assert.ok(out.includes('**`◆ Record this to the specification verbatim?`**'));
     assert.ok(/\*\*`v\/view full`\*\* +→ Show the full updated section/.test(out));
@@ -3999,7 +4010,7 @@ describe('render tasks-overview', () => {
     const file = writePayload(dir, 'o.json', { label: 'Analysis cycle 2', tasks: [{ title: 'Fix leak', severity: 'Important' }, { title: 'Add test', severity: 'Minor' }] });
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: tasks overview (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: tasks overview (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**Analysis cycle 2** — 2 proposed tasks',
       '',
       '○ 1. Fix leak `[Important]`',
@@ -4018,7 +4029,7 @@ describe('render tasks-overview', () => {
     ] });
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: tasks overview (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: tasks overview (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**Analysis cycle 1** — 3 proposed tasks · 1 remaining',
       '',
       '✓ 1. ~~Fix leak~~ `[Important]`',
@@ -4057,7 +4068,7 @@ describe('render author-task-gate', () => {
   it('renders the authoring menu byte-exactly', () => {
     const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command' });
     assert.strictEqual(out, [
-      '=== MENU: author task gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: author task gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
       '',
@@ -4097,7 +4108,7 @@ describe('render phase-tree', () => {
     });
     const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: phase tree (emit verbatim as a code block) ===',
+      '=== DISPLAY: phase tree (emit verbatim as a text code block (```text fence)) ===',
       'Phase structure — 2 phases.',
       '',
       '1. Adapter Wrapper',
@@ -4162,7 +4173,7 @@ describe('selection projection', () => {
       [{ name: 'crash', phase_label: 'specification (in-progress)' }, { name: 'leak', phase_label: 'investigation (in-progress)' }],
       { completed: 1, cancelled: 1 });
     assert.strictEqual(out, [
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 bugfix(es) in progress',
       '  ├─ 1. Crash',
       '  │   Specification (In-Progress)',
@@ -4171,7 +4182,7 @@ describe('selection projection', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
@@ -4227,7 +4238,7 @@ describe('bridge continuation surfaces', () => {
 
   it('next-phase-gate: the review hop offers proceed, complete without review, and revisit — byte-stable', () => {
     assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'review' }), [
-      "=== MENU: next phase gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: next phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Implementation completed for "Pay".',
       '',
@@ -4492,7 +4503,7 @@ describe('render phase-note', () => {
 
   it('renders the one-liner with the phase noun by default and an override when given', () => {
     assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow', verb: 'Resuming' }),
-      '=== DISPLAY: phase note (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===\nResuming research: Auth Flow\n');
+      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nResuming research: Auth Flow\n');
     assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
       .includes('Reopening plan: Auth Flow'));
     assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow' }), /--verb is required/);
@@ -4600,7 +4611,7 @@ describe('render code-gate', () => {
 
     assert.match(out, /=== DISPLAY: code gate \(emit verbatim as a properties code block/, out);
     assert.match(out, /⚑ Another session is implementing "Checkout Flow" \(ship\) — last active 2m ago\./, out);
-    assert.match(out, /=== MENU: code gate \(emit verbatim as markdown, then STOP/, out);
+    assert.match(out, /=== MENU: code gate \(emit verbatim as markdown \(not a code block\), then STOP/, out);
     const menu = unwrap(out);
     assert.match(menu, /Code phases run one at a time — concurrent sessions write the same files/, menu);
     assert.match(menu, /Only proceed if you know that session is no longer working/, menu);
@@ -4823,10 +4834,10 @@ describe('render entry-gate --own', () => {
   it('renders the superseded and promoted terminals byte-exactly', () => {
     specWith({ status: 'superseded', superseded_by: 'core-auth' });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), [
-      '=== DISPLAY: entry blocker (emit verbatim as a properties code block — ```properties fence) ===',
+      '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ The specification for "Auth" was consolidated into "Core Auth"',
       '',
-      '=== DISPLAY: blocker guidance (emit verbatim as markdown, then STOP — terminal condition) ===',
+      '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
       '> Work on that specification instead.',
       '',
     ].join('\n'));
@@ -4868,7 +4879,7 @@ describe('render phase-completed --paths', () => {
 
   it('appends the derived spec and plan paths', () => {
     assert.strictEqual(renderSurface(dir, 'phase-completed', { dotpath: 'hotfix', phase: 'scoping', paths: '1' }), [
-      '=== DISPLAY: phase completed (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: phase completed (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Scoping completed for "Hotfix".',
       '',
       '  Spec: .workflows/hotfix/specification/hotfix/specification.md',
@@ -4882,7 +4893,7 @@ describe('selection not-found display', () => {
   const { selectionNotFound } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
   it('renders the per-type terminal byte-exactly', () => {
     assert.strictEqual(selectionNotFound('cross-cutting', 'ghost'), [
-      '=== DISPLAY: not found (emit verbatim as a code block, then STOP — terminal condition) ===',
+      '=== DISPLAY: not found (emit verbatim as a text code block (```text fence), then STOP — terminal condition) ===',
       'No active cross-cutting concern named "ghost" found.',
       '',
       'Run /workflow-start to see available concerns or begin a new one.',
@@ -4912,7 +4923,7 @@ describe('render review-findings-gate', () => {
     store('discussion', { status: 'acknowledged', findings: ['F1', 'F2', 'F3'], surfaced: ['F2'] });
     const out = renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' });
     assert.strictEqual(out, [
-      "=== MENU: review findings gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: review findings gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'The review left 2 findings still to walk.',
       '',
@@ -5015,20 +5026,25 @@ describe('single-source invariants', () => {
       'option lines must build through cmdOption/rangeOption — hand-formatted options reintroduce the drift class');
   });
 
-  it('the continuation instruction exists in exactly one module — surfaces.cjs', () => {
+  it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
     const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
-    const offenders = [];
+    const { RENDER_FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+    const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the workflow instructs'];
+    /** @type {Record<string, string[]>} */
+    const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('do not stop; continue as the workflow instructs')) {
-          offenders.push(path.relative(scriptsRoot, p));
+        else if (entry.isFile() && p.endsWith('.cjs')) {
+          const src = fs.readFileSync(p, 'utf8');
+          for (const phrase of phrases) if (src.includes(phrase)) homes[phrase].push(path.relative(scriptsRoot, p));
         }
       }
     })(scriptsRoot);
-    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
-      'continuation phrasing must ride CONTINUE_INSTRUCTION — a second literal drifts on the next reword');
+    const surfaces = [path.join('domain', 'projections', 'surfaces.cjs')];
+    assert.deepStrictEqual(homes, Object.fromEntries(phrases.map((phrase) => [phrase, surfaces])),
+      'a marker instruction is composed from surfaces.cjs (emitAs, timedInstruction, MENU_INSTRUCTION, the clauses) — a second literal drifts on the next reword');
   });
 
   // No equivalent invariant for the ⚑ callout: the glyph legitimately appears
@@ -5061,7 +5077,7 @@ describe('single-source invariants', () => {
       'a fenced line renders as drawn — past the narrowest pane it wraps and the diagram breaks');
   });
 
-  it('box-glyph frames are retired everywhere — the fence is the frame (D8)', () => {
+  it('box-glyph frames are retired everywhere — drawn borders never frame content', () => {
     const skillsRoot = path.join(__dirname, '..', '..', 'skills');
     const offenders = [];
     (function walk(dir) {
@@ -5074,7 +5090,7 @@ describe('single-source invariants', () => {
       }
     })(skillsRoot);
     assert.deepStrictEqual(offenders, [],
-      'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+      'drawn borders never frame content — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
   });
 });
 
@@ -5106,7 +5122,7 @@ describe('roadmap surfaces', () => {
   it('roadmap-view: horizon groups, join notes, the breakdown header', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-view', {});
-    assert.match(out, /^=== DISPLAY: roadmap \(emit verbatim as a code block\) ===/);
+    assert.match(out, /^=== DISPLAY: roadmap \(emit verbatim as a text code block \(```text fence\)\) ===/);
     assert.match(out, /Roadmap \(3 items — 1 in flight · 2 waiting\)/);
     assert.match(out, /mvp\n/);
     assert.match(out, /◐ Ordering/);
@@ -5183,7 +5199,7 @@ describe('roadmap surfaces', () => {
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'work_units: mvp',
       '',
-      "=== MENU: roadmap add gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: roadmap add gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '"mvp" is partly being built.',
       '',
@@ -5220,7 +5236,7 @@ describe('roadmap surfaces', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'horizon-pick', {});
     assert.strictEqual(out, [
-      "=== MENU: horizon pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: horizon pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which horizon?`**',
       '',
@@ -5245,7 +5261,7 @@ describe('roadmap surfaces', () => {
       name: 'csv-export', horizon: 'v1', summary: "operators export a day's orders as CSV",
     });
     assert.strictEqual(out, [
-      "=== MENU: park gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: park gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       'Parking **Csv Export** — operators export a day\'s orders as CSV — puts it on the roadmap under "v1", waiting until it is pulled into work.',
       '',
@@ -5317,7 +5333,7 @@ describe('baseline surfaces', () => {
     writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } });
     const out = renderSurface(dir, 'baseline-progress', {});
     assert.strictEqual(out, [
-      '=== DISPLAY: baseline progress (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: baseline progress (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Baseline in progress:',
       '',
       '  overview    [completed]',
@@ -5345,7 +5361,7 @@ describe('baseline surfaces', () => {
   it('baseline-area-gate: statement, glyphed question, and both options', () => {
     writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } });
     const out = renderSurface(dir, 'baseline-area-gate', { area: 'overview' });
-    assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
     assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
     assert.match(out, /\*\*`y\/yes`\*\*\s+→ Interview the next area/);
@@ -5418,7 +5434,7 @@ describe('baseline surfaces', () => {
       ],
     });
     const out = renderSurface(dir, 'baseline-round', { file });
-    assert.match(out, /=== DISPLAY: baseline round \(emit verbatim as a code block, then STOP for the user's response\) ===/);
+    assert.match(out, /=== DISPLAY: baseline round \(emit verbatim as a text code block \(```text fence\), then STOP for the user's response\) ===/);
     assert.match(out, /1\. The dispatcher polls behind four guards/);
     assert.match(out, /   a\. Incident accretion\n   b\. Partner rate agreement/);
     assert.match(out, /2\. Why does Closed exist as a state\?/);
@@ -5463,7 +5479,7 @@ describe('baseline surfaces', () => {
 
   it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai', model: 'text-embedding-3-small' }), [
-      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Use the existing configuration for this project?`**',
       '',
@@ -5474,7 +5490,7 @@ describe('baseline surfaces', () => {
       '',
     ].join('\n'));
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse' }), [
-      "=== MENU: knowledge reuse gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: knowledge reuse gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Use the existing configuration for this project?`**',
       '',
@@ -5508,7 +5524,7 @@ describe('baseline surfaces', () => {
 
   it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed', () => {
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'wizard' }), [
-      '=== DISPLAY: knowledge wizard (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
       '',
       '  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup',
@@ -5516,7 +5532,7 @@ describe('baseline surfaces', () => {
       'It configures system defaults, initialises the project store, and',
       'runs the initial indexing pass.',
       '',
-      "=== MENU: knowledge wizard gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: knowledge wizard gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Has the wizard completed?`**',
       '',
@@ -5532,7 +5548,7 @@ describe('baseline surfaces', () => {
     fs.mkdirSync(path.dirname(metadata), { recursive: true });
     fs.writeFileSync(metadata, JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 }));
     assert.strictEqual(renderSurface(dir, 'knowledge-ready', {}), [
-      '=== DISPLAY: knowledge ready (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Knowledge base ready — openai · text-embedding-3-small.',
       '',
     ].join('\n'));
@@ -5570,7 +5586,7 @@ describe('baseline surfaces', () => {
       '  1  overview',
       '  2  payments',
       '',
-      "=== MENU: baseline doc pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: baseline doc pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which doc?`**',
       '',
@@ -5628,7 +5644,7 @@ describe('walkthrough surfaces', () => {
     const out = renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' });
     assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough screen']);
     assert.ok(out.startsWith([
-      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
       `# **\`■ How the workflows work · 1 of ${screenFiles().length} · ${titleOf(1)}\`**`,
       '',
       '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
@@ -5651,7 +5667,7 @@ describe('walkthrough surfaces', () => {
 
   it('the first screen: a first run can only go on or skip; from help it goes on or back', () => {
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' })), [
-      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5663,7 +5679,7 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
 
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'help' })), [
-      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5676,7 +5692,7 @@ describe('walkthrough surfaces', () => {
 
   it('a middle screen: next, back, and a stop that names where stopping lands', () => {
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'first-run' })), [
-      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5688,7 +5704,7 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
 
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'help' })), [
-      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5703,7 +5719,7 @@ describe('walkthrough surfaces', () => {
   it('the last screen: one way out, and the closing invitation beside the standing one', () => {
     const last = screenFiles().length;
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'first-run' })), [
-      "=== MENU: walkthrough screen (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5741,10 +5757,10 @@ describe('walkthrough surfaces', () => {
 
   it('walkthrough-home: the walk, the cards, a question, and the way back', () => {
     assert.strictEqual(renderSurface(dir, 'walkthrough-home', {}), [
-      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
       '# **`■ Help`**',
       '',
-      "=== MENU: walkthrough home (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough home (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What would you like to do?`**',
       '',
@@ -5758,14 +5774,14 @@ describe('walkthrough surfaces', () => {
 
   it('walkthrough-topics: every card numbered in file order, its slug on the DATA row', () => {
     assert.strictEqual(renderSurface(dir, 'walkthrough-topics', {}), [
-      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
       '# **`■ Help · Topics`**',
       '',
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'CARDS (key  name):',
       ...SLUGS.map((slug, i) => `  ${i + 1}  ${slug}`),
       '',
-      "=== MENU: walkthrough topics (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough topics (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which area?`**',
       '',
@@ -5780,7 +5796,7 @@ describe('walkthrough surfaces', () => {
     const out = renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
     assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose']);
     assert.ok(out.startsWith([
-      "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
       `# **\`■ Help · ${cardTitle(1)}\`**`,
       '',
       '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
@@ -5797,7 +5813,7 @@ describe('walkthrough surfaces', () => {
     }
 
     assert.strictEqual(renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': '1' }), [
-      "=== MENU: walkthrough card (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: walkthrough card (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
@@ -5852,7 +5868,7 @@ describe('render review-presentation', () => {
         { summary: 'the guard scans comments only', fails: 'ten retired names pass green' },
       ],
     });
-    assert.match(out, /=== TITLE \(emit verbatim as markdown — the view's chrome heading\) ===\n# \*\*`■ Review — Checkout`\*\*/);
+    assert.match(out, /=== TITLE \(emit verbatim as markdown \(not a code block\) — the view's chrome heading\) ===\n# \*\*`■ Review — Checkout`\*\*/);
     assert.match(out, /DISPLAY: review verdict \(emit verbatim as a properties code block/);
     assert.match(out, /⚑ Failed — 2 findings must be planned and built before this work is delivered/);
     assert.match(out, /\*\*Needs planning\*\* — 2 findings/);
@@ -6027,7 +6043,7 @@ describe('render off-topic-offer', () => {
     const file = writePayload(dir, 'o.json', { concern: 'Rate limiting on the public API' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file });
     assert.strictEqual(out, [
-      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "**Rate limiting on the public API** is beyond this topic's scope.",
       '',
@@ -6049,7 +6065,7 @@ describe('render off-topic-offer', () => {
     const file = writePayload(dir, 'o.json', { concern: 'Audit logging' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'xc.research.xc', file });
     assert.strictEqual(out, [
-      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "**Audit logging** is beyond this topic's scope.",
       '',
@@ -6079,7 +6095,7 @@ describe('render off-topic-offer', () => {
     const file = writePayload(dir, 'o.json', { concern: 'Gift cards' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.discussion.pay', file, variant: 'discussion' });
     assert.strictEqual(out, [
-      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "**Gift cards** is beyond this topic's scope.",
       '',
@@ -6119,7 +6135,7 @@ describe('render backlog-gate', () => {
     const file = writePayload(dir, 'b.json', { idea: "a CSV export of the day's orders" });
     const out = renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file });
     assert.strictEqual(out, [
-      "=== MENU: backlog gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: backlog gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "Setting **a CSV export of the day's orders** aside.",
       '',
@@ -6160,7 +6176,7 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
 
   it('roadmap-harvest-gate: the sort confirm', () => {
     const out = renderSurface(dir, 'roadmap-harvest-gate', {});
-    assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /`◆ Put these on the roadmap as shown\?`/);
     assert.match(out, /`y\/yes`.*Add these items to the roadmap/);
     assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
@@ -6212,7 +6228,7 @@ describe('render — the adopted cross-flow static gates', () => {
 
   it('legacy-split-gate: three dialog gates keyed by what each asks; the remove confirm asks on its diamond line', () => {
     assert.strictEqual(renderSurface(dir, 'legacy-split-gate', { variant: 'remove' }), [
-      "=== MENU: legacy split remove gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: legacy split remove gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Remove the theme?`**',
       '',
@@ -6222,7 +6238,7 @@ describe('render — the adopted cross-flow static gates', () => {
     ].join('\n'));
 
     const themes = renderSurface(dir, 'legacy-split-gate', { variant: 'themes' });
-    assert.match(themes, /^=== MENU: legacy split themes gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(themes, /^=== MENU: legacy split themes gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(themes, /`◆ Proceed with these themes\?`/);
     assert.match(themes, /\*\*`y\/yes`\*\*\s+→ Proceed to draft cache files/);
     assert.match(themes, /\*\*`a\/abandon`\*\* → Skip this source file/);
@@ -6248,14 +6264,14 @@ describe('render import-reprompt', () => {
   it('names the refused paths in the fence, and offers the correction or the skip', () => {
     const file = writePayload(dir, 'reprompt.json', { missing: ['shots/dockset 05.JPEG', 'notes/ghost.md'] });
     assert.strictEqual(renderSurface(dir, 'import-reprompt', { file }), [
-      '=== DISPLAY: missing imports (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: missing imports (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'One or more paths could not be landed — nothing at the path, a',
       'folder rather than a file, or unreadable:',
       '',
       '  • shots/dockset 05.JPEG',
       '  • notes/ghost.md',
       '',
-      "=== MENU: import reprompt (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: import reprompt (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ How would you like to proceed?`**',
       '',
@@ -6310,7 +6326,7 @@ describe('render legacy-split-display', () => {
   it('candidates: the theme list as a batch worklist — the name per row, its summary beneath', () => {
     const file = writePayload(dir, 'candidates.json', { source: 'auth', themes });
     assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file }), [
-      '=== DISPLAY: legacy split candidates (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: legacy split candidates (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       'Candidate themes for auth.md:',
       '',
       '1\\. auth',
@@ -6327,7 +6343,7 @@ describe('render legacy-split-display', () => {
       { ...themes[1], paragraph_count: 2, content_preview: 'Responses are cached per route' },
     ] });
     assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'plan', file }), [
-      '=== DISPLAY: legacy split plan (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: legacy split plan (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Plan for auth.md:',
       '',
       '1. auth',
@@ -6364,7 +6380,7 @@ describe('render legacy-split-display', () => {
       "theme 'caching' has no cache file at caching.md",
     ] });
     assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'errors', file }), [
-      '=== DISPLAY: legacy split errors (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: legacy split errors (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Validation failed for auth:',
       '',
       "  • theme 'auth' has empty summary",
@@ -6426,13 +6442,13 @@ describe('render map-op-gate', () => {
       ],
     });
     assert.strictEqual(out, [
-      '=== DISPLAY: map operation (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: map operation (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Updating 2 summary(ies):',
       '',
       '  • auth-flow: "How sign-in survives a session drop"',
       '  • legacy-bits: "What the old importer still owns"',
       '',
-      "=== MENU: map operation gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: map operation gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Apply?`**',
       '',
@@ -6445,14 +6461,14 @@ describe('render map-op-gate', () => {
   it('renders the remove proposal byte-exactly — body wrapped at the display width', () => {
     const out = render('remove', { name: 'auth-flow' });
     assert.strictEqual(out, [
-      '=== DISPLAY: map operation (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: map operation (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Remove "auth-flow" from the map.',
       '',
       '  Lifecycle: fresh — no work has started on this topic.',
       '  The name will be added to the dismissed list so the analysis',
       "  won't auto-re-propose it.",
       '',
-      "=== MENU: map operation gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: map operation gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Confirm removal?`**',
       '',
@@ -6579,13 +6595,13 @@ describe('render dismissed-topics', () => {
 
   it('the names removed from the map, then the re-add offer', () => {
     assert.strictEqual(withDismissed(['reporting', 'menu-management']), [
-      '=== DISPLAY: dismissed topics (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: dismissed topics (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Dismissed Topics',
       '',
       '  • reporting',
       '  • menu-management',
       '',
-      "=== MENU: dismissed topics (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: dismissed topics (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Re-add any of these to the map?`**',
       '',
@@ -6603,7 +6619,7 @@ describe('render dismissed-topics', () => {
 
   it('nothing dismissed answers the display alone — no menu, nothing to re-add', () => {
     const empty = [
-      '=== DISPLAY: dismissed topics (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: dismissed topics (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Dismissed Topics',
       '',
       '  (none)',
@@ -6655,12 +6671,12 @@ describe('render candidate-gate', () => {
   it('renders the gated candidate byte-exactly — display then the five-way gate', () => {
     staged('gated');
     assert.strictEqual(render(), [
-      '=== DISPLAY: candidate (emit verbatim as a code block) ===',
+      '=== DISPLAY: candidate (emit verbatim as a text code block (```text fence)) ===',
       'Signal Freshness Contract [discussion]',
       '  What freshness the ranking signals must guarantee downstream',
       '  surfaced by gap analysis',
       '',
-      "=== MENU: candidate gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: candidate gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Add this topic to the map?`**',
       '',
@@ -6682,7 +6698,7 @@ describe('render candidate-gate', () => {
     staged('auto');
     const out = render();
     assert.match(out, /=== DISPLAY: candidate \(/);
-    assert.match(out, /=== DISPLAY: candidate approved \(after recording the approval: /);
+    assert.match(out, /=== DISPLAY: candidate approved \(emit verbatim as a text code block \(```text fence\) after recording the approval — /);
     assert.match(out, /Signal Freshness Contract — approved \[auto\]\./);
     assert.ok(!out.includes('MENU:'), 'auto never stops');
   });
@@ -6727,7 +6743,7 @@ describe('render triage-closed-target', () => {
 
   it('renders the dead-end target byte-exactly — the statement, then the ask over three destinations', () => {
     assert.strictEqual(renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
-      "=== MENU: closed target gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: closed target gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '"auth-flow" is closed as a dead end, so it won\'t pick up rerouted concerns.',
       '',
@@ -6777,7 +6793,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
   it('deep-dive-offer renders the statement then the ask byte-exactly — the question takes the glyph', () => {
     const file = writePayload(dir, 'd.json', { thread: 'How does the competitor rank a query it has never seen?' });
     assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
-      "=== MENU: deep dive offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: deep dive offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'A thread worth digging: How does the competitor rank a query it has never seen?',
       '',
@@ -6791,7 +6807,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
 
   it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — the statement, then the ask', () => {
     assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '2' }), [
-      "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'There are still 2 background agents working.',
       '',
@@ -6806,7 +6822,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
 
   it('a lone agent takes the singular — the count never reads "1 agents"', () => {
     assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '1' }), [
-      "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'There is still 1 background agent working.',
       '',
@@ -6828,7 +6844,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
   it('perspective-offer renders the tension statement then the ask byte-exactly — discussion only', () => {
     const file = writePayload(dir, 'p.json', { tension: 'Ship Now ↔ Strategic Timing' });
     assert.strictEqual(renderSurface(dir, 'perspective-offer', { dotpath: 'pay.discussion.checkout', file }), [
-      "=== MENU: perspective offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: perspective offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'This decision sits on a Ship Now ↔ Strategic Timing tension.',
       '',
@@ -6888,7 +6904,7 @@ describe('render — the adopted phase gates', () => {
 
   it('conclude-gate: one surface, the address\'s phase picking the wording', () => {
     assert.strictEqual(renderSurface(dir, 'conclude-gate', { dotpath: 'pay.discussion.checkout' }), [
-      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Conclude this discussion and mark as completed?`**',
       '',
@@ -6906,7 +6922,7 @@ describe('render — the adopted phase gates', () => {
     // an ask, never a way back.
     const implementation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.checkout' });
     assert.strictEqual(implementation, [
-      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Ready to mark implementation as completed?`**',
       '',
@@ -6919,7 +6935,7 @@ describe('render — the adopted phase gates', () => {
 
     const planning = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning.checkout' });
     assert.strictEqual(planning, [
-      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Ready to conclude?`**',
       '',
@@ -6973,7 +6989,7 @@ describe('render — the adopted phase gates', () => {
     assert.match(unwrap(finalReview), /\*\*`y\/yes`\*\*\s+→ Run the final review/);
 
     assert.strictEqual(renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'wrap-up' }), [
-      "=== MENU: wrap-up gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: wrap-up gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       "I'll reconcile the document against our conversation, then confirm before marking complete.",
       '',
@@ -7031,7 +7047,7 @@ describe('render — the adopted phase gates', () => {
       dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'auth-flow,data-model',
     });
     assert.strictEqual(blocking, [
-      '=== DISPLAY: missing dependencies (emit verbatim as a code block) ===',
+      '=== DISPLAY: missing dependencies (emit verbatim as a text code block (```text fence)) ===',
       'Missing Dependencies',
       '',
       '  Data Model',
@@ -7042,7 +7058,7 @@ describe('render — the adopted phase gates', () => {
       '  ├─ session tokens',
       '  └─ Waiting on auth-flow:auth-1-2',
       '',
-      "=== MENU: blocking dependencies gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: blocking dependencies gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ How would you like to proceed?`**',
       '',
@@ -7055,7 +7071,7 @@ describe('render — the adopted phase gates', () => {
       dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model,auth-flow',
     });
     assert.strictEqual(pick, [
-      "=== MENU: dependency pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: dependency pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which dependency has been satisfied?`**',
       '',
@@ -7119,7 +7135,7 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
       dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides,
     }), [
-      "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which way?`**',
       '',
@@ -7132,7 +7148,7 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
       dotpath: 'pay.implementation.checkout', result: 'failed',
     }), [
-      "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ How would you like to proceed?`**',
       '',
@@ -7149,7 +7165,7 @@ describe('render — the adopted phase gates', () => {
       writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', task_gate_mode: mode } } } } });
       const out = renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides });
       assert.ok(out.startsWith([
-        "=== MENU: executor block gate (emit verbatim as markdown, then STOP for the user's response) ===",
+        "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
         DOTS,
         '**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.',
         '',
@@ -7219,7 +7235,7 @@ describe('render — the adopted phase gates', () => {
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
       JSON.stringify({ work_units: { pay: {} }, defaults: { plan_format: 'local-markdown' } }));
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
-      "=== MENU: plan format gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: plan format gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Project default format is **local-markdown**.',
       '',
@@ -7239,7 +7255,7 @@ describe('render — the adopted phase gates', () => {
       ],
     });
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', { variant: 'select', file }), [
-      "=== MENU: plan format select (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: plan format select (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Which output format?`**',
       '',
@@ -7293,7 +7309,7 @@ describe('render — the adopted phase gates', () => {
     });
     const out = renderSurface(dir, 'correction-gate', { dotpath: 'done.specification.done' });
     assert.strictEqual(out, [
-      "=== MENU: correction gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: correction gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Correcting .workflows/done/specification/done/specification.md.',
       '',
@@ -7313,7 +7329,7 @@ describe('render — the adopted phase gates', () => {
 
   it('analysis-proceed-gate: the bare y/n consent before the grouping analysis', () => {
     assert.strictEqual(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'pay' }), [
-      "=== MENU: analysis proceed gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: analysis proceed gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Proceed with analysis?`**',
       '',
@@ -7339,7 +7355,7 @@ describe('render plan-context-gate', () => {
 
   it('offers the specification as-is beside the chance to add what changed', () => {
     assert.strictEqual(renderSurface(dir, 'plan-context-gate', { dotpath: dot }), [
-      "=== MENU: plan context gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: plan context gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Any new context since the specification was completed?`**',
       '',
@@ -7391,7 +7407,7 @@ describe('render cross-cutting-gate', () => {
     });
     const file = writePayload(dir, 'units.json', { units: ['cache-policy', 'error-shape'] });
     assert.strictEqual(renderSurface(dir, 'cross-cutting-gate', { file }), [
-      '=== DISPLAY: cross-cutting in progress (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: cross-cutting in progress (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Cross-cutting specifications still in progress:',
       '  These may contain architectural decisions relevant to this',
       '  plan.',
@@ -7399,7 +7415,7 @@ describe('render cross-cutting-gate', () => {
       '  • cache-policy',
       '  • error-shape',
       '',
-      "=== MENU: cross-cutting gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: cross-cutting gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Proceed without these, or complete them first?`**',
       '',
@@ -7462,7 +7478,7 @@ describe('render cross-cutting-references', () => {
       ],
     });
     assert.strictEqual(renderSurface(dir, 'cross-cutting-references', { file }), [
-      '=== DISPLAY: cross-cutting references (emit verbatim as a code block) ===',
+      '=== DISPLAY: cross-cutting references (emit verbatim as a text code block (```text fence)) ===',
       'Cross-cutting specifications to reference:',
       '  • cache-policy: Reads go through a per-request cache keyed by',
       '    tenant; writes invalidate the key they touch.',
@@ -7518,7 +7534,7 @@ describe('render complexity-gate / first-phase-gate', () => {
       concerns: ['Requires design decisions about the new API surface', 'Three call sites need new behaviour'],
     });
     assert.strictEqual(renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file }), [
-      '=== DISPLAY: complexity check (emit verbatim as a code block, directly above the menu) ===',
+      '=== DISPLAY: complexity check (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Complexity Check',
       '',
       'This change may be more involved than a quick-fix:',
@@ -7526,7 +7542,7 @@ describe('render complexity-gate / first-phase-gate', () => {
       '  • Requires design decisions about the new API surface',
       '  • Three call sites need new behaviour',
       '',
-      "=== MENU: complexity gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: complexity gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ How would you like to proceed?`**',
       '',
@@ -7559,7 +7575,7 @@ describe('render complexity-gate / first-phase-gate', () => {
     writeManifest(dir, 'support-email', { work_type: 'feature' });
     const file = writePayload(dir, 'read.json', { read: "The concern is an open unknown — I'd start with research." });
     assert.strictEqual(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }), [
-      "=== MENU: first phase gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: first phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       "The concern is an open unknown — I'd start with research.",
       '',
@@ -7594,8 +7610,8 @@ describe('render spec-confirm-gate', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
-  const DISPLAY_HEAD = '=== DISPLAY: spec confirmation (emit verbatim as a code block, directly above the menu) ===';
-  const MENU_HEAD = "=== MENU: spec confirm gate (emit verbatim as markdown, then STOP for the user's response) ===";
+  const DISPLAY_HEAD = '=== DISPLAY: spec confirmation (emit verbatim as a text code block (```text fence), directly above the menu) ===';
+  const MENU_HEAD = "=== MENU: spec confirm gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===";
   const ASK = [DOTS, '**`◆ Proceed?`**', '', '**`y/yes`**', '**`n/no`**', ''];
   const completed = { status: 'completed' };
   const unit = (specification, discussion = { 'auth-flow': completed, billing: completed, refunds: completed }) =>

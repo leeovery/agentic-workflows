@@ -173,7 +173,7 @@ describe('engine discovery-session close — happy path', () => {
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
     const receipt = stubbed.output(fix.project, ['render', 'session-receipt', 'payments', '--warn']);
-    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. The next start retries the indexing\./);
+    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. The next start retries the indexing\./);
     assert.strictEqual(stubbed.output(fix.project, ['render', 'session-receipt', 'payments']), '',
       'no --warn, no advisory — an empty receipt');
   });

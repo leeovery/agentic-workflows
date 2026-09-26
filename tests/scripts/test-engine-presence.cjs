@@ -16,6 +16,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { auditMarkers } = require('./gate-audit.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-'));
@@ -60,6 +61,7 @@ describe('engine presence', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    auditMarkers(sections, 'presence scan');
     assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'held_sources', 'sessions'],
       'one verdict — no live total, no staleness window');
     assert.strictEqual(res.held, 1);
@@ -69,7 +71,7 @@ describe('engine presence', () => {
     assert.strictEqual(res.sessions[0].topic, 'alpha');
     assert.strictEqual(res.sessions[0].held, true);
     assert.ok(sections.includes(
-      '=== DISPLAY: presence deferral (only at an analysis deferral: emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: presence deferral (emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs) ===',
     ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
     assert.ok(sections.includes('\n  ⚑ Analyses deferred — 1 session(s): discussion/alpha (last'), `callout flag line at the 2-space indent: ${sections}`);
     assert.match(unwrapped(sections),

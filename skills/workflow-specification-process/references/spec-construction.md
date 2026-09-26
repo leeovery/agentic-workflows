@@ -96,7 +96,7 @@ Present your understanding to the user **in the format it would appear in the sp
 ```
 Here's what I understand about [topic] based on the reference material. This is exactly what I'll write into the specification:
 
-[content as rendered markdown]
+[content as markdown (not a code block)]
 ```
 
 Then fetch the gate — it reads `construction_gate_mode` from the manifest and answers with the approval menu or the auto announcement:

@@ -20,9 +20,9 @@ Read `planning_topics` from the caller's `manage {selected.name}` snapshot DATA.
 
 **If only one topic exists:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Automatically proceeding with "{topic:(titlecase)}".
 ```
 

@@ -17,6 +17,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { RENDER_FORMS: FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -829,8 +830,9 @@ function checkNoFrontmatterSessionEndHooks(files) {
 // beside a section named by its kind or as a "section" — says so in the one
 // phrasing, "verbatim per its marker" / "verbatim per their markers"; and a
 // sentence that names a section kind or emits a section never states a form
-// of its own ("verbatim as markdown", "verbatim as a code block", "(not a
-// code block)", "(markdown)", a diff fence, emphasis ignored) — that is a
+// of its own ("as markdown", "(not a code block)", "(markdown)", a text,
+// properties or diff code block or its fence, a bare "as a code block" or
+// "in a code block" — after the deferral too — emphasis ignored) — that is a
 // second instruction for it. The sentence is the unit, so a neighbouring
 // sentence's content and form are never the section's; a bullet whose
 // subject is a section is one unit, its later sentences included. A passive
@@ -845,7 +847,7 @@ const SECTION_NAMED = /\b(?:TITLE|DISPLAY|MENU|[Ss]ections?)\b/;
 const SECTION_BULLET = /^\s*[-*] .*\*\*`?(?:TITLE|DISPLAY|MENU)\b/;
 const EMITS = /\b(?:re-)?emit(?:s|ting)?\b/i;
 const DEFERS = /\bverbatim per (?:its marker|their markers)\b/;
-const RESTATED_FORM = /verbatim,? as markdown|verbatim as a code block|\(not a code block\)|\(markdown\)|diff code block|` ```diff ` fence/;
+const RESTATED_FORM = /\bas markdown\b|\b(?:as|in) an? (?:[\w-]+ )?code block\b|\b(?:text|properties|diff) code block\b|\(not a code block\)|\(markdown\)|```(?:text|properties|diff)\b/;
 const PROSE_BLOCK_INSTRUCTION = /Output the next fenced block as/;
 
 function sectionCallSiteFault(unit) {
@@ -933,6 +935,48 @@ function checkQuestionsSetGatesAside(files) {
         line: i + 1,
         message: 'a question branch puts its gate back without the set-aside rule — say "The question sets the gate aside until the person is ready to move on; to put it back:" before the route or fetch',
       });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 24 — a prose-authored block names its form one way. Every rendering
+// instruction ("> *Output the next fenced block as …:*") opens on one of the
+// four forms — the engine's, taken from surfaces.cjs so they are said in one
+// place — with at most a " — note" before its closing ":*", and the fence
+// beneath it carries the tag its form names, bare for markdown. A line
+// naming the instruction in any other shape is a legacy or reworded form.
+// Fenced content — an example of an instruction — is out of scope.
+// ---------------------------------------------------------------------------
+
+const RENDER_FORMS = Object.values(FORMS).map((form) => [form, /```(\w+) fence/.exec(form)?.[1] ?? '']);
+const RENDER_INSTRUCTION = /^\s*(?:\d+\.\s+)?> \*Output the next fenced block as (.*):\*$/;
+const FENCE_OPENER = /^\s*(?:\d+\.\s+)?```(\S*)\s*$/;
+
+function checkRenderForms(files) {
+  const out = [];
+  const names = RENDER_FORMS.map(([form]) => `"${form}"`).join(', ');
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (inFence[i] || !line.includes('Output the next fenced block as')) return;
+      const said = RENDER_INSTRUCTION.exec(line)?.[1] ?? '';
+      const form = RENDER_FORMS.find(([name]) => said === name || (said.startsWith(name) && /^ — \S/.test(said.slice(name.length))));
+      if (!form) {
+        out.push({ file, line: i + 1, message: `a rendering instruction names no form — "> *Output the next fenced block as {form}:*", the form one of ${names}` });
+        return;
+      }
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      const tag = FENCE_OPENER.exec(lines[j] ?? '')?.[1];
+      const wanted = form[1] ? `\`\`\`${form[1]}` : 'a bare fence';
+      if (tag === undefined) {
+        out.push({ file, line: i + 1, message: `no fence beneath "${form[0]}" — the instruction heads the block it names` });
+      } else if (tag !== form[1]) {
+        out.push({ file, line: j + 1, message: `the fence beneath "${form[0]}" opens \`\`\`${tag} — its form takes ${wanted}` });
+      }
     });
   }
   return out;
@@ -1054,6 +1098,7 @@ const CHECKS = [
   ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
   ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
+  ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
   ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
 ];
 
@@ -1630,6 +1675,8 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '',
       'Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker.',
       '',
+      'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section verbatim per its marker.',
+      '',
       'Read the `sessions` rows only — the response\'s deferral section is the analysis dispatch\'s and is not emitted here.',
       '',
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
@@ -1694,9 +1741,21 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '',
       'Render, then emit each returned section verbatim per its marker — the diff body as a ` ```diff ` fence:',
       '',
+      'Emit the DISPLAY section verbatim as a text code block (```text fence).',
+      '',
+      '- **DISPLAY** — the blocker. Emit verbatim per its marker, a properties code block.',
+      '',
+      'Emit the `DISPLAY: diff` section verbatim per its marker, in its ```diff fence.',
+      '',
+      'Emit the DISPLAY section verbatim per its marker, as a code block.',
+      '',
+      'Emit the DISPLAY section verbatim per its marker — in a code block.',
+      '',
+      'Emit the MENU section verbatim per its marker, rendered as markdown.',
+      '',
     ].join('\n'));
     const v = checkSectionsDeferToMarker([restated]);
-    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17], `each restating sentence is caught, got ${report(v)}`);
+    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29], `each restating sentence is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /restates its marker's form/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
   });
 });
@@ -1802,6 +1861,96 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
     const v = checkQuestionsSetGatesAside([blind]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 7, 13, 19, 23, 27, 38], `each question branch that puts its gate straight back is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /without the set-aside rule/.test(x.message)), `the fault is named, got ${report(v)}`);
+  });
+});
+
+test('check 24 (render forms) — catches a bare code block, a legacy or reworded form, and a fence whose tag is not its form\'s, permits the four forms, a note after the form, a numbered item and fenced examples', () => {
+  withTemp((dir) => {
+    const good = write(dir, 'skills/x/good.md', [
+      '> *Output the next fenced block as markdown (not a code block):*',
+      '',
+      '```',
+      '**`□ Step`**',
+      '```',
+      '',
+      '> *Output the next fenced block as a text code block (```text fence):*',
+      '',
+      '```text',
+      '  └─ a tree',
+      '```',
+      '',
+      '> *Output the next fenced block as a properties code block (```properties fence) — it colours the art:*',
+      '',
+      '```properties',
+      '⚑ Blocked',
+      '```',
+      '',
+      '4. > *Output the next fenced block as a diff code block (```diff fence):*',
+      '',
+      '   ```diff',
+      '   +added',
+      '   ```',
+      '',
+      '````markdown',
+      '> *Output the next fenced block as a code block:*',
+      '````',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkRenderForms([good]).length, 0, `the four forms over their fences are clean, got ${report(checkRenderForms([good]))}`);
+
+    const bad = write(dir, 'skills/x/bad.md', [
+      '> *Output the next fenced block as a code block:*',
+      '',
+      '```',
+      'a tree',
+      '```',
+      '',
+      '> *Output the next fenced block as a text code block (```text fence):*',
+      '',
+      '```',
+      'a tree',
+      '```',
+      '',
+      '> *Output the next fenced block as markdown (not a code block):*',
+      '',
+      '```text',
+      '> a signpost',
+      '```',
+      '',
+      '> *Output the next fenced block as a properties code block (```properties fence — it colours the art):*',
+      '',
+      '```properties',
+      'art',
+      '```',
+      '',
+      '> *Output the next fenced block as a ` ```diff ` code block:*',
+      '',
+      '```diff',
+      '+added',
+      '```',
+      '',
+      '> *Output the next fenced block as a properties code block (```properties fence) — :*',
+      '',
+      '```properties',
+      '⚑ Blocked',
+      '```',
+      '',
+      '> *Output the next fenced block as a text code block (```text fence):*',
+      '',
+      'No fence follows.',
+      '',
+    ].join('\n'));
+    const v = checkRenderForms([bad]);
+    assert.deepStrictEqual(v.map((x) => x.line), [1, 9, 15, 19, 25, 31, 37], `each off-vocabulary instruction and mismatched fence is caught, got ${report(v)}`);
+    assert.deepStrictEqual(v.map((x) => x.message.split(' — ')[0]), [
+      'a rendering instruction names no form',
+      'the fence beneath "a text code block (```text fence)" opens ```',
+      'the fence beneath "markdown (not a code block)" opens ```text',
+      'a rendering instruction names no form',
+      'a rendering instruction names no form',
+      'a rendering instruction names no form',
+      'no fence beneath "a text code block (```text fence)"',
+    ], `each fault is named, got ${report(v)}`);
   });
 });
 

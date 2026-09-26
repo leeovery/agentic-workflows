@@ -15,7 +15,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
-const { section, menu, cmdOption } = require('./surfaces.cjs');
+const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 /** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
@@ -99,8 +99,8 @@ function discussionMap(topic, manifest) {
 function discussionDeferGate(topic, manifest) {
   const count = mapState(manifest, topic).unresolved.length;
   const one = count === 1;
-  return section('DISPLAY: discussion map', 'emit verbatim as a code block', discussionMap(topic, manifest))
-    + section('MENU: defer gate', "emit verbatim as markdown, then STOP for the user's response", menu(
+  return section('DISPLAY: discussion map', emitAs('text'), discussionMap(topic, manifest))
+    + section('MENU: defer gate', MENU_INSTRUCTION, menu(
       one
         ? 'There is still 1 subtopic not yet decided — shown on the map above.'
         : `There are still ${count} subtopics not yet decided — shown on the map above.`,

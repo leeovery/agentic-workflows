@@ -57,7 +57,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions -
 
 #### If user chose `v/view`
 
-Read the file and render its full content — as markdown, not a code block, so the item's own headings and formatting render properly.
+Read the file and render its full content as markdown (not a code block), so the item's own headings and formatting render properly.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -67,7 +67,7 @@ Read the file and render its full content — as markdown, not a code block, so 
 {item.full_content}
 ```
 
-Emit the file content as-is — it is markdown and renders as such; its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
+Emit the file content as-is — its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
 
 → Return to **B. Action Menu**.
 
@@ -79,9 +79,9 @@ Move the file back into its inbox folder and commit — one command:
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore {item.path}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Restored "{item.title}" to the inbox.
 ```
 
@@ -107,9 +107,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-ga
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Deleted "{item.title}".
 ```
 

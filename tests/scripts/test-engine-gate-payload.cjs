@@ -15,7 +15,7 @@ const { execFile, spawnSync } = require('child_process');
 
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { GATE_MARKER, announced, auditGate } = require('./gate-audit.cjs');
+const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateBlock, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
@@ -56,7 +56,7 @@ function runGateway(dir, gateway, args, env = {}) {
 function collect(compose) {
   return announced(() => {
     openGate();
-    return gateOf(section('MENU: builder', 'emit verbatim as markdown', compose()));
+    return gateOf(section('MENU: builder', 'emit verbatim as markdown (not a code block)', compose()));
   });
 }
 
@@ -365,7 +365,7 @@ describe('gate payload — a gateway menu', () => {
     seedHeldEpic(dir);
     const seen = markers(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
 
-    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU (emit verbatim as markdown) ===']);
+    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU (emit verbatim as markdown (not a code block)) ===']);
     assert.ok(seen.slice(0, -2).every((m) => !m.startsWith('=== GATE') && !m.startsWith('=== MENU')), seen.join('\n'));
   });
 
@@ -443,6 +443,7 @@ describe('gate payload — every gateway verb', () => {
   const SKILLS = path.resolve(__dirname, '../../skills');
   const ENGINE_GATEWAY = path.join(SKILLS, 'workflow-engine/scripts/gateway.cjs');
   const SET_ITEM = '.workflows/.inbox/ideas/2026-06-01--user-id.md';
+  const BUG_ITEM = '.workflows/.inbox/bugs/2026-06-02--login-timeout.md';
 
   /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
 
@@ -462,21 +463,21 @@ describe('gate payload — every gateway verb', () => {
       view: [gated('view')],
       inbox: [gated('inbox')],
       archived: [gated('archived')],
-      'working-set': [gated('working-set', SET_ITEM)],
+      'working-set': [gated('working-set', SET_ITEM), gated('working-set', SET_ITEM, BUG_ITEM)],
       'working-set-add-gate': [gated('working-set-add-gate', SET_ITEM)],
       'working-set-drop-gate': [gated('working-set-drop-gate', SET_ITEM)],
       manage: [gated('manage'), gated('manage', 'checkout')],
       completed: [gated('completed')],
       fallback: [ungated('checkout')],
     },
-    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout')], fallback: [refused('checkout')] },
-    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix')], fallback: [refused('crash-fix')] },
-    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo')], fallback: [refused('typo')] },
-    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging')], fallback: [refused('logging')] },
+    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout'), ungated('view', 'nowhere')], fallback: [refused('checkout')] },
+    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix'), ungated('view', 'nowhere')], fallback: [refused('crash-fix')] },
+    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo'), ungated('view', 'nowhere')], fallback: [refused('typo')] },
+    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging'), ungated('view', 'nowhere')], fallback: [refused('logging')] },
     'workflow-continue-epic': {
       index: [ungated()],
       select: [gated('select')],
-      view: [gated('view', 'v1')],
+      view: [gated('view', 'v1'), ungated('view', 'nowhere')],
       'completed-menu': [gated('completed-menu', 'v1')],
       'cancel-menu': [gated('cancel-menu', 'v1')],
       'reactivate-menu': [gated('reactivate-menu', 'v1')],
@@ -538,7 +539,7 @@ describe('gate payload — every gateway verb', () => {
       },
     }));
     createFile(dir, SET_ITEM, '# Fix user_id in *auth* [draft]\n');
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-02--login-timeout.md', '# Login_timeout *spikes* [prod]\n');
+    createFile(dir, BUG_ITEM, '# Login_timeout *spikes* [prod]\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
     createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
     createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
@@ -656,6 +657,13 @@ describe('gate payload — every gateway verb', () => {
       }
     });
   }
+
+  it('the sweep reaches the displays only a mixed-type set and a missing unit draw', () => {
+    const drawn = [...responses.values()].map(({ stdout }) => stdout).join('\n');
+    for (const marker of ['=== DISPLAY: blocker (', '=== DISPLAY: not found (']) {
+      assert.ok(drawn.includes(marker), `no gateway call drew ${marker}`);
+    }
+  });
 
   it('the world reaches every row shape the menu builders draw', () => {
     const gates = [...responses.values()].map(({ stdout }) => auditGate(stdout, 'shape')).filter((g) => g !== null);
@@ -818,7 +826,7 @@ describe('gate payload — the audit', () => {
   /** A held row with a tail and a cue, rendered announced. */
   const heldRow = () => announced(() => {
     openGate();
-    return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
+    return section('MENU: audit', 'emit verbatim as markdown (not a code block)', menu('Pick one?', [
       cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
     ]));
   });
@@ -855,7 +863,7 @@ describe('gate payload — the audit', () => {
   it('reads every part as the text it states — a part still carrying its markup or its escapes fails', () => {
     const out = announced(() => {
       openGate();
-      return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
+      return section('MENU: audit', 'emit verbatim as markdown (not a code block)', menu('Pick one?', [
         cmdOption('1', null, { head: 'Fix user\\_id in \\*auth\\*', tail: 'blocks `resolveUser`', cue: 'input `moved`', holder: 'in \\_session\\_' }),
       ]));
     });
@@ -872,5 +880,33 @@ describe('gate payload — the audit', () => {
     for (const [what, change] of drifts) {
       assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);
     }
+  });
+});
+
+describe('section markers — the render forms', () => {
+  it('a marker opens its instruction on one of the four forms, whatever behaviour follows', () => {
+    const out = [
+      section('TITLE', "emit verbatim as markdown (not a code block) — the view's chrome heading", '# **`■ Audit`**'),
+      section('DISPLAY: tree', 'emit verbatim as a text code block (```text fence), directly above the menu', 'a tree'),
+      section('DISPLAY: blocker', 'emit verbatim as a properties code block (```properties fence)', '⚑ Blocked'),
+      section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', '+ added'),
+      section('DATA', 'reason from this — never display or parse the sections below', 'count: 1'),
+    ].join('\n');
+    assert.doesNotThrow(() => auditMarkers(out, 'the four forms'));
+  });
+
+  it('a bare code block, a form with no fence, or the moment ahead of the form fails', () => {
+    const legacy = [
+      'emit verbatim as a code block',
+      'emit verbatim as a code block, directly above the menu',
+      'emit verbatim as markdown',
+      "emit verbatim as markdown, then STOP for the user's response",
+      'emit verbatim as a properties code block — ```properties fence',
+      'after the result summary: emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs',
+    ];
+    for (const instruction of legacy) {
+      assert.throws(() => auditMarkers(section('DISPLAY: legacy', instruction, 'body'), instruction), /names no render form/, instruction);
+    }
+    assert.throws(() => auditMarkers('=== DISPLAY (emit verbatim as a code block) ===\nbody\n', 'gateway'), /names no render form/);
   });
 });

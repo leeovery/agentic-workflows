@@ -24,7 +24,7 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 | 2 | Signpost blockquote | "What's happening" — guidance, context, closure | Markdown |
 | 3 | Step marker | Progress through the phase | Markdown — `**`□ Name`**` |
 | 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
-| 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
+| 5 | Status / menu | Data displays and interactive choices | Text code block / markdown |
 
 The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
 
@@ -32,37 +32,40 @@ Every skill invocation should produce at most one phase title. Signpost blockquo
 
 ### Rendering Instructions
 
-Every **user-facing output** fenced block in skill files must be preceded by a rendering instruction. Fenced blocks that are model instructions (bash commands to execute, file paths to load) are exempt — they are not displayed to the user.
+Every **user-facing output** fenced block in skill files must be preceded by a rendering instruction naming its form. Fenced blocks that are model instructions (bash commands to execute, file paths to load) are exempt — they are not displayed to the user.
 
-```
-> *Output the next fenced block as a code block:*
-```
-
-or:
+There are four forms, each said exactly one way:
 
 ```
 > *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a text code block (```text fence):*
+> *Output the next fenced block as a properties code block (```properties fence):*
+> *Output the next fenced block as a diff code block (```diff fence):*
 ```
 
-A fence-language variant names the fence when colouring depends on it — `as a properties code block (```properties fence)` for a prose-authored blocker, `as a diff code block (```diff fence)` for change content.
+The template's own fence carries the tag its form names — ` ```text `, ` ```properties `, ` ```diff ` — so the template is what gets written; a markdown template's fence stays bare. A note the reader needs follows the form, before the closing `:*` (`as a properties code block (```properties fence) — it colours the art; …:*`). No other wording, and never a bare "code block": Claude Code draws a fence with no language in the menus' colour, so a plain display in one loses the contrast that marks a gate out, where a `text` fence renders plain. Lint check 24 holds the forms and their fences.
 
-Code blocks are used for informational displays (overviews, status, keys) — they preserve indentation for tree structures and aligned lists. Markdown is used for chrome (phase titles, step and sub-step markers), interactive elements (menus, prompts), and signpost blockquotes, where the renderer's own styling does the work. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
+A text code block is for informational displays (overviews, status, keys) — it preserves indentation for tree structures and aligned lists; a properties code block is for a prose-authored blocker and the banner, a diff code block for change content. Markdown is used for chrome (phase titles, step and sub-step markers), interactive elements (menus, prompts), and signpost blockquotes, where the renderer's own styling does the work. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays. Neither stands in for the other: a tree written as markdown loses its indentation, and markdown written in a code block loses its formatting.
+
+The same four forms are said the same way wherever an instruction names how something renders — an engine section's marker (see Engine Output Sections) and content Claude composes: a report or summary is written as markdown (not a code block), and a code block Claude writes itself (a diagram, a sample) names its language on the fence, `text` for plain.
 
 ### Presentation Register
 
-Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, glanceable depth with the record file authoritative. The level every conversational turn runs at — product first, code as evidence — is framework-level (`skills/workflow-shared/references/altitude.md`); the report register adds shape and depth on top of it. A `t/technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v/view` option rendering the record file as markdown. The implementation task loop's report moments follow their own register instead — `skills/workflow-implementation-process/references/report-register.md`: labeled sections, one fact per sentence, lenses as the register names them. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim in its fence — see Content Dividers & Frames.
+Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, glanceable depth with the record file authoritative. The level every conversational turn runs at — product first, code as evidence — is framework-level (`skills/workflow-shared/references/altitude.md`); the report register adds shape and depth on top of it. A `t/technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v/view` option rendering the record file as markdown. The implementation task loop's report moments follow their own register instead — `skills/workflow-implementation-process/references/report-register.md`: labeled sections, one fact per sentence, lenses as the register names them. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim, in the form it will take — see Content Dividers & Frames.
 
 ### Engine Output Sections
 
 Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in demarcated sections. Each section is opened by a **section marker** — a line `=== NAME (instruction) ===` naming the section (`DATA`, `TITLE`, `DISPLAY[: label]`, `MENU[: label]`) and carrying its handling instruction. A section is everything beneath its marker up to the next; the marker line itself is never emitted. The runtime definition lives once, in `workflow-shared/references/instructions.md`, which every session loads — prose never restates it.
 
-**Every call site defers to the marker, in one phrasing.** A sentence that emits a section — an emit verb (`emit`, `emits`, `emitting`, `re-emit…`) beside a section named by its kind or as a section — says so as `…section verbatim per its marker`, `…sections verbatim per their markers`, or `…, each verbatim per its marker` (`Emit the call's MENU section verbatim per its marker.`), and a sentence that names a section kind or emits a section never states a form of its own — `verbatim as markdown`, `verbatim as a code block`, `(not a code block)`, `(markdown)`, a diff fence — for TITLE, DISPLAY and MENU alike: the marker is the one instruction for its section, and a restated copy is a second one that can disagree with it. The sentence is the unit, so a neighbouring sentence's content and form are never the section's. Lint check 21 enforces both halves; a passive description (`is emitted`), fenced content, and the rendering instruction of a prose-authored block (`Output the next fenced block as …` — the one other mechanism) sit outside it. The markers direct:
+**Every call site defers to the marker, in one phrasing.** A sentence that emits a section — an emit verb (`emit`, `emits`, `emitting`, `re-emit…`) beside a section named by its kind or as a section — says so as `…section verbatim per its marker`, `…sections verbatim per their markers`, or `…, each verbatim per its marker` (`Emit the call's MENU section verbatim per its marker.`), and a sentence that names a section kind or emits a section never states a form of its own — `as markdown`, `(not a code block)`, `(markdown)`, a text, properties or diff code block or its fence, a bare `as a code block` or `in a code block`, before the deferral or after it — for TITLE, DISPLAY and MENU alike: the marker is the one instruction for its section, and a restated copy is a second one that can disagree with it. The sentence is the unit, so a neighbouring sentence's content and form are never the section's. Lint check 21 enforces both halves; a passive description (`is emitted`), fenced content, and the rendering instruction of a prose-authored block (`Output the next fenced block as …` — the one other mechanism) sit outside it. The markers direct:
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions. Every answer a menu can produce resolves from DATA or the prose, never from the menu's own text — a consumer may draw the menu itself and send only the pressed row's word, or its key where it has none. An `ACTIONS` table carries both (`key  word  …`, `—` for no word); a numbered pick states the list its numbers count — a table or dump the same call returns, a list an earlier call returned (`roadmap state`'s `horizons`, the bridge's `revisitable_phases`), or the order the prose handed the surface (a payload's rows, a `--blocking` list).
-- `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown, directly above the display.
-- `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a plain code block — no language; any grammar eventually colours a stray word in uncontrolled prose. Labelled sections may name a colouring fence where the register calls for it — `properties` for blockers, `diff` for change content — or markdown where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
+- `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown (not a code block), directly above the display.
+- `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a text code block (```text fence) — any other grammar eventually colours a stray word in uncontrolled prose, and a fence with no language draws in the menus' colour. Labelled sections may name a colouring fence where the register calls for it — a properties code block (```properties fence) for blockers, a diff code block (```diff fence) for change content — or markdown (not a code block) where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
 - `=== GATE … ===` — for code, never for a person: one line of JSON stating the gate the `MENU` directly beneath it draws. Present only while `WORKFLOWS_GATE_SURFACE=1` is in the environment, so a session without a gate surface never sees it. Never displayed, never restated, and never a substitute for the `MENU` — a flow reads neither.
+
+Every TITLE, DISPLAY and MENU marker's instruction opens `emit verbatim as ` and one of the four forms (see Rendering Instructions), then its behaviour clause — `, directly above the menu`, `, then STOP for the user's response`, ` — do not stop; continue as the workflow instructs`; a moment the section waits for sits after the form (`… (```text fence) after the result summary — …`). The render sweep the engine suites run through `tests/scripts/gate-audit.cjs` fails any marker that opens otherwise.
 
 **Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand; a hand-drawn display drifts where an engine render cannot. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries).
 
@@ -153,7 +156,7 @@ Rules:
 
 ### Workflow Banner
 
-The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a properties code block — the fence is what colours the art: each line's first token renders turquoise and everything after the first space red, so the single space between the two words is load-bearing. The shipped version stamps as a fourth line inside that block, right-aligned under the `WS` of `WORKFLOWS` (the art is 63 columns; `vN.N.NN` is exactly as wide as those two letters). The release tooling pattern-matches the bare token, so the padding is the skill's to own. No borders. The banner is branding, not chrome: the phase title beneath it (`# **`■ Workflow Start`**`) names where the user is, and never repeats what the art already says.
+The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a properties code block (```properties fence) — the fence is what colours the art: each line's first token renders turquoise and everything after the first space red, so the single space between the two words is load-bearing. The shipped version stamps as a fourth line inside that block, right-aligned under the `WS` of `WORKFLOWS` (the art is 63 columns; `vN.N.NN` is exactly as wide as those two letters). The release tooling pattern-matches the bare token, so the padding is the skill's to own. No borders. The banner is branding, not chrome: the phase title beneath it (`# **`■ Workflow Start`**`) names where the user is, and never repeats what the art already says.
 
 ### Template Placeholders
 
@@ -246,7 +249,7 @@ Unnumbered trees follow the same structure:
 
 ### Worklists
 
-A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the triage agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
+A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the triage agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown (not a code block)**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
 
 ```
 **Integrity Review** — 3 findings · 1 remaining
@@ -290,13 +293,13 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
   before they can be included in a specification.
 ```
 
-**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own `properties` fence: the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. Red also marks the system's strongest advisory — a gate whose default is refusal and whose override requires stated knowledge the machine cannot have (the code-session gate: "only proceed if you know that session is no longer working"). Those two uses are the whole of it: a warning or suggestion the user may act on or ignore is not a blocked state, and keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`; prose-authored blockers mirror the same shape.
+**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own properties code block (```properties fence): the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. Red also marks the system's strongest advisory — a gate whose default is refusal and whose override requires stated knowledge the machine cannot have (the code-session gate: "only proceed if you know that session is no longer working"). Those two uses are the whole of it: a warning or suggestion the user may act on or ignore is not a blocked state, and keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`; prose-authored blockers mirror the same shape.
 
 ### Content Dividers & Frames
 
 Inside a single DISPLAY/code block, `── {Title} ──` dividers separate grouped content — the epic dashboard's stage dividers (left-anchored, filled to the content width). They are content dividers, not step markers — engine-drawn, no signpost pairing.
 
-**The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes never frame artefact content — prose cannot know the terminal width, while fences re-flow (the sanctioned boxes — engine DISPLAY titles, the banner — are chrome, not frames around content).
+**Drawn borders never frame content.** Artefact content — a proposed diff, spec-bound prose, a plan's phases, anything the user is approving as the thing itself — is shown verbatim in the form it will take: change content as a diff code block (```diff fence) (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), prose as markdown (not a code block) so it reads as it will in the record, and a structured view such as the phase tree as the engine's text code block (```text fence) display. A label or a line says what the content is — `**{label}**` above a finding's wording, "This is exactly what I'll write into the specification:" above a specification's. Narration stays outside the content. Hand-drawn boxes never frame artefact content — prose cannot know the terminal width, while markdown and fences re-flow.
 
 ### Cross-Plan References
 
@@ -310,7 +313,7 @@ Reads as: "advanced-features is blocked by task core-2-3 in the core-features pl
 
 ### Key / Legend
 
-Separate code block (engine snapshots compose the Key into the same DISPLAY block, beneath the display it explains). Categorized. Em dash (`—`) separators. **No `---` separator before the Key block.** Only show statuses that appear in the current display. **Blank line between categories.**
+Separate text code block (engine snapshots compose the Key into the same DISPLAY block, beneath the display it explains). Categorized. Em dash (`—`) separators. **No `---` separator before the Key block.** Only show statuses that appear in the current display. **Blank line between categories.**
 
 ```
 Key:
@@ -327,7 +330,7 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. **Every menu asks a question.** The question opens the options: the question, a blank line, then the options — always; the blank line is what marks the question as the menu's label. The ask is never a trailing `Select an option:` line after the options. Verb-based labels for selection menus.
+Rendered as markdown (not a code block). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. **Every menu asks a question.** The question opens the options: the question, a blank line, then the options — always; the blank line is what marks the question as the menu's label. The ask is never a trailing `Select an option:` line after the options. Verb-based labels for selection menus.
 
 **The question carries the decision glyph.** A short plain question (≤60 characters, ending in `?`, no markup, no template placeholders) is wrapped as `**`◆ Question?`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). Anything the menu needs to say first — a longer line, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling — is a statement: it stays plain prose above the question, a blank line between, because markup cannot nest inside the glyph span. The menu frame in `surfaces.cjs` holds this rule: it refuses a menu with no glyphed question above its rows and a menu with no single key to press — a range row is typed, never pressed.
 
@@ -682,12 +685,12 @@ Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP 
 
 **Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated`, `auto`, or `bounded`) — every gate, no exceptions. This ensures they survive context refresh.
 
-**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
+**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate. Use a rendering instruction + text code block for the one-line announcement:
 
 ```
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-\```
+\```text
 Task {M} of {total}: {Task Name} — authored. Logging to plan.
 \```
 ```
@@ -709,12 +712,12 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 
 ### Rendering Instructions for Ask Blocks
 
-When a step asks the user a question, wrap it in a rendering instruction — never a bare `Ask:` label. **The fence is for asks whose structure carries meaning**: a question with enumerated prompts beneath it, where the list is part of what is being asked. A conversational opening — Claude speaking a paragraph to the user — is emitted as markdown instead, one authored line per paragraph, so the renderer reflows it at any width. A fence would hand-wrap prose at a column the author had to guess.
+When a step asks the user a question, wrap it in a rendering instruction — never a bare `Ask:` label. **The fence is for asks whose structure carries meaning**: a question with enumerated prompts beneath it, where the list is part of what is being asked. A conversational opening — Claude speaking a paragraph to the user — is emitted as markdown (not a code block) instead, one authored line per paragraph, so the renderer reflows it at any width. A fence would hand-wrap prose at a column the author had to guess.
 
 ```
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-\```
+\```text
 What's on your mind?
 
 - What idea or topic do you want to explore?

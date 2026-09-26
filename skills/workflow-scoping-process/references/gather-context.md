@@ -28,9 +28,9 @@ Read the discovery session log's **Exploration** — single-phase work has exact
 
 The carrier has already answered some of these. Emit only the questions it leaves open, dropping any bullet it already covers — a question the user has already answered reads as not having listened.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Scoping: {topic:(titlecase)}
 
 A few questions to scope this change:

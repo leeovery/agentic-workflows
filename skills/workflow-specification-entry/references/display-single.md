@@ -18,9 +18,9 @@ Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
 ## After Display
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Automatically proceeding with "{proceed_name:(titlecase)}".
 ```
 

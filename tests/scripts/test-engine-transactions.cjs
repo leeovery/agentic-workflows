@@ -1192,7 +1192,7 @@ describe('engine topic complete', () => {
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     const advisory = render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. The next start retries the indexing\./);
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. The next start retries the indexing\./);
     assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
     assert.strictEqual(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete']), '',
       'no --warn, no advisory — an empty receipt');
@@ -1829,7 +1829,7 @@ describe('engine workunit complete', () => {
     assert.strictEqual(res.work_type, 'feature');
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete']),
-      /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
+      /=== DISPLAY: confirmation \(emit verbatim as a text code block \(```text fence\) after the response\) ===\n"Auth Flow" marked as completed\./);
   });
 
   it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {

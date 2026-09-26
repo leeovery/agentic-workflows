@@ -152,9 +152,9 @@ Summarise conversationally — do not dump a diff. One short paragraph or a hand
 
 #### If the document is complete and accurate
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Document review — discussion file reflects the session. No changes needed.
 ```
 

@@ -34,9 +34,9 @@ A prior pass's cache is about to be superseded by this one. Clear it — only wh
 rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Before analyzing, is there anything about how these discussions relate
 that would help me group them appropriately?
 

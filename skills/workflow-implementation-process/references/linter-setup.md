@@ -93,9 +93,9 @@ Analyse the project to determine which linters are appropriate:
 
 #### If the analysis finds no candidate linters
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No linters found for this project. Proceeding without linting during TDD.
 ```
 
