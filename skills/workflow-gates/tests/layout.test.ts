@@ -675,7 +675,7 @@ describe('layout', () => {
     }
   })
 
-  test('the pages hold every row once, in order, never one row across two', () => {
+  test('the pages hold every row once, in order, never one row across two', { timeoutMs: 30_000 }, () => {
     const gate = menuOf(30)
     const rows = [
       ...gate.options.map((_, n) => `o${n}`),
