@@ -5,8 +5,9 @@
 // values come from the manifest (JSON state only — markdown artifacts are
 // never parsed), judgment content arrives as a validated JSON payload file,
 // and each surface returns demarcated sections the calling flow emits
-// verbatim beneath the call that fetched them. Gate-mode branching renders
-// inside the surface: the caller never chooses between gated and auto output.
+// verbatim per their markers, in the step that shows them. Gate-mode
+// branching renders inside the surface: the caller never chooses between
+// gated and auto output.
 //
 // Surfaces read; they never write — with one exception. `code-gate`'s empty
 // path beats the addressed topic, because claiming the code slot and reading
