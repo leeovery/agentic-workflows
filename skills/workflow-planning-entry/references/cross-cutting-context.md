@@ -16,6 +16,8 @@ Do not use the topic slug as the query term — slugs are weak semantic signal. 
 
 Store the resulting text as `{query_text}`.
 
+→ Proceed to **B. Flag in-progress cross-cutting specs**.
+
 ## B. Flag in-progress cross-cutting specs
 
 A semantic query only surfaces completed work. An in-progress cross-cutting spec may contain decisions that will bind this plan but aren't yet indexed — the user needs to be aware.
@@ -26,7 +28,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest list --work-type
 
 #### If the output is `[]` (no cross-cutting work units exist)
 
-→ Proceed to **C. Query the knowledge base**.
+No cross-cutting context exists to surface. Proceed without it.
+
+→ Return to caller.
 
 #### If cross-cutting work units found
 
@@ -34,7 +38,7 @@ The output is the full manifests — read each unit's spec status directly from 
 
 **If no in-progress specs exist, or none are relevant:**
 
-→ Proceed to **C. Query the knowledge base**.
+→ Proceed to **C. Check for completed cross-cutting specs**.
 
 **If relevant in-progress specs exist:**
 
@@ -65,9 +69,23 @@ These may contain architectural decisions relevant to this plan.
 
 **If user chose `c/continue`:**
 
-→ Proceed to **C. Query the knowledge base**.
+→ Proceed to **C. Check for completed cross-cutting specs**.
 
-## C. Query the knowledge base
+## C. Check for completed cross-cutting specs
+
+Only completed specifications are indexed, so the query finds nothing without one.
+
+#### If no cross-cutting work unit's specification is `completed`
+
+No cross-cutting context exists to surface. Proceed without it.
+
+→ Return to caller.
+
+#### Otherwise
+
+→ Proceed to **D. Query the knowledge base**.
+
+## D. Query the knowledge base
 
 Run a targeted semantic query filtered to completed cross-cutting specs:
 

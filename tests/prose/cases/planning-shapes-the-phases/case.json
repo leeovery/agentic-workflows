@@ -45,8 +45,6 @@
       "render entry-gate pay.planning.pay",
       "manifest get pay.planning.pay status",
       "manifest list --work-type cross-cutting",
-      "knowledge.cjs query",
-      "--work-type cross-cutting --phase specification",
       "manifest get project.defaults.plan_format",
       "topic start pay planning pay",
       "format=local-markdown",
@@ -61,7 +59,7 @@
     "calls_in_order": [
       "render entry-gate pay.planning.pay",
       "manifest get pay.planning.pay status",
-      "knowledge.cjs query",
+      "manifest list --work-type cross-cutting",
       "manifest get project.defaults.plan_format",
       "topic start pay planning pay",
       "planning(pay): draft phase structure",
@@ -74,6 +72,7 @@
       "staging.author",
       "topic complete",
       "topic reopen",
+      "knowledge.cjs query",
       "knowledge.cjs index"
     ]
   }
