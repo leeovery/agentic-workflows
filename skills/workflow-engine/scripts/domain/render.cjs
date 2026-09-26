@@ -3074,6 +3074,29 @@ function taskCountGate(cwd, { dotpath }) {
   ], { question: 'How would you like to proceed?' }));
 }
 
+// plan-context-gate — planning entry's one offer before a fresh plan is
+// built: carry the specification as it stands, or say what has changed since
+// it was completed. The offer is the fresh start's alone — a plan already
+// under way reconciles its moved input instead — so the surface refuses an
+// address whose planning item already carries a status.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function planContextGate(cwd, { dotpath }) {
+  const { manifest, topic } = resolvePlanning(cwd, dotpath, 'plan-context-gate');
+  const status = (itemOf(manifest, 'planning', topic) || {}).status;
+  if (isFilled(status)) {
+    throw new Error(`render plan-context-gate: planning item "${topic}" is ${status} — the context offer opens a fresh plan`);
+  }
+  return section('MENU: plan context gate', STOP_FOR_RESPONSE, menu('Any additional context since the specification was completed?', [
+    cmdOption('c', 'continue', 'Continue with the specification as-is'),
+    promptOption('Add context', 'Tell me the priorities, constraints, or new considerations'),
+  ]));
+}
+
 // cross-cutting-gate — planning entry's stop over cross-cutting
 // specifications still being written. Which of them bear on the plan being
 // built is the session's read, so the names arrive as a payload; whether a
@@ -5849,6 +5872,7 @@ const SURFACES = {
   'executor-block-gate': executorBlockGate,
   'dependency-approval-gate': dependencyApprovalGate,
   'task-count-gate': taskCountGate,
+  'plan-context-gate': planContextGate,
   'cross-cutting-gate': crossCuttingGate,
   'cross-cutting-references': crossCuttingReferences,
   'plan-format-gate': planFormatGate,
