@@ -32,7 +32,7 @@ Write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/pr
 
 ## B. Review Gate
 
-A return from an answer re-runs the gate fetch below alone — the verdict and the out-of-scope decision belong to the gate's first arrival.
+Any arrival but the first re-runs the gate fetch below alone — the verdict and the out-of-scope decision belong to the gate's first arrival, from **A**.
 
 Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 

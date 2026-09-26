@@ -339,7 +339,7 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 ## F. Fix Approval Gate
 
-A return from a lens, the page, an answer, or a standing challenge re-runs the gate fetch below alone — the presentation belongs to the gate's first arrival, from **A** or **E**.
+Any arrival but the first re-runs the gate fetch below alone — the presentation belongs to the gate's first arrival, from **E** or **A**'s resumed arm.
 
 → Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
 
@@ -437,7 +437,7 @@ Confirm your reading of the comment with the person before anything acts on it, 
 
 ## G. Task Gate
 
-A return from a lens, the page, or an answer re-runs the gated fetch below alone — the presentation belongs to the gate's first arrival.
+Any arrival but the first re-runs the gated fetch below alone — the presentation belongs to the gate's first arrival, from **D** or from **F** when a challenge withdraws every finding.
 
 After the reviewer approves a task, present the result:
 
