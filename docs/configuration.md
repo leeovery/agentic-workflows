@@ -10,7 +10,7 @@ npx agntc add leeovery/agentic-workflows
 
 This installs the workflow skills into the project. Commit the installed files to share the workflows with your team and to use them in Claude Code for the Web. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/agentic-workflows` uninstalls. Updates carry themselves forward: the first run after an update brings your existing work into line with the new version automatically, so there is nothing to migrate by hand.
 
-The only requirement is Node 18 or newer. In Claude Code's terminal app the first `/workflow-start` switches on the workflows' mod and asks you to restart Claude Code once (see [buttons above the prompt](#buttons-above-the-prompt)); your first working session — the one after that restart, or the first start wherever the mod does not run — sets everything else up in conversation. Optionally, if you want search-by-meaning over your past work, you will be offered a one-time setup for it — including an option that needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
+The only requirement is Node 18 or newer. In Claude Code's terminal app the first `/workflow-start` switches on the Claude Code mod and asks you to restart Claude Code once (see [buttons above the prompt](#buttons-above-the-prompt)); your first working session — the one after that restart, or the first start wherever the mod does not run — sets everything else up in conversation. Optionally, if you want search-by-meaning over your past work, you will be offered a one-time setup for it — including an option that needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
 
 ## Settings that fill themselves in
 

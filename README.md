@@ -140,7 +140,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 
-**Setup:** Node 18+. There is no setup procedure: where the workflows' mod runs, the first run switches it on and asks for one restart of Claude Code, and your first working session sets everything else up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
+**Setup:** Node 18+. There is no setup procedure: where the Claude Code mod runs, the first run switches it on and asks for one restart of Claude Code, and your first working session sets everything else up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
 
