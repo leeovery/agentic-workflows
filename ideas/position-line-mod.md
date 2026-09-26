@@ -10,8 +10,7 @@ says where this session is working:
 Drawn by the workflow-gates mod (`design/function-hook-gates.md`) through
 `$.ui.status(text)` — one status line per plugin, replaced on each call,
 cleared with `undefined`. The tmux label keeps its job as the view *across*
-panes; this is the in-app view, and needs no tmux and no opt-in beyond the
-mod's own.
+panes; this is the in-app view, and needs no tmux and no opt-in.
 
 ## Where It Came From
 
