@@ -37,7 +37,6 @@
       "items": {
         "scrollback-not-restored-with-non-zero-base-index": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "65f198ea70f861394a6c47eef624664ba7c9b5a6",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

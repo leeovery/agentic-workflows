@@ -36,7 +36,6 @@
       "items": {
         "unknown-flags-silently-ignored": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "d7107686580e05d2a3be7a25bb52f69adaeb56cd",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",
@@ -75,7 +74,6 @@
       "items": {
         "unknown-flags-silently-ignored": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "gated",
           "fix_gate_mode": "gated",
           "analysis_gate_mode": "gated",

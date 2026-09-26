@@ -33,7 +33,6 @@
       "items": {
         "cli-enhancements": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-db58ad",
           "specification": "../../specification/cli-enhancements/specification.md",
           "spec_commit": "8aae967aad70c57432f9d24dcd226594f295358a",
@@ -94,7 +93,6 @@
       "items": {
         "cli-enhancements": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "auto",
           "analysis_gate_mode": "gated",

@@ -16,7 +16,6 @@
       "items": {
         "ac4-test-hardening": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "aac2b0a3f2f051ef3f4aeeb05241d0a52ff91a4a",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

@@ -35,7 +35,6 @@
       "items": {
         "enter-attaches-from-preview": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "1c3e0231dcc62158d4276f48e43c0a009fd3cf23",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

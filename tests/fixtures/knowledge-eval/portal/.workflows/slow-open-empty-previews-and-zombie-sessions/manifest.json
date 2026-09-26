@@ -36,7 +36,6 @@
       "items": {
         "slow-open-empty-previews-and-zombie-sessions": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "4000ef97ef6e353ed42653b6901a327edad4a94e",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

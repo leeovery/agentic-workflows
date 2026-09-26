@@ -37,7 +37,6 @@
       "items": {
         "file-browser-alias-breadcrumb": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "e322c480472889ea3e010fe5ce9838dbca1c580d",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

@@ -16,7 +16,6 @@
       "items": {
         "hooks-skip-bootstrap": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "85e0b382284b6f832dbd29596e20fab70312fcfc",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

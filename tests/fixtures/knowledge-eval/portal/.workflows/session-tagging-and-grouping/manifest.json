@@ -38,7 +38,6 @@
       "items": {
         "session-tagging-and-grouping": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "47b8df4579891795fae8df5efdc710f7f14e33ef",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

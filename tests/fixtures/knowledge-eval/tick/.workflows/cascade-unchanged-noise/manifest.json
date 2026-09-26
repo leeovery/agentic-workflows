@@ -34,7 +34,6 @@
       "items": {
         "cascade-unchanged-noise": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "a5ef589689aabff9201e32a2262852c269d740ac",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "gated",

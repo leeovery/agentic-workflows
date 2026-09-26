@@ -35,7 +35,6 @@
       "items": {
         "config-dir-wrong-path-macos": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "a5d93015bf80222393fab1260af1677ab8a858c8",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

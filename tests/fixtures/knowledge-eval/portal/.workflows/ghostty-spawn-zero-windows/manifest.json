@@ -37,7 +37,6 @@
       "items": {
         "ghostty-spawn-zero-windows": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "76f18ebc60ab6a832c443fe6c2cd7902ebc6193b",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

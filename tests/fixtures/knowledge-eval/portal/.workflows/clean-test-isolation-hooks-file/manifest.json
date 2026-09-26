@@ -16,7 +16,6 @@
       "items": {
         "clean-test-isolation-hooks-file": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "1a316437c0ece9b840abb5a6afdef887347be7e9",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

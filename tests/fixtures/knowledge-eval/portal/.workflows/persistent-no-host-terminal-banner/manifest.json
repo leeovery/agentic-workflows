@@ -40,7 +40,6 @@
       "items": {
         "persistent-no-host-terminal-banner": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "56c0a1b94306ae99478d534ba820e6687542e4a3",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

@@ -45,7 +45,6 @@
       "items": {
         "built-in-session-resurrection": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "9b35acd19aba9f50a5542e4bd988635427b9246f",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

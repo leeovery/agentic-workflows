@@ -35,7 +35,6 @@
       "items": {
         "multiple-state-daemons-running-concurrently": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "ffbfa0e4401acd02b6e99001d1966799bad17907",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

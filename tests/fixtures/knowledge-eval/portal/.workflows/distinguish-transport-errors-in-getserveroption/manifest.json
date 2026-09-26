@@ -37,7 +37,6 @@
       "items": {
         "distinguish-transport-errors-in-getserveroption": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "936b4ff473935ae2a4975b4af31e0a0a40e173e9",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

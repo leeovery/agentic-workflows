@@ -34,7 +34,6 @@
       "items": {
         "preview-visual-distinction": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "77d5337eaddcba046906ecc7cadc119ce405d8b2",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "auto",

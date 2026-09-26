@@ -52,7 +52,6 @@
       "items": {
         "resume-hooks-silently-lost": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "8afbf8342327807c8ae3f6e548559865fc5abc75",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

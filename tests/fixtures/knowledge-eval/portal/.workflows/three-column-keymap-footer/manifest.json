@@ -16,7 +16,6 @@
       "items": {
         "three-column-keymap-footer": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "4a0283962d99ffd3a8a9674e605445643aa85dbe",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

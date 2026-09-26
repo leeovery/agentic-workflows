@@ -103,7 +103,6 @@
       "items": {
         "lazy-resume-on-attach": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "d43d755a5a3fd7755ec32b1d031a335471efde4b",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

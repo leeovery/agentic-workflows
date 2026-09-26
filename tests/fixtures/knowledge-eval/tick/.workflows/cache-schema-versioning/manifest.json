@@ -33,7 +33,6 @@
       "items": {
         "cache-schema-versioning": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-598752",
           "specification": "../../specification/cache-schema-versioning/specification.md",
           "spec_commit": "1874c3b2085398bee1254e9773aba96fdd925c24",
@@ -52,7 +51,6 @@
       "items": {
         "cache-schema-versioning": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "analysis_gate_mode": "gated",

@@ -16,7 +16,6 @@
       "items": {
         "space-dismisses-preview": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "de643ac361823d324b955425102c80b5302f2f4f",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

@@ -40,7 +40,6 @@
       "items": {
         "cli-verb-surface-redesign": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "a701ad102328992b3538da3b88fef3082da39891",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

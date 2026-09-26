@@ -16,7 +16,6 @@
       "items": {
         "migrate-stat-error-handling": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "ebaf21e7e2557df156968d280cf8d0185da6a72e",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

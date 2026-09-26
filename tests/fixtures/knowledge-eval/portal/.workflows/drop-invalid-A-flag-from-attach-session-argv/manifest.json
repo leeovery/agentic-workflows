@@ -16,7 +16,6 @@
       "items": {
         "drop-invalid-A-flag-from-attach-session-argv": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "4aac8f7143593d3812cd90d1c5be48f454821896",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

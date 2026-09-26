@@ -44,7 +44,6 @@
       "items": {
         "resume-sessions-after-reboot": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "ff9b31ccf8c2fb36fe3f92ab9eef956f55eff53c",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

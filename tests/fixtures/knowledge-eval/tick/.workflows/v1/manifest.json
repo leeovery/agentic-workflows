@@ -153,7 +153,6 @@
       "items": {
         "blocked-ancestor-ready": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-e679e0",
           "specification": "../../specification/blocked-ancestor-ready/specification.md",
           "spec_commit": "e5c5d2995477fa95787af0a959e7162d1bb39cc3",
@@ -175,25 +174,21 @@
         },
         "doctor-validation": {
           "status": "completed",
-          "format": "local-markdown",
           "specification": "../../specification/doctor-validation/specification.md",
           "spec_commit": "29e62a8301438296c5b05db3e8f36c75ad5c20e1"
         },
         "installation": {
           "status": "completed",
-          "format": "local-markdown",
           "specification": "../../specification/installation/specification.md",
           "spec_commit": "d20af03c956b3e3c4608eb4d5945a67c5a3f6c90"
         },
         "migration": {
           "status": "completed",
-          "format": "local-markdown",
           "specification": "../../specification/migration/specification.md",
           "spec_commit": "d75ee0ec089a456e34c6b10585da4cf18922a0a5"
         },
         "task-removal": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-132530",
           "specification": "../../specification/task-removal/specification.md",
           "spec_commit": "739e6f02a7f56e6c4d785b981f74bf75b08ef36a",
@@ -227,7 +222,6 @@
         },
         "tick-core": {
           "status": "completed",
-          "format": "local-markdown",
           "specification": "../../specification/tick-core/specification.md",
           "spec_commit": "4a3a40d9415de8e1bb3a1ee376efd0bef2af0dd3"
         }
@@ -237,7 +231,6 @@
       "items": {
         "blocked-ancestor-ready": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "gated",
           "fix_gate_mode": "gated",
           "fix_attempts": 0,
@@ -264,7 +257,6 @@
         },
         "doctor-validation": {
           "status": "completed",
-          "format": "local-markdown",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "fix_attempts": 0,
@@ -328,7 +320,6 @@
         },
         "installation": {
           "status": "completed",
-          "format": "local-markdown",
           "task_gate_mode": "auto",
           "fix_gate_mode": "auto",
           "fix_attempts": 0,
@@ -384,7 +375,6 @@
         },
         "migration": {
           "status": "completed",
-          "format": "local-markdown",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "fix_attempts": 0,
@@ -433,7 +423,6 @@
         },
         "task-removal": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "fix_attempts": 0,
@@ -480,7 +469,6 @@
         },
         "tick-core": {
           "status": "completed",
-          "format": "local-markdown",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "fix_attempts": 0,

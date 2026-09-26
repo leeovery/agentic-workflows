@@ -1859,6 +1859,9 @@
     "terms": [
       "Tasks created within the same second come back in arbitrary order; add an explicit monotonic creation sequence per task so list-family queries sort deterministically by priority, created time, then sequence."
     ],
+    "options": {
+      "limit": 10
+    },
     "relevant": []
   }
 ]

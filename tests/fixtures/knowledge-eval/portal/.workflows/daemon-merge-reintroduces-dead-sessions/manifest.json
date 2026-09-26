@@ -37,7 +37,6 @@
       "items": {
         "daemon-merge-reintroduces-dead-sessions": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "96d56ae4e1ea2c41fd6d489c824a37ab58596e58",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

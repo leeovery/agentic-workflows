@@ -35,7 +35,6 @@
       "items": {
         "killed-session-resurrects-within-tick-window": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "242564fc1248b0802405616af4391f447ec707e2",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

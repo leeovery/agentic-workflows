@@ -44,7 +44,6 @@
       "items": {
         "session-scrollback-preview": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "0a91621db44c5f5412ea79745e35f3b98b7a91d1",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

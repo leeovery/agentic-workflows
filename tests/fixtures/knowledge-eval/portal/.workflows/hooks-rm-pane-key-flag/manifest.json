@@ -16,7 +16,6 @@
       "items": {
         "hooks-rm-pane-key-flag": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "3a775c07aa1d726ff63e2116a88f6cbb6ff0ada3",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

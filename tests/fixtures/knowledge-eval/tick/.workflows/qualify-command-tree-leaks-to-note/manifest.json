@@ -34,7 +34,6 @@
       "items": {
         "qualify-command-tree-leaks-to-note": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "9ce7d140af2fd006e51927994d82d8b29087d3ca",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

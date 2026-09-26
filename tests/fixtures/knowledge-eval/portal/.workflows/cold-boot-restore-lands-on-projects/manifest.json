@@ -39,7 +39,6 @@
       "items": {
         "cold-boot-restore-lands-on-projects": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "5f01c1fe318b3cc207244a4497b7f18de965e964",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

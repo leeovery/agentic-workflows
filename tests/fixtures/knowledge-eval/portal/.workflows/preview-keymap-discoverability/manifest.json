@@ -16,7 +16,6 @@
       "items": {
         "preview-keymap-discoverability": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "e62d13d75e4b2263053902ae3d4ceefb79e1c65e",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

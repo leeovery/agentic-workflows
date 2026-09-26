@@ -115,7 +115,6 @@
       "items": {
         "theming-system": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "40a29271d760eb43c85d7bcb6b3c2c8ac663fc38",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

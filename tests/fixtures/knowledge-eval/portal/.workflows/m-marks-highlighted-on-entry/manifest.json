@@ -16,7 +16,6 @@
       "items": {
         "m-marks-highlighted-on-entry": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "823a6d87186d12a78c64f17edece8aad980017a1",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

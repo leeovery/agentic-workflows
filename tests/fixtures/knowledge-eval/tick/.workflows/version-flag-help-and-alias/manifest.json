@@ -16,7 +16,6 @@
       "items": {
         "version-flag-help-and-alias": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "147e1a3d89f66f6bdf447e52f21313759c82a88e",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

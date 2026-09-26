@@ -49,6 +49,13 @@ current whenever a tag is cut:
 npm run build   # then commit the bundle alongside the source change
 ```
 
+A change that moves retrieval also re-pins the eval baseline in the same
+PR, so the diff carries the before and after:
+
+```bash
+node tests/scripts/knowledge-eval.cjs --pin
+```
+
 ## Prose tests
 
 `tests/prose/` walks the skill prose with real agents against real

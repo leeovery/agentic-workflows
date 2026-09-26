@@ -95,7 +95,6 @@
       "items": {
         "free-text-round-trip": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "b3bcde7bda134bfbb664311614917c25e1ebea06",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

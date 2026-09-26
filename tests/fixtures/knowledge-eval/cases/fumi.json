@@ -2407,7 +2407,9 @@
       "hook key derivation from portal-id session user option rename immune",
       "daemon clean-stale sweep removing hooks.json entries whose pane no longer exists"
     ],
-    "options": {},
+    "options": {
+      "limit": 12
+    },
     "relevant": []
   },
   {
@@ -2418,7 +2420,9 @@
     "terms": [
       "Tasks created within the same second come back in arbitrary order; add an explicit monotonic creation sequence per task so list-family queries sort deterministically by priority, created time, then sequence."
     ],
-    "options": {},
+    "options": {
+      "limit": 10
+    },
     "relevant": []
   }
 ]

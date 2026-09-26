@@ -37,7 +37,6 @@
       "items": {
         "skip-bootstrap-when-warm": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "88659b23ca44f9117c3a089081ca9ebc3252aec9",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

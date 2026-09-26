@@ -16,7 +16,6 @@
       "items": {
         "projects-filter-input-reskin": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "1134ae92f46d939cae793450a132ff8d33a5128a",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

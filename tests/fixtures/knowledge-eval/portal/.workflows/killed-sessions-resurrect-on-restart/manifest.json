@@ -36,7 +36,6 @@
       "items": {
         "killed-sessions-resurrect-on-restart": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "6fa133bbf4e420a6a9d393f4a9767bb3e441e838",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

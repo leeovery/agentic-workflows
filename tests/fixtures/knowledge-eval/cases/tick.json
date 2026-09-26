@@ -922,7 +922,9 @@
     "terms": [
       "MV palette token table contrast ratios canvas"
     ],
-    "options": {},
+    "options": {
+      "limit": 3
+    },
     "relevant": []
   }
 ]

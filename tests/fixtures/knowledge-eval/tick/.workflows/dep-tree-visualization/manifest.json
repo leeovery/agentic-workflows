@@ -35,7 +35,6 @@
       "items": {
         "dep-tree-visualization": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "737a87fe763589e9e120a315e61bbe1d756ec86a",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

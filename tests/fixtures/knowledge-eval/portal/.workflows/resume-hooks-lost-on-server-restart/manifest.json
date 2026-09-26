@@ -35,7 +35,6 @@
       "items": {
         "resume-hooks-lost-on-server-restart": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "c1d3d83e49a068e5811ff048b5c23b165bcb5923",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

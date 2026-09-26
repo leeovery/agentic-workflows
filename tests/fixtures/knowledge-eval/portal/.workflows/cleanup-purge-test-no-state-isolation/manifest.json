@@ -16,7 +16,6 @@
       "items": {
         "cleanup-purge-test-no-state-isolation": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "cea666ee3eec5b6c7a5afd4e8bac5bac73bd7d9d",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

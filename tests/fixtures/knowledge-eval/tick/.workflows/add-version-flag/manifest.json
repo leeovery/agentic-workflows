@@ -16,7 +16,6 @@
       "items": {
         "add-version-flag": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "37097a76e8440e18d1d781051966e39193b80365",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

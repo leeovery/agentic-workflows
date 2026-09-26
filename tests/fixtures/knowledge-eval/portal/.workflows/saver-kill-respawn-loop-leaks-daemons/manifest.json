@@ -36,7 +36,6 @@
       "items": {
         "saver-kill-respawn-loop-leaks-daemons": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "3ede058ec2ca0a756ca8cf48736546dd4dcf7535",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

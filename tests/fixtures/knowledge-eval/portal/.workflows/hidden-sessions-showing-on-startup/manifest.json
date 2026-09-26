@@ -37,7 +37,6 @@
       "items": {
         "hidden-sessions-showing-on-startup": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "d5d9c2716a03d8f6f730541c5aad71cad54679fd",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "auto",

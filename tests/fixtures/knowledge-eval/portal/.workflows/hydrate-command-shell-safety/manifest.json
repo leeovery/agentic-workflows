@@ -16,7 +16,6 @@
       "items": {
         "hydrate-command-shell-safety": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "ac1b5ebba58140b6963e59d1ec5e1949c3af7122",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

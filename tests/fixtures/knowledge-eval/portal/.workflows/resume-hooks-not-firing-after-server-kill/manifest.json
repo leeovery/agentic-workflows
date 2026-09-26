@@ -35,7 +35,6 @@
       "items": {
         "resume-hooks-not-firing-after-server-kill": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "4a676c7614e72c0ca163d42aad95524b55451b1e",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "gated",

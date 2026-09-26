@@ -35,7 +35,6 @@
       "items": {
         "rule6-parent-reopen-auto-flag": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "5c919b6e934c151a76bc816b8c2f73c3c8557046",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "auto",
@@ -67,7 +66,6 @@
       "items": {
         "rule6-parent-reopen-auto-flag": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "gated",
           "fix_gate_mode": "gated",
           "analysis_gate_mode": "gated",

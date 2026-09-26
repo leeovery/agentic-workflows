@@ -44,7 +44,6 @@
       "items": {
         "spectrum-tui-design": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "1fdc8c131dff37fac45eed217cc615d06613c181",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

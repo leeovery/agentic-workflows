@@ -81,7 +81,6 @@
       "items": {
         "portal": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-77cbba",
           "specification": "../../specification/portal/specification.md",
           "spec_commit": "5766a886dfaefb8ee771bc97fb31a55f9af5665a",
@@ -168,7 +167,6 @@
       "items": {
         "portal": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "auto",
           "analysis_gate_mode": "auto",

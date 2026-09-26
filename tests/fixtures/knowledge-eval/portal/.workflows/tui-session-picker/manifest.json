@@ -34,7 +34,6 @@
       "items": {
         "tui-session-picker": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-dd35bb",
           "specification": "../../specification/tui-session-picker/specification.md",
           "spec_commit": "ed0a774efcfa406e84785f233fcc45d27d516848",
@@ -96,7 +95,6 @@
       "items": {
         "tui-session-picker": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "auto",
           "analysis_gate_mode": "auto",

@@ -16,7 +16,6 @@
       "items": {
         "surface-x-toggle-in-keymap-hints": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "4cb7f142eb0d24b9c700c199614daec62a648705",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

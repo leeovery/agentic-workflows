@@ -47,7 +47,6 @@
     }
   },
   "defaults": {
-    "plan_format": "tick",
     "project_skills": [
       ".claude/skills/golang-how-to",
       ".claude/skills/golang-code-style",

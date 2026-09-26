@@ -16,7 +16,6 @@
       "items": {
         "harden-daemon-integration-test": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "3c76e2cc9c8e779d9b992feb5726dd042537cf01",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

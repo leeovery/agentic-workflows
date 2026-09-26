@@ -45,7 +45,6 @@
       "items": {
         "same-second-tasks-sort-by-id": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "3aa36c4ce00f39446120cf4b014498564dd016d1",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

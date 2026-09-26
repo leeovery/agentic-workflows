@@ -36,7 +36,6 @@
       "items": {
         "auto-cascade-parent-status": {
           "status": "completed",
-          "format": "tick",
           "external_id": "tick-b43d8e",
           "specification": "../../specification/auto-cascade-parent-status/specification.md",
           "spec_commit": "1f0cc547b94c612b74f1f051d505f1915721b11b",
@@ -89,7 +88,6 @@
       "items": {
         "auto-cascade-parent-status": {
           "status": "completed",
-          "format": "tick",
           "task_gate_mode": "auto",
           "fix_gate_mode": "gated",
           "analysis_gate_mode": "gated",

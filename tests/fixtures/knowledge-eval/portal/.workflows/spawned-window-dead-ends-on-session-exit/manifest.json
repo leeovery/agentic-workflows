@@ -39,7 +39,6 @@
       "items": {
         "spawned-window-dead-ends-on-session-exit": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "abcd61f72d8e9e5e1349ec1e7e67c9530b2fa032",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

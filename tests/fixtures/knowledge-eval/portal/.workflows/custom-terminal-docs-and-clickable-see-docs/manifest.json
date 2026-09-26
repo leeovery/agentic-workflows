@@ -16,7 +16,6 @@
       "items": {
         "custom-terminal-docs-and-clickable-see-docs": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "bb16540caf0e95605bf09bdb82cdb86cb9d85705",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",

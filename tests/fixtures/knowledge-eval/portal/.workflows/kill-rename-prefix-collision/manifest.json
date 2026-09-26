@@ -36,7 +36,6 @@
       "items": {
         "kill-rename-prefix-collision": {
           "status": "completed",
-          "format": "tick",
           "spec_commit": "2aa93372d87af51f1be2caeacff9aadd26e4f605",
           "task_list_gate_mode": "auto",
           "author_gate_mode": "auto",
