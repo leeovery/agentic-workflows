@@ -3208,7 +3208,7 @@ describe('render finding', () => {
       '',
     ].join('\n')));
     assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
-    assert.ok(!/frame|╭|╰/.test(out), 'the fence is the frame — no drawn borders, no frame sections');
+    assert.ok(!/frame|╭|╰/.test(out), 'drawn borders never frame content — no drawn borders, no frame sections');
     assert.ok(out.includes('=== MENU: finding gate'));
     assert.ok(/\*\*`◆ Apply this\?`\*\*/.test(out), 'the menu opens with a question, never a second copy of the heading');
     assert.strictEqual(out.match(/\*\*Finding 1 of 2: Missing Outcome field\*\*/g).length, 1, 'the heading renders exactly once');
@@ -5061,7 +5061,7 @@ describe('single-source invariants', () => {
       'a fenced line renders as drawn — past the narrowest pane it wraps and the diagram breaks');
   });
 
-  it('box-glyph frames are retired everywhere — the fence is the frame (D8)', () => {
+  it('box-glyph frames are retired everywhere — drawn borders never frame content (D8)', () => {
     const skillsRoot = path.join(__dirname, '..', '..', 'skills');
     const offenders = [];
     (function walk(dir) {
