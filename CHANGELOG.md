@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.80] - 2026-09-26
+
+✨ Added
+- Retrieval quality now has a measured baseline — `knowledge-eval.cjs` scores keyword and hybrid search against judged real-world cases, with a pinned baseline that catches regressions.
+
+🔧 Changed
+- A rate-limited embedding request now waits out the delay the provider names (capped at a minute) instead of failing outright, retrying up to five times before giving up.
+- An account that's out of quota now fails immediately with a clear message instead of being retried like a transient error.
+- Cross-cutting plan context checks now skip the knowledge base query entirely when no cross-cutting spec has actually completed, rather than querying and finding nothing.
+- Filtered knowledge-base reads now size themselves to the store's actual document count instead of using a fixed oversized limit.
+
+🐛 Fixed
+- Setup and query error messages for rate limits and quota issues now point at the right remedy (billing/plan limits vs. waiting) instead of a generic "wait and retry" hint.
+
 ## [0.7.79] - 2026-09-25
 
 ✨ Added
