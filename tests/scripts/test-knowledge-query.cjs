@@ -7,8 +7,14 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, before } = require('node:test');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
+
+const BUNDLE = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 const {
   store,
@@ -17,11 +23,15 @@ const {
   querySettings,
   queryStore,
   renderQuery,
-} = require('../../skills/workflow-knowledge/scripts/knowledge.cjs');
+} = require(BUNDLE);
 
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
 const STUB_BUILT = { provider: 'stub', model: 'stub', dimensions: DIMS };
+
+// A chunk and a query term sharing no word, embedded alike — only the vector
+// search can join them.
+const PARAPHRASE = { content: 'Receipts reconcile after close.', term: 'when is the ledger balanced' };
 
 /** A chunk of `unit`'s discussion, `n` its ordinal. */
 function doc(unit, n, content) {
@@ -43,9 +53,12 @@ function keywordSettings() {
   return querySettings(KEYWORD_ONLY, {}, null);
 }
 
-/** @param {any} db @param {Record<string, any>} request */
-function query(db, request) {
-  return queryStore(db, { ...keywordSettings(), filters: {}, boosts: [], workUnits: [], ...request });
+/**
+ * @param {any} db
+ * @param {{terms: string[], options?: object, workUnits?: object[], settings?: object}} request
+ */
+function query(db, { terms, options = {}, workUnits = [], settings = keywordSettings() }) {
+  return queryStore(db, settings, { terms, options, workUnits });
 }
 
 describe('querySettings', () => {
@@ -73,19 +86,20 @@ describe('querySettings', () => {
 });
 
 describe('queryStore', () => {
+  const stub = new StubProvider({ dimensions: DIMS });
   let db;
 
   before(async () => {
     db = await store.createStore(DIMS);
-    const provider = new StubProvider({ dimensions: DIMS });
     for (const d of [
       doc('old', 1, 'Token refresh follows the rate window.'),
       doc('new', 1, 'Token refresh follows the rate window.'),
       doc('billing', 1, 'Invoices are issued monthly.'),
       doc('billing', 2, 'Refunds reverse the invoice.'),
     ]) {
-      await store.insertDocument(db, { ...d, embedding: provider.embed(d.content) });
+      await store.insertDocument(db, { ...d, embedding: stub.embed(d.content) });
     }
+    await store.insertDocument(db, { ...doc('accounts', 1, PARAPHRASE.content), embedding: stub.embed(PARAPHRASE.term) });
   });
 
   it('merges every term, each chunk once, and cuts to the limit', async () => {
@@ -96,11 +110,11 @@ describe('queryStore', () => {
       'new-discussion-new-001',
       'old-discussion-old-001',
     ]);
-    assert.strictEqual((await query(db, { terms, limit: 2 })).length, 2);
+    assert.strictEqual((await query(db, { terms, options: { limit: 2 } })).length, 2);
   });
 
   it('filters by a comma list of values', async () => {
-    const results = await query(db, { terms: ['token', 'invoice'], filters: { workUnit: 'old,billing' } });
+    const results = await query(db, { terms: ['token', 'invoice'], options: { workUnit: 'old,billing' } });
     assert.deepStrictEqual([...new Set(results.map((r) => r.work_unit))].sort(), ['billing', 'old']);
   });
 
@@ -112,12 +126,18 @@ describe('queryStore', () => {
     const decayed = await query(db, { terms: ['token'], workUnits });
     assert.deepStrictEqual(decayed.map((r) => [r.work_unit, r.progressElapsed]), [['new', 0], ['old', 1]]);
 
-    const boosted = await query(db, { terms: ['token'], workUnits, boosts: [{ field: 'work_unit', value: 'old' }] });
+    const boosted = await query(db, { terms: ['token'], workUnits, options: { boosts: [{ field: 'work-unit', value: 'old' }] } });
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
+  it('refuses an invalid boost with a UserError', async () => {
+    await assert.rejects(
+      query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
+      { name: 'UserError', message: /^Unknown --boost field: "bogus"/ },
+    );
+  });
+
   it('embeds each term and searches hybrid in full mode', async () => {
-    const stub = new StubProvider({ dimensions: DIMS });
     const embedded = [];
     const provider = {
       model: () => stub.model(),
@@ -127,15 +147,55 @@ describe('queryStore', () => {
         return stub.embed(text);
       },
     };
-    const results = await queryStore(db, {
-      ...querySettings(STUB_BUILT, { provider: 'stub' }, provider),
-      terms: ['token refresh', 'refunds'],
-      filters: {},
-      boosts: [],
-      workUnits: [],
-    });
+    const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
+    await query(db, { terms: ['token refresh', 'refunds'], settings });
     assert.deepStrictEqual(embedded, ['token refresh', 'refunds']);
-    assert.ok(results.length > 0);
+  });
+
+  it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
+    const accounts = 'accounts-discussion-accounts-001';
+    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
+    assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
+  });
+});
+
+describe('knowledge query — the CLI', () => {
+  let root;
+
+  /** @param {string} name @param {string} completedAt */
+  function completedFeature(name, completedAt) {
+    const unit = path.join(root, '.workflows', name);
+    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+    fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+      name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt,
+      phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+    }));
+    fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), '# Discussion\n\nToken refresh follows the rate window.\n');
+  }
+
+  /** @param {...string} args */
+  function knowledge(...args) {
+    return execFileSync(process.execPath, [BUNDLE, ...args], { cwd: root, encoding: 'utf8' });
+  }
+
+  before(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-'));
+    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'),
+      JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
+    completedFeature('alpha', '2026-01-01');
+    completedFeature('beta', '2026-06-01');
+    knowledge('index', '.workflows/alpha/discussion/alpha.md');
+    knowledge('index', '.workflows/beta/discussion/beta.md');
+  });
+
+  after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('ranks a chunk the progress clock has moved past below its equal', () => {
+    const units = [...knowledge('query', 'token refresh').matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
+    assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
 });
 

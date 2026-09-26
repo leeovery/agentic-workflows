@@ -242,16 +242,19 @@ Other options:
 // Path helpers
 // ---------------------------------------------------------------------------
 
-function knowledgeDir() {
-  return path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
+/** @param {string} [root]  the project root — by default, the one the working directory sits in */
+function knowledgeDir(root = config.findProjectRoot()) {
+  return path.resolve(root, '.workflows', '.knowledge');
 }
 
-function storePath() {
-  return path.join(knowledgeDir(), 'store.msp');
+/** @param {string} [root]  the project root — by default, the one the working directory sits in */
+function storePath(root) {
+  return path.join(knowledgeDir(root), 'store.msp');
 }
 
-function metadataPath() {
-  return path.join(knowledgeDir(), 'metadata.json');
+/** @param {string} [root]  the project root — by default, the one the working directory sits in */
+function metadataPath(root) {
+  return path.join(knowledgeDir(root), 'metadata.json');
 }
 
 function lockFilePath() {
@@ -555,7 +558,8 @@ const KEY_UNRESOLVED_NO_STORE = 'no store is created without it.\n';
  * a store with embeddings it also warns against `rebuild` (which would
  * destroy them).
  * @param {object} cfg
- * @param {string} [consequence] KEY_UNRESOLVED_OVER_STORE or KEY_UNRESOLVED_NO_STORE
+ * @param {string} [consequence]  what going without the key costs, one line ending
+ *   in a newline — KEY_UNRESOLVED_OVER_STORE, KEY_UNRESOLVED_NO_STORE, or a caller's own
  */
 function keyUnresolvedError(cfg, consequence = KEY_UNRESOLVED_OVER_STORE) {
   const envVar = config.PROVIDER_ENV_VARS[cfg.provider];
@@ -647,7 +651,7 @@ function resolveProviderMode(metadata, cfg, provider, upgradeMode) {
   if (metaProvider === null || metaProvider === undefined) {
     if (provider) {
       // The index path (upgradeMode 'keyword-only') warns once; the query path
-      // ('upgrade-available') stays silent and lets cmdQuery emit its own note.
+      // ('upgrade-available') stays silent — renderQuery prints its note.
       if (upgradeMode === 'keyword-only' && !stubUpgradeWarned) {
         stubUpgradeWarned = true;
         process.stderr.write(
@@ -1857,19 +1861,16 @@ function boostProblem({ field, value }) {
 }
 
 /**
- * Map --boost directives to the store schema's field names. Exits with a
- * clear error on an unknown field or a missing value so skill-template typos
- * don't silently no-op.
+ * Map --boost directives to the store schema's field names. Throws UserError
+ * on an unknown field or a missing value, so a skill-template typo never
+ * silently no-ops.
  * @param {Array<{field: string, value: string|null}>} boosts
  * @returns {Array<{field: string, value: string}>}
  */
 function normaliseBoosts(boosts) {
   return boosts.map((boost) => {
     const problem = boostProblem(boost);
-    if (problem) {
-      process.stderr.write(`${problem}\n`);
-      process.exit(1);
-    }
+    if (problem) throw new UserError(problem);
     return { field: BOOST_FIELD_MAP[boost.field], value: boost.value };
   });
 }
@@ -1911,7 +1912,7 @@ function resolveSimilarityThreshold(cfg) {
 
 /**
  * The where clause a query's hard filters make — undefined when it has none.
- * @param {QueryFilters} filters
+ * @param {QueryOptions} options
  */
 function queryWhere({ phase, workType, workUnit, topic }) {
   const where = {};
@@ -1951,22 +1952,22 @@ function querySettings(metadata, cfg, provider) {
 }
 
 /**
- * @typedef {object} QueryFilters  the CLI's hard filters, each a value or a comma list
+ * @typedef {object} QueryOptions  a query's options as buildOptions makes them
+ *   from the CLI's flags — hard filters (each a value or a comma list), the
+ *   limit, and the --boost directives by CLI field name
  * @property {string|null} [phase]
  * @property {string|null} [workType]
  * @property {string|null} [workUnit]
  * @property {string|null} [topic]
+ * @property {number|null} [limit]
+ * @property {Array<{field: string, value: string|null}>} [boosts]
  */
 
 /**
- * @typedef {QuerySettings & {
- *   terms: string[],
- *   filters: QueryFilters,
- *   boosts: Array<{field: string, value: string}>,
- *   limit?: number|null,
- *   workUnits: Array<object>,
- * }} QueryRequest  boosts are normalised to schema fields; workUnits are the
- *   manifests the progress clock is built from
+ * @typedef {object} QueryRequest
+ * @property {string[]} terms
+ * @property {QueryOptions} options
+ * @property {Array<object>} workUnits  the manifests the progress clock is built from
  */
 
 const DEFAULT_QUERY_LIMIT = 10;
@@ -1974,24 +1975,25 @@ const DEFAULT_QUERY_LIMIT = 10;
 /**
  * A query's ranked results: one search per term, over-fetched and merged by
  * each chunk's highest score, then decayed by the progress clock, boosted,
- * and cut to the limit.
- * @param {any} db @param {QueryRequest} request
+ * and cut to the limit. Throws UserError on an invalid --boost directive.
+ * @param {any} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<Array<Record<string, any>>>}
  */
-async function queryStore(db, request) {
-  const limit = request.limit || DEFAULT_QUERY_LIMIT;
-  const scope = { where: queryWhere(request.filters), limit: limit * 2 };
+async function queryStore(db, settings, { terms, options, workUnits }) {
+  const boosts = normaliseBoosts(options.boosts || []);
+  const limit = options.limit || DEFAULT_QUERY_LIMIT;
+  const scope = { where: queryWhere(options), limit: limit * 2 };
   const merged = new Map();
-  for (const term of request.terms) {
-    for (const r of await searchTerm(db, term, scope, request)) {
+  for (const term of terms) {
+    for (const r of await searchTerm(db, term, scope, settings)) {
       const existing = merged.get(r.id);
       if (!existing || r.score > existing.score) merged.set(r.id, r);
     }
   }
-  const clock = progressClockOf(request.workUnits, request.weights);
+  const clock = progressClockOf(workUnits, settings.weights);
   const dated = Array.from(merged.values())
     .map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
-  return rerank(dated, request.boosts, request.stability).slice(0, limit);
+  return rerank(dated, boosts, settings.stability).slice(0, limit);
 }
 
 /**
@@ -2053,6 +2055,12 @@ async function cmdQuery(args, options, cfg, provider) {
     }
   }
 
+  const boostError = options.boosts.map(boostProblem).find(Boolean);
+  if (boostError) {
+    process.stderr.write(`${boostError}\n`);
+    process.exit(1);
+  }
+
   const sp = storePath();
   const mp = metadataPath();
 
@@ -2069,14 +2077,7 @@ async function cmdQuery(args, options, cfg, provider) {
   }
 
   const settings = querySettings(store.readMetadata(mp), cfg, provider);
-  const results = await queryStore(db, {
-    ...settings,
-    terms: args,
-    filters: options,
-    boosts: normaliseBoosts(options.boosts),
-    limit: options.limit,
-    workUnits: listWorkUnits('query'),
-  });
+  const results = await queryStore(db, settings, { terms: args, options, workUnits: listWorkUnits('query') });
   process.stdout.write(renderQuery(results, settings.mode));
 }
 
@@ -2690,7 +2691,7 @@ module.exports = {
   rerank,
   resolveSimilarityThreshold,
   boostProblem,
-  normaliseBoosts,
+  keyUnresolvedError,
   querySettings,
   queryStore,
   renderQuery,
