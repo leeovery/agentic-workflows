@@ -279,6 +279,23 @@ const harnessIn = (written: readonly { name: string; value?: string }[]) =>
     HARNESS_ON.some(setting => setting.name === name),
   )
 
+/** A person's own values of those settings, set before Claude Code started. */
+const OWN = {
+  CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1',
+  CLAUDE_CODE_SILENT_TURN_REMINDER: 'true',
+}
+
+/**
+ * Those settings as the process holds them, and whatever the mod keeps of
+ * them there: a name it does not hold is left out.
+ */
+const harnessHeld = (environment: ReadonlyMap<string, string>) =>
+  Object.fromEntries(
+    [...environment].filter(
+      ([name]) => name.startsWith('WORKFLOWS_HARNESS') || name in OWN,
+    ),
+  )
+
 /** How Claude Code names its own tools as it describes them. */
 const BUILT_IN = { plugin: 'engine', tier: 'core' as const }
 
@@ -450,7 +467,8 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * the plugin's store.
  *
  * `env` is the environment the process holds at the start, which each
- * `$.env.set` changes and `written` records.
+ * `$.env.set` changes and `written` records; `environment` holds it as it
+ * stands.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -649,6 +667,7 @@ function world(
     filled,
     submitted,
     written,
+    environment,
     files,
     stored,
     clock,
@@ -825,7 +844,6 @@ describe('register', () => {
     expect(written).toEqual([
       announcement,
       DISPLAY_TOOL,
-      ...HARNESS_OFF,
       announcement,
       DISPLAY_TOOL,
     ])
@@ -3219,6 +3237,56 @@ describe('register', () => {
     expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
   })
 
+  test('a plain conversation’s /clear leaves the person’s own values untouched', async ($, on) => {
+    const { written, environment } = world($, on, '', { env: OWN })
+
+    await $.session.start(SESSION)
+    await $.tool.call(ENGINE_CALL)
+    await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([])
+    expect(harnessHeld(environment)).toEqual(OWN)
+  })
+
+  test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none', async ($, on) => {
+    const own = { CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1' }
+    const { environment } = world($, on, '', { env: own })
+
+    await $.session.start(SESSION)
+    await $.tool.call(BOOT_CALL)
+
+    expect(harnessHeld(environment)).toMatchObject({
+      CLAUDE_CODE_THINKING_DISPLAY_UPDATES: 'false',
+      CLAUDE_CODE_SILENT_TURN_REMINDER: 'false',
+    })
+
+    await $.session.end(CLEARED)
+
+    expect(harnessHeld(environment)).toEqual(own)
+  })
+
+  const againOn = [
+    { how: 'a second boot', again: ($: Engine) => $.tool.call(BOOT_CALL) },
+    {
+      how: 'a reload of the module’s files',
+      again: ($: Engine) => $.session.start(SESSION),
+    },
+  ]
+
+  for (const { how, again } of againOn) {
+    test(`the harness put on again by ${how} still puts the person’s own values back`, async ($, on) => {
+      const { environment, reads } = world($, on, '', { env: OWN })
+
+      reads(BOOTED)
+
+      await $.session.start(SESSION)
+      await again($)
+      await $.session.end(CLEARED)
+
+      expect(harnessHeld(environment)).toEqual(OWN)
+    })
+  }
+
   test('a conversation that ran the boot gets the workflow harness back when a fresh load resumes it', async ($, on) => {
     const { written, reads } = world($, on)
 
@@ -3275,7 +3343,7 @@ describe('register', () => {
 
     await isDrawn($)
 
-    expect(harnessIn(written)).toEqual([...HARNESS_OFF, ...HARNESS_ON])
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
   })
 
   test('a plain conversation resumed in this process after one that ran the boot keeps Claude Code’s own harness', async ($, on) => {
@@ -3331,6 +3399,6 @@ describe('register', () => {
     await clock.advance(1000)
     await starting
 
-    expect(harnessIn(written)).toEqual(HARNESS_OFF)
+    expect(harnessIn(written)).toEqual([])
   })
 })
