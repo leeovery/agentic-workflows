@@ -40,6 +40,12 @@ Invoke `workflow-planning-phase-designer` with these file paths:
 
 The agent returns phases only — goals, ordering rationale, and acceptance criteria. **Task lists are designed separately in a later step; do not request or include them.**
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+I'll delegate phase design to a specialist agent. It will read the full specification and propose a phase structure — how we break this into independently testable stages.
+```
+
 This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The phase designer agent has been dispatched for the plan's phases.`
 
 Write the phase structure directly to the planning file body.
