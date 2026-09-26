@@ -830,9 +830,10 @@ function checkNoFrontmatterSessionEndHooks(files) {
 // beside a section named by its kind or as a "section" — says so in the one
 // phrasing, "verbatim per its marker" / "verbatim per their markers"; and a
 // sentence that names a section kind or emits a section never states a form
-// of its own ("verbatim as markdown", "(not a code block)", "(markdown)", a
-// text, properties or diff code block or its fence, a bare "verbatim as a
-// code block", emphasis ignored) — that is a second instruction for it. The sentence is the unit, so a neighbouring
+// of its own ("as markdown", "(not a code block)", "(markdown)", a text,
+// properties or diff code block or its fence, a bare "as a code block" or
+// "in a code block" — after the deferral too — emphasis ignored) — that is a
+// second instruction for it. The sentence is the unit, so a neighbouring
 // sentence's content and form are never the section's; a bullet whose
 // subject is a section is one unit, its later sentences included. A passive
 // "emitted" describes rather than instructs and is out of scope, as is fenced
@@ -846,7 +847,7 @@ const SECTION_NAMED = /\b(?:TITLE|DISPLAY|MENU|[Ss]ections?)\b/;
 const SECTION_BULLET = /^\s*[-*] .*\*\*`?(?:TITLE|DISPLAY|MENU)\b/;
 const EMITS = /\b(?:re-)?emit(?:s|ting)?\b/i;
 const DEFERS = /\bverbatim per (?:its marker|their markers)\b/;
-const RESTATED_FORM = /verbatim,? as markdown|(?:verbatim as a|text|properties|diff) code block|\(not a code block\)|\(markdown\)|```(?:text|properties|diff)\b/;
+const RESTATED_FORM = /\bas markdown\b|\b(?:as|in) an? (?:[\w-]+ )?code block\b|\b(?:text|properties|diff) code block\b|\(not a code block\)|\(markdown\)|```(?:text|properties|diff)\b/;
 const PROSE_BLOCK_INSTRUCTION = /Output the next fenced block as/;
 
 function sectionCallSiteFault(unit) {
@@ -1746,9 +1747,15 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '',
       'Emit the `DISPLAY: diff` section verbatim per its marker, in its ```diff fence.',
       '',
+      'Emit the DISPLAY section verbatim per its marker, as a code block.',
+      '',
+      'Emit the DISPLAY section verbatim per its marker — in a code block.',
+      '',
+      'Emit the MENU section verbatim per its marker, rendered as markdown.',
+      '',
     ].join('\n'));
     const v = checkSectionsDeferToMarker([restated]);
-    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23], `each restating sentence is caught, got ${report(v)}`);
+    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29], `each restating sentence is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /restates its marker's form/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
   });
 });
