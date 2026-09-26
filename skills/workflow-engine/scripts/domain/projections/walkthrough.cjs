@@ -30,8 +30,8 @@ const SCREENS_DIR = path.join(CONTENT_DIR, 'screens');
 const TOPICS_DIR = path.join(CONTENT_DIR, 'topics');
 
 const PROSE_INSTRUCTION = 'emit verbatim as markdown (not a code block)';
-const DIAGRAM_INSTRUCTION = 'emit verbatim as a code block';
-const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const DIAGRAM_INSTRUCTION = 'emit verbatim as a text code block (```text fence)';
+const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
 
 const ORIGINS = ['first-run', 'help'];
 

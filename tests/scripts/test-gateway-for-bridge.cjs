@@ -340,7 +340,7 @@ describe('workflow-bridge format', () => {
     ].join('\n'));
     // The menu itself is the revisit-phases render surface, filtered the same way.
     assert.strictEqual(renderSurface(dir, 'revisit-phases', { dotpath: 'rename-api' }), [
-      "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',

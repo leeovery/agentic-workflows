@@ -97,9 +97,9 @@ function selectionSections(type, units, counts) {
   if (closed) menuLines.push(cmdOption('v', 'view', cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage));
 
-  return section('DISPLAY: selection', 'emit verbatim as a code block', disp.join('\n'))
+  return section('DISPLAY: selection', 'emit verbatim as a text code block (```text fence)', disp.join('\n'))
     + '\n'
-    + section('MENU: selection', "emit verbatim as markdown, then STOP for the user's response", menuFrame(menuLines));
+    + section('MENU: selection', "emit verbatim as markdown (not a code block), then STOP for the user's response", menuFrame(menuLines));
 }
 
 /** Per-type wording for the invalid-selection terminal display. */
@@ -120,7 +120,7 @@ function selectionNotFound(type, workUnit) {
   const [singular, plural] = NOT_FOUND[type] || [type, `${type}s`];
   return section(
     'DISPLAY: not found',
-    'emit verbatim as a code block, then STOP — terminal condition',
+    'emit verbatim as a text code block (```text fence), then STOP — terminal condition',
     `No active ${singular} named "${workUnit}" found.\n\nRun /workflow-start to see available ${plural} or begin a new one.`,
   );
 }

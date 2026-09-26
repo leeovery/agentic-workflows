@@ -35,9 +35,9 @@
 // the action that follows in the same turn.
 // ---------------------------------------------------------------------------
 
-const { section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption } = require('./surfaces.cjs');
 
-const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
 
 /** The blocked-tasks stop menu. Static by design. @returns {string} */
 function blockedTasksMenu() {
@@ -63,7 +63,7 @@ function taskGateSection(gateMode) {
   if (gateMode !== 'gated') {
     return section(
       'DISPLAY: task gate auto-approved',
-      `after the result summary: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after the result summary'),
       'Task approved [auto]. Committing and moving to the next task.',
     );
   }
@@ -94,7 +94,7 @@ function fixGateSection(gateMode, thresholdReached) {
   if (!thresholdReached && gateMode !== 'gated') {
     return section(
       'DISPLAY: fix gate auto-accepted',
-      `after the findings summary: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after the findings summary'),
       'Fix analysis accepted [auto]. Passing the findings to the executor.',
     );
   }

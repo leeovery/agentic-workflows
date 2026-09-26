@@ -150,7 +150,7 @@ describe('workflow-continue-cross-cutting format', () => {
       '  logging (last phase: specification)',
       '=== CANCELLED (1) ===',
       '  naming (last phase: none)',
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 cross-cutting concern(s) in progress',
       '  ├─ 1. Caching',
       '  │   Specification (In-Progress)',
@@ -159,7 +159,7 @@ describe('workflow-continue-cross-cutting format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which cross-cutting concern would you like to continue?`**',
       '',
@@ -220,7 +220,7 @@ describe('workflow-continue-cross-cutting CLI dispatch', () => {
     createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { 'caching': { status: 'completed' } } }, specification: { items: { 'caching': { status: 'in-progress' } } } } });
     const later = run(['view', 'caching']);
     assert.strictEqual(later.status, 0);
-    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown \(not a code block\)\) ===\n· · ·/);
   });
 
   it('select answers the select step: the dump, then the pick list and its menu', () => {

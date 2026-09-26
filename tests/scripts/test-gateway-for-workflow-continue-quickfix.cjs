@@ -169,7 +169,7 @@ describe('workflow-continue-quickfix format', () => {
       '  shipped (last phase: review)',
       '=== CANCELLED (1) ===',
       '  dropped (last phase: scoping)',
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 quick-fix(es) in progress',
       '  ├─ 1. Bump Dep',
       '  │   Scoping (In-Progress)',
@@ -178,7 +178,7 @@ describe('workflow-continue-quickfix format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which quick-fix would you like to continue?`**',
       '',
@@ -239,7 +239,7 @@ describe('workflow-continue-quickfix CLI dispatch', () => {
     createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'completed' } } }, implementation: { items: { 'rename-api': { status: 'in-progress' } } } } });
     const later = run(['view', 'rename-api']);
     assert.strictEqual(later.status, 0);
-    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown \(not a code block\)\) ===\n· · ·/);
   });
 
   it('select answers the select step: the dump, then the pick list and its menu', () => {

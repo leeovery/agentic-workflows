@@ -43,7 +43,7 @@ const fs = require('fs');
 const path = require('path');
 const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
-const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, timedInstruction, callout } = require('./projections/surfaces.cjs');
 
 // Every phase a session sits in — the schema's list minus discovery.
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
@@ -409,7 +409,7 @@ function deferralSection(scan) {
   const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${scan.work_unit} ${first.phase} ${first.topic}`;
   return section(
     'DISPLAY: presence deferral',
-    `only at an analysis deferral: ${CONTINUE_INSTRUCTION}`,
+    timedInstruction(CONTINUE_INSTRUCTION, 'only at an analysis deferral'),
     callout(`Analyses deferred — ${held.length} session(s): ${names}. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with \`${release}\`.`),
   );
 }

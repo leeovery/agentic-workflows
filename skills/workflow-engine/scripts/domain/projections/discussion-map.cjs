@@ -99,8 +99,8 @@ function discussionMap(topic, manifest) {
 function discussionDeferGate(topic, manifest) {
   const count = mapState(manifest, topic).unresolved.length;
   const one = count === 1;
-  return section('DISPLAY: discussion map', 'emit verbatim as a code block', discussionMap(topic, manifest))
-    + section('MENU: defer gate', "emit verbatim as markdown, then STOP for the user's response", menu(
+  return section('DISPLAY: discussion map', 'emit verbatim as a text code block (```text fence)', discussionMap(topic, manifest))
+    + section('MENU: defer gate', "emit verbatim as markdown (not a code block), then STOP for the user's response", menu(
       one
         ? 'There is still 1 subtopic not yet decided — shown on the map above.'
         : `There are still ${count} subtopics not yet decided — shown on the map above.`,

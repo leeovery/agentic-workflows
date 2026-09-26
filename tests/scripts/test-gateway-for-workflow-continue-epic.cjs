@@ -1486,7 +1486,7 @@ describe('workflow-continue-epic format (index dump)', () => {
       '  shipped (last phase: review)',
       '=== CANCELLED (1) ===',
       '  abandoned (last phase: research)',
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 epic(s) in progress',
       '  ├─ 1. V1',
       '  │   Research, Discussion',
@@ -1495,7 +1495,7 @@ describe('workflow-continue-epic format (index dump)', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which epic would you like to continue?`**',
       '',
@@ -2057,7 +2057,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     const gate = run(['in-session-gate', 'v1', '1']);
     assert.strictEqual(gate.status, 0, gate.stderr);
     assert.ok(gate.stdout.includes(
-      "=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user's response) ==="
+      "=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="
     ), gate.stdout);
     const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
     assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);

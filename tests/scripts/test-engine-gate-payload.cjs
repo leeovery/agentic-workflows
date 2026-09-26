@@ -15,7 +15,7 @@ const { execFile, spawnSync } = require('child_process');
 
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { GATE_MARKER, announced, auditGate } = require('./gate-audit.cjs');
+const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate, gateBlock, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
@@ -56,7 +56,7 @@ function runGateway(dir, gateway, args, env = {}) {
 function collect(compose) {
   return announced(() => {
     openGate();
-    return gateOf(section('MENU: builder', 'emit verbatim as markdown', compose()));
+    return gateOf(section('MENU: builder', 'emit verbatim as markdown (not a code block)', compose()));
   });
 }
 
@@ -365,7 +365,7 @@ describe('gate payload — a gateway menu', () => {
     seedHeldEpic(dir);
     const seen = markers(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
 
-    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU (emit verbatim as markdown) ===']);
+    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU (emit verbatim as markdown (not a code block)) ===']);
     assert.ok(seen.slice(0, -2).every((m) => !m.startsWith('=== GATE') && !m.startsWith('=== MENU')), seen.join('\n'));
   });
 
@@ -818,7 +818,7 @@ describe('gate payload — the audit', () => {
   /** A held row with a tail and a cue, rendered announced. */
   const heldRow = () => announced(() => {
     openGate();
-    return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
+    return section('MENU: audit', 'emit verbatim as markdown (not a code block)', menu('Pick one?', [
       cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
     ]));
   });
@@ -855,7 +855,7 @@ describe('gate payload — the audit', () => {
   it('reads every part as the text it states — a part still carrying its markup or its escapes fails', () => {
     const out = announced(() => {
       openGate();
-      return section('MENU: audit', 'emit verbatim as markdown', menu('Pick one?', [
+      return section('MENU: audit', 'emit verbatim as markdown (not a code block)', menu('Pick one?', [
         cmdOption('1', null, { head: 'Fix user\\_id in \\*auth\\*', tail: 'blocks `resolveUser`', cue: 'input `moved`', holder: 'in \\_session\\_' }),
       ]));
     });
@@ -872,5 +872,33 @@ describe('gate payload — the audit', () => {
     for (const [what, change] of drifts) {
       assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);
     }
+  });
+});
+
+describe('section markers — the render forms', () => {
+  it('a marker opens its instruction on one of the four forms, whatever behaviour follows', () => {
+    const out = [
+      section('TITLE', "emit verbatim as markdown (not a code block) — the view's chrome heading", '# **`■ Audit`**'),
+      section('DISPLAY: tree', 'emit verbatim as a text code block (```text fence), directly above the menu', 'a tree'),
+      section('DISPLAY: blocker', 'emit verbatim as a properties code block (```properties fence)', '⚑ Blocked'),
+      section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', '+ added'),
+      section('DATA', 'reason from this — never display or parse the sections below', 'count: 1'),
+    ].join('\n');
+    assert.doesNotThrow(() => auditMarkers(out, 'the four forms'));
+  });
+
+  it('a bare code block, a form with no fence, or the moment ahead of the form fails', () => {
+    const legacy = [
+      'emit verbatim as a code block',
+      'emit verbatim as a code block, directly above the menu',
+      'emit verbatim as markdown',
+      "emit verbatim as markdown, then STOP for the user's response",
+      'emit verbatim as a properties code block — ```properties fence',
+      'after the result summary: emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs',
+    ];
+    for (const instruction of legacy) {
+      assert.throws(() => auditMarkers(section('DISPLAY: legacy', instruction, 'body'), instruction), /names no render form/, instruction);
+    }
+    assert.throws(() => auditMarkers('=== DISPLAY (emit verbatim as a code block) ===\nbody\n', 'gateway'), /names no render form/);
   });
 });
