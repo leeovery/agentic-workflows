@@ -200,6 +200,21 @@ describe('knowledge store', () => {
     assert.strictEqual(hits.length, 1);
   });
 
+  it('filtered reads on an empty store find nothing', async () => {
+    const db = await createStore(STUB_DIMS);
+    assert.strictEqual(await countByFilter(db, { phase: { eq: 'discussion' } }), 0);
+    const removed = await removeByIdentity(db, { work_unit: 'wu', phase: 'discussion', topic: 't' });
+    assert.strictEqual(removed, 0);
+  });
+
+  it('a filter matching every document reads and removes them all', async () => {
+    const db = await createStore(STUB_DIMS);
+    for (let i = 0; i < 3; i++) await insertDocument(db, makeDoc({ id: `all-${i}` }));
+    assert.strictEqual(await countByFilter(db, { work_unit: { eq: 'auth-flow' } }), 3);
+    assert.strictEqual(await removeByFilter(db, { work_unit: { eq: 'auth-flow' } }), 3);
+    assert.strictEqual((await searchAllFulltext(db)).length, 0);
+  });
+
   it('removeByIdentity requires all three fields', async () => {
     const db = await createStore(STUB_DIMS);
     await assert.rejects(() => removeByIdentity(db, { work_unit: 'x', phase: 'y' }));
