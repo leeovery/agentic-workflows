@@ -1252,7 +1252,7 @@ describe('engine boot system-config detection', () => {
   });
 });
 
-describe('engine boot session hooks', () => {
+describe('engine boot: the project settings — session hooks and the function-hooks flag', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
@@ -1400,7 +1400,9 @@ describe('engine boot session hooks', () => {
 
   it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
-    assert.strictEqual(bootWith({ skipHooks: true }).session_hooks_installed, false);
+    const held = bootWith({ skipHooks: true });
+    assert.strictEqual(held.session_hooks_installed, false);
+    assert.strictEqual(held.gate_surface, 'off', 'and no flag written');
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     recordChoice(true);
     assert.strictEqual(bootWith({ skipHooks: true }).session_hooks_installed, false);
@@ -1417,7 +1419,95 @@ describe('engine boot session hooks', () => {
     assert.strictEqual(res.warnings.length, 2);
     assert.match(res.warnings[0], /session hooks not installed: \.claude\/settings\.json is not valid JSON/);
     assert.match(res.warnings[1], /gate surface not synced: \.claude\/settings\.json is not valid JSON/);
+    assert.strictEqual(res.gate_surface, 'off', 'nothing written, so nothing owed a restart');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
+  });
+
+  /** The fixture's hooks with the function-hooks flag taken away — a project boot has not yet reached. */
+  const HOOKS_ONLY = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK] }] } };
+  /** @param {object} value */
+  const json = (value) => JSON.stringify(value, null, 2) + '\n';
+  /** HEAD's subject and the sorted paths it touched. */
+  function head() {
+    return {
+      subject: git(fix.project, ['log', '-1', '--pretty=%s']).trim(),
+      files: git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
+    };
+  }
+
+  it('a project without the function-hooks flag gets it, committed confined, and reports restart — the next boot writes nothing and reports off', () => {
+    commitSettings(json(HOOKS_ONLY));
+    fs.writeFileSync(path.join(fix.project, 'peer-dirt.txt'), 'a peer session\'s file\n');
+    const res = bootWith();
+    assert.strictEqual(res.gate_surface, 'restart');
+    assert.deepStrictEqual(res.warnings, []);
+    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
+    assert.match(git(fix.project, ['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the commit takes its own path and nothing else');
+
+    const at = git(fix.project, ['rev-parse', 'HEAD']);
+    assert.strictEqual(bootWith().gate_surface, 'off', 'the flag is there, and the mod did not announce itself');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), at, 'nothing new to commit');
+  });
+
+  it('the mod announced in boot\'s environment reports on — the boot that wrote the flag included', () => {
+    commitSettings(json(HOOKS_ONLY));
+    const announced = { env: { WORKFLOWS_GATE_SURFACE: '1' } };
+    assert.strictEqual(bootWith(announced).gate_surface, 'on', 'the flag came from elsewhere — the user\'s settings, the shell');
+    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } }, 'and the project gets it all the same');
+    assert.strictEqual(bootWith(announced).gate_surface, 'on');
+    assert.strictEqual(bootWith({ env: { WORKFLOWS_GATE_SURFACE: '0' } }).gate_surface, 'off', 'only `1` is the announcement');
+  });
+
+  it('the flag joins every other env key and every other setting, all standing', () => {
+    const permissions = { allow: ['Bash(ls)'] };
+    commitSettings(json({ permissions, env: { EDITOR: 'vim' }, ...HOOKS_ONLY }));
+    assert.strictEqual(bootWith().gate_surface, 'restart');
+    assert.deepStrictEqual(settings(), { permissions, env: { EDITOR: 'vim', [FLAG]: '1' }, ...HOOKS_ONLY });
+  });
+
+  it('the flag never comes out — not when the session hooks beside it move', () => {
+    commitSettings(LABELS_ON);
+    const res = bootWith();
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.strictEqual(res.gate_surface, 'off');
+    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
+  });
+
+  it('a settings commit git refuses is a warning, never a block — the flag is on disk and the restart still owed', () => {
+    commitSettings(json(HOOKS_ONLY));
+    writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(path.join(fix.project, '.git/hooks/pre-commit'), 0o755);
+    const res = bootWith();
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.gate_surface, 'restart');
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^project settings commit failed: /);
+    assert.deepStrictEqual(settings(), { ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    assert.strictEqual(head().subject, 'settings', 'nothing landed');
+  });
+
+  it('the flag is read inside the hold its write takes — one a peer wrote while boot waited on the lock is never written twice', async () => {
+    commitSettings(json(HOOKS_ONLY));
+    const lock = path.join(fix.project, '.workflows', '.project-lock');
+    fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
+    const env = { ...process.env };
+    delete env.TMUX;
+    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
+    const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
+    let stdout = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    const exit = new Promise((resolve) => child.on('close', resolve));
+
+    await sleep(500);
+    const peer = json({ ...HOOKS_ONLY, env: { [FLAG]: '1' } });
+    writeFile(fix.project, '.claude/settings.json', peer);
+    fs.unlinkSync(lock);
+    assert.strictEqual(await exit, 0);
+    assert.strictEqual(JSON.parse(stdout.trim()).gate_surface, 'off');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), peer);
+    assert.strictEqual(head().subject, 'settings', 'nothing of boot\'s landed');
   });
 });
 
