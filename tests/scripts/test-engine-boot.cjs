@@ -1278,11 +1278,11 @@ describe('engine boot: the project settings — session hooks and the function-h
   }
 
   /** Boot with the tmux identity pinned; `tmux` absent unless given; `env` layered over the process's own. */
-  function bootWith({ tmux = false, skipHooks = false, env: extra = {} } = {}) {
+  function bootWith({ tmux = false, holdSettings = false, env: extra = {} } = {}) {
     const env = {
       ...extra,
       TMUX: tmux ? '/fake/sock,123,7' : undefined,
-      WORKFLOWS_SKIP_SESSION_HOOKS: skipHooks ? '1' : undefined,
+      WORKFLOWS_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
     };
     return runEngine(stubbed, fix.project, ['boot'], env);
   }
@@ -1370,7 +1370,7 @@ describe('engine boot: the project settings — session hooks and the function-h
     fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
     const env = { ...process.env };
     delete env.TMUX;
-    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
+    delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
     const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -1398,14 +1398,14 @@ describe('engine boot: the project settings — session hooks and the function-h
     });
   });
 
-  it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
+  it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
-    const held = bootWith({ skipHooks: true });
+    const held = bootWith({ holdSettings: true });
     assert.strictEqual(held.session_hooks_installed, false);
     assert.strictEqual(held.gate_surface, 'off', 'and no flag written');
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     recordChoice(true);
-    assert.strictEqual(bootWith({ skipHooks: true }).session_hooks_installed, false);
+    assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
   });
@@ -1494,7 +1494,7 @@ describe('engine boot: the project settings — session hooks and the function-h
     fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
     const env = { ...process.env };
     delete env.TMUX;
-    delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
+    delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
     const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });

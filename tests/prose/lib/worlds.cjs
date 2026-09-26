@@ -137,7 +137,7 @@ function recipeOverlay() {
     // Boot installs the session hooks and the function-hooks flag into
     // `.claude/settings.json` — a file a snapshot holds as world state. The
     // engine's test-only switch keeps a recipe's boot out of it.
-    WORKFLOWS_SKIP_SESSION_HOOKS: '1',
+    WORKFLOWS_HOLD_PROJECT_SETTINGS: '1',
     // Session labels read the real tmux identity — a recipe's engine calls
     // must never rename the terminal session the suite happens to run in.
     TMUX: undefined,

@@ -633,8 +633,8 @@ describe('engine session label-config', () => {
     assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
   });
 
-  it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_HOOKS: '1' } });
+  it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_HOLD_PROJECT_SETTINGS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');

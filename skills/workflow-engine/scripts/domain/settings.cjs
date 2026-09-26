@@ -33,7 +33,7 @@ function isObject(v) {
  * @returns {boolean}
  */
 function settingsHeld() {
-  return Boolean(process.env.WORKFLOWS_SKIP_SESSION_HOOKS);
+  return Boolean(process.env.WORKFLOWS_HOLD_PROJECT_SETTINGS);
 }
 
 /**

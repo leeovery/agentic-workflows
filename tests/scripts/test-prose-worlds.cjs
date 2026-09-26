@@ -315,12 +315,12 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       /cannot strip the session hooks: .*not valid JSON/);
   });
 
-  it('a live boot — no skip switch, the walker\'s real environment — finds the hooks it wants and writes nothing', function () {
+  it('a live boot — no settings hold, the walker\'s real environment — finds the hooks it wants and writes nothing', function () {
     if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(NATIVE_CASE);
     try {
       const env = worlds.recipeEnv();
-      delete env.WORKFLOWS_SKIP_SESSION_HOOKS;
+      delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
       const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
       const before = head();
       const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
@@ -335,9 +335,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     }
   });
 
-  it('the recipe env carries the engine\'s test-only hook switch, so a recipe\'s boot never writes a world\'s settings', () => {
+  it('the recipe env carries the engine\'s test-only settings hold, so a recipe\'s boot never writes a world\'s settings', () => {
     const env = worlds.recipeEnv();
-    assert.strictEqual(env.WORKFLOWS_SKIP_SESSION_HOOKS, '1');
+    assert.strictEqual(env.WORKFLOWS_HOLD_PROJECT_SETTINGS, '1');
     assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
     assert.ok(!('TMUX' in env), 'and no tmux identity');
   });
