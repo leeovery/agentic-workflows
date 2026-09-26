@@ -17,6 +17,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { RENDER_FORMS: FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -941,20 +942,14 @@ function checkQuestionsSetGatesAside(files) {
 // ---------------------------------------------------------------------------
 // Check 24 — a prose-authored block names its form one way. Every rendering
 // instruction ("> *Output the next fenced block as …:*") opens on one of the
-// four forms — markdown (not a code block), a text code block (```text
-// fence), a properties code block (```properties fence), a diff code block
-// (```diff fence) — with at most a " — note" before its closing ":*", and the
-// fence beneath it carries the tag its form names, bare for markdown. A line
+// four forms — the engine's, taken from surfaces.cjs so they are said in one
+// place — with at most a " — note" before its closing ":*", and the fence
+// beneath it carries the tag its form names, bare for markdown. A line
 // naming the instruction in any other shape is a legacy or reworded form.
 // Fenced content — an example of an instruction — is out of scope.
 // ---------------------------------------------------------------------------
 
-const RENDER_FORMS = [
-  ['markdown (not a code block)', ''],
-  ['a text code block (```text fence)', 'text'],
-  ['a properties code block (```properties fence)', 'properties'],
-  ['a diff code block (```diff fence)', 'diff'],
-];
+const RENDER_FORMS = Object.values(FORMS).map((form) => [form, /```(\w+) fence/.exec(form)?.[1] ?? '']);
 const RENDER_INSTRUCTION = /^\s*(?:\d+\.\s+)?> \*Output the next fenced block as (.*):\*$/;
 const FENCE_OPENER = /^\s*(?:\d+\.\s+)?```(\S*)\s*$/;
 

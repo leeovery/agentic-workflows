@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
 const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
@@ -958,6 +958,17 @@ describe('epic-soft-gate', () => {
 });
 
 describe('surfaces primitives', () => {
+  it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
+    assert.strictEqual(timedInstruction('text', 'after the result summary', AUTO_GATE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs');
+    assert.strictEqual(timedInstruction('text', 'only at an analysis deferral', CONTINUE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs');
+    assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
+      "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
+    assert.strictEqual(timedInstruction('text', 'after the response'),
+      'emit verbatim as a text code block (```text fence) after the response');
+  });
+
   it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
     assert.strictEqual(
       menu('Approve?', ['**`y/yes`**', '**`n/no`**']),
@@ -5015,20 +5026,25 @@ describe('single-source invariants', () => {
       'option lines must build through cmdOption/rangeOption — hand-formatted options reintroduce the drift class');
   });
 
-  it('the continuation instruction exists in exactly one module — surfaces.cjs', () => {
+  it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
     const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
-    const offenders = [];
+    const { RENDER_FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+    const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the workflow instructs'];
+    /** @type {Record<string, string[]>} */
+    const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('do not stop; continue as the workflow instructs')) {
-          offenders.push(path.relative(scriptsRoot, p));
+        else if (entry.isFile() && p.endsWith('.cjs')) {
+          const src = fs.readFileSync(p, 'utf8');
+          for (const phrase of phrases) if (src.includes(phrase)) homes[phrase].push(path.relative(scriptsRoot, p));
         }
       }
     })(scriptsRoot);
-    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
-      'continuation phrasing must ride CONTINUE_INSTRUCTION — a second literal drifts on the next reword');
+    const surfaces = [path.join('domain', 'projections', 'surfaces.cjs')];
+    assert.deepStrictEqual(homes, Object.fromEntries(phrases.map((phrase) => [phrase, surfaces])),
+      'a marker instruction is composed from surfaces.cjs (emitAs, timedInstruction, MENU_INSTRUCTION, the clauses) — a second literal drifts on the next reword');
   });
 
   // No equivalent invariant for the ⚑ callout: the glyph legitimately appears

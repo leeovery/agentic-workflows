@@ -9,6 +9,7 @@
 // or reworded form comes back.
 
 const assert = require('node:assert');
+const { RENDER_FORMS: FORMS, emitAs } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
@@ -27,12 +28,7 @@ const NOTE_SEPARATOR = ' · ';
 const RECOMMENDED_MARKER = ' (recommended)';
 
 const SHOWN_MARKER = /^=== (?:TITLE|DISPLAY|MENU)\b.*? \((.*)\) ===$/;
-const RENDER_FORMS = [
-  'markdown (not a code block)',
-  'a text code block (```text fence)',
-  'a properties code block (```properties fence)',
-  'a diff code block (```diff fence)',
-].map((form) => `emit verbatim as ${form}`);
+const RENDER_FORMS = Object.keys(FORMS).map((form) => emitAs(form));
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */

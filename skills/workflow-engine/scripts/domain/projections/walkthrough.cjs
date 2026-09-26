@@ -19,7 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { section, titleSection, dataSection, menu, cmdOption, promptOption } = require('./surfaces.cjs');
+const { section, titleSection, dataSection, menu, cmdOption, promptOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { DIAGRAM_KINDS, isDiagramKind, renderDiagram } = require('./walkthrough-diagrams.cjs');
 
@@ -29,9 +29,8 @@ const CONTENT_DIR = path.join(__dirname, '..', '..', '..', 'content', 'walkthrou
 const SCREENS_DIR = path.join(CONTENT_DIR, 'screens');
 const TOPICS_DIR = path.join(CONTENT_DIR, 'topics');
 
-const PROSE_INSTRUCTION = 'emit verbatim as markdown (not a code block)';
-const DIAGRAM_INSTRUCTION = 'emit verbatim as a text code block (```text fence)';
-const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
+const PROSE_INSTRUCTION = emitAs('markdown');
+const DIAGRAM_INSTRUCTION = emitAs('text');
 
 const ORIGINS = ['first-run', 'help'];
 
