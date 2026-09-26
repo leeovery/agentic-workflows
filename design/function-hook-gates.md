@@ -586,8 +586,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     removed (#1294);
   - display delivery on top of that — #1303 the workflow session's
     harness (R20) → #1304 what a step shows reaches the person, with the
-    dispatch sentence (R21, R22) → displays in fences that name their
-    language (R23).
+    dispatch sentence (R21, R22) → #1310 one vocabulary for how a block
+    renders, every code block naming its fence (R23).
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
