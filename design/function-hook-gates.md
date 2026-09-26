@@ -431,7 +431,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   On send the band writes `.workflows/.cache/.gates/sent.json` (`{ answer,
   question, label }`); the rows plugin pairs it with the new row the first
   time it draws it (matching answer), remembers the line by message id in
-  `$.store` so scrolling and a resume keep it, and spends the record.
+  the conversation's folder (`rows.json`, R24) so scrolling and a resume
+  keep it, and spends the record.
   Expanded rows (ctrl+o) and every other row pass through. The grey sender
   line stays, and the model still reads Claude Code's framing — by design.
   A send that fails or is dropped writes `null` over the record, so no row
@@ -614,8 +615,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   transcript path, written by `engine conversation end`, which the
   session-end hook runs from the path Claude Code hands every hook, and
   only where the folder exists; the tmux label's resume position (moved
-  here by migration 061); and the gate the mod saves for a resume (R6),
-  `null` when there is none to keep. The mod names the folder the engine's
+  here by migration 061); the gate the mod saves for a resume (R6),
+  `null` when there is none to keep; and the rows mod's redrawn answers
+  (`rows.json`, R15). The mod names the folder the engine's
   way, so both always reach the same one. One tidy-up, at boot, deletes a
   folder once the transcript file it names is gone: whatever retention the
   person set — thirty days, ten years — is the retention these records
