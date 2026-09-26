@@ -25,9 +25,9 @@ Each agent receives:
 3. **Sibling areas** — the full area list, so the agent leaves adjacent ground to its neighbours
 4. **For a deepened area** (its doc `.workflows/.baseline/{area}.md` already exists): the doc path and the deepen brief — investigate the named deeper ground only; the doc holds what the first pass covered
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Researching the pending areas — one agent per area, in parallel.
 This runs against the code only; nothing is asked of you yet.
 ```
