@@ -281,6 +281,7 @@ Commands:
   render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
   render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
+  render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
   render validation-gate   <wu.investigation.topic> --variant root-cause
   render validation-report <wu.investigation.topic> --file <payload.json> --variant root-cause|fix
@@ -323,6 +324,8 @@ Commands:
   render cross-cutting-references --file <payload.json>
   render plan-format-gate [--variant select --file <payload.json>]
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
+  render complexity-gate  <wu> --file <payload.json>
+  render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>
   render spec-confirm-gate <wu.specification.topic> --variant create|continue|refine|unify [--file <payload.json>]
