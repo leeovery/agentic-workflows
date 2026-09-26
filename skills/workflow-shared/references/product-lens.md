@@ -17,7 +17,7 @@ An engineer who knows the product but not this codebase. Full engineering fluenc
 ## Register
 
 - **The manifestation leads** — altitude's rule, applied to a report: what you'd see happen and where — the page, command, or flow — then the cause as behaviour ("it asks X when it should ask Y"), the mechanism after it, never in its place.
-- **Narrative markdown prose**, not fixed-width fragments in a code block. Bold section leads are fine.
+- **Narrative prose, as markdown (not a code block)** — never fixed-width fragments. Bold section leads are fine.
 - **`file:line` refs as anchors.** Keep them — subordinate to the story, never its spine.
 
 ## Depth

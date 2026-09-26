@@ -67,7 +67,7 @@ Read the file and render its full content as markdown (not a code block), so the
 {item.full_content}
 ```
 
-Emit the file content as-is — it is markdown and renders as such; its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
+Emit the file content as-is — its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
 
 → Return to **B. Action Menu**.
 

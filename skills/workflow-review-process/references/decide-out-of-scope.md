@@ -28,7 +28,7 @@ Anything the verdicts return as `already-done`, `stale` or `wrong` is dropped fr
 
 #### If nothing survives
 
-State in one markdown sentence that the accumulated findings no longer hold against the code, and why.
+State in one sentence, written as markdown (not a code block), that the accumulated findings no longer hold against the code, and why.
 
 Delete the field — the set is decided:
 
@@ -64,6 +64,6 @@ Delete the field — decided, whichever way each finding went:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
 ```
 
-State in one markdown sentence what was filed and what was dropped.
+State in one sentence, written as markdown (not a code block), what was filed and what was dropped.
 
 → Return to caller.
