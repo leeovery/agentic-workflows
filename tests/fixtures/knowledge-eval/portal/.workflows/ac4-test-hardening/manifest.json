@@ -1,0 +1,82 @@
+{
+  "name": "ac4-test-hardening",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-28",
+  "description": "Add drift-mirror comment in captureAndCommit and an inline negative-control sub-test for AC4 in cmd/bootstrap/eager_signal_hydrate_integration_test.go",
+  "phases": {
+    "specification": {
+      "items": {
+        "ac4-test-hardening": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "ac4-test-hardening": {
+          "status": "completed",
+          "spec_commit": "aac2b0a3f2f051ef3f4aeeb05241d0a52ff91a4a",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "ac4-test-hardening-1-1": "tick-fb718c",
+            "ac4-test-hardening-1-2": "tick-7ad1a9"
+          },
+          "external_id": "tick-dad5a6"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "ac4-test-hardening": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "ac4-test-hardening": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "ac4-test-hardening-1-1",
+            "ac4-test-hardening-1-2"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-28"
+}

@@ -1,0 +1,169 @@
+{
+  "name": "persistent-no-host-terminal-banner",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-07-21",
+  "description": "Split the picker proactive no-host-terminal banner by identity (drop for NULL/remote, keep for named unsupported) and disable multi-select outright on unsupported terminals via a transient self-clearing flash, hiding m from the help keymap when unavailable",
+  "phases": {
+    "investigation": {
+      "items": {
+        "persistent-no-host-terminal-banner": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "persistent-no-host-terminal-banner": {
+          "status": "completed",
+          "sources": {
+            "investigation": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-22",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-input-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "persistent-no-host-terminal-banner": {
+          "status": "completed",
+          "spec_commit": "56c0a1b94306ae99478d534ba820e6687542e4a3",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 1,
+          "phase": 4,
+          "task": null,
+          "task_map": {
+            "persistent-no-host-terminal-banner-1-1": "tick-8c87fb",
+            "persistent-no-host-terminal-banner-1": "tick-7b8028",
+            "persistent-no-host-terminal-banner-1-2": "tick-da2316",
+            "persistent-no-host-terminal-banner-1-3": "tick-ee3a43",
+            "persistent-no-host-terminal-banner-2-1": "tick-68e162",
+            "persistent-no-host-terminal-banner-2": "tick-b3a546",
+            "persistent-no-host-terminal-banner-2-2": "tick-ad5a58",
+            "persistent-no-host-terminal-banner-2-3": "tick-bf8fcc",
+            "persistent-no-host-terminal-banner-3-1": "tick-45dc48",
+            "persistent-no-host-terminal-banner-3": "tick-1b7793",
+            "persistent-no-host-terminal-banner-3-2": "tick-a0b82f",
+            "persistent-no-host-terminal-banner-4": "tick-cf46d4",
+            "persistent-no-host-terminal-banner-4-1": "tick-2b34c3"
+          },
+          "external_id": "tick-4427fd",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "persistent-no-host-terminal-banner": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 2,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 4,
+          "current_task": null,
+          "completed_tasks": [
+            "persistent-no-host-terminal-banner-1-1",
+            "persistent-no-host-terminal-banner-1-2",
+            "persistent-no-host-terminal-banner-1-3",
+            "persistent-no-host-terminal-banner-2-1",
+            "persistent-no-host-terminal-banner-2-2",
+            "persistent-no-host-terminal-banner-2-3",
+            "persistent-no-host-terminal-banner-3-1",
+            "persistent-no-host-terminal-banner-3-2",
+            "persistent-no-host-terminal-banner-4-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "persistent-no-host-terminal-banner": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "persistent-no-host-terminal-banner-1-1",
+            "persistent-no-host-terminal-banner-1-2",
+            "persistent-no-host-terminal-banner-1-3",
+            "persistent-no-host-terminal-banner-2-1",
+            "persistent-no-host-terminal-banner-2-2",
+            "persistent-no-host-terminal-banner-2-3",
+            "persistent-no-host-terminal-banner-3-1",
+            "persistent-no-host-terminal-banner-3-2",
+            "persistent-no-host-terminal-banner-4-1"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-16-persistent-no-host-terminal-banner.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-07-21T20:42:44Z"
+    }
+  ],
+  "completed_at": "2026-07-22"
+}

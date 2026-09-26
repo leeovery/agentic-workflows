@@ -1,0 +1,350 @@
+{
+  "name": "lazy-resume-on-attach",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-09-16",
+  "description": "Restored panes replay as today, but the resume hook is held behind an in-pane confirmation prompt instead of firing at boot — with a preference for eager or lazy resumption.",
+  "phases": {
+    "discussion": {
+      "items": {
+        "lazy-resume-on-attach": {
+          "status": "completed",
+          "subtopics": {
+            "prompt-surface": {
+              "status": "decided",
+              "parent": null
+            },
+            "decline-semantics": {
+              "status": "decided",
+              "parent": null
+            },
+            "prompt-persistence": {
+              "status": "decided",
+              "parent": null
+            },
+            "trigger-and-timing": {
+              "status": "decided",
+              "parent": null
+            },
+            "eager-lazy-preference": {
+              "status": "decided",
+              "parent": null
+            },
+            "restore-pipeline-integration": {
+              "status": "decided",
+              "parent": null
+            },
+            "waiting-pane-capture": {
+              "status": "decided",
+              "parent": null
+            },
+            "render-trigger": {
+              "status": "decided",
+              "parent": null
+            },
+            "pending-pane-state": {
+              "status": "decided",
+              "parent": null
+            },
+            "panel-dismissal": {
+              "status": "decided",
+              "parent": null
+            },
+            "waiting-pane-mechanism": {
+              "status": "decided",
+              "parent": null
+            },
+            "pending-visibility": {
+              "status": "decided",
+              "parent": null
+            },
+            "panel-visual-design": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "lazy-resume-on-attach": {
+          "status": "completed",
+          "sources": {
+            "lazy-resume-on-attach": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 6,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-09-19",
+          "review_baseline_words": 8371,
+          "tracking": {
+            "review-claims-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-claims-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-claims-tracking-c5": "complete",
+            "review-input-tracking-c5": "complete",
+            "review-gap-analysis-tracking-c5": "complete",
+            "review-input-tracking-c6": "complete",
+            "review-gap-analysis-tracking-c6": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "lazy-resume-on-attach": {
+          "status": "completed",
+          "spec_commit": "d43d755a5a3fd7755ec32b1d031a335471efde4b",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 13,
+          "phase": 7,
+          "task": null,
+          "task_map": {
+            "lazy-resume-on-attach-1-1": "tick-b9944e",
+            "lazy-resume-on-attach-1": "tick-fb24da",
+            "lazy-resume-on-attach-1-2": "tick-711d73",
+            "lazy-resume-on-attach-1-3": "tick-6d9c49",
+            "lazy-resume-on-attach-1-4": "tick-2a784b",
+            "lazy-resume-on-attach-1-5": "tick-923e20",
+            "lazy-resume-on-attach-1-6": "tick-8da5c0",
+            "lazy-resume-on-attach-1-7": "tick-9493a7",
+            "lazy-resume-on-attach-2-1": "tick-ecf7fe",
+            "lazy-resume-on-attach-2": "tick-875568",
+            "lazy-resume-on-attach-2-2": "tick-268f1f",
+            "lazy-resume-on-attach-2-3": "tick-ea97fe",
+            "lazy-resume-on-attach-2-4": "tick-b3514f",
+            "lazy-resume-on-attach-2-5": "tick-13b0aa",
+            "lazy-resume-on-attach-3-1": "tick-567651",
+            "lazy-resume-on-attach-3": "tick-5c4318",
+            "lazy-resume-on-attach-3-2": "tick-7ec142",
+            "lazy-resume-on-attach-3-3": "tick-8b70d3",
+            "lazy-resume-on-attach-3-4": "tick-cbfffa",
+            "lazy-resume-on-attach-3-5": "tick-ce5f67",
+            "lazy-resume-on-attach-3-6": "tick-161f58",
+            "lazy-resume-on-attach-4-1": "tick-0ce3a8",
+            "lazy-resume-on-attach-4": "tick-3dcbaa",
+            "lazy-resume-on-attach-4-2": "tick-bafa83",
+            "lazy-resume-on-attach-4-3": "tick-9078b4",
+            "lazy-resume-on-attach-4-4": "tick-11a36d",
+            "lazy-resume-on-attach-4-5": "tick-71b703",
+            "lazy-resume-on-attach-4-6": "tick-c15167",
+            "lazy-resume-on-attach-4-7": "tick-104e82",
+            "lazy-resume-on-attach-5-1": "tick-8294a1",
+            "lazy-resume-on-attach-5": "tick-70d27e",
+            "lazy-resume-on-attach-5-2": "tick-bc0022",
+            "lazy-resume-on-attach-5-3": "tick-1b69d7",
+            "lazy-resume-on-attach-5-4": "tick-02e519",
+            "lazy-resume-on-attach-5-5": "tick-7f0ea9",
+            "lazy-resume-on-attach-5-6": "tick-6cb404",
+            "lazy-resume-on-attach-6-1": "tick-5d531b",
+            "lazy-resume-on-attach-6": "tick-25ae2a",
+            "lazy-resume-on-attach-6-2": "tick-9761fd",
+            "lazy-resume-on-attach-6-3": "tick-5f2afd",
+            "lazy-resume-on-attach-6-4": "tick-70ca46",
+            "lazy-resume-on-attach-6-5": "tick-84b607",
+            "lazy-resume-on-attach-6-6": "tick-dffb33",
+            "lazy-resume-on-attach-6-7": "tick-23983c",
+            "lazy-resume-on-attach-6-8": "tick-ff28c4",
+            "lazy-resume-on-attach-1-8": "tick-7b5d9b",
+            "lazy-resume-on-attach-2-6": "tick-77075b",
+            "lazy-resume-on-attach-3-7": "tick-174af4",
+            "lazy-resume-on-attach-3-8": "tick-7c0393",
+            "lazy-resume-on-attach-3-9": "tick-8af98c",
+            "lazy-resume-on-attach-3-10": "tick-84a398",
+            "lazy-resume-on-attach-4-8": "tick-aac423",
+            "lazy-resume-on-attach-4-9": "tick-501ae4",
+            "lazy-resume-on-attach-4-10": "tick-cf9613",
+            "lazy-resume-on-attach-4-11": "tick-15fa10",
+            "lazy-resume-on-attach-4-12": "tick-79884c",
+            "lazy-resume-on-attach-4-13": "tick-d425dd"
+          },
+          "storage_paths": [
+            ".tick/"
+          ],
+          "approvals": {
+            "structure": "2026-09-19",
+            "tasks": {
+              "p1": "2026-09-19",
+              "p2": "2026-09-19",
+              "p3": "2026-09-19",
+              "p4": "2026-09-19",
+              "p5": "2026-09-19",
+              "p6": "2026-09-19"
+            }
+          },
+          "staging": {},
+          "external_id": "tick-c8b4f2",
+          "tracking": {
+            "review-traceability-tracking-c1": "complete",
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-traceability-tracking-c5": "complete",
+            "review-integrity-tracking-c5": "complete",
+            "review-integrity-tracking-c6": "complete",
+            "review-traceability-tracking-c7": "complete",
+            "review-integrity-tracking-c7": "complete",
+            "review-integrity-tracking-c8": "complete",
+            "review-integrity-tracking-c9": "complete",
+            "review-traceability-tracking-c10": "complete",
+            "review-integrity-tracking-c10": "complete",
+            "review-traceability-tracking-c11": "complete",
+            "review-integrity-tracking-c11": "complete",
+            "review-traceability-tracking-c12": "complete",
+            "review-integrity-tracking-c12": "complete",
+            "review-traceability-tracking-c13": "complete",
+            "review-integrity-tracking-c13": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "lazy-resume-on-attach": {
+          "status": "in-progress",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "gated",
+          "consolidation_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 4,
+          "current_task": "lazy-resume-on-attach-5-1",
+          "completed_tasks": [
+            "lazy-resume-on-attach-1-1",
+            "lazy-resume-on-attach-1-2",
+            "lazy-resume-on-attach-1-3",
+            "lazy-resume-on-attach-1-4",
+            "lazy-resume-on-attach-1-5",
+            "lazy-resume-on-attach-1-6",
+            "lazy-resume-on-attach-1-7",
+            "lazy-resume-on-attach-1-8",
+            "lazy-resume-on-attach-2-1",
+            "lazy-resume-on-attach-2-2",
+            "lazy-resume-on-attach-2-3",
+            "lazy-resume-on-attach-2-4",
+            "lazy-resume-on-attach-2-5",
+            "lazy-resume-on-attach-2-6",
+            "lazy-resume-on-attach-3-1",
+            "lazy-resume-on-attach-3-2",
+            "lazy-resume-on-attach-3-3",
+            "lazy-resume-on-attach-3-4",
+            "lazy-resume-on-attach-3-5",
+            "lazy-resume-on-attach-3-6",
+            "lazy-resume-on-attach-3-7",
+            "lazy-resume-on-attach-3-8",
+            "lazy-resume-on-attach-3-9",
+            "lazy-resume-on-attach-3-10",
+            "lazy-resume-on-attach-4-1",
+            "lazy-resume-on-attach-4-2",
+            "lazy-resume-on-attach-4-3",
+            "lazy-resume-on-attach-4-4",
+            "lazy-resume-on-attach-4-5",
+            "lazy-resume-on-attach-4-6",
+            "lazy-resume-on-attach-4-7",
+            "lazy-resume-on-attach-4-8",
+            "lazy-resume-on-attach-4-9",
+            "lazy-resume-on-attach-4-10",
+            "lazy-resume-on-attach-4-11",
+            "lazy-resume-on-attach-4-12",
+            "lazy-resume-on-attach-4-13"
+          ],
+          "staging": {
+            "p1": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p2": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "p4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            }
+          },
+          "consolidated_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-08-21-lazy-resume-on-attach.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-09-16T14:47:16Z"
+    }
+  ]
+}

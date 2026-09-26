@@ -1,0 +1,86 @@
+{
+  "name": "drop-invalid-A-flag-from-attach-session-argv",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-19",
+  "description": "Remove invalid -A flag from tmux attach-session argv in cmd/open.go that breaks every outside-tmux attach on v0.5.1/v0.5.2",
+  "phases": {
+    "specification": {
+      "items": {
+        "drop-invalid-A-flag-from-attach-session-argv": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "drop-invalid-A-flag-from-attach-session-argv": {
+          "status": "completed",
+          "spec_commit": "4aac8f7143593d3812cd90d1c5be48f454821896",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "drop-invalid-A-flag-from-attach-session-argv-1-1": "tick-38a654",
+            "drop-invalid-A-flag-from-attach-session-argv-1-2": "tick-41f8a8",
+            "drop-invalid-A-flag-from-attach-session-argv-2": "tick-072ad0",
+            "drop-invalid-A-flag-from-attach-session-argv-2-1": "tick-e93e04"
+          },
+          "external_id": "tick-867444"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "drop-invalid-A-flag-from-attach-session-argv": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "drop-invalid-A-flag-from-attach-session-argv": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "drop-invalid-A-flag-from-attach-session-argv-1-1",
+            "drop-invalid-A-flag-from-attach-session-argv-1-2",
+            "drop-invalid-A-flag-from-attach-session-argv-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-19"
+}

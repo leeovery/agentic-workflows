@@ -1,0 +1,163 @@
+{
+  "name": "bootstrap-cleanstale-wipes-hooks-on-tmux-transient",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-26",
+  "description": "Bootstrap step 11 CleanStale silently wipes all hooks.json entries when tmux list-panes returns transient non-zero exit, interpreting empty pane set as legitimate",
+  "phases": {
+    "investigation": {
+      "items": {
+        "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-27",
+          "sources": {
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+          "status": "completed",
+          "spec_commit": "2ad70f49f80bf805dd8f89ca805643cb5b563159",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-1": "tick-824435",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-1-1": "tick-d8948e",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-1-2": "tick-679caf",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2": "tick-16cc23",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-1": "tick-cf564d",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-2": "tick-ceb63d",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-3": "tick-36cdf8",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-4": "tick-bb61c8",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-5": "tick-a2b689",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3": "tick-d0c2f7",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-1": "tick-64c451",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-2": "tick-9d6419",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-3": "tick-f65977",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4": "tick-39f461",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-1": "tick-9a76c1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-2": "tick-fe93a2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-3": "tick-446961",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-4": "tick-4fe690",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5": "tick-9aa39f",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-1": "tick-3ed30e",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-2": "tick-e6f172",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-3": "tick-3b9176",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-4": "tick-670d03"
+          },
+          "external_id": "tick-00f5e0",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 5,
+          "current_task": "~",
+          "completed_tasks": [
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-1-1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-1-2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-3",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-4",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-2-5",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-3-3",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-3",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-4-4",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-1",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-2",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-3",
+            "bootstrap-cleanstale-wipes-hooks-on-tmux-transient-5-4"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-27"
+}

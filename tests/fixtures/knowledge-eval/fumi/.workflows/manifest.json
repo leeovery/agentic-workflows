@@ -1,0 +1,47 @@
+{
+  "work_units": {
+    "fumi": {
+      "work_type": "epic"
+    }
+  },
+  "baseline": {
+    "status": "native"
+  },
+  "defaults": {
+    "tmux_labels": true
+  },
+  "roadmap": {
+    "horizons": [
+      "next"
+    ],
+    "items": {
+      "liquid-glass-note-surface": {
+        "horizon": "next",
+        "summary": "Explore adopting the system's Liquid Glass for the note surface on macOS versions that have it, with the drawn frosted stack as the fallback below — the two-rendering fork the launch decision closed.",
+        "origin": "park:fumi",
+        "sources": [
+          "fumi/discussion/note-window.md"
+        ]
+      },
+      "grid-drag-preset-editor": {
+        "horizon": "next",
+        "summary": "Define a preset's geometry by dragging a box on a screen grid, Moom-style, instead of typing dimensions and flipping units — including whether the grid's coarseness is user-configurable.",
+        "origin": "park:fumi",
+        "sources": [
+          "fumi/discussion/management-window.md"
+        ]
+      },
+      "in-place-preset-creation": {
+        "horizon": "next",
+        "summary": "Create a preset from a fumi complete in one step, including its per-dimension pt/% units, without a visit to the Presets pane",
+        "origin": "park:fumi",
+        "sources": [
+          "fumi/discussion/note-window.md"
+        ]
+      }
+    }
+  },
+  "walkthrough": {
+    "status": "skipped"
+  }
+}

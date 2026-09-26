@@ -1,0 +1,262 @@
+{
+  "name": "session-scrollback-preview",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-05-01",
+  "description": "Quick Look-style scrollback preview in TUI picker so sessions can be disambiguated without attaching",
+  "phases": {
+    "research": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed"
+        }
+      }
+    },
+    "discussion": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-06",
+          "sources": {
+            "session-scrollback-preview": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed",
+          "spec_commit": "0a91621db44c5f5412ea79745e35f3b98b7a91d1",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 10,
+          "phase": 5,
+          "task": "~",
+          "task_map": {
+            "session-scrollback-preview-1": "tick-5bb838",
+            "session-scrollback-preview-1-1": "tick-20e56b",
+            "session-scrollback-preview-1-2": "tick-103bdc",
+            "session-scrollback-preview-1-3": "tick-184c2f",
+            "session-scrollback-preview-1-4": "tick-9d262c",
+            "session-scrollback-preview-1-5": "tick-a87a64",
+            "session-scrollback-preview-1-6": "tick-0c40b7",
+            "session-scrollback-preview-2": "tick-01c901",
+            "session-scrollback-preview-2-1": "tick-401456",
+            "session-scrollback-preview-2-2": "tick-d7a1f0",
+            "session-scrollback-preview-2-3": "tick-7960f4",
+            "session-scrollback-preview-2-4": "tick-30eaf7",
+            "session-scrollback-preview-2-5": "tick-2ef031",
+            "session-scrollback-preview-2-6": "tick-0086a4",
+            "session-scrollback-preview-2-7": "tick-5076c1",
+            "session-scrollback-preview-3": "tick-3dee8d",
+            "session-scrollback-preview-3-1": "tick-28cada",
+            "session-scrollback-preview-3-2": "tick-07246a",
+            "session-scrollback-preview-3-3": "tick-f0a7d4",
+            "session-scrollback-preview-3-4": "tick-b6c8ad",
+            "session-scrollback-preview-3-5": "tick-10acee",
+            "session-scrollback-preview-3-6": "tick-f7cce2",
+            "session-scrollback-preview-3-7": "tick-7b713b",
+            "session-scrollback-preview-4": "tick-8e1bd5",
+            "session-scrollback-preview-4-1": "tick-12a9cd",
+            "session-scrollback-preview-4-2": "tick-48a149",
+            "session-scrollback-preview-4-3": "tick-f92367",
+            "session-scrollback-preview-4-4": "tick-c07dea",
+            "session-scrollback-preview-4-5": "tick-096107",
+            "session-scrollback-preview-4-6": "tick-1cda6d",
+            "session-scrollback-preview-4-7": "tick-cc2442",
+            "session-scrollback-preview-4-8": "tick-9cc90b",
+            "session-scrollback-preview-4-9": "tick-6b38b3",
+            "session-scrollback-preview-5": "tick-89e065",
+            "session-scrollback-preview-5-1": "tick-c76ca5",
+            "session-scrollback-preview-5-2": "tick-91bed0",
+            "session-scrollback-preview-5-3": "tick-174bce",
+            "session-scrollback-preview-5-4": "tick-fcc4d0",
+            "session-scrollback-preview-5-5": "tick-ce0570",
+            "session-scrollback-preview-6": "tick-445de1",
+            "session-scrollback-preview-6-1": "tick-1f00d1"
+          },
+          "external_id": "tick-6527e1",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c10": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-integrity-tracking-c5": "complete",
+            "review-integrity-tracking-c6": "complete",
+            "review-integrity-tracking-c7": "complete",
+            "review-integrity-tracking-c8": "complete",
+            "review-integrity-tracking-c9": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c10": "in-progress",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete",
+            "review-traceability-tracking-c5": "complete",
+            "review-traceability-tracking-c6": "complete",
+            "review-traceability-tracking-c7": "complete",
+            "review-traceability-tracking-c8": "complete",
+            "review-traceability-tracking-c9": "in-progress"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 4,
+          "current_task": "session-scrollback-preview-5-5",
+          "completed_tasks": [
+            "session-scrollback-preview-1-1",
+            "session-scrollback-preview-1-5",
+            "session-scrollback-preview-2-1",
+            "session-scrollback-preview-2-2",
+            "session-scrollback-preview-1-2",
+            "session-scrollback-preview-1-3",
+            "session-scrollback-preview-1-4",
+            "session-scrollback-preview-1-6",
+            "session-scrollback-preview-2-3",
+            "session-scrollback-preview-2-4",
+            "session-scrollback-preview-2-5",
+            "session-scrollback-preview-2-6",
+            "session-scrollback-preview-2-7",
+            "session-scrollback-preview-3-1",
+            "session-scrollback-preview-3-2",
+            "session-scrollback-preview-3-3",
+            "session-scrollback-preview-3-4",
+            "session-scrollback-preview-3-5",
+            "session-scrollback-preview-3-6",
+            "session-scrollback-preview-3-7",
+            "session-scrollback-preview-4-1",
+            "session-scrollback-preview-4-2",
+            "session-scrollback-preview-4-3",
+            "session-scrollback-preview-4-4",
+            "session-scrollback-preview-4-5",
+            "session-scrollback-preview-4-6",
+            "session-scrollback-preview-4-8",
+            "session-scrollback-preview-4-7",
+            "session-scrollback-preview-4-9",
+            "session-scrollback-preview-5-1",
+            "session-scrollback-preview-5-2",
+            "session-scrollback-preview-5-3",
+            "session-scrollback-preview-5-4",
+            "session-scrollback-preview-5-5",
+            "session-scrollback-preview-6-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "session-scrollback-preview": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "session-scrollback-preview-1-1",
+            "session-scrollback-preview-1-2",
+            "session-scrollback-preview-1-3",
+            "session-scrollback-preview-1-4",
+            "session-scrollback-preview-1-5",
+            "session-scrollback-preview-1-6",
+            "session-scrollback-preview-2-1",
+            "session-scrollback-preview-2-2",
+            "session-scrollback-preview-2-3",
+            "session-scrollback-preview-2-4",
+            "session-scrollback-preview-2-5",
+            "session-scrollback-preview-2-6",
+            "session-scrollback-preview-2-7",
+            "session-scrollback-preview-3-1",
+            "session-scrollback-preview-3-2",
+            "session-scrollback-preview-3-3",
+            "session-scrollback-preview-3-4",
+            "session-scrollback-preview-3-5",
+            "session-scrollback-preview-3-6",
+            "session-scrollback-preview-3-7",
+            "session-scrollback-preview-4-1",
+            "session-scrollback-preview-4-2",
+            "session-scrollback-preview-4-3",
+            "session-scrollback-preview-4-4",
+            "session-scrollback-preview-4-5",
+            "session-scrollback-preview-4-6",
+            "session-scrollback-preview-4-7",
+            "session-scrollback-preview-4-8",
+            "session-scrollback-preview-4-9",
+            "session-scrollback-preview-5-1",
+            "session-scrollback-preview-5-2",
+            "session-scrollback-preview-5-3",
+            "session-scrollback-preview-5-4",
+            "session-scrollback-preview-5-5",
+            "session-scrollback-preview-6-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-08"
+}

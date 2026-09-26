@@ -1,0 +1,218 @@
+{
+  "name": "skip-bootstrap-when-warm",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-06-30",
+  "description": "Server-lifetime tmux latch set at the end of a successful bootstrap so only the first command on a cold server runs the full 11-step orchestrator; warm commands fast-skip restore/sweep/clean. Prerequisite for restore-host-terminal-windows.",
+  "phases": {
+    "discussion": {
+      "items": {
+        "skip-bootstrap-when-warm": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "skip-bootstrap-when-warm": {
+          "status": "completed",
+          "sources": {
+            "skip-bootstrap-when-warm": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-02",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "skip-bootstrap-when-warm": {
+          "status": "completed",
+          "spec_commit": "88659b23ca44f9117c3a089081ca9ebc3252aec9",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "skip-bootstrap-when-warm-1": "tick-648308",
+            "skip-bootstrap-when-warm-1-1": "tick-7a8b27",
+            "skip-bootstrap-when-warm-1-2": "tick-f09675",
+            "skip-bootstrap-when-warm-1-3": "tick-daf766",
+            "skip-bootstrap-when-warm-1-4": "tick-620afc",
+            "skip-bootstrap-when-warm-2": "tick-bb9807",
+            "skip-bootstrap-when-warm-2-1": "tick-66413d",
+            "skip-bootstrap-when-warm-2-2": "tick-eb4711",
+            "skip-bootstrap-when-warm-2-3": "tick-f3a3c3",
+            "skip-bootstrap-when-warm-2-4": "tick-929fc1",
+            "skip-bootstrap-when-warm-3": "tick-f36ddf",
+            "skip-bootstrap-when-warm-3-1": "tick-5a9eb4",
+            "skip-bootstrap-when-warm-3-2": "tick-763b10",
+            "skip-bootstrap-when-warm-3-3": "tick-fb2360",
+            "skip-bootstrap-when-warm-3-4": "tick-1018c0",
+            "skip-bootstrap-when-warm-4": "tick-faa882",
+            "skip-bootstrap-when-warm-4-1": "tick-3b1686",
+            "skip-bootstrap-when-warm-4-2": "tick-673cd8",
+            "skip-bootstrap-when-warm-5": "tick-df0c42",
+            "skip-bootstrap-when-warm-5-1": "tick-3862f2",
+            "skip-bootstrap-when-warm-5-2": "tick-e9364a",
+            "skip-bootstrap-when-warm-6": "tick-545468",
+            "skip-bootstrap-when-warm-6-1": "tick-25c865",
+            "skip-bootstrap-when-warm-7": "tick-f06a01",
+            "skip-bootstrap-when-warm-7-1": "tick-c2ac11"
+          },
+          "external_id": "tick-0d5812",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "skip-bootstrap-when-warm": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 5,
+          "analysis_cycle_session": 5,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 7,
+          "current_task": "~",
+          "completed_tasks": [
+            "skip-bootstrap-when-warm-1-1",
+            "skip-bootstrap-when-warm-1-2",
+            "skip-bootstrap-when-warm-1-3",
+            "skip-bootstrap-when-warm-1-4",
+            "skip-bootstrap-when-warm-2-1",
+            "skip-bootstrap-when-warm-2-2",
+            "skip-bootstrap-when-warm-2-3",
+            "skip-bootstrap-when-warm-2-4",
+            "skip-bootstrap-when-warm-3-1",
+            "skip-bootstrap-when-warm-3-2",
+            "skip-bootstrap-when-warm-3-3",
+            "skip-bootstrap-when-warm-3-4",
+            "skip-bootstrap-when-warm-4-1",
+            "skip-bootstrap-when-warm-4-2",
+            "skip-bootstrap-when-warm-5-1",
+            "skip-bootstrap-when-warm-5-2",
+            "skip-bootstrap-when-warm-6-1",
+            "skip-bootstrap-when-warm-7-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "skip-bootstrap-when-warm": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "skip-bootstrap-when-warm-1-1",
+            "skip-bootstrap-when-warm-1-2",
+            "skip-bootstrap-when-warm-1-3",
+            "skip-bootstrap-when-warm-1-4",
+            "skip-bootstrap-when-warm-2-1",
+            "skip-bootstrap-when-warm-2-2",
+            "skip-bootstrap-when-warm-2-3",
+            "skip-bootstrap-when-warm-2-4",
+            "skip-bootstrap-when-warm-3-1",
+            "skip-bootstrap-when-warm-3-2",
+            "skip-bootstrap-when-warm-3-3",
+            "skip-bootstrap-when-warm-3-4",
+            "skip-bootstrap-when-warm-4-1",
+            "skip-bootstrap-when-warm-4-2",
+            "skip-bootstrap-when-warm-5-1",
+            "skip-bootstrap-when-warm-5-2",
+            "skip-bootstrap-when-warm-6-1",
+            "skip-bootstrap-when-warm-7-1"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-30-warm-command-bootstrap-latch.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-30T19:26:08Z"
+    }
+  ],
+  "completed_at": "2026-07-04"
+}

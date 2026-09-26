@@ -1,0 +1,87 @@
+{
+  "name": "surface-x-toggle-in-keymap-hints",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-06-03",
+  "description": "Surface the existing X page-toggle binding in the sessions and projects keymap footers (P/X, S/X) — display-only, no behaviour change",
+  "phases": {
+    "specification": {
+      "items": {
+        "surface-x-toggle-in-keymap-hints": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "surface-x-toggle-in-keymap-hints": {
+          "status": "completed",
+          "spec_commit": "4cb7f142eb0d24b9c700c199614daec62a648705",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "surface-x-toggle-in-keymap-hints-1-1": "tick-036d4f"
+          },
+          "external_id": "tick-7ff6c0"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "surface-x-toggle-in-keymap-hints": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "surface-x-toggle-in-keymap-hints": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "surface-x-toggle-in-keymap-hints-1-1"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-05-19-surface-x-toggle-in-keymap-hints.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-06-03T18:42:21Z"
+    }
+  ],
+  "completed_at": "2026-06-03"
+}

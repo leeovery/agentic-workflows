@@ -1,0 +1,105 @@
+{
+  "name": "qualify-command-tree-leaks-to-note",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-03-30",
+  "description": "qualifyCommand shares tree case across dep and note parents, causing misleading error messages for tick note tree",
+  "phases": {
+    "investigation": {
+      "items": {
+        "qualify-command-tree-leaks-to-note": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "qualify-command-tree-leaks-to-note": {
+          "status": "completed",
+          "review_cycle": 1,
+          "finding_gate_mode": "gated",
+          "date": "2026-03-30",
+          "sources": {
+            "qualify-command-tree-leaks-to-note": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "qualify-command-tree-leaks-to-note": {
+          "status": "completed",
+          "spec_commit": "9ce7d140af2fd006e51927994d82d8b29087d3ca",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 1,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "qualify-command-tree-leaks-to-note-1-1": "tick-db3c7a",
+            "qualify-command-tree-leaks-to-note-1": "tick-31494c",
+            "qualify-command-tree-leaks-to-note-1-2": "tick-77079d",
+            "qualify-command-tree-leaks-to-note-2": "tick-a3db77",
+            "qualify-command-tree-leaks-to-note-2-1": "tick-30a977"
+          },
+          "external_id": "tick-0e8cc7",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "qualify-command-tree-leaks-to-note": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "qualify-command-tree-leaks-to-note-1-1",
+            "qualify-command-tree-leaks-to-note-1-2",
+            "qualify-command-tree-leaks-to-note-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-30"
+}

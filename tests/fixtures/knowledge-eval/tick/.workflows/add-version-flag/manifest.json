@@ -1,0 +1,98 @@
+{
+  "name": "add-version-flag",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-23",
+  "description": "Add --version flag as alternative to the version subcommand",
+  "phases": {
+    "specification": {
+      "items": {
+        "add-version-flag": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "add-version-flag": {
+          "status": "completed",
+          "spec_commit": "37097a76e8440e18d1d781051966e39193b80365",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "add-version-flag-1-1": "tick-9c68fe",
+            "add-version-flag-2": "tick-a59f42",
+            "add-version-flag-2-1": "tick-d15179"
+          },
+          "external_id": "tick-4edd06"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "add-version-flag": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "add-version-flag": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "add-version-flag-1-1",
+            "add-version-flag-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "add-version-flag": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "add-version-flag-1-1",
+            "add-version-flag-2-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-23"
+}

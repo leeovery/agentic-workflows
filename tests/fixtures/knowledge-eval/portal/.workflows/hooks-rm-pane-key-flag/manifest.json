@@ -1,0 +1,80 @@
+{
+  "name": "hooks-rm-pane-key-flag",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-26",
+  "description": "Add --pane-key flag to portal hooks rm so callers can remove a hook entry for any pane, not just the current one.",
+  "phases": {
+    "specification": {
+      "items": {
+        "hooks-rm-pane-key-flag": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "hooks-rm-pane-key-flag": {
+          "status": "completed",
+          "spec_commit": "3a775c07aa1d726ff63e2116a88f6cbb6ff0ada3",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "hooks-rm-pane-key-flag-1-1": "tick-ecaa5e"
+          },
+          "external_id": "tick-b57267"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "hooks-rm-pane-key-flag": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "hooks-rm-pane-key-flag": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "hooks-rm-pane-key-flag-1-1"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 0,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-26"
+}

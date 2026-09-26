@@ -1,0 +1,187 @@
+{
+  "name": "enter-attaches-from-preview",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-05-14",
+  "description": "Wire Enter from scrollback-preview page to attach to the previewed session, closing the Space → look → Enter → attach loop on Sessions",
+  "phases": {
+    "discussion": {
+      "items": {
+        "enter-attaches-from-preview": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "enter-attaches-from-preview": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-15",
+          "sources": {
+            "enter-attaches-from-preview": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "enter-attaches-from-preview": {
+          "status": "completed",
+          "spec_commit": "1c3e0231dcc62158d4276f48e43c0a009fd3cf23",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "enter-attaches-from-preview-1": "tick-bd96a2",
+            "enter-attaches-from-preview-1-1": "tick-82f0df",
+            "enter-attaches-from-preview-1-2": "tick-7ff2d4",
+            "enter-attaches-from-preview-1-3": "tick-c8b27a",
+            "enter-attaches-from-preview-1-4": "tick-c7f9d2",
+            "enter-attaches-from-preview-1-5": "tick-a9ca55",
+            "enter-attaches-from-preview-1-6": "tick-90fd51",
+            "enter-attaches-from-preview-1-7": "tick-20559f",
+            "enter-attaches-from-preview-1-8": "tick-8c4d1a",
+            "enter-attaches-from-preview-2-1": "tick-9ba22a",
+            "enter-attaches-from-preview-2-2": "tick-673b52",
+            "enter-attaches-from-preview-2-3": "tick-5531ec",
+            "enter-attaches-from-preview-2-4": "tick-e5da0f",
+            "enter-attaches-from-preview-2-5": "tick-24e479",
+            "enter-attaches-from-preview-2-6": "tick-698f0c",
+            "enter-attaches-from-preview-2": "tick-dc3c05",
+            "enter-attaches-from-preview-3": "tick-4411f2",
+            "enter-attaches-from-preview-3-1": "tick-45e4af",
+            "enter-attaches-from-preview-3-2": "tick-871327",
+            "enter-attaches-from-preview-4": "tick-0b9ac6",
+            "enter-attaches-from-preview-4-1": "tick-6b1517",
+            "enter-attaches-from-preview-4-2": "tick-618ead",
+            "enter-attaches-from-preview-4-3": "tick-7fa539"
+          },
+          "external_id": "tick-6cea9c",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "enter-attaches-from-preview": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 4,
+          "current_task": "~",
+          "completed_tasks": [
+            "enter-attaches-from-preview-1-1",
+            "enter-attaches-from-preview-1-2",
+            "enter-attaches-from-preview-1-3",
+            "enter-attaches-from-preview-1-4",
+            "enter-attaches-from-preview-1-5",
+            "enter-attaches-from-preview-1-6",
+            "enter-attaches-from-preview-1-7",
+            "enter-attaches-from-preview-1-8",
+            "enter-attaches-from-preview-2-1",
+            "enter-attaches-from-preview-2-2",
+            "enter-attaches-from-preview-2-3",
+            "enter-attaches-from-preview-2-4",
+            "enter-attaches-from-preview-2-5",
+            "enter-attaches-from-preview-2-6",
+            "enter-attaches-from-preview-3-1",
+            "enter-attaches-from-preview-3-2",
+            "enter-attaches-from-preview-4-1",
+            "enter-attaches-from-preview-4-2",
+            "enter-attaches-from-preview-4-3",
+            "enter-attaches-from-preview-4-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            4
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "enter-attaches-from-preview": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "enter-attaches-from-preview-1-1",
+            "enter-attaches-from-preview-1-2",
+            "enter-attaches-from-preview-1-3",
+            "enter-attaches-from-preview-1-4",
+            "enter-attaches-from-preview-1-5",
+            "enter-attaches-from-preview-1-6",
+            "enter-attaches-from-preview-1-7",
+            "enter-attaches-from-preview-1-8",
+            "enter-attaches-from-preview-2-1",
+            "enter-attaches-from-preview-2-2",
+            "enter-attaches-from-preview-2-3",
+            "enter-attaches-from-preview-2-4",
+            "enter-attaches-from-preview-2-5",
+            "enter-attaches-from-preview-2-6",
+            "enter-attaches-from-preview-3-1",
+            "enter-attaches-from-preview-3-2",
+            "enter-attaches-from-preview-4-1",
+            "enter-attaches-from-preview-4-2",
+            "enter-attaches-from-preview-4-3"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-16"
+}

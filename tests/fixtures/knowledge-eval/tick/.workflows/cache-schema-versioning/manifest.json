@@ -1,0 +1,82 @@
+{
+  "name": "cache-schema-versioning",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-03-07",
+  "description": "cache-schema-versioning work unit",
+  "phases": {
+    "investigation": {
+      "items": {
+        "cache-schema-versioning": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "cache-schema-versioning": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "gated",
+          "sources": {
+            "cache-schema-versioning": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "cache-schema-versioning": {
+          "status": "completed",
+          "external_id": "tick-598752",
+          "specification": "../../specification/cache-schema-versioning/specification.md",
+          "spec_commit": "1874c3b2085398bee1254e9773aba96fdd925c24",
+          "finding_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "task_map": {
+            "cache-schema-versioning-1-1": "tick-477711",
+            "cache-schema-versioning-1-2": "tick-389db4",
+            "cache-schema-versioning-1-3": "tick-68d0c3",
+            "cache-schema-versioning-1": "tick-796ea9"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "cache-schema-versioning": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "1",
+          "current_task": "~",
+          "completed_tasks": [
+            "cache-schema-versioning-1-1",
+            "cache-schema-versioning-1-2",
+            "cache-schema-versioning-1-3"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "cache-schema-versioning": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-13"
+}

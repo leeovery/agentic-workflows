@@ -1,0 +1,373 @@
+{
+  "name": "portal-observability-layer",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-05-28",
+  "description": "Build portal logging into a deliberate observability layer with subsystem-prefixed lines, decision-point INFO summaries, DEBUG breadcrumbs on swallowed errors, preserved diagnostic context, cycle-level summaries, log-level discipline, daily log rotation with retention, and saver/daemon lifecycle events",
+  "phases": {
+    "discussion": {
+      "items": {
+        "portal-observability-layer": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "portal-observability-layer": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-06-01",
+          "sources": {
+            "portal-observability-layer": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "portal-observability-layer": {
+          "status": "completed",
+          "spec_commit": "2fb877ad1fa4be26877c5cf6b7451fc821a56a6b",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 7,
+          "task": "~",
+          "task_map": {
+            "portal-observability-layer-1": "tick-0611e5",
+            "portal-observability-layer-1-1": "tick-d7fbba",
+            "portal-observability-layer-1-2": "tick-80d1d3",
+            "portal-observability-layer-1-3": "tick-3efbc8",
+            "portal-observability-layer-1-4": "tick-7cf00e",
+            "portal-observability-layer-1-5": "tick-23135b",
+            "portal-observability-layer-1-6": "tick-4b786c",
+            "portal-observability-layer-1-7": "tick-81899a",
+            "portal-observability-layer-1-8": "tick-f67ea3",
+            "portal-observability-layer-1-9": "tick-f37796",
+            "portal-observability-layer-1-10": "tick-c4bab7",
+            "portal-observability-layer-2": "tick-f3e302",
+            "portal-observability-layer-2-1": "tick-34a8ad",
+            "portal-observability-layer-2-2": "tick-163283",
+            "portal-observability-layer-2-3": "tick-84780d",
+            "portal-observability-layer-2-4": "tick-7e4a31",
+            "portal-observability-layer-2-5": "tick-1bec7a",
+            "portal-observability-layer-2-6": "tick-6c11ab",
+            "portal-observability-layer-2-7": "tick-b02253",
+            "portal-observability-layer-2-8": "tick-d136ec",
+            "portal-observability-layer-2-9": "tick-4ea8ed",
+            "portal-observability-layer-2-10": "tick-d3e12f",
+            "portal-observability-layer-2-11": "tick-29525d",
+            "portal-observability-layer-2-12": "tick-a4a3db",
+            "portal-observability-layer-2-13": "tick-cd6c3a",
+            "portal-observability-layer-2-14": "tick-b7b744",
+            "portal-observability-layer-2-15": "tick-975bae",
+            "portal-observability-layer-3": "tick-644723",
+            "portal-observability-layer-3-1": "tick-2d1174",
+            "portal-observability-layer-3-2": "tick-368784",
+            "portal-observability-layer-3-3": "tick-462916",
+            "portal-observability-layer-3-4": "tick-9c337e",
+            "portal-observability-layer-3-5": "tick-49b5af",
+            "portal-observability-layer-3-6": "tick-1efb92",
+            "portal-observability-layer-4": "tick-be2a6b",
+            "portal-observability-layer-4-1": "tick-63f087",
+            "portal-observability-layer-4-2": "tick-d47227",
+            "portal-observability-layer-4-3": "tick-7ccac0",
+            "portal-observability-layer-4-4": "tick-4fef9c",
+            "portal-observability-layer-4-5": "tick-2996d3",
+            "portal-observability-layer-4-6": "tick-ac6ad5",
+            "portal-observability-layer-5": "tick-f384f6",
+            "portal-observability-layer-5-1": "tick-e6a18c",
+            "portal-observability-layer-5-2": "tick-144618",
+            "portal-observability-layer-5-3": "tick-08fc82",
+            "portal-observability-layer-5-4": "tick-38a1aa",
+            "portal-observability-layer-5-5": "tick-ceb101",
+            "portal-observability-layer-5-6": "tick-dd09c6",
+            "portal-observability-layer-5-7": "tick-cb4c1b",
+            "portal-observability-layer-5-8": "tick-af09b2",
+            "portal-observability-layer-5-9": "tick-3f0c52",
+            "portal-observability-layer-5-10": "tick-477145",
+            "portal-observability-layer-6": "tick-4c2ab4",
+            "portal-observability-layer-6-1": "tick-94671c",
+            "portal-observability-layer-6-2": "tick-81b237",
+            "portal-observability-layer-6-3": "tick-3c06c4",
+            "portal-observability-layer-6-4": "tick-1a48a1",
+            "portal-observability-layer-5-11": "tick-137c05",
+            "portal-observability-layer-7": "tick-e6e7a5",
+            "portal-observability-layer-7-1": "tick-5bd95d",
+            "portal-observability-layer-7-2": "tick-7b5c88",
+            "portal-observability-layer-7-3": "tick-d24ddd",
+            "portal-observability-layer-7-4": "tick-511d84",
+            "portal-observability-layer-7-5": "tick-a73cc5",
+            "portal-observability-layer-7-6": "tick-38722d",
+            "portal-observability-layer-7-7": "tick-e37a85",
+            "portal-observability-layer-8": "tick-d17f80",
+            "portal-observability-layer-8-1": "tick-07ad3d",
+            "portal-observability-layer-8-2": "tick-d6f366",
+            "portal-observability-layer-8-3": "tick-580b93",
+            "portal-observability-layer-8-4": "tick-d8b21c",
+            "portal-observability-layer-9": "tick-49556f",
+            "portal-observability-layer-9-1": "tick-23ebb9",
+            "portal-observability-layer-9-2": "tick-86dbe5",
+            "portal-observability-layer-10": "tick-d40936",
+            "portal-observability-layer-10-1": "tick-81015c",
+            "portal-observability-layer-11": "tick-9267ba",
+            "portal-observability-layer-11-1": "tick-331cfe",
+            "portal-observability-layer-11-2": "tick-6690c9"
+          },
+          "external_id": "tick-7ac1a9",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "portal-observability-layer": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 6,
+          "analysis_cycle_session": 6,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 11,
+          "current_task": "~",
+          "completed_tasks": [
+            "portal-observability-layer-1-1",
+            "portal-observability-layer-1-2",
+            "portal-observability-layer-1-3",
+            "portal-observability-layer-1-4",
+            "portal-observability-layer-1-5",
+            "portal-observability-layer-1-6",
+            "portal-observability-layer-1-7",
+            "portal-observability-layer-1-8",
+            "portal-observability-layer-1-9",
+            "portal-observability-layer-1-10",
+            "portal-observability-layer-2-1",
+            "portal-observability-layer-2-2",
+            "portal-observability-layer-2-3",
+            "portal-observability-layer-2-4",
+            "portal-observability-layer-2-5",
+            "portal-observability-layer-2-6",
+            "portal-observability-layer-2-7",
+            "portal-observability-layer-2-8",
+            "portal-observability-layer-2-9",
+            "portal-observability-layer-2-10",
+            "portal-observability-layer-2-11",
+            "portal-observability-layer-2-12",
+            "portal-observability-layer-2-13",
+            "portal-observability-layer-2-14",
+            "portal-observability-layer-2-15",
+            "portal-observability-layer-3-1",
+            "portal-observability-layer-3-2",
+            "portal-observability-layer-3-3",
+            "portal-observability-layer-3-4",
+            "portal-observability-layer-3-5",
+            "portal-observability-layer-3-6",
+            "portal-observability-layer-4-1",
+            "portal-observability-layer-4-2",
+            "portal-observability-layer-4-3",
+            "portal-observability-layer-4-4",
+            "portal-observability-layer-4-5",
+            "portal-observability-layer-4-6",
+            "portal-observability-layer-5-1",
+            "portal-observability-layer-5-2",
+            "portal-observability-layer-5-3",
+            "portal-observability-layer-5-4",
+            "portal-observability-layer-5-5",
+            "portal-observability-layer-5-6",
+            "portal-observability-layer-5-7",
+            "portal-observability-layer-5-8",
+            "portal-observability-layer-5-9",
+            "portal-observability-layer-5-10",
+            "portal-observability-layer-5-11",
+            "portal-observability-layer-6-1",
+            "portal-observability-layer-6-2",
+            "portal-observability-layer-6-3",
+            "portal-observability-layer-6-4",
+            "portal-observability-layer-7-1",
+            "portal-observability-layer-7-2",
+            "portal-observability-layer-7-3",
+            "portal-observability-layer-7-4",
+            "portal-observability-layer-7-5",
+            "portal-observability-layer-7-6",
+            "portal-observability-layer-7-7",
+            "portal-observability-layer-8-1",
+            "portal-observability-layer-8-2",
+            "portal-observability-layer-8-3",
+            "portal-observability-layer-8-4",
+            "portal-observability-layer-9-1",
+            "portal-observability-layer-9-2",
+            "portal-observability-layer-10-1",
+            "portal-observability-layer-11-1",
+            "portal-observability-layer-11-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "portal-observability-layer": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "portal-observability-layer-1-1",
+            "portal-observability-layer-1-2",
+            "portal-observability-layer-1-3",
+            "portal-observability-layer-1-4",
+            "portal-observability-layer-1-5",
+            "portal-observability-layer-1-6",
+            "portal-observability-layer-1-7",
+            "portal-observability-layer-1-8",
+            "portal-observability-layer-1-9",
+            "portal-observability-layer-1-10",
+            "portal-observability-layer-2-1",
+            "portal-observability-layer-2-2",
+            "portal-observability-layer-2-3",
+            "portal-observability-layer-2-4",
+            "portal-observability-layer-2-5",
+            "portal-observability-layer-2-6",
+            "portal-observability-layer-2-7",
+            "portal-observability-layer-2-8",
+            "portal-observability-layer-2-9",
+            "portal-observability-layer-2-10",
+            "portal-observability-layer-2-11",
+            "portal-observability-layer-2-12",
+            "portal-observability-layer-2-13",
+            "portal-observability-layer-2-14",
+            "portal-observability-layer-2-15",
+            "portal-observability-layer-3-1",
+            "portal-observability-layer-3-2",
+            "portal-observability-layer-3-3",
+            "portal-observability-layer-3-4",
+            "portal-observability-layer-3-5",
+            "portal-observability-layer-3-6",
+            "portal-observability-layer-4-1",
+            "portal-observability-layer-4-2",
+            "portal-observability-layer-4-3",
+            "portal-observability-layer-4-4",
+            "portal-observability-layer-4-5",
+            "portal-observability-layer-4-6",
+            "portal-observability-layer-5-1",
+            "portal-observability-layer-5-2",
+            "portal-observability-layer-5-3",
+            "portal-observability-layer-5-4",
+            "portal-observability-layer-5-5",
+            "portal-observability-layer-5-6",
+            "portal-observability-layer-5-7",
+            "portal-observability-layer-5-8",
+            "portal-observability-layer-5-9",
+            "portal-observability-layer-5-10",
+            "portal-observability-layer-5-11",
+            "portal-observability-layer-6-1",
+            "portal-observability-layer-6-2",
+            "portal-observability-layer-6-3",
+            "portal-observability-layer-6-4",
+            "portal-observability-layer-7-1",
+            "portal-observability-layer-7-2",
+            "portal-observability-layer-7-3",
+            "portal-observability-layer-7-4",
+            "portal-observability-layer-7-5",
+            "portal-observability-layer-7-6",
+            "portal-observability-layer-7-7",
+            "portal-observability-layer-8-1",
+            "portal-observability-layer-8-2",
+            "portal-observability-layer-8-3",
+            "portal-observability-layer-8-4",
+            "portal-observability-layer-9-1",
+            "portal-observability-layer-9-2",
+            "portal-observability-layer-10-1",
+            "portal-observability-layer-11-1",
+            "portal-observability-layer-11-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-06-02"
+}

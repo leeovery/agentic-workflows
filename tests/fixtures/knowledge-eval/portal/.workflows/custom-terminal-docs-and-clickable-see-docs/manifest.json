@@ -1,0 +1,106 @@
+{
+  "name": "custom-terminal-docs-and-clickable-see-docs",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-07-24",
+  "description": "Write terminals.json custom-terminal setup docs and make the picker's unsupported-terminal 'see docs' banner hint resolve to them — an OSC 8 clickable link if feasible, otherwise leaving the bare 'see docs' word; the banner never prints a URL or path.",
+  "phases": {
+    "specification": {
+      "items": {
+        "custom-terminal-docs-and-clickable-see-docs": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "custom-terminal-docs-and-clickable-see-docs": {
+          "status": "completed",
+          "spec_commit": "bb16540caf0e95605bf09bdb82cdb86cb9d85705",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": null,
+          "external_id": "tick-a2916b",
+          "task_map": {
+            "custom-terminal-docs-and-clickable-see-docs-1": "tick-0c4e2a",
+            "custom-terminal-docs-and-clickable-see-docs-1-1": "tick-f1f62a",
+            "custom-terminal-docs-and-clickable-see-docs-1-2": "tick-2a112e"
+          },
+          "storage_paths": [
+            ".tick/"
+          ]
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "custom-terminal-docs-and-clickable-see-docs": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "custom-terminal-docs-and-clickable-see-docs": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 1,
+          "current_task": null,
+          "completed_tasks": [
+            "custom-terminal-docs-and-clickable-see-docs-1-1",
+            "custom-terminal-docs-and-clickable-see-docs-1-2"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-22-custom-terminal-docs-and-clickable-see-docs.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-07-24T10:09:00Z"
+    }
+  ],
+  "completed_at": "2026-07-24"
+}

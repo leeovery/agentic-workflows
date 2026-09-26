@@ -1,0 +1,145 @@
+{
+  "name": "file-browser-alias-breadcrumb",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-06-09",
+  "description": "Decided fix (investigation): the file-browser alias-save breadcrumb gap is on unreachable dead code; remove the file browser feature entirely (delete internal/ui + internal/browser, excise TUI/cmd wiring + the Projects-page b key). Kept as bugfix — the only work type with an Investigation phase, already done.",
+  "phases": {
+    "investigation": {
+      "items": {
+        "file-browser-alias-breadcrumb": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "file-browser-alias-breadcrumb": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-06-10",
+          "sources": {
+            "file-browser-alias-breadcrumb": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "file-browser-alias-breadcrumb": {
+          "status": "completed",
+          "spec_commit": "e322c480472889ea3e010fe5ce9838dbca1c580d",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 1,
+          "phase": 4,
+          "task": "~",
+          "task_map": {
+            "file-browser-alias-breadcrumb": "tick-95054b",
+            "file-browser-alias-breadcrumb-1": "tick-de796e",
+            "file-browser-alias-breadcrumb-1-1": "tick-8bae77",
+            "file-browser-alias-breadcrumb-1-2": "tick-b9d2e6",
+            "file-browser-alias-breadcrumb-1-3": "tick-41cafb",
+            "file-browser-alias-breadcrumb-1-4": "tick-60c42f",
+            "file-browser-alias-breadcrumb-2": "tick-306b0e",
+            "file-browser-alias-breadcrumb-2-1": "tick-0e954d",
+            "file-browser-alias-breadcrumb-2-2": "tick-8b8435",
+            "file-browser-alias-breadcrumb-3": "tick-340541",
+            "file-browser-alias-breadcrumb-3-1": "tick-19ea89",
+            "file-browser-alias-breadcrumb-3-2": "tick-916c1b",
+            "file-browser-alias-breadcrumb-3-3": "tick-84ff49"
+          },
+          "external_id": "tick-95054b",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "file-browser-alias-breadcrumb": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 3,
+          "current_task": "~",
+          "completed_tasks": [
+            "file-browser-alias-breadcrumb-1-1",
+            "file-browser-alias-breadcrumb-1-2",
+            "file-browser-alias-breadcrumb-1-3",
+            "file-browser-alias-breadcrumb-1-4",
+            "file-browser-alias-breadcrumb-2-1",
+            "file-browser-alias-breadcrumb-2-2",
+            "file-browser-alias-breadcrumb-3-1",
+            "file-browser-alias-breadcrumb-3-2",
+            "file-browser-alias-breadcrumb-3-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "file-browser-alias-breadcrumb": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "file-browser-alias-breadcrumb-1-1",
+            "file-browser-alias-breadcrumb-1-2",
+            "file-browser-alias-breadcrumb-1-3",
+            "file-browser-alias-breadcrumb-1-4",
+            "file-browser-alias-breadcrumb-2-1",
+            "file-browser-alias-breadcrumb-2-2",
+            "file-browser-alias-breadcrumb-3-1",
+            "file-browser-alias-breadcrumb-3-2",
+            "file-browser-alias-breadcrumb-3-3"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-02-file-browser-alias-breadcrumb.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-06-09T21:01:44Z"
+    }
+  ],
+  "completed_at": "2026-06-10"
+}

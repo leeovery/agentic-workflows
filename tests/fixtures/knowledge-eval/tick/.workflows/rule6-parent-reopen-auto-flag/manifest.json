@@ -1,0 +1,132 @@
+{
+  "name": "rule6-parent-reopen-auto-flag",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-03-12",
+  "description": "Rule 6 parent reopen records auto=false in transition history when it should be auto=true since the reopen is system-initiated not manual",
+  "phases": {
+    "investigation": {
+      "items": {
+        "rule6-parent-reopen-auto-flag": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "rule6-parent-reopen-auto-flag": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "gated",
+          "date": "2026-03-12",
+          "sources": {
+            "rule6-parent-reopen-auto-flag": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "rule6-parent-reopen-auto-flag": {
+          "status": "completed",
+          "spec_commit": "5c919b6e934c151a76bc816b8c2f73c3c8557046",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "phase": 2,
+          "task": "~",
+          "external_id": "tick-6d5cb7",
+          "external_dependencies": {},
+          "review_cycle": 2,
+          "task_map": {
+            "rule6-parent-reopen-auto-flag-1-1": "tick-0930d3",
+            "rule6-parent-reopen-auto-flag-1-2": "tick-be26d8",
+            "rule6-parent-reopen-auto-flag-1-3": "tick-d6e894",
+            "rule6-parent-reopen-auto-flag-2-1": "tick-ac09a5",
+            "rule6-parent-reopen-auto-flag-2-2": "tick-b119b3",
+            "rule6-parent-reopen-auto-flag-1": "tick-359ce4",
+            "rule6-parent-reopen-auto-flag-2": "tick-57a66a"
+          },
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "rule6-parent-reopen-auto-flag": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go-vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "rule6-parent-reopen-auto-flag-1-1",
+            "rule6-parent-reopen-auto-flag-1-2",
+            "rule6-parent-reopen-auto-flag-1-3",
+            "rule6-parent-reopen-auto-flag-2-1",
+            "rule6-parent-reopen-auto-flag-2-2"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "rule6-parent-reopen-auto-flag": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "rule6-parent-reopen-auto-flag-1-1",
+            "rule6-parent-reopen-auto-flag-1-2",
+            "rule6-parent-reopen-auto-flag-1-3",
+            "rule6-parent-reopen-auto-flag-2-1",
+            "rule6-parent-reopen-auto-flag-2-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-14"
+}

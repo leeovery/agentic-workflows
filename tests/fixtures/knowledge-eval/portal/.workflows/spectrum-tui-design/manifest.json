@@ -1,0 +1,377 @@
+{
+  "name": "spectrum-tui-design",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-06-17",
+  "description": "Redesign the TUI with a ZX Spectrum-inspired visual identity: rainbow primaries on black, block-character logo, chunky borders, spaced uppercase headers, cycling block cursor, and a Manic Miner-style status bar",
+  "phases": {
+    "discussion": {
+      "items": {
+        "spectrum-tui-design": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "spectrum-tui-design": {
+          "status": "completed",
+          "sources": {
+            "spectrum-tui-design": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 10,
+          "finding_gate_mode": "gated",
+          "construction_gate_mode": "gated",
+          "date": "2026-06-18",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c6": "complete",
+            "review-gap-analysis-tracking-c7": "complete",
+            "review-gap-analysis-tracking-c8": "complete",
+            "review-gap-analysis-tracking-c9": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c6": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "spectrum-tui-design": {
+          "status": "completed",
+          "spec_commit": "1fdc8c131dff37fac45eed217cc615d06613c181",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 6,
+          "task": "~",
+          "task_map": {
+            "spectrum-tui-design-1": "tick-854c0f",
+            "spectrum-tui-design-1-1": "tick-09ba3b",
+            "spectrum-tui-design-1-2": "tick-f44b8c",
+            "spectrum-tui-design-1-3": "tick-5517eb",
+            "spectrum-tui-design-1-4": "tick-42e055",
+            "spectrum-tui-design-1-5": "tick-c38563",
+            "spectrum-tui-design-1-6": "tick-cf8af8",
+            "spectrum-tui-design-1-7": "tick-fc28f3",
+            "spectrum-tui-design-1-8": "tick-faee50",
+            "spectrum-tui-design-1-9": "tick-6b0f62",
+            "spectrum-tui-design-2": "tick-8d1c9b",
+            "spectrum-tui-design-2-1": "tick-247636",
+            "spectrum-tui-design-2-2": "tick-21cdbd",
+            "spectrum-tui-design-2-3": "tick-478243",
+            "spectrum-tui-design-2-4": "tick-f3737e",
+            "spectrum-tui-design-2-5": "tick-c1fa14",
+            "spectrum-tui-design-2-6": "tick-771c41",
+            "spectrum-tui-design-2-7": "tick-9181ba",
+            "spectrum-tui-design-2-8": "tick-bf561c",
+            "spectrum-tui-design-2-9": "tick-3430bc",
+            "spectrum-tui-design-3": "tick-fb5069",
+            "spectrum-tui-design-3-1": "tick-0a70f0",
+            "spectrum-tui-design-3-2": "tick-d3f372",
+            "spectrum-tui-design-3-3": "tick-a13ef7",
+            "spectrum-tui-design-3-4": "tick-a7dd69",
+            "spectrum-tui-design-3-5": "tick-e9a48a",
+            "spectrum-tui-design-3-6": "tick-a99733",
+            "spectrum-tui-design-3-7": "tick-9524d2",
+            "spectrum-tui-design-3-8": "tick-da7766",
+            "spectrum-tui-design-3-9": "tick-b1924e",
+            "spectrum-tui-design-4": "tick-3d9828",
+            "spectrum-tui-design-4-1": "tick-fa0f20",
+            "spectrum-tui-design-4-2": "tick-986319",
+            "spectrum-tui-design-4-3": "tick-c2c98c",
+            "spectrum-tui-design-4-4": "tick-562e68",
+            "spectrum-tui-design-4-5": "tick-d8ae6f",
+            "spectrum-tui-design-4-6": "tick-a4924f",
+            "spectrum-tui-design-4-7": "tick-a3e732",
+            "spectrum-tui-design-5": "tick-7ea8df",
+            "spectrum-tui-design-5-1": "tick-4d1691",
+            "spectrum-tui-design-5-2": "tick-933d99",
+            "spectrum-tui-design-5-3": "tick-5be26c",
+            "spectrum-tui-design-5-4": "tick-1ec79c",
+            "spectrum-tui-design-5-5": "tick-c9b7f5",
+            "spectrum-tui-design-5-6": "tick-2609bd",
+            "spectrum-tui-design-5-7": "tick-93c4fc",
+            "spectrum-tui-design-5-8": "tick-28b9cb",
+            "spectrum-tui-design-2-10": "tick-4b2180",
+            "spectrum-tui-design-3-10": "tick-e123c3",
+            "spectrum-tui-design-6": "tick-75c2dd",
+            "spectrum-tui-design-6-1": "tick-911013",
+            "spectrum-tui-design-6-2": "tick-2ea052",
+            "spectrum-tui-design-6-3": "tick-d5bf97",
+            "spectrum-tui-design-6-4": "tick-213b31",
+            "spectrum-tui-design-7": "tick-185379",
+            "spectrum-tui-design-7-1": "tick-e8510b",
+            "spectrum-tui-design-7-2": "tick-ae9099",
+            "spectrum-tui-design-7-3": "tick-b53df9",
+            "spectrum-tui-design-7-4": "tick-d86c25",
+            "spectrum-tui-design-8": "tick-a8d6fb",
+            "spectrum-tui-design-8-1": "tick-5e60c4",
+            "spectrum-tui-design-8-2": "tick-06a9a6",
+            "spectrum-tui-design-8-3": "tick-e75cb7",
+            "spectrum-tui-design-8-4": "tick-741e43",
+            "spectrum-tui-design-8-5": "tick-469269",
+            "spectrum-tui-design-8-6": "tick-886561",
+            "spectrum-tui-design-8-7": "tick-7f5ebb",
+            "spectrum-tui-design-9": "tick-e793cf",
+            "spectrum-tui-design-9-1": "tick-b5c9b5",
+            "spectrum-tui-design-9-2": "tick-4efae6",
+            "spectrum-tui-design-9-3": "tick-49c387",
+            "spectrum-tui-design-9-4": "tick-413af4",
+            "spectrum-tui-design-10": "tick-bd07e3",
+            "spectrum-tui-design-10-1": "tick-9b7502"
+          },
+          "external_id": "tick-7331a6",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "spectrum-tui-design": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 6,
+          "analysis_cycle_session": 6,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 10,
+          "current_task": "spectrum-tui-design-10-1",
+          "completed_tasks": [
+            "spectrum-tui-design-1-1",
+            "spectrum-tui-design-1-2",
+            "spectrum-tui-design-1-3",
+            "spectrum-tui-design-1-4",
+            "spectrum-tui-design-1-5",
+            "spectrum-tui-design-1-6",
+            "spectrum-tui-design-1-7",
+            "spectrum-tui-design-1-8",
+            "spectrum-tui-design-1-9",
+            "spectrum-tui-design-2-1",
+            "spectrum-tui-design-2-2",
+            "spectrum-tui-design-2-10",
+            "spectrum-tui-design-3-3",
+            "spectrum-tui-design-3-4",
+            "spectrum-tui-design-3-5",
+            "spectrum-tui-design-3-6",
+            "spectrum-tui-design-3-7",
+            "spectrum-tui-design-3-8",
+            "spectrum-tui-design-3-9",
+            "spectrum-tui-design-3-10",
+            "spectrum-tui-design-4-1",
+            "spectrum-tui-design-4-2",
+            "spectrum-tui-design-4-3",
+            "spectrum-tui-design-4-4",
+            "spectrum-tui-design-4-5",
+            "spectrum-tui-design-4-6",
+            "spectrum-tui-design-4-7",
+            "spectrum-tui-design-5-1",
+            "spectrum-tui-design-5-2",
+            "spectrum-tui-design-5-3",
+            "spectrum-tui-design-5-4",
+            "spectrum-tui-design-5-5",
+            "spectrum-tui-design-5-6",
+            "spectrum-tui-design-5-7",
+            "spectrum-tui-design-5-8",
+            "spectrum-tui-design-6-1",
+            "spectrum-tui-design-6-2",
+            "spectrum-tui-design-6-3",
+            "spectrum-tui-design-6-4",
+            "spectrum-tui-design-7-1",
+            "spectrum-tui-design-7-2",
+            "spectrum-tui-design-7-3",
+            "spectrum-tui-design-7-4",
+            "spectrum-tui-design-8-1",
+            "spectrum-tui-design-8-2",
+            "spectrum-tui-design-8-3",
+            "spectrum-tui-design-8-4",
+            "spectrum-tui-design-8-5",
+            "spectrum-tui-design-8-6",
+            "spectrum-tui-design-8-7",
+            "spectrum-tui-design-9-1",
+            "spectrum-tui-design-9-2",
+            "spectrum-tui-design-9-3",
+            "spectrum-tui-design-9-4",
+            "spectrum-tui-design-10-1"
+          ],
+          "completed_phases": [
+            1,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "spectrum-tui-design": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "spectrum-tui-design-1-1",
+            "spectrum-tui-design-1-2",
+            "spectrum-tui-design-1-3",
+            "spectrum-tui-design-1-4",
+            "spectrum-tui-design-1-5",
+            "spectrum-tui-design-1-6",
+            "spectrum-tui-design-1-7",
+            "spectrum-tui-design-1-8",
+            "spectrum-tui-design-1-9",
+            "spectrum-tui-design-2-1",
+            "spectrum-tui-design-2-2",
+            "spectrum-tui-design-2-3",
+            "spectrum-tui-design-2-4",
+            "spectrum-tui-design-2-5",
+            "spectrum-tui-design-2-6",
+            "spectrum-tui-design-2-7",
+            "spectrum-tui-design-2-8",
+            "spectrum-tui-design-2-9",
+            "spectrum-tui-design-2-10",
+            "spectrum-tui-design-3-1",
+            "spectrum-tui-design-3-2",
+            "spectrum-tui-design-3-3",
+            "spectrum-tui-design-3-4",
+            "spectrum-tui-design-3-5",
+            "spectrum-tui-design-3-6",
+            "spectrum-tui-design-3-7",
+            "spectrum-tui-design-3-8",
+            "spectrum-tui-design-3-9",
+            "spectrum-tui-design-3-10",
+            "spectrum-tui-design-4-1",
+            "spectrum-tui-design-4-2",
+            "spectrum-tui-design-4-3",
+            "spectrum-tui-design-4-4",
+            "spectrum-tui-design-4-5",
+            "spectrum-tui-design-4-6",
+            "spectrum-tui-design-4-7",
+            "spectrum-tui-design-5-1",
+            "spectrum-tui-design-5-2",
+            "spectrum-tui-design-5-3",
+            "spectrum-tui-design-5-4",
+            "spectrum-tui-design-5-5",
+            "spectrum-tui-design-5-6",
+            "spectrum-tui-design-5-7",
+            "spectrum-tui-design-5-8",
+            "spectrum-tui-design-6-1",
+            "spectrum-tui-design-6-2",
+            "spectrum-tui-design-6-3",
+            "spectrum-tui-design-6-4",
+            "spectrum-tui-design-7-1",
+            "spectrum-tui-design-7-2",
+            "spectrum-tui-design-7-3",
+            "spectrum-tui-design-7-4",
+            "spectrum-tui-design-8-1",
+            "spectrum-tui-design-8-2",
+            "spectrum-tui-design-8-3",
+            "spectrum-tui-design-8-4",
+            "spectrum-tui-design-8-5",
+            "spectrum-tui-design-8-6",
+            "spectrum-tui-design-8-7",
+            "spectrum-tui-design-9-1",
+            "spectrum-tui-design-9-2",
+            "spectrum-tui-design-9-3",
+            "spectrum-tui-design-9-4",
+            "spectrum-tui-design-10-1"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-03-19-spectrum-tui-design.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-17T08:09:55Z"
+    }
+  ],
+  "completed_at": "2026-06-25"
+}

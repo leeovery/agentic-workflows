@@ -1,0 +1,145 @@
+{
+  "name": "spawned-window-dead-ends-on-session-exit",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-07-21",
+  "description": "Spawned multi-select burst windows dead-end on 'Process exited. Press any key to close' when their session exits, because portal attach execs into tmux with no fallback interactive shell; land them in a real shell like the trigger window",
+  "phases": {
+    "investigation": {
+      "items": {
+        "spawned-window-dead-ends-on-session-exit": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "spawned-window-dead-ends-on-session-exit": {
+          "status": "completed",
+          "sources": {
+            "spawned-window-dead-ends-on-session-exit": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-07-21",
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "spawned-window-dead-ends-on-session-exit": {
+          "status": "completed",
+          "spec_commit": "abcd61f72d8e9e5e1349ec1e7e67c9530b2fa032",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 2,
+          "phase": 2,
+          "task": null,
+          "task_map": {
+            "spawned-window-dead-ends-on-session-exit-1-1": "tick-5f6bf3",
+            "spawned-window-dead-ends-on-session-exit-1": "tick-d2ea1f",
+            "spawned-window-dead-ends-on-session-exit-2": "tick-3fb99d",
+            "spawned-window-dead-ends-on-session-exit-2-1": "tick-cab364"
+          },
+          "external_id": "tick-07773e",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "spawned-window-dead-ends-on-session-exit": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 2,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 2,
+          "current_task": null,
+          "completed_tasks": [
+            "spawned-window-dead-ends-on-session-exit-1-1",
+            "spawned-window-dead-ends-on-session-exit-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "spawned-window-dead-ends-on-session-exit": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "spawned-window-dead-ends-on-session-exit-1-1",
+            "spawned-window-dead-ends-on-session-exit-2-1"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-07-17-spawned-window-dead-ends-on-session-exit.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-07-21T08:37:24Z"
+    }
+  ],
+  "completed_at": "2026-07-21"
+}

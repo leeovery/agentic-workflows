@@ -1,0 +1,174 @@
+{
+  "name": "multiple-state-daemons-running-concurrently",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-05-11",
+  "description": "Multiple portal state daemons run concurrently, pinning tmux server CPU; root causes: no singleton lock and bootstrap doesn't wait for old daemon to exit before spawning a new one",
+  "phases": {
+    "investigation": {
+      "items": {
+        "multiple-state-daemons-running-concurrently": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "multiple-state-daemons-running-concurrently": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-11",
+          "sources": {
+            "multiple-state-daemons-running-concurrently": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "multiple-state-daemons-running-concurrently": {
+          "status": "completed",
+          "spec_commit": "ffbfa0e4401acd02b6e99001d1966799bad17907",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 5,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "multiple-state-daemons-running-concurrently": "tick-e65ae6",
+            "multiple-state-daemons-running-concurrently-1": "tick-8d4a6a",
+            "multiple-state-daemons-running-concurrently-1-1": "tick-5d4401",
+            "multiple-state-daemons-running-concurrently-1-2": "tick-0fb7fe",
+            "multiple-state-daemons-running-concurrently-1-3": "tick-54e55d",
+            "multiple-state-daemons-running-concurrently-1-4": "tick-59eb14",
+            "multiple-state-daemons-running-concurrently-2": "tick-972c55",
+            "multiple-state-daemons-running-concurrently-2-1": "tick-dea514",
+            "multiple-state-daemons-running-concurrently-2-2": "tick-d4c184",
+            "multiple-state-daemons-running-concurrently-2-3": "tick-b1a379",
+            "multiple-state-daemons-running-concurrently-3": "tick-7cedf9",
+            "multiple-state-daemons-running-concurrently-3-1": "tick-1ad721",
+            "multiple-state-daemons-running-concurrently-3-2": "tick-591460",
+            "multiple-state-daemons-running-concurrently-3-3": "tick-becebd",
+            "multiple-state-daemons-running-concurrently-3-4": "tick-d9c4c7",
+            "multiple-state-daemons-running-concurrently-3-5": "tick-f94ceb",
+            "multiple-state-daemons-running-concurrently-4": "tick-e132d0",
+            "multiple-state-daemons-running-concurrently-4-1": "tick-60581a"
+          },
+          "external_id": "tick-e65ae6",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-integrity-tracking-c5": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete",
+            "review-traceability-tracking-c5": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "multiple-state-daemons-running-concurrently": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 4,
+          "current_task": "~",
+          "completed_tasks": [
+            "multiple-state-daemons-running-concurrently-1-1",
+            "multiple-state-daemons-running-concurrently-1-2",
+            "multiple-state-daemons-running-concurrently-1-3",
+            "multiple-state-daemons-running-concurrently-1-4",
+            "multiple-state-daemons-running-concurrently-2-1",
+            "multiple-state-daemons-running-concurrently-2-2",
+            "multiple-state-daemons-running-concurrently-2-3",
+            "multiple-state-daemons-running-concurrently-3-1",
+            "multiple-state-daemons-running-concurrently-3-2",
+            "multiple-state-daemons-running-concurrently-3-3",
+            "multiple-state-daemons-running-concurrently-3-4",
+            "multiple-state-daemons-running-concurrently-3-5",
+            "multiple-state-daemons-running-concurrently-4-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "multiple-state-daemons-running-concurrently": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "multiple-state-daemons-running-concurrently-1-1",
+            "multiple-state-daemons-running-concurrently-1-2",
+            "multiple-state-daemons-running-concurrently-1-3",
+            "multiple-state-daemons-running-concurrently-1-4",
+            "multiple-state-daemons-running-concurrently-2-1",
+            "multiple-state-daemons-running-concurrently-2-2",
+            "multiple-state-daemons-running-concurrently-2-3",
+            "multiple-state-daemons-running-concurrently-3-1",
+            "multiple-state-daemons-running-concurrently-3-2",
+            "multiple-state-daemons-running-concurrently-3-3",
+            "multiple-state-daemons-running-concurrently-3-4",
+            "multiple-state-daemons-running-concurrently-3-5",
+            "multiple-state-daemons-running-concurrently-4-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-12"
+}

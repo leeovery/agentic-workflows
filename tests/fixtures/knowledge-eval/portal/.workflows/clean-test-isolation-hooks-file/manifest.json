@@ -1,0 +1,80 @@
+{
+  "name": "clean-test-isolation-hooks-file",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-03-30",
+  "description": "Add PORTAL_HOOKS_FILE env var to older project-only clean tests to prevent accidental interaction with real hook data",
+  "phases": {
+    "specification": {
+      "items": {
+        "clean-test-isolation-hooks-file": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "clean-test-isolation-hooks-file": {
+          "status": "completed",
+          "spec_commit": "1a316437c0ece9b840abb5a6afdef887347be7e9",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "clean-test-isolation-hooks-file-1-1": "tick-33c79e"
+          },
+          "external_id": "tick-0da7e8"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "clean-test-isolation-hooks-file": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "clean-test-isolation-hooks-file": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "clean-test-isolation-hooks-file-1-1"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-30"
+}

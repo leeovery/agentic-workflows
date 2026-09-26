@@ -1,0 +1,260 @@
+{
+  "work_units": {
+    "auto-start-tmux-server": {
+      "work_type": "feature"
+    },
+    "tui-redesign": {
+      "work_type": "feature"
+    },
+    "tui-session-picker": {
+      "work_type": "feature"
+    },
+    "v1": {
+      "work_type": "epic"
+    },
+    "resume-sessions-after-reboot": {
+      "work_type": "feature"
+    },
+    "config-dir-wrong-path-macos": {
+      "work_type": "bugfix"
+    },
+    "migrate-stat-error-handling": {
+      "work_type": "quick-fix"
+    },
+    "clean-test-isolation-hooks-file": {
+      "work_type": "quick-fix"
+    },
+    "config-homedir-error-test": {
+      "work_type": "feature"
+    },
+    "resume-hooks-lost-on-server-restart": {
+      "work_type": "bugfix"
+    },
+    "resume-hooks-not-firing-after-server-kill": {
+      "work_type": "bugfix"
+    },
+    "built-in-session-resurrection": {
+      "work_type": "feature"
+    },
+    "hidden-sessions-showing-on-startup": {
+      "work_type": "bugfix"
+    },
+    "scrollback-not-restored-with-non-zero-base-index": {
+      "work_type": "bugfix"
+    },
+    "session-scrollback-preview": {
+      "work_type": "feature"
+    },
+    "daemon-merge-reintroduces-dead-sessions": {
+      "work_type": "bugfix"
+    },
+    "killed-sessions-resurrect-on-restart": {
+      "work_type": "bugfix"
+    },
+    "multiple-state-daemons-running-concurrently": {
+      "work_type": "bugfix"
+    },
+    "distinguish-transport-errors-in-getserveroption": {
+      "work_type": "bugfix"
+    },
+    "preview-keymap-discoverability": {
+      "work_type": "quick-fix"
+    },
+    "enter-attaches-from-preview": {
+      "work_type": "feature"
+    },
+    "preview-visual-distinction": {
+      "work_type": "feature"
+    },
+    "saver-kill-respawn-loop-leaks-daemons": {
+      "work_type": "bugfix"
+    },
+    "drop-invalid-A-flag-from-attach-session-argv": {
+      "work_type": "quick-fix"
+    },
+    "space-dismisses-preview": {
+      "work_type": "quick-fix"
+    },
+    "esc-after-preview-hides-session-list": {
+      "work_type": "bugfix"
+    },
+    "killed-session-resurrects-within-tick-window": {
+      "work_type": "bugfix"
+    },
+    "three-column-keymap-footer": {
+      "work_type": "quick-fix"
+    },
+    "slow-open-empty-previews-and-zombie-sessions": {
+      "work_type": "bugfix"
+    },
+    "hooks-rm-pane-key-flag": {
+      "work_type": "quick-fix"
+    },
+    "hydrate-command-shell-safety": {
+      "work_type": "quick-fix"
+    },
+    "hooks-skip-bootstrap": {
+      "work_type": "quick-fix"
+    },
+    "bootstrap-cleanstale-wipes-hooks-on-tmux-transient": {
+      "work_type": "bugfix"
+    },
+    "ac4-test-hardening": {
+      "work_type": "quick-fix"
+    },
+    "portal-observability-layer": {
+      "work_type": "feature"
+    },
+    "state-notify-cascade-on-binary-upgrade": {
+      "work_type": "bugfix"
+    },
+    "surface-x-toggle-in-keymap-hints": {
+      "work_type": "quick-fix"
+    },
+    "harden-daemon-integration-test": {
+      "work_type": "quick-fix"
+    },
+    "cleanup-purge-test-no-state-isolation": {
+      "work_type": "quick-fix"
+    },
+    "resume-survives-worktree-cwd-move": {
+      "work_type": "feature"
+    },
+    "session-tagging-and-grouping": {
+      "work_type": "feature"
+    },
+    "status-recent-warnings-pipe-format": {
+      "work_type": "bugfix"
+    },
+    "kill-rename-prefix-collision": {
+      "work_type": "bugfix"
+    },
+    "file-browser-alias-breadcrumb": {
+      "work_type": "bugfix"
+    },
+    "spectrum-tui-design": {
+      "work_type": "feature"
+    },
+    "cold-boot-restore-lands-on-projects": {
+      "work_type": "bugfix"
+    },
+    "agent-first-portal": {
+      "work_type": "epic"
+    },
+    "restore-host-terminal-windows": {
+      "work_type": "feature"
+    },
+    "skip-bootstrap-when-warm": {
+      "work_type": "feature"
+    },
+    "session-rename-orphans-resume-hook": {
+      "work_type": "bugfix"
+    },
+    "m-marks-highlighted-on-entry": {
+      "work_type": "quick-fix"
+    },
+    "cli-verb-surface-redesign": {
+      "work_type": "feature"
+    },
+    "ghostty-spawn-zero-windows": {
+      "work_type": "bugfix"
+    },
+    "spawned-window-dead-ends-on-session-exit": {
+      "work_type": "bugfix"
+    },
+    "persistent-no-host-terminal-banner": {
+      "work_type": "bugfix"
+    },
+    "remote-trigger-spawns-on-local-terminal": {
+      "work_type": "bugfix"
+    },
+    "custom-terminal-docs-and-clickable-see-docs": {
+      "work_type": "quick-fix"
+    },
+    "projects-filter-input-reskin": {
+      "work_type": "quick-fix"
+    },
+    "theming-system": {
+      "work_type": "feature"
+    },
+    "split-oversized-go-files": {
+      "work_type": "feature"
+    },
+    "resume-hooks-silently-lost": {
+      "work_type": "bugfix"
+    },
+    "open-with-forced-filter": {
+      "work_type": "feature"
+    },
+    "lazy-resume-on-attach": {
+      "work_type": "feature"
+    }
+  },
+  "defaults": {
+    "project_skills": [
+      ".claude/skills/golang-how-to",
+      ".claude/skills/golang-testing",
+      ".claude/skills/golang-code-style",
+      ".claude/skills/golang-naming",
+      ".claude/skills/golang-error-handling",
+      ".claude/skills/golang-design-patterns",
+      ".claude/skills/golang-structs-interfaces",
+      ".claude/skills/golang-dependency-injection",
+      ".claude/skills/golang-safety",
+      ".claude/skills/golang-concurrency",
+      ".claude/skills/golang-context",
+      ".claude/skills/golang-cli",
+      ".claude/skills/golang-spf13-cobra",
+      ".claude/skills/golang-dependency-management"
+    ],
+    "linters": [
+      {
+        "name": "go vet",
+        "command": "go vet ./..."
+      },
+      {
+        "name": "gofmt",
+        "command": "gofmt -l ."
+      },
+      {
+        "name": "golangci-lint",
+        "command": "golangci-lint run ./..."
+      }
+    ],
+    "tmux_labels": true
+  },
+  "baseline": {
+    "status": "native"
+  },
+  "roadmap": {
+    "horizons": [
+      "next"
+    ],
+    "items": {
+      "picker-row-redesign": {
+        "horizon": "next",
+        "summary": "Picker row rework: drop the always-\"1 window\" count, show each session directory path beside its name, and finish the right-hand status strip. NOTE: dropping the \"attached\" word and adding the pending-resume dot are NOT here — lazy-resume-on-attach pulled them forward, since the word had to go to make room for a second indicator.",
+        "origin": "park:lazy-resume-on-attach",
+        "sources": [
+          "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md"
+        ]
+      },
+      "preferences-ui": {
+        "horizon": "next",
+        "summary": "A settings screen in the picker for install preferences — the eager/lazy resume default and whatever follows it — so prefs.json is not hand-edited; the theme picker is currently the only preference with any UI",
+        "origin": "park:lazy-resume-on-attach",
+        "sources": [
+          "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md"
+        ]
+      },
+      "durable-pane-identity": {
+        "horizon": "next",
+        "summary": "Finish the move off position-based pane tracking: stamp every captured pane with its durable id rather than only panes carrying a resume hook, name saved scrollback files by that id instead of by session/window/pane position, and retire the positional pane key from capture, restore and the scrollback housekeeping pass. Today a pane moved between windows or sessions orphans its saved transcript and the housekeeping pass reaps it — harmless only because the next capture re-files it a second later. Also fixes the picker scrollback preview, which resolves a saved transcript by the pane's live position and so shows nothing for a pane that has moved. NOTE: lazy-resume-on-attach does the narrow half — a frozen (waiting) pane's saved record is matched by its id so an indefinite wait cannot lose the transcript — and leaves the preview artifact standing for a waiting pane that has been rearranged; this item finishes the migration and closes that artifact.",
+        "origin": "park:lazy-resume-on-attach",
+        "sources": [
+          "lazy-resume-on-attach/planning/lazy-resume-on-attach/planning.md"
+        ]
+      }
+    }
+  }
+}

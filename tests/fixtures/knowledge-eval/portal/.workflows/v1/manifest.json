@@ -1,0 +1,300 @@
+{
+  "name": "v1",
+  "work_type": "epic",
+  "status": "completed",
+  "created": "2026-03-17",
+  "description": "v1 work unit",
+  "phases": {
+    "discussion": {
+      "items": {
+        "cx-design": {
+          "status": "completed"
+        },
+        "fzf-output-mode": {
+          "status": "completed"
+        },
+        "git-root-and-completions": {
+          "status": "completed"
+        },
+        "session-launch-command": {
+          "status": "completed"
+        },
+        "x-xctl-split": {
+          "status": "completed"
+        },
+        "zellij-multi-directory": {
+          "status": "completed"
+        },
+        "zellij-to-tmux-migration": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "portal": {
+          "status": "completed",
+          "sources": {
+            "cx-design": {
+              "status": "incorporated"
+            },
+            "zellij-multi-directory": {
+              "status": "incorporated"
+            },
+            "fzf-output-mode": {
+              "status": "incorporated"
+            },
+            "git-root-and-completions": {
+              "status": "incorporated"
+            },
+            "zellij-to-tmux-migration": {
+              "status": "incorporated"
+            },
+            "x-xctl-split": {
+              "status": "incorporated"
+            },
+            "session-launch-command": {
+              "status": "incorporated"
+            }
+          }
+        },
+        "zw": {
+          "status": "superseded",
+          "sources": {
+            "cx-design": {
+              "status": "incorporated"
+            },
+            "zellij-multi-directory": {
+              "status": "incorporated"
+            },
+            "fzf-output-mode": {
+              "status": "incorporated"
+            },
+            "git-root-and-completions": {
+              "status": "incorporated"
+            }
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "portal": {
+          "status": "completed",
+          "external_id": "tick-77cbba",
+          "specification": "../../specification/portal/specification.md",
+          "spec_commit": "5766a886dfaefb8ee771bc97fb31a55f9af5665a",
+          "finding_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "task_map": {
+            "portal-1-1": "tick-fc2921",
+            "portal-1-2": "tick-442b28",
+            "portal-1-3": "tick-afcc27",
+            "portal-1-4": "tick-27a6f2",
+            "portal-1-5": "tick-0f5439",
+            "portal-1-6": "tick-9776d9",
+            "portal-1-7": "tick-e70af4",
+            "portal-2-1": "tick-2bb2d0",
+            "portal-2-2": "tick-4ebf36",
+            "portal-2-3": "tick-248cf4",
+            "portal-2-4": "tick-275824",
+            "portal-2-5": "tick-f924e3",
+            "portal-2-6": "tick-4c54e1",
+            "portal-2-7": "tick-444a76",
+            "portal-3-1": "tick-f26ed6",
+            "portal-3-2": "tick-62c4f1",
+            "portal-3-3": "tick-cebbcb",
+            "portal-3-4": "tick-feea91",
+            "portal-3-5": "tick-9d6404",
+            "portal-3-6": "tick-33fb7f",
+            "portal-3-7": "tick-afb187",
+            "portal-4-1": "tick-5533b4",
+            "portal-4-2": "tick-a2e7bd",
+            "portal-4-3": "tick-26cdeb",
+            "portal-4-4": "tick-b3b992",
+            "portal-4-5": "tick-fe7c90",
+            "portal-4-6": "tick-83fe89",
+            "portal-4-7": "tick-457428",
+            "portal-4-8": "tick-19ad25",
+            "portal-4-9": "tick-b92526",
+            "portal-5-1": "tick-e1b2c3",
+            "portal-5-2": "tick-f4d5e6",
+            "portal-5-3": "tick-a7b8c9",
+            "portal-5-4": "tick-d1e2f3",
+            "portal-5-5": "tick-b4c5d6",
+            "portal-5-6": "tick-e7f8a9",
+            "portal-5-7": "tick-c1d2e3",
+            "portal-5-8": "tick-f4a5b6",
+            "portal-5-9": "tick-d7e8f9",
+            "portal-5-10": "tick-a1b2c4",
+            "portal-5-11": "tick-e3f4d5",
+            "portal-5-12": "tick-b6c7a8",
+            "portal-6-1": "tick-d9e0f1",
+            "portal-6-2": "tick-c2d3e4",
+            "portal-6-3": "tick-f5a6b7",
+            "portal-6-4": "tick-e8f9a0",
+            "portal-6-5": "tick-b1c2d3",
+            "portal-6-6": "tick-a4b5c6",
+            "portal-6-7": "tick-d7e8f0",
+            "portal-6-8": "tick-f1a2b3",
+            "portal-6-9": "tick-c4d5e6",
+            "portal-7-1": "tick-feb4e0",
+            "portal-7-2": "tick-7943e4",
+            "portal-7-3": "tick-4aedcc",
+            "portal-7-4": "tick-ae743d",
+            "portal-7-5": "tick-218aad",
+            "portal-7-6": "tick-4a035c",
+            "portal-8-1": "tick-312e8c",
+            "portal-8-2": "tick-7f0e35",
+            "portal-8-3": "tick-200812",
+            "portal-9-1": "tick-1bd4ee",
+            "portal-10-1": "tick-eef443",
+            "portal-1": "tick-57d5a4",
+            "portal-2": "tick-a8f83d",
+            "portal-3": "tick-f6e9a1",
+            "portal-4": "tick-0c342f",
+            "portal-5": "tick-d5a1e0",
+            "portal-6": "tick-a6b7c9",
+            "portal-7": "tick-98bd31",
+            "portal-8": "tick-3a2937",
+            "portal-9": "tick-0ed051",
+            "portal-10": "tick-c85ba3"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "portal": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "current_phase": "6",
+          "current_task": "~",
+          "completed_tasks": [
+            "portal-6-6",
+            "portal-1-1",
+            "portal-1-2",
+            "portal-1-3",
+            "portal-1-4",
+            "portal-1-5",
+            "portal-1-6",
+            "portal-1-7",
+            "portal-2-1",
+            "portal-2-2",
+            "portal-2-3",
+            "portal-2-4",
+            "portal-2-5",
+            "portal-2-6",
+            "portal-2-7",
+            "portal-3-1",
+            "portal-3-2",
+            "portal-3-3",
+            "portal-3-4",
+            "portal-3-5",
+            "portal-3-6",
+            "portal-3-7",
+            "portal-4-1",
+            "portal-4-2",
+            "portal-4-3",
+            "portal-4-4",
+            "portal-4-5",
+            "portal-4-6",
+            "portal-4-7",
+            "portal-4-8",
+            "portal-4-9",
+            "portal-5-1",
+            "portal-5-2",
+            "portal-5-3",
+            "portal-5-4",
+            "portal-5-5",
+            "portal-5-6",
+            "portal-5-7",
+            "portal-5-8",
+            "portal-5-9",
+            "portal-5-10",
+            "portal-5-11",
+            "portal-5-12",
+            "portal-6-1",
+            "portal-6-2",
+            "portal-6-3",
+            "portal-6-4",
+            "portal-6-5",
+            "portal-6-7",
+            "portal-6-8",
+            "portal-6-9"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "analysis_cycle_total": 5,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "research": {
+      "items": {
+        "cc-tool-plan": {
+          "status": "completed"
+        },
+        "tmux-session-managers-analysis": {
+          "status": "completed"
+        }
+      }
+    },
+    "discovery": {
+      "gap_analysis_cache": {
+        "checksum": "77cb1503944008ffcee7873061d48ca2",
+        "generated": "2026-06-06T09:03:10.526Z",
+        "input_files": [
+          "cc-tool-plan.md",
+          "cx-design.md",
+          "fzf-output-mode.md",
+          "git-root-and-completions.md",
+          "session-launch-command.md",
+          "tmux-session-managers-analysis.md",
+          "x-xctl-split.md",
+          "zellij-multi-directory.md",
+          "zellij-to-tmux-migration.md"
+        ]
+      }
+    }
+  },
+  "completed_at": "2026-03-17"
+}

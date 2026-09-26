@@ -1,0 +1,141 @@
+{
+  "name": "dep-tree-visualization",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-03-25",
+  "description": "Render dependency graphs as ASCII trees in the terminal, showing upstream blockers and downstream unblocks",
+  "phases": {
+    "discussion": {
+      "items": {
+        "dep-tree-visualization": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "dep-tree-visualization": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-03-27",
+          "sources": {
+            "dep-tree-visualization": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "dep-tree-visualization": {
+          "status": "completed",
+          "spec_commit": "737a87fe763589e9e120a315e61bbe1d756ec86a",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 3,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "dep-tree-visualization-1-1": "tick-38bd4e",
+            "dep-tree-visualization-1": "tick-7f41cf",
+            "dep-tree-visualization-1-2": "tick-7b6419",
+            "dep-tree-visualization-1-3": "tick-8d0709",
+            "dep-tree-visualization-1-4": "tick-7a553b",
+            "dep-tree-visualization-2-1": "tick-964a0b",
+            "dep-tree-visualization-2": "tick-fda1e3",
+            "dep-tree-visualization-2-2": "tick-f0bfcd",
+            "dep-tree-visualization-3": "tick-d6d528",
+            "dep-tree-visualization-3-1": "tick-5f8703",
+            "dep-tree-visualization-3-2": "tick-aa2517",
+            "dep-tree-visualization-3-3": "tick-b5d370"
+          },
+          "external_id": "tick-86603c",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "dep-tree-visualization": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro/SKILL.md"
+          ],
+          "current_phase": 3,
+          "current_task": "~",
+          "completed_tasks": [
+            "dep-tree-visualization-1-1",
+            "dep-tree-visualization-1-2",
+            "dep-tree-visualization-1-3",
+            "dep-tree-visualization-1-4",
+            "dep-tree-visualization-2-1",
+            "dep-tree-visualization-2-2",
+            "dep-tree-visualization-3-1",
+            "dep-tree-visualization-3-2",
+            "dep-tree-visualization-3-3"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "dep-tree-visualization": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "dep-tree-visualization-1-1",
+            "dep-tree-visualization-1-2",
+            "dep-tree-visualization-1-3",
+            "dep-tree-visualization-1-4",
+            "dep-tree-visualization-2-1",
+            "dep-tree-visualization-2-2",
+            "dep-tree-visualization-3-1",
+            "dep-tree-visualization-3-2",
+            "dep-tree-visualization-3-3"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-28"
+}

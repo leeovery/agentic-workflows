@@ -1,0 +1,559 @@
+{
+  "name": "open-with-forced-filter",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-09-10",
+  "description": "Rethink what an argument to portal open means — the bare-positional resolution grammar plus a /text shortcut that forces the picker open pre-filtered",
+  "phases": {
+    "discussion": {
+      "items": {
+        "open-with-forced-filter": {
+          "status": "completed",
+          "subtopics": {
+            "filter-shortcut-form": {
+              "status": "decided",
+              "parent": null
+            },
+            "bare-positional-grammar": {
+              "status": "decided",
+              "parent": null
+            },
+            "attach-vs-mint-intent": {
+              "status": "decided",
+              "parent": null
+            },
+            "session-name-recognisability": {
+              "status": "decided",
+              "parent": null
+            },
+            "unambiguous-direct-attach": {
+              "status": "decided",
+              "parent": null
+            },
+            "surface-reconciliation": {
+              "status": "decided",
+              "parent": null
+            },
+            "search-match-domain": {
+              "status": "decided",
+              "parent": null
+            },
+            "argv-composition": {
+              "status": "decided",
+              "parent": null
+            },
+            "completion": {
+              "status": "decided",
+              "parent": null
+            },
+            "shell-completion-wiring": {
+              "status": "decided",
+              "parent": null
+            },
+            "search-result-display": {
+              "status": "decided",
+              "parent": null
+            },
+            "cold-path-classification": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "open-with-forced-filter": {
+          "status": "completed",
+          "sources": {
+            "open-with-forced-filter": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 7,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-09-12",
+          "review_baseline_words": 5070,
+          "tracking": {
+            "review-claims-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-claims-tracking-c2": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-claims-tracking-c3": "complete",
+            "review-input-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-claims-tracking-c4": "complete",
+            "review-input-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-claims-tracking-c5": "complete",
+            "review-input-tracking-c5": "complete",
+            "review-gap-analysis-tracking-c5": "complete",
+            "review-gap-analysis-tracking-c6": "complete",
+            "review-gap-analysis-tracking-c7": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "open-with-forced-filter": {
+          "status": "completed",
+          "spec_commit": "7421009c05ee012c7ac4b5f2d3787388b1a99a1f",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 4,
+          "phase": 6,
+          "task": null,
+          "task_map": {
+            "open-with-forced-filter-1-1": "tick-a5663a",
+            "open-with-forced-filter-1": "tick-c846ae",
+            "open-with-forced-filter-1-2": "tick-d5998c",
+            "open-with-forced-filter-1-3": "tick-d3537a",
+            "open-with-forced-filter-1-4": "tick-69c098",
+            "open-with-forced-filter-1-5": "tick-f275ce",
+            "open-with-forced-filter-1-6": "tick-6d0e49",
+            "open-with-forced-filter-1-7": "tick-507aea",
+            "open-with-forced-filter-2-1": "tick-46dad8",
+            "open-with-forced-filter-2": "tick-c525a5",
+            "open-with-forced-filter-2-2": "tick-ad2390",
+            "open-with-forced-filter-2-3": "tick-c771be",
+            "open-with-forced-filter-2-4": "tick-5cfe10",
+            "open-with-forced-filter-3-1": "tick-4c5a85",
+            "open-with-forced-filter-3": "tick-9c690c",
+            "open-with-forced-filter-3-2": "tick-36ae2d",
+            "open-with-forced-filter-3-3": "tick-aec481",
+            "open-with-forced-filter-3-4": "tick-400ee8",
+            "open-with-forced-filter-4-1": "tick-00f27b",
+            "open-with-forced-filter-4": "tick-50e666",
+            "open-with-forced-filter-4-2": "tick-700a3d",
+            "open-with-forced-filter-4-3": "tick-3afec2",
+            "open-with-forced-filter-4-4": "tick-9b4d04",
+            "open-with-forced-filter-4-5": "tick-781c51",
+            "open-with-forced-filter-5-1": "tick-6c7035",
+            "open-with-forced-filter-5": "tick-fd355d",
+            "open-with-forced-filter-5-2": "tick-a6b112",
+            "open-with-forced-filter-5-3": "tick-6827c1",
+            "open-with-forced-filter-5-4": "tick-cd4c35",
+            "open-with-forced-filter-3-5": "tick-28aca8",
+            "open-with-forced-filter-4-6": "tick-3024a0",
+            "open-with-forced-filter-4-7": "tick-cfc44d",
+            "open-with-forced-filter-4-8": "tick-fc6181",
+            "open-with-forced-filter-5-5": "tick-aceea8",
+            "open-with-forced-filter-5-6": "tick-a33475",
+            "open-with-forced-filter-6": "tick-10c1a3",
+            "open-with-forced-filter-6-1": "tick-6a5d97",
+            "open-with-forced-filter-6-2": "tick-403463",
+            "open-with-forced-filter-6-3": "tick-7c6b83",
+            "open-with-forced-filter-6-4": "tick-fa4ede",
+            "open-with-forced-filter-7": "tick-8d0c63",
+            "open-with-forced-filter-7-1": "tick-417c10",
+            "open-with-forced-filter-7-2": "tick-424d49",
+            "open-with-forced-filter-8": "tick-d837ea",
+            "open-with-forced-filter-8-1": "tick-e7336e",
+            "open-with-forced-filter-8-2": "tick-11e361",
+            "open-with-forced-filter-9": "tick-c34c6f",
+            "open-with-forced-filter-9-1": "tick-f66f75",
+            "open-with-forced-filter-9-2": "tick-251123",
+            "open-with-forced-filter-9-3": "tick-b8464e",
+            "open-with-forced-filter-9-4": "tick-0d76af",
+            "open-with-forced-filter-10": "tick-645a74",
+            "open-with-forced-filter-10-1": "tick-1df0e1",
+            "open-with-forced-filter-10-2": "tick-430d00",
+            "open-with-forced-filter-10-3": "tick-4c0f85",
+            "open-with-forced-filter-10-4": "tick-623658",
+            "open-with-forced-filter-10-5": "tick-d24700",
+            "open-with-forced-filter-11": "tick-4b2f25",
+            "open-with-forced-filter-11-1": "tick-333efc",
+            "open-with-forced-filter-11-2": "tick-61e334",
+            "open-with-forced-filter-11-3": "tick-13a587",
+            "open-with-forced-filter-11-4": "tick-390004",
+            "open-with-forced-filter-11-5": "tick-2cd16f",
+            "open-with-forced-filter-12": "tick-80729d",
+            "open-with-forced-filter-12-1": "tick-5b120c",
+            "open-with-forced-filter-12-2": "tick-716bd3",
+            "open-with-forced-filter-12-3": "tick-23141a",
+            "open-with-forced-filter-12-4": "tick-8ecd82",
+            "open-with-forced-filter-12-5": "tick-cb4c82",
+            "open-with-forced-filter-12-6": "tick-e538df",
+            "open-with-forced-filter-13": "tick-999d6f",
+            "open-with-forced-filter-13-1": "tick-360750",
+            "open-with-forced-filter-13-2": "tick-ef3d63",
+            "open-with-forced-filter-14": "tick-0ee99f",
+            "open-with-forced-filter-14-1": "tick-98583c"
+          },
+          "storage_paths": [
+            ".tick/"
+          ],
+          "approvals": {
+            "structure": "2026-09-12",
+            "tasks": {
+              "p1": "2026-09-12",
+              "p2": "2026-09-12",
+              "p3": "2026-09-12",
+              "p4": "2026-09-12",
+              "p5": "2026-09-12"
+            }
+          },
+          "staging": {},
+          "external_id": "tick-964b62",
+          "tracking": {
+            "review-traceability-tracking-c1": "complete",
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "open-with-forced-filter": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "consolidation_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 8,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-context",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-spf13-cobra",
+            ".claude/skills/golang-dependency-management"
+          ],
+          "current_phase": 14,
+          "current_task": null,
+          "completed_tasks": [
+            "open-with-forced-filter-1-1",
+            "open-with-forced-filter-1-2",
+            "open-with-forced-filter-1-3",
+            "open-with-forced-filter-1-4",
+            "open-with-forced-filter-1-5",
+            "open-with-forced-filter-1-6",
+            "open-with-forced-filter-1-7",
+            "open-with-forced-filter-2-1",
+            "open-with-forced-filter-2-2",
+            "open-with-forced-filter-2-3",
+            "open-with-forced-filter-2-4",
+            "open-with-forced-filter-3-1",
+            "open-with-forced-filter-3-2",
+            "open-with-forced-filter-3-3",
+            "open-with-forced-filter-3-4",
+            "open-with-forced-filter-3-5",
+            "open-with-forced-filter-4-1",
+            "open-with-forced-filter-4-2",
+            "open-with-forced-filter-4-3",
+            "open-with-forced-filter-4-4",
+            "open-with-forced-filter-4-5",
+            "open-with-forced-filter-4-6",
+            "open-with-forced-filter-4-7",
+            "open-with-forced-filter-4-8",
+            "open-with-forced-filter-5-1",
+            "open-with-forced-filter-5-2",
+            "open-with-forced-filter-5-3",
+            "open-with-forced-filter-5-4",
+            "open-with-forced-filter-5-5",
+            "open-with-forced-filter-5-6",
+            "open-with-forced-filter-6-1",
+            "open-with-forced-filter-6-2",
+            "open-with-forced-filter-6-3",
+            "open-with-forced-filter-6-4",
+            "open-with-forced-filter-7-1",
+            "open-with-forced-filter-7-2",
+            "open-with-forced-filter-8-1",
+            "open-with-forced-filter-8-2",
+            "open-with-forced-filter-9-1",
+            "open-with-forced-filter-9-2",
+            "open-with-forced-filter-9-3",
+            "open-with-forced-filter-9-4",
+            "open-with-forced-filter-10-1",
+            "open-with-forced-filter-10-2",
+            "open-with-forced-filter-10-3",
+            "open-with-forced-filter-10-4",
+            "open-with-forced-filter-10-5",
+            "open-with-forced-filter-11-1",
+            "open-with-forced-filter-11-2",
+            "open-with-forced-filter-11-3",
+            "open-with-forced-filter-11-4",
+            "open-with-forced-filter-11-5",
+            "open-with-forced-filter-12-1",
+            "open-with-forced-filter-12-2",
+            "open-with-forced-filter-12-3",
+            "open-with-forced-filter-12-4",
+            "open-with-forced-filter-12-5",
+            "open-with-forced-filter-12-6",
+            "open-with-forced-filter-13-1",
+            "open-with-forced-filter-13-2",
+            "open-with-forced-filter-14-1"
+          ],
+          "consolidated_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "staging": {
+            "p3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "p5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "ad-hoc-1": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p7": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p8": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "p11": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c6": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "p12": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          },
+          "machine_phases": [
+            6
+          ],
+          "updated": "2026-09-16"
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "open-with-forced-filter": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "open-with-forced-filter-1-1",
+            "open-with-forced-filter-1-2",
+            "open-with-forced-filter-1-3",
+            "open-with-forced-filter-1-4",
+            "open-with-forced-filter-1-5",
+            "open-with-forced-filter-1-6",
+            "open-with-forced-filter-1-7",
+            "open-with-forced-filter-2-1",
+            "open-with-forced-filter-2-2",
+            "open-with-forced-filter-2-3",
+            "open-with-forced-filter-2-4",
+            "open-with-forced-filter-3-1",
+            "open-with-forced-filter-3-2",
+            "open-with-forced-filter-3-3",
+            "open-with-forced-filter-3-4",
+            "open-with-forced-filter-3-5",
+            "open-with-forced-filter-4-1",
+            "open-with-forced-filter-4-2",
+            "open-with-forced-filter-4-3",
+            "open-with-forced-filter-4-4",
+            "open-with-forced-filter-4-5",
+            "open-with-forced-filter-4-6",
+            "open-with-forced-filter-4-7",
+            "open-with-forced-filter-4-8",
+            "open-with-forced-filter-5-1",
+            "open-with-forced-filter-5-2",
+            "open-with-forced-filter-5-3",
+            "open-with-forced-filter-5-4",
+            "open-with-forced-filter-5-5",
+            "open-with-forced-filter-5-6",
+            "open-with-forced-filter-6-1",
+            "open-with-forced-filter-6-2",
+            "open-with-forced-filter-6-3",
+            "open-with-forced-filter-6-4",
+            "open-with-forced-filter-7-1",
+            "open-with-forced-filter-7-2",
+            "open-with-forced-filter-8-1",
+            "open-with-forced-filter-8-2",
+            "open-with-forced-filter-9-1",
+            "open-with-forced-filter-9-2",
+            "open-with-forced-filter-9-3",
+            "open-with-forced-filter-9-4",
+            "open-with-forced-filter-10-1",
+            "open-with-forced-filter-10-2",
+            "open-with-forced-filter-10-3",
+            "open-with-forced-filter-10-4",
+            "open-with-forced-filter-10-5",
+            "open-with-forced-filter-11-1",
+            "open-with-forced-filter-11-2",
+            "open-with-forced-filter-11-3",
+            "open-with-forced-filter-11-4",
+            "open-with-forced-filter-11-5",
+            "open-with-forced-filter-12-1",
+            "open-with-forced-filter-12-2",
+            "open-with-forced-filter-12-3",
+            "open-with-forced-filter-12-4",
+            "open-with-forced-filter-12-5",
+            "open-with-forced-filter-12-6",
+            "open-with-forced-filter-13-1",
+            "open-with-forced-filter-13-2",
+            "open-with-forced-filter-14-1"
+          ],
+          "out_of_scope": [
+            {
+              "id": "A6",
+              "route": "out-of-scope",
+              "kind": "quick-fix",
+              "ids": [
+                "7-1-1"
+              ],
+              "files": [
+                "internal/tui/model.go"
+              ],
+              "summary": "progressReceiver comment overstates the nil-case synthesis",
+              "intent": "The progressReceiver field comment at internal/tui/model.go:237 ends \"when nil, Init synthesizes it\", unqualified, but only the PageLoading branch synthesizes a BootstrapCompleteMsg for a nil receiver (:1559-1567); the commandPending branch (:1552-1553) and the default branch (:1569-1570) synthesize nothing. Replacing the clause with \"when nil, the loading branch synthesizes it\" narrows the field's own contract to what Init does. Provenance checked: the comment text dates to commit 915e7fcbb (2026-08-11), a month before this work unit began (1ea439825, 2026-09-10), and both non-synthesizing routes existed in Init before it — this change-set's task 10-1 restructured the if-chain into a switch without introducing the wrong claim. The behaviour belongs to the cold-path startup flip.",
+              "fails": "A maintainer reading the field's own doc while working the command-pending route concludes every nil-receiver model gets a synthesized terminal event, and synthesizing one on that branch is exactly what the warm command-pending route must not have."
+            }
+          ],
+          "staging": {
+            "c1": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c2": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-08-17-open-with-forced-filter.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-09-10T07:03:23Z"
+    }
+  ],
+  "completed_at": "2026-09-16"
+}

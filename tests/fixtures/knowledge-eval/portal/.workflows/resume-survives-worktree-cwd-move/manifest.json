@@ -1,0 +1,23 @@
+{
+  "name": "resume-survives-worktree-cwd-move",
+  "work_type": "feature",
+  "status": "cancelled",
+  "created": "2026-06-05",
+  "description": "Make Portal's Claude-resume hooks survive a session whose working directory has moved (e.g. into a git worktree) since the Claude session was created",
+  "phases": {
+    "discussion": {
+      "items": {
+        "resume-survives-worktree-cwd-move": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-05-resume-survives-worktree-cwd-move.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-05T16:13:01Z"
+    }
+  ]
+}

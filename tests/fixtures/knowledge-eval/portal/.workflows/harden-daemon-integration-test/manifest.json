@@ -1,0 +1,94 @@
+{
+  "name": "harden-daemon-integration-test",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-06-03",
+  "description": "Harden cmd/state_daemon_integration_test.go against silent passes: export tmux.KillBarrierTimeoutCeiling and reuse it instead of a local mirror, and swap a t.Logf warning for t.Skip when a fast host cannot exercise the mid-tick SIGHUP cancellation path",
+  "phases": {
+    "specification": {
+      "items": {
+        "harden-daemon-integration-test": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "harden-daemon-integration-test": {
+          "status": "completed",
+          "spec_commit": "3c76e2cc9c8e779d9b992feb5726dd042537cf01",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "harden-daemon-integration-test-1-1": "tick-957244",
+            "harden-daemon-integration-test-1-2": "tick-5da51b"
+          },
+          "external_id": "tick-fc0838"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "harden-daemon-integration-test": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "harden-daemon-integration-test": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "harden-daemon-integration-test-1-1",
+            "harden-daemon-integration-test-1-2"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-05-20-export-kill-barrier-timeout-ceiling.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-06-03T21:01:44Z"
+    },
+    {
+      "path": "seeds/2026-05-20-skip-instead-of-warn-on-fast-capture-pane-host.md",
+      "source": "inbox:quickfix",
+      "seeded_at": "2026-06-03T21:01:44Z"
+    }
+  ],
+  "completed_at": "2026-06-04"
+}

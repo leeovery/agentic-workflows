@@ -1,0 +1,105 @@
+{
+  "name": "cascade-unchanged-noise",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-03-21",
+  "description": "Cascade output includes unchanged terminal tasks as noise, burying real transitions",
+  "phases": {
+    "investigation": {
+      "items": {
+        "cascade-unchanged-noise": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "cascade-unchanged-noise": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-03-21",
+          "sources": {
+            "cascade-unchanged-noise": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "cascade-unchanged-noise": {
+          "status": "completed",
+          "spec_commit": "a5ef589689aabff9201e32a2262852c269d740ac",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "gated",
+          "finding_gate_mode": "gated",
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "cascade-unchanged-noise": "tick-4db2a3",
+            "cascade-unchanged-noise-1": "tick-dcb013",
+            "cascade-unchanged-noise-1-1": "tick-f9cb01"
+          },
+          "external_id": "tick-4db2a3",
+          "review_cycle": 2,
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "cascade-unchanged-noise": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "cascade-unchanged-noise-1-1"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "cascade-unchanged-noise": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "cascade-unchanged-noise-1-1"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-22"
+}

@@ -1,0 +1,119 @@
+{
+  "name": "ready-includes-in-progress",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-06-03",
+  "description": "Include in-progress tasks in `tick ready` output, keeping `blocked` consistent as its inverse; semantics and presentation to be settled in discussion.",
+  "phases": {
+    "discussion": {
+      "items": {
+        "ready-includes-in-progress": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "ready-includes-in-progress": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-06-03",
+          "sources": {
+            "ready-includes-in-progress": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "ready-includes-in-progress": {
+          "status": "completed",
+          "spec_commit": "b79fb105596e2be26491176df186e5ebfbd0983f",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "ready-includes-in-progress-1": "tick-461b1a",
+            "ready-includes-in-progress-1-1": "tick-fe7e70",
+            "ready-includes-in-progress-1-2": "tick-2f0d2a",
+            "ready-includes-in-progress-1-3": "tick-6e6a9c"
+          },
+          "external_id": "tick-b0f67d",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "ready-includes-in-progress": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 1,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "ready-includes-in-progress-1-1",
+            "ready-includes-in-progress-1-2",
+            "ready-includes-in-progress-1-3"
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "ready-includes-in-progress": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "ready-includes-in-progress-1-1",
+            "ready-includes-in-progress-1-2",
+            "ready-includes-in-progress-1-3"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-06-02-ready-includes-in-progress.md",
+      "source": "inbox:idea",
+      "seeded_at": "2026-06-03T07:38:35Z"
+    }
+  ],
+  "completed_at": "2026-06-03"
+}

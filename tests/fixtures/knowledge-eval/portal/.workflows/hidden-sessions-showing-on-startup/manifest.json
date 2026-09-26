@@ -1,0 +1,111 @@
+{
+  "name": "hidden-sessions-showing-on-startup",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-04-30",
+  "description": "Sessions prefixed with underscore (e.g. _portal-saver) and a stray '0' session are visible in the session list on startup; underscore-prefixed sessions were intended to be hidden by default.",
+  "phases": {
+    "investigation": {
+      "items": {
+        "hidden-sessions-showing-on-startup": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "hidden-sessions-showing-on-startup": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "date": "2026-04-30",
+          "sources": {
+            "hidden-sessions-showing-on-startup": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "hidden-sessions-showing-on-startup": {
+          "status": "completed",
+          "spec_commit": "d5d9c2716a03d8f6f730541c5aad71cad54679fd",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "gated",
+          "review_cycle": 2,
+          "phase": 3,
+          "task": "~",
+          "task_map": {
+            "hidden-sessions-showing-on-startup-1-1": "tick-94b4e1",
+            "hidden-sessions-showing-on-startup-1": "tick-6a0e98",
+            "hidden-sessions-showing-on-startup-1-2": "tick-6731e9",
+            "hidden-sessions-showing-on-startup-2": "tick-0a7576",
+            "hidden-sessions-showing-on-startup-2-1": "tick-dc5668",
+            "hidden-sessions-showing-on-startup-2-2": "tick-fdb106",
+            "hidden-sessions-showing-on-startup-2-3": "tick-1687f9"
+          },
+          "external_id": "tick-79a9e1",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "hidden-sessions-showing-on-startup": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "hidden-sessions-showing-on-startup-1-1",
+            "hidden-sessions-showing-on-startup-1-2",
+            "hidden-sessions-showing-on-startup-2-1",
+            "hidden-sessions-showing-on-startup-2-2",
+            "hidden-sessions-showing-on-startup-2-3"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 1,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-04-30"
+}

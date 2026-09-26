@@ -1,0 +1,164 @@
+{
+  "name": "preview-visual-distinction",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-05-16",
+  "description": "Make the TUI quick-preview visually distinct from an attached session so users can tell instantly they are in read-only preview mode.",
+  "phases": {
+    "discussion": {
+      "items": {
+        "preview-visual-distinction": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "preview-visual-distinction": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-05-18",
+          "sources": {
+            "preview-visual-distinction": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "preview-visual-distinction": {
+          "status": "completed",
+          "spec_commit": "77d5337eaddcba046906ecc7cadc119ce405d8b2",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 4,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "preview-visual-distinction": "tick-2d1808",
+            "preview-visual-distinction-1": "tick-1d5bda",
+            "preview-visual-distinction-1-1": "tick-073f38",
+            "preview-visual-distinction-1-2": "tick-308202",
+            "preview-visual-distinction-1-3": "tick-6fc894",
+            "preview-visual-distinction-1-4": "tick-c90448",
+            "preview-visual-distinction-1-5": "tick-f842e2",
+            "preview-visual-distinction-1-6": "tick-9c2331",
+            "preview-visual-distinction-1-7": "tick-674c91",
+            "preview-visual-distinction-1-8": "tick-5f158b",
+            "preview-visual-distinction-1-9": "tick-86f581",
+            "preview-visual-distinction-2": "tick-8ba817",
+            "preview-visual-distinction-2-1": "tick-c58e2c",
+            "preview-visual-distinction-2-2": "tick-b63008",
+            "preview-visual-distinction-2-3": "tick-561b0d",
+            "preview-visual-distinction-2-4": "tick-69663d",
+            "preview-visual-distinction-2-5": "tick-6f9c15",
+            "preview-visual-distinction-2-6": "tick-1a45a2",
+            "preview-visual-distinction-3": "tick-af2ac9",
+            "preview-visual-distinction-3-1": "tick-2d2c2e",
+            "preview-visual-distinction-3-2": "tick-fef834"
+          },
+          "external_id": "tick-2d1808",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "preview-visual-distinction": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "preview-visual-distinction-1-1",
+            "preview-visual-distinction-1-2",
+            "preview-visual-distinction-1-3",
+            "preview-visual-distinction-1-4",
+            "preview-visual-distinction-1-5",
+            "preview-visual-distinction-1-6",
+            "preview-visual-distinction-1-7",
+            "preview-visual-distinction-1-8",
+            "preview-visual-distinction-1-9",
+            "preview-visual-distinction-2-1",
+            "preview-visual-distinction-2-2",
+            "preview-visual-distinction-2-3",
+            "preview-visual-distinction-2-4",
+            "preview-visual-distinction-2-5",
+            "preview-visual-distinction-2-6",
+            "preview-visual-distinction-3-1",
+            "preview-visual-distinction-3-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "preview-visual-distinction": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "preview-visual-distinction-1-1",
+            "preview-visual-distinction-1-2",
+            "preview-visual-distinction-1-3",
+            "preview-visual-distinction-1-4",
+            "preview-visual-distinction-1-5",
+            "preview-visual-distinction-1-6",
+            "preview-visual-distinction-1-7",
+            "preview-visual-distinction-1-8",
+            "preview-visual-distinction-1-9",
+            "preview-visual-distinction-2-1",
+            "preview-visual-distinction-2-2",
+            "preview-visual-distinction-2-3",
+            "preview-visual-distinction-2-4",
+            "preview-visual-distinction-2-5",
+            "preview-visual-distinction-2-6",
+            "preview-visual-distinction-3-1",
+            "preview-visual-distinction-3-2"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-18"
+}

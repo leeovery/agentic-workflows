@@ -1,0 +1,541 @@
+{
+  "name": "free-text-round-trip",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-09-16",
+  "description": "Make free-text fields (descriptions, notes) survive an agent read-edit-write round trip in the toon output format, with a field-extraction flag for raw single-field output",
+  "phases": {
+    "discussion": {
+      "items": {
+        "free-text-round-trip": {
+          "status": "completed",
+          "subtopics": {
+            "round-trip-contract": {
+              "status": "decided",
+              "parent": null
+            },
+            "description-block-encoding": {
+              "status": "decided",
+              "parent": null
+            },
+            "notes-free-text-handling": {
+              "status": "decided",
+              "parent": null
+            },
+            "field-extraction-flag": {
+              "status": "decided",
+              "parent": null
+            },
+            "write-side-input": {
+              "status": "decided",
+              "parent": null
+            },
+            "toon-conformance-scope": {
+              "status": "decided",
+              "parent": null
+            },
+            "single-object-sections": {
+              "status": "decided",
+              "parent": null
+            },
+            "string-list-sections": {
+              "status": "decided",
+              "parent": null
+            },
+            "conformance-verification": {
+              "status": "decided",
+              "parent": null
+            },
+            "status-change-output": {
+              "status": "decided",
+              "parent": null
+            },
+            "published-documentation": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "free-text-round-trip": {
+          "status": "completed",
+          "sources": {
+            "free-text-round-trip": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 5,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "auto",
+          "date": "2026-09-18",
+          "review_baseline_words": 6154,
+          "tracking": {
+            "review-claims-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-claims-tracking-c2": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-claims-tracking-c3": "complete",
+            "review-input-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-claims-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c4": "complete",
+            "review-claims-tracking-c5": "complete",
+            "review-input-tracking-c5": "complete",
+            "review-gap-analysis-tracking-c5": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "free-text-round-trip": {
+          "status": "completed",
+          "spec_commit": "b3bcde7bda134bfbb664311614917c25e1ebea06",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 8,
+          "phase": 7,
+          "task": null,
+          "task_map": {
+            "free-text-round-trip-1-1": "tick-36cfbf",
+            "free-text-round-trip-1": "tick-063549",
+            "free-text-round-trip-1-2": "tick-45148d",
+            "free-text-round-trip-1-3": "tick-a119e7",
+            "free-text-round-trip-1-4": "tick-df8092",
+            "free-text-round-trip-1-5": "tick-7389ba",
+            "free-text-round-trip-1-6": "tick-a8523e",
+            "free-text-round-trip-2-1": "tick-0ca6ad",
+            "free-text-round-trip-2": "tick-41bed7",
+            "free-text-round-trip-2-2": "tick-ed0952",
+            "free-text-round-trip-2-3": "tick-8daf62",
+            "free-text-round-trip-2-4": "tick-d7fc96",
+            "free-text-round-trip-2-5": "tick-1d9e65",
+            "free-text-round-trip-2-6": "tick-477df7",
+            "free-text-round-trip-3-1": "tick-c0b604",
+            "free-text-round-trip-3": "tick-0540b5",
+            "free-text-round-trip-3-2": "tick-904665",
+            "free-text-round-trip-3-3": "tick-df8fc7",
+            "free-text-round-trip-3-4": "tick-78558c",
+            "free-text-round-trip-3-5": "tick-49e3d7",
+            "free-text-round-trip-3-6": "tick-b3a485",
+            "free-text-round-trip-4-1": "tick-794c1f",
+            "free-text-round-trip-4": "tick-ec0b32",
+            "free-text-round-trip-4-2": "tick-4d2f1d",
+            "free-text-round-trip-4-3": "tick-483997",
+            "free-text-round-trip-4-4": "tick-75bf6f",
+            "free-text-round-trip-4-5": "tick-86b409",
+            "free-text-round-trip-4-6": "tick-377527",
+            "free-text-round-trip-4-7": "tick-b55ed5",
+            "free-text-round-trip-4-8": "tick-4de057",
+            "free-text-round-trip-5-1": "tick-9ed70a",
+            "free-text-round-trip-5": "tick-a92b82",
+            "free-text-round-trip-5-2": "tick-f3937c",
+            "free-text-round-trip-5-3": "tick-7962a1",
+            "free-text-round-trip-5-4": "tick-b70d39",
+            "free-text-round-trip-5-5": "tick-3a59e1",
+            "free-text-round-trip-5-6": "tick-d35d1b",
+            "free-text-round-trip-6-1": "tick-25fabf",
+            "free-text-round-trip-6": "tick-9a4efb",
+            "free-text-round-trip-6-2": "tick-f5455a",
+            "free-text-round-trip-6-3": "tick-6e30b5",
+            "free-text-round-trip-6-4": "tick-ae3897",
+            "free-text-round-trip-6-5": "tick-2974b8",
+            "free-text-round-trip-6-6": "tick-f9b5f3",
+            "free-text-round-trip-1-7": "tick-ca8507",
+            "free-text-round-trip-2-7": "tick-30886c",
+            "free-text-round-trip-2-8": "tick-8fcf09",
+            "free-text-round-trip-3-7": "tick-98d2e0",
+            "free-text-round-trip-3-8": "tick-aa98d9",
+            "free-text-round-trip-3-9": "tick-98c333",
+            "free-text-round-trip-3-10": "tick-d05b7e",
+            "free-text-round-trip-4-9": "tick-6c3925",
+            "free-text-round-trip-4-10": "tick-46ece2",
+            "free-text-round-trip-4-11": "tick-f31314",
+            "free-text-round-trip-4-12": "tick-e8d2eb",
+            "free-text-round-trip-4-13": "tick-1267e8",
+            "free-text-round-trip-5-7": "tick-3f0af1",
+            "free-text-round-trip-5-8": "tick-91fb2f",
+            "free-text-round-trip-6-7": "tick-8246c5",
+            "free-text-round-trip-6-8": "tick-1f8606",
+            "free-text-round-trip-7": "tick-3d71a8",
+            "free-text-round-trip-7-1": "tick-6ef31f",
+            "free-text-round-trip-7-2": "tick-1f59f1",
+            "free-text-round-trip-7-3": "tick-401dc3",
+            "free-text-round-trip-7-4": "tick-02d03b",
+            "free-text-round-trip-7-5": "tick-5087a7",
+            "free-text-round-trip-8": "tick-a06bd5",
+            "free-text-round-trip-8-1": "tick-9e2a3b",
+            "free-text-round-trip-8-2": "tick-a69bd6",
+            "free-text-round-trip-8-3": "tick-b845fe",
+            "free-text-round-trip-9": "tick-abac80",
+            "free-text-round-trip-9-1": "tick-6b8ce7",
+            "free-text-round-trip-9-2": "tick-ccc8ee",
+            "free-text-round-trip-9-3": "tick-88e344",
+            "free-text-round-trip-10": "tick-b1b2c2",
+            "free-text-round-trip-10-1": "tick-e8fce5",
+            "free-text-round-trip-10-2": "tick-9e5458",
+            "free-text-round-trip-10-3": "tick-9502f1",
+            "free-text-round-trip-10-4": "tick-63d1bd",
+            "free-text-round-trip-10-5": "tick-b57be3",
+            "free-text-round-trip-10-6": "tick-9e1023"
+          },
+          "storage_paths": [
+            ".tick/"
+          ],
+          "approvals": {
+            "structure": "2026-09-18",
+            "tasks": {
+              "p1": "2026-09-18",
+              "p2": "2026-09-18",
+              "p3": "2026-09-18",
+              "p4": "2026-09-18",
+              "p5": "2026-09-18",
+              "p6": "2026-09-18"
+            }
+          },
+          "staging": {},
+          "external_id": "tick-1fe74e",
+          "tracking": {
+            "review-traceability-tracking-c1": "complete",
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c3": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-traceability-tracking-c4": "complete",
+            "review-integrity-tracking-c4": "complete",
+            "review-traceability-tracking-c5": "complete",
+            "review-integrity-tracking-c5": "complete",
+            "review-integrity-tracking-c6": "complete",
+            "review-integrity-tracking-c7": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "free-text-round-trip": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "auto",
+          "consolidation_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 5,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-modernize",
+            ".claude/skills/golang-lint",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-project-layout",
+            ".claude/skills/golang-data-structures",
+            ".claude/skills/golang-database",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-security",
+            ".claude/skills/golang-troubleshooting",
+            ".claude/skills/golang-documentation",
+            ".claude/skills/golang-dependency-management",
+            ".claude/skills/golang-continuous-integration"
+          ],
+          "current_phase": 10,
+          "current_task": null,
+          "completed_tasks": [
+            "free-text-round-trip-1-1",
+            "free-text-round-trip-1-2",
+            "free-text-round-trip-1-3",
+            "free-text-round-trip-1-4",
+            "free-text-round-trip-1-5",
+            "free-text-round-trip-1-6",
+            "free-text-round-trip-1-7",
+            "free-text-round-trip-2-1",
+            "free-text-round-trip-2-2",
+            "free-text-round-trip-2-3",
+            "free-text-round-trip-2-4",
+            "free-text-round-trip-2-5",
+            "free-text-round-trip-2-6",
+            "free-text-round-trip-2-7",
+            "free-text-round-trip-2-8",
+            "free-text-round-trip-3-1",
+            "free-text-round-trip-3-2",
+            "free-text-round-trip-3-3",
+            "free-text-round-trip-3-4",
+            "free-text-round-trip-3-5",
+            "free-text-round-trip-3-6",
+            "free-text-round-trip-3-7",
+            "free-text-round-trip-3-8",
+            "free-text-round-trip-3-9",
+            "free-text-round-trip-3-10",
+            "free-text-round-trip-4-1",
+            "free-text-round-trip-4-2",
+            "free-text-round-trip-4-3",
+            "free-text-round-trip-4-4",
+            "free-text-round-trip-4-5",
+            "free-text-round-trip-4-6",
+            "free-text-round-trip-4-7",
+            "free-text-round-trip-4-8",
+            "free-text-round-trip-4-9",
+            "free-text-round-trip-4-10",
+            "free-text-round-trip-4-11",
+            "free-text-round-trip-4-12",
+            "free-text-round-trip-4-13",
+            "free-text-round-trip-5-1",
+            "free-text-round-trip-5-2",
+            "free-text-round-trip-5-3",
+            "free-text-round-trip-5-4",
+            "free-text-round-trip-5-5",
+            "free-text-round-trip-5-6",
+            "free-text-round-trip-5-7",
+            "free-text-round-trip-5-8",
+            "free-text-round-trip-6-1",
+            "free-text-round-trip-6-2",
+            "free-text-round-trip-6-3",
+            "free-text-round-trip-6-4",
+            "free-text-round-trip-6-5",
+            "free-text-round-trip-6-6",
+            "free-text-round-trip-6-7",
+            "free-text-round-trip-6-8",
+            "free-text-round-trip-7-1",
+            "free-text-round-trip-7-2",
+            "free-text-round-trip-7-3",
+            "free-text-round-trip-7-4",
+            "free-text-round-trip-7-5",
+            "free-text-round-trip-8-1",
+            "free-text-round-trip-8-2",
+            "free-text-round-trip-8-3",
+            "free-text-round-trip-9-1",
+            "free-text-round-trip-9-2",
+            "free-text-round-trip-9-3",
+            "free-text-round-trip-10-1",
+            "free-text-round-trip-10-2",
+            "free-text-round-trip-10-3",
+            "free-text-round-trip-10-4",
+            "free-text-round-trip-10-5",
+            "free-text-round-trip-10-6"
+          ],
+          "staging": {
+            "p1": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "p3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "ad-hoc-1": {
+              "gate_mode": "auto",
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "p5": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "p6": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "p8": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            },
+            "p9": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c4": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "p10": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          },
+          "consolidated_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "free-text-round-trip": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "free-text-round-trip-1-1",
+            "free-text-round-trip-1-2",
+            "free-text-round-trip-1-3",
+            "free-text-round-trip-1-4",
+            "free-text-round-trip-1-5",
+            "free-text-round-trip-1-6",
+            "free-text-round-trip-1-7",
+            "free-text-round-trip-2-1",
+            "free-text-round-trip-2-2",
+            "free-text-round-trip-2-3",
+            "free-text-round-trip-2-4",
+            "free-text-round-trip-2-5",
+            "free-text-round-trip-2-6",
+            "free-text-round-trip-2-7",
+            "free-text-round-trip-2-8",
+            "free-text-round-trip-3-1",
+            "free-text-round-trip-3-2",
+            "free-text-round-trip-3-3",
+            "free-text-round-trip-3-4",
+            "free-text-round-trip-3-5",
+            "free-text-round-trip-3-6",
+            "free-text-round-trip-3-7",
+            "free-text-round-trip-3-8",
+            "free-text-round-trip-3-9",
+            "free-text-round-trip-3-10",
+            "free-text-round-trip-4-1",
+            "free-text-round-trip-4-2",
+            "free-text-round-trip-4-3",
+            "free-text-round-trip-4-4",
+            "free-text-round-trip-4-5",
+            "free-text-round-trip-4-6",
+            "free-text-round-trip-4-7",
+            "free-text-round-trip-4-8",
+            "free-text-round-trip-4-9",
+            "free-text-round-trip-4-10",
+            "free-text-round-trip-4-11",
+            "free-text-round-trip-4-12",
+            "free-text-round-trip-4-13",
+            "free-text-round-trip-5-1",
+            "free-text-round-trip-5-2",
+            "free-text-round-trip-5-3",
+            "free-text-round-trip-5-4",
+            "free-text-round-trip-5-5",
+            "free-text-round-trip-5-6",
+            "free-text-round-trip-5-7",
+            "free-text-round-trip-6-1",
+            "free-text-round-trip-6-4",
+            "free-text-round-trip-5-8",
+            "free-text-round-trip-6-3",
+            "free-text-round-trip-6-2",
+            "free-text-round-trip-7-1",
+            "free-text-round-trip-6-7",
+            "free-text-round-trip-6-5",
+            "free-text-round-trip-6-8",
+            "free-text-round-trip-6-6",
+            "free-text-round-trip-7-5",
+            "free-text-round-trip-7-4",
+            "free-text-round-trip-7-3",
+            "free-text-round-trip-7-2",
+            "free-text-round-trip-8-1",
+            "free-text-round-trip-9-3",
+            "free-text-round-trip-9-2",
+            "free-text-round-trip-8-3",
+            "free-text-round-trip-8-2",
+            "free-text-round-trip-9-1",
+            "free-text-round-trip-10-4",
+            "free-text-round-trip-10-5",
+            "free-text-round-trip-10-1",
+            "free-text-round-trip-10-3",
+            "free-text-round-trip-10-2",
+            "free-text-round-trip-10-6"
+          ]
+        }
+      }
+    }
+  },
+  "completed_at": "2026-09-21"
+}

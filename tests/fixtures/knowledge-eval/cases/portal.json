@@ -1,0 +1,1867 @@
+[
+  {
+    "id": "portal-agent-state-host-plane",
+    "origin": "harvested",
+    "asked": "2026-06-29",
+    "need": "The planned host-side agent-state design: the per-session state model and daemon store, how per-agent hooks report over an IPC socket correlated by TMUX_PANE, and the adapter layer normalising each agent's signals.",
+    "terms": [
+      "per-session agent state model captured on the host, daemon store as single source of truth",
+      "agent hooks reporting events to the portal daemon over a unix IPC socket, pane correlation via TMUX_PANE",
+      "adapter interface normalising Claude Code and other coding-agent state signals"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "agent-first-portal"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "This per-session state is the spine of the whole plan. Every surface below, the",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "States discussed: **Working**, **Waiting** (blocked on a permission or input),",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Agent store.** The single source of truth in the daemon: in-memory,",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**`agent.Store` is the single source of truth** in the daemon",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/discovery/sessions/session-001.md",
+        "anchor": "Agent-state model — Working / Waiting / Idle / Unknown, the spine every",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "(Claude first), reporting events to the daemon over a unix socket, correlated",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "Pane correlation: the hook runs inside the pane, so it can read `$TMUX_PANE` and",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Daemon IPC socket.** The local channel the hooks report to, and the same",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "Claude event -> installed shim -> `portal agent ingest` (reads stdin JSON plus",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Daemon IPC socket:** if the daemon does not already expose one, this Phase 0",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Implication for Portal:** the semantic hook path is multiplexer-independent.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/resume-sessions-after-reboot/research/resume-sessions-after-reboot.md",
+        "anchor": "`$TMUX_PANE` is an environment variable set automatically by tmux in every process",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**All parsing is Go, behind an `Adapter` interface**, one package per agent, so",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Agent awareness is delivered via per-agent hooks**, starting with Claude",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "`PreToolUse` / `UserPromptSubmit` -> Working",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "portal-spawned-window-dead-end",
+    "origin": "harvested",
+    "asked": "2026-07-21",
+    "need": "Why a burst-spawned Ghostty window dead-ends on 'Press any key to close' when its session exits, how the spawned open --session --ack argv execs into tmux, and how the Ghostty adapter's OpenWindow runs the command.",
+    "terms": [
+      "spawned burst window dead-ends on process exited press any key to close when tmux session detaches, no fallback interactive shell",
+      "portal open --session spawn ack argv composition syscall exec into tmux attach-session",
+      "multi-window spawn host terminal Ghostty adapter OpenWindow command"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "spawned-window-dead-ends-on-session-exit"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "The burst-spawned host window runs the spawned session's `portal open --session …`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "the spawned window's exec chain (`bash -c` → `env` → `portal open` → `tmux attach-session`) has no parent",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "The native Ghostty adapter wraps the command it opens the window with so that",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "**A Ghostty-adapter-scoped shell fallback: the native Ghostty adapter composes its",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/seeds/2026-07-17-spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "The likely mechanism, from what we discussed: each spawned window runs",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "keeps the window up after its command exits, the normal-detach lifecycle for a spawned session",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "`internal/spawn/command.go:47` `composeOpenArgv` builds, for an ATTACH surface, the",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "→ production `realExecer.Exec` → `syscall.Exec` (`cmd/open.go:544`) — **replacing the",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "**`portal open` `syscall.Exec`s into tmux.** Outside tmux (the spawned window is always outside tmux",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "`internal/spawn` composes the spawned window's command as an env-self-sufficient argv",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "Each spawned window runs the **same `open` grammar a human would** — one pinned target + the hidden `--ack`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "`internal/spawn/ghostty.go:20-22` — the adapter opens the window via:",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "The adapter's single job is **open a new host window running a given command** — `OpenWindow(command)`",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "Replace the invalid two-statement `make new … with properties {…}` template (`ghosttyScriptTemplate`)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "Each spawned window's root process is instead a single one-shot command that `syscall.Exec`s into",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "attach: `open --session <name> --ack <batch>:<token>`; mint: `open --path <dir> --ack <batch>:<token>`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "Placing the shell wrap in *shared* composition was considered and rejected",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "The adapter's AppleScript template (`internal/spawn/ghostty.go`) is written against a",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "portal-remote-banner-multiselect-block",
+    "origin": "harvested",
+    "asked": "2026-07-21",
+    "need": "How the picker's proactive unsupported-terminal banner behaves for NULL/remote identities, how multi-select m is blocked with a flash on unsupported terminals, and how detection tells NULL/remote apart from a named unsupported bundle id.",
+    "terms": [
+      "proactive unsupported-terminal banner in the picker replacing the Sessions section header for NULL/remote terminal identity",
+      "multi-select m key disabled or blocked on unsupported terminals with a transient flash",
+      "spawn detection resolving NULL identity for remote mosh SSH clients vs named unsupported terminal bundle id"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "persistent-no-host-terminal-banner"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "**NULL/remote identity:** no proactive banner. The standard `Sessions ··· N` header",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "Add an `IsNull()` identity-shape discriminator to `unsupportedBannerActive()`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/investigation/persistent-no-host-terminal-banner.md",
+        "anchor": "**Banner has no identity-shape gate.** `unsupportedBannerActive()` (model.go:4681) fires on",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/seeds/2026-07-16-persistent-no-host-terminal-banner.md",
+        "anchor": "Logging into the Mac over mosh from an iPad and opening the picker shows the `⚠ no host-local terminal` banner",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "**Detection runs on Sessions-page entry**, so the unsupported/unconfigured banner (naming the detected identity)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "Gate the entry branch of `handleMultiSelectToggle` (`internal/tui/model.go`) on `DetectUnsupported()`.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "The block produces a **visible** transient flash rather than silently swallowing the keypress.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/investigation/persistent-no-host-terminal-banner.md",
+        "anchor": "**Proactive `m`-entry block.** Gate `handleMultiSelectToggle`'s entry branch (model.go:3509)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "filter the `m` (multi-select) entry out of the keymap descriptor slice passed to the help modal",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "**Multi-select stays available** on an unsupported terminal — you can still enter mode and mark",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "spawn-detection resolves the host terminal identity into one of three shapes",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "The identity walk cleanly separates local Ghostty from remote mosh (→ NULL)",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "The system-blessed identity is the terminal's macOS **bundle id**.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "**Host-local principle (multi-machine).** Portal opens windows only on the machine it runs on",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "banner only for a *named-undriven* terminal and dropping it for NULL/remote",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "**Blocked-entry flash behaviour** (settled): distinct from the reactive no-op",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/investigation/persistent-no-host-terminal-banner.md",
+        "anchor": "Drop the proactive \"no host-local terminal\" banner entirely for the **NULL/remote** identity",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/investigation/persistent-no-host-terminal-banner.md",
+        "anchor": "already split on `bundleID == \"\"`: NULL → `⚠ no host-local terminal` (no identity, no `see docs`)",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "portal-remote-trigger-detection-locality",
+    "origin": "harvested",
+    "asked": "2026-07-22",
+    "need": "How inside-tmux host-terminal detection filters remote clients and uses client_activity, why a remote-triggered burst resolves a local terminal and opens windows on the wrong machine, and what the NULL/remote no-op contract is.",
+    "terms": [
+      "multi-window spawn burst host terminal detection resolves NULL for remote mosh clients and takes unsupported no-op",
+      "inside-tmux detect_inside list-clients filter host-local client_activity tiebreak locality",
+      "spawn burst opens windows on wrong machine remote trigger local client attached"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "remote-trigger-spawns-on-local-terminal"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "Remote/mosh clients resolve to a **NULL bundle id** → unsupported → honest no-op.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "**`Enter` with N≥2** on an unsupported/NULL terminal is an **atomic no-op**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "Winner walks to a clean NULL (remote/mosh — ancestry never reaches a local `.app`) → **honest no-op**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/seeds/2026-07-15-remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "With no local client attached, detection resolves NULL and the burst correctly takes the honest unsupported no-op",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/investigation/remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "(`internal/spawn/detect_inside.go:86-105`) decides host-terminal locality in the **wrong order**: it treats",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "It treats client *locality* as a pre-filter (drop every remote/mosh client whose walk resolves NULL)",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "Select the **triggering client** = the client with the highest `client_activity` across **all** enumerated clients",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "**Inside tmux:** take the current session's clients, **NULL-filter to local host clients**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
+        "anchor": "**Inside tmux:** take the current session's clients, **NULL-filter to local host clients**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/seeds/2026-07-15-remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "Mechanism as observed in conversation (not yet validated): inside-tmux detection",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "When a spawn burst is triggered from a **remote** tmux client (e.g. Blink on iPhone/iPad over SSH/mosh)",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/investigation/remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "Firing a multi-window spawn burst from a remote tmux client while a host-local terminal client",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "**Precondition (when it fires):** a remote triggering client **plus** at least one host-local client",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/seeds/2026-07-15-remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "Triggering a multi-select spawn burst from a **remote** tmux client",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "so it flows into the NULL/remote branch: **no persistent banner, standard header, and the reactive no-op copy**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "Mixed case → NULL → atomic no-op, surfacing the shared `spawn.UnsupportedNoopMessage` NULL copy",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "so it enumerates the clients attached to the triggering pane's session and walks each client's process tree",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/investigation/remote-trigger-spawns-on-local-terminal.md",
+        "anchor": "Instead of dropping remote/mosh clients first and picking the most-active *local* survivor, select the",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/remote-trigger-spawns-on-local-terminal/specification/remote-trigger-spawns-on-local-terminal/specification.md",
+        "anchor": "The deterministic first-listed tie-break is the only rule applied.",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "portal-custom-terminal-docs-osc8",
+    "origin": "harvested",
+    "asked": "2026-07-24",
+    "need": "What the terminals.json custom-terminal setup covers (location, entry shape, recipes, identity key) and the decision to make the banner's 'see docs' hint a clickable OSC 8 link.",
+    "terms": [
+      "custom terminal terminals.json setup documentation for spawning host windows",
+      "unsupported terminal banner see docs hint OSC 8 clickable link"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "custom-terminal-docs-and-clickable-see-docs"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/specification/custom-terminal-docs-and-clickable-see-docs/specification.md",
+        "anchor": "**New docs page — `docs/custom-terminals.md`:** a complete setup guide for configuring",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/seeds/2026-07-22-custom-terminal-docs-and-clickable-see-docs.md",
+        "anchor": "**Create a docs page** explaining how to set up a custom or unknown terminal via `terminals.json`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "`~/.config/portal/terminals.json` — Portal's JSON-store convention (like `projects.json` / `hooks.json`)",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "Each **entry = identity-matcher → capability map**:",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "The recipe is **`argv`** (inline argv-array template) **or** **`script`** (path to a file Portal runs)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "a custom-config user cannot guess the key a priori, so Portal *shows* it — copy-paste, never guess.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
+        "anchor": "**Location + format:** `~/.config/portal/terminals.json` — Portal's JSON-store convention",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/specification/custom-terminal-docs-and-clickable-see-docs/specification.md",
+        "anchor": "banner's `see docs` hint into a clickable OSC 8 hyperlink pointing at that page. The",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/specification/custom-terminal-docs-and-clickable-see-docs/specification.md",
+        "anchor": "`renderUnsupportedHeader`, wrap the `see docs` hint's style with lipgloss's native",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/seeds/2026-07-22-custom-terminal-docs-and-clickable-see-docs.md",
+        "anchor": "**Make `see docs` actually actionable.** If terminal hyperlinks are feasible (OSC 8 escape sequences",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/persistent-no-host-terminal-banner/specification/persistent-no-host-terminal-banner/specification.md",
+        "anchor": "**`see docs` left unchanged here.** It currently renders no concrete URL/path",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/custom-terminal-docs-and-clickable-see-docs/specification/custom-terminal-docs-and-clickable-see-docs/specification.md",
+        "anchor": "**No printed URL/path fallback in the banner** — link-or-bare-word only.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "no `terminals.json` recipe needs an env slot",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
+        "anchor": "Precedence: **config override → native adapter → unsupported**.",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-theming-system-context",
+    "origin": "harvested",
+    "asked": "2026-07-27",
+    "need": "Context for designing a user-overridable theme system: how token values load from theme files, what the MV role-token layer and its light/dark treatment are, how live preview re-themes, where the contrast floor applies to user colours, and how the border tokens are named.",
+    "terms": [
+      "user-overridable theme system loading colour token values from a config file",
+      "Modern Vivid colour token layer semantic role tokens light and dark variants",
+      "live theme preview in a TUI, re-rendering the view when the theme changes",
+      "WCAG contrast floor validation for user-supplied colours against the owned canvas",
+      "border token naming, use-agnostic semantic role names"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "theming-system"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Token values load from theme files, not Go code.** A theme is a flat `key = value` file.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Flat `key = value` with `#` comments.** Lee:",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The user-overridable theme system is delivered.** A theme is a flat `key = value` file with `#` comments",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
+        "anchor": "**External theme file.** Load a user theme from config (e.g.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The vocabulary is a **closed set of 19 named tokens**; Modern Vivid is one palette written against it",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**A role holds one value.** A token is a `{name, value}` pair resolving through a no-argument colour accessor",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**A theme is one palette**, not a light/dark pair. `Token` collapses from `{Name, Light, Dark}` to `{Name, Value}`",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "The user floated the opposite extreme — name **every element** with its own theme",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "Move the cursor. **The app re-themes live behind the panel. Nothing is written.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**`applyCanvasMode` does not call `rebuildSessionList`.** Nothing heavy is on the theme-swap path",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "A modal theme picker would therefore render the canvas plus its own frame and **preview nothing**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Contrast floors apply to what Portal ships; syntactic validity applies to what users write.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The floor binds the themes Portal ships, not everything Portal can render.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Drop-in** (user themes directory): must be **valid only** — all 19 tokens",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
+        "anchor": "**Validation against the contrast floor.** The redesign establishes a WCAG-AA",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "| A **place** | `border.footer` | Wrong — goes stale as other surfaces reuse the token. |",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**`border.footer` is dropped.** The footer rule renders with the same token as the title rule.",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Consolidate to one border token.** `border.footer` is dropped; the footer rule",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-21-border-token-role-names.md",
+        "anchor": "The goal is **not** to rename them to their current usage",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "and `separator` is defined *intrinsically* — \"low-contrast dividers, separators, and",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "So **wanting auto-detection does not commit Portal to the paired model.** That is",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "the two border tokens' **intrinsic roles actually are** (the identical light hex is",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "The floor tests **auto-enumerate the embedded set**, so a new built-in is checked by default.",
+        "grade": "supporting",
+        "framing": 3
+      }
+    ]
+  },
+  {
+    "id": "portal-projects-filter-input-reskin",
+    "origin": "harvested",
+    "asked": "2026-07-27",
+    "need": "The Modern Vivid filter-input treatment (accent prompt, query text, cursor) and why/how the Projects page FilterInput misses the styleFilterInput restyle.",
+    "terms": [
+      "Modern Vivid filter input reskin accent orange prompt cursor styleFilterInput",
+      "Projects page filter input styling FilterInput bubbles list"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "projects-filter-input-reskin"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/projects-filter-input-reskin/specification/projects-filter-input-reskin/specification.md",
+        "anchor": "**Coloured branch:** `Prompt = filterPromptPrefix`; `Focused.Prompt` and `Focused.Text` foreground set to",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The query renders in **`accent.attention`** (with an `accent.attention` `/` prefix); the list filters",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Input-active (typing).** Keystrokes go to the query; the **cursor sits at the end of the typed text**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/projects-filter-input-reskin/seeds/2026-06-25-projects-filter-input-reskin.md",
+        "anchor": "The fix is to mirror the existing session-list restyle onto the project list's `FilterInput`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/projects-filter-input-reskin/specification/projects-filter-input-reskin/specification.md",
+        "anchor": "restyles only `m.sessionList.FilterInput` and never touches `m.projectList.FilterInput`",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/projects-filter-input-reskin/seeds/2026-06-25-projects-filter-input-reskin.md",
+        "anchor": "The cause is that `styleFilterInput()` in `internal/tui/model.go` (around line 1214) only restyles",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "portal-spectrum-canvas-contrast-theming",
+    "origin": "harvested",
+    "asked": "2026-07-28",
+    "need": "Within the spectrum redesign: the owned-canvas decision and the detect-or-timeout first-paint gate, the WCAG contrast floor measured against the canvas, and the decision to split user-overridable theming into its own initiative.",
+    "terms": [
+      "appearance detection gate detect-or-timeout decision and owned canvas ownership",
+      "WCAG contrast floor guarantee for tokens against the canvas",
+      "theming system deferred as a separate initiative"
+    ],
+    "options": {
+      "work-unit": "spectrum-tui-design"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "**Flip avoidance (also resolves F7):** the reply is async, so **gate the first real",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Flip avoidance.** The reply is async, so **gate the first real paint on",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "**DECISION:** Portal **owns a mode-matched canonical canvas** — detect light/dark,",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "Portal paints its **own opaque canvas** on every cell: the active theme's **`canvas`** token",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "Every foreground token must clear a contrast gate **before taste is judged**.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "**Contrast re-verification — DECIDED (rule here; computation is a spec task):** the",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "Every candidate direction must clear a hard contrast gate **before taste is",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Contrast re-verification (the canvas pass).** Every foreground token, every per-element tint/band",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "**Its own topic/initiative — user-overridable themes.** Loading an external",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "escape hatch is **deferred to the user-theme system** (§2.8/§16),",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The user-overridable theme system is delivered.** A theme is a flat `key = value` file with `#` comments",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The floor is **enforced for what Portal ships**; a user's drop-in is validated syntactically only",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The owned canvas** (§1) — the active theme's `canvas` token, painted opaquely on every cell",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "This is the one documented carve-out to the single owned-canvas render path (§1)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "**Canvas ownership REVERSED (2026-06-18) — supersedes insights 1, 2 & 4.**",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-theme-log-event-catalog",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "The observability spec's catalog for the `theme` log component: the rejected and fallback-applied events, their levels, deduplication and attrs.",
+    "terms": [
+      "theme log component event catalog rejected fallback applied dedup"
+    ],
+    "options": {
+      "work-unit": "portal-observability-layer"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "| `rejected` | WARN | One per rejected file, from the enumeration.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "| `fallback applied` | WARN | A nominated theme would not load and the mode-matched shipped default stood in.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "1. **Rejections are WARN, not INFO.** `portal doctor` treats a rejected theme as advisory",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "**The per-process dedup state lives on that injected logger**, not as package state in the leaf.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "| `token` | The offending token list on a rejection whose reason names one (`missing tokens`, `bad colour`).",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "| `theme` | Theme load / enumeration / persistence **outcomes**, emitted from three sites across two packages",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "the closed component value space omitted `theme` — corrected:",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-theme-binds-nothing-guard",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "Where the `theme` log component is bound: internal/theme binds nothing, the single log.For binding lives in cmd, and what the guard test catches.",
+    "terms": [
+      "theme binds nothing single log.For theme binding lives in cmd guard test"
+    ],
+    "options": {
+      "work-unit": "portal-observability-layer"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "a second binding inside `cmd` is what a guard test exists to catch",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "**A package handed an already-bound logger through a seam binds nothing.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "| `theme` | Theme load / enumeration / persistence **outcomes**, emitted from three sites across two packages",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "read as one package per component — corrected: the rule is bind once **per package, per component**",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-theme-emission-control",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "How emission of the `theme` log component is controlled: an injected logger seam constructed by cmd (real logger vs discard on doctor/export/capturetool).",
+    "terms": [
+      "theme component emission control binding cmd log.Discard seam"
+    ],
+    "options": {
+      "limit": 3
+    },
+    "relevant": [
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Emission is controlled by an injected logger, not by the loader deciding.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "**Whether anything is written is the caller's decision, not the loader's.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "a second binding inside `cmd` is what a guard test exists to catch",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "the emission-control rules said `cmd` constructs the loader's seam with `log.Discard()`",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-log-component-taxonomy-count",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "How many components the closed log subsystem-prefix taxonomy holds (originally 15, corrected to 18 with spawn, resolve and theme).",
+    "terms": [
+      "closed subsystem prefix taxonomy 15 components"
+    ],
+    "options": {},
+    "relevant": [
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "This list is the **single source of truth** for the component count.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "A closed subsystem-prefix taxonomy (15 components)",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/discussion/portal-observability-layer.md",
+        "anchor": "**Closed component value space** (15 total — 12 original + 2 added by State-mutation audit trail",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/discussion/portal-observability-layer.md",
+        "anchor": "Taxonomy final: 15 components; closed attr space",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/portal-observability-layer/specification/portal-observability-layer/specification.md",
+        "anchor": "A closed subsystem-prefix taxonomy (18 components), a closed attr-key vocabulary",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**This feature adds a `theme` component via spec amendment**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Decision: add a `theme` component** via spec amendment.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "Pins the taxonomy at \"17 component names\". §12.3 adds an 18th (`theme`)",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-mv-greys-text-ramp",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "The MV spec's Greys/text-ramp table row for text.primary (its role and values/ratios against each canvas).",
+    "terms": [
+      "Greys text ramp table text.primary names wordmark active labels modal titles chip text"
+    ],
+    "options": {
+      "work-unit": "spectrum-tui-design",
+      "phase": "specification",
+      "limit": 2
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "| `text.primary` | names, wordmark, active labels, modal titles, chip text |",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Superseded → current:** `text.primary` 13.0→12.1",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-mv-token-count-variants",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "How many tokens the MV vocabulary has and whether each token carries light and dark variants or one value per theme.",
+    "terms": [
+      "MV token vocabulary how many tokens and are they light dark variants"
+    ],
+    "options": {
+      "work-unit": "spectrum-tui-design"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The vocabulary is a **closed set of 19 named tokens**; Modern Vivid is one palette written against it",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**A role holds one value.** A token is a `{name, value}` pair resolving through a no-argument colour accessor",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**§2.9 the token table.** Superseded:",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Semantic role tokens, not per-element.** Every distinct rendered value is a **named role token**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "must validate user colours against the floor — tractable for ~20 tokens, not",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "`AdaptiveColor` makes a **binary** light/dark choice from terminal-bg detection;",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "the gate selects between whole palettes, not between two variants of one",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-doctor-exit-code-contract",
+    "origin": "harvested",
+    "asked": "2026-08-07",
+    "need": "portal doctor's exit-code contract: which Portal-health checks drive it, and that the host-terminal line (and user-content advisories) are informational only.",
+    "terms": [
+      "doctor exit code Portal-health checks host terminal informational"
+    ],
+    "options": {
+      "limit": 5
+    },
+    "relevant": [
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "exits **0 iff every Portal-health check passes; non-zero (1) if any Portal-health check reports a problem**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "The **host-terminal check is informational only** — it is *outside* the pass/fail set.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "The authoritative catalog of **Portal-health checks** — the class the exit code is drawn from",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "corrected: the report carries **two classes of line** and the exit code is **0 iff every Portal-health check passes**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "`doctor` calls the same function and prints a line such as `host terminal: Ghostty (supported)`",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/discussion/cli-verb-surface-redesign.md",
+        "anchor": "**Decision: fold `--detect`'s job into `doctor`.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Theme lines are advisory and do NOT drive the exit code — this amends doctor's contract.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "Doctor's contract is a scriptable exit code, 0 iff all checks pass, and because",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "Doctor's status vocabulary is five members, not two:",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Decision:** Portal-health checks keep their existing pass/fail markers;",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-token-vocab-config-paths",
+    "origin": "harvested",
+    "asked": "2026-08-12",
+    "need": "The TUI colour token vocabulary and theming decisions, plus Portal's config file path resolution chain and env-var naming convention.",
+    "terms": [
+      "colour token vocabulary and theme decisions in the TUI design system",
+      "config file path resolution and env var naming conventions"
+    ],
+    "options": {
+      "limit": 6
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The vocabulary is a **closed set of 19 named tokens**; Modern Vivid is one palette written against it",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**Semantic role tokens, not per-element.** Every distinct rendered value is a **named role token**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "| A **hue** | `accent.violet` | Wrong — lies in every port.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Token values load from theme files, not Go code.** A theme is a flat `key = value` file.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/config-dir-wrong-path-macos/specification/config-dir-wrong-path-macos/specification.md",
+        "anchor": "Replace `os.UserConfigDir()` in `configFilePath()` with XDG-compliant logic:",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/config-dir-wrong-path-macos/specification/config-dir-wrong-path-macos/specification.md",
+        "anchor": "**Env var overrides are unchanged:** The existing per-file env var check",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "The `_DIR` suffix (rather than the `_FILE` of `PORTAL_TERMINALS_FILE` and siblings) marks the mechanical difference",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/config-dir-wrong-path-macos/investigation/config-dir-wrong-path-macos.md",
+        "anchor": "**Option B: Check `XDG_CONFIG_HOME` first, fall back to `~/.config`** (recommended)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/built-in-session-resurrection/specification/built-in-session-resurrection/specification.md",
+        "anchor": "resolved via Portal's existing `configFilePath` mechanism (per-file env var → `XDG_CONFIG_HOME/portal/`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "Config resolution already exists (`cmd/config.go` `configFilePath`, per-file env",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "`~/.config/portal/terminals.json` — Portal's JSON-store convention (like `projects.json` / `hooks.json`)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "Build the redesign **token-based** (in scope) so it's theme-ready;",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/config-dir-wrong-path-macos/specification/config-dir-wrong-path-macos/specification.md",
+        "anchor": "Env var overrides (`PORTAL_PROJECTS_FILE`, `PORTAL_ALIASES_FILE`, `PORTAL_HOOKS_FILE`) are user-facing features",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Normative note on the token count.** The vocabulary is **19 tokens**.",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-resume-hook-key-drift",
+    "origin": "harvested",
+    "asked": "2026-08-22",
+    "need": "Why positional hook keys go stale when tmux renumbers panes, how the @portal-id session identity made keys rename-immune, and how the daemon's clean-stale sweep removes entries whose pane is gone.",
+    "terms": [
+      "resume hooks keyed by pane window and pane index become stale when tmux renumbers panes",
+      "hook key derivation from portal-id session user option rename immune",
+      "daemon clean-stale sweep removing hooks.json entries whose pane no longer exists"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "resume-hooks-silently-lost"
+        }
+      ],
+      "limit": 12
+    },
+    "relevant": [
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "**Over the pane's lifetime** — tmux recomputes `window_index.pane_index` from layout.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "**Over the pane's lifetime.** Any rearrangement — closing a sibling pane, closing a window under `renumber-windows on`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "A hook key is the pane's `@portal-pane-id` token (§2.1) and nothing else.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/seeds/2026-08-21-resume-hooks-vanish-when-pane-moves.md",
+        "anchor": "What changed is the pane's position. The hook key bakes",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-lost-on-server-restart/specification/resume-hooks-lost-on-server-restart/specification.md",
+        "anchor": "**Structural keys replacing pane IDs:** Change the hook storage model from pane-ID-based keys",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/session-rename-orphans-resume-hook/specification/session-rename-orphans-resume-hook/specification.md",
+        "anchor": "**Hook key = prefer `@portal-id`, else session name.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/session-rename-orphans-resume-hook/specification/session-rename-orphans-resume-hook/specification.md",
+        "anchor": "**It is immutable.** Once stamped, `@portal-id` is never rewritten.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/session-rename-orphans-resume-hook/specification/session-rename-orphans-resume-hook/specification.md",
+        "anchor": "The fix's central invariant: **every site that produces or consumes a hook key derives it by the identical rule**",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "`@portal-id` exists for exactly one reason: so a session rename cannot orphan a resume hook",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/session-rename-orphans-resume-hook/investigation/session-rename-orphans-resume-hook.md",
+        "anchor": "**Anchor resume hooks to a stable, rename-immune Portal session identity** —",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "`runHookStaleCleanup` (`cmd/run_hook_stale_cleanup.go`) enumerates live pane keys, loads `hooks.json`, and deletes",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "`hookCleanupInterval = 10 * time.Second` (`cmd/state_daemon.go:105`), run from",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "A **token-shaped** key (§3.2) whose token is absent from the live set is deleted, exactly as today.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/skip-bootstrap-when-warm/specification/skip-bootstrap-when-warm/specification.md",
+        "anchor": "The `_portal-saver` daemon (`portal state daemon`) becomes its **sole automatic home**.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/bootstrap-cleanstale-wipes-hooks-on-tmux-transient/specification/bootstrap-cleanstale-wipes-hooks-on-tmux-transient/specification.md",
+        "anchor": "Bootstrap step 11 (`CleanStale`) and the `portal clean` subcommand silently wipe all entries",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/session-rename-orphans-resume-hook/specification/session-rename-orphans-resume-hook/specification.md",
+        "anchor": "There is no rename-aware re-keying path and no stable, rename-immune pane identity",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "**`renumber-windows on`** in the user's tmux config widens the drift surface",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-open-forced-filter-context",
+    "origin": "harvested",
+    "asked": "2026-09-10",
+    "need": "The bare-positional resolution chain for portal open, how the picker opens pre-filtered (-f and the / sigil), and whether session naming ({project}-{nanoid}) changes for recognisability.",
+    "terms": [
+      "portal open bare positional argument resolution chain session path alias zoxide precedence",
+      "opening the TUI picker pre-filtered with filter text",
+      "session naming project nanoid recognisability in the picker"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "open-with-forced-filter"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "3. **Otherwise, the precedence chain**, first match wins",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/discussion/open-with-forced-filter.md",
+        "anchor": "The bare-positional resolution chain is **not** altered by this feature.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/specification/open-with-forced-filter/specification.md",
+        "anchor": "**Unchanged.** Its ordering, its domains, and the sibling `cli-verb-surface-redesign` specification's Axiom 2",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/seeds/2026-08-17-open-with-forced-filter.md",
+        "anchor": "Portal's bare-positional chain (exact session → glob → path → alias → zoxide) is too eager and too fuzzy",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "Plain `-f <text>` (no command) opens the picker on the default **Sessions** page with the text pre-filled",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/specification/open-with-forced-filter/specification.md",
+        "anchor": "Whenever a term opens the picker — K = 0 and K >= 2 alike — it lands exactly as `-f` already lands it",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/specification/open-with-forced-filter/specification.md",
+        "anchor": "A positional beginning with `/` — `x /port` — declares session-search intent.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/seeds/2026-08-17-open-with-forced-filter.md",
+        "anchor": "`portal open` already has `-f/--filter <text>` for opening the picker pre-filtered",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/discussion/open-with-forced-filter.md",
+        "anchor": "**Session naming stays exactly as it is.** `{project}-{nanoid}` is unchanged, and",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/specification/open-with-forced-filter/specification.md",
+        "anchor": "**Unchanged.** `{project}-{nanoid}` stays exactly as it is",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/portal/specification.md",
+        "anchor": "The suffix is a 6-character nanoid, ensuring uniqueness without user input.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/session-scrollback-preview/research/session-scrollback-preview.md",
+        "anchor": "so users can disambiguate similarly-named sessions (especially Claude/team-up sessions in the same project",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/specification/open-with-forced-filter/specification.md",
+        "anchor": "a single-segment leading-`/` argument is session-search text and never enters it at all.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/discussion/open-with-forced-filter.md",
+        "anchor": "`portal open -f/--filter <text>` skips resolution and opens the picker",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/open-with-forced-filter/discussion/open-with-forced-filter.md",
+        "anchor": "A leading `/` declares session-search intent, and the term is forced as filter",
+        "grade": "primary",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "portal-lazy-resume-context",
+    "origin": "harvested",
+    "asked": "2026-09-16",
+    "need": "Context for holding a restored pane's resume hook behind a prompt: how hooks fire today from the hydrate exec chain, how an in-pane panel can be drawn in tmux, and how an install-level eager/lazy preference is set.",
+    "terms": [
+      "holding a restored tmux pane's resume hook behind a confirmation prompt instead of firing it at boot",
+      "resume hooks firing on restore, hydrate helper exec chain, hooks.json per-pane on-resume commands",
+      "in-pane interactive prompt or modal rendered inside a tmux pane",
+      "install-level preference or configuration for eager versus lazy behaviour"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "lazy-resume-on-attach"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "**The feature introduces the third state.** A restored pane whose resume is lazy comes back holding a panel",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "**Every registration resolves to one of two modes at restore time: eager or lazy.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/seeds/2026-08-21-lazy-resume-on-attach.md",
+        "anchor": "The idea is to make resumption lazy.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-sessions-after-reboot/discussion/resume-sessions-after-reboot.md",
+        "anchor": "**Lazy execution, triggered during Portal's connection flow.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/built-in-session-resurrection/specification/built-in-session-resurrection/specification.md",
+        "anchor": "Resume hooks fire **only** from inside the hydrate helper's exec chain, at the end of successful hydration.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "The firing is unconditional once scrollback replay finishes: the hydrate helper looks the pane's baked hook key up",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "**The panel is painted into the pane's alternate screen, so it never enters the scrollback.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "**A pane whose resume is lazy holds a live Portal process that draws the panel and blocks until the user answers.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
+        "anchor": "**The panel is drawn by Portal into the pane's own alternate screen, by a program that stays there",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "is where this one lives, as the key **`resume_mode`**, holding `eager` or `lazy`.",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "**The mode comes from an install-wide default with a three-state per-registration override.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
+        "anchor": "**An install-wide default, with a three-state per-hook override.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "The feature ships on rather than waiting to be discovered.",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
+        "anchor": "The firing is unconditional in the hydrate helper's exec chain: once scrollback replay finishes,",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
+        "anchor": "**No trigger.** The panel is drawn once, at restore, by the machinery that already runs for every pane.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
+        "anchor": "Until it exists, the install-wide resume mode is changed by hand-editing the file (§3.1)",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/resume-sessions-after-reboot/specification/resume-sessions-after-reboot/specification.md",
+        "anchor": "**Storage format:** JSON at `~/.config/portal/hooks.json`.",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "portal-hooks-json-removal-paths",
+    "origin": "harvested",
+    "asked": "2026-09-17",
+    "need": "Which paths may remove a hooks.json entry after the resume-hooks fix (hook rm on $TMUX_PANE, --pane-key pass-through, the shape-aware stale sweep) and what protects against silent data loss.",
+    "terms": [
+      "removing a hooks.json entry — which removal paths are sanctioned, hook rm, data loss, retention"
+    ],
+    "options": {
+      "work-unit": "resume-hooks-silently-lost"
+    },
+    "relevant": [
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "The rule is one line: `hook rm` exits 0 **iff** it removed an entry.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "**a key Portal resolves must identify a live pane; a key the caller hands over explicitly must not be second-guessed.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "**Whether the reaper deletes is not changed** — it is not converted to full retention.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "A key that is **not token-shaped** is **retained**, untouched, on every run.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "Each removed key is logged at **INFO** under the `hooks` component",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "an empty live set is treated as a bad tmux read rather than as authority",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "**Stop the daemon deleting entries (retention alone)** — *rejected as a fix, retained as C.*",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "**`hook rm` gets the same verification as `hook set` — but only on the `$TMUX_PANE` path.**",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "Exits non-zero and writes nothing, while `hook rm --pane-key <a seeded key>` still removes it",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "The reaper retains any key it cannot parse as a token, and an old-format key never can be",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/investigation/resume-hooks-silently-lost.md",
+        "anchor": "`runHookStaleCleanup` carries exactly one guard — an empty live set is treated as a bad read",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "No old-format key can ever be token-shaped, which is what makes the reaper's shape test in §5 sound.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/resume-hooks-silently-lost/specification/resume-hooks-silently-lost/specification.md",
+        "anchor": "The stale sweep becomes shape-aware and names what it deleted",
+        "grade": "supporting",
+        "framing": 0
+      }
+    ]
+  },
+  {
+    "id": "portal-neg-fumi-preset-binding",
+    "origin": "negative",
+    "from": "fumi",
+    "need": "How a note's positioning-preset binding breaks and whether it is atomic or per-axis; Portal has no notes or positioning presets.",
+    "terms": [
+      "what gesture breaks a preset binding on a note",
+      "whether a preset binding is atomic or per-axis when partially overridden"
+    ],
+    "relevant": []
+  },
+  {
+    "id": "portal-neg-fumi-icloud-first-run",
+    "origin": "negative",
+    "from": "fumi",
+    "need": "How first run should encourage iCloud sync; Portal has no cloud sync or first-run onboarding.",
+    "terms": [
+      "encouraging iCloud sync at first run, framing stance, what sync gives, desk comes back, backup"
+    ],
+    "relevant": []
+  },
+  {
+    "id": "portal-neg-tick-same-second-sequence",
+    "origin": "negative",
+    "from": "tick",
+    "need": "A monotonic creation sequence so same-second tasks sort deterministically; Portal has no task store or task ordering.",
+    "terms": [
+      "Tasks created within the same second come back in arbitrary order; add an explicit monotonic creation sequence per task so list-family queries sort deterministically by priority, created time, then sequence."
+    ],
+    "options": {
+      "limit": 10
+    },
+    "relevant": []
+  }
+]

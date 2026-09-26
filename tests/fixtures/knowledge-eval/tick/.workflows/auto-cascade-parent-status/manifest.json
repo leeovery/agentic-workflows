@@ -1,0 +1,155 @@
+{
+  "name": "auto-cascade-parent-status",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2026-03-03",
+  "description": "auto-cascade-parent-status work unit",
+  "phases": {
+    "discussion": {
+      "items": {
+        "auto-cascade-parent-status": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "auto-cascade-parent-status": {
+          "status": "completed",
+          "review_cycle": 4,
+          "finding_gate_mode": "gated",
+          "sources": {
+            "auto-cascade-parent-status": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "auto-cascade-parent-status": {
+          "status": "completed",
+          "external_id": "tick-b43d8e",
+          "specification": "../../specification/auto-cascade-parent-status/specification.md",
+          "spec_commit": "1f0cc547b94c612b74f1f051d505f1915721b11b",
+          "finding_gate_mode": "gated",
+          "author_gate_mode": "auto",
+          "task_map": {
+            "auto-cascade-parent-status-1-1": "tick-7dc647",
+            "auto-cascade-parent-status-1-2": "tick-74527d",
+            "auto-cascade-parent-status-1-3": "tick-cdaef4",
+            "auto-cascade-parent-status-1-4": "tick-e272cc",
+            "auto-cascade-parent-status-1-5": "tick-dc1dbf",
+            "auto-cascade-parent-status-1-6": "tick-f998b0",
+            "auto-cascade-parent-status-2-1": "tick-9e630d",
+            "auto-cascade-parent-status-2-2": "tick-c0b5c7",
+            "auto-cascade-parent-status-2-3": "tick-4fe6a9",
+            "auto-cascade-parent-status-2-4": "tick-240557",
+            "auto-cascade-parent-status-2-5": "tick-30f9f9",
+            "auto-cascade-parent-status-2-6": "tick-902c65",
+            "auto-cascade-parent-status-2-7": "tick-d5cbbc",
+            "auto-cascade-parent-status-3-1": "tick-c4dc82",
+            "auto-cascade-parent-status-3-2": "tick-079053",
+            "auto-cascade-parent-status-3-3": "tick-a24919",
+            "auto-cascade-parent-status-3-4": "tick-1dd3c8",
+            "auto-cascade-parent-status-3-5": "tick-2bf0f6",
+            "auto-cascade-parent-status-4-1": "tick-0a4018",
+            "auto-cascade-parent-status-4-2": "tick-90d410",
+            "auto-cascade-parent-status-4-3": "tick-3a835e",
+            "auto-cascade-parent-status-4-4": "tick-20678b",
+            "auto-cascade-parent-status-4-5": "tick-1baf3b",
+            "auto-cascade-parent-status-4-6": "tick-f09744",
+            "auto-cascade-parent-status-1": "tick-38ca65",
+            "auto-cascade-parent-status-2": "tick-08e6f9",
+            "auto-cascade-parent-status-3": "tick-02a182",
+            "auto-cascade-parent-status-4": "tick-35f54b"
+          },
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-integrity-tracking-c3": "complete",
+            "review-integrity-tracking-c4": "in-progress",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "in-progress",
+            "review-traceability-tracking-c3": "in-progress",
+            "review-traceability-tracking-c4": "in-progress"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "auto-cascade-parent-status": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "4",
+          "current_task": "~",
+          "completed_tasks": [
+            "auto-cascade-parent-status-1-1",
+            "auto-cascade-parent-status-1-2",
+            "auto-cascade-parent-status-1-3",
+            "auto-cascade-parent-status-1-4",
+            "auto-cascade-parent-status-1-5",
+            "auto-cascade-parent-status-1-6",
+            "auto-cascade-parent-status-2-1",
+            "auto-cascade-parent-status-2-2",
+            "auto-cascade-parent-status-2-3",
+            "auto-cascade-parent-status-2-4",
+            "auto-cascade-parent-status-2-5",
+            "auto-cascade-parent-status-2-6",
+            "auto-cascade-parent-status-2-7",
+            "auto-cascade-parent-status-3-1",
+            "auto-cascade-parent-status-3-2",
+            "auto-cascade-parent-status-3-3",
+            "auto-cascade-parent-status-3-4",
+            "auto-cascade-parent-status-3-5",
+            "auto-cascade-parent-status-4-1",
+            "auto-cascade-parent-status-4-2",
+            "auto-cascade-parent-status-4-3",
+            "auto-cascade-parent-status-4-4",
+            "auto-cascade-parent-status-4-5",
+            "auto-cascade-parent-status-4-6"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "auto-cascade-parent-status": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "completed_at": "2026-03-13"
+}

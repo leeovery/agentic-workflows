@@ -1,0 +1,82 @@
+{
+  "name": "preview-keymap-discoverability",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-14",
+  "description": "Two TUI polish gaps in the scrollback-preview keymap: Space is missing from the Sessions help bar, and the preview chrome bar shows bare key tokens plus a cryptic window name.",
+  "phases": {
+    "specification": {
+      "items": {
+        "preview-keymap-discoverability": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "preview-keymap-discoverability": {
+          "status": "completed",
+          "spec_commit": "e62d13d75e4b2263053902ae3d4ceefb79e1c65e",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "preview-keymap-discoverability-1-1": "tick-074da0",
+            "preview-keymap-discoverability-1-2": "tick-69696d"
+          },
+          "external_id": "tick-c79074"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "preview-keymap-discoverability": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "preview-keymap-discoverability": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "preview-keymap-discoverability-1-1",
+            "preview-keymap-discoverability-1-2"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 0,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-14"
+}

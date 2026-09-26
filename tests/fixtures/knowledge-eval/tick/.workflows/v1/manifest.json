@@ -1,0 +1,616 @@
+{
+  "name": "v1",
+  "work_type": "epic",
+  "status": "completed",
+  "created": "2026-03-07",
+  "description": "v1 work unit",
+  "phases": {
+    "discussion": {
+      "items": {
+        "archive-strategy-implementation": {
+          "status": "completed"
+        },
+        "blocked-ancestor-ready": {
+          "status": "completed"
+        },
+        "cli-command-structure-ux": {
+          "status": "completed"
+        },
+        "config-file-design": {
+          "status": "completed"
+        },
+        "data-schema-design": {
+          "status": "completed"
+        },
+        "doctor-command-validation": {
+          "status": "completed"
+        },
+        "freshness-dual-write": {
+          "status": "completed"
+        },
+        "hierarchy-dependency-model": {
+          "status": "completed"
+        },
+        "id-format-implementation": {
+          "status": "completed"
+        },
+        "installation-options": {
+          "status": "completed"
+        },
+        "migration-subcommand": {
+          "status": "completed"
+        },
+        "project-fundamentals": {
+          "status": "completed"
+        },
+        "task-removal": {
+          "status": "completed"
+        },
+        "task-scoping-by-plan": {
+          "status": "completed"
+        },
+        "toon-output-format": {
+          "status": "completed"
+        },
+        "tui": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "blocked-ancestor-ready": {
+          "status": "completed",
+          "review_cycle": 1,
+          "finding_gate_mode": "gated",
+          "sources": {
+            "blocked-ancestor-ready": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        },
+        "doctor-validation": {
+          "status": "completed",
+          "sources": {
+            "doctor-command-validation": {
+              "status": "incorporated"
+            }
+          }
+        },
+        "installation": {
+          "status": "completed",
+          "sources": {
+            "installation-options": {
+              "status": "incorporated"
+            }
+          }
+        },
+        "migration": {
+          "status": "completed",
+          "sources": {
+            "migration-subcommand": {
+              "status": "incorporated"
+            }
+          }
+        },
+        "task-removal": {
+          "status": "completed",
+          "review_cycle": 3,
+          "finding_gate_mode": "gated",
+          "sources": {
+            "task-removal": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-input-tracking-c1": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-input-tracking-c3": "complete"
+          }
+        },
+        "tick-core": {
+          "status": "completed",
+          "sources": {
+            "project-fundamentals": {
+              "status": "incorporated"
+            },
+            "data-schema-design": {
+              "status": "incorporated"
+            },
+            "freshness-dual-write": {
+              "status": "incorporated"
+            },
+            "id-format-implementation": {
+              "status": "incorporated"
+            },
+            "hierarchy-dependency-model": {
+              "status": "incorporated"
+            },
+            "cli-command-structure-ux": {
+              "status": "incorporated"
+            },
+            "toon-output-format": {
+              "status": "incorporated"
+            },
+            "tui": {
+              "status": "incorporated"
+            },
+            "task-scoping-by-plan": {
+              "status": "incorporated"
+            }
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "blocked-ancestor-ready": {
+          "status": "completed",
+          "external_id": "tick-e679e0",
+          "specification": "../../specification/blocked-ancestor-ready/specification.md",
+          "spec_commit": "e5c5d2995477fa95787af0a959e7162d1bb39cc3",
+          "finding_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "task_map": {
+            "blocked-ancestor-ready-1-1": "tick-fb9d84",
+            "blocked-ancestor-ready-1-2": "tick-52f1cf",
+            "blocked-ancestor-ready-2-1": "tick-cbdae7",
+            "blocked-ancestor-ready-1": "tick-3cf896",
+            "blocked-ancestor-ready-2": "tick-884d97"
+          },
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete",
+            "review-traceability-tracking-c1": "complete",
+            "review-traceability-tracking-c2": "complete"
+          }
+        },
+        "doctor-validation": {
+          "status": "completed",
+          "specification": "../../specification/doctor-validation/specification.md",
+          "spec_commit": "29e62a8301438296c5b05db3e8f36c75ad5c20e1"
+        },
+        "installation": {
+          "status": "completed",
+          "specification": "../../specification/installation/specification.md",
+          "spec_commit": "d20af03c956b3e3c4608eb4d5945a67c5a3f6c90"
+        },
+        "migration": {
+          "status": "completed",
+          "specification": "../../specification/migration/specification.md",
+          "spec_commit": "d75ee0ec089a456e34c6b10585da4cf18922a0a5"
+        },
+        "task-removal": {
+          "status": "completed",
+          "external_id": "tick-132530",
+          "specification": "../../specification/task-removal/specification.md",
+          "spec_commit": "739e6f02a7f56e6c4d785b981f74bf75b08ef36a",
+          "finding_gate_mode": "gated",
+          "author_gate_mode": "gated",
+          "task_map": {
+            "task-removal-1-1": "tick-7314b0",
+            "task-removal-1-2": "tick-64566b",
+            "task-removal-1-3": "tick-0607a0",
+            "task-removal-1-4": "tick-1777bc",
+            "task-removal-2-1": "tick-8bc489",
+            "task-removal-2-2": "tick-0c56d2",
+            "task-removal-3-1": "tick-2a1fa5",
+            "task-removal-3-2": "tick-37bab0",
+            "task-removal-3-3": "tick-5b74ec",
+            "task-removal-3-4": "tick-9e0c27",
+            "task-removal-3-5": "tick-0424d3",
+            "task-removal-4-1": "tick-cf66a9",
+            "task-removal-4-2": "tick-21f1ab",
+            "task-removal-5-1": "tick-0c7c52",
+            "task-removal-1": "tick-cf0a05",
+            "task-removal-2": "tick-fca658",
+            "task-removal-3": "tick-192a68",
+            "task-removal-4": "tick-d5946b",
+            "task-removal-5": "tick-9c6995"
+          },
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        },
+        "tick-core": {
+          "status": "completed",
+          "specification": "../../specification/tick-core/specification.md",
+          "spec_commit": "4a3a40d9415de8e1bb3a1ee376efd0bef2af0dd3"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "blocked-ancestor-ready": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "2",
+          "current_task": "~",
+          "completed_tasks": [
+            "blocked-ancestor-ready-1-1",
+            "blocked-ancestor-ready-1-2",
+            "blocked-ancestor-ready-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        },
+        "doctor-validation": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "6",
+          "current_task": "~",
+          "completed_tasks": [
+            "doctor-validation-1-1",
+            "doctor-validation-1-2",
+            "doctor-validation-1-3",
+            "doctor-validation-1-4",
+            "doctor-validation-2-1",
+            "doctor-validation-2-2",
+            "doctor-validation-2-3",
+            "doctor-validation-2-4",
+            "doctor-validation-3-1",
+            "doctor-validation-3-2",
+            "doctor-validation-3-3",
+            "doctor-validation-3-4",
+            "doctor-validation-3-5",
+            "doctor-validation-3-6",
+            "doctor-validation-3-7",
+            "doctor-validation-4-1",
+            "doctor-validation-4-2",
+            "doctor-validation-4-3",
+            "doctor-validation-5-1",
+            "doctor-validation-5-2",
+            "doctor-validation-5-3",
+            "doctor-validation-6-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "analysis_cycle_total": 4,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        },
+        "installation": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "fix_attempts": 0,
+          "current_phase": "5",
+          "current_task": "~",
+          "completed_tasks": [
+            "installation-1-1",
+            "installation-1-2",
+            "installation-1-3",
+            "installation-1-4",
+            "installation-2-1",
+            "installation-2-2",
+            "installation-2-3",
+            "installation-2-4",
+            "installation-3-1",
+            "installation-3-2",
+            "installation-3-3",
+            "installation-3-4",
+            "installation-4-1",
+            "installation-4-2",
+            "installation-5-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "analysis_cycle_total": 4,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        },
+        "migration": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "4",
+          "current_task": "~",
+          "completed_tasks": [
+            "migration-1-1",
+            "migration-1-2",
+            "migration-1-3",
+            "migration-1-4",
+            "migration-1-5",
+            "migration-2-1",
+            "migration-2-2",
+            "migration-2-3",
+            "migration-2-4",
+            "migration-2-5",
+            "migration-3-1",
+            "migration-3-2",
+            "migration-3-3",
+            "migration-3-4",
+            "migration-4-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        },
+        "task-removal": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "5",
+          "current_task": "~",
+          "completed_tasks": [
+            "task-removal-1-1",
+            "task-removal-1-2",
+            "task-removal-1-3",
+            "task-removal-1-4",
+            "task-removal-2-1",
+            "task-removal-2-2",
+            "task-removal-3-1",
+            "task-removal-3-2",
+            "task-removal-3-3",
+            "task-removal-3-4",
+            "task-removal-3-5",
+            "analysis-4-1",
+            "analysis-4-2",
+            "task-removal-5-1"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "analysis_cycle_total": 3,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        },
+        "tick-core": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "fix_attempts": 0,
+          "current_phase": "8",
+          "current_task": "~",
+          "completed_tasks": [
+            "tick-core-1-1",
+            "tick-core-1-2",
+            "tick-core-1-3",
+            "tick-core-1-4",
+            "tick-core-1-5",
+            "tick-core-1-6",
+            "tick-core-1-7",
+            "tick-core-2-1",
+            "tick-core-2-2",
+            "tick-core-2-3",
+            "tick-core-3-1",
+            "tick-core-3-2",
+            "tick-core-3-3",
+            "tick-core-3-4",
+            "tick-core-3-5",
+            "tick-core-3-6",
+            "tick-core-4-1",
+            "tick-core-4-2",
+            "tick-core-4-3",
+            "tick-core-4-4",
+            "tick-core-4-5",
+            "tick-core-4-6",
+            "tick-core-5-1",
+            "tick-core-5-2",
+            "tick-core-6-1",
+            "tick-core-6-2",
+            "tick-core-6-3",
+            "tick-core-6-4",
+            "tick-core-6-5",
+            "tick-core-6-6",
+            "tick-core-6-7",
+            "tick-core-7-1",
+            "tick-core-7-2",
+            "tick-core-7-3",
+            "tick-core-7-4",
+            "tick-core-7-5",
+            "tick-core-8-1",
+            "tick-core-8-2"
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "analysis_cycle_total": 4,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved",
+                "6": "approved",
+                "7": "approved"
+              }
+            },
+            "c2": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved",
+                "3": "approved",
+                "4": "approved",
+                "5": "approved"
+              }
+            },
+            "c3": {
+              "tasks": {
+                "1": "approved",
+                "2": "approved"
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "blocked-ancestor-ready": {
+          "status": "completed"
+        },
+        "doctor-installation-migration": {
+          "status": "completed"
+        },
+        "doctor-validation": {
+          "status": "completed"
+        },
+        "installation": {
+          "status": "completed"
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "tick-core": {
+          "status": "completed"
+        }
+      }
+    },
+    "research": {
+      "items": {
+        "exploration": {
+          "status": "completed"
+        }
+      }
+    },
+    "discovery": {
+      "gap_analysis_cache": {
+        "checksum": "e23e78fd8672fe94fff23920da666f93",
+        "generated": "2026-06-14T17:42:49.023Z",
+        "input_files": [
+          "archive-strategy-implementation.md",
+          "blocked-ancestor-ready.md",
+          "cli-command-structure-ux.md",
+          "config-file-design.md",
+          "data-schema-design.md",
+          "doctor-command-validation.md",
+          "exploration.md",
+          "freshness-dual-write.md",
+          "hierarchy-dependency-model.md",
+          "id-format-implementation.md",
+          "installation-options.md",
+          "migration-subcommand.md",
+          "project-fundamentals.md",
+          "task-removal.md",
+          "task-scoping-by-plan.md",
+          "toon-output-format.md",
+          "tui.md"
+        ]
+      }
+    }
+  },
+  "completed_at": "2026-03-13"
+}

@@ -1,0 +1,100 @@
+{
+  "name": "resume-hooks-not-firing-after-server-kill",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-04-06",
+  "description": "Resume hooks not firing after tmux server kill — sessions not resurrected and Claude sessions not resumed when reopening Portal after tmux kill-server",
+  "phases": {
+    "investigation": {
+      "items": {
+        "resume-hooks-not-firing-after-server-kill": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "resume-hooks-not-firing-after-server-kill": {
+          "status": "completed",
+          "review_cycle": 2,
+          "finding_gate_mode": "auto",
+          "date": "2026-04-06",
+          "sources": {
+            "resume-hooks-not-firing-after-server-kill": {
+              "status": "incorporated"
+            }
+          },
+          "tracking": {
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-input-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "resume-hooks-not-firing-after-server-kill": {
+          "status": "completed",
+          "spec_commit": "4a676c7614e72c0ca163d42aad95524b55451b1e",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "gated",
+          "finding_gate_mode": "gated",
+          "review_cycle": 2,
+          "phase": 2,
+          "task": "~",
+          "task_map": {
+            "resume-hooks-not-firing-after-server-kill": "tick-ed0985",
+            "resume-hooks-not-firing-after-server-kill-1": "tick-93769b",
+            "resume-hooks-not-firing-after-server-kill-1-1": "tick-351e93",
+            "resume-hooks-not-firing-after-server-kill-1-2": "tick-a0dabc"
+          },
+          "external_id": "tick-ed0985",
+          "tracking": {
+            "review-integrity-tracking-c1": "complete",
+            "review-traceability-tracking-c1": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "resume-hooks-not-firing-after-server-kill": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 1,
+          "current_task": "~",
+          "completed_tasks": [
+            "resume-hooks-not-firing-after-server-kill-1-1",
+            "resume-hooks-not-firing-after-server-kill-1-2"
+          ],
+          "completed_phases": [
+            1
+          ],
+          "analysis_cycle_total": 0,
+          "analysis_cycle_session": 0
+        }
+      }
+    }
+  },
+  "completed_at": "2026-04-06"
+}

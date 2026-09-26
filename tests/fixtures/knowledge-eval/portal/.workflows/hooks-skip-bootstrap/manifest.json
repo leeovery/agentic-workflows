@@ -1,0 +1,93 @@
+{
+  "name": "hooks-skip-bootstrap",
+  "work_type": "quick-fix",
+  "status": "completed",
+  "created": "2026-05-26",
+  "description": "Add 'hooks' to skipTmuxCheck allowlist in cmd/root.go to prevent bootstrap cascade from SessionStart-triggered hooks set invocations",
+  "phases": {
+    "specification": {
+      "items": {
+        "hooks-skip-bootstrap": {
+          "status": "completed"
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "hooks-skip-bootstrap": {
+          "status": "completed",
+          "spec_commit": "85e0b382284b6f832dbd29596e20fab70312fcfc",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 0,
+          "phase": 1,
+          "task": "~",
+          "task_map": {
+            "hooks-skip-bootstrap-1-1": "tick-ee3166",
+            "hooks-skip-bootstrap-1-2": "tick-3fcd1f",
+            "hooks-skip-bootstrap-2": "tick-1b0799",
+            "hooks-skip-bootstrap-2-1": "tick-9a2a5f"
+          },
+          "external_id": "tick-26cf7c"
+        }
+      }
+    },
+    "scoping": {
+      "items": {
+        "hooks-skip-bootstrap": {
+          "status": "completed"
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "hooks-skip-bootstrap": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "auto",
+          "fix_attempts": 0,
+          "linters": [
+            {
+              "name": "go vet",
+              "command": "go vet ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ."
+            },
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-pro"
+          ],
+          "current_phase": 2,
+          "current_task": "~",
+          "completed_tasks": [
+            "hooks-skip-bootstrap-1-1",
+            "hooks-skip-bootstrap-1-2",
+            "hooks-skip-bootstrap-2-1"
+          ],
+          "completed_phases": [
+            1,
+            2
+          ],
+          "analysis_cycle_total": 2,
+          "analysis_cycle_session": 0,
+          "staging": {
+            "c1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "completed_at": "2026-05-26"
+}

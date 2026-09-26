@@ -1,0 +1,202 @@
+{
+  "name": "same-second-tasks-sort-by-id",
+  "work_type": "bugfix",
+  "status": "completed",
+  "created": "2026-09-21",
+  "description": "Tasks created within the same wall-clock second come back in random ID order instead of authoring order, because creation timestamps are stored at second granularity and the sort tie falls through to the task ID",
+  "phases": {
+    "investigation": {
+      "items": {
+        "same-second-tasks-sort-by-id": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "same-second-tasks-sort-by-id": {
+          "status": "completed",
+          "sources": {
+            "same-second-tasks-sort-by-id": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 4,
+          "finding_gate_mode": "auto",
+          "construction_gate_mode": "gated",
+          "date": "2026-09-22",
+          "review_baseline_words": 3659,
+          "tracking": {
+            "review-input-tracking-c1": "complete",
+            "review-gap-analysis-tracking-c1": "complete",
+            "review-claims-tracking-c2": "complete",
+            "review-input-tracking-c2": "complete",
+            "review-gap-analysis-tracking-c2": "complete",
+            "review-input-tracking-c3": "complete",
+            "review-gap-analysis-tracking-c3": "complete",
+            "review-claims-tracking-c4": "complete",
+            "review-input-tracking-c4": "complete",
+            "review-gap-analysis-tracking-c4": "complete"
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "same-second-tasks-sort-by-id": {
+          "status": "completed",
+          "spec_commit": "3aa36c4ce00f39446120cf4b014498564dd016d1",
+          "task_list_gate_mode": "auto",
+          "author_gate_mode": "auto",
+          "finding_gate_mode": "auto",
+          "review_cycle": 3,
+          "phase": 4,
+          "task": null,
+          "task_map": {
+            "same-second-tasks-sort-by-id-1-1": "tick-33a556",
+            "same-second-tasks-sort-by-id-1": "tick-11a935",
+            "same-second-tasks-sort-by-id-1-2": "tick-69d78d",
+            "same-second-tasks-sort-by-id-1-3": "tick-0bb4f7",
+            "same-second-tasks-sort-by-id-1-4": "tick-ecc73a",
+            "same-second-tasks-sort-by-id-1-5": "tick-a21794",
+            "same-second-tasks-sort-by-id-2-1": "tick-2951f6",
+            "same-second-tasks-sort-by-id-2": "tick-fd2a9d",
+            "same-second-tasks-sort-by-id-2-2": "tick-5b3b57",
+            "same-second-tasks-sort-by-id-2-3": "tick-9a9967",
+            "same-second-tasks-sort-by-id-3-1": "tick-deafbb",
+            "same-second-tasks-sort-by-id-3": "tick-4018d0",
+            "same-second-tasks-sort-by-id-3-2": "tick-1867d8",
+            "same-second-tasks-sort-by-id-3-3": "tick-1e70a2",
+            "same-second-tasks-sort-by-id-1-6": "tick-ac4d88"
+          },
+          "storage_paths": [
+            ".tick/"
+          ],
+          "approvals": {
+            "structure": "2026-09-22",
+            "tasks": {
+              "p1": "2026-09-22",
+              "p2": "2026-09-22",
+              "p3": "2026-09-22"
+            }
+          },
+          "staging": {},
+          "external_id": "tick-9209eb",
+          "review_baseline_words": 11060,
+          "tracking": {
+            "review-traceability-tracking-c1": "complete",
+            "review-integrity-tracking-c2": "complete"
+          }
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "same-second-tasks-sort-by-id": {
+          "status": "completed",
+          "task_gate_mode": "auto",
+          "fix_gate_mode": "auto",
+          "analysis_gate_mode": "gated",
+          "consolidation_gate_mode": "auto",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 1,
+          "linters": [
+            {
+              "name": "golangci-lint",
+              "command": "golangci-lint run ./..."
+            },
+            {
+              "name": "gofmt",
+              "command": "gofmt -l ./internal ./cmd"
+            }
+          ],
+          "project_skills": [
+            ".claude/skills/golang-how-to",
+            ".claude/skills/golang-code-style",
+            ".claude/skills/golang-naming",
+            ".claude/skills/golang-testing",
+            ".claude/skills/golang-error-handling",
+            ".claude/skills/golang-modernize",
+            ".claude/skills/golang-lint",
+            ".claude/skills/golang-cli",
+            ".claude/skills/golang-design-patterns",
+            ".claude/skills/golang-dependency-injection",
+            ".claude/skills/golang-structs-interfaces",
+            ".claude/skills/golang-project-layout",
+            ".claude/skills/golang-data-structures",
+            ".claude/skills/golang-database",
+            ".claude/skills/golang-concurrency",
+            ".claude/skills/golang-safety",
+            ".claude/skills/golang-security",
+            ".claude/skills/golang-troubleshooting",
+            ".claude/skills/golang-documentation",
+            ".claude/skills/golang-dependency-management",
+            ".claude/skills/golang-continuous-integration"
+          ],
+          "current_phase": 3,
+          "current_task": null,
+          "completed_tasks": [
+            "same-second-tasks-sort-by-id-1-1",
+            "same-second-tasks-sort-by-id-1-2",
+            "same-second-tasks-sort-by-id-1-3",
+            "same-second-tasks-sort-by-id-1-4",
+            "same-second-tasks-sort-by-id-1-5",
+            "same-second-tasks-sort-by-id-1-6",
+            "same-second-tasks-sort-by-id-2-1",
+            "same-second-tasks-sort-by-id-2-2",
+            "same-second-tasks-sort-by-id-2-3",
+            "same-second-tasks-sort-by-id-3-1",
+            "same-second-tasks-sort-by-id-3-2",
+            "same-second-tasks-sort-by-id-3-3"
+          ],
+          "staging": {
+            "p1": {
+              "tasks": {
+                "1": "approved"
+              }
+            }
+          },
+          "consolidated_phases": [
+            1,
+            2,
+            3
+          ],
+          "completed_phases": [
+            1,
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "same-second-tasks-sort-by-id": {
+          "status": "completed",
+          "reviewed_tasks": [
+            "same-second-tasks-sort-by-id-1-1",
+            "same-second-tasks-sort-by-id-1-2",
+            "same-second-tasks-sort-by-id-1-3",
+            "same-second-tasks-sort-by-id-1-4",
+            "same-second-tasks-sort-by-id-1-5",
+            "same-second-tasks-sort-by-id-1-6",
+            "same-second-tasks-sort-by-id-2-1",
+            "same-second-tasks-sort-by-id-2-2",
+            "same-second-tasks-sort-by-id-2-3",
+            "same-second-tasks-sort-by-id-3-1",
+            "same-second-tasks-sort-by-id-3-2",
+            "same-second-tasks-sort-by-id-3-3"
+          ]
+        }
+      }
+    }
+  },
+  "seeds": [
+    {
+      "path": "seeds/2026-09-21-same-second-tasks-sort-by-id.md",
+      "source": "inbox:bug",
+      "seeded_at": "2026-09-21T21:20:24Z"
+    }
+  ],
+  "completed_at": "2026-09-23"
+}
