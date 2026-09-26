@@ -69,8 +69,12 @@ the mod was not loaded gets nothing. A session the mod was loaded into after it
 started carries no announcement, so there it keeps and reads back nothing, and
 a conversation that does not run the workflows has no folder and keeps
 nothing. The folder holds one gate, and goes once Claude Code has deleted the
-conversation's transcript, so a kept gate lives exactly as long as its
-conversation can be resumed.
+conversation's transcript, so a kept gate lives as long as its conversation
+can be resumed — with two exceptions. A conversation whose end the session-end
+hook never saw keeps its folder: the session that first installed the hook,
+which Claude Code picks up only as a session starts, or one that crashed. A
+conversation resumed from another directory takes its transcript to that
+project, so its folder in the old one goes at that project's next boot.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.

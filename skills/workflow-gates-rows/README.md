@@ -13,7 +13,11 @@ framing, and ctrl+o shows the message in full.
 Each line it draws is kept in the conversation's own folder,
 `.workflows/.cache/.conversations/{session-id}/rows.json`, under the row's
 message id, so scrolling back and a resumed conversation draw the row the same
-way. The folder goes once Claude Code has deleted the conversation, and the
-lines with it. The mod names the folder the way the workflows' engine does. A
-conversation that does not run the workflows has no folder: there the mod
-writes nothing and draws the row as Claude Code does.
+way. The folder goes once Claude Code has deleted the conversation's
+transcript, and the lines with it, with two exceptions: a conversation whose
+end the session-end hook never saw — the session that first installed the
+hook, or one that crashed — keeps its folder, and one resumed from another
+directory takes its transcript to that project, so its folder in the old one
+goes at that project's next boot. The mod names the folder the way the
+workflows' engine does. A conversation that does not run the workflows has no
+folder: there the mod writes nothing and draws the row as Claude Code does.
