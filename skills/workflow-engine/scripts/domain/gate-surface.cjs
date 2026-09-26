@@ -97,7 +97,9 @@ function enableFunctionHooks(cwd) {
  * wrote the flag, since Claude Code reads its settings only at startup;
  * `not-running` where the flag was already there and the mod is not
  * running. A settings file that does not parse holds no flag boot can read
- * or write, so it too reads `unavailable`, beside its error.
+ * or write, so it reads `unavailable`, beside its error — unless the mod is
+ * already running, which reads `on` regardless: the status reports the
+ * mod's own reality, not the file's.
  * @param {string} cwd
  * @returns {import('./settings.cjs').SettingsSync & {status: GateSurface}}
  */

@@ -1542,6 +1542,16 @@ describe('engine boot: the project settings — session hooks and the function-h
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 
+  it('announced with an unparseable settings file still reports on — the status is the mod\'s own reality', () => {
+    installMod();
+    writeFile(fix.project, '.claude/settings.json', '{not json');
+    const res = bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' });
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.gate_surface, 'on');
+    assert.strictEqual(res.warnings.filter((w) => /^gate surface not synced: \.claude\/settings\.json is not valid JSON/.test(w)).length, 1);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
+  });
+
   it('a settings commit git refuses is a warning, never a block — the flag is on disk and the restart still owed', () => {
     installMod();
     writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
