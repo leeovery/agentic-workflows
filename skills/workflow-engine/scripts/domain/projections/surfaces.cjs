@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: shared render-surface primitives — the single builder every engine-rendered
 // menu, callout, and content frame flows through. The skill-visible formatting
-// rules (CONVENTIONS.md: menu frames, option syntax, callout flags) exist in
-// code exactly once, here; restyling a surface class is a one-place change.
+// rules (CONVENTIONS.md: render forms, menu frames, option syntax, callout
+// flags) exist in code exactly once, here; restyling a surface class is a
+// one-place change.
 // The one sibling: the worklist shape (CONVENTIONS.md: Worklists) lives in
 // worklist.cjs — markdown-emitted, so none of the fenced primitives here
 // serve it.
@@ -408,6 +409,46 @@ function section(name, instruction, body) {
   return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
 }
 
+// The four render forms (CONVENTIONS.md: Rendering Instructions), each said
+// one way, keyed by the fence each names. Every TITLE, DISPLAY and MENU
+// marker's instruction is built from them here.
+const RENDER_FORMS = {
+  markdown: 'markdown (not a code block)',
+  text: 'a text code block (```text fence)',
+  properties: 'a properties code block (```properties fence)',
+  diff: 'a diff code block (```diff fence)',
+};
+
+/** @typedef {keyof typeof RENDER_FORMS} RenderForm */
+
+/**
+ * A marker's instruction: emit verbatim in `form`, then the section's
+ * behaviour clause, which opens on its own separator.
+ * @param {RenderForm} form
+ * @param {string} [behaviour]  e.g. `, directly above the menu`
+ * @returns {string}
+ */
+function emitAs(form, behaviour = '') {
+  return `emit verbatim as ${RENDER_FORMS[form]}${behaviour}`;
+}
+
+/**
+ * A marker's instruction held to a moment in the flow — the moment set after
+ * the form, so the marker still opens on it, and the behaviour clause after
+ * the moment.
+ * @param {RenderForm} form
+ * @param {string} moment  e.g. `after the result summary`
+ * @param {string} [behaviour]
+ * @returns {string}
+ */
+function timedInstruction(form, moment, behaviour = '') {
+  return emitAs(form, ` ${moment}${behaviour}`);
+}
+
+// A menu's instruction: the person answers it, so emitting it ends the turn.
+const STOP_CLAUSE = ", then STOP for the user's response";
+const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
+
 // The instructions for a DISPLAY that is the whole response: emitting it
 // leaves the turn open, and the marker says so — a section whose response
 // also carries a MENU needs none of this, because the menu's own
@@ -420,27 +461,17 @@ function section(name, instruction, body) {
 // source to keep in sync. The markdown variants serve surfaces whose
 // register cannot live in a fence — worklist strikethrough and code-span
 // tags, the task brief's and result header's emphasis.
-const CONTINUE_INSTRUCTION = 'emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs';
-const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs';
-const AUTO_GATE_INSTRUCTION = 'emit verbatim as a text code block (```text fence) — the user set this gate to auto: do not stop; continue as the workflow instructs';
-const AUTO_GATE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown (not a code block) — the user set this gate to auto: do not stop; continue as the workflow instructs';
-
-/**
- * One of the instructions above held to a moment in the flow — the moment
- * set after the form, so the marker still opens on it.
- * @param {string} instruction  a continue or auto-gate instruction
- * @param {string} when  e.g. `after the result summary`
- * @returns {string}
- */
-function timedInstruction(instruction, when) {
-  const at = instruction.indexOf(' — ');
-  return `${instruction.slice(0, at)} ${when}${instruction.slice(at)}`;
-}
+const CONTINUE_CLAUSE = ' — do not stop; continue as the workflow instructs';
+const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the workflow instructs';
+const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
+const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
+const AUTO_GATE_INSTRUCTION = emitAs('text', AUTO_GATE_CLAUSE);
+const AUTO_GATE_MARKDOWN_INSTRUCTION = emitAs('markdown', AUTO_GATE_CLAUSE);
 
 // The view's chrome heading (CONVENTIONS.md: Phase Titles): one markdown H1
 // in the chrome family's heaviest register — bold inline code with the
 // filled square, so the renderer styles it at any terminal width.
-const TITLE_INSTRUCTION = "emit verbatim as markdown (not a code block) — the view's chrome heading";
+const TITLE_INSTRUCTION = emitAs('markdown', " — the view's chrome heading");
 
 /**
  * A TITLE section carrying `text` as the view's chrome heading.
@@ -716,5 +747,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
 

@@ -14,7 +14,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
-const { menu, menuFrame, cmdOption, actionsTable, section } = require('./surfaces.cjs');
+const { menu, menuFrame, cmdOption, actionsTable, section, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -213,7 +213,7 @@ function revisitPhasesSection(phases) {
   if (phases.length === 0) return '';
   return section(
     'MENU: revisit phases',
-    "emit verbatim as markdown (not a code block), then STOP for the user's response",
+    MENU_INSTRUCTION,
     menuFrame([
       'Which phase would you like to revisit?',
       '',

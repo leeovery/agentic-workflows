@@ -9,11 +9,10 @@
 
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
-const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION, STOP_CLAUSE } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 
-const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
-const ASK_INSTRUCTION = "emit verbatim as a text code block (```text fence), then STOP for the user's response";
+const ASK_INSTRUCTION = emitAs('text', STOP_CLAUSE);
 
 /** @typedef {import('../baseline.cjs').BaselineState} BaselineState */
 
@@ -117,7 +116,7 @@ function baselineScopeGate(payload) {
     { question: 'Assess these areas?' },
   );
   return [
-    section('DISPLAY: baseline scope', 'emit verbatim as markdown (not a code block)', list),
+    section('DISPLAY: baseline scope', emitAs('markdown'), list),
     section('MENU: baseline scope gate', MENU_INSTRUCTION, body),
   ].join('\n');
 }

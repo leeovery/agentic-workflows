@@ -26,7 +26,7 @@
  *   `gateway.cjs {work_unit}`).
  */
 
-const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
+const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
 
 const SECTION = {
   title:   `=== TITLE (${TITLE_INSTRUCTION}) ===`,
@@ -35,8 +35,8 @@ const SECTION = {
   // uncontrolled prose (makefile's `private`/`include` did), and a fence with
   // no language draws in the menus' colour. Displays stay quiet; colour lives
   // in the markdown chrome and menus.
-  display: '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
-  menu:    '=== MENU (emit verbatim as markdown (not a code block)) ===',
+  display: `=== DISPLAY (${emitAs('text')}) ===`,
+  menu:    `=== MENU (${emitAs('markdown')}) ===`,
 };
 
 /** Render a DATA section. Objects become stable `key: value` lines. @param {object|string} body */

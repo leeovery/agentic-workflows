@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow, indentedBody } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow, indentedBody, emitAs, timedInstruction, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /**
  * The ⚑ advisory block: label line and reassurance tail. The instruction
@@ -19,13 +19,13 @@ const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, b
  * @param {string} label @param {string} tail @param {string} [instruction]
  * @returns {string}
  */
-function warningBlock(label, tail, instruction = 'emit verbatim as a text code block (```text fence), above the confirmation') {
+function warningBlock(label, tail, instruction = emitAs('text', ', above the confirmation')) {
   return section('DISPLAY: kb warning', instruction, callout([label, tail]));
 }
 
 /** @param {string} body */
 function confirmation(body) {
-  return section('DISPLAY: confirmation', 'emit verbatim as a text code block (```text fence) after the response', body);
+  return section('DISPLAY: confirmation', timedInstruction('text', 'after the response'), body);
 }
 
 /** @param {(string | null)[]} parts */
@@ -229,7 +229,7 @@ function importReprompt(missing) {
   ];
   return [
     section('DISPLAY: missing imports', CONTINUE_INSTRUCTION, body.join('\n')),
-    section('MENU: import reprompt', "emit verbatim as markdown (not a code block), then STOP for the user's response",
+    section('MENU: import reprompt', MENU_INSTRUCTION,
       menu('', [
         cmdOption('s', 'skip', 'Land nothing for these paths'),
         promptOption('Provide file paths', 'one or more, space or newline separated'),
@@ -246,7 +246,7 @@ function pivotContinuationMenu(workUnit) {
   const name = titlecase(workUnit);
   return section(
     'MENU: pivot continuation',
-    "emit verbatim as markdown (not a code block), then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu(`**${name}** converted from feature to epic.`, [
       cmdOption('c', 'continue', `Continue ${name} as epic`),
       cmdOption('b', 'back', 'Return to previous view'),
@@ -263,7 +263,7 @@ function absorbContinuationMenu(feature, epic) {
   const name = titlecase(epic);
   return section(
     'MENU: absorb continuation',
-    "emit verbatim as markdown (not a code block), then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu(`**${titlecase(feature)}** absorbed into **${name}**.`, [
       cmdOption('c', 'continue', `Continue ${name} as epic`),
       cmdOption('b', 'back', 'Return to previous view'),

@@ -8,12 +8,11 @@
 // render surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 
-const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
-const ABOVE_MENU_INSTRUCTION = 'emit verbatim as a text code block (```text fence), directly above the menu';
+const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
 const WIZARD_COMMAND = 'node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup';
 
