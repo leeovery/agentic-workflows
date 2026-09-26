@@ -369,9 +369,11 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   migration changes comes before them. Those blocks are the terminal
   step's closing text, so they need no engine surface (R21). The text
   menus stay as the fallback wherever the band is not drawn (R4, R5). A
-  prose-test walk runs in the developer's own session, where this
-  repository's mod is not loaded, so a world never reads as a place the
-  mod applies.
+  prose-test world carries every skill but the mod's, so its boot reads
+  the mod as not installed, writes nothing and carries on — a walk runs
+  in the developer's own session, where this repository's mod is not
+  loaded. An unreadable settings file reads as not applicable too, with
+  its warning: it never becomes a stop.
 - **R10 — auto gates arm nothing.** Under `auto`/`bounded` the engine
   emits a DISPLAY, never a MENU.
 - **R11 — every gate is an engine menu, and every menu asks.** No skill
