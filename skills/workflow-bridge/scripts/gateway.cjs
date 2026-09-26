@@ -90,6 +90,11 @@ function format(result) {
 
 if (require.main === module) {
   engine.gateway.runGateway({
+    index: () => {
+      process.stderr.write('Error: work unit name required\nUsage: gateway.cjs <work_unit>\n');
+      process.exit(1);
+      return ''; // unreachable; keeps the handler's return type uniform
+    },
     fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
   });
 }
