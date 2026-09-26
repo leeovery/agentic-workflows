@@ -29,7 +29,7 @@ The brief's `summary` and `watch` payload fields (**[display-task-brief.md](disp
 
 ## Executor Block
 
-Markdown, not a code block. Composed from the executor's ISSUES and your own reads of the specification and the code — never the ISSUES verbatim. Bold section labels, in this order:
+As markdown (not a code block). Composed from the executor's ISSUES and your own reads of the specification and the code — never the ISSUES verbatim. Bold section labels, in this order:
 
 - **Blocked on** — one sentence: the question as the executor met it.
 - **What the executor found** — bullets: what the record decides, what the code does, where the two run out. Real names and `file:line` on every fact one anchors.
@@ -40,7 +40,7 @@ The engine's gate follows the block, its numbered sides in the same order and ea
 
 ## Executor Failure
 
-Markdown, not a code block. Composed from the executor's report and your own read of the failure and the code — never the ISSUES verbatim. Bold section labels, in this order:
+As markdown (not a code block). Composed from the executor's report and your own read of the failure and the code — never the ISSUES verbatim. Bold section labels, in this order:
 
 - **What failed** — the failing test or the error, exact.
 - **What the executor tried** — what it did, in the order it did it.
@@ -51,11 +51,11 @@ Where the environment is the cause, **What is needed** takes the place of **Next
 
 ## Findings Summary
 
-Markdown, not a code block. Issues in severity order. Per issue, a labeled short block: what is wrong in what was built, the risk it carries, and the proposed fix. Include the alternative or the reviewer's confidence only where it changes the call. Non-blocking notes: one line each.
+As markdown (not a code block). Issues in severity order. Per issue, a labeled short block: what is wrong in what was built, the risk it carries, and the proposed fix. Include the alternative or the reviewer's confidence only where it changes the call. Non-blocking notes: one line each.
 
 ## Product Summary
 
-Markdown, not a code block. Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the diff — never the executor's SUMMARY alone.
+As markdown (not a code block). Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the diff — never the executor's SUMMARY alone.
 
 - **Changed since last gate** — leads, and only after a fix round: what the fix round changed.
 - **Before** — what this part of the product did before the task.
@@ -69,7 +69,7 @@ Notes follow the sections, one line each, only when earned: comment corrections 
 
 ## Technical Retell
 
-Markdown, not a code block. The same item decomposed from the code's side, under the same rules:
+As markdown (not a code block). The same item decomposed from the code's side, under the same rules:
 
 - **Structure** — the files and modules touched, each with its role.
 - **Flow** — the runtime path as ordered steps, real names, `file:line` anchors.
@@ -82,7 +82,7 @@ A perspective shift, not a dump — never raw file contents, never a jargon chai
 
 The mechanism as a picture. On the task gate, diagram what was built; on the fix gate, where each finding sits in the flow.
 
-- ASCII diagrams in a plain code block — topology, dataflow, sequence, or state, whichever exposes the mechanism at hand. One caption line above each diagram; a legend only when a symbol is not obvious.
+- ASCII diagrams in a text code block (```text fence) — topology, dataflow, sequence, or state, whichever exposes the mechanism at hand. One caption line above each diagram; a legend only when a symbol is not obvious.
 - Diagrams stay under 60 columns — a fenced block never reflows.
 - Nodes carry real names, with `file:line` where it helps. A sentence or two under the rules may connect the diagrams, never replace them.
 - After the diagrams, one line notes that an interactive page of the same explanation is available on request — only when the session has a tool that can publish a browser page; without one the line does not render and the ASCII stands alone. Never pose it as a question — a dangling ask collides with the gate menu that follows. The diagrams are the deliverable.

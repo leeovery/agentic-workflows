@@ -156,7 +156,7 @@ The working set is now empty.
 
 ## E. View Full Content
 
-Read each item in the set and render its full content — as markdown, not a code block, so the items' own headings and formatting render properly.
+Read each item in the set and render its full content as markdown (not a code block), so the items' own headings and formatting render properly.
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -55,7 +55,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-gate
 
 **If `view`:**
 
-Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker.
+Render the doc file verbatim as markdown (not a code block). Then re-fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

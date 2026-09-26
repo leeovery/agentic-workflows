@@ -128,7 +128,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 The subtree carries the current `phase` and `task` position (for the resume prompt below) and the `spec_commit` baseline (for spec-change detection).
 
-Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the informed choice — emit the spec-change summary as markdown, then render the resume menu (the position parenthetical derives from the planning item) and emit its section verbatim per its marker:
+Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the informed choice — emit the spec-change summary as markdown (not a code block). Then render the resume menu (the position parenthetical derives from the planning item) and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.planning.{topic} --variant plan
