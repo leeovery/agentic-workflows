@@ -9,7 +9,9 @@ const os = require('os');
 const path = require('path');
 
 const { DOTS, section, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+const { auditingRender } = require('./gate-audit.cjs');
+
+const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
 
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
 // block to a markdown renderer) — goldens spell them explicitly.
@@ -1105,6 +1107,13 @@ describe('surfaces primitives', () => {
     const codeLines = code.split('\n');
     assert.ok(codeLines[3].endsWith('`'), 'code span closes at the break');
     assert.ok(codeLines[4].startsWith(NB(4) + '`'), 'and reopens on the continuation');
+  });
+
+  it('an escaped marker is the character it escapes — it opens no span for a break to close', () => {
+    const out = menuFrame([...ASK, '**`1`** → Fix \\*auth tokens across every service\\* now'], { width: 40 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[3], '**`1`** → Fix \\*auth tokens across every');
+    assert.strictEqual(lines[4], `${NB(4)}service\\* now`);
   });
 
   it('keeps the line whole when the label budget falls below the floor', () => {

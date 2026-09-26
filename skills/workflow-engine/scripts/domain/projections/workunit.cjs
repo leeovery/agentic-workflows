@@ -14,7 +14,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
-const { menu, menuFrame, cmdOption, actionsTable } = require('./surfaces.cjs');
+const { menu, menuFrame, cmdOption, actionsTable, section } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -211,14 +211,16 @@ function revisitablePhases(type, unit) {
  */
 function revisitPhasesSection(phases) {
   if (phases.length === 0) return '';
-  const body = menuFrame([
-    'Which phase would you like to revisit?',
-    '',
-    ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — *completed*`)),
-    cmdOption('b', 'back', 'Return to the previous menu'),
-  ]);
-  const marker = "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===";
-  return `${marker}\n${body}\n`;
+  return section(
+    'MENU: revisit phases',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menuFrame([
+      'Which phase would you like to revisit?',
+      '',
+      ...phases.map((phase, i) => cmdOption(String(i + 1), null, { head: titlecase(phase), tail: 'completed' })),
+      cmdOption('b', 'back', 'Return to the previous menu'),
+    ]),
+  );
 }
 
 /** The view's chrome heading. @param {WorkUnitEntry} unit */

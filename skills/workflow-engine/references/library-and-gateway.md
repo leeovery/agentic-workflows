@@ -94,6 +94,7 @@ engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` tabl
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
+engine.project.epicMenuKeys(wu, detail)           // → the same keys, the menu never drawn (a gate over one entry)
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
 engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the stage units (Topics / Specifications); a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a specification whose sources are unavailable renders keyless with its reason, a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
@@ -130,7 +131,7 @@ engine.project.specificationCompletedMenu(detail) // → { keys, title, display,
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
 engine.gateway.dataBlock(obj | string)            // → demarcated DATA section
 engine.gateway.displayBlock(text)                 // → demarcated DISPLAY section
-engine.gateway.menuBlock(text)                    // → demarcated MENU section ('' for an empty menu — no gate, no section)
+engine.gateway.menuBlock(text)                    // → demarcated MENU section, the GATE block directly ahead of it under WORKFLOWS_GATE_SURFACE=1 ('' for an empty menu — no gate, no section)
 ```
 
 `wrapWithPrefix` throws if the prefix leaves no room within the width — a misconfigured gutter fails loudly rather than silently overflowing.
