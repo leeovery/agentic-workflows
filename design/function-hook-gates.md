@@ -268,9 +268,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     (R19).
   - **The band survives the process.** At every turn's end, and as the
     conversation ends, the mod saves what the band shows — the gate, or
-    nothing — in its store, keyed by the conversation's first tool-use id
-    and stamped with where the transcript ends (its last message and newest
-    tool-use id). The lines Claude Code writes around an interrupted turn
+    nothing — in the conversation's own folder (R24), stamped with where
+    the transcript ends (its last message and newest tool-use id). The lines Claude Code writes around an interrupted turn
     are no step of the conversation and no stamp reads them: the
     "[Request interrupted by user…]" line, which lands after the aborted
     turn's end has kept the band, and the "No response requested." reply
@@ -280,8 +279,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     only in a session that announced (R2) — it reads the record back: a
     transcript that still ends at the stamp redraws the gate, nothing picked
     or held — a held answer waits on a turn a new process never has — and
-    one that moved on drops it. Records past Claude Code's 30-day
-    transcript retention go.
+    one that moved on drops it. A saved gate lives exactly as long as its
+    conversation can be resumed (R24) — no retention period is assumed.
   - `session.end` — a `/clear`, a resume — empties the band first: no gate
     of the old conversation answers into the new one.
 - **R7 — the band never overflows.** Top to bottom: a full-width rule
@@ -334,31 +333,45 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   land in `.claude/skills/` and load as `…@skills-dir`. Declarations are
   fetched into the gitignored `skills/workflow-gates/types/` by `npm run
   mod:types`; `test:mod` and `typecheck:mod` cover both.
-- **R9 — the mod is part of the workflows.** No project is asked: the
-  workflows are opinionated, and the mod carries the buttons and the
-  workflow session's harness (R20) alike. Every `engine boot` puts
-  `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"` into the project's
-  committed `.claude/settings.json` wherever it is not already `"1"`
-  (`domain/gate-surface.cjs`, writing through the `domain/settings.cjs`
-  the session hooks' sync shares), inside the lock that sync holds,
-  commits it confined, and reports `gate_surface`:
+- **R9 — the mod is part of the workflows wherever it can run.** No
+  project is asked: the workflows are opinionated, and the mod carries the
+  buttons and the workflow session's harness (R20) alike. Every `engine
+  boot` first decides whether the mod applies: not on Claude Code on the
+  web (`CLAUDE_CODE_REMOTE`), not outside the terminal app
+  (`CLAUDE_CODE_ENTRYPOINT` other than `cli`), not on a Claude Code older
+  than 2.1.282 (read from `AI_AGENT`; absent or unreadable counts as
+  older), and not where the mod is not installed in the project. Where it
+  does not apply, boot writes nothing and reports `unavailable`, and the
+  workflow carries on in text with the shortcomings that brings. Where it
+  applies, boot puts `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"` into the
+  project's committed `.claude/settings.json` wherever it is not already
+  `"1"` (`domain/gate-surface.cjs`, writing through the
+  `domain/settings.cjs` the session hooks' sync shares), inside the lock
+  that sync holds, commits it confined, and reports `gate_surface`:
   - `on` where the mod is running, its announcement (R2) in boot's
     environment;
   - `restart` where this boot wrote the flag and the mod is not running;
-  - `off` otherwise: a Claude Code without function hooks, or a checkout
-    that took the flag from a pull mid-session, carries on in text.
+  - `not-running` where the flag was already there and the mod is still
+    not running — a setting of the person's own switching function hooks
+    off, a mod that failed to load, a Claude Code started before a peer
+    session wrote the flag.
 
   Claude Code reads settings only at startup, so the session that writes
-  the flag cannot load the mod. On `restart`, workflow-start's Step 0.2,
-  straight after the boot and before the walkthrough and the other setup
-  questions so all of them run with the mod, shows what the mod does
-  under a `▪ Workflow Mod` sub-step marker and ends the session on a red
-  title, "Restart Claude Code to finish setting up", with a signpost
-  saying why. There is nothing to answer. Only the boot's own review of
-  migration changes comes before it. Those blocks are the terminal step's
-  closing text, so they need no engine surface (R21). The text menus
-  stay as the fallback wherever the band is not drawn (R4, R5). A
-  prose-test world carries the flag, so a walk never meets the restart.
+  the flag cannot load the mod. Workflow-start's Step 0.2, straight after
+  the boot and before the walkthrough and the other setup questions so all
+  of them run with the mod, stops on `restart` and on `not-running`: under
+  a `▪ Workflow Mod` sub-step marker, the restart screen says what the mod
+  does and ends the session on a red title, "Restart Claude Code to finish
+  setting up", with a signpost saying why; the not-running screen says the
+  mod is not running and what usually causes it. There is nothing to
+  answer on either. Boot's warnings are said before either stop, so a
+  refused settings commit is never silent. Only the boot's own review of
+  migration changes comes before them. Those blocks are the terminal
+  step's closing text, so they need no engine surface (R21). The text
+  menus stay as the fallback wherever the band is not drawn (R4, R5). A
+  prose-test walk runs in the developer's own session, where this
+  repository's mod is not loaded, so a world never reads as a place the
+  mod applies.
 - **R10 — auto gates arm nothing.** Under `auto`/`bounded` the engine
   emits a DISPLAY, never a MENU.
 - **R11 — every gate is an engine menu, and every menu asks.** No skill
@@ -389,7 +402,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   and 22 (no bare `--horizon`/`--summary` value). Mods: `npm run test:mod`
   (run by hand — the kit ships in the binary), every lifetime, resume,
   pick/send, queued-send and drawing rule mutation-checked, and the
-  harness settings, their recognition of the boot and the tool's placement
+  harness settings, their recognition of a workflow conversation, the
+  person's own values put back, and the tool's placement
   (R20); `npm run
   typecheck:mod`. CLAUDE.md's test gates name both as owed for a change
   under `skills/workflow-gates*/`. What the kit cannot model — a real
@@ -403,10 +417,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   native-looking band (#55), commentary worked into engine-rendered gates
   (#56), and one render door for the gateways' views (#57).
 - **R14 — removable by construction.** The collector is referenced by
-  nothing else; the mods are two directories; the flag is one env
-  line, and the delivery rule one bullet (R21). Delete them and the text menus stand as the
-  engine draws them — R11 and R16–R19 are the workflows' own rules and
-  stand without the mods.
+  nothing else; the mods are two directories, and with them gone boot
+  reads the mod as not installed (R9), writes nothing and carries on;
+  the delivery rule is one bullet (R21). Delete them and the text menus
+  stand as the engine draws them — R11 and R16–R19 are the workflows' own
+  rules and stand without the mods. Step 0.2, the flag's writer and the
+  conversation folder (R24) are the workflows' own and stay inert.
 - **R15 — the sent row reads as the answer.** `workflow-gates-rows`
   redraws the transcript row of an answer the band sent as `{question} →
   {answer} · {label}` (label left out when empty or equal to the answer).
@@ -442,16 +458,16 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   the person's own words asks for them when a press brings none.
 - **R18 — call sites defer to the marker.** Engine output arrives in
   sections, each opened by a section marker, `=== NAME (instruction) ===`,
-  whose instruction says how the section is emitted — a code block for
-  trees and displays, markdown for titles and menus, or not at all where a
-  surface draws the menu. `instructions.md` defines it once for every
+  whose instruction says how the section is emitted — in one of the four
+  forms (R23), or not at all where a surface draws the menu. `instructions.md` defines it once for every
   session. Every sentence that emits a TITLE, DISPLAY or MENU says so in
   one phrasing, "…verbatim per its marker", never restating the form
   (conventions lint check 21, both directions); the framework lines that
   once said content is emitted byte-for-byte defer to the marker too.
   Prose-authored blocks keep "Output the next fenced block as …", the one
   other mechanism. A consumer that rewrites a marker (R4) then meets one
-  instruction, not two. The prose never names the mod.
+  instruction, not two. No gate's prose names the mod; Step 0.2 alone
+  does (R9).
 - **R19 — a gate waiting on the person.** One framework rule in
   `instructions.md`, and every gate's own Ask/Comment branches defer to
   it: a reply that picks one option unambiguously is the answer; a
@@ -480,18 +496,23 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     cache. A plain session's tool list is Claude Code's own; a workflow
     session loads the tool once, the first time R21 sends a block through
     it.
-  - When the engine's boot runs in the main conversation (only
-    `/workflow-start` runs it), the mod sets
+  - In a workflow conversation the mod sets
     `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line
     summaries of Claude's thinking printing as if they were output, and
     `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the "the user
     hasn't heard from you — say what you're doing" nudge. Project
     settings cannot set the second (finding 50). Both are read per
-    request and hold from the next one. A conversation's end (`/clear`,
-    a resume) unsets them, and a conversation that has run the boot gets
-    them again when the mod next follows it, in a new process or this
-    one. A plain conversation in the same project keeps Claude Code's
-    defaults throughout.
+    request and hold from the next one. A conversation is a workflow
+    conversation once it runs the workflow engine: every engine call
+    marks its conversation's folder (R24), keyed by the session id Claude
+    Code hands every command it runs, and the mod reads that marker by its
+    own session id after each of the conversation's commands and when it
+    starts — so a phase the bridge continues in a cleared context, a
+    compacted conversation and a resumed one (an account switch included)
+    are all recognised, and a command that only mentions the engine is
+    not. No text is matched. A conversation's end (`/clear`, a resume)
+    puts back exactly what was there before — the person's own value, or
+    none — and a plain conversation's values are never touched.
 - **R21 — what a step shows reaches the person.** One rule in
   `instructions.md` says how what a step shows or says (a fenced block
   the prose tells Claude to output, an engine section emitted per its
@@ -499,14 +520,20 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - Written and then carried past with another tool call, it goes
     through `SendUserMessage`, a block verbatim in the form its
     instruction names; what comes one after another shares one call.
-  - The step that ends the turn (at a gate, a STOP, or a dispatch that
-    waits) holds what it shows and writes it after its last call, in
-    order, as Claude's own text. A turn always ends on text: one that ends
+  - The step that ends the turn (at a gate, a STOP, or a background
+    dispatch the flow waits on) holds what it shows and writes it after
+    its last call, in order, as Claude's own text. A gate's step shows its
+    own lead-in: a display or summary that leads into a gate sits in the
+    gate's step, never in the step before it, and an answer given while a
+    gate is set aside (R19) is written with the gate presented again — so
+    the gate's step always has something to write when the band draws its
+    menu. A turn always ends on text: one that ends
     on a tool call alone draws Claude Code's "no visible output" nudge,
     and a gate whose lead-in all went through the tool left Claude
     narrating the buttons (finding 51).
-  - Where `SendUserMessage` is not available (no mod, the first run) every
-    block is written as text, as before.
+  - The tool sits behind ToolSearch (R20), so it is loaded before its
+    first use; it is unavailable only where the load fails (no mod, the
+    first run), and there every block is written as text, as before.
 
   The engine's markers do not change: "do not stop; continue" already
   says another call follows. The rule is the one place the tool is named,
@@ -520,11 +547,16 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   every other waited-on agent is named with what it works on ("phase 2",
   "review cycle 3"). Without it the turn ends on the dispatch, and Claude
   improvises a status line in answer to the nudge. Claude Code runs an
-  agent in the background unless told otherwise, so every dispatch the
-  flow waits on ends a turn and carries a sentence; a dispatch meant to
-  run in the foreground says `run_in_background: false`, and one the
-  conversation carries on past carries none (CONVENTIONS' Dispatch
-  Lines).
+  agent in the background unless told otherwise, and every dispatch says
+  which it is: one the flow waits on says `run_in_background: true` and
+  carries the sentence; one meant to run in the foreground says
+  `run_in_background: false`; one the conversation carries on past
+  carries none (CONVENTIONS' Dispatch Lines, held by the conventions
+  lint). The sentence closes the turn; whatever the step announced before
+  the dispatch — what the agent is about to do, that nothing is asked of
+  the person yet — stays, written above it. A turn woken by one agent of
+  a parallel set while the others are still out needs no sentence of its
+  own: it ends on Claude's own line about what arrived.
 - **R23 — one vocabulary for how a block renders, and every code block
   names its language.** Claude Code paints a fence with no language
   entirely in the theme's `permission` colour, the lilac of the menus, so
@@ -555,14 +587,35 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     written "as markdown (not a code block)", and a code block Claude
     writes (a diagram, a sample) names its language, `text` for plain
     (`instructions.md`, beside R21).
-  - The conventions lint allows only the four template forms, each over a
-    fence carrying its tag (bare for markdown), and the engine's render
-    sweep requires every section marker to open with one of them, so no
-    older or reworded form comes back.
+  - The engine spells the four forms once (`projections/surfaces.cjs`) and
+    composes every marker from them, its moment and its behaviour clause
+    as parts; the conventions lint allows only the four template forms,
+    each over a fence carrying its tag (bare for markdown), and the
+    engine's render sweep, over every emitter the suites render, requires
+    every section marker to open with one of them, so no older or
+    reworded form comes back.
 
   The form holds whichever way a block reaches the screen: a bare fence
   draws lilac and a `text` fence white through `SendUserMessage` exactly
   as in Claude's own text (R21, tested in the lab).
+
+- **R24 — what belongs to a conversation lives in its folder, and goes
+  when Claude Code deletes the conversation.** A conversation is not
+  inside a work unit — it visits several, or none (the start menu, the
+  roadmap) — so what belongs to it cannot live in a unit's cache, which
+  goes when the unit closes. Each conversation that runs the workflows
+  has one folder, `.workflows/.cache/.conversations/{session-id}/`, and
+  each concern writes its own file there: the workflow marker (R20),
+  written by the engine; the conversation's transcript path, written by
+  the session-end hook the workflows already install, from the path
+  Claude Code hands every hook; the tmux label's resume position; and the
+  gate the mod saves for a resume (R6). One tidy-up, at boot, deletes a
+  folder once the transcript file it names is gone: whatever retention the
+  person set — thirty days, ten years — is the retention these records
+  keep, and no period is assumed anywhere. A folder whose conversation
+  ended without the hook running keeps no path and stays; it is a few
+  bytes. What belongs to a work unit — presence, per-topic session
+  state — stays in the unit's cache and goes when the unit closes.
 
 ## The stack
 
@@ -587,7 +640,14 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - display delivery on top of that — #1303 the workflow session's
     harness (R20) → #1304 what a step shows reaches the person, with the
     dispatch sentence (R21, R22) → #1310 one vocabulary for how a block
-    renders, every code block naming its fence (R23).
+    renders, every code block naming its fence (R23) → the conversation
+    folder (R24), the one home and one tidy-up for what belongs to a
+    conversation, replacing the boot recognition, the mod's own store for
+    saved gates and the label store's resume positions.
+  - **Next, after landing:** the bridge's handoff taken over by the mod —
+    `$.command.run` clears the context and `$.prompt.submit` sends the
+    continuation — in place of plan mode, which the workflows only use as
+    a clear-and-carry-on and which may be withdrawn.
 - **Ideas logged on the way** (#1272, #1293): the position line, the stall
   guard, compaction recovery, the engine as a tool, cancel's "no"
   returning to its list, a settings menu, per-screen menu drawing, the
@@ -737,6 +797,20 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     `txt`, `plaintext`) takes the old path and renders in the normal
     colour; an unknown one renders the same with its name dimmed on a line
     above. Hence R23.
+54. Compaction is its own event (`session.compact`) and never ends the
+    session: the process environment, and with it the harness, survives
+    it. `/clear`, a fork and `/resume` go on under another session id;
+    `claude --resume` keeps the id, and Claude Code sets
+    `CLAUDE_CODE_SESSION_ID` for every command at the moment it runs.
+55. Every hook input carries the conversation's `transcript_path`, and
+    resuming a conversation from another directory moves its transcript
+    under that directory's project. Claude Code's session retention is
+    the person's setting, not a constant. Hence R24's tidy-up by the
+    transcript's presence.
+56. `AI_AGENT` (`claude-code_2-1-280_agent`), `CLAUDE_CODE_ENTRYPOINT`
+    (`cli`, `claude-vscode`, the SDK's own) and `CLAUDE_CODE_REMOTE` (set
+    on the web) reach every command Claude Code runs. Hence R9's
+    applicability.
 
 ## Log
 
@@ -787,3 +861,12 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   turn ending on text (R20–R22). Findings 48–52.
 - 2026-09-25 — fences that name their language brought onto the stack
   from a parked session's diagnosis (R23, finding 53).
+- 2026-09-26 — the third review pass: the mod applies only where it can
+  run and a workflow stops where it applies but is not running (R9); a
+  gate's step shows its own lead-in (R21); every dispatch says whether it
+  runs in the background, and the announcements before a dispatch stay
+  (R22); the render forms spelled once in the engine (R23); a workflow
+  conversation recognised by the engine's own mark, the person's own
+  harness values put back (R20); one folder per conversation with one
+  tidy-up that follows the person's retention (R24). Findings 54–56. The
+  mod's handoff in place of plan mode queued as the next piece of work.
