@@ -96,7 +96,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_u
 
 #### If `view full`
 
-Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then put the gate back beneath it — the gate alone, the tree already shown above:
+Present the full phase structure from the planning file as markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then put the gate back beneath it — the gate alone, the tree already shown above:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --menu-only

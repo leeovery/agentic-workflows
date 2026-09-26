@@ -18,7 +18,7 @@ Pull current values from the investigation file — the file is authoritative, n
 > This is the sign-off on the investigation record — everything below is read from the investigation file. Fix exploration comes next.
 ```
 
-Retell the investigation file's findings as a markdown narrative (not a code block, no structured template) in four beats:
+Retell the investigation file's findings as markdown (not a code block) — a narrative, no structured template — in four beats:
 
 1. **What you'd see happen** — the bug as it manifests: what goes wrong, where in the product, when. Open here, before any code.
 2. **Why it happens** — the Root Cause and Contributing Factors as behaviour: what the code does versus what it should do.
@@ -63,7 +63,7 @@ Emit the call's MENU section verbatim per its marker.
 
 → Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
 
-Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first, as a markdown narrative (not a code block).
+Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first — a narrative, as markdown (not a code block).
 
 → Return to **B. Sign-off Gate**.
 

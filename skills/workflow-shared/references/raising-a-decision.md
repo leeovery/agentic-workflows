@@ -78,7 +78,7 @@ Write the task's payload to `{payload_path}` with the Write tool — the base fi
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
 ```
 
-Emit the response in order, in the same turn as the call: the `DISPLAY: proposed task` section verbatim per its marker; then the raise composed at **B**, as conversational markdown between the two sections; then the `MENU: task decision` section verbatim per its marker.
+Emit the response in order, in the same turn as the call: the `DISPLAY: proposed task` section verbatim per its marker; then the raise composed at **B**, between the two sections; then the `MENU: task decision` section verbatim per its marker. The raise is conversational, as markdown (not a code block).
 
 → Proceed to **D. Response Handling**.
 

@@ -35,8 +35,8 @@ The prose should have taken this path:
    and product summary are NOT re-presented — a lens return re-emits
    the menu alone
 10. the fourth scripted answer is `s`; the show-me diagrams render —
-    ASCII in a plain code block, narrow, captioned, real names — for
-    the mechanism pay-1-1 built; a one-line note that an interactive
+    ASCII in a text code block (```text fence), narrow, captioned,
+    real names — for the mechanism pay-1-1 built; a one-line note that an interactive
     page is available on request appears only if the walking session
     actually has a tool that can publish a browser page (its absence
     is correct, and no question is posed either way); in the same

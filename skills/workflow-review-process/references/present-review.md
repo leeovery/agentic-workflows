@@ -32,7 +32,7 @@ Render and emit every section verbatim per its marker — the title, the verdict
 node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
 ```
 
-Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
+Then render the review summary as markdown (not a code block), one paragraph — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
 
 → On return, proceed to **B. Decide the Out-of-Scope Findings**.
 

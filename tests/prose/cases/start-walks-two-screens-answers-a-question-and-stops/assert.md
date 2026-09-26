@@ -9,7 +9,8 @@ The prose should have taken this path:
 3. reads `walkthrough: none` on the boot response and fetches the walk's
    first screen with the origin that says this is the first run, emits it
    in the forms its own markers name — title and prose as markdown, the
-   diagram as a code block, then the menu — and stops
+   diagram as a text code block (```text fence), then the menu — and
+   stops
 4. on `n`, records the answer through the engine's one verb
    (`walkthrough record walked`) *before* the second screen is fetched:
    the offer is answered at the moment it is taken, not when the walk
