@@ -516,6 +516,22 @@ describe('layout', () => {
     }
   })
 
+  test('every footer state fits on one line at 50 columns beside a short answer', () => {
+    const columns = 50
+
+    const said: Footer[] = [
+      IDLE,
+      { kind: 'picked', answer: 'yes' },
+      { kind: 'queued', answer: 'yes' },
+      { kind: 'dropped', answer: 'yes' },
+      { kind: 'typed', label: 'Navigate' },
+    ]
+
+    for (const footer of said) {
+      expect(wrapRuns(footerRuns(footer), columns - GUTTER).length, footer.kind).toBe(1)
+    }
+  })
+
   test('the band holds its height whichever row is held and whatever the footer says, a dropped answer included', () => {
     const gate = gateOf({
       options: [
