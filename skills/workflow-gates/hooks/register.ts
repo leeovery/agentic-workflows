@@ -23,9 +23,10 @@
  * values of both put back as it ends. A conversation that has not run the
  * boot keeps them untouched.
  *
- * All of it happens in Claude Code's terminal app alone. Elsewhere — an IDE
- * extension, Claude Code on the web — the session is not announced, and the
- * module draws, keeps and sets nothing.
+ * All of it happens in Claude Code's terminal app alone, from 2.1.282.
+ * Elsewhere — an IDE extension, Claude Code on the web, an older Claude
+ * Code — the session is not announced, and the module draws, keeps and sets
+ * nothing.
  */
 import type {
   AgentLoop,
@@ -70,6 +71,12 @@ const KEPT_FOR_MS = 30 * 24 * 60 * 60 * 1000
 
 /** The engine's boot, as a Bash command runs it. */
 const BOOT = /engine\.cjs\s+boot\b/
+
+/** The oldest Claude Code the mod runs on, major, minor and patch. */
+const OLDEST = [2, 1, 282]
+
+/** A release's version, as `claude --version` prints it. */
+const RELEASE = /^(\d+)\.(\d+)\.(\d+)$/
 
 const STOP_NOTE =
   "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
@@ -174,24 +181,51 @@ function gateIn(
 }
 
 /**
- * Whether the session runs in Claude Code's terminal app, the one place the
- * mod applies, read off the signals the engine's boot reads: the `cli`
- * entrypoint, and not Claude Code on the web. The flag that loads the mod is
- * committed, so a teammate's IDE extension or the web can load it too.
+ * Whether `version` is a release the mod runs on; one that does not read as
+ * a release, a development build's included, counts as older.
  */
-async function isTerminalApp($: EngineInterface): Promise<boolean> {
-  return (
-    (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) === 'cli' &&
-    !(await $.env.get('CLAUDE_CODE_REMOTE'))
-  )
+function isSupported(version: string): boolean {
+  const release = RELEASE.exec(version)
+
+  if (release === null) {
+    return false
+  }
+
+  for (const [n, oldest] of OLDEST.entries()) {
+    const part = Number(release[n + 1])
+
+    if (part !== oldest) {
+      return part > oldest
+    }
+  }
+
+  return true
+}
+
+/**
+ * Whether the mod applies to the session, read as the engine's boot reads
+ * it: Claude Code's terminal app — the `cli` entrypoint, not Claude Code on
+ * the web — at a version the mod runs on. The flag that loads the mod is
+ * committed, so a teammate's IDE extension, the web or an older Claude Code
+ * can load it too.
+ */
+async function isApplicable($: EngineInterface): Promise<boolean> {
+  if (
+    (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) !== 'cli' ||
+    (await $.env.get('CLAUDE_CODE_REMOTE'))
+  ) {
+    return false
+  }
+
+  return isSupported((await $.session.version()).version)
 }
 
 /**
  * Whether the session announces the gate surface: set at its start, and
  * still set after a reload of the module. The band is kept and read back,
  * and the harness put on, only where it is, so a process whose session
- * never announced — one outside Claude Code's terminal app, or one this
- * module was loaded into after it started — never gets either.
+ * never announced — one the mod does not apply to, or one this module was
+ * loaded into after it started — never gets either.
  */
 async function isAnnounced($: EngineInterface): Promise<boolean> {
   return (await $.env.get('WORKFLOWS_GATE_SURFACE')) === '1'
@@ -668,13 +702,13 @@ export const register: Register = on => {
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this. Outside Claude
-  // Code's terminal app nothing is announced, which leaves the mod inert
-  // there. A fresh load comes back to a conversation this module has not
-  // followed, so the band is read back from the store, and bands kept past
-  // any resume are dropped.
+  // that asked for one, and every Bash child inherits this. Where the mod
+  // does not apply nothing is announced, which leaves it inert there. A
+  // fresh load comes back to a conversation this module has not followed, so
+  // the band is read back from the store, and bands kept past any resume are
+  // dropped.
   on('session.start', async ($, e, next) => {
-    if (!(await isTerminalApp($))) {
+    if (!(await isApplicable($))) {
       return next(e)
     }
 

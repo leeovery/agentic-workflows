@@ -54,6 +54,12 @@ const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
 /** Claude Code's terminal app, as its process holds it: where the mod applies. */
 const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli' }
 
+/** The oldest Claude Code the mod runs on, as the session answers its version. */
+const OLDEST = '2.1.282'
+
+/** What a session start that applies sets first, for every child it starts. */
+const ANNOUNCEMENT = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
+
 /** Where a send leaves what it answered, under the session's working directory. */
 const SENT = '/.workflows/.cache/.gates/sent.json'
 
@@ -472,6 +478,8 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * `env` is what the process holds at the start over the terminal app's own
  * environment, a name given `undefined` unset; each `$.env.set` changes it
  * and `written` records it, and `environment` holds it as it stands.
+ * `version` is the Claude Code the session runs on, the oldest the mod runs
+ * on unless given.
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
@@ -496,6 +504,7 @@ function world(
   stdout = '',
   options: {
     env?: Readonly<Record<string, string | undefined>>
+    version?: string
     surfaces?: readonly RenderSurface[]
     fills?: boolean
     submits?: boolean
@@ -507,6 +516,7 @@ function world(
 ) {
   const {
     env = {},
+    version = OLDEST,
     surfaces = ['terminal'],
     fills = true,
     submits: isSubmitting = true,
@@ -540,6 +550,7 @@ function world(
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.surfaces', () => ({ value: surfaces }))
   on('session.id', () => ({ value: sessionId }))
+  on('session.version', () => ({ value: { version } }))
   on('store.keys', () => ({ value: [...stored.keys()] }))
 
   on('session.messages', async () => {
@@ -843,22 +854,32 @@ async function cursorOf(ui: Band) {
 describe('register', () => {
   test('every session start in Claude Code’s terminal app announces the gate surface to every child it starts', async ($, on) => {
     const { written } = world($, on)
-    const announcement = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
 
     await $.session.start(SESSION)
     await quitAndResume($)
 
     expect(written).toEqual([
-      announcement,
+      ANNOUNCEMENT,
       DISPLAY_TOOL,
-      announcement,
+      ANNOUNCEMENT,
       DISPLAY_TOOL,
     ])
   })
 
+  for (const version of [OLDEST, '2.1.300', '2.2.0', '3.0.0']) {
+    test(`a session on Claude Code ${version} announces the gate surface and switches the display tool on`, async ($, on) => {
+      const { written } = world($, on, '', { version })
+
+      await $.session.start(SESSION)
+
+      expect(written).toEqual([ANNOUNCEMENT, DISPLAY_TOOL])
+    })
+  }
+
   const elsewhere: {
     where: string
-    env: Readonly<Record<string, string | undefined>>
+    env?: Readonly<Record<string, string | undefined>>
+    version?: string
   }[] = [
     { where: 'on Claude Code on the web', env: { CLAUDE_CODE_REMOTE: 'true' } },
     {
@@ -869,9 +890,18 @@ describe('register', () => {
       where: 'naming no entrypoint',
       env: { CLAUDE_CODE_ENTRYPOINT: undefined },
     },
+    { where: 'on a version before 2.1.282', version: '2.1.281' },
+    { where: 'on an older minor', version: '2.0.999' },
+    { where: 'on an older major', version: '1.9.999' },
+    {
+      where: 'on a development build',
+      version: '2.1.300-dev.20260920.t101500.sha1a2b3c4',
+    },
+    { where: 'on a version that does not parse', version: '2.1' },
+    { where: 'naming no version', version: '' },
   ]
 
-  for (const { where, env } of elsewhere) {
+  for (const { where, env, version } of elsewhere) {
     test(`a session ${where} is left untouched: nothing announced, no display tool, no harness, no band`, async ($, on) => {
       on('tool.describe', ($, e) => ({ description: e.description }))
 
@@ -880,7 +910,11 @@ describe('register', () => {
         'band:toolu_1': { ...record, keptAt: 2 * DAY_MS },
         'band:toolu_old': { ...record, keptAt: 0 },
       }
-      const { written, stored, reads, clock } = world($, on, '', { env, kept })
+      const { written, stored, reads, clock } = world($, on, '', {
+        env,
+        version,
+        kept,
+      })
 
       reads(AT_GATE)
 

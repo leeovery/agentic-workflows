@@ -85,16 +85,18 @@ else — the web, another Claude Code app, an older version, a project without
 this directory — nothing is written, and the workflows carry on with the text
 menus.
 
-The flag is committed, so a teammate's IDE extension or Claude Code on the
-web can still load the mod. At the session's start it reads the signals the
-boot reads: where `CLAUDE_CODE_ENTRYPOINT` is other than `cli`, or
-`CLAUDE_CODE_REMOTE` is set, it announces nothing, so it draws, keeps and sets
+The flag is committed, so a teammate's IDE extension, Claude Code on the web
+or a Claude Code older than 2.1.282 can still load the mod. At the session's
+start it applies the boot's rules: where `CLAUDE_CODE_ENTRYPOINT` is other
+than `cli`, `CLAUDE_CODE_REMOTE` is set, or the version the session reports is
+older than 2.1.282 or not a release's (a development build counts as older, as
+it does for the boot), it announces nothing, so it draws, keeps and sets
 nothing — the menus stay text, and Claude Code runs as it would without it.
 
 ## What it sets in Claude Code
 
-Every session in Claude Code's terminal app starts with Claude Code's
-`SendUserMessage` tool switched on (`CLAUDE_CODE_PEWTER_OWL_TOOL=true`):
+Every session in Claude Code's terminal app, from 2.1.282, starts with Claude
+Code's `SendUserMessage` tool switched on (`CLAUDE_CODE_PEWTER_OWL_TOOL=true`):
 Claude Code builds its tool list just after the session starts, so that is
 the only moment the switch counts. The mod keeps the tool behind ToolSearch
 in every such session, one answer that never changes and so never spends the
