@@ -52,7 +52,27 @@ const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
 
 /** Where a send leaves what it answered, under the session's working directory. */
-const SENT = '/.workflows/.cache/.gates/sent.json'
+const SENT = '.workflows/.cache/.gates/sent.json'
+
+/** A file in the folder of the conversation `id`, under the working directory. */
+const inFolder = (id: string, file: string) =>
+  `.workflows/.cache/.conversations/${id}/${file}`
+
+/** The engine's mark that the conversation `id` runs the workflows. */
+const marker = (id: string) => inFolder(id, 'workflow')
+
+/** Where the conversation `id` keeps its band for a resume. */
+const keptAt = (id: string) => inFolder(id, 'gate.json')
+
+/**
+ * A path as the world files it: from the working directory down, wherever
+ * the kit resolves the working directory to.
+ */
+const underWork = (path: string) => {
+  const at = path.indexOf('/.workflows/')
+
+  return at === -1 ? path : path.slice(at + 1)
+}
 
 const COMMIT = 'Commit and continue to next task'
 const AUTH = 'Continue "Auth"'
@@ -339,25 +359,17 @@ const said = (role: SessionMessage['role'], text: string): SessionMessage => ({
 const called = (
   id: string,
   command = ENGINE_CALL.command,
-  isError = false,
 ): SessionMessage[] => [
   {
     role: 'assistant',
     text: '',
-    toolUses: [
-      {
-        tool_use_id: id,
-        tool: 'Bash',
-        input: { command },
-        ...(isError ? { isError: true as const } : {}),
-      },
-    ],
+    toolUses: [{ tool_use_id: id, tool: 'Bash', input: { command } }],
   },
   {
     role: 'user',
     text: '',
     toolUses: [],
-    toolResults: [{ tool_use_id: id, text: '', isError }],
+    toolResults: [{ tool_use_id: id, text: '', isError: false }],
   },
 ]
 
@@ -421,13 +433,6 @@ const BOOTED = [
   said('assistant', TURN_END.answer),
 ]
 
-/** A conversation whose boot failed. */
-const BOOT_FAILED = [
-  said('user', '/workflow-start'),
-  ...called('toolu_0', BOOT_CALL.command, true),
-  said('assistant', 'The boot failed.'),
-]
-
 /** The task gate as the payload states it, less its name. */
 const TASK_GATE = {
   question: 'Approve this task?',
@@ -438,14 +443,11 @@ const TASK_GATE = {
 
 /** What a turn's end keeps of the conversation at the task gate. */
 const KEPT_AT_GATE = {
-  'band:toolu_1': {
-    stamp: JSON.stringify(['assistant', TURN_END.answer, [], 'toolu_1']),
-    gate: TASK_GATE,
-    keptAt: 0,
-  },
+  stamp: JSON.stringify(['assistant', TURN_END.answer, [], 'toolu_1']),
+  gate: TASK_GATE,
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
+const YEAR_MS = 365 * 24 * 60 * 60 * 1000
 
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
@@ -463,8 +465,8 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
 /**
  * The world beneath the mod: the session it starts in, the process's
  * environment, the surfaces attached, its transcript, what a Bash call
- * answers, the prompt box, the files it writes, the prompts it submits, and
- * the plugin's store.
+ * answers, the prompt box, the files under the working directory, and the
+ * prompts it submits.
  *
  * `env` is the environment the process holds at the start, which each
  * `$.env.set` changes and `written` records; `environment` holds it as it
@@ -472,20 +474,23 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * `calls` is what the mod asked of it, in order; `fills: false` is a box that
  * refuses the text; `submits: false` takes the submission but never lands it,
  * which is the submit that fails, and `drops` refuses it with that reason;
- * `disk` holds each write a second on its clock, which is the clock the mod
- * reads; `lag` is awaited before a read of the transcript or the store is
- * answered. A submission made while idle resolves once the turn it opens has
- * started, as core's does; `engineWrites` changes what the next Bash call
+ * `disk` holds each send's record a second on its clock, which is the clock
+ * the mod reads; `lag` is awaited before a read of the transcript or of a kept gate
+ * is answered. A submission made while idle resolves once the turn it opens
+ * has started, as core's does; `engineWrites` changes what the next Bash call
  * answers, `reads` what the transcript holds, `resumesAs` the session's id,
  * and `stopsSubmitting` fails every submission from then on. The prompt box
  * holds what a fill put there until the person `types` over it, and
- * `boxHolds` reads it. `stored` is the store, holding `kept` at the start.
+ * `boxHolds` reads it. `files` holds what is written under the working
+ * directory: the conversations `marked` by the engine at the start and the
+ * gates `kept` for them, by session id; `marks` is the engine marking one
+ * later.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
  * @param options the process's environment, the surfaces attached, whether the box and a submission take, the clock a
- *   slow disk writes on, what holds a read up, and what the store holds
+ *   slow disk writes on, what holds a read up, the conversations marked, and the gates kept
  */
 function world(
   engine: Engine,
@@ -498,7 +503,8 @@ function world(
     submits?: boolean
     drops?: string
     disk?: MockClock
-    lag?: (read: 'transcript' | 'store') => Promise<void>
+    lag?: (read: 'transcript' | 'kept') => Promise<void>
+    marked?: readonly string[]
     kept?: Readonly<Record<string, unknown>>
   } = {},
 ) {
@@ -510,6 +516,7 @@ function world(
     drops,
     disk,
     lag,
+    marked = [],
     kept = {},
   } = options
 
@@ -517,9 +524,13 @@ function world(
   const filled: string[] = []
   const submitted: string[] = []
   const written: { name: string; value?: string }[] = []
-  const files = new Map<string, string>()
+  const files = new Map<string, string>([
+    ...marked.map(id => [marker(id), ''] as const),
+    ...Object.entries(kept).map(
+      ([id, value]) => [keptAt(id), JSON.stringify(value)] as const,
+    ),
+  ])
   const environment = new Map(Object.entries(env))
-  const stored = new Map(Object.entries(kept))
   const clock = disk ?? mock.clock(on)
 
   let output = stdout
@@ -533,7 +544,6 @@ function world(
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.surfaces', () => ({ value: surfaces }))
   on('session.id', () => ({ value: sessionId }))
-  on('store.keys', () => ({ value: [...stored.keys()] }))
 
   on('session.messages', async () => {
     await lag?.('transcript')
@@ -541,23 +551,24 @@ function world(
     return { value: [...transcript] }
   })
 
-  on('store.get', async ($, e) => {
-    await lag?.('store')
+  on('fs.exists', ($, e) => ({ value: files.has(underWork(e.path)) }))
 
-    return { value: stored.get(e.key) }
+  on('fs.read', async ($, e) => {
+    const path = underWork(e.path)
+
+    if (path.endsWith('/gate.json')) {
+      await lag?.('kept')
+    }
+
+    const text = files.get(path)
+
+    if (text === undefined) {
+      throw new Error(`ENOENT: ${path}`)
+    }
+
+    return { value: text }
   })
 
-  on('store.set', ($, e) => {
-    stored.set(e.key, JSON.parse(JSON.stringify(e.value)))
-
-    return { value: undefined }
-  })
-
-  on('store.delete', ($, e) => {
-    stored.delete(e.key)
-
-    return { value: undefined }
-  })
   on('ui.render', () => BENEATH)
   on('ui.message', () => ({}))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -597,10 +608,14 @@ function world(
   on('prompt.read', () => ({ value: { text: box, cursor: box.length } }))
 
   on('fs.write', async ($, e) => {
-    calls.push('write')
-    files.set(e.path, e.text)
+    const path = underWork(e.path)
 
-    await disk?.sleep(1000)
+    calls.push('write')
+    files.set(path, e.text)
+
+    if (path === SENT) {
+      await disk?.sleep(1000)
+    }
 
     return { value: undefined }
   })
@@ -654,6 +669,10 @@ function world(
     sessionId = id
   }
 
+  const marks = (id: string) => {
+    files.set(marker(id), '')
+  }
+
   const stopsSubmitting = () => {
     submits = false
   }
@@ -669,11 +688,11 @@ function world(
     written,
     environment,
     files,
-    stored,
     clock,
     engineWrites,
     reads,
     resumesAs,
+    marks,
     stopsSubmitting,
     types,
     boxHolds: () => box,
@@ -707,11 +726,21 @@ async function quitAndResume($: Engine) {
 
 /** What the last send recorded, read back as the mod wrote it. */
 function sentIn(files: Map<string, string>): unknown {
-  const [path, text] = [...files].at(-1) ?? ['', 'null']
+  const text = files.get(SENT)
 
-  expect(path.endsWith(SENT), `${path} is the send record`).toBe(true)
+  expect(text, 'a send record was written').toBeDefined()
 
-  return JSON.parse(text)
+  return JSON.parse(text ?? 'null')
+}
+
+/**
+ * What the conversation `id` keeps of its band, read back as the mod wrote
+ * it; undefined where its folder keeps no gate file.
+ */
+function keptIn(files: Map<string, string>, id = 's0'): unknown {
+  const text = files.get(keptAt(id))
+
+  return text === undefined ? undefined : JSON.parse(text)
 }
 
 /**
@@ -2575,7 +2604,7 @@ describe('register', () => {
   })
 
   test('a held answer is not kept: the conversation resumed shows its gate unpicked', async ($, on) => {
-    const { reads, submitted } = world($, on, announced())
+    const { reads, submitted } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2629,14 +2658,16 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
-  test('a turn’s end keeps the gate on the band, stamped where the transcript ends, and one ending on nothing keeps nothing', async ($, on) => {
-    const { stored, reads, engineWrites } = world($, on, announced())
+  test('a turn’s end keeps the gate on the band in the conversation’s folder, stamped where the transcript ends, and one ending on nothing keeps nothing', async ($, on) => {
+    const { files, reads, engineWrites } = world($, on, announced(), {
+      marked: ['s0'],
+    })
 
     reads(AT_GATE)
 
     await presented($)
 
-    expect(Object.fromEntries(stored)).toEqual(KEPT_AT_GATE)
+    expect(keptIn(files)).toEqual(KEPT_AT_GATE)
 
     engineWrites('')
     reads(MOVED_ON)
@@ -2644,11 +2675,62 @@ describe('register', () => {
     await submitFrom($, { kind: 'composer' }, 'carry on')
     await $.turn.complete(TURN_END)
 
-    expect(stored.size).toBe(0)
+    expect(keptIn(files)).toBeNull()
+  })
+
+  test('a conversation the engine has not marked keeps nothing: no folder is written for it', async ($, on) => {
+    const { files, reads } = world($, on, announced())
+
+    reads(AT_GATE)
+
+    await presented($)
+    await $.session.end(QUIT)
+
+    expect([...files.keys()].filter(path => path.includes('.conversations'))).toEqual([])
+  })
+
+  test('the lines Claude Code writes around an interrupted turn move no stamp: the gate is kept the same with them as without', async ($, on) => {
+    const { files, reads } = world($, on, announced(), { marked: ['s0'] })
+    const endings = [
+      [],
+      [INTERRUPTION],
+      [INTERRUPTION, NO_RESPONSE],
+      [INTERRUPTION_MID_TOOL_USE],
+      [INTERRUPTION_MID_TOOL_USE, NO_RESPONSE],
+    ]
+
+    await $.session.start(SESSION)
+
+    for (const ending of endings) {
+      reads([...AT_GATE, ...ending])
+
+      await $.tool.call(ENGINE_CALL)
+      await $.turn.complete(TURN_END)
+
+      expect(keptIn(files), `${ending.length} lines past the stop`).toEqual(KEPT_AT_GATE)
+    }
+  })
+
+  test('a step that calls the engine again is kept even where its own words read as the reply left after an Esc', async ($, on) => {
+    const { files, reads } = world($, on, announced(), { marked: ['s0'] })
+
+    await $.session.start(SESSION)
+
+    reads([...AT_GATE, said('user', 'again'), CALLS_WHILE_SAYING_NO_RESPONSE])
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(keptIn(files)).toEqual({
+      stamp: JSON.stringify(['assistant', 'No response requested.', ['toolu_9'], 'toolu_9']),
+      gate: TASK_GATE,
+    })
   })
 
   test('a gate on the band when the conversation is left is drawn again, as it was, when it is resumed', async ($, on) => {
-    const { reads } = world($, on, announced({ options: DETAILED }))
+    const { reads } = world($, on, announced({ options: DETAILED }), {
+      marked: ['s0'],
+    })
 
     reads(AT_GATE)
 
@@ -2675,7 +2757,7 @@ describe('register', () => {
   })
 
   test('an answer taken back with Esc, then the conversation left, draws the gate again when it is resumed', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2697,7 +2779,7 @@ describe('register', () => {
   })
 
   test('an answer taken back while the transcript moves after the Esc is still drawn again, stamped as the conversation is left', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2715,49 +2797,8 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(true)
   })
 
-  test('the lines Claude Code writes around an interrupted turn move no stamp: the gate is kept the same with them as without', async ($, on) => {
-    const { stored, reads } = world($, on, announced())
-    const endings = [
-      [],
-      [INTERRUPTION],
-      [INTERRUPTION, NO_RESPONSE],
-      [INTERRUPTION_MID_TOOL_USE],
-      [INTERRUPTION_MID_TOOL_USE, NO_RESPONSE],
-    ]
-
-    await $.session.start(SESSION)
-
-    for (const ending of endings) {
-      reads([...AT_GATE, ...ending])
-
-      await $.tool.call(ENGINE_CALL)
-      await $.turn.complete(TURN_END)
-
-      expect(Object.fromEntries(stored), `${ending.length} lines past the stop`).toEqual(KEPT_AT_GATE)
-    }
-  })
-
-  test('a step that calls the engine again is kept even where its own words read as the reply left after an Esc', async ($, on) => {
-    const { stored, reads } = world($, on, announced())
-
-    await $.session.start(SESSION)
-
-    reads([...AT_GATE, said('user', 'again'), CALLS_WHILE_SAYING_NO_RESPONSE])
-
-    await $.tool.call(ENGINE_CALL)
-    await $.turn.complete(TURN_END)
-
-    expect(Object.fromEntries(stored)).toEqual({
-      'band:toolu_1': {
-        stamp: JSON.stringify(['assistant', 'No response requested.', ['toolu_9'], 'toolu_9']),
-        gate: TASK_GATE,
-        keptAt: 0,
-      },
-    })
-  })
-
   test('an answer taken back with Esc before any call, then the conversation left, draws the gate again when it is resumed past the lines written around the stop', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2780,7 +2821,9 @@ describe('register', () => {
   })
 
   test('an answer that drew the next gate: the next gate is drawn when the conversation is resumed', async ($, on) => {
-    const { reads, engineWrites } = world($, on, announced())
+    const { reads, engineWrites } = world($, on, announced(), {
+      marked: ['s0'],
+    })
 
     reads(AT_GATE)
 
@@ -2803,7 +2846,9 @@ describe('register', () => {
   })
 
   test('a conversation keeps one gate: the next takes the place of the last', async ($, on) => {
-    const { stored, reads, engineWrites } = world($, on, announced())
+    const { files, reads, engineWrites } = world($, on, announced(), {
+      marked: ['s0'],
+    })
 
     reads(AT_GATE)
 
@@ -2816,12 +2861,11 @@ describe('register', () => {
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(TURN_END)
 
-    expect(stored.size).toBe(1)
-    expect([...stored.values()]).toMatchObject([{ gate: { options: HELD_FIRST } }])
+    expect(keptIn(files)).toMatchObject({ gate: { options: HELD_FIRST } })
   })
 
   test('a conversation that moved on while the mod was not loaded draws nothing when resumed, and what was kept for it goes', async ($, on) => {
-    const { stored, reads } = world($, on, announced())
+    const { files, reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2833,11 +2877,11 @@ describe('register', () => {
     await $.session.start(SESSION)
 
     expect(await isDrawn($)).toBe(false)
-    expect(stored.size).toBe(0)
+    expect(keptIn(files)).toBeNull()
   })
 
   test('a conversation that moved on through a call and came to rest on the same words draws nothing when resumed', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2856,8 +2900,8 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
-  test('a resume under another session id draws the gate all the same', async ($, on) => {
-    const { reads, resumesAs } = world($, on, announced())
+  test('a conversation under another session id is another conversation: it draws none of this one’s gate', async ($, on) => {
+    const { reads, resumesAs } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2868,11 +2912,13 @@ describe('register', () => {
 
     await $.session.start(SESSION)
 
-    expect(await isDrawn($)).toBe(true)
+    expect(await isDrawn($)).toBe(false)
   })
 
   test('each conversation keeps its own gate, and a resume in this process draws the resumed one’s, never the one it left', async ($, on) => {
-    const { reads, engineWrites } = world($, on, announced())
+    const { reads, engineWrites, resumesAs } = world($, on, announced(), {
+      marked: ['s0', 's1'],
+    })
 
     reads(AT_GATE)
 
@@ -2881,6 +2927,7 @@ describe('register', () => {
 
     expect(await isDrawn($), 'the one left, still in the transcript').toBe(false)
 
+    resumesAs('s1')
     reads([said('user', 'what next?')])
 
     expect(await isDrawn($), 'the resumed one kept none').toBe(false)
@@ -2895,6 +2942,7 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await $.session.end(RESUMED)
 
+    resumesAs('s0')
     reads(AT_GATE)
 
     const ui = await $.ui.mount(MOUNT)
@@ -2906,26 +2954,28 @@ describe('register', () => {
   })
 
   test('a /clear draws nothing in the new conversation, and the cleared one’s gate comes back when it is resumed', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads, resumesAs } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
     await presented($)
     await $.session.end(CLEARED)
 
+    resumesAs('s1')
     reads([])
 
     expect(await isDrawn($)).toBe(false)
 
     await $.session.end(RESUMED)
 
+    resumesAs('s0')
     reads(AT_GATE)
 
     expect(await isDrawn($)).toBe(true)
   })
 
   test('a transcript not there to read as the session starts is read at a later drawing', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { reads } = world($, on, announced(), { marked: ['s0'] })
 
     reads(AT_GATE)
 
@@ -2946,7 +2996,8 @@ describe('register', () => {
   test('a module loaded into a conversation at a gate, as a reload of its files does, draws the gate at its first drawing', async ($, on) => {
     const { reads } = world($, on, announced(), {
       env: ANNOUNCING,
-      kept: KEPT_AT_GATE,
+      marked: ['s0'],
+      kept: { s0: KEPT_AT_GATE },
     })
 
     reads(AT_GATE)
@@ -2965,7 +3016,11 @@ describe('register', () => {
 
   for (const env of unannounced) {
     test(`a reload in a session whose environment holds ${JSON.stringify(env)} draws no kept gate`, async ($, on) => {
-      const { reads } = world($, on, announced(), { env, kept: KEPT_AT_GATE })
+      const { reads } = world($, on, announced(), {
+        env,
+        marked: ['s0'],
+        kept: { s0: KEPT_AT_GATE },
+      })
 
       reads(AT_GATE)
 
@@ -2974,7 +3029,10 @@ describe('register', () => {
   }
 
   test('a fresh load announces before it reads back, so a band already on screen draws the kept gate', async ($, on) => {
-    const { reads } = world($, on, announced(), { kept: KEPT_AT_GATE })
+    const { reads } = world($, on, announced(), {
+      marked: ['s0'],
+      kept: { s0: KEPT_AT_GATE },
+    })
 
     reads(AT_GATE)
 
@@ -2987,8 +3045,11 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a session that never announced — the module loaded after it started — keeps nothing, and leaves the store as it was', async ($, on) => {
-    const { stored, reads } = world($, on, '', { kept: KEPT_AT_GATE })
+  test('a session that never announced — the module loaded after it started — keeps nothing, and leaves what the folder keeps as it was', async ($, on) => {
+    const { files, reads } = world($, on, '', {
+      marked: ['s0'],
+      kept: { s0: KEPT_AT_GATE },
+    })
 
     reads(AT_GATE)
 
@@ -3000,7 +3061,7 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await $.session.end(QUIT)
 
-    expect(Object.fromEntries(stored)).toEqual(KEPT_AT_GATE)
+    expect(keptIn(files)).toEqual(KEPT_AT_GATE)
   })
 
   test('a turn that starts while the band is read back takes no gate from before it', async ($, on) => {
@@ -3009,6 +3070,7 @@ describe('register', () => {
 
     const { reads } = world($, on, announced(), {
       disk: clock,
+      marked: ['s0'],
       lag: async read => {
         if (isSlow && read === 'transcript') {
           await clock.sleep(1000)
@@ -3040,10 +3102,11 @@ describe('register', () => {
     const clock = mock.clock(on)
     let isSlow = false
 
-    const { stored, reads, engineWrites } = world($, on, announced(), {
+    const { files, reads, engineWrites } = world($, on, announced(), {
       disk: clock,
+      marked: ['s0'],
       lag: async read => {
-        if (isSlow && read === 'store') {
+        if (isSlow && read === 'kept') {
           await clock.sleep(1000)
         }
       },
@@ -3070,12 +3133,13 @@ describe('register', () => {
     await clock.advance(1000)
     await starting
 
-    expect(stored.size).toBe(1)
-    expect([...stored.values()]).toMatchObject([{ gate: { options: HELD_FIRST } }])
+    expect(keptIn(files)).toMatchObject({ gate: { options: HELD_FIRST } })
   })
 
-  test('a conversation whose first call moves, as a compaction does, keeps its gate under where it stands now alone', async ($, on) => {
-    const { stored, reads, engineWrites } = world($, on, announced())
+  test('a compaction keeps the conversation’s id, so the gate it comes to is kept in the same folder and drawn when it is resumed', async ($, on) => {
+    const { files, reads, engineWrites } = world($, on, announced(), {
+      marked: ['s0'],
+    })
 
     reads(AT_GATE)
 
@@ -3092,23 +3156,38 @@ describe('register', () => {
     await $.tool.call(ENGINE_CALL)
     await $.turn.complete(TURN_END)
 
-    expect([...stored.keys()]).toEqual(['band:toolu_2'])
+    expect(keptIn(files)).toMatchObject({ gate: { options: HELD_FIRST } })
+
+    await quitAndResume($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    expect(await lineOf(ui, 'Start "Billing"')).toBeGreaterThan(0)
+
+    await ui.unmount()
   })
 
   test('a transcript already holding the next conversation as one ends keeps nothing of the band for it', async ($, on) => {
-    const { reads } = world($, on, announced())
+    const { files, reads, resumesAs } = world($, on, announced(), {
+      marked: ['s0', 's1'],
+    })
 
     reads(AT_GATE)
 
     await presented($)
 
+    resumesAs('s1')
     reads(ELSEWHERE_AT_GATE)
 
     await $.session.end(RESUMED)
+
+    expect(keptIn(files, 's1'), 'nothing kept for the next').toBeUndefined()
+
     await quitAndResume($)
 
     expect(await isDrawn($), 'nothing drawn in the next').toBe(false)
 
+    resumesAs('s0')
     reads(AT_GATE)
 
     await quitAndResume($)
@@ -3116,20 +3195,18 @@ describe('register', () => {
     expect(await isDrawn($), 'the one that ended keeps its own').toBe(true)
   })
 
-  test('a gate kept longer than a transcript is kept goes as a session starts, and a newer one stays', async ($, on) => {
-    const [record] = Object.values(KEPT_AT_GATE)
-    const { stored, clock } = world($, on, announced(), {
-      kept: {
-        'band:toolu_old': { ...record, keptAt: 0 },
-        'band:toolu_new': { ...record, keptAt: 2 * DAY_MS },
-        'band:toolu_bad': 'not a kept band',
-      },
+  test('a kept gate has no expiry: a conversation resumed a year on draws it', async ($, on) => {
+    const { reads, clock } = world($, on, announced(), {
+      marked: ['s0'],
+      kept: { s0: KEPT_AT_GATE },
     })
 
-    await clock.set(31 * DAY_MS)
+    reads(AT_GATE)
+
+    await clock.set(YEAR_MS)
     await $.session.start(SESSION)
 
-    expect([...stored.keys()]).toEqual(['band:toolu_new'])
+    expect(await isDrawn($)).toBe(true)
   })
 
   test('a session starts with the display tool switched on, the one moment Claude Code reads the switch', async ($, on) => {
@@ -3140,9 +3217,9 @@ describe('register', () => {
     expect(written).toContainEqual(DISPLAY_TOOL)
   })
 
-  test('the display tool waits behind ToolSearch before the boot and after it, and every other tool keeps its place', async ($, on) => {
+  test('the display tool waits behind ToolSearch before the conversation runs the workflows and after, and every other tool keeps its place', async ($, on) => {
     on('tool.describe', ($, e) => ({ description: e.description }))
-    world($, on)
+    const { marks } = world($, on)
 
     const placing = (tool: string) =>
       $.tool.describe({
@@ -3159,27 +3236,55 @@ describe('register', () => {
 
     expect(await placing('SendUserMessage')).toEqual(deferred)
 
+    marks('s0')
+
     await $.tool.call(BOOT_CALL)
 
     expect(await placing('SendUserMessage')).toEqual(deferred)
     expect(await placing('Bash')).toEqual({ description: 'The Bash tool.' })
   })
 
-  test('the boot in the conversation’s own call sets the workflow harness, and no other call does', async ($, on) => {
-    const { written } = world($, on)
+  test('the conversation’s own call, once the engine has marked it, sets the workflow harness; a call before the mark sets nothing', async ($, on) => {
+    const { written, marks } = world($, on)
 
     await $.session.start(SESSION)
     await $.tool.call(ENGINE_CALL)
 
-    expect(harnessIn(written), 'a render is no boot').toEqual([])
+    expect(harnessIn(written), 'not marked yet').toEqual([])
 
-    await $.tool.call(BOOT_CALL)
+    marks('s0')
+
+    await $.tool.call(ENGINE_CALL)
 
     expect(harnessIn(written)).toEqual(HARNESS_ON)
   })
 
-  test('a subagent’s boot sets no harness', async ($, on) => {
+  test('the mark is read in the folder the engine names, by the session id’s safe characters alone', async ($, on) => {
+    const { written, resumesAs } = world($, on, '', { marked: ['a1b2'] })
+
+    resumesAs('a1/../b2')
+
+    await $.session.start(SESSION)
+    await $.tool.call(ENGINE_CALL)
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+  })
+
+  test('a command that only mentions the engine sets no harness: the mark counts, never the words', async ($, on) => {
     const { written } = world($, on)
+
+    await $.session.start(SESSION)
+    await $.tool.call({
+      tool: 'Bash',
+      command: 'grep -n "engine.cjs boot" .claude/skills/workflow-start/SKILL.md',
+    })
+    await $.tool.call(BOOT_CALL)
+
+    expect(harnessIn(written)).toEqual([])
+  })
+
+  test('a subagent’s call sets no harness, the conversation marked or not', async ($, on) => {
+    const { written } = world($, on, '', { marked: ['s0'] })
 
     await $.session.start(SESSION)
     await $.tool.call(SUBAGENT_BOOT)
@@ -3187,32 +3292,22 @@ describe('register', () => {
     expect(harnessIn(written)).toEqual([])
   })
 
-  const unanswered = [
-    { how: 'was refused', answer: { deny: 'Bash is not allowed here' } },
-    {
-      how: 'failed',
-      answer: {
-        isError: true as const,
-        result: 'Exit code 1',
-        text: 'Exit code 1',
-      },
-    },
-  ]
+  test('a call that failed is read all the same: the engine marks the conversation whatever its exit', async ($, on) => {
+    on('tool.call', { tool: 'Bash' }, () => ({
+      isError: true as const,
+      result: 'Exit code 1',
+      text: 'Exit code 1',
+    }))
+    const { written } = world($, on, '', { marked: ['s0'] })
 
-  for (const { how, answer } of unanswered) {
-    test(`a boot that ${how} sets no harness`, async ($, on) => {
-      on('tool.call', { tool: 'Bash' }, () => answer)
-      const { written } = world($, on)
+    await $.session.start(SESSION)
+    await $.tool.call(BOOT_CALL)
 
-      await $.session.start(SESSION)
-      await $.tool.call(BOOT_CALL)
-
-      expect(harnessIn(written)).toEqual([])
-    })
-  }
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+  })
 
   test('the conversation’s end puts Claude Code’s own harness back', async ($, on) => {
-    const { written } = world($, on)
+    const { written } = world($, on, '', { marked: ['s0'] })
 
     await $.session.start(SESSION)
     await $.tool.call(BOOT_CALL)
@@ -3223,6 +3318,7 @@ describe('register', () => {
 
   test('the conversation’s end puts Claude Code’s own harness back even where keeping the band fails', async ($, on) => {
     const { written } = world($, on, '', {
+      marked: ['s0'],
       lag: async read => {
         if (read === 'transcript') {
           throw new Error('the transcript could not be read')
@@ -3250,7 +3346,7 @@ describe('register', () => {
 
   test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none', async ($, on) => {
     const own = { CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1' }
-    const { environment } = world($, on, '', { env: own })
+    const { environment } = world($, on, '', { env: own, marked: ['s0'] })
 
     await $.session.start(SESSION)
     await $.tool.call(BOOT_CALL)
@@ -3266,7 +3362,7 @@ describe('register', () => {
   })
 
   const againOn = [
-    { how: 'a second boot', again: ($: Engine) => $.tool.call(BOOT_CALL) },
+    { how: 'a second call', again: ($: Engine) => $.tool.call(BOOT_CALL) },
     {
       how: 'a reload of the module’s files',
       again: ($: Engine) => $.session.start(SESSION),
@@ -3275,7 +3371,10 @@ describe('register', () => {
 
   for (const { how, again } of againOn) {
     test(`the harness put on again by ${how} still puts the person’s own values back`, async ($, on) => {
-      const { environment, reads } = world($, on, '', { env: OWN })
+      const { environment, reads } = world($, on, '', {
+        env: OWN,
+        marked: ['s0'],
+      })
 
       reads(BOOTED)
 
@@ -3287,8 +3386,8 @@ describe('register', () => {
     })
   }
 
-  test('a conversation that ran the boot gets the workflow harness back when a fresh load resumes it', async ($, on) => {
-    const { written, reads } = world($, on)
+  test('a conversation the engine marked gets the workflow harness back when a fresh load resumes it', async ($, on) => {
+    const { written, reads } = world($, on, '', { marked: ['s0'] })
 
     reads(BOOTED)
 
@@ -3297,48 +3396,25 @@ describe('register', () => {
     expect(harnessIn(written)).toEqual(HARNESS_ON)
   })
 
-  const unbooted: { what: string; transcript: readonly SessionMessage[] }[] = [
-    { what: 'a plain conversation', transcript: AT_GATE },
-    { what: 'a conversation whose boot failed', transcript: BOOT_FAILED },
-    {
-      what: 'a conversation that ran the boot’s command through another tool',
-      transcript: [
-        said('user', '/workflow-start'),
-        {
-          role: 'assistant',
-          text: '',
-          toolUses: [
-            {
-              tool_use_id: 'toolu_0',
-              tool: 'PowerShell',
-              input: { command: BOOT_CALL.command },
-            },
-          ],
-        },
-      ],
-    },
-  ]
-
-  for (const { what, transcript } of unbooted) {
-    test(`${what}, resumed by a fresh load, keeps Claude Code’s own harness`, async ($, on) => {
-      const { written, reads } = world($, on)
-
-      reads(transcript)
-
-      await $.session.start(SESSION)
-
-      expect(harnessIn(written)).toEqual([])
-    })
-  }
-
-  test('a conversation that ran the boot, resumed in this process, gets the workflow harness back at the next drawing', async ($, on) => {
+  test('a conversation the engine never marked, resumed by a fresh load, keeps Claude Code’s own harness — its transcript holding the boot’s command or not', async ($, on) => {
     const { written, reads } = world($, on)
+
+    reads(BOOTED)
+
+    await $.session.start(SESSION)
+
+    expect(harnessIn(written)).toEqual([])
+  })
+
+  test('a conversation the engine marked, resumed in this process, gets the workflow harness back at the next drawing', async ($, on) => {
+    const { written, reads, resumesAs } = world($, on, '', { marked: ['s1'] })
 
     reads(MOVED_ON)
 
     await $.session.start(SESSION)
     await $.session.end(RESUMED)
 
+    resumesAs('s1')
     reads(BOOTED)
 
     await isDrawn($)
@@ -3346,14 +3422,15 @@ describe('register', () => {
     expect(harnessIn(written)).toEqual(HARNESS_ON)
   })
 
-  test('a plain conversation resumed in this process after one that ran the boot keeps Claude Code’s own harness', async ($, on) => {
-    const { written, reads } = world($, on)
+  test('a plain conversation resumed in this process after a marked one keeps Claude Code’s own harness', async ($, on) => {
+    const { written, reads, resumesAs } = world($, on, '', { marked: ['s0'] })
 
     reads(BOOTED)
 
     await $.session.start(SESSION)
     await $.session.end(RESUMED)
 
+    resumesAs('s1')
     reads(ELSEWHERE_AT_GATE)
 
     await isDrawn($)
@@ -3362,7 +3439,7 @@ describe('register', () => {
   })
 
   test('a /clear gets no harness back from the conversation it cleared while the transcript still holds it', async ($, on) => {
-    const { written, reads } = world($, on)
+    const { written, reads } = world($, on, '', { marked: ['s0'] })
 
     reads(BOOTED)
 
@@ -3379,6 +3456,7 @@ describe('register', () => {
 
     const { written, reads } = world($, on, '', {
       disk: clock,
+      marked: ['s0'],
       lag: async read => {
         if (isSlow && read === 'transcript') {
           await clock.sleep(1000)
