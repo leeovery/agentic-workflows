@@ -24,6 +24,7 @@ const config = require('./config');
 const store = require('./store');
 const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('./providers/openai');
 const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('./providers/openai-compatible');
+const { QuotaError } = require('./providers/openai-engine');
 
 const OPENAI_DEFAULT_MODEL = 'text-embedding-3-small';
 const OPENAI_DEFAULT_DIMENSIONS = 1536;
@@ -296,17 +297,23 @@ async function validateProvider(provider, dimensions) {
 
 /**
  * Map a validation error to a human-friendly description and hint.
- * Shared cases (auth/permission/rate-limit/network/server) live here; each
- * driver supplies provider-specific remedy text via `remedies` (keyed by
- * case: auth, permission, rateLimit, network, connRefused, server5xx,
+ * Shared cases (quota/auth/permission/rate-limit/network/server) live here;
+ * each driver supplies provider-specific remedy text via `remedies` (keyed by
+ * case: quota, auth, permission, rateLimit, network, connRefused, server5xx,
  * unknown). Returns { message, hint } — caller renders both.
  */
 function describeValidationError(err, remedies) {
   remedies = remedies || {};
   const msg = (err && err.message) || String(err);
 
-  // ECONNREFUSED first — it also matches the generic /ECONN/ network case
-  // below, but the "server not running" remedy is more specific.
+  if (err instanceof QuotaError) {
+    return {
+      message: 'The account is out of quota (HTTP 429).',
+      hint: remedies.quota || "No wait restores it — add credit or raise the plan's usage limit, then retry.",
+    };
+  }
+  // ECONNREFUSED before the generic /ECONN/ network case below — the
+  // "server not running" remedy is more specific.
   if (/ECONNREFUSED/.test(msg)) {
     return {
       message: 'Could not connect to the embeddings endpoint (connection refused).',
@@ -329,7 +336,8 @@ function describeValidationError(err, remedies) {
   if (/429/.test(msg) || /rate limit/i.test(msg)) {
     return {
       message: 'Rate limit hit during validation (HTTP 429).',
-      hint: remedies.rateLimit || 'Wait a moment and retry.',
+      hint: remedies.rateLimit ||
+        "The limit held through setup's own waits — try again later, or check your plan's rate limits.",
     };
   }
   if (/network error/i.test(msg) || /ENOTFOUND/.test(msg) || /ECONN/.test(msg) || /ETIMEDOUT/.test(msg)) {

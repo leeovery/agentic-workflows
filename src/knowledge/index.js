@@ -12,7 +12,7 @@ const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
 const { OpenAIProvider } = require('./providers/openai');
-const { AuthError, InvalidRequestError, ConfigError, RateLimitError } = require('./providers/openai-engine');
+const { AuthError, InvalidRequestError, ConfigError, QuotaError, RateLimitError } = require('./providers/openai-engine');
 const config = require('./config');
 const setup = require('./setup');
 const setupForms = require('./setup-forms');
@@ -106,12 +106,13 @@ class UserError extends Error {
 }
 
 // Failures that repeat identically on every attempt: input validation, a
-// provider refusing the key or the request, a provider configuration the
-// model contradicts, and programming errors.
+// provider refusing the key or the request, an account out of quota, a
+// provider configuration the model contradicts, and programming errors.
 const PERMANENT_ERRORS = [
   UserError,
   AuthError,
   InvalidRequestError,
+  QuotaError,
   ConfigError,
   TypeError,
   ReferenceError,
@@ -283,8 +284,8 @@ function sleep(ms) {
 
 /**
  * Whether repeating the whole operation could change a failure's outcome —
- * never for a permanent failure, nor for a rate limit the provider has
- * already waited out request by request.
+ * never for a permanent failure, nor for a rate limit, which the provider
+ * waits on request by request as far as its budget allows.
  * @param {unknown} err
  */
 function isRetryable(err) {
@@ -2676,6 +2677,7 @@ module.exports = {
   UserError,
   AuthError,
   InvalidRequestError,
+  QuotaError,
   ConfigError,
   main,
   cmdIndexBulk,

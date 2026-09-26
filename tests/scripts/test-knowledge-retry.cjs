@@ -11,6 +11,7 @@ const {
   UserError,
   AuthError,
   InvalidRequestError,
+  QuotaError,
   ConfigError,
 } = require('../../src/knowledge/index');
 const { RateLimitError } = require('../../src/knowledge/providers/openai-engine');
@@ -157,6 +158,15 @@ describe('withRetry', () => {
     assert.strictEqual(calls, 1);
   });
 
+  it('does not retry QuotaError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new QuotaError('out of quota (HTTP 429)'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof QuotaError
+    );
+    assert.strictEqual(calls, 1);
+  });
+
   it('does not retry ConfigError', async () => {
     let calls = 0;
     await assert.rejects(
@@ -168,11 +178,12 @@ describe('withRetry', () => {
 });
 
 describe('isPermanentError', () => {
-  it('reads validation, key, request, config, and programming errors as permanent', () => {
+  it('reads validation, key, request, quota, config, and programming errors as permanent', () => {
     for (const err of [
       new UserError('bad input'),
       new AuthError('bad key'),
       new InvalidRequestError('HTTP 413'),
+      new QuotaError('out of quota (HTTP 429)'),
       new ConfigError('expected width 2'),
       new TypeError('typo'),
       new ReferenceError('missing'),
@@ -183,8 +194,8 @@ describe('isPermanentError', () => {
     }
   });
 
-  it('reads a plain Error — rate limit, server error, network — as transient', () => {
-    for (const message of ['rate limit exceeded (HTTP 429)', 'embedding request failed (HTTP 503)', 'network error: ECONNRESET']) {
+  it('reads a plain Error — a server error, a network failure — as transient', () => {
+    for (const message of ['embedding request failed (HTTP 503)', 'network error: ECONNRESET']) {
       assert.strictEqual(isPermanentError(new Error(message)), false, message);
     }
     assert.strictEqual(isPermanentError(undefined), false);

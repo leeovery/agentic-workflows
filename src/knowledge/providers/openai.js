@@ -78,9 +78,12 @@ const OPENAI_REMEDIES = {
   permission:
     'If this is a restricted key, check its allowed endpoints in the OpenAI dashboard. ' +
     'Create a key with Embeddings access enabled.',
+  quota:
+    'Add credit or raise the usage limit at https://platform.openai.com/account, ' +
+    'then re-run `knowledge setup`.',
   rateLimit:
-    'Your account may be out of quota, or the default rate limit is saturated. ' +
-    'Wait a moment and retry, or check billing at https://platform.openai.com/account.',
+    "The limit held through setup's own waits — try again later, or check your plan's " +
+    'rate limits at https://platform.openai.com/account.',
   network:
     'Check your internet connection, VPN, or corporate proxy. No key was written — ' +
     'you can re-run `knowledge setup` once the connection is stable.',
