@@ -4,7 +4,7 @@
 
 ---
 
-## A. Present Verdict
+## A. Build the Presentation
 
 → Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written.
 
@@ -26,6 +26,14 @@ Write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/pr
 
 `corrected` is omitted when nothing was applied; `replan` carries entries only on a fail; `out_of_scope` is the count of findings banked in the manifest; `not_measured` is the count of blocks in `.workflows/.cache/{work_unit}/review/{topic}/not-measured.txt` — omitted or `0` when the file is absent. Each `summary` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. What is listed and what is counted is the surface's rule, not a judgment made here.
 
+→ On return, proceed to **B. Review Gate**.
+
+---
+
+## B. Review Gate
+
+A return from an answer re-runs the gate fetch below alone — the verdict and the out-of-scope decision belong to the gate's first arrival.
+
 Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 
 ```bash
@@ -34,39 +42,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentatio
 
 Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
 
-→ On return, proceed to **B. Decide the Out-of-Scope Findings**.
-
----
-
-## B. Decide the Out-of-Scope Findings
-
-A pass closes the review, so findings banked outside this spec are decided here — before the gate, never as an option on it. A fail decides nothing: its findings carry to the next cycle.
-
-#### If the verdict is `fail`
-
-→ Proceed to **C. Review Gate**.
-
-#### Otherwise
-
-Read whether anything is banked:
+A pass closes the review, so findings banked outside this spec are decided here — before the gate, never as an option on it. A fail decides nothing: its findings carry to the next cycle. On a pass, read whether anything is banked:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} out_of_scope
 ```
 
-**If `true`:**
-
-Load **[decide-out-of-scope.md](decide-out-of-scope.md)** and follow its instructions as written.
-
-→ On return, proceed to **C. Review Gate**.
-
-**If `false`:**
-
-→ Proceed to **C. Review Gate**.
-
----
-
-## C. Review Gate
+Where it reads `true`, load **[decide-out-of-scope.md](decide-out-of-scope.md)** and follow its instructions as written before the gate.
 
 Render the gate — `--replan` with the count on a fail:
 
@@ -92,4 +74,4 @@ The failures become tasks and implementation reopens.
 
 Answer the question using the review file, the per-task reports, this cycle's change-set files, the specification, and the plan as context. The question sets the gate aside until the person is ready to move on; to put it back:
 
-→ Return to **C. Review Gate**.
+→ Return to **B. Review Gate**.
