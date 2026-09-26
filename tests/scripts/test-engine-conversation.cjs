@@ -155,6 +155,15 @@ describe('engine conversation end', () => {
     assert.strictEqual(transcriptOf('sess-1'), '/new/sess-1.jsonl');
   });
 
+  it('records the path as the hook hands it — a leading `~` and a relative path alike, left to the tidy to read', () => {
+    writeConversation('sess-1', { workflow: '' });
+    writeConversation('sess-2', { workflow: '' });
+    harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '~/.claude/projects/p/sess-1.jsonl' }) });
+    harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-2', transcript_path: 'projects/p/sess-2.jsonl' }) });
+    assert.strictEqual(transcriptOf('sess-1'), '~/.claude/projects/p/sess-1.jsonl');
+    assert.strictEqual(transcriptOf('sess-2'), 'projects/p/sess-2.jsonl');
+  });
+
   it('a conversation that never ran the workflows gets nothing — no folder is made for it', () => {
     const res = harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' }) });
     assert.deepStrictEqual(res, { ok: true, recorded: false });
@@ -232,6 +241,29 @@ describe('tidyConversations', () => {
     fs.utimesSync(folder('old'), past, past);
     tidyConversations(dir);
     assert.ok(fs.existsSync(folder('old')));
+  });
+
+  it('reads a leading `~` as the home directory — the folder stays while the file there does, and goes once it is gone', () => {
+    const home = process.env.HOME;
+    process.env.HOME = dir;
+    try {
+      fs.mkdirSync(path.join(dir, '.claude', 'projects', 'p'), { recursive: true });
+      fs.writeFileSync(path.join(dir, '.claude', 'projects', 'p', 'live.jsonl'), '');
+      writeConversation('live', { workflow: '', transcript: '~/.claude/projects/p/live.jsonl' });
+      writeConversation('gone', { workflow: '', transcript: '~/.claude/projects/p/gone.jsonl' });
+      tidyConversations(dir);
+    } finally {
+      process.env.HOME = home;
+    }
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['live']);
+  });
+
+  it('a relative path names no file — its folder stays', () => {
+    writeConversation('bare', { workflow: '', transcript: 'gone.jsonl' });
+    writeConversation('nested', { workflow: '', transcript: 'projects/p/gone.jsonl' });
+    writeConversation('user', { workflow: '', transcript: '~someone/gone.jsonl' });
+    tidyConversations(dir);
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), ['bare', 'nested', 'user']);
   });
 
   it('leaves what is not a folder, and a project with no conversations, alone', () => {

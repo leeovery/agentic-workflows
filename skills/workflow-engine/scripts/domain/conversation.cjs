@@ -23,10 +23,13 @@
 // A folder goes at boot once the transcript it names is gone: Claude Code
 // has deleted the conversation, so nothing can resume it, and whatever
 // retention the person set is the retention these records keep. A folder
-// whose conversation ended without the hook names no transcript and stays.
+// whose conversation ended without the hook names no transcript and stays,
+// and so does one naming a relative path (a leading `~` is the home
+// directory).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const MARKER = 'workflow';
@@ -87,6 +90,16 @@ function endConversation(cwd, sessionId, transcriptPath) {
 }
 
 /**
+ * The transcript file a recorded path names: a leading `~` is the home
+ * directory, and a path that is still not absolute names none.
+ * @param {string} recorded @returns {string|null}
+ */
+function transcriptFile(recorded) {
+  const expanded = recorded.startsWith('~/') ? path.join(os.homedir(), recorded.slice(2)) : recorded;
+  return path.isAbsolute(expanded) ? expanded : null;
+}
+
+/**
  * Boot's tidy-up: delete every folder whose transcript names a file that no
  * longer exists. A folder naming none stays, and one that cannot be deleted
  * waits for the next boot.
@@ -101,8 +114,8 @@ function tidyConversations(cwd) {
   } catch { return; }
   for (const folder of folders) {
     const dir = path.join(root, folder);
-    let transcript = '';
-    try { transcript = fs.readFileSync(path.join(dir, TRANSCRIPT), 'utf8'); } catch { continue; }
+    let transcript;
+    try { transcript = transcriptFile(fs.readFileSync(path.join(dir, TRANSCRIPT), 'utf8')); } catch { continue; }
     if (!transcript || fs.existsSync(transcript)) continue;
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the next boot tries again */ }
   }
