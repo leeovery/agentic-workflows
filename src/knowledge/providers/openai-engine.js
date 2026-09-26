@@ -20,8 +20,10 @@
 //     "server not running".
 //
 // Uses Node's built-in fetch (Node 18+) — keeps existing test mocks of
-// globalThis.fetch working. Throws on ALL failures; never retries internally
-// (the operation-level retry wrapper is the single source of retry logic).
+// globalThis.fetch working. Throws on every failure but a rate limit, which it
+// waits out request by request — the operation-level retry wrapper repeats a
+// whole job, re-sending every request already answered — drawing each wait
+// from a budget every engine in the process shares.
 
 'use strict';
 
@@ -38,6 +40,21 @@ const REQUEST_TIMEOUT_MS = 60000;
 // HTTP statuses where the endpoint refused the request itself — an input
 // over the model's limit, a malformed body.
 const INVALID_REQUEST_STATUSES = new Set([400, 413, 422]);
+
+// A rate-limited request is retried after the wait the endpoint names, or
+// after these when it names none, each wait capped at a minute.
+const RATE_LIMIT_WAITS_MS = [1000, 2000, 4000, 8000, 16000];
+const MAX_RATE_LIMIT_WAIT_MS = 60000;
+
+// The rate-limit waiting one process does across all its requests. Callers
+// run the knowledge CLI under time limits of their own, and a file left
+// unembedded is retried by the next start's bulk index.
+const RATE_LIMIT_BUDGET_MS = 60000;
+
+// A duration as rate-limit messages state it: "6.007s", "500ms", "1m20.5s", "2h3m".
+const DURATION_PART = /(\d+(?:\.\d+)?)(ms|h|m|s)/gi;
+const STATED_WAIT = new RegExp(`try again in ((?:${DURATION_PART.source})+)\\b`, 'i');
+const UNIT_MS = { ms: 1, s: 1000, m: 60000, h: 3600000 };
 
 // AuthError — marker class for HTTP 401/403 from the embeddings API.
 // Bad/expired keys do not fix themselves between retries, so withRetry
@@ -68,6 +85,53 @@ class ConfigError extends Error {
   }
 }
 
+/**
+ * QuotaError — marker class for an HTTP 429 that says the account is out of
+ * quota. No wait restores it; only the account's billing does.
+ */
+class QuotaError extends Error {
+  /** @param {string} message */
+  constructor(message) {
+    super(message);
+    this.name = 'QuotaError';
+  }
+}
+
+// RateLimitError — HTTP 429 from a saturated rate limit, carrying the wait the
+// endpoint named (null when it named none). Thrown out of the engine once its
+// own retries are spent, or at once when the wait does not fit the budget.
+class RateLimitError extends Error {
+  /** @param {string} message @param {number|null} retryAfterMs */
+  constructor(message, retryAfterMs) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+/**
+ * The rate-limit waiting still to spend, drawn down wait by wait.
+ */
+class WaitBudget {
+  /** @param {number} ms */
+  constructor(ms) {
+    this._remainingMs = ms;
+  }
+
+  /**
+   * Spend a wait when it fits what remains — a spent budget fits none.
+   * @param {number} ms
+   * @returns {boolean} whether the wait was spent
+   */
+  draw(ms) {
+    if (this._remainingMs === 0 || ms > this._remainingMs) return false;
+    this._remainingMs -= ms;
+    return true;
+  }
+}
+
+const processWaitBudget = new WaitBudget(RATE_LIMIT_BUDGET_MS);
+
 class OpenAIEmbeddingsEngine {
   /**
    * @param {{
@@ -77,6 +141,8 @@ class OpenAIEmbeddingsEngine {
    *   dimensions: number,
    *   sendDimensionsParam: boolean,
    *   timeoutMs?: number,
+   *   sleep?: (ms: number) => Promise<void>,
+   *   waitBudget?: WaitBudget,
    *   errorContext: {
    *     label: string,
    *     authHint: string,
@@ -97,6 +163,8 @@ class OpenAIEmbeddingsEngine {
     this._dimensions = policy.dimensions;
     this._sendDimensionsParam = policy.sendDimensionsParam === true;
     this._timeoutMs = policy.timeoutMs || REQUEST_TIMEOUT_MS;
+    this._sleep = policy.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    this._waitBudget = policy.waitBudget || processWaitBudget;
     this._errorContext = policy.errorContext || {};
   }
 
@@ -206,13 +274,34 @@ class OpenAIEmbeddingsEngine {
   }
 
   /**
+   * Internal: one request, retried while it is rate-limited — after the wait
+   * the endpoint names, else the next of RATE_LIMIT_WAITS_MS, each capped at
+   * MAX_RATE_LIMIT_WAIT_MS and drawn from the wait budget. The RateLimitError
+   * propagates once the retries are spent or a wait does not fit the budget.
+   * @param {string} body JSON-encoded request body
+   * @returns {Promise<object>} parsed response JSON
+   */
+  async _fetch(body) {
+    for (let retry = 0; ; retry++) {
+      try {
+        return await this._request(body);
+      } catch (err) {
+        if (!(err instanceof RateLimitError) || retry === RATE_LIMIT_WAITS_MS.length) throw err;
+        const wait = Math.min(err.retryAfterMs ?? RATE_LIMIT_WAITS_MS[retry], MAX_RATE_LIMIT_WAIT_MS);
+        if (!this._waitBudget.draw(wait)) throw err;
+        await this._sleep(wait);
+      }
+    }
+  }
+
+  /**
    * Internal: POST to the embeddings endpoint and parse the response.
    * Throws on any failure with a descriptive message built from the policy
    * error context.
    * @param {string} body JSON-encoded request body
    * @returns {Promise<object>} parsed response JSON
    */
-  async _fetch(body) {
+  async _request(body) {
     const ctx = this._errorContext;
     const headers = { 'Content-Type': 'application/json' };
     // Send Authorization only when a key is present — local servers omit it.
@@ -244,16 +333,16 @@ class OpenAIEmbeddingsEngine {
     }
 
     if (!res.ok) {
-      let detail = '';
+      let text = '';
       try {
-        detail = await res.text();
+        text = await res.text();
       } catch (_) {
         // ignore body read failures
       }
       // Upstream bodies are untrusted and may reflect request headers —
       // including the Authorization bearer. Redact any credential-shaped
       // material and cap the length before it can reach an error message.
-      detail = detail
+      const detail = text
         .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer [redacted]')
         .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[redacted-key]')
         .slice(0, 300);
@@ -265,7 +354,10 @@ class OpenAIEmbeddingsEngine {
         throw new AuthError(`${ctx.label} request lacks permission (HTTP 403). ${ctx.permissionHint} ${detail}`.trim());
       }
       if (res.status === 429) {
-        throw new Error(`${ctx.label} rate limit exceeded (HTTP 429). ${detail}`.trim());
+        if (quotaExhausted(text)) {
+          throw new QuotaError(`${ctx.label} request refused: the account is out of quota (HTTP 429). ${detail}`.trim());
+        }
+        throw new RateLimitError(`${ctx.label} rate limit exceeded (HTTP 429). ${detail}`.trim(), namedWait(res.headers, text));
       }
       const failed = `${ctx.label} embedding request failed (HTTP ${res.status}): ${detail}`;
       throw INVALID_REQUEST_STATUSES.has(res.status) ? new InvalidRequestError(failed) : new Error(failed);
@@ -280,6 +372,71 @@ class OpenAIEmbeddingsEngine {
 
     return json;
   }
+}
+
+/**
+ * Whether a 429 body says the account is out of quota.
+ * @param {string} text
+ */
+function quotaExhausted(text) {
+  try {
+    const { error } = JSON.parse(text);
+    return Boolean(error) && (error.code === 'insufficient_quota' || error.type === 'insufficient_quota');
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * The wait a 429 names, in whole milliseconds — the `retry-after-ms` header,
+ * else `retry-after` in seconds or as an HTTP date, else the message's
+ * "try again in 1m20.5s" — or null when it names none.
+ * @param {Headers} headers @param {string} text
+ * @returns {number|null}
+ */
+function namedWait(headers, text) {
+  const retryAfter = headers.get('retry-after');
+  return delayWait(headers.get('retry-after-ms'), 1) ??
+    delayWait(retryAfter, 1000) ??
+    dateWait(retryAfter) ??
+    statedWait(text);
+}
+
+/**
+ * A header's delay — a non-negative count of `unitMs` — in whole
+ * milliseconds, or null when it holds none.
+ * @param {string|null} value @param {number} unitMs
+ * @returns {number|null}
+ */
+function delayWait(value, unitMs) {
+  const count = value === null || value.trim() === '' ? NaN : Number(value);
+  return count >= 0 ? Math.ceil(count * unitMs) : null;
+}
+
+/**
+ * The milliseconds until a header's HTTP date, none once it has passed, or
+ * null when it holds no date — a number is a delay, never a date.
+ * @param {string|null} value
+ * @returns {number|null}
+ */
+function dateWait(value) {
+  if (value === null || !Number.isNaN(Number(value))) return null;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+}
+
+/**
+ * The wait a message states as "try again in 1m20.5s", in whole
+ * milliseconds, or null when it states none.
+ * @param {string} text
+ * @returns {number|null}
+ */
+function statedWait(text) {
+  const said = STATED_WAIT.exec(text);
+  if (!said) return null;
+  const ms = [...said[1].matchAll(DURATION_PART)]
+    .reduce((sum, [, amount, unit]) => sum + Number(amount) * UNIT_MS[unit.toLowerCase()], 0);
+  return Math.ceil(ms);
 }
 
 /**
@@ -314,6 +471,9 @@ module.exports = {
   AuthError,
   InvalidRequestError,
   ConfigError,
+  QuotaError,
+  RateLimitError,
+  WaitBudget,
   MAX_BATCH_SIZE,
   MAX_BATCH_CHARS,
   REQUEST_TIMEOUT_MS,

@@ -31,6 +31,7 @@ const {
   describeValidationError,
 } = require('../../src/knowledge/setup');
 const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
+const { QuotaError, RateLimitError } = require('../../src/knowledge/providers/openai-engine');
 
 let tmpDir;
 
@@ -766,10 +767,23 @@ describe('describeValidationError', () => {
     assert.match(hint, /active|revoked|create a fresh key/i);
   });
 
-  it('maps 429 to a rate-limit hint', () => {
-    const { message, hint } = describeValidationError(new Error('OpenAI rate limit exceeded (HTTP 429).'));
+  it('maps 429 to a hint that the limit held through the waits already made', () => {
+    const { message, hint } = describeValidationError(new RateLimitError('OpenAI rate limit exceeded (HTTP 429).', null));
     assert.match(message, /rate limit/i);
-    assert.match(hint, /quota|retry/i);
+    assert.match(hint, /held through setup's own waits/);
+    assert.doesNotMatch(hint, /wait a moment/i);
+  });
+
+  it('maps an account out of quota to a billing hint, apart from the rate limit', () => {
+    const { message, hint } = describeValidationError(new QuotaError('OpenAI request refused: the account is out of quota (HTTP 429).'));
+    assert.match(message, /out of quota/);
+    assert.match(hint, /credit|usage limit/);
+  });
+
+  it('takes the driver\'s quota and rate-limit remedies when it names them', () => {
+    const remedies = { quota: 'Top up.', rateLimit: 'Slow down.' };
+    assert.strictEqual(describeValidationError(new QuotaError('out of quota (HTTP 429)'), remedies).hint, 'Top up.');
+    assert.strictEqual(describeValidationError(new RateLimitError('rate limit exceeded (HTTP 429)', null), remedies).hint, 'Slow down.');
   });
 
   it('maps network errors to a connection hint', () => {
