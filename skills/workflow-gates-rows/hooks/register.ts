@@ -85,18 +85,17 @@ async function firstLineOf(
   }
 
   const sent = await lastSent($)
-
-  if (sent?.answer !== answer) {
-    return answer
-  }
-
-  const line = lineOf(sent)
+  const paired = sent?.answer === answer
+  const line = paired ? lineOf(sent) : answer
 
   await $.fs.write(
     `${folder}/${ROWS}`,
     JSON.stringify({ ...rows, [requestId]: line }),
   )
-  await $.fs.write(SENT, SPENT)
+
+  if (paired) {
+    await $.fs.write(SENT, SPENT)
+  }
 
   return line
 }

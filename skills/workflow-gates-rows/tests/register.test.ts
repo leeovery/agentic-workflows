@@ -301,6 +301,30 @@ describe('register', () => {
     expect(await drawn($, rowOf('m2'))).toBe(PAIRED)
   })
 
+  test('a row it cannot pair is kept as the answer alone, the record left to its own row', async ($, on) => {
+    const { calls, files, rowsIn } = world(on, recordOf('no'))
+
+    expect(await drawn($, rowOf('m1'))).toBe('yes')
+    expect(rowsIn('s0')).toEqual({ m1: 'yes' })
+    expect(files.get(SENT)).toBe(recordOf('no'))
+    expect(calls.filter(call => call.startsWith('write'))).toEqual([
+      `write ${rowsAt('s0')}`,
+    ])
+  })
+
+  test('a fresh load draws a row kept alone as it was, leaving a later record of its answer to its own row', async ($, on) => {
+    const { calls, rowsIn } = world(on, recordOf(), {
+      kept: { s0: { m1: 'yes' } },
+    })
+
+    expect(await drawn($, rowOf('m1'))).toBe('yes')
+    expect(calls, 'the record is not read for a kept row').not.toContain(
+      `read ${SENT}`,
+    )
+    expect(await drawn($, rowOf('m2'))).toBe(PAIRED)
+    expect(rowsIn('s0')).toEqual({ m1: 'yes', m2: PAIRED })
+  })
+
   test('a missing, unreadable or mismatched record draws the answer alone', async ($, on) => {
     const { leaves } = world(on)
 
@@ -349,6 +373,19 @@ describe('register', () => {
 
     expect(await drawn($, rowOf('m1'))).toBe(PAIRED)
     expect(rowsIn('s0')).toEqual({ m1: PAIRED })
+  })
+
+  test('a row it cannot pair whose write fails draws as Claude Code does, and is kept alone on its redraw', async ($, on) => {
+    const { refusing, rowsIn } = world(on)
+
+    refusing.add(rowsAt('s0'))
+
+    expect(await drawn($, rowOf('m1'))).toBe(framed('yes'))
+
+    refusing.clear()
+
+    expect(await drawn($, rowOf('m1'))).toBe('yes')
+    expect(rowsIn('s0')).toEqual({ m1: 'yes' })
   })
 
   test("expanded rows, the person's prompts, other plugins' and notifications pass through", async ($, on) => {
