@@ -9,8 +9,9 @@ the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
 scrolls; while any screen but the terminal is attached, it leaves the menu as
 text so every screen shows it, though a screen that attaches after a menu was
-drawn on the terminal does not get that menu. The workflows' prose never names
-the mod.
+drawn on the terminal does not get that menu. No gate's prose names the mod;
+only workflow-start's setup step does, when the mod is switched on but not
+yet running.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
