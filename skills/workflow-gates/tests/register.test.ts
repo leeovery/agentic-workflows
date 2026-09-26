@@ -330,8 +330,22 @@ const ANSWERED = [...AT_GATE, said('user', 'yes')]
 /** The line Claude Code writes when the person's Esc stops a turn. */
 const INTERRUPTION = said('user', '[Request interrupted by user]')
 
+/** The line Claude Code writes when the person's Esc lands during a tool call. */
+const INTERRUPTION_MID_TOOL_USE = said('user', '[Request interrupted by user for tool use]')
+
 /** What Claude Code puts in the model's place, resuming after an Esc. */
 const NO_RESPONSE = said('assistant', 'No response requested.')
+
+/**
+ * A genuine step — the model calls the engine again — whose own words happen
+ * to read as the reply Claude Code puts in the model's place after an Esc.
+ * No guard mistakes it for that artifact: it still has the call.
+ */
+const CALLS_WHILE_SAYING_NO_RESPONSE: SessionMessage = {
+  role: 'assistant',
+  text: 'No response requested.',
+  toolUses: [{ tool_use_id: 'toolu_9', tool: 'Bash', input: { command: ENGINE_CALL.command } }],
+}
 
 /** Another conversation, at a gate of its own, stopped on the same words. */
 const ELSEWHERE_AT_GATE = [
@@ -2607,7 +2621,13 @@ describe('register', () => {
 
   test('the lines Claude Code writes around an interrupted turn move no stamp: the gate is kept the same with them as without', async ($, on) => {
     const { stored, reads } = world($, on, announced())
-    const endings = [[], [INTERRUPTION], [INTERRUPTION, NO_RESPONSE]]
+    const endings = [
+      [],
+      [INTERRUPTION],
+      [INTERRUPTION, NO_RESPONSE],
+      [INTERRUPTION_MID_TOOL_USE],
+      [INTERRUPTION_MID_TOOL_USE, NO_RESPONSE],
+    ]
 
     await $.session.start(SESSION)
 
@@ -2619,6 +2639,25 @@ describe('register', () => {
 
       expect(Object.fromEntries(stored), `${ending.length} lines past the stop`).toEqual(KEPT_AT_GATE)
     }
+  })
+
+  test('a step that calls the engine again is kept even where its own words read as the reply left after an Esc', async ($, on) => {
+    const { stored, reads } = world($, on, announced())
+
+    await $.session.start(SESSION)
+
+    reads([...AT_GATE, said('user', 'again'), CALLS_WHILE_SAYING_NO_RESPONSE])
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(Object.fromEntries(stored)).toEqual({
+      'band:toolu_1': {
+        stamp: JSON.stringify(['assistant', 'No response requested.', ['toolu_9'], 'toolu_9']),
+        gate: TASK_GATE,
+        keptAt: 0,
+      },
+    })
   })
 
   test('an answer taken back with Esc before any call, then the conversation left, draws the gate again when it is resumed past the lines written around the stop', async ($, on) => {
