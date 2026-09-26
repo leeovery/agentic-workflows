@@ -1071,7 +1071,7 @@ function epicInSessionGate(workUnit, entry) {
   const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${workUnit} ${phase} ${topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menuFrame([
       `${fact} ${consequence}${hold} Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with \`${release}\`.`,
       '',

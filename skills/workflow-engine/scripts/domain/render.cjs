@@ -17,7 +17,7 @@ const path = require('path');
 const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost } = require('../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -95,7 +95,7 @@ function resolveAddress(cwd, dotpath, surface) {
 // rides as a scalar flag.
 // ---------------------------------------------------------------------------
 
-const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
 const RESUME_QUESTION = 'How would you like to proceed?';
 
 /**
@@ -205,14 +205,14 @@ function resumeGate(cwd, args) {
     }
     parts.push(section(
       'DISPLAY: triage warning',
-      'emit verbatim as a code block, directly above the menu',
+      'emit verbatim as a text code block (```text fence), directly above the menu',
       callout(`${n} rerouted concern(s) from other topics wait in this topic's `
         + 'triage queue. Restart leaves them queued — the restarted session raises them.'),
     ));
   }
   parts.push(section(
     'MENU: resume gate',
-    'emit verbatim as markdown, then STOP for the user\'s response',
+    'emit verbatim as markdown (not a code block), then STOP for the user\'s response',
     menu(`Found existing ${phase} for **${titlecase(topic)}**.`, [
       cmdOption('c', 'continue', 'Pick up where you left off'),
       cmdOption('r', 'restart', `Delete the ${phase} and start fresh`),
@@ -304,7 +304,7 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
   });
 
   const parts = [
-    section('DISPLAY: task list', 'emit verbatim as a code block', lines.join('\n')),
+    section('DISPLAY: task list', 'emit verbatim as a text code block (```text fence)', lines.join('\n')),
   ];
   if (gateMode === 'auto') {
     parts.push(section(
@@ -329,7 +329,7 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
         ];
     parts.push(section(
       'MENU: task list gate',
-      'emit verbatim as markdown, then STOP for the user\'s response',
+      'emit verbatim as markdown (not a code block), then STOP for the user\'s response',
       menu('Approve this task list?', options),
     ));
   }
@@ -462,7 +462,7 @@ function proposedTask(cwd, args) {
       body.push('', `**${heading}**:`, ...blocks[field]);
     }
   }
-  const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown', body.join('\n'))];
+  const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown (not a code block)', body.join('\n'))];
 
   const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
   if (p.decision) {
@@ -479,7 +479,7 @@ function proposedTask(cwd, args) {
   } else if (gate === 'auto') {
     parts.push(section(
       'DISPLAY: task auto-approved',
-      `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after recording the approval'),
       p.total > 1
         ? `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`
         : `${p.title} — approved [auto].`,
@@ -650,7 +650,7 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   }
   parts.push(flags.join('\n'));
 
-  return section('DISPLAY: convergence diagnostic', 'emit verbatim as a code block', parts.join('\n\n'));
+  return section('DISPLAY: convergence diagnostic', 'emit verbatim as a text code block (```text fence)', parts.join('\n\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -710,7 +710,7 @@ function carryNoteGate(cwd, { dotpath, file }) {
   if (p.landing_phase !== 'research' && p.landing_phase !== 'discussion') {
     throw new Error(`render carry-note-gate: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
   }
-  const display = section('DISPLAY: carry note', 'emit verbatim as markdown', [
+  const display = section('DISPLAY: carry note', 'emit verbatim as markdown (not a code block)', [
     ...note,
     '',
     `*Addressed to: ${p.target} — lands in its ${p.landing_phase} triage queue*`,
@@ -860,7 +860,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       body.push('', `**Depth**: ${checkpointDepth(p)} — ${oneLine('hypothesis-board', p.depth_reasoning, '"depth_reasoning"')}`);
     }
     return [
-      section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', 'emit verbatim as markdown', body.join('\n')),
+      section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', 'emit verbatim as markdown (not a code block)', body.join('\n')),
       section(pivot ? 'MENU: pivot gate' : 'MENU: plan gate', STOP_FOR_RESPONSE, pivot
         ? menu('', [
           cmdOption('y', 'yes', 'Proceed as proposed'),
@@ -886,7 +886,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       `**Remaining**: ${oneLine('hypothesis-board', p.remaining, '"remaining"')}`,
     ];
     return [
-      section('DISPLAY: resumed plan', 'emit verbatim as markdown', body.join('\n')),
+      section('DISPLAY: resumed plan', 'emit verbatim as markdown (not a code block)', body.join('\n')),
       section('MENU: resumed plan gate', STOP_FOR_RESPONSE, menu('', [
         cmdOption('y', 'yes', 'Continue as agreed'),
         promptOption('Revise', 'Tell me what to change: hypotheses, trace lines, or depth'),
@@ -915,7 +915,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
     `**Next**: ${oneLine('hypothesis-board', p.next, '"next"')}`,
   ];
   return [
-    section('DISPLAY: hypothesis board', 'emit verbatim as markdown', body.join('\n')),
+    section('DISPLAY: hypothesis board', 'emit verbatim as markdown (not a code block)', body.join('\n')),
     section('MENU: check-in gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('y', 'yes', 'Continue with the next trace line'),
       promptOption('Steer', 'Tell me what to look at instead, or what this changes'),
@@ -1038,7 +1038,7 @@ function fixDirection(cwd, { dotpath, file }) {
   if (p.open_question !== undefined) body.push(`**Open question**: ${p.open_question}`);
 
   return [
-    section('DISPLAY: fix direction', 'emit verbatim as markdown', body.join('\n').replace(/\n+$/, '')),
+    section('DISPLAY: fix direction', 'emit verbatim as markdown (not a code block)', body.join('\n').replace(/\n+$/, '')),
     section('MENU: fix direction gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('y', 'yes', 'Agree with this direction and pressure-test it'),
       promptOption('Provide feedback', 'Tell me your thoughts: discuss, challenge, or suggest alternatives'),
@@ -1193,7 +1193,7 @@ function validationReport(cwd, { dotpath, file, variant }) {
     items: items.map((title) => ({ title })),
   });
   return [
-    section(`DISPLAY: ${variant} validation findings`, 'emit verbatim as markdown', [body, ...tail].join('\n')),
+    section(`DISPLAY: ${variant} validation findings`, 'emit verbatim as markdown (not a code block)', [body, ...tail].join('\n')),
     section(`MENU: ${variant} validation gate`, STOP_FOR_RESPONSE, menu('', [
       cmdOption('a', 'address', v.address),
       cmdOption('d', 'dismiss', 'Note them as considered-and-dismissed and proceed'),
@@ -1266,7 +1266,7 @@ function projectSkills(cwd, { dotpath, file, variant }) {
   }
   if (variant === 'skipped') {
     return [
-      section('DISPLAY: project skills skipped', 'emit verbatim as markdown', 'Previous implementations used no project skills.'),
+      section('DISPLAY: project skills skipped', 'emit verbatim as markdown (not a code block)', 'Previous implementations used no project skills.'),
       section('MENU: project skills skipped gate', STOP_FOR_RESPONSE, menu('', [
         cmdOption('y', 'yes', 'Skip and proceed'),
         cmdOption('n', 'no', 'Analyse for project skills'),
@@ -1280,7 +1280,7 @@ function projectSkills(cwd, { dotpath, file, variant }) {
     ? setupNameRun(p.skills, 'project-skills', 'skills', 'Project skills')
     : setupList(p.skills, 'project-skills', 'skills', 'Project skills', 'skill');
   return [
-    section(`DISPLAY: project skills ${variant}`, 'emit verbatim as markdown', body),
+    section(`DISPLAY: project skills ${variant}`, 'emit verbatim as markdown (not a code block)', body),
     section(`MENU: project skills ${variant} gate`, STOP_FOR_RESPONSE, confirm
       ? menu('', [
         cmdOption('y', 'yes', 'Use and proceed'),
@@ -1309,7 +1309,7 @@ function linters(cwd, { dotpath, file, variant }) {
   }
   if (variant === 'skipped') {
     return [
-      section('DISPLAY: linters skipped', 'emit verbatim as markdown', 'Previous implementations skipped linters.'),
+      section('DISPLAY: linters skipped', 'emit verbatim as markdown (not a code block)', 'Previous implementations skipped linters.'),
       section('MENU: linters skipped gate', STOP_FOR_RESPONSE, menu('', [
         cmdOption('y', 'yes', 'Skip and proceed'),
         cmdOption('n', 'no', 'Run full linter discovery'),
@@ -1335,7 +1335,7 @@ function linters(cwd, { dotpath, file, variant }) {
     parts.push('', `**Recommended**: ${p.recommendations}`);
   }
   return [
-    section(`DISPLAY: linters ${variant}`, 'emit verbatim as markdown', parts.join('\n')),
+    section(`DISPLAY: linters ${variant}`, 'emit verbatim as markdown (not a code block)', parts.join('\n')),
     section(`MENU: linters ${variant} gate`, STOP_FOR_RESPONSE, discovery
       ? menu('', [
         cmdOption('y', 'yes', 'Approve and proceed'),
@@ -1367,7 +1367,7 @@ function linters(cwd, { dotpath, file, variant }) {
 // cited quote, a labelled context paragraph, stakes beneath.
 // ---------------------------------------------------------------------------
 
-const INCOHERENCE_STOP = 'emit verbatim as markdown, then STOP for the user\'s response';
+const INCOHERENCE_STOP = 'emit verbatim as markdown (not a code block), then STOP for the user\'s response';
 
 // A stop that fires despite the user's auto opt-in says so, in one voice —
 // the announcement is engine-rendered so it cannot vary with the session.
@@ -1439,7 +1439,7 @@ function incoherenceGate(cwd, args) {
         }
       });
       const options = recommendedMenuRows(p.sides, 'render incoherence-gate: at most one side may be recommended');
-      const display = section('DISPLAY: incoherence conflict', 'emit verbatim as markdown', body.join('\n'));
+      const display = section('DISPLAY: incoherence conflict', 'emit verbatim as markdown (not a code block)', body.join('\n'));
       options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
       return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
         menu(overAuto ? AUTO_OVERRIDE_LINE : '', options, { question: 'Which decision stands?' }))].join('\n');
@@ -1460,7 +1460,7 @@ function incoherenceGate(cwd, args) {
         rows: [cmdOption('y', 'yes', 'Land the gap and pause here')],
       };
     return [
-      section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n')),
+      section('DISPLAY: incoherence gap', 'emit verbatim as markdown (not a code block)', body.join('\n')),
       section('MENU: incoherence gap', INCOHERENCE_STOP, menu(
         `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}${gap.statement}`,
         [...gap.rows, promptOption('Comment', 'Tell me what you\'re thinking before it moves')],
@@ -1508,7 +1508,7 @@ function resurfaceGate(cwd, args) {
   if (view === 'full') {
     const lines = stringLines(p.full, 'resurface-gate', 'full');
     if (lines.length === 0) throw new Error('render resurface-gate: "full" must be non-empty for --view full');
-    parts.push(section('DISPLAY: resurfacing full', 'emit verbatim as markdown',
+    parts.push(section('DISPLAY: resurfacing full', 'emit verbatim as markdown (not a code block)',
       [`**Resurfacing: ${p.section}** — full updated section`, '', ...lines].join('\n')));
   } else {
     if (!p.diff || typeof p.diff !== 'object') throw new Error('render resurface-gate: "diff" is required');
@@ -1521,7 +1521,7 @@ function resurfaceGate(cwd, args) {
     if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
       throw new Error('render resurface-gate: "diff" must carry at least one current/proposed line');
     }
-    parts.push(section('DISPLAY: resurfacing', 'emit verbatim as markdown', `**Resurfacing: ${p.section}**`));
+    parts.push(section('DISPLAY: resurfacing', 'emit verbatim as markdown (not a code block)', `**Resurfacing: ${p.section}**`));
     parts.push(section('DISPLAY: resurfacing diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
     if (stringLines(p.full || [], 'resurface-gate', 'full').length > 0) {
       menuOptions.push(cmdOption('v', 'view full', 'Show the full updated section, then decide'));
@@ -1552,7 +1552,7 @@ function constructionGate(cwd, { dotpath }) {
   if (item.construction_gate_mode === 'auto') {
     return section(
       'DISPLAY: construction auto-approved',
-      `after logging the content: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after logging the content'),
       `${titlecase(topic)} — auto-approved. Recording to the specification.`,
     );
   }
@@ -1616,7 +1616,7 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
   if (!isFilled(title)) throw new Error('render author-task-gate: --title is required');
   return section(
     'MENU: author task gate',
-    'emit verbatim as markdown, then STOP for the user\'s response',
+    'emit verbatim as markdown (not a code block), then STOP for the user\'s response',
     menu(`**Task ${mN} of ${totalN}: ${title}**`, [
       cmdOption('y', 'yes', 'Write it to the plan'),
       cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
@@ -1638,7 +1638,7 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
 function phaseStructureGate() {
   return section(
     'MENU: phase structure gate',
-    'emit verbatim as markdown, then STOP for the user\'s response',
+    'emit verbatim as markdown (not a code block), then STOP for the user\'s response',
     menu('Approve this phase structure?', [
       cmdOption('y', 'yes', 'Proceed to task breakdown'),
       cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
@@ -1676,7 +1676,7 @@ function phaseTree(cwd, args) {
     }
     if (i < count - 1) lines.push('');
   });
-  const parts = [section('DISPLAY: phase tree', 'emit verbatim as a code block', lines.join('\n'))];
+  const parts = [section('DISPLAY: phase tree', 'emit verbatim as a text code block (```text fence)', lines.join('\n'))];
   if ('approve' in args) parts.push(phaseStructureGate());
   return parts.join('\n');
 }
@@ -1827,7 +1827,7 @@ function reviewPresentation(cwd, { dotpath, file }) {
     const n = replan.length;
     sections.push(section(
       'DISPLAY: review verdict',
-      'emit verbatim as a properties code block — ```properties fence',
+      'emit verbatim as a properties code block (```properties fence)',
       `⚑ Failed — ${n} finding${n === 1 ? '' : 's'} must be planned and built before this work is delivered`,
     ));
   } else {
@@ -1919,7 +1919,7 @@ function reviewGate(cwd, args) {
   options.push(promptOption('Ask', 'Ask me about any finding'));
   return section(
     'MENU: review gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu('', options, { question: 'What next?' }),
   );
 }
@@ -1976,7 +1976,7 @@ function rerouteOffer(cwd, { dotpath, file }) {
   }
   return section(
     'MENU: reroute offer',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(label, [
       cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
       cmdOption('k', 'keep', 'Keep it here as part of this topic'),
@@ -2029,11 +2029,11 @@ function researchConcludeGate(cwd, args) {
   options.push(cmdOption('k', 'keep', "Keep digging, there's more to understand"));
   const gate = section(
     'MENU: research conclude gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu('This topic looks ready to conclude.', options, { question: 'Conclude it?' }),
   );
   const register = registerState(manifest, topic).total > 0
-    ? researchThreadsSection(topic, manifest, 'emit verbatim as a code block')
+    ? researchThreadsSection(topic, manifest, 'emit verbatim as a text code block (```text fence)')
     : '';
   return register + gate;
 }
@@ -2208,7 +2208,7 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
   options.push(cmdOption('i', 'ignore', discussion ? 'Note it in the Summary and move on' : 'Note it in the research file and move on'));
   return section(
     'MENU: off-topic offer',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`**${p.concern}** is beyond this topic's scope.`, options, { question: 'Where should it go?' }),
   );
 }
@@ -2271,7 +2271,7 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     : 'It reads as a decision to make — I\'d land it discussion-side. Reply with an option, appending a phase to override (e.g. `1 research`).';
   return section(
     'MENU: reroute candidates',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`**${p.concern}** belongs to a different topic, not this one. ${recommendation}`, options, { question: 'Where should it land?' }),
   );
 }
@@ -2462,7 +2462,7 @@ function mapOpGate(cwd, { dotpath, op, file }) {
   const body = mapOpBody(op, p);
   for (const name of mapOpTargets(op, p)) assertMapOp(manifest, op, name);
   return [
-    section('DISPLAY: map operation', 'emit verbatim as a code block, directly above the menu', body.join('\n')),
+    section('DISPLAY: map operation', 'emit verbatim as a text code block (```text fence), directly above the menu', body.join('\n')),
     section('MENU: map operation gate', STOP_FOR_RESPONSE, menu('', yesNo(), { question: MAP_OP_QUESTIONS[op] })),
   ].join('\n');
 }
@@ -2501,14 +2501,14 @@ function candidateGate(cwd, { dotpath, file }) {
     throw new Error(`render candidate-gate: gate_mode must be "gated" or "auto", got "${mode}"`);
   }
   const name = titlecase(p.name);
-  const display = section('DISPLAY: candidate', 'emit verbatim as a code block', [
+  const display = section('DISPLAY: candidate', 'emit verbatim as a text code block (```text fence)', [
     `${name} [${p.routing}]`,
     ...indentedBody([p.summary, 'surfaced by gap analysis']),
   ].join('\n'));
   if (mode === 'auto') {
     return [display, section(
       'DISPLAY: candidate approved',
-      `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after recording the approval'),
       `${name} — approved [auto].`,
     )].join('\n');
   }
@@ -2540,7 +2540,7 @@ function dismissedTopics(cwd, { dotpath }) {
     return section('DISPLAY: dismissed topics', CONTINUE_INSTRUCTION, [...heading, ...indentedBody(['(none)'])].join('\n'));
   }
   return [
-    section('DISPLAY: dismissed topics', 'emit verbatim as a code block, directly above the menu', [
+    section('DISPLAY: dismissed topics', 'emit verbatim as a text code block (```text fence), directly above the menu', [
       ...heading,
       ...names.flatMap((name) => bulletRow(name)),
     ].join('\n')),
@@ -3030,7 +3030,7 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
   const deps = blockingDependencies(manifest, topic, blocking);
   if (variant === 'blocking') {
     return [
-      section('DISPLAY: missing dependencies', 'emit verbatim as a code block', missingDependencies(deps)),
+      section('DISPLAY: missing dependencies', 'emit verbatim as a text code block (```text fence)', missingDependencies(deps)),
       section('MENU: blocking dependencies gate', STOP_FOR_RESPONSE, menu('', [
         cmdOption('s', 'satisfied', 'Mark a dependency as satisfied externally'),
         cmdOption('i', 'implement', 'Exit to implement blocking dependencies first'),
@@ -3219,7 +3219,7 @@ function crossCuttingGate(cwd, { file }) {
     }
   }
   return [
-    section('DISPLAY: cross-cutting in progress', 'emit verbatim as a code block, directly above the menu', [
+    section('DISPLAY: cross-cutting in progress', 'emit verbatim as a text code block (```text fence), directly above the menu', [
       'Cross-cutting specifications still in progress:',
       ...indentedBody(['These may contain architectural decisions relevant to this plan.']),
       '',
@@ -3259,7 +3259,7 @@ function crossCuttingReferences(cwd, { file }) {
       throw new Error(`render cross-cutting-references: "${unit.name}" is not a cross-cutting work unit with a completed specification`);
     }
   }
-  return section('DISPLAY: cross-cutting references', 'emit verbatim as a code block', [
+  return section('DISPLAY: cross-cutting references', 'emit verbatim as a text code block (```text fence)', [
     'Cross-cutting specifications to reference:',
     ...units.flatMap((unit) => bulletRow(`${unit.name}: ${unit.summary}`)),
   ].join('\n'));
@@ -3369,7 +3369,7 @@ function complexityGate(cwd, { dotpath, file }) {
     throw new Error('render complexity-gate: "concerns" must be a non-empty array of non-empty strings — the warning names what failed');
   }
   return [
-    section('DISPLAY: complexity check', 'emit verbatim as a code block, directly above the menu', [
+    section('DISPLAY: complexity check', 'emit verbatim as a text code block (```text fence), directly above the menu', [
       'Complexity Check',
       '',
       ...indentedBody(['This change may be more involved than a quick-fix:'], { indent: '' }),
@@ -3549,7 +3549,7 @@ function specConfirmGate(cwd, { dotpath, variant, file }) {
   const consult = specConfirmConsult(cwd, file, status === 'proposed' ? null : (spec.consult_references || []).map((r) => r.name));
 
   return [
-    section('DISPLAY: spec confirmation', 'emit verbatim as a code block, directly above the menu', specificationConfirmation({
+    section('DISPLAY: spec confirmation', 'emit verbatim as a text code block (```text fence), directly above the menu', specificationConfirmation({
       variant: /** @type {'create'|'continue'|'refine'|'unify'} */ (variant),
       verb, work_unit: workUnit, name: topic, status, sources, supersedes, consult,
     })),
@@ -3576,7 +3576,7 @@ function findingAnnounce(cwd, { dotpath, file }) {
   if (!isFilled(p.shape)) throw new Error('render finding-announce: "shape" must be a non-empty string — the lane split in one clause');
   return section(
     'MENU: finding announce',
-    'emit verbatim as markdown',
+    'emit verbatim as markdown (not a code block)',
     menu(`Background ${p.agent_type} returned — ${p.count} finding(s): ${p.shape}.`, [
       cmdOption('y', 'yes', 'Start on them'),
       cmdOption('l', 'later', "Keep pulling on the current thread, I'll raise them at the next pause"),
@@ -3705,10 +3705,10 @@ function findingBatch(cwd, { dotpath, file }) {
       `${body}\n\n${lane.auto.line(count)} [auto].`);
   }
   return [
-    section('DISPLAY: finding batch', 'emit verbatim as markdown', body),
+    section('DISPLAY: finding batch', 'emit verbatim as markdown (not a code block)', body),
     section(
       'MENU: finding batch',
-      "emit verbatim as markdown, then STOP for the user's response",
+      "emit verbatim as markdown (not a code block), then STOP for the user's response",
       menu('', [
         cmdOption('y', 'yes', lane.confirm(count, more)),
         ...(lane.auto ? [cmdOption('a', 'auto', lane.auto.row)] : []),
@@ -3810,7 +3810,7 @@ function findingChoice(p, head, item) {
   rows.push(promptOption('Comment', "Tell me what you're thinking; we'll work it through"));
 
   return [
-    section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n')),
+    section('DISPLAY: finding', 'emit verbatim as markdown (not a code block)', head.join('\n')),
     section('MENU: finding choice', STOP_FOR_RESPONSE,
       menu(item.finding_gate_mode === 'auto' ? AUTO_OVERRIDE_LINE : '', rows, { question: 'Which way?' })),
   ].join('\n');
@@ -3861,7 +3861,7 @@ function findingSettled(p, head, item, { view, batched }) {
   };
 
   /** The proposed content as markdown — its label, then the lines verbatim. */
-  const wording = () => section('DISPLAY: finding wording', 'emit verbatim as markdown',
+  const wording = () => section('DISPLAY: finding wording', 'emit verbatim as markdown (not a code block)',
     [`**${p.content.label}**`, '', ...p.content.lines].join('\n'));
 
   // `--view` answers the gate's own v/view row: the wording the user asked
@@ -3873,7 +3873,7 @@ function findingSettled(p, head, item, { view, batched }) {
   }
 
   head.push('', p.proposal);
-  const parts = [section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n'))];
+  const parts = [section('DISPLAY: finding', 'emit verbatim as markdown (not a code block)', head.join('\n'))];
 
   if (p.diff) {
     const body = [
@@ -3899,7 +3899,7 @@ function findingSettled(p, head, item, { view, batched }) {
   if (item.finding_gate_mode === 'auto') {
     parts.push(section(
       'DISPLAY: finding auto-approved',
-      `after applying the fix: ${AUTO_GATE_INSTRUCTION}`,
+      timedInstruction(AUTO_GATE_INSTRUCTION, 'after applying the fix'),
       `Finding ${p.n} of ${p.total}: ${p.title} — ${appliedLabel}`,
     ));
     return parts.join('\n');
@@ -3970,10 +3970,10 @@ function triageOffer(cwd, { dotpath, file }) {
     walked: true,
   });
   return [
-    section('DISPLAY: triage agenda', 'emit verbatim as markdown', agenda),
+    section('DISPLAY: triage agenda', 'emit verbatim as markdown (not a code block)', agenda),
     section(
       'MENU: triage offer',
-      "emit verbatim as markdown, then STOP for the user's response",
+      "emit verbatim as markdown (not a code block), then STOP for the user's response",
       menu('Work through them now?', [
         cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
         cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude"),
@@ -4018,12 +4018,12 @@ function triageBlock(cwd, { dotpath }) {
   return [
     section(
       'DISPLAY: triage block',
-      'emit verbatim as a properties code block — ```properties fence',
+      'emit verbatim as a properties code block (```properties fence)',
       `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
     ),
     section(
       'DISPLAY: triage block guidance',
-      'emit verbatim as markdown',
+      'emit verbatim as markdown (not a code block)',
       '> Returning to the session to surface them before concluding.',
     ),
   ].join('\n');
@@ -4057,7 +4057,7 @@ function requeueOffer(cwd, { dotpath, file }) {
   const other = phase === 'research' ? 'discussion' : 'research';
   return section(
     'MENU: requeue offer',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`**${p.title}** — ${p.reason}`, [
       cmdOption('y', 'yes', `Move it to this topic's ${other} queue — raised when ${other} runs`),
       cmdOption('d', 'discuss', 'Work it here now'),
@@ -4190,7 +4190,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
   if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
   return section(
     'MENU: next phase gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(statement, options, { question: `Proceed to ${next}?` }),
   );
 }
@@ -4308,7 +4308,7 @@ function cancelGate(cwd, { dotpath }) {
     : specificationCancelStatement(manifest, topic);
   return section(
     'MENU: cancel gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(statement, [
       cmdOption('y', 'yes', 'Confirm cancellation'),
       cmdOption('n', 'no', 'Keep it'),
@@ -4362,7 +4362,7 @@ function postponeGate(cwd, { dotpath, horizon }) {
   if (plan.locks.length > 0) throw new Error(`render postpone-gate: ${plan.locks[0].reason}`);
   return section(
     'MENU: postpone gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project), [
       cmdOption('y', 'yes', 'Postpone it'),
       cmdOption('n', 'no', 'Keep it here'),
@@ -4380,7 +4380,7 @@ function epicAllDoneGate(cwd, { dotpath }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'epic-all-done-gate');
   return section(
     'MENU: epic all-done gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menu(`All topics have completed review for "${titlecase(workUnit)}".`, [
       cmdOption('y', 'yes', 'Mark this epic as completed'),
       cmdOption('n', 'no', 'Return to the epic menu'),
@@ -4473,7 +4473,7 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
   if (!message) return '';
   return section(
     'MENU: epic soft gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    "emit verbatim as markdown (not a code block), then STOP for the user's response",
     menuFrame([
       message,
       '',
@@ -4531,12 +4531,12 @@ function blocker(fact, guidance) {
   return [
     section(
       'DISPLAY: entry blocker',
-      'emit verbatim as a properties code block — ```properties fence',
+      'emit verbatim as a properties code block (```properties fence)',
       `⚑ ${fact}`,
     ),
     section(
       'DISPLAY: blocker guidance',
-      'emit verbatim as markdown, then STOP — terminal condition',
+      'emit verbatim as markdown (not a code block), then STOP — terminal condition',
       `> ${guidance}`,
     ),
   ].join('\n');
@@ -4831,12 +4831,12 @@ function codeGate(cwd, { dotpath }) {
   return [
     section(
       'DISPLAY: code gate',
-      'emit verbatim as a properties code block — ```properties fence',
+      'emit verbatim as a properties code block (```properties fence)',
       facts.join('\n'),
     ),
     section(
       'MENU: code gate',
-      "emit verbatim as markdown, then STOP for the user's response",
+      "emit verbatim as markdown (not a code block), then STOP for the user's response",
       menuFrame([
         'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
           + `\`node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
@@ -5427,7 +5427,7 @@ function roadmapViewSurface(cwd, _args) {
   if (!state.exists) {
     throw new Error('render roadmap-view: no roadmap on the project manifest — it is born at the first park, add, or session');
   }
-  return section('DISPLAY: roadmap', 'emit verbatim as a code block', roadmapMapView(state));
+  return section('DISPLAY: roadmap', 'emit verbatim as a text code block (```text fence)', roadmapMapView(state));
 }
 
 /** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
@@ -5494,7 +5494,7 @@ function roadmapSessionReceiptSurface(_cwd, args) {
 
 // The static roadmap gate menus — no state to resolve; served as surfaces
 // because every menu is engine-rendered, fetched at the point it displays.
-const STOP_FOR_RESPONSE = "emit verbatim as markdown, then STOP for the user's response";
+const STOP_FOR_RESPONSE = "emit verbatim as markdown (not a code block), then STOP for the user's response";
 
 /** @param {string} _cwd @param {object} _args @returns {string} */
 function roadmapHarvestGateSurface(_cwd, _args) {

@@ -1017,8 +1017,8 @@ describe('specification adapter: gateway verbs', () => {
     ].join('\n'));
     const out = run(['view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
-    assert.ok(out.includes('=== MENU (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
+    assert.ok(out.includes('=== MENU (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
     assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
@@ -1031,7 +1031,7 @@ describe('specification adapter: gateway verbs', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     const out = run(['view', 'v1']);
     assert.ok(out.includes('scenario: blocked-no-discussions'));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!out.includes('=== MENU'));
     assert.ok(!out.includes('ACTIONS'));
   });

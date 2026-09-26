@@ -263,7 +263,7 @@ describe('workflow-continue-feature format', () => {
       '  done-feat (last phase: review)',
       '=== CANCELLED (1) ===',
       '  stopped (last phase: specification)',
-      '=== DISPLAY: selection (emit verbatim as a code block) ===',
+      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
       '2 feature(s) in progress',
       '  ├─ 1. Auth',
       '  │   Specification (In-Progress)',
@@ -272,7 +272,7 @@ describe('workflow-continue-feature format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which feature would you like to continue?`**',
       '',
@@ -343,7 +343,7 @@ describe('workflow-continue-feature CLI dispatch', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { 'auth': { status: 'completed' } } }, specification: { items: { 'auth': { status: 'in-progress' } } } } });
     const later = run(['view', 'auth']);
     assert.strictEqual(later.status, 0);
-    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown \(not a code block\)\) ===\n· · ·/);
   });
 
   it('select answers the select step: the dump, then the pick list and its menu', () => {
