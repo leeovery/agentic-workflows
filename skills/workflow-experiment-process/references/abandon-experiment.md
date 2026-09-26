@@ -46,10 +46,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 When the abandon response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the abandonment — with its reason — surfaces when it next opens; its waiting point reverts to open.
 
-Re-render the register and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
-```
-
 → Return to **[the skill](../SKILL.md)** for **Step 6**.

@@ -42,10 +42,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 When the conclude response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carried `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles.
 
-Re-render the register — the series moved — and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
-```
-
 → Return to caller.
