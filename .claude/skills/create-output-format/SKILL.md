@@ -102,23 +102,11 @@ For each file:
 
 ## Step 5: Register the Format
 
-`skills/workflow-planning-process/references/output-formats.md` renders a numbered selection menu. Register the new format with two edits, using the next available number `{N}`:
+`skills/workflow-planning-process/references/output-formats.md` writes the format offer as a JSON payload, which the engine renders as a numbered menu in payload order; the picked row's `name` becomes the chosen format. Register the new format by appending an entry to that payload's `formats` array, folding the format's identity into the label:
 
-1. **Menu** — append an option to the selection menu block, folding the format's identity into the description:
-
-   ```
-   **`{N}`** → {Format Name} — {one-line description}; {requirements, or "no external tools"}. Best for {ideal use cases}.
-   ```
-
-2. **Branch** — append a routing branch after the existing `#### If` branches:
-
-   ```markdown
-   #### If `{N}`
-
-   Set `chosen-format` = `{format-key}`.
-
-   → Return to caller.
-   ```
+```json
+{"name": "{format-key}", "label": "{Format Name} — {one-line description}; {requirements, or \"no external tools\"}. Best for {ideal use cases}."}
+```
 
 → Proceed to **Step 6**.
 

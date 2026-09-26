@@ -14,16 +14,18 @@ Render the archived snapshot — re-run on every entry so prior actions are refl
 node .claude/skills/workflow-start/scripts/gateway.cjs archived
 ```
 
-The output is one snapshot in three demarcated sections:
+The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the numbered archived list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing is archived.
+- **TITLE** — the view's chrome heading. Emit verbatim as markdown.
+- **MENU** — the archived items as a numbered pick list. Emit verbatim as markdown (not a code block). Absent when nothing is archived.
+- **DISPLAY** — only when nothing is archived: the empty-store line. Emit verbatim as a code block.
 
-Emit the TITLE section (markdown), then the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section (markdown). A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 #### If `archived_count` is 0
+
+Emit the DISPLAY section.
 
 → Return to caller.
 

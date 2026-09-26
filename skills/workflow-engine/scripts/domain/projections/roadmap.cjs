@@ -233,10 +233,10 @@ function roadmapAddGate(state, horizon) {
   }
   options.push(promptOption('Ask', 'Talk it through first'));
 
-  const question = waiting.length > 0
-    ? `"${horizon}" is partly being built. Where does this go?`
-    : `"${horizon}" is being built right now. Where does this go?`;
-  return menu('', options, { question });
+  const statement = waiting.length > 0
+    ? `"${horizon}" is partly being built.`
+    : `"${horizon}" is being built right now.`;
+  return menu(statement, options, { question: 'Where does this go?' });
 }
 
 /**

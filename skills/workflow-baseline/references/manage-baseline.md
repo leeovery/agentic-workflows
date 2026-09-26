@@ -32,11 +32,13 @@ Ask what ground to add or deepen if the user hasn't already said. Set mode = `ex
 
 #### If `view`
 
-Fetch the picker and emit its `MENU: baseline doc pick` section verbatim as markdown (not a code block):
+Fetch the picker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-pick
 ```
+
+Read the `DATA` section to reason from — its `DOCS` table gives one `key  area` row per doc. Never display that section. Then emit the `MENU: baseline doc pick` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -44,9 +46,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-pick
 
 → Return to **A. Display and Menu**.
 
-**If the user names an area:**
+**If the user picked a doc:**
 
-Render the chosen `.workflows/.baseline/{area}.md` verbatim as markdown.
+Set `area` from that key's `DOCS` row, and render `.workflows/.baseline/{area}.md` verbatim as markdown.
 
 → Return to **A. Display and Menu**.
 
