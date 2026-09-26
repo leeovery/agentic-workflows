@@ -46,7 +46,7 @@ Pass:
 
 The agent writes its findings to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
 
-The dispatch ends the turn on exactly `The consolidation finder agent has been dispatched for phase {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The consolidation finder agent has been dispatched for phase {N}.`
 
 ---
 

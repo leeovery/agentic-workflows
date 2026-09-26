@@ -123,7 +123,7 @@ Dispatch the `workflow-specification-review-claims` agent via the Task tool:
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
 
-The dispatch ends the turn on exactly `The claims review agent has been dispatched for review cycle {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The claims review agent has been dispatched for review cycle {N}.`
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
@@ -153,7 +153,7 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
 
-The dispatch ends the turn on exactly `The input review agent has been dispatched for review cycle {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The input review agent has been dispatched for review cycle {N}.`
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
@@ -185,7 +185,7 @@ Dispatch the `workflow-specification-review-gap-analysis` agent via the Task too
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
 - **Earlier cycles' gap-analysis tracking files**: the paths listed above — the settled directions a finding may not reverse. None at cycle 1.
 
-The dispatch ends the turn on exactly `The gap analysis agent has been dispatched for review cycle {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The gap analysis agent has been dispatched for review cycle {N}.`
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 

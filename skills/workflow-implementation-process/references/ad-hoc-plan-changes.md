@@ -212,7 +212,7 @@ TASKS_CREATED: {N}
 SUMMARY: {1 sentence}
 ```
 
-The dispatch ends the turn on exactly `The task writer agent has been dispatched for the ad hoc tasks.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task writer agent has been dispatched for the ad hoc tasks.`
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 

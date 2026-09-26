@@ -47,7 +47,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 The agent writes all tasks to the task detail file and returns.
 
-The dispatch ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
 
 → Proceed to **C. Validate Task Detail File**.
 

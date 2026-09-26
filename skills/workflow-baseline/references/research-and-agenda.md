@@ -25,7 +25,7 @@ Each agent receives:
 3. **Sibling areas** — the full area list, so the agent leaves adjacent ground to its neighbours
 4. **For a deepened area** (its doc `.workflows/.baseline/{area}.md` already exists): the doc path and the deepen brief — investigate the named deeper ground only; the doc holds what the first pass covered
 
-The dispatch ends the turn on exactly `The researcher agents have been dispatched for the pending areas.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The researcher agents have been dispatched for the pending areas.`
 
 > **CHECKPOINT**: Do not proceed until every dispatched agent has returned.
 

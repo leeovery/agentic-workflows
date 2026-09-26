@@ -22,7 +22,7 @@ Findings from an earlier cycle were judged against code that remediation has sin
 
 Write the set to `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.txt` (one block per finding, opening with its id) and pass it as the findings path, with the code standard path and an output path of `…/oos-recheck.jsonl`.
 
-The dispatch ends the turn on exactly `The assessor agent has been dispatched for the out-of-scope findings.`
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The assessor agent has been dispatched for the out-of-scope findings.`
 
 Anything the verdicts return as `already-done`, `stale` or `wrong` is dropped from the offer, with its reason noted.
 
