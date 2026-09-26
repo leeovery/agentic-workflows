@@ -16,8 +16,9 @@ The prose should have taken this path:
    (`kinds-of-work`) and never from the menu row's label, then emits the
    title and the menu and stops
 6. fetches that card and emits it in the forms its own markers name — the
-   title as markdown, the prose sections as markdown rather than code
-   blocks, the diagram between them as a code block — then its menu
+   title as markdown, the prose sections as markdown (not a code block),
+   the diagram between them as a text code block (```text fence) — then
+   its menu
 7. on `b` from the card, goes back to help and re-renders the home rather
    than recalling what was shown earlier in the conversation
 8. on `b` from the home, puts the original session label back and

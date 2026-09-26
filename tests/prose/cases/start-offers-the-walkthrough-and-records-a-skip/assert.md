@@ -10,9 +10,10 @@ The prose should have taken this path:
    setup steps run, fetches the walk's first screen with the origin that
    says this is the first run
 4. emits that screen in the forms its own markers name — the title as
-   markdown, the prose as markdown rather than a code block, the diagram
-   between the prose as a code block, then the menu, whose two keys are
-   `n/next` and `s/skip` — and stops for the answer
+   markdown, the prose as markdown (not a code block), the diagram
+   between the prose as a text code block (```text fence), then the
+   menu, whose two keys are `n/next` and `s/skip` — and stops for the
+   answer
 5. on the decline, records it through the engine's one verb
    (`walkthrough record skipped`), which writes and commits in the same
    call, and hands back to workflow-start

@@ -80,7 +80,7 @@ The executor is stopped at this question, and the gate takes the fork's sides. R
 
 → Load **[../../workflow-implementation-process/references/display-task-result.md](../../workflow-implementation-process/references/display-task-result.md)** with result = `blocked`.
 
-Beneath it comes the block — **Blocked on**, **What the executor found**, **Options**, **Recommendation** — composed from the executor's ISSUES and your own reads of the specification and the code, and emitted as markdown. This is an engineering stop presented to an engineer: real names, `file:line` where they anchor something, each option's technical shape, product consequence and cost side by side.
+Beneath it comes the block — **Blocked on**, **What the executor found**, **Options**, **Recommendation** — composed from the executor's ISSUES and your own reads of the specification and the code, and emitted as markdown (not a code block). This is an engineering stop presented to an engineer: real names, `file:line` where they anchor something, each option's technical shape, product consequence and cost side by side.
 
 → Load **[../../workflow-implementation-process/references/report-register.md](../../workflow-implementation-process/references/report-register.md)** and follow its **Executor Block** section.
 

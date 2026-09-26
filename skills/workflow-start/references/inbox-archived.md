@@ -57,7 +57,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions -
 
 #### If user chose `v/view`
 
-Read the file and render its full content — as markdown, not a code block, so the item's own headings and formatting render properly.
+Read the file and render its full content as markdown (not a code block), so the item's own headings and formatting render properly.
 
 > *Output the next fenced block as markdown (not a code block):*
 
