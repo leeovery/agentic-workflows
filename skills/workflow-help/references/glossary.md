@@ -116,7 +116,7 @@ The person's choice to hand one particular gate over for the rest of the sitting
 The perspective a report is told from. Reports arrive in the product's terms first; the code's retelling is one option away. The facts are identical through both.
 
 **menu**:
-The list of choices beneath a screen. Each row has a key and a word (`n/next`). In the terminal, menus are drawn as buttons above the prompt — click a row to pick it, click again to send; typing a key or plain words always works.
+The list of choices beneath a screen. Each row has a key and a word (`n/next`). Where the Claude Code mod runs, menus are drawn as buttons above the prompt — click a row to pick it, click again to send; typing a key or plain words always works.
 
 ## The product layer
 
