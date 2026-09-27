@@ -34,11 +34,10 @@
         }
       },
       "gap_analysis_cache": {
-        "checksum": "ef8f5a930a8a0231eda7662acb2a85ff",
+        "checksum": "058a0ae0731931da5c76698e071f09fa",
         "generated": "2026-01-01T00:00:00.000Z",
         "input_files": [
-          "behavioural-ranking.md",
-          "synonym-handling.md"
+          "behavioural-ranking.md"
         ]
       }
     },
