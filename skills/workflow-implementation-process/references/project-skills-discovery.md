@@ -86,9 +86,9 @@ Scan `.claude/skills/` for project-specific skill directories — skills carryin
 
 #### If the scan finds no project skills
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No project skills found. Proceeding without project-specific conventions.
 ```
 

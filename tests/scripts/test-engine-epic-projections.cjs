@@ -812,7 +812,7 @@ describe('epic projections: presence join', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
     const marked = keys.find((k) => k.in_session);
     assert.strictEqual(epicInSessionGate('v1', marked), [
-      '=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
       '',
@@ -1680,17 +1680,17 @@ describe('epic projections: selection sub-views', () => {
       '  2  —  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
       '  b  back  back  —  —  → (internal)',
       '',
-      '=== TITLE (emit verbatim as markdown — the view\'s chrome heading) ===',
+      '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
       '# **`■ Completed Topics`**',
       '',
-      '=== DISPLAY (emit verbatim as a code block) ===',
+      '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
       'Research',
       '  └─ 1. Kitchen Hardware [completed]',
       '',
       'Discussion',
       '  └─ 2. Auth Flow [completed]',
       '',
-      '=== MENU (emit verbatim as markdown) ===',
+      '=== MENU (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
@@ -2223,7 +2223,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
     assert.strictEqual(epicInSessionGate('v1', keys.find((k) => k.in_session)), [
-      '=== MENU: in-session gate — 2 (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '=== MENU: in-session gate — 2 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '"Billing" is open in another session — last active 4m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Its entry is also held shut — research on "Billing" is outstanding — so proceeding meets that gate next. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion billing`.',
       '',

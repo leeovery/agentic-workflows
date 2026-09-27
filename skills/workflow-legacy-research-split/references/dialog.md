@@ -276,9 +276,9 @@ Parse the JSON output.
 
 Increment `applied_count`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Applied {current_source}: {applied.themes} new file(s).
 ```
 
@@ -301,9 +301,9 @@ If the response includes `kb_warnings`, render them — KB cleanup is best-effor
 
 Increment `errored_count`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Apply failed for {current_source} at stage "{stage}":
   {error}
 
@@ -322,9 +322,9 @@ rm -rf .workflows/.cache/{work_unit}/legacy-split/{current_source}
 
 Increment `abandoned_count`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Skipping {current_source}. Source file and manifest unchanged.
 ```
 

@@ -72,9 +72,9 @@ The pass ran; only the phase record is outstanding.
 
 #### If `STATUS` is `clean`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Consolidation sweep: nothing owed.
 ```
 

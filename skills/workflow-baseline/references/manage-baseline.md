@@ -50,7 +50,7 @@ Read the `DATA` section to reason from — its `DOCS` table gives one `key  area
 
 **If the user picked a doc:**
 
-Set `area` from that key's `DOCS` row, and render `.workflows/.baseline/{area}.md` verbatim as markdown.
+Set `area` from that key's `DOCS` row, and render `.workflows/.baseline/{area}.md` verbatim as markdown (not a code block).
 
 → Return to **A. Display and Menu**.
 

@@ -22,9 +22,9 @@ Before asking for sign-off, assess whether this specification defines cross-cutt
 
 Present your assessment to the user:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Cross-Cutting Assessment
 
 @if(cross_cutting)
@@ -169,9 +169,9 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 
    If the JSON response's `warnings` is non-empty, display them but do not block — the supersession is already recorded:
 
-   > *Output the next fenced block as a code block:*
+   > *Output the next fenced block as a text code block (```text fence):*
 
-   ```
+   ```text
    ⚑ Knowledge removal warning
      {warning}
      The spec is superseded. The next start removes its chunks from the knowledge base.

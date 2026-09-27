@@ -75,11 +75,11 @@ Close as dead end is non-destructive — it sets a display/convergence marker (`
 
 The engine enforces these same gates — `engine discovery-map` refuses an illegal op with an error naming the blocking lifecycle, so this pre-validation and the write path can never disagree. The rejection displays below stay this file's job, rendered from the pre-check here or from an engine error.
 
-**Destructive-op rejection** — for a Remove, Rename, or Change routing op that fails its gate, render in a code block:
+**Destructive-op rejection** — for a Remove, Rename, or Change routing op that fails its gate:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 "{topic}" can't be {removed|renamed|re-routed} from the map —
 {lifecycle_phrase}. {recovery_pointer}
 ```
@@ -96,11 +96,11 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 
 `{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For a `cancelled` target, `Reactivate it from the epic menu first.` For a `postponed` target, `Pull it forward from the roadmap first.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead — or postpone it to the roadmap for later.`
 
-**Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `triage=waiting` topic, or a Reopen op on a non-`handled` topic, render in a code block:
+**Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `triage=waiting` topic, or a Reopen op on a non-`handled` topic:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 "{topic}" can't be {closed as a dead end|reopened} — {marker_phrase}.
 ```
 

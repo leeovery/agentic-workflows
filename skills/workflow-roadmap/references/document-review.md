@@ -14,9 +14,9 @@ Check whether the active log exists at `.workflows/.roadmap/sessions/session-{se
 
 Browse-only session — no log to review.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Document review — no log file (browse only). Nothing to reconcile.
 ```
 
@@ -70,9 +70,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "docs
 
 #### If the log is accurate
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Document review — session log reflects the conversation. No changes needed.
 ```
 

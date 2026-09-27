@@ -137,7 +137,7 @@ Write nothing and render nothing — `trend` is in context for the caller's bran
 
 #### Otherwise
 
-Open with one markdown sentence above the block — what the cycles show, in plain terms: what is resolving and what keeps coming back.
+Open with one sentence above the block, written as markdown (not a code block) — what the cycles show, in plain terms: what is resolving and what keeps coming back.
 
 Write the payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/convergence-diagnostic.json` with the Write tool — classification is yours, arithmetic and flags are the surface's. `{phase}` is the loop's own: `implementation` for `fix` and `analysis`, `planning` for `planning-review`, `specification` for `spec-review`.
 

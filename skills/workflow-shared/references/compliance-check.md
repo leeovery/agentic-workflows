@@ -51,9 +51,9 @@ Issues are significant when they affect artifacts, code, manifest state, trackin
 
 Surface to the user:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Compliance Check — Issues Found
 
 {number} issue(s) detected during self-check.

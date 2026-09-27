@@ -10,7 +10,7 @@ Branch on the `series_state` the caller passed — no re-read. Both states end h
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ No experiment series exists for this topic
 ```
 
@@ -26,7 +26,7 @@ Branch on the `series_state` the caller passed — no re-read. Both states end h
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ The experiment series for this topic is cancelled
 ```
 

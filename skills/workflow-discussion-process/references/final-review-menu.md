@@ -40,9 +40,9 @@ Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{top
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Background review returned — nothing new beyond what we've already covered.
 ```
 

@@ -14,7 +14,7 @@ const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kerne
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { section, menu, menuFrame, cmdOption, labelParts, callout } = require('./surfaces.cjs');
+const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
@@ -1071,7 +1071,7 @@ function epicInSessionGate(workUnit, entry) {
   const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${workUnit} ${phase} ${topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     menuFrame([
       `${fact} ${consequence}${hold} Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with \`${release}\`.`,
       '',

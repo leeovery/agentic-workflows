@@ -82,9 +82,9 @@ The session died between **F**'s plan write and **G**'s re-open (task ids land i
 
 No actionable tasks from synthesis.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No actionable tasks synthesized — closing the review.
 ```
 

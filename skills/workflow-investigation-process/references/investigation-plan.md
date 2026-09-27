@@ -35,7 +35,7 @@ Choose the checkpoint depth to propose:
 
 The depth is a suggestion — the user decides.
 
-Open with one markdown sentence above the display — what we think is happening and where the analysis will look, in product terms.
+Open with one sentence above the display, written as markdown (not a code block) — what we think is happening and where the analysis will look, in product terms.
 
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "suspected", "rows": [["Basis", "{one-line basis}"]]}], "trace_lines": ["{code path or area to trace, in intended order}"], "depth": "{depth:[straight-through|check-ins]}", "depth_reasoning": "{one-line reasoning}"}` — then fetch the plan, emitting each section verbatim per its marker:
 
@@ -69,7 +69,7 @@ Write the agreed plan into the Hypotheses section of the investigation file: the
 
 The plan was agreed in an earlier session — re-render the position from the ledger; never re-run recon over settled state.
 
-Open with one markdown sentence above the display — what we think is happening and where the remaining analysis will look, in product terms.
+Open with one sentence above the display, written as markdown (not a code block) — what we think is happening and where the remaining analysis will look, in product terms.
 
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, each carrying the rows the ledger holds for it, labelled for what they carry and one line apiece: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "depth": "{depth:[straight-through|check-ins]}", "remaining": "{unresolved hypotheses and open trace lines, or \"all hypotheses resolved\"}"}` — then fetch the board, emitting each section verbatim per its marker:
 

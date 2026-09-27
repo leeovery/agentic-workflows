@@ -11,13 +11,11 @@
 // phase leaves on a wait rather than concluding.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { specUnsettledPhrase } = require('../derivations.cjs');
 
 /** @typedef {import('../derivations.cjs').Wait} Wait */
-
-const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
 // How the gate speaks about the item it holds: what it calls it, and how the
 // keep row names staying put. Only planning departs from the conversations —
@@ -101,10 +99,10 @@ function waitGate(phase, topic, waits, epic) {
   return [
     section(
       'DISPLAY: wait block',
-      'emit verbatim as a properties code block — ```properties fence',
+      emitAs('properties'),
       `⚑ Conclusion blocked — this ${noun} awaits ${owedWaits(waits, `"${titlecase(topic)}"`)}`,
     ),
-    section('DISPLAY: wait guidance', 'emit verbatim as markdown', `> ${guidance.join(' ')}`),
+    section('DISPLAY: wait guidance', emitAs('markdown'), `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', epic
         ? `Pause this ${noun} here and return to the epic menu with ${queued.join(' and ')} queued`

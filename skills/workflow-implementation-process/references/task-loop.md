@@ -59,9 +59,9 @@ Follow the format's **reading.md** instructions to determine the next available 
 
 **If open or in-progress tasks remain (blocked):**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 No ready tasks remain, but {N} task(s) are still open — blocked:
 
   {internal_id}: {Task Name}
@@ -578,9 +578,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 ## I. All Tasks Complete
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 All tasks complete. {M} tasks implemented.
 ```
 

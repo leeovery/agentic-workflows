@@ -477,7 +477,7 @@ describe('start projections: archived store', () => {
     const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md';
 
     assert.strictEqual(renderSurface(dir, 'archived-actions', { path: archived }), [
-      "=== MENU: archived actions (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: archived actions (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Selected: **Old Idea** (idea, archived)',
       '',
@@ -491,7 +491,7 @@ describe('start projections: archived store', () => {
     ].join('\n'));
 
     assert.strictEqual(renderSurface(dir, 'archived-delete-gate', { path: archived }), [
-      "=== MENU: archived delete gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: archived delete gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Permanently deleting "Old Idea" removes the file from the repo and cannot be undone.',
       '',
@@ -566,7 +566,7 @@ describe('start projections: working set', () => {
     ].join('\n'));
     assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
     assert.strictEqual(workingSetAddGate(ws), [
-      "=== MENU: add gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: add gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Pick one, or several comma-separated.',
       '',
@@ -577,7 +577,7 @@ describe('start projections: working set', () => {
       '',
     ].join('\n'));
     assert.strictEqual(workingSetDropGate(ws), [
-      "=== MENU: drop gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: drop gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       'Pick one, or several comma-separated.',
       '',
@@ -883,7 +883,7 @@ describe('start projections: manage unit', () => {
     assert.ok(/\*\*`a\/absorb`\*\* +→ Merge into an existing epic/.test(v.menu));
     assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
     assert.strictEqual(absorbTargetMenu(md), [
-      "=== MENU: absorb target (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: absorb target (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which epic should absorb it?`**',
       '',
@@ -954,7 +954,7 @@ describe('start projections: manage unit', () => {
     const multi = manageUnitView(multiMd);
     assert.strictEqual(multi.sections, undefined, 'the manage snapshot carries no deferred sections');
     assert.strictEqual(planTopicsMenu(multiMd), [
-      "=== MENU: plan topics (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: plan topics (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which plan would you like to view?`**',
       '',
@@ -994,7 +994,7 @@ describe('start projections: manage unit', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
 
     assert.strictEqual(renderSurface(dir, 'absorb-confirm-gate', { dotpath: 'auth-flow' }), [
-      "=== MENU: absorb confirm gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: absorb confirm gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Proceed?`**',
       '',
@@ -1073,7 +1073,7 @@ describe('start projections: completed & cancelled', () => {
     closedFixture(dir);
 
     assert.strictEqual(renderSurface(dir, 'completed-actions', { dotpath: 'done-feat' }), [
-      "=== MENU: completed actions (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: completed actions (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**Done Feat** (completed)',
       '',

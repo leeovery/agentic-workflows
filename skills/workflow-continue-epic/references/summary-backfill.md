@@ -42,9 +42,9 @@ For each readable file:
 
 Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Proposed summaries for {N} topic(s):
 
 @foreach(item in items_to_recover)

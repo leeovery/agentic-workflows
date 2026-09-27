@@ -19,7 +19,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
@@ -441,7 +441,7 @@ function archivedView(items) {
 function archivedActions(item) {
   return labelled(
     'MENU: archived actions',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu(`Selected: **${escapeMarkdown(item.title)}** (${item.type}, archived)`, [
       cmdOption('v', 'view', 'View full content'),
       cmdOption('u', 'unarchive', 'Restore to the inbox'),
@@ -460,7 +460,7 @@ function archivedActions(item) {
 function archivedDeleteGate(item) {
   return labelled(
     'MENU: archived delete gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu(`Permanently deleting "${escapeMarkdown(item.title)}" removes the file from the repo and cannot be undone.`, [
       cmdOption('y', 'yes', 'Delete permanently'),
       cmdOption('n', 'no', 'Return'),
@@ -526,7 +526,7 @@ function workingSetView(ws, summaries = {}) {
   if (!ws.uniform) {
     sections.push(labelled(
       'DISPLAY: blocker',
-      'emit verbatim as a properties code block (```properties fence — it renders the blocker red) directly after the display',
+      emitAs('properties', ', directly after the display — it renders the blocker red'),
       '⚑ Work is unavailable while the set mixes types — drop to a single type to enable it.',
     ));
   }
@@ -556,7 +556,7 @@ function workingSetAddGate(ws) {
   }
   return labelled(
     'MENU: add gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     workingSetPick('Add which?', ws.addable, (item) => `${item.type}, ${item.date}`),
   );
 }
@@ -570,7 +570,7 @@ function workingSetAddGate(ws) {
 function workingSetDropGate(ws) {
   return labelled(
     'MENU: drop gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     workingSetPick('Drop which?', ws.items, (item) => item.type),
   );
 }
@@ -676,7 +676,7 @@ function manageUnitView(md) {
 function absorbTargetMenu(md) {
   return labelled(
     'MENU: absorb target',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     dotMenu([
       'Which epic should absorb it?',
       '',
@@ -695,7 +695,7 @@ function absorbTargetMenu(md) {
 function absorbConfirmGate() {
   return labelled(
     'MENU: absorb confirm gate',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu('', [bareOption('y', 'yes'), bareOption('n', 'no')], { question: 'Proceed?' }),
   );
 }
@@ -709,7 +709,7 @@ function absorbConfirmGate() {
 function planTopicsMenu(md) {
   return labelled(
     'MENU: plan topics',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     dotMenu([
       'Which plan would you like to view?',
       '',
@@ -796,7 +796,7 @@ function completedView(detail, filter) {
 function completedActions(workUnit, status) {
   return labelled(
     'MENU: completed actions',
-    "emit verbatim as markdown, then STOP for the user's response",
+    MENU_INSTRUCTION,
     menu(`**${titlecase(workUnit)}** (${status})`, [
       cmdOption('r', 'reactivate', 'Set status back to in-progress'),
       cmdOption('b', 'back', 'Return to the list'),

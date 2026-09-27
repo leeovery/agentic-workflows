@@ -19,9 +19,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-
-const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /**
  * @typedef {object} SeriesRow

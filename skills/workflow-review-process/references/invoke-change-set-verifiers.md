@@ -116,7 +116,7 @@ A path outside `.workflows/` is modified or untracked. Never revert it blind —
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ The change-set verification left the working tree dirty outside .workflows/
 ```
 

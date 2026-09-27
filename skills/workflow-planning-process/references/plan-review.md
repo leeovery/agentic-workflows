@@ -149,9 +149,9 @@ From the second cycle onward the trend decides whether the loop runs again: a ch
 
 **If `review_cycle` is 1, or the analysis classified no `churning` trend:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Review cycle {N} complete — findings applied. Running follow-up cycle.
 ```
 
@@ -159,9 +159,9 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 **If `review_cycle` is 2, 3, or 4 and the analysis classified the trend as `churning`** (its diagnostic rendered above):
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Findings are churning — concluding the review.
 ```
 
@@ -171,9 +171,9 @@ Findings are churning — concluding the review.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```
+```text
 Cycle cap reached — concluding the review.
 ```
 

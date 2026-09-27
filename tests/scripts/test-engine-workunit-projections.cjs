@@ -605,7 +605,7 @@ describe('workunit projections: revisit phases section', () => {
 
   it('pins the labelled section byte-for-byte', () => {
     assert.strictEqual(revisitPhasesSection(['discussion', 'specification']), [
-      "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===",
+      "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',

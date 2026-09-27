@@ -4,9 +4,12 @@
 // gate from the payload shows the person the payload and nothing else, so
 // every line the MENU draws has to have its home there, the payload has to
 // state nothing the MENU does not draw, and what it states is the text the
-// person reads — never the markup that draws it.
+// person reads — never the markup that draws it. Beside it, every section a
+// person is shown names how it renders in one of the four forms, so no older
+// or reworded form comes back.
 
 const assert = require('node:assert');
+const { RENDER_FORMS: FORMS, emitAs } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
@@ -23,6 +26,9 @@ const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/
 const TAIL_SEPARATOR = ' — ';
 const NOTE_SEPARATOR = ' · ';
 const RECOMMENDED_MARKER = ' (recommended)';
+
+const SHOWN_MARKER = /^=== (?:TITLE|DISPLAY|MENU)\b.*? \((.*)\) ===$/;
+const RENDER_FORMS = Object.keys(FORMS).map((form) => emitAs(form));
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
@@ -194,6 +200,22 @@ function assertPayloadDrawsMenu(gate, body, label) {
 }
 
 /**
+ * Every TITLE, DISPLAY and MENU marker in a response opens its instruction on
+ * one of the four forms, whatever behaviour follows.
+ * @param {string} out  the response's stdout
+ * @param {string} label  what the assertion messages name
+ */
+function auditMarkers(out, label) {
+  for (const line of out.split('\n')) {
+    const marker = SHOWN_MARKER.exec(line);
+    if (marker) {
+      assert.ok(RENDER_FORMS.some((form) => marker[1].startsWith(form)),
+        `[${label}] "${line}" names no render form — its instruction opens on one of: ${RENDER_FORMS.join(' · ')}`);
+    }
+  }
+}
+
+/**
  * The GATE payload in an announced response, held against its MENU: it sits
  * directly above the first MENU, asks a question over at least one row to
  * press, and states the whole of the menu. Null when the response carries no
@@ -204,6 +226,7 @@ function assertPayloadDrawsMenu(gate, body, label) {
  * @returns {GatePayload|null}
  */
 function auditGate(out, label) {
+  auditMarkers(out, label);
   const lines = out.split('\n');
   const menuAt = lines.findIndex((l) => l.startsWith('=== MENU'));
   if (menuAt === -1) {
@@ -225,18 +248,19 @@ function auditGate(out, label) {
 }
 
 /**
- * A render-surface caller that audits as it renders: every render that draws
- * a menu is drawn again with the gate surface announced, and its payload held
- * against that menu.
+ * A render-surface caller that audits as it renders: every render's markers
+ * name their forms, and every render that draws a menu is drawn again with
+ * the gate surface announced, and its payload held against that menu.
  * @param {(dir: string, surface: string, args: object) => string} renderSurface
  * @returns {(dir: string, surface: string, args: object) => string}
  */
 function auditingRender(renderSurface) {
   return (dir, surface, args) => {
     const out = renderSurface(dir, surface, args);
+    auditMarkers(out, `render ${surface}`);
     if (out.includes('=== MENU')) auditGate(announced(() => renderSurface(dir, surface, args)), `render ${surface}`);
     return out;
   };
 }
 
-module.exports = { GATE_MARKER, announced, auditGate, auditingRender };
+module.exports = { GATE_MARKER, announced, auditGate, auditMarkers, auditingRender };

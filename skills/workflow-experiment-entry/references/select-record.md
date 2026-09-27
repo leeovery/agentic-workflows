@@ -28,7 +28,7 @@ Every row is terminal — the series is finished.
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
-```
+```properties
 ⚑ Every experiment in this series is finished
 ```
 

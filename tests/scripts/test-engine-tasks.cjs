@@ -865,7 +865,7 @@ describe('engine render task surfaces', () => {
   /** Run `engine render` expecting failure; returns the parsed stderr JSON. */
   const renderFails = (/** @type {string[]} */ args) => harness.refuses(dir, ['render', ...args]);
 
-  const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+  const MENU_INSTRUCTION = "emit verbatim as markdown (not a code block), then STOP for the user's response";
 
   const BLOCKED_MENU = [
     `=== MENU: blocked tasks (${MENU_INSTRUCTION}) ===`,
@@ -969,7 +969,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['task-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+        '=== DISPLAY: task gate auto-approved (emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
         'Task approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
@@ -980,7 +980,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['task-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+        '=== DISPLAY: task gate auto-approved (emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
         'Task approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
@@ -991,7 +991,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
 
     const continuation = [
-      '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: fix gate auto-accepted (emit verbatim as a text code block (```text fence) after the findings summary — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
       'Fix analysis accepted [auto]. Passing the findings to the executor.',
       '',
     ].join('\n');
@@ -1025,7 +1025,7 @@ describe('engine render task surfaces', () => {
     assert.match(renderFails(['fix-gate', 'ghost.implementation.auth-flow']).error, /not found/);
   });
 
-  const RESULT_MD = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
+  const RESULT_MD = 'emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs';
 
   /** Write a task-result payload into the fixture; returns its relative path. */
   function writeResultPayload(payload) {
@@ -1337,7 +1337,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['cycle-limit', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: cycle limit (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+        '=== DISPLAY: cycle limit (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
         '⚑ Analysis cycle 4 on this topic — over the cycle limit of 3.',
         '',
       ].join('\n'));
@@ -1353,7 +1353,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['spec-corrections', '--count', '1']),
       [
-        '=== DISPLAY: spec corrections (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+        '=== DISPLAY: spec corrections (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
         '1 spec correction recorded.',
         '',
       ].join('\n'));
