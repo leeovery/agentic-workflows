@@ -1,7 +1,5 @@
 # The idea
 
-This is a short guide to how the workflows work. Over the next eight screens it explains what happens when you start a piece of work, what gets written down along the way, and how much of it needs you. It's worth reading once before you begin, because everything you meet afterwards makes more sense with the shape already in your head. It takes about five minutes, you can leave at any point, and if you skip it now it's waiting under help on the start menu whenever you'd rather come back.
-
 Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. The workflows fill both. Every piece of work goes through a phased process in which each phase produces a document the next phase is built from, and a knowledge base keeps those documents once the work is done, so nothing decided is decided twice.
 
 ```flow

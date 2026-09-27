@@ -30,7 +30,7 @@ const {
   DIAGRAM_KINDS, SAMPLE_SURFACES, FIXTURES_DIR,
   isDiagramKind, renderDiagram, flowDiagram, tableDiagram, barsDiagram, sampleDiagram,
 } = require(DIAGRAMS);
-const { parseContent, loadScreen, walkthroughScreen } = require(WALKTHROUGH);
+const { parseContent, loadScreen, walkthroughOffer, walkthroughScreen } = require(WALKTHROUGH);
 const { MIN, CAP, FALLBACK } = require(path.join(SCRIPTS, 'kernel', 'terminal.cjs'));
 const schema = require(path.join(SCRIPTS, 'kernel', 'manifest-schema.cjs'));
 const derivations = require(path.join(SCRIPTS, 'domain', 'derivations.cjs'));
@@ -463,8 +463,6 @@ describe('walkthrough screens', () => {
       "# **`■ How the workflows work · 1 of 8 · The idea`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "This is a short guide to how the workflows work. Over the next eight screens it explains what happens when you start a piece of work, what gets written down along the way, and how much of it needs you. It's worth reading once before you begin, because everything you meet afterwards makes more sense with the shape already in your head. It takes about five minutes, you can leave at any point, and if you skip it now it's waiting under help on the start menu whenever you'd rather come back.",
-      "",
       "Claude Code is a capable engineer with two gaps. It forgets everything between sessions, and it has no process for how a piece of work should unfold, so every session starts cold and improvises from there. The workflows fill both. Every piece of work goes through a phased process in which each phase produces a document the next phase is built from, and a knowledge base keeps those documents once the work is done, so nothing decided is decided twice.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
@@ -491,8 +489,7 @@ describe('walkthrough screens', () => {
       "**`◆ What next?`**",
       "",
       "**`n/next`** → Where everything starts",
-      "**`s/skip`** → Skip this for now — it's under h/help whenever you want",
-      "         it",
+      "**`s/skip`** → Stop here — it's under h/help whenever you want it",
       "**Ask**    → Ask anything about what's on this screen",
       "",
     ].join('\n'),
@@ -776,6 +773,27 @@ describe('walkthrough screens', () => {
     SCREENS.forEach((expected, i) => {
       assert.strictEqual(walkthroughScreen(loadScreen(String(i + 1)), 'first-run', false), expected, `screen ${i + 1}`);
     });
+  });
+
+  it('the first-run offer renders whole at the pinned width', () => {
+    assert.strictEqual(walkthroughOffer(false), [
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
+      "# **`■ How the workflows work`**",
+      "",
+      "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
+      "Before your first piece of work, there's a short guide to how this all fits together: what happens when you start something, what gets written down, and where you come in. It's worth reading once, because everything you meet afterwards makes more sense with the shape already in your head.",
+      "",
+      "Eight screens, about five minutes. Leave whenever you like.",
+      "",
+      "=== MENU: walkthrough offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      "· · · · · · · · · · · ·",
+      "**`◆ Take the walkthrough?`**",
+      "",
+      "**`y/yes`**  → Let's do it",
+      "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
+      "**Ask**    → Ask anything about how the workflows work",
+      "",
+    ].join('\n'));
   });
 
   it('no diagram on any screen overflows the floor, the fallback or the cap', () => {

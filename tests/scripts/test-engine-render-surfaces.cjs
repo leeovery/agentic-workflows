@@ -4989,7 +4989,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5665,15 +5665,14 @@ describe('walkthrough surfaces', () => {
     }
   });
 
-  it('the first screen: a first run can only go on or skip; from help it goes on or back', () => {
+  it('the first screen: a first run goes on or stops, the offer before it already answered; from help it goes on or back', () => {
     assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' })), [
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
       '',
       `**\`n/next\`** → ${titleOf(2)}`,
-      "**`s/skip`** → Skip this for now — it's under h/help whenever you want",
-      `${NB(9)}it`,
+      "**`s/skip`** → Stop here — it's under h/help whenever you want it",
       "**Ask**    → Ask anything about what's on this screen",
       '',
     ].join('\n'));
@@ -5753,6 +5752,38 @@ describe('walkthrough surfaces', () => {
     }
     assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1' }), /--from must be one of first-run, help, got ""/);
     assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'menu' }), /--from must be one of first-run, help, got "menu"/);
+  });
+
+  it('walkthrough-offer: the heading with no position, the offer\'s prose, and a yes/skip menu with a question', () => {
+    const out = renderSurface(dir, 'walkthrough-offer', {});
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'MENU: walkthrough offer']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
+      '# **`■ How the workflows work`**',
+    ].join('\n')), out.slice(0, 200));
+    assert.strictEqual(menuOf(out), [
+      "=== MENU: walkthrough offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Take the walkthrough?`**',
+      '',
+      "**`y/yes`**  → Let's do it",
+      "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
+      '**Ask**    → Ask anything about how the workflows work',
+      '',
+    ].join('\n'));
+  });
+
+  it('walkthrough-offer --menu-only is the menu alone — the return from a question', () => {
+    const menuOnly = renderSurface(dir, 'walkthrough-offer', { 'menu-only': '1' });
+    assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough offer']);
+    assert.strictEqual(menuOnly, menuOf(renderSurface(dir, 'walkthrough-offer', {})));
+  });
+
+  it('the offer stands outside the walk — no screen of it, and the walk\'s length is the screens alone', () => {
+    const total = screenFiles().length;
+    assert.ok(!screenFiles().some((f) => f.includes('offer')), 'the offer is not a screen file');
+    assert.match(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' }), new RegExp(`· 1 of ${total} · ${titleOf(1)}`));
+    assert.match(renderSurface(dir, 'walkthrough-home', {}), new RegExp(`\\(${total} short screens\\)`));
   });
 
   it('walkthrough-home: the walk, the cards, a question, and the way back', () => {

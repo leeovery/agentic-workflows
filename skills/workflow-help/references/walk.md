@@ -1,6 +1,6 @@
 # The Walk
 
-*Reference for **[workflow-help](../SKILL.md)** — loaded by workflow-start's first-run offer and by the help home.*
+*Reference for **[workflow-help](../SKILL.md)** — loaded by workflow-start when its first-run offer is taken, and by the help home.*
 
 ---
 
@@ -8,7 +8,7 @@ Eight screens, one at a time, each ending on its own menu. `screen` starts at 1.
 
 **Parameters** (provided by caller via Load directive):
 
-- `origin` — `first-run` (workflow-start's Step 0.3: screen 1 is the offer, and its answer is recorded) or `help` (the help home: a re-read, nothing recorded)
+- `origin` — `first-run` (workflow-start's Step 0.3) or `help` (the help home)
 
 ## A. Render the Screen
 
@@ -25,20 +25,6 @@ Emit the response's sections in the order they arrive — the `TITLE`, the `DISP
 ## B. Route the Answer
 
 #### If `next`
-
-**If `origin` is `first-run` and `screen` is 1:**
-
-The offer is answered — record it before the walk moves on, unless this walk already recorded an answer (a `b/back` from screen 2 comes through here again). If the call answers `ok: false`, surface the error and continue — the offer returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs walkthrough record walked
-```
-
-Then add one to `screen`.
-
-→ Return to **A. Render the Screen**.
-
-**Otherwise:**
 
 Add one to `screen`.
 
@@ -57,18 +43,6 @@ Take one off `screen`.
 → Return to **A. Render the Screen**.
 
 #### If `skip`
-
-**If `screen` is 1:**
-
-The offer is declined — record it, unless this walk has already recorded an answer. If the call answers `ok: false`, surface the error and continue — the offer returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs walkthrough record skipped
-```
-
-→ Return to caller.
-
-**Otherwise:**
 
 → Return to caller.
 

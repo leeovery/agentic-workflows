@@ -32,7 +32,7 @@ const {
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
 const {
-  ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
+  ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { METADATA_FILE } = require('./kb.cjs');
@@ -5823,6 +5823,15 @@ function baselineDocPickSurface(cwd, _args) {
 // ---------------------------------------------------------------------------
 
 /**
+ * workflow-start's one-time offer, standing before the walk. `--menu-only`
+ * serves the return from a question.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function walkthroughOfferSurface(_cwd, args) {
+  return walkthroughOffer(Boolean(args['menu-only']));
+}
+
+/**
  * One screen of the walk. `--from` carries the caller, which is what varies
  * the exits: a first run can skip to the start menu, a walk opened from help
  * goes back to it. `--menu-only` serves the return from a question — the
@@ -6024,6 +6033,7 @@ const SURFACES = {
   'baseline-manage-gate': baselineManageGateSurface,
   'baseline-doc-pick': baselineDocPickSurface,
   'baseline-offer-gate': baselineOfferGateSurface,
+  'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,
   'walkthrough-home': walkthroughHomeSurface,
   'walkthrough-topics': walkthroughTopicsSurface,

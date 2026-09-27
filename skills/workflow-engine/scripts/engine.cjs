@@ -398,6 +398,7 @@ Commands:
   render baseline-manage-gate
   render baseline-doc-pick
   render baseline-offer-gate
+  render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
   render walkthrough-home
   render walkthrough-topics

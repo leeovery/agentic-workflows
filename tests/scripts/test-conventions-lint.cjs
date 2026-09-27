@@ -915,7 +915,7 @@ const QUESTION_ROUTE = /^\s*[-*] \*\*Ask\*\* —/;
 const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
 const ROUTE_END = /^\s*(?:[-*] |$)/;
 const SETS_ASIDE = /sets the gate aside[\s\S]*ready to move on/;
-const DELEGATES_ANSWER = /\(\.\.\/\.\.\/workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
+const DELEGATES_ANSWER = /\((?:\.\.\/)+workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
 
 function checkQuestionsSetGatesAside(files) {
   const out = [];
@@ -1785,7 +1785,7 @@ test('check 22 (quoted free-text flags) — catches a bare horizon or summary pl
   });
 });
 
-test('check 23 (a question at a gate sets it aside) — catches a question branch that puts its gate straight back, permits the set-aside form, a delegated answer, an Ask item in a route list, and branches that carry no question', () => {
+test('check 23 (a question at a gate sets it aside) — catches a question branch that puts its gate straight back, permits the set-aside form, a delegated answer from a reference or a backbone, an Ask item in a route list, and branches that carry no question', () => {
   withTemp((dir) => {
     const deferring = write(dir, 'skills/x/deferring.md', [
       '#### If ask',
@@ -1807,6 +1807,12 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
       'Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
       '',
       '→ Return to **B. Handle Selection**.',
+      '',
+      '**If ask:**',
+      '',
+      'Answer it per **[answering-how-it-works.md](../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
+      '',
+      '**STOP.** Wait for user response.',
       '',
       '#### If the user asks for the interactive page',
       '',

@@ -15,6 +15,7 @@
     "skills/workflow-start/references/empty-state.md"
   ],
   "answers": [
+    "y",
     "n",
     "what do you mean by a phase? my team tends to do everything in one pass",
     "ok, let's move on",
@@ -23,20 +24,22 @@
   "invariants": {
     "calls_include": [
       "engine.cjs boot",
-      "render walkthrough-screen --screen 1 --from first-run",
+      "render walkthrough-offer",
       "walkthrough record walked",
       "render walkthrough-screen --screen 2 --from first-run --menu-only",
       "gateway.cjs"
     ],
     "calls_exclude": [
       "walkthrough record skipped",
+      "render walkthrough-offer --menu-only",
       "--screen 3",
       "render walkthrough-topic"
     ],
     "calls_in_order": [
       "engine.cjs boot",
-      "render walkthrough-screen --screen 1 --from first-run",
+      "render walkthrough-offer",
       "walkthrough record walked",
+      "render walkthrough-screen --screen 1 --from first-run",
       "render walkthrough-screen --screen 2 --from first-run",
       "render walkthrough-screen --screen 2 --from first-run --menu-only",
       "gateway.cjs"
