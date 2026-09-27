@@ -16,12 +16,10 @@ Each line it draws is kept in that folder,
 config), under the row's message id, so scrolling back and a resumed
 conversation draw the row the same way, wherever the session's working
 directory has moved. The folder goes once Claude Code has deleted the
-conversation's transcript, and the lines with it, with two exceptions: a
+conversation's transcript, and the lines with it, with one exception: a
 conversation whose end the session-end hook never saw — the session that first
-installed the hook, or one that crashed — keeps its folder, and one resumed in
-a directory whose project has no workflows installed runs no hook there, so a
-transcript that resume moved takes the folder with it at the next boot. The
-mod names the folder the way the workflows' engine does. A conversation that
+installed the hook, or one that crashed — keeps its folder. The mod names the
+folder the way the workflows' engine does. A conversation that
 does not run the workflows has no folder, nor does one in a process that names
 neither a home directory nor `WORKFLOWS_CONFIG_DIR`: there the mod writes
 nothing and draws the row as Claude Code does.

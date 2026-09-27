@@ -73,14 +73,10 @@ there it keeps and reads back nothing, and a conversation that does not run
 the workflows has no folder and keeps nothing — nor does one in a process
 that names neither a home directory nor `WORKFLOWS_CONFIG_DIR`. The folder
 holds one gate, and goes once Claude Code has deleted the conversation's
-transcript — a resume from another directory, which can move the transcript,
-has the workflows' session-start hook name it where it now is — so a kept
-gate lives as long as its conversation can be resumed, with two exceptions. A
-conversation whose end the session-end hook never saw keeps its folder: the
-session that first installed the hook, which Claude Code picks up only as a
-session starts, or one that crashed. A conversation resumed in a directory
-whose project has no workflows installed runs no hook there, so a transcript
-that resume moved takes the folder with it at the next boot.
+transcript, so a kept gate lives as long as its conversation can be resumed,
+with one exception: a conversation whose end the session-end hook never saw
+keeps its folder — the session that first installed the hook, which Claude
+Code picks up only as a session starts, or one that crashed.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
