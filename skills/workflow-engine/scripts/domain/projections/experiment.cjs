@@ -100,7 +100,7 @@ function experimentApprovalGate(id) {
  */
 function experimentPick(live) {
   return section('MENU: experiment pick', MENU_INSTRUCTION, menu('Which experiment?', [
-    ...live.map((r) => cmdOption(r.id, null, `${r.slug} — *${r.status}*`)),
+    ...live.map((r) => cmdOption(r.id, null, { head: r.slug, tail: r.status })),
     cmdOption('b', 'back', 'Leave without picking one'),
   ]));
 }

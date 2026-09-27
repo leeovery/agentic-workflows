@@ -28,6 +28,7 @@ const { escapeMarkdown } = require('./worklist.cjs');
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
 /** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
+/** @typedef {import('./surfaces.cjs').LabelParts} LabelParts */
 
 
 /**
@@ -39,7 +40,7 @@ const { escapeMarkdown } = require('./worklist.cjs');
  * @property {string} [work_unit]     continue entries
  * @property {string} [pre_seed]      start_new entries: `none` | a work type
  * @property {string|null} route      skill invocation, or null for internal flows
- * @property {string} label
+ * @property {import('./surfaces.cjs').OptionLabel} label
  */
 
 /**
@@ -110,7 +111,7 @@ function roadmapRows(roadmap) {
 function roadmapMenuRow(detail) {
   if (!detail.roadmap.exists) return null;
   const label = detail.roadmap.active_session !== null
-    ? 'Resume the product session — *roadmap, in progress*'
+    ? { head: 'Resume the product session', tail: 'roadmap, in progress' }
     : 'Open the product roadmap';
   return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap open', label };
 }
@@ -167,22 +168,24 @@ function startOverview(detail) {
 
 // The resume row for an in-progress baseline interview — unfinished
 // assessment reads as unfinished work.
-/** @param {StartDetail} detail */
+/** @param {StartDetail} detail @returns {LabelParts} */
 function baselineResumeLabel(detail) {
   const n = detail.baseline.remaining;
-  return `Resume the baseline interview — *${n} area${n === 1 ? '' : 's'} remaining*`;
+  return { head: 'Resume the baseline interview', tail: `${n} area${n === 1 ? '' : 's'} remaining` };
 }
 
 // A finalising unit's entry reads `Finalise …` — the continue skill it routes
-// to presents the completion gate. Concerns queued on the unit's topic append
-// the `· triage waiting` cue after the tail, as the epic rows carry it.
-/** @param {WorkUnitEntry} unit @param {TypeSection['type']} type */
+// to presents the completion gate. Concerns queued on the unit's topic cue
+// `triage waiting` after the tail, as the epic rows carry it.
+/** @param {WorkUnitEntry} unit @param {TypeSection['type']} type @returns {LabelParts} */
 function continueLabel(unit, type) {
   const t = titlecase(unit.name);
-  if (type === 'epic') return `Continue "${t}" — *epic*`;
-  const cue = (unit.triage_phases || []).length > 0 ? ' · triage waiting' : '';
-  if (unit.finalising) return `Finalise "${t}" — *${type}, ${unit.phase_label}*${cue}`;
-  return `Continue "${t}" — *${type}, ${unit.phase_label}*${cue}`;
+  if (type === 'epic') return { head: `Continue "${t}"`, tail: 'epic' };
+  return {
+    head: `${unit.finalising ? 'Finalise' : 'Continue'} "${t}"`,
+    tail: `${type}, ${unit.phase_label}`,
+    cue: (unit.triage_phases || []).length > 0 ? 'triage waiting' : undefined,
+  };
 }
 
 /**
@@ -368,11 +371,11 @@ function groupedPickup(items) {
   return { ordered, display: lines.join('\n') + '\n' };
 }
 
-// A pickup item as a pick-menu row's label — the title, its metadata the
-// italic tail.
-/** @param {PickupItem} item @param {string} meta */
+// A pickup item as a pick-menu row's label — the title the head, escaped
+// because the person wrote it, its metadata the tail.
+/** @param {PickupItem} item @param {string} meta @returns {import('./surfaces.cjs').LabelParts} */
 function itemLabel(item, meta) {
-  return `${escapeMarkdown(item.title)} — *${meta}*`;
+  return { head: escapeMarkdown(item.title), tail: meta };
 }
 
 /**
@@ -616,7 +619,7 @@ function manageListView(detail) {
   return {
     data,
     menu: menu('Which work unit?', [
-      ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${r.work_type}*`)),
+      ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: r.work_type })),
       cmdOption('a', 'baseline', baselineOption),
       cmdOption('b', 'back', 'Return'),
     ]),
@@ -710,7 +713,7 @@ function planTopicsMenu(md) {
     dotMenu([
       'Which plan would you like to view?',
       '',
-      ...md.planning_topics.map((t, i) => cmdOption(String(i + 1), null, `${titlecase(t.name)} — *${t.status}*`)),
+      ...md.planning_topics.map((t, i) => cmdOption(String(i + 1), null, { head: titlecase(t.name), tail: t.status })),
     ]),
   );
 }
@@ -771,7 +774,7 @@ function completedView(detail, filter) {
   if (rows.length === 0) return { data, display: 'No completed or cancelled work units found.\n', rows };
 
   const options = [
-    ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${CLOSED_TAIL[r.status]} ${r.last_phase}*`)),
+    ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: `${CLOSED_TAIL[r.status]} ${r.last_phase}` })),
     cmdOption('b', 'back', 'Return'),
   ];
   return {

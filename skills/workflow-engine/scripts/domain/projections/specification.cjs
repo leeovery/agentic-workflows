@@ -14,11 +14,12 @@
 
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { menuFrame, cmdOption, bulletRow } = require('./surfaces.cjs');
+const { menuFrame, cmdOption, bulletRow, optionDetail } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
+/** @typedef {import('./surfaces.cjs').LabelParts} LabelParts */
 
 /**
  * @typedef {object} SpecMenuKey
@@ -27,13 +28,12 @@ const { menuFrame, cmdOption, bulletRow } = require('./surfaces.cjs');
  * @property {string} action          machine action key — the skill routes on this, never the label
  * @property {string|null} topic      the spec/grouping name, or null for meta and command options
  * @property {string|null} verb       Creating | Continuing | Refining — the confirmation verb
- * @property {string} label
+ * @property {import('./surfaces.cjs').OptionLabel} label
  * @property {string[]} [desc]        meta-option description lines (already backtick-wrapped)
  */
 
 const TITLE = 'Specification Overview';
 
-// Meta-option description wrap budget — matches the shipped menu examples.
 // Meta-option description wrap budget: the tree width less the 3-space
 // indent (and a column of margin).
 const DESC_WIDTH = TREE_WIDTH - 4;
@@ -267,12 +267,12 @@ function specificationDisplay(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
-/** Meta-option description lines: 3-space indent, italic — the menu metadata register. @param {string} text */
+/** A meta option's description at the menu's description width. @param {string} text */
 function descLines(text) {
-  return wrap(text, DESC_WIDTH).map((seg) => `   *${seg}*`);
+  return optionDetail(text, DESC_WIDTH);
 }
 
-/** @param {SpecRow} row @param {'groupings'|'specs-menu'} scenario */
+/** @param {SpecRow} row @param {'groupings'|'specs-menu'} scenario @returns {LabelParts} */
 function rowLabel(row, scenario) {
   const t = titlecase(row.name);
   let verb = 'Continue';
@@ -291,8 +291,7 @@ function rowLabel(row, scenario) {
       : 'all sources extracted');
   }
   if (row.consult_pending > 0) parts.push(`${row.consult_pending} consult ref(s) pending`);
-  const tail = parts.join(', ');
-  return tail ? `${verb} "${t}" — *${tail}*` : `${verb} "${t}"`;
+  return { head: `${verb} "${t}"`, tail: parts.join(', ') };
 }
 
 const UNIFY_BASE = 'All discussions are combined into one specification.';
@@ -325,7 +324,7 @@ function specificationMenu(detail) {
   if (detail.scenario === 'specs-menu' && !recordOpen) {
     numbered.push({
       key: '', action: 'analyze', topic: null, verb: null,
-      label: 'Analyze for groupings (recommended)', desc: descLines(ANALYZE_DESC),
+      label: { head: 'Analyze for groupings', recommended: true }, desc: descLines(ANALYZE_DESC),
     });
   }
   for (const row of detail.actionable) {
@@ -366,7 +365,7 @@ function specificationMenu(detail) {
   if (detail.concluded.length > 0) {
     options.push({
       key: 'c', word: 'completed', action: 'completed_menu', topic: null, verb: null,
-      label: `Manage completed specifications — *${detail.concluded.length} completed*`,
+      label: { head: 'Manage completed specifications', tail: `${detail.concluded.length} completed` },
     });
   }
 
@@ -396,7 +395,7 @@ function specificationCompletedMenu(detail) {
   /** @type {SpecMenuKey[]} */
   const keys = detail.concluded.map((row, i) => ({
     key: String(i + 1), action: 'refine_spec', topic: row.name, verb: 'Refining',
-    label: `Refine "${titlecase(row.name)}" — *completed*`,
+    label: { head: `Refine "${titlecase(row.name)}"`, tail: 'completed' },
   }));
   keys.push({ key: 'b', word: 'back', action: 'back', topic: null, verb: null, label: 'Return to the specifications menu' });
 

@@ -86,6 +86,10 @@ describe('hermetic environment — the pins', () => {
     assert.strictEqual(process.env.OPENAI_API_KEY, undefined);
   });
 
+  it('the gate surface is unannounced — a session that loads one announces it to every command, and the goldens pin the bytes without it', () => {
+    assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined);
+  });
+
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');
@@ -102,12 +106,13 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
       dir: process.env.WORKFLOWS_CONFIG_DIR,
       key: null,
+      surface: null,
       width: '65',
     });
   });

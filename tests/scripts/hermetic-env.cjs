@@ -2,9 +2,10 @@
 
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, no provider
-// key, no user or system git config, a fixed display width. A test never
-// reads the developer's config or credentials, and never reaches an
-// embedding provider — every knowledge store a test builds is keyword-only.
+// key, no gate surface, no user or system git config, a fixed display width.
+// A test never reads the developer's config or credentials, never reaches an
+// embedding provider — every knowledge store a test builds is keyword-only —
+// and never renders a gate payload it did not announce itself.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -43,5 +44,8 @@ Object.assign(process.env, HERMETIC_ENV);
 // The env key wins over stored credentials, so isolating the directory is
 // only half of it.
 delete process.env.OPENAI_API_KEY;
+// A session whose gate surface is loaded announces it to every command it
+// runs, the suite included — and every golden pins the unannounced bytes.
+delete process.env.WORKFLOWS_GATE_SURFACE;
 
 module.exports = HERMETIC_ENV;

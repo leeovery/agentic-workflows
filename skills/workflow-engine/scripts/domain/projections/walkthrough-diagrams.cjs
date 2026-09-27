@@ -26,6 +26,7 @@ const { epicDetail } = require('../epic-detail.cjs');
 const { startOverview, startMenu } = require('./start.cjs');
 const { roadmapMapView } = require('./roadmap.cjs');
 const { epicDashboard } = require('./epic.cjs');
+const { illustrate } = require('./surfaces.cjs');
 
 // The column every diagram hangs off. Three columns reads as a figure inset
 // from the prose around it without costing the narrowest pane a wrap.
@@ -290,7 +291,7 @@ function startSample() {
   const detail = startDetail(dir);
   // The menu's opening dot rule frames a live gate; a sample has nothing to
   // frame, so the rows arrive under the overview directly.
-  const rows = startMenu(detail).rendered.split('\n').slice(1).join('\n');
+  const rows = illustrate(() => startMenu(detail).rendered).split('\n').slice(1).join('\n');
   return asPlainText(`${startOverview(detail).replace(/\n+$/, '')}\n\n${rows}`);
 }
 

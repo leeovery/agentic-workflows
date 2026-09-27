@@ -6,6 +6,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover, format } = require('../../skills/workflow-bridge/scripts/gateway.cjs');
+const { auditingRender } = require('./gate-audit.cjs');
+
+const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
 
 describe('workflow-bridge discovery', () => {
   let dir;
@@ -336,7 +339,6 @@ describe('workflow-bridge format', () => {
       '',
     ].join('\n'));
     // The menu itself is the revisit-phases render surface, filtered the same way.
-    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
     assert.strictEqual(renderSurface(dir, 'revisit-phases', { dotpath: 'rename-api' }), [
       "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
