@@ -183,7 +183,7 @@ The concern stays queued and the opt-in is cleared — a half-walked entry keeps
 
 ## D. Fold
 
-Record the discussion in the topic's content. A fold whose outcome re-decides previously `decided` ground, or names an entity, field, rule, or classification this topic's artifact didn't define — citation is not definition: a term carried here only by citing a sibling's decision was defined there — runs the sibling consult before it is recorded: follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — query or cite, and the recorded decision carries the `Sibling check:` line either way, its `no overlap found.` form included.
+Record the discussion in the topic's content. The fold is an engagement decision point: before its outcome is recorded, follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — both its triggers apply here.
 
 A cross-topic correction tempts you to write guidance about the documents themselves. Do not: never write rules for how documents cite, edit, or point at each other, and never write lessons about how the topics drifted apart. The fold records only what changed and why, in the topic's own terms.
 
