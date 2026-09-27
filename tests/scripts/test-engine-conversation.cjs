@@ -9,8 +9,10 @@
 // workflows project, never from the commands Claude Code's own hooks run —
 // `conversation end`, the SessionEnd hook's record of the transcript path as
 // the hook hands it, written only where the folder exists, and the tidy any
-// project's boot runs over every folder, reading a leading `~` as the home
-// directory and a relative path as naming no file.
+// project's boot runs over every folder, looking for the transcript by its
+// file name in every project folder of the projects directory the recorded
+// path names — a leading `~` read as the home directory, a relative path as
+// naming none, each projects directory read once.
 //
 
 require('./hermetic-env.cjs');
@@ -210,7 +212,7 @@ describe('engine conversation end', () => {
     assert.strictEqual(transcriptOf('sess-1'), '/t/sess-1.jsonl');
   });
 
-  it('a later end records the path afresh — a conversation resumed from another directory moves its transcript', () => {
+  it('a later end records the path it is handed over the one before', () => {
     writeConversation('sess-1', { workflow: '', transcript: '/old/sess-1.jsonl' });
     harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/new/sess-1.jsonl' }) });
     assert.strictEqual(transcriptOf('sess-1'), '/new/sess-1.jsonl');
@@ -276,10 +278,23 @@ describe('tidyConversations', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('deletes exactly the folders whose transcript names a file that is gone', () => {
-    const live = path.join(dir, 'live.jsonl');
-    fs.writeFileSync(live, '');
-    writeConversation('gone', { workflow: '', transcript: path.join(dir, 'gone.jsonl'), 'position.json': '{"name":"pay"}', 'gate.json': 'null' });
+  /** This test's own directory of Claude Code projects. */
+  const projects = () => path.join(dir, 'projects');
+
+  /** The path of `id`'s transcript in project folder `key` of `under`. @param {string} key @param {string} id */
+  const transcriptPath = (key, id, under = projects()) => path.join(under, key, `${id}.jsonl`);
+
+  /** `id`'s transcript, made in project folder `key` of `under`. @param {string} key @param {string} id */
+  function transcript(key, id, under = projects()) {
+    const file = transcriptPath(key, id, under);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '');
+    return file;
+  }
+
+  it('deletes exactly the folders whose transcript no project folder holds', () => {
+    const live = transcript('-Users-me-app', 'live');
+    writeConversation('gone', { workflow: '', transcript: transcriptPath('-Users-me-app', 'gone'), 'position.json': '{"name":"pay"}', 'gate.json': 'null' });
     writeConversation('live', { workflow: '', transcript: live, 'gate.json': 'null' });
     writeConversation('unnamed', { workflow: '', 'position.json': '{"name":"pay"}' });
     writeConversation('empty', { workflow: '', transcript: '' });
@@ -288,9 +303,104 @@ describe('tidyConversations', () => {
     assert.deepStrictEqual(fs.readdirSync(folder('live')).sort(), ['gate.json', 'transcript', 'workflow']);
   });
 
+  it('finds the transcript by its name in another project folder — a resume from another directory hands over a path under that directory\'s key while the transcript stays where the conversation began — and deletes the folder once none holds it', () => {
+    transcript('-Users-me-app-wt', 'another');
+    const file = transcript('-Users-me-app', 'sess-1');
+    writeConversation('sess-1', { workflow: '', transcript: transcriptPath('-Users-me-app-wt', 'sess-1'), 'gate.json': 'null' });
+    tidyConversations();
+    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['gate.json', 'transcript', 'workflow']);
+    fs.unlinkSync(file);
+    tidyConversations();
+    assert.ok(!fs.existsSync(folder('sess-1')));
+  });
+
+  it('a projects directory that no longer exists holds no transcript — the folder goes', () => {
+    writeConversation('sess-1', { workflow: '', transcript: transcriptPath('-Users-me-app', 'sess-1') });
+    tidyConversations();
+    assert.ok(!fs.existsSync(folder('sess-1')));
+  });
+
+  it('keeps the folder while its projects directory, or a project folder in it, cannot be read — and deletes it once they can', () => {
+    transcript('-Users-me-app', 'another');
+    writeConversation('sess-1', { workflow: '', transcript: transcriptPath('-Users-me-app', 'sess-1') });
+    for (const locked of [path.join(projects(), '-Users-me-app'), projects()]) {
+      fs.chmodSync(locked, 0o000);
+      try {
+        tidyConversations();
+      } finally {
+        fs.chmodSync(locked, 0o755);
+      }
+      assert.ok(fs.existsSync(folder('sess-1')), locked);
+    }
+    tidyConversations();
+    assert.ok(!fs.existsSync(folder('sess-1')));
+  });
+
+  it('a file beside the project folders is no project folder — it holds no transcript and never stops the read', () => {
+    fs.mkdirSync(projects());
+    fs.writeFileSync(path.join(projects(), 'sess-1.jsonl'), '');
+    writeConversation('sess-1', { workflow: '', transcript: transcriptPath('-Users-me-app', 'sess-1') });
+    tidyConversations();
+    assert.ok(!fs.existsSync(folder('sess-1')));
+  });
+
+  it('looks only in the projects directory the recorded path names — never the home directory\'s, never another conversation\'s', () => {
+    const a = path.join(dir, 'a', 'projects');
+    const b = path.join(dir, 'b', 'projects');
+    transcript('p', 'one', a);
+    transcript('p', 'two', b);
+    const home = process.env.HOME;
+    process.env.HOME = dir;
+    try {
+      transcript('p', 'one', path.join(dir, '.claude', 'projects'));
+      transcript('p', 'two', path.join(dir, '.claude', 'projects'));
+      writeConversation('one', { workflow: '', transcript: transcriptPath('p', 'one', b) });
+      writeConversation('two', { workflow: '', transcript: transcriptPath('q', 'two', a) });
+      writeConversation('kept', { workflow: '', transcript: transcriptPath('q', 'one', a) });
+      tidyConversations();
+    } finally {
+      process.env.HOME = home;
+    }
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['kept']);
+  });
+
+  it('reads each projects directory once, however many folders name it', () => {
+    transcript('p', 'live');
+    for (const id of ['a', 'b', 'c']) writeConversation(id, { workflow: '', transcript: transcriptPath('p', id) });
+    writeConversation('live', { workflow: '', transcript: transcriptPath('q', 'live') });
+    /** @type {string[]} */
+    const reads = [];
+    const readdirSync = fs.readdirSync;
+    fs.readdirSync = /** @type {typeof fs.readdirSync} */ ((target, ...rest) => {
+      reads.push(String(target));
+      return readdirSync(target, ...rest);
+    });
+    try {
+      tidyConversations();
+    } finally {
+      fs.readdirSync = readdirSync;
+    }
+    assert.deepStrictEqual(reads.filter((r) => r.startsWith(projects())), [projects(), path.join(projects(), 'p')]);
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['live']);
+  });
+
+  it('a folder that cannot be deleted costs the tidy nothing — the rest are tidied all the same', () => {
+    writeConversation('stuck', { workflow: '', transcript: transcriptPath('p', 'stuck') });
+    writeConversation('gone', { workflow: '', transcript: transcriptPath('p', 'gone') });
+    const locked = path.join(folder('stuck'), 'locked');
+    fs.mkdirSync(locked);
+    fs.writeFileSync(path.join(locked, 'held'), '');
+    fs.chmodSync(locked, 0o555);
+    try {
+      tidyConversations();
+    } finally {
+      fs.chmodSync(locked, 0o755);
+    }
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['stuck']);
+  });
+
   it('keeps a folder for as long as its transcript is there — no age is ever read', () => {
-    const live = path.join(dir, 'live.jsonl');
-    fs.writeFileSync(live, '');
+    const live = transcript('p', 'live');
     writeConversation('old', { workflow: '', transcript: live });
     const past = new Date(Date.now() - 10 * 365 * 24 * 60 * 60 * 1000);
     fs.utimesSync(path.join(folder('old'), 'workflow'), past, past);
@@ -314,7 +424,7 @@ describe('tidyConversations', () => {
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['live']);
   });
 
-  it('a relative path names no file — its folder stays', () => {
+  it('a relative path names no projects directory — its folder stays', () => {
     writeConversation('bare', { workflow: '', transcript: 'gone.jsonl' });
     writeConversation('nested', { workflow: '', transcript: 'projects/p/gone.jsonl' });
     writeConversation('user', { workflow: '', transcript: '~someone/gone.jsonl' });

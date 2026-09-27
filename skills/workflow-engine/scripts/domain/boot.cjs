@@ -24,7 +24,7 @@
 // warning, never a block.
 //
 // Boot is also where the conversation folders are tidied, whichever project
-// the conversations ran in: one goes once the transcript it names is gone.
+// the conversations ran in: one goes once its transcript is gone.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

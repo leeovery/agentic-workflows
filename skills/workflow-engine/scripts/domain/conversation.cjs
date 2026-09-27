@@ -24,12 +24,17 @@
 //   sent.json      what the mod last sent from a press (the mod's own)
 //   rows.json      each answer row the rows mod redrew, by message id (its own)
 //
-// A folder goes at any project's boot once the transcript it names is gone:
-// Claude Code has deleted the conversation, so nothing can resume it, and
-// whatever retention the person set is the retention these records keep. A
+// A folder goes at any project's boot once its transcript is gone: Claude
+// Code has deleted the conversation, so nothing can resume it, and whatever
+// retention the person set is the retention these records keep. The recorded
+// path does not say where the transcript is — a resume from another
+// directory hands the hook a path under that directory's project key while
+// Claude Code goes on writing where the conversation began — so the path is
+// read only for the directory Claude Code keeps its projects in, and the
+// transcript is looked for by its file name in every project folder there. A
 // folder whose conversation ended without the hook names no transcript and
-// stays, and so does one naming a relative path (a leading `~` is the home
-// directory).
+// stays, as does one naming a relative path (a leading `~` is the home
+// directory) or a projects directory that cannot be read.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -94,19 +99,37 @@ function endConversation(sessionId, transcriptPath) {
 }
 
 /**
- * The transcript file a recorded path names: a leading `~` is the home
- * directory, and a path that is still not absolute names none.
+ * The directory Claude Code keeps its projects in, read off a recorded
+ * transcript path — `<projects>/<project-key>/<id>.jsonl`: a leading `~` is
+ * the home directory, and a path that is still not absolute names none.
  * @param {string} recorded @returns {string|null}
  */
-function transcriptFile(recorded) {
+function projectsDir(recorded) {
   const expanded = recorded.startsWith('~/') ? path.join(os.homedir(), recorded.slice(2)) : recorded;
-  return path.isAbsolute(expanded) ? expanded : null;
+  return path.isAbsolute(expanded) ? path.dirname(path.dirname(expanded)) : null;
 }
 
 /**
- * Boot's tidy-up: delete every folder whose transcript names a file that no
- * longer exists. A folder naming none stays, and one that cannot be deleted
- * waits for the next boot.
+ * Every file name the project folders in `projects` hold — none where the
+ * directory is gone, and null where it, or a folder in it, cannot be read.
+ * @param {string} projects @returns {Set<string>|null}
+ */
+function transcriptNames(projects) {
+  let keys;
+  try {
+    keys = fs.readdirSync(projects, { withFileTypes: true }).filter((e) => e.isDirectory());
+  } catch (err) {
+    return /** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT' ? new Set() : null;
+  }
+  try {
+    return new Set(keys.flatMap((e) => fs.readdirSync(path.join(projects, e.name))));
+  } catch { return null; }
+}
+
+/**
+ * Boot's tidy-up: delete every folder whose transcript no project folder
+ * holds, reading each projects directory once. A folder naming none stays,
+ * and one that cannot be deleted waits for the next boot.
  */
 function tidyConversations() {
   const root = conversationsRoot();
@@ -115,11 +138,17 @@ function tidyConversations() {
   try {
     folders = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
   } catch { return; }
+  /** @type {Map<string, Set<string>|null>} */
+  const held = new Map();
   for (const folder of folders) {
     const dir = path.join(root, folder);
-    let transcript;
-    try { transcript = transcriptFile(fs.readFileSync(path.join(dir, TRANSCRIPT), 'utf8')); } catch { continue; }
-    if (!transcript || fs.existsSync(transcript)) continue;
+    let recorded;
+    try { recorded = fs.readFileSync(path.join(dir, TRANSCRIPT), 'utf8'); } catch { continue; }
+    const projects = projectsDir(recorded);
+    if (!projects) continue;
+    if (!held.has(projects)) held.set(projects, transcriptNames(projects));
+    const names = held.get(projects);
+    if (!names || names.has(path.basename(recorded))) continue;
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the next boot tries again */ }
   }
 }
