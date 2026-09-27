@@ -522,7 +522,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [up-to-date display]
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Workflow Mod
+### Step 0.2: Claude Code Setup
 [terminal stop when the boot response says the mod can run here but is not running — this boot switched it on, or it was on already; otherwise silent]
 → Proceed to **Step 0.3**.
 

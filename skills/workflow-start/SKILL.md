@@ -42,7 +42,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the workflow system — applying any pending migrations, confirming the knowledge base, and scanning your active work.
+> Checking the workflow system — applying any pending migrations, making sure Claude Code is set up for the workflows, confirming the knowledge base, and scanning your active work.
 ```
 
 ### Step 0.1: Boot
@@ -132,7 +132,7 @@ All documents up to date.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Workflow Mod
+### Step 0.2: Claude Code Setup
 
 Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `not-running` means it was already switched on and this session did not load it; `on` and `unavailable` render nothing.
 
@@ -143,13 +143,13 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Workflow Mod`**
+**`▪ Claude Code Setup`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The workflows come with a Claude Code mod that shows each menu as buttons above the prompt — click a row to pick it, click again to send. Mods are an experimental Claude Code feature, switched on for this project in its `.claude/settings.json`. Your other Claude sessions in this project are left as they are.
+> The workflows have set up Claude Code in this project to show their menus as buttons above the prompt — click a row to pick it, click again to send. Typing your answer still works.
 ```
 
 > *Output the next fenced block as a properties code block (```properties fence):*
@@ -173,19 +173,19 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Workflow Mod`**
+**`▪ Claude Code Setup`**
 ```
 
 > *Output the next fenced block as a properties code block (```properties fence):*
 
 ```
-⚑ The workflows' Claude Code mod isn't running
+⚑ Claude Code hasn't picked up the workflows' setup
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> It's switched on in this project's `.claude/settings.json`, but this session didn't load it. Usually Claude Code was already running when it was switched on — exit Claude Code, start it again in this project, then run `/workflow-start` — or a setting of your own turns function hooks off (`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`).
+> Usually Claude Code was already running when the workflows set it up — exit Claude Code, start it again in this project, then run `/workflow-start`. If that doesn't help, a setting of your own is switching Claude Code's function hooks off (`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`).
 ```
 
 **STOP.** Do not proceed — terminal condition.
