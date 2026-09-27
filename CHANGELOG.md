@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-09-27
+
+✨ Added
+
+- The first-run walkthrough offer is now its own screen — one line about the guide, then a yes/skip/ask choice, before the eight-screen walk begins.
+
+🔧 Changed
+
+- Screen 1 of the walkthrough dropped its intro paragraph now that the offer covers it, and every screen after the first gained a back option regardless of how the walk was entered.
+
 ## [0.8.0] - 2026-09-27
 
 ✨ Added
