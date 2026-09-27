@@ -1831,6 +1831,404 @@
     ]
   },
   {
+    "id": "portal-agent-state-host-plane-wrong-boost",
+    "origin": "written",
+    "need": "The planned host-side agent-state design: the per-session state model and daemon store, how per-agent hooks report over an IPC socket correlated by TMUX_PANE, and the adapter layer normalising each agent's signals. Boosted toward restore-host-terminal-windows, which holds none of it: tests that a boost toward a work unit without the answer does not bury the answer.",
+    "terms": [
+      "per-session agent state model captured on the host, daemon store as single source of truth",
+      "agent hooks reporting events to the portal daemon over a unix IPC socket, pane correlation via TMUX_PANE",
+      "adapter interface normalising Claude Code and other coding-agent state signals"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "restore-host-terminal-windows"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "This per-session state is the spine of the whole plan. Every surface below, the",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "States discussed: **Working**, **Waiting** (blocked on a permission or input),",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Agent store.** The single source of truth in the daemon: in-memory,",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**`agent.Store` is the single source of truth** in the daemon",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/discovery/sessions/session-001.md",
+        "anchor": "Agent-state model — Working / Waiting / Idle / Unknown, the spine every",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "(Claude first), reporting events to the daemon over a unix socket, correlated",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "Pane correlation: the hook runs inside the pane, so it can read `$TMUX_PANE` and",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Daemon IPC socket.** The local channel the hooks report to, and the same",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "Claude event -> installed shim -> `portal agent ingest` (reads stdin JSON plus",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Daemon IPC socket:** if the daemon does not already expose one, this Phase 0",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Implication for Portal:** the semantic hook path is multiplexer-independent.",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/resume-sessions-after-reboot/research/resume-sessions-after-reboot.md",
+        "anchor": "`$TMUX_PANE` is an environment variable set automatically by tmux in every process",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**All parsing is Go, behind an `Adapter` interface**, one package per agent, so",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "**Agent awareness is delivered via per-agent hooks**, starting with Claude",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/agent-first-portal/imports/portal-control-plane-plan.md",
+        "anchor": "`PreToolUse` / `UserPromptSubmit` -> Working",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "portal-spawned-window-dead-end-wrong-boost",
+    "origin": "written",
+    "need": "Why a burst-spawned Ghostty window dead-ends on 'Press any key to close' when its session exits, how the spawned open --session --ack argv execs into tmux, and how the Ghostty adapter's OpenWindow runs the command. Boosted toward remote-trigger-spawns-on-local-terminal, which holds none of it: tests that a boost toward a work unit without the answer does not bury the answer.",
+    "terms": [
+      "spawned burst window dead-ends on process exited press any key to close when tmux session detaches, no fallback interactive shell",
+      "portal open --session spawn ack argv composition syscall exec into tmux attach-session",
+      "multi-window spawn host terminal Ghostty adapter OpenWindow command"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "remote-trigger-spawns-on-local-terminal"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "The burst-spawned host window runs the spawned session's `portal open --session …`",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "the spawned window's exec chain (`bash -c` → `env` → `portal open` → `tmux attach-session`) has no parent",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "The native Ghostty adapter wraps the command it opens the window with so that",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "**A Ghostty-adapter-scoped shell fallback: the native Ghostty adapter composes its",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/seeds/2026-07-17-spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "The likely mechanism, from what we discussed: each spawned window runs",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "keeps the window up after its command exits, the normal-detach lifecycle for a spawned session",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "`internal/spawn/command.go:47` `composeOpenArgv` builds, for an ATTACH surface, the",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "→ production `realExecer.Exec` → `syscall.Exec` (`cmd/open.go:544`) — **replacing the",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "**`portal open` `syscall.Exec`s into tmux.** Outside tmux (the spawned window is always outside tmux",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "`internal/spawn` composes the spawned window's command as an env-self-sufficient argv",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/cli-verb-surface-redesign/specification/cli-verb-surface-redesign/specification.md",
+        "anchor": "Each spawned window runs the **same `open` grammar a human would** — one pinned target + the hidden `--ack`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/investigation/spawned-window-dead-ends-on-session-exit.md",
+        "anchor": "`internal/spawn/ghostty.go:20-22` — the adapter opens the window via:",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
+        "anchor": "The adapter's single job is **open a new host window running a given command** — `OpenWindow(command)`",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "Replace the invalid two-statement `make new … with properties {…}` template (`ghosttyScriptTemplate`)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "Each spawned window's root process is instead a single one-shot command that `syscall.Exec`s into",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "attach: `open --session <name> --ack <batch>:<token>`; mint: `open --path <dir> --ack <batch>:<token>`",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spawned-window-dead-ends-on-session-exit/specification/spawned-window-dead-ends-on-session-exit/specification.md",
+        "anchor": "Placing the shell wrap in *shared* composition was considered and rejected",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/ghostty-spawn-zero-windows/specification/ghostty-spawn-zero-windows/specification.md",
+        "anchor": "The adapter's AppleScript template (`internal/spawn/ghostty.go`) is written against a",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
+    "id": "portal-theming-system-context-wrong-boost",
+    "origin": "written",
+    "need": "Context for designing a user-overridable theme system: how token values load from theme files, what the MV role-token layer and its light/dark treatment are, how live preview re-themes, where the contrast floor applies to user colours, and how the border tokens are named. Boosted toward session-scrollback-preview, which holds none of it: tests that a boost toward a work unit without the answer does not bury the answer.",
+    "terms": [
+      "user-overridable theme system loading colour token values from a config file",
+      "Modern Vivid colour token layer semantic role tokens light and dark variants",
+      "live theme preview in a TUI, re-rendering the view when the theme changes",
+      "WCAG contrast floor validation for user-supplied colours against the owned canvas",
+      "border token naming, use-agnostic semantic role names"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "session-scrollback-preview"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Token values load from theme files, not Go code.** A theme is a flat `key = value` file.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Flat `key = value` with `#` comments.** Lee:",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The user-overridable theme system is delivered.** A theme is a flat `key = value` file with `#` comments",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
+        "anchor": "**External theme file.** Load a user theme from config (e.g.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "The vocabulary is a **closed set of 19 named tokens**; Modern Vivid is one palette written against it",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**A role holds one value.** A token is a `{name, value}` pair resolving through a no-argument colour accessor",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**A theme is one palette**, not a light/dark pair. `Token` collapses from `{Name, Light, Dark}` to `{Name, Value}`",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/discussion/spectrum-tui-design.md",
+        "anchor": "The user floated the opposite extreme — name **every element** with its own theme",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "Move the cursor. **The app re-themes live behind the panel. Nothing is written.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**`applyCanvasMode` does not call `rebuildSessionList`.** Nothing heavy is on the theme-swap path",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "A modal theme picker would therefore render the canvas plus its own frame and **preview nothing**",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**Contrast floors apply to what Portal ships; syntactic validity applies to what users write.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/spectrum-tui-design/specification/spectrum-tui-design/specification.md",
+        "anchor": "**The floor binds the themes Portal ships, not everything Portal can render.**",
+        "grade": "primary",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Drop-in** (user themes directory): must be **valid only** — all 19 tokens",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
+        "anchor": "**Validation against the contrast floor.** The redesign establishes a WCAG-AA",
+        "grade": "supporting",
+        "framing": 3
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "| A **place** | `border.footer` | Wrong — goes stale as other surfaces reuse the token. |",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "**`border.footer` is dropped.** The footer rule renders with the same token as the title rule.",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/discussion/theming-system.md",
+        "anchor": "**Consolidate to one border token.** `border.footer` is dropped; the footer rule",
+        "grade": "primary",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/seeds/2026-06-21-border-token-role-names.md",
+        "anchor": "The goal is **not** to rename them to their current usage",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "and `separator` is defined *intrinsically* — \"low-contrast dividers, separators, and",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "So **wanting auto-detection does not commit Portal to the paired model.** That is",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/theming-system/research/theming-system.md",
+        "anchor": "the two border tokens' **intrinsic roles actually are** (the identical light hex is",
+        "grade": "supporting",
+        "framing": 4
+      },
+      {
+        "source": ".workflows/theming-system/specification/theming-system/specification.md",
+        "anchor": "The floor tests **auto-enumerate the embedded set**, so a new built-in is checked by default.",
+        "grade": "supporting",
+        "framing": 3
+      }
+    ]
+  },
+  {
     "id": "portal-neg-fumi-preset-binding",
     "origin": "negative",
     "from": "fumi",
@@ -1862,6 +2260,52 @@
     "options": {
       "limit": 10
     },
+    "relevant": []
+  },
+  {
+    "id": "portal-near-miss-mouse-picker",
+    "origin": "near-miss",
+    "need": "Mouse input in the session picker — clicking a row to attach, the scroll wheel moving the list; Portal never decided mouse support in the TUI.",
+    "terms": [
+      "mouse support in the session picker, clicking a session row to attach it",
+      "scroll wheel scrolling the session list and clicking between the Sessions and Projects pages",
+      "enabling Bubble Tea mouse events alongside the keyboard keymap"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "portal-near-miss-clipboard-copy",
+    "origin": "near-miss",
+    "need": "Copying a session's name or project path to the system clipboard from the picker; Portal has no clipboard action.",
+    "terms": [
+      "copy the selected session name or project path to the system clipboard from the picker",
+      "yank keybinding that writes to the clipboard with OSC 52 or pbcopy"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "portal-near-miss-idle-session-expiry",
+    "origin": "near-miss",
+    "need": "Automatically killing sessions left unattached for days, after a configurable expiry; Portal never decided to expire the user's idle sessions.",
+    "terms": [
+      "automatically kill tmux sessions that have sat idle or unattached for several days",
+      "configurable session expiry, reaping old sessions nobody has attached to recently",
+      "warning the user before an idle session is closed automatically"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "portal-near-miss-lock-session",
+    "origin": "near-miss",
+    "need": "Locking a tmux session behind a password or screen lock when the user steps away; Portal never decided session locking.",
+    "terms": [
+      "lock a tmux session with a password when stepping away from the terminal",
+      "lock-session and lock-after-time screen lock for Portal sessions"
+    ],
+    "options": {},
     "relevant": []
   }
 ]

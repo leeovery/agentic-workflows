@@ -43,6 +43,11 @@ function negativeCase(overrides = {}) {
   return fumiCase({ origin: 'negative', from: 'tick', relevant: [], ...overrides });
 }
 
+/** A sound near-miss negative, with `overrides` laid over it. */
+function nearMissCase(overrides = {}) {
+  return fumiCase({ origin: 'near-miss', relevant: [], ...overrides });
+}
+
 describe('knowledge eval — keyword mode', () => {
   it('the judged cases validate against the corpus', () => {
     assert.deepStrictEqual(knowledgeEval.validateCases(knowledgeEval.loadCases()), []);
@@ -53,6 +58,7 @@ describe('knowledge eval — keyword mode', () => {
       fumiCase(),
       fumiCase(),
       negativeCase({ id: 'sound-negative', options: { limit: 3 } }),
+      nearMissCase({ id: 'sound-near-miss', options: { limit: 3 } }),
       fumiCase({ id: 'bad-shape', origin: 'found', asked: '2026-02-30', extra: true }),
       negativeCase({ id: 'negative-from-itself', from: 'fumi' }),
       fumiCase({ id: 'no-terms', terms: [] }),
@@ -62,11 +68,13 @@ describe('knowledge eval — keyword mode', () => {
       }),
       fumiCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
       negativeCase({ id: 'negative-filtered', options: { 'work-type': 'epic' } }),
+      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'discussion' } }),
       fumiCase({
         id: 'names-absent',
         options: { 'work-unit': 'fumi, nowhere', boosts: [{ field: 'phase', value: 'specification' }, { field: 'topic', value: 'note-model' }] },
       }),
       negativeCase({ id: 'negative-judged', relevant: fumiCase().relevant }),
+      nearMissCase({ id: 'near-miss-judged', relevant: fumiCase().relevant }),
       fumiCase({ id: 'relevant-not-a-list', relevant: {} }),
       fumiCase({
         id: 'bad-judgments',
@@ -92,7 +100,7 @@ describe('knowledge eval — keyword mode', () => {
     assert.deepStrictEqual(problems, [
       'probe: the id is not unique',
       'bad-shape: unknown key "extra"',
-      'bad-shape: origin must be one of harvested, written, negative',
+      'bad-shape: origin must be one of harvested, written, negative, near-miss',
       'bad-shape: asked must be a YYYY-MM-DD date',
       'negative-from-itself: from must name another project',
       'no-terms: terms must be a non-empty list of non-empty strings',
@@ -104,9 +112,11 @@ describe('knowledge eval — keyword mode', () => {
       'bad-options: --boost:phase requires a value',
       'boosts-not-a-list: boosts must be a list',
       'negative-filtered: a negative case carries no hard filter',
+      'near-miss-filtered: a negative case carries no hard filter',
       'names-absent: no work-unit "nowhere" in the fumi fixture',
       'names-absent: no phase "specification" in the fumi fixture',
       'negative-judged: a negative case judges nothing relevant',
+      'near-miss-judged: a negative case judges nothing relevant',
       'relevant-not-a-list: relevant must be a list',
       'bad-judgments: relevant[0]: .workflows/fumi/nowhere.md is not in the fumi fixture',
       'bad-judgments: relevant[1]: framing must index a term',
