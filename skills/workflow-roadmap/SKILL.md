@@ -144,7 +144,7 @@ The output arrives in demarcated sections: read `=== DATA` to reason from (state
 
 **STOP.** Wait for user response.
 
-Match the input to its `ACTIONS` entry by `key` and route on the entry's `action`:
+Match the input to its `ACTIONS` entry by `key` or `word` and route on the entry's `action`:
 
 #### If `action` is `converse`
 

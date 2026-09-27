@@ -1,0 +1,50 @@
+{
+  "origin": "the shape gate's other row asks the user to say what the work is instead — a bare press carries no shape, and the branch went on to adjust a read it was never given; it must ask what the work is and wait before anything is committed",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/opener-pattern.md",
+    "skills/workflow-discovery/references/shape-and-confirm.md",
+    "skills/workflow-discovery/references/confirm-trigger.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-discovery/references/detection-core.md"
+  ],
+  "answers": [
+    "f — start a new feature",
+    "A 'copy order link' button on the order detail page: one click copies the order's URL so support staff can paste it into a ticket. The page already exists and nothing else on it changes. Call it copy-order-link.",
+    "o",
+    "It's a quick fix — one button on a page that already exists, nothing to design or plan. Handle it that way."
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render shape-gate",
+      "workunit create copy-order-link quick-fix"
+    ],
+    "calls_in_order": [
+      "render shape-gate",
+      "write:.workflows/.cache/copy-order-link/discovery/session-001.md",
+      "workunit create copy-order-link quick-fix"
+    ],
+    "calls_exclude": [
+      "workunit create copy-order-link feature",
+      "render name-gate",
+      "discovery-map",
+      "discovery-session close",
+      "topic start",
+      "workflow-roadmap"
+    ]
+  }
+}

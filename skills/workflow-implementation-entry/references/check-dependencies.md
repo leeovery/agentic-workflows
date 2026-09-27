@@ -53,30 +53,13 @@ External dependencies satisfied.
 
 ## B. Present Blocking Dependencies
 
-> *Output the next fenced block as a code block:*
-
-```
-Missing Dependencies
-
-@foreach(dep in blocking_list where state is unresolved)
-  {dep_topic:(titlecase)}
-  ├─ {description}
-  └─ No plan exists
-
-@endforeach
-@foreach(dep in blocking_list where state is resolved)
-  {dep_topic:(titlecase)}
-  ├─ {description}
-  └─ Waiting on {topic}:{internal_id}
-
-@endforeach
-```
+Set `blocking_topics` = the blocking list's dependency topics, comma-separated, in the order they should be offered. The surface reads each one's description and state from the plan's `external_dependencies`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant blocking
+node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant blocking --blocking {blocking_topics}
 ```
 
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -118,7 +101,7 @@ Set `selected_topic` = `{dep_topic}`.
 
 **If multiple dependencies in the blocking list:**
 
-Set `blocking_topics` = the blocking list's dependency topics, comma-separated, in the order they should be offered. The surface reads each row's description from the plan's `external_dependencies`:
+Render the pick over `blocking_topics`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant pick --blocking {blocking_topics}
@@ -128,7 +111,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-Set `selected_topic` = the chosen dependency's topic.
+The surface numbers the rows in `blocking_topics` order — set `selected_topic` to the picked row's topic.
 
 → Proceed to **D. Mark as Satisfied**.
 

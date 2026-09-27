@@ -90,6 +90,7 @@ engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-
 engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (thin DATA index)
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.detail.specificationDetail(wu, result, { consultHints }) // → SpecificationDetail (entry scenario + grouping rows over one discover() result)
+engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route

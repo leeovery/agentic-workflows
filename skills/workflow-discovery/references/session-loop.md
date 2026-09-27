@@ -139,7 +139,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **A staged product capability — the park valve.** The user places a surfaced capability beyond this epic (*"that's a v2 thing"*), or confirms your proposed placement. Park it on the roadmap (born at the first park; the verb validates and self-commits), record it under **Edits** (`Parked: {name} → {horizon}` — the lazy-creation rule applies when no log exists yet, [template.md](template.md)), and continue — capture-weight, never shaping:
 
      ```bash
-     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
+     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
      ```
 
      A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`). An unplaced tangent stays the inbox's (the scope-down in the detection core). A surfaced capability parks; a topic already on the map postpones instead — the edit operation above.

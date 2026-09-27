@@ -24,7 +24,7 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 ## B. Handle Selection
 
-Match the user's input to its `ACTIONS` entry by `key` — a number, or the command option's letter / long form. Every decision below reads the entry's `action` value, never its label text.
+Match the user's input to its `ACTIONS` entry — a number or a command option's letter by `key`, its long form by `word`. Every decision below reads the entry's `action` value, never its label text.
 
 #### If `action` is `analyze`
 

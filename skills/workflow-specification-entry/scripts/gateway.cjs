@@ -261,13 +261,14 @@ function viewData(result, detail, keys) {
   }
   lines.push(`unassigned_discussions: ${detail.unassigned.join(', ') || '(none)'}`);
   lines.push(`in_progress_discussions: ${detail.in_progress_discussions.join(', ') || '(none)'}`);
-  if (keys.length > 0) {
-    lines.push('ACTIONS (key  action  topic  verb):');
-    for (const k of keys) {
-      lines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.verb || '—'}`);
-    }
-  }
+  if (keys.length > 0) lines.push(...specActions(keys));
   return lines.join('\n');
+}
+
+// The ACTIONS key table over a spec menu's keys — the entry's topic and the
+// verb its confirmation carries.
+function specActions(keys) {
+  return engine.project.actionsTable(['action', 'topic', 'verb'], keys, (k) => [k.action, k.topic || '—', k.verb || '—']);
 }
 
 // The entry's routing read: the scenario and the detail the confirmations
@@ -302,10 +303,7 @@ function view(workUnit) {
 function completedMenu(workUnit) {
   const { detail } = buildDetail(process.cwd(), workUnit);
   const sub = engine.project.specificationCompletedMenu(detail);
-  const dataLines = [`work_unit: ${detail.work_unit}`, 'ACTIONS (key  action  topic  verb):'];
-  for (const k of sub.keys) {
-    dataLines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.verb || '—'}`);
-  }
+  const dataLines = [`work_unit: ${detail.work_unit}`, ...specActions(sub.keys)];
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock(sub.title),

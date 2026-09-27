@@ -609,7 +609,7 @@ describe('workflow-start sub-view sections', () => {
 
     const out = run(['view']);
     assert.ok(out.includes('baseline: in-progress'), out);
-    assert.ok(out.includes('a  open_baseline  —  → /workflow-baseline'), out);
+    assert.ok(out.includes('a  baseline  open_baseline  —  → /workflow-baseline'), out);
     assert.ok(out.includes(`Resume the baseline interview — *1 area*\n${'\u00a0'.repeat(18)}*remaining*`), out);
   });
 
@@ -629,7 +629,7 @@ describe('workflow-start sub-view sections', () => {
 
     writeProject({ status: 'skipped' });
     const skipped = run(['view']);
-    assert.ok(skipped.includes('a  open_baseline  —  → /workflow-baseline'), skipped);
+    assert.ok(skipped.includes('a  baseline  open_baseline  —  → /workflow-baseline'), skipped);
     assert.ok(skipped.includes('Start the project baseline assessment'), skipped);
 
     // Manage carries the row for every status — the one way in for a native

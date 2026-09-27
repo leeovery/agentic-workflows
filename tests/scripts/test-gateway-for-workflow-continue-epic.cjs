@@ -1501,7 +1501,7 @@ describe('workflow-continue-epic format (index dump)', () => {
       '',
       '**`1`**        → Continue "V1"',
       '**`2`**        → Continue "V2"',
-      '**`3`**        → View completed & cancelled epics',
+      '**`v/view`**   → View completed & cancelled epics',
       '**`m/manage`** → Manage an epic\'s lifecycle',
       '',
     ].join('\n'));
@@ -1945,7 +1945,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
       },
     });
     const out = run(['unblock-menu', 'v1']).stdout;
-    assert.ok(out.includes('  1  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
+    assert.ok(out.includes('  1  —  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
   });
 
   it('pull-forward-menu emits the roadmap item on the key, in DATA, byte-exactly', () => {
@@ -1964,7 +1964,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
       },
     });
     const out = run(['pull-forward-menu', 'v1']).stdout;
-    assert.ok(out.includes('  1  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
+    assert.ok(out.includes('  1  —  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
   });
 
   it('the view snapshot carries the build-order flag line', () => {
@@ -2090,8 +2090,8 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
     const res = run(['view', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(res.stdout.includes('  1  continue_research  auth  → /workflow-research-entry epic v1 auth  (recommended)'), res.stdout);
-    assert.ok(res.stdout.includes('  2  continue_discussion  auth  → /workflow-discussion-entry epic v1 auth  (in session: last active 4m ago)'), res.stdout);
+    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /workflow-research-entry epic v1 auth  (recommended)'), res.stdout);
+    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /workflow-discussion-entry epic v1 auth  (in session: last active 4m ago)'), res.stdout);
     assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
     const gate = run(['in-session-gate', 'v1', '2']);
     assert.strictEqual(gate.status, 0, gate.stderr);
@@ -2103,7 +2103,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: 'Thu Jan  1 00:00:00 1970', session_id: 'peer' }) + '\n');
     const freed = run(['view', 'v1']);
     assert.ok(!freed.stdout.includes('continue_discussion'), freed.stdout);
-    assert.ok(freed.stdout.includes('  1  continue_research  auth'), freed.stdout);
+    assert.ok(freed.stdout.includes('  1  —  continue_research  auth'), freed.stdout);
   });
 
   it('a code session anywhere in the project marks this epic\'s code entries', () => {
@@ -2207,7 +2207,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
     assert.ok(/Cancel "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n\u00a0+/g, ' ')), res.stdout);
-    assert.ok(res.stdout.includes('  1  cancel  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+    assert.ok(res.stdout.includes('  1  —  cancel  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
 
     const own = spawnSync('node', [GATEWAY, 'cancel-menu', 'v1'], {
       cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'peer' },
@@ -2228,7 +2228,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
     assert.ok(/Postpone "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n +/g, ' ')), res.stdout);
-    assert.ok(res.stdout.includes('  1  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+    assert.ok(res.stdout.includes('  1  —  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
 
     const own = spawnSync('node', [GATEWAY, 'postpone-menu', 'v1'], {
       cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'peer' },
@@ -2254,7 +2254,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     const res = run(['reactivate-menu', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
     assert.match(res.stdout.replace(/\n {8}/g, ' '), /1\. Auth \[cancelled\] — discussion \[was in-progress\] · in session \(last active 2m ago\)/, res.stdout);
-    assert.ok(res.stdout.includes('  1  reactivate  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
+    assert.ok(res.stdout.includes('  1  —  reactivate  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
   });
 
   it('each sub-view verb errors on excess positionals', () => {

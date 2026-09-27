@@ -16,7 +16,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
 
 #### If `horizons` is non-empty
 
-Render the pick over them:
+Render the pick over them (its numbering follows the `horizons` order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render horizon-pick
@@ -28,7 +28,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If the answer is a number:**
 
-That is the horizon.
+Resolve the number against `horizons` — that is the horizon.
 
 → Return to caller.
 

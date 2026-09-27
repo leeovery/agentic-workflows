@@ -20,7 +20,7 @@ node .claude/skills/workflow-continue-cross-cutting/scripts/gateway.cjs view {wo
 
 The output is one snapshot in demarcated sections:
 
-- **DATA** — reasoning surface: state flags (`next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  action  topic  → route`. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags (`next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  word  action  topic  → route`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the status block. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise. Emit verbatim per its marker.
@@ -45,7 +45,7 @@ Emit the MENU section verbatim per its marker.
 
 ## B. Handle Selection
 
-Match the user's input to its `ACTIONS` entry by `key` — a command option's letter or long form. Every decision below reads the entry's `action` value, never its label text.
+Match the user's input to its `ACTIONS` entry — a command option's letter by `key`, its long form by `word`. Every decision below reads the entry's `action` value, never its label text.
 
 #### If `action` is `continue`
 

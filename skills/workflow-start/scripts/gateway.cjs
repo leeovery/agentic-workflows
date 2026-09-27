@@ -107,12 +107,9 @@ function view() {
   dataLines.push(`completed_count: ${detail.completed_count}`);
   dataLines.push(`cancelled_count: ${detail.cancelled_count}`);
   dataLines.push(`baseline: ${detail.baseline.status}`);
-  dataLines.push('ACTIONS (key  action  work_unit  → route):');
-  for (const k of menu.keys) {
-    let line = `  ${k.key}  ${k.action}  ${k.work_unit || '—'}  → ${k.route || '(internal)'}`;
-    if (k.pre_seed) line += `  (pre_seed: ${k.pre_seed})`;
-    dataLines.push(line);
-  }
+  dataLines.push(...engine.project.actionsTable(['action', 'work_unit', '→ route'], menu.keys, (k) => [
+    k.action, k.work_unit || '—', `→ ${k.route || '(internal)'}`, ...(k.pre_seed ? [`(pre_seed: ${k.pre_seed})`] : []),
+  ]));
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),

@@ -22,11 +22,11 @@ Otherwise emit its `DISPLAY: selection` and `MENU: selection` sections verbatim 
 
 #### If user chose a bugfix number
 
-Store the selected bugfix's name as `work_unit`.
+The number counts down the dump's `BUGFIXES` rows, in order — store that row's name as `work_unit`.
 
 → Return to caller.
 
-#### If user chose "View completed & cancelled"
+#### If user chose `v/view`
 
 Set work_type filter = `bugfix`.
 

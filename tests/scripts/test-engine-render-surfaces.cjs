@@ -4168,7 +4168,7 @@ describe('selection projection', () => {
       '',
       '**`1`**        → Continue "Crash" — *specification (in-progress)*',
       '**`2`**        → Continue "Leak" — *investigation (in-progress)*',
-      '**`3`**        → View completed & cancelled bugfixes',
+      '**`v/view`**   → View completed & cancelled bugfixes',
       '**`m/manage`** → Manage a bugfix\'s lifecycle',
       '',
     ].join('\n'));
@@ -5132,7 +5132,7 @@ describe('roadmap surfaces', () => {
     assert.match(out, /○ Stray/);
   });
 
-  it('roadmap-add-gate: two delivering units render the name-which label', () => {
+  it('roadmap-add-gate: two delivering units render the name-which label and both units in DATA', () => {
     writeRoadmap({
       horizons: ['mvp'],
       items: {
@@ -5146,8 +5146,9 @@ describe('roadmap surfaces', () => {
       'mvp-2': { work_type: 'epic', status: 'in-progress' },
     });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.ok(out.includes(`Into the work underway — a new topic in one of its work\n${NB(6)}units (name which)`), 'the multi-unit label, wrapped');
-    assert.match(out, /On the roadmap in "mvp", waiting with its 2 other items/, 'the plural form');
+    assert.match(out, /^=== DATA [^\n]*===\nwork_units: mvp-core, mvp-2\n/, 'the units the delivery row pulls into ride DATA, never the label');
+    assert.ok(out.includes(`Into the work underway — a new topic in one of its\n${NB(13)}work units (name which)`), 'the multi-unit label, wrapped');
+    assert.ok(out.includes(`On the roadmap in "mvp", waiting with its 2 other\n${NB(13)}items`), 'the plural form');
   });
 
   it('roadmap-add-gate: fully-in-delivery renders the strict two-way menu naming the unit', () => {
@@ -5159,19 +5160,33 @@ describe('roadmap surfaces', () => {
       },
     }, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /^=== MENU: roadmap add gate/);
+    assert.match(out, /^=== DATA [^\n]*===\nwork_units: mvp\n\n=== MENU: roadmap add gate/);
     assert.match(out, /"mvp" is being built right now\.\n\n\*\*`◆ Where does this go\?`\*\*/);
-    assert.match(out, /Into the work underway — a new topic in "mvp"/);
-    assert.match(out, /`2`.*Another horizon/);
-    assert.ok(!out.includes('On the roadmap in'), 'no waiting side-door into a fully-delivered horizon');
+    assert.match(out, /\*\*`d\/delivery`\*\* → Into the work underway — a new topic in "mvp"/);
+    assert.match(out, /\*\*`h\/horizon`\*\* +→ Another horizon/);
+    assert.ok(!out.includes('w/waiting') && !out.includes('On the roadmap in'), 'no waiting side-door into a fully-delivered horizon');
   });
 
-  it('roadmap-add-gate: a partly-composed horizon keeps the waiting option', () => {
+  it('roadmap-add-gate: a partly-composed horizon keeps the waiting option — every row keyed by its word', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /"mvp" is partly being built\.\n\n\*\*`◆ Where does this go\?`\*\*/);
-    assert.match(out, /On the roadmap in "mvp", waiting with its 1 other item/);
-    assert.match(out, /`3`.*Another horizon/);
+    assert.strictEqual(out, [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      'work_units: mvp',
+      '',
+      "=== MENU: roadmap add gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '"mvp" is partly being built.',
+      '',
+      '**`◆ Where does this go?`**',
+      '',
+      '**`d/delivery`** → Into the work underway — a new topic in "mvp"',
+      '**`w/waiting`**  → On the roadmap in "mvp", waiting with its 1 other',
+      `${NB(13)}item`,
+      '**`h/horizon`**  → Another horizon (name it)',
+      '**Ask**        → Talk it through first',
+      '',
+    ].join('\n'));
   });
 
   it('roadmap-add-gate: a long horizon name stays in the statement — the question keeps its glyph', () => {
@@ -7002,12 +7017,30 @@ describe('render — the adopted phase gates', () => {
     }), /"names" must be a non-empty array of topic names/);
   });
 
-  it('external-dependency-gate: the blocking gate is static, the pick reads its descriptions from the plan', () => {
-    const blocking = renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'blocking' });
-    assert.match(blocking, /MENU: blocking dependencies gate/);
-    assert.match(blocking, /`◆ How would you like to proceed\?`/);
-    assert.match(blocking, /\*\*`s\/satisfied`\*\* → Mark a dependency as satisfied externally/);
-    assert.match(blocking, /\*\*`i\/implement`\*\* → Exit to implement blocking dependencies first/);
+  it('external-dependency-gate: the blocking gate stands beneath the named set, the pick reads its descriptions from the plan', () => {
+    const blocking = renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'auth-flow,data-model',
+    });
+    assert.strictEqual(blocking, [
+      '=== DISPLAY: missing dependencies (emit verbatim as a code block) ===',
+      'Missing Dependencies',
+      '',
+      '  Data Model',
+      '  ├─ the shared row shape',
+      '  └─ No plan exists',
+      '',
+      '  Auth Flow',
+      '  ├─ session tokens',
+      '  └─ Waiting on auth-flow:auth-1-2',
+      '',
+      "=== MENU: blocking dependencies gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ How would you like to proceed?`**',
+      '',
+      '**`s/satisfied`** → Mark a dependency as satisfied externally',
+      '**`i/implement`** → Exit to implement blocking dependencies first',
+      '',
+    ].join('\n'), 'no-plan dependencies first, then those waiting on a task');
 
     const pick = renderSurface(dir, 'external-dependency-gate', {
       dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model,auth-flow',
@@ -7023,9 +7056,11 @@ describe('render — the adopted phase gates', () => {
     ].join('\n'));
   });
 
-  it('external-dependency-gate: refuses a foreign name, an empty set and a non-planning address', () => {
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'pick' }),
-      /--blocking <topic,topic,…> is required/);
+  it('external-dependency-gate: refuses a foreign name, an empty set, a dependency that does not block and a non-planning address', () => {
+    for (const variant of ['blocking', 'pick']) {
+      assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant }),
+        /--blocking <topic,topic,…> is required/);
+    }
     assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
       dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'ghost',
     }), /"ghost" is not an external dependency of "checkout"/);
@@ -7033,6 +7068,27 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.planning\.<topic>, got phase "implementation"/);
     assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'nope' }),
       /--variant must be "blocking" or "pick"/);
+    writeManifest(dir, 'pay', {
+      phases: {
+        planning: {
+          items: {
+            checkout: {
+              status: 'in-progress',
+              external_dependencies: {
+                billing: { description: 'invoices', state: 'satisfied_externally' },
+                reports: { description: 'the export', state: 'resolved' },
+              },
+            },
+          },
+        },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'billing',
+    }), /"billing" is satisfied_externally — only an unresolved or resolved dependency blocks/);
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'reports',
+    }), /"reports" is resolved but names no internal_id/);
   });
 
   it('checkpoint-files-gate: the analysis loop\'s static stop', () => {

@@ -222,10 +222,11 @@ function checkNoProseMenus(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 4 — Banned STOP variants must not appear.
+// Check 4 — Banned STOP variants must not appear, a bare "STOP for the …"
+// folded into a sentence included.
 // ---------------------------------------------------------------------------
 
-const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.'];
+const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.', 'STOP for the'];
 
 function checkBannedStop(files) {
   const out = [];
@@ -666,7 +667,7 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-process/references/background-agent-surfacing.md': 2,
   'skills/workflow-discussion-process/references/perspective-agents.md': 1,
-  'skills/workflow-implementation-entry/references/check-dependencies.md': 3,
+  'skills/workflow-implementation-entry/references/check-dependencies.md': 2,
   'skills/workflow-implementation-process/SKILL.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/task-loop.md': 2,
@@ -875,6 +876,25 @@ function checkSectionsDeferToMarker(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 22 — a flag carrying the user's words takes a quoted placeholder. A
+// horizon name or a summary holds spaces; bare, `--horizon {h}` word-splits
+// in the shell. Fenced commands and inline command spans alike.
+// ---------------------------------------------------------------------------
+
+const UNQUOTED_FREE_TEXT_FLAG = /--(?:horizon|summary) \{/;
+
+function checkQuotedFreeTextFlags(files) {
+  const out = [];
+  for (const file of files) {
+    readLines(file).forEach((line, i) => {
+      const hit = line.match(UNQUOTED_FREE_TEXT_FLAG);
+      if (hit) out.push({ file, line: i + 1, message: `unquoted free-text flag value "${hit[0]}…" — quote the placeholder ("{…}")` });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -897,6 +917,7 @@ const CHECKS = [
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
   ['20: footerless load directives', checkFooterlessLoads],
   ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
+  ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1540,6 +1561,28 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
     const v = checkSectionsDeferToMarker([restated]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17], `each restating sentence is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /restates its marker's form/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
+  });
+});
+
+test('check 22 (quoted free-text flags) — catches a bare horizon or summary placeholder, fenced or inline, permits the quoted form', () => {
+  withTemp((dir) => {
+    const quoted = write(dir, 'skills/x/quoted.md', [
+      '```bash',
+      'node engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}"',
+      '```',
+      'Add it: `roadmap add {name} --horizon "{h}" --summary "{one-liner}"`.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkQuotedFreeTextFlags([quoted]).length, 0, 'the quoted form is clean');
+
+    const bare = write(dir, 'skills/x/bare.md', [
+      '```bash',
+      'node engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}"',
+      '```',
+      'Add it: `roadmap edit {name} --summary {one-liner}`.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkQuotedFreeTextFlags([bare]).map((v) => v.line), [2, 4]);
   });
 });
 

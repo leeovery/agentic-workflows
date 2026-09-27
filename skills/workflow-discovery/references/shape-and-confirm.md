@@ -40,6 +40,8 @@ The work type is committed. Set `work_type`; compile a one-line `description` fr
 
 #### If `other`
 
+When the reply names no shape — the choice alone — ask what it is and **STOP.** Wait for user response.
+
 Take the user's call as authoritative — adjust the read without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm).
 
 **If the settled read is the product road:**

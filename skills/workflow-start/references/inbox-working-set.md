@@ -22,7 +22,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path
 
 The response carries demarcated sections:
 
-- **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path  — title`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the set menu. Emit verbatim per its marker. The `w/work` option renders only for a type-uniform set.

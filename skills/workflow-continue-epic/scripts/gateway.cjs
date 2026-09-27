@@ -259,20 +259,19 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`unaccounted_discussions: ${d.unaccounted_discussions.join(', ') || '(none)'}`);
   dataLines.push(`reopened_discussions: ${d.reopened_discussions.join(', ') || '(none)'}`);
   dataLines.push(`spec_blocked: ${d.spec_blocked.map((b) => `${b.name} (${b.by.join(', ')})`).join(', ') || '(none)'}`);
-  dataLines.push('ACTIONS (key  action  topic  → route):');
-  for (const k of menu.keys) {
-    let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  → ${k.route || '(internal)'}`;
-    if (k.recommended) line += '  (recommended)';
+  dataLines.push(...engine.project.actionsTable(['action', 'topic', '→ route'], menu.keys, (k) => {
+    const cells = [k.action, k.topic || '—', `→ ${k.route || '(internal)'}`];
+    if (k.recommended) cells.push('(recommended)');
     if (k.in_session) {
       const holder = k.session_holder ? `${k.session_holder.work_unit}/${k.session_holder.topic}, ` : '';
       // A code entry reads as the checkout's slot, not this topic's session:
       // its own marker keeps the menu's in-session gate from firing, because
       // the entry skill's code gate owns that stop.
       const label = k.code_session ? 'code session' : 'in session';
-      line += `  (${label}: ${holder}last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
+      cells.push(`(${label}: ${holder}last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`);
     }
-    dataLines.push(line);
-  }
+    return cells;
+  }));
 
   const display = engine.project.epicDashboard(e.name, d, { newArrivals, presence });
   const key = engine.project.epicKey(d);
@@ -329,14 +328,12 @@ function subView(workUnit, projection) {
     .filter((r) => !engine.presence.ownsRow(r));
   const view = projection(e.name, e.detail, { presence });
 
-  const dataLines = [`work_unit: ${e.name}`];
-  dataLines.push('ACTIONS (key  action  topic  phase  → route):');
-  for (const k of view.keys) {
-    let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.phase || '—'}  → ${k.route || '(internal)'}`;
-    if (k.dep) line += `  (dep: ${k.dep})`;
-    if (k.item) line += `  (item: ${k.item})`;
-    dataLines.push(line);
-  }
+  const dataLines = [
+    `work_unit: ${e.name}`,
+    ...engine.project.actionsTable(['action', 'topic', 'phase', '→ route'], view.keys, (k) => [
+      k.action, k.topic || '—', k.phase || '—', `→ ${k.route || '(internal)'}`, ...(k.dep ? [`(dep: ${k.dep})`] : []), ...(k.item ? [`(item: ${k.item})`] : []),
+    ]),
+  ];
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
