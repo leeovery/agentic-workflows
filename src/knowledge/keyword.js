@@ -3,8 +3,17 @@
 // The store's keyword side: the one tokenizer an index and a query share, each
 // chunk's term counts, and BM25 over them — every field scored on its own.
 
+const { stem } = require('./stemmer');
+
 /** The fields a keyword search scores, each with its own length statistics. */
 const FIELDS = ['content', 'source_file', 'id'];
+
+/**
+ * The version of the terms a chunk carries, recorded in the store's file. A
+ * change to the tokenizer or the fields takes the next, and a store recording
+ * another re-derives every chunk's terms from its text.
+ */
+const TOKENIZER_VERSION = 2;
 
 const K1 = 1.2;
 const B = 0.75;
@@ -13,8 +22,28 @@ const SPLITTER = /[^a-z0-9_'-]+/;
 const ACCENTED = /[àèéìòóù]/g;
 const UNACCENTED = { à: 'a', è: 'e', é: 'e', ì: 'i', ò: 'o', ó: 'o', ù: 'u' };
 
+/** Lucene's English stop words. */
+const STOP_WORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not',
+  'of', 'on', 'or', 'such', 'that', 'the', 'their', 'then', 'there', 'these', 'they', 'this', 'to', 'was',
+  'will', 'with',
+]);
+
+/** @type {Map<string, string>} */
+const stems = new Map();
+
+/** @param {string} word */
+function stemOf(word) {
+  let stemmed = stems.get(word);
+  if (stemmed === undefined) {
+    stemmed = stem(word);
+    stems.set(word, stemmed);
+  }
+  return stemmed;
+}
+
 /**
- * Every token of `text`, in order, repeats kept.
+ * Every word of `text` but the stop words, stemmed, in order, repeats kept.
  * @param {string} text
  * @returns {string[]}
  */
@@ -23,7 +52,8 @@ function tokenize(text) {
     .toLowerCase()
     .replace(ACCENTED, (letter) => UNACCENTED[letter])
     .split(SPLITTER)
-    .filter(Boolean);
+    .filter((word) => word && !STOP_WORDS.has(word))
+    .map(stemOf);
 }
 
 /** The words a store's chunks hold, each with its id — the position it was first added at. */
@@ -185,4 +215,4 @@ function score(index, vocabulary, query, admits) {
   return scores;
 }
 
-module.exports = { FIELDS, Vocabulary, tokenize, termsOf, compact, indexOf, score };
+module.exports = { FIELDS, TOKENIZER_VERSION, Vocabulary, tokenize, termsOf, compact, indexOf, score };

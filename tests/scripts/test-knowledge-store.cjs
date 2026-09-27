@@ -163,10 +163,23 @@ describe('knowledge store — keyword search', () => {
     assert.deepStrictEqual(store.searchKeyword(db, { term: 'nothing here' }), []);
   });
 
-  it('matches a word only by an identical word — never by a prefix', () => {
-    const db = storeOf(['a', 'limiting throttles'], ['b', 'limit throttle']);
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'limit' }).map((h) => h.id), ['b']);
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'throttles' }).map((h) => h.id), ['a']);
+  it('matches a word by its stem — never by a prefix', () => {
+    const db = storeOf(['a', 'limiting'], ['b', 'limitless']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'limits' }).map((h) => h.id), ['a']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'limitless' }).map((h) => h.id), ['b']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'limi' }), []);
+  });
+
+  it('drops the stop words from a chunk and from a query', () => {
+    const db = storeOf(['a', 'the queue is full'], ['b', 'queue queue']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'the is' }), []);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'the queue' }), store.searchKeyword(db, { term: 'queue' }));
+    assert.strictEqual(scores(store.searchKeyword(db, { term: 'queue' })).a, bm25({ count: 1, matching: 2, size: 2, length: 2, average: 2 }));
+  });
+
+  it('searches the content, the source path and the chunk id', () => {
+    const db = storeOf(['content', 'alpha'], ['path', 'beta', { source_file: 'x/alpha.md' }], ['alpha', 'gamma', { source_file: 'x/id.md' }]);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['alpha', 'content', 'path']);
   });
 
   it('returns hits in the chunk\'s shape, with a score', () => {
@@ -268,9 +281,14 @@ describe('knowledge store — keyword search', () => {
 
 describe('knowledge store — tokenizer', () => {
   it('lowercases, folds à è é ì ò ó ù, splits on all but a-z, digits, _, \' and -, and keeps repeats', () => {
-    assert.deepStrictEqual(tokenize("Hello, World! It's rate-limiting_v2 — hello ÀÉÌ"), ['hello', 'world', "it's", 'rate-limiting_v2', 'hello', 'aei']);
+    assert.deepStrictEqual(tokenize("Hello, World! Rate-limit_v2 — hello ÀÉÌ"), ['hello', 'world', 'rate-limit_v2', 'hello', 'aei']);
     assert.deepStrictEqual(tokenize('naïve über'), ['na', 've', 'ber'], 'an accent the split drops splits the word');
     assert.deepStrictEqual(tokenize('  ...  '), []);
+  });
+
+  it('drops Lucene\'s English stop words, then stems each word with Porter2', () => {
+    assert.deepStrictEqual(tokenize('The limits of such throttling are not in the queues'), ['limit', 'throttl', 'queue']);
+    assert.deepStrictEqual(tokenize('theirs'), ['their'], 'a stop word is a whole word, matched before the stem');
   });
 });
 
@@ -464,6 +482,44 @@ describe('knowledge store — the file', () => {
       assert.throws(() => store.loadStore(file), { message: `loadStore: corrupted store file at ${file}: ${problem}` });
     });
   }
+
+  /** A store written before its file recorded a tokenizer: Orama's splitter alone, no stop words, no stems. */
+  const PRE_VERSION_STORE = path.resolve(__dirname, '..', 'fixtures', 'knowledge', 'store-before-tokenizer-version.bin');
+
+  /** The chunks the pre-version store holds, stored afresh under this tokenizer. */
+  function preVersionChunks() {
+    const db = storeOf(['one', 'Rate limiting throttles the token refreshes'], ['two', 'The queue drains at the edge']);
+    store.insertDocument(db, makeDoc({ id: 'three', content: 'Limited to keywords, and never embedded' }));
+    return db;
+  }
+
+  it('loads a store another tokenizer wrote retokenized — its terms re-derived from its text, its vectors as they were', () => {
+    fs.copyFileSync(PRE_VERSION_STORE, file);
+    const loaded = store.loadStore(file);
+    const fresh = preVersionChunks();
+
+    assert.strictEqual(loaded.retokenized, true);
+    assert.deepStrictEqual(store.allChunks(loaded), store.allChunks(fresh));
+    assert.deepStrictEqual(store.vectorsByContentHash(loaded), store.vectorsByContentHash(fresh));
+    assert.deepStrictEqual(store.searchKeyword(loaded, { term: 'limits' }).map((h) => h.id).sort(), ['one', 'three']);
+    assert.deepStrictEqual(store.searchKeyword(loaded, { term: 'the' }), []);
+    for (const term of ['limits', 'throttle token', 'edge queues']) {
+      assert.deepStrictEqual(store.searchKeyword(loaded, { term }), store.searchKeyword(fresh, { term }), term);
+    }
+  });
+
+  it('saves a retokenized store\'s terms with its next write', () => {
+    fs.copyFileSync(PRE_VERSION_STORE, file);
+    const loaded = store.loadStore(file);
+    store.saveStore(loaded, file);
+    assert.strictEqual(loaded.retokenized, false);
+
+    const again = store.loadStore(file);
+    const fresh = preVersionChunks();
+    assert.strictEqual(again.retokenized, false);
+    assert.deepStrictEqual(store.searchKeyword(again, { term: 'limits' }), store.searchKeyword(fresh, { term: 'limits' }));
+    assert.deepStrictEqual(store.vectorsByContentHash(again), store.vectorsByContentHash(fresh));
+  });
 
   it('stamps the file as it stands, and nothing where there is none', () => {
     assert.strictEqual(store.storeStamp(file), null);
