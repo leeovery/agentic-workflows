@@ -171,6 +171,15 @@ function cmdAssert(argv) {
   // absence is a broken hook, not a quiet walk. Judging without it would
   // fall back to whatever the walker chose to say at the end — the very
   // summary this record exists to replace.
+  // The walk log and the recorded stop are written by the same hook as
+  // the walker stops, so a record with no stop yet is a walk still in
+  // progress — a message the walker handed back early is not its end.
+  if (!walk && !rows.some((r) => r.event === 'SubagentStop')) {
+    die(`the walker has not stopped — no SubagentStop in ${path.join(dir, worlds.ACTION_LOG)}, `
+      + 'so the walk is still running (a message it handed back before stopping is not '
+      + 'its end).\nWait for the walker to finish, then run assert again. Never judge or '
+      + 'destroy the world while it runs.');
+  }
   if (!walk) {
     die(`no walk log at ${path.join(dir, worlds.WALK_LOG)} — the prose-walker `
       + 'SubagentStop hook did not fire, so there is no turn-by-turn record of '
