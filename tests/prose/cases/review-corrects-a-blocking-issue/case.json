@@ -38,7 +38,9 @@
   "stubs": {
     "review-task-1-1-blocks-on-card-only": "when the task verifier for task pay-1-1 is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block",
     "review-task-1-2-prescribes-a-comment-for-a-defect": "when the task verifier for task pay-1-2 is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block",
-    "change-set-section-clean": "when a change-set verifier for any section — the payment-intent section, the capture section, the test surface — is dispatched via the Task tool; one firing per section — write the content below to that section's file with its SECTION line filled and return the status stated",
+    "change-set-payment-intent-clean": "when the change-set verifier for the payment-intent section is dispatched via the Task tool — write the content below to that section's file with its SECTION line filled and return the status stated",
+    "change-set-capture-clean": "when the change-set verifier for the capture section is dispatched via the Task tool — write the content below to that section's file with its SECTION line filled and return the status stated",
+    "change-set-test-surface-clean": "when the change-set verifier for the test surface is dispatched via the Task tool — write the content below to that section's file with its SECTION line filled and return the status stated",
     "finding-assessed-blocking-and-remedy": "when a workflow-review-finding-assessor agent is dispatched",
     "finding-guards-checked-blocking-and-remedy": "when a workflow-review-finding-guards agent is dispatched",
     "finding-relationships-pairs-blocking": "when the workflow-review-finding-relationships agent is dispatched",
