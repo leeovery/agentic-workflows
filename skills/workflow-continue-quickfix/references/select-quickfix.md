@@ -8,10 +8,10 @@
 
 Display active quick-fixes and let the user select one.
 
-Run the index dump — the emission draws from this response, never a carried one:
+Fetch the selection — a fresh index dump, then the pick list and its menu:
 
 ```bash
-node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs
+node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs select
 ```
 
 **If it carries no selection sections** (no active quick-fixes remain — possible after a loop-back cancelled or completed the last one): render the caller's no-quick-fixes-in-progress terminal from its Step 2 and stop there.
@@ -32,14 +32,10 @@ Set work_type filter = `quick-fix`.
 
 → Load **[view-completed.md](../../workflow-start/references/view-completed.md)** and follow its instructions as written.
 
-Re-run discovery to refresh state after potential changes.
-
-→ Return to **A. Display and Select**.
+→ On return, return to **A. Display and Select**.
 
 #### If user chose `m/manage`
 
 → Load **[manage-work-unit.md](../../workflow-start/references/manage-work-unit.md)** and follow its instructions as written.
 
-Re-run discovery to refresh state after potential changes.
-
-→ Return to **A. Display and Select**.
+→ On return, return to **A. Display and Select**.

@@ -217,11 +217,13 @@ function auditState(dir, label) {
   }
 
   // Every navigation surface discovers and formats without throwing — the
-  // menus must render whatever state the pipeline is in.
+  // menus must render whatever state the pipeline is in. The head insert is
+  // never a gate; a continue skill's pick menu is its select step's.
   for (const [name, gw] of Object.entries(GATEWAYS)) {
     const result = gw.discover(dir);
     assert.ok(result && typeof result === 'object', ctx(`${name} gateway returned nothing`));
-    gw.format(result);
+    assert.doesNotMatch(gw.format(result), /^=== MENU/m, ctx(`${name} head insert carries a gate`));
+    if (gw.select) gw.select(result);
   }
 }
 
@@ -521,6 +523,17 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   });
   assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
     /◆ Which output format\?[\s\S]*\*\*`1`\*\* → Sample Format/);
+
+  // The phase structure gate (define-phases B) sits under its tree; a
+  // `v/view full` shows the full structure in the tree's place and puts the
+  // gate back alone beneath it.
+  const phaseTree = sim.write(`.workflows/.cache/${wu}/planning/${topic}/phase-tree.json`,
+    { phases: [{ name: 'Foundation', detail: [['Goal', 'the core lands']] }] });
+  assert.match(sim.render(['phase-tree', `${wu}.planning.${topic}`, '--file', phaseTree, '--approve'], { expect: 'content' }),
+    /=== DISPLAY: phase tree[\s\S]*=== MENU: phase structure gate/);
+  const gateAlone = sim.render(['phase-tree', `${wu}.planning.${topic}`, '--menu-only'], { expect: 'content' });
+  assert.match(gateAlone, /^=== MENU: phase structure gate/);
+  assert.doesNotMatch(gateAlone, /DISPLAY: phase tree/);
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
@@ -1340,6 +1353,12 @@ describe('pipeline simulation', () => {
     // reactivated later.
     sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
+    // A signal over a map with nothing on it takes the map gate's empty
+    // branch: neither settled nor holding anything open, so no defer gate.
+    const emptyMap = mapState(sim.manifest(wu), 'beta');
+    assert.strictEqual(emptyMap.all_decided, false);
+    assert.deepStrictEqual(emptyMap.unresolved, []);
+    sim.refuses(['render', 'defer-gate', `${wu}.discussion.beta`], /nothing on "beta"'s map is undecided/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
     // Review arming: the first background review is free and snapshots the
     // map; after a completed cycle the next refuses until the Discussion Map
@@ -1754,6 +1773,9 @@ describe('pipeline simulation', () => {
     const grouping = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { status: 'proposed', 'sources.alpha.status': 'pending' } }]);
     sim.run(['manifest', 'apply', wu, '--file', grouping]);
+    // The reconcile moved the scenario, so the analysis exit routes on a
+    // fresh read: a proposed item standing lands on the groupings.
+    assert.match(SPEC_GATEWAY.scoped(sim.dir, wu), /^scenario: groupings$/m);
     const consult = sim.write(`.workflows/.cache/${wu}/specification/alpha/consult.json`,
       { consult: [{ name: 'beta', hint: 'the hand-off alpha owes' }] });
     assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.alpha`, '--variant', 'create', '--file', consult],
@@ -1787,6 +1809,9 @@ describe('pipeline simulation', () => {
        { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
     sim.run(['manifest', 'apply', wu, '--file', regroupOps]);
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.order, 1, 'regroup renumbers wholesale');
+    // A regroup whose every grouping maps to a started specification leaves
+    // nothing proposed: the analysis exit's fresh read lands on the specs menu.
+    assert.match(SPEC_GATEWAY.scoped(sim.dir, wu), /^scenario: specs-menu$/m);
     sim.run(['topic', 'supersede', wu, 'specification', 'alpha', '--by', 'unified']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.superseded_by, 'unified');
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
@@ -1869,6 +1894,12 @@ describe('pipeline simulation', () => {
     // While stale, the spec boundary keeps the spec actionable — Continuing,
     // never Refining/concluded — and the stale row rides the detail.
     const staleView = specDetail(sim.dir, wu);
+    // The entry routes on its scoped read, which carries no gate: the specs
+    // menu is fetched by the display that shows it.
+    assert.strictEqual(staleView.scenario, 'specs-menu');
+    const routingRead = SPEC_GATEWAY.scoped(sim.dir, wu);
+    assert.match(routingRead, /^scenario: specs-menu$/m);
+    assert.doesNotMatch(routingRead, /^=== (MENU|DISPLAY|TITLE)/m);
     const unifiedRow = staleView.actionable.find((r) => r.name === 'unified');
     assert.ok(unifiedRow, 'staled spec stays actionable');
     assert.strictEqual(unifiedRow.verb, 'Continuing');
@@ -3783,13 +3814,19 @@ describe('pipeline simulation', () => {
       'probe: nothing owed — the satisfied classification');
     assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
 
-    // The defer batch the closing gates use: one uniform write settles the
-    // stragglers and answers with the map's convergence state once.
+    // The map gate over the user's signal: the defer gate is fetched where it
+    // is shown, the map above its consent; the batch its yes runs settles the
+    // stragglers in one uniform write and answers with the map's convergence
+    // state once — after which there is nothing left to defer.
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-a']);
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-b']);
+    const deferGate = sim.render(['defer-gate', `${wu}.discussion.alpha`], { expect: 'content' });
+    assert.ok(deferGate.indexOf('=== DISPLAY: discussion map') < deferGate.indexOf('=== MENU: defer gate'), 'the map, then the consent');
+    assert.match(deferGate, /There are still 2 subtopics not yet decided/);
     const deferredBatch = sim.run(['discussion-map', 'set', wu, 'alpha', 'edge-a=deferred', 'edge-b=deferred']);
     assert.deepStrictEqual(deferredBatch.set, { 'edge-a': 'deferred', 'edge-b': 'deferred' });
     assert.strictEqual(deferredBatch.all_decided, true, 'the batch response carries convergence — no follow-up read');
+    sim.refuses(['render', 'defer-gate', `${wu}.discussion.alpha`], /nothing on "alpha"'s map is undecided/);
 
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
@@ -3915,6 +3952,10 @@ describe('pipeline simulation', () => {
     // recorded. Its screens are content, so they render at any state.
     assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
     assert.match(sim.render(['walkthrough-home'], { expect: 'content' }), /What would you like to do\?/);
+    // A card is also shown mid-conversation, so it carries no gate; the help
+    // flow fetches the card's menu beneath it.
+    assert.doesNotMatch(sim.render(['walkthrough-topic', '--name', 'the-inbox'], { expect: 'content' }), /^=== MENU/m);
+    assert.match(sim.render(['walkthrough-topic', '--name', 'the-inbox', '--menu-only'], { expect: 'content' }), /t\/topics/);
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
     sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
     const answer = sim.run(['walkthrough', 'record', 'walked']);

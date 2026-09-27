@@ -1721,6 +1721,57 @@ describe('render research-conclude-gate', () => {
   });
 });
 
+describe('render defer-gate', () => {
+  let dir;
+  const withSubtopics = (subtopics) => writeManifest(dir, 'pay', {
+    phases: {
+      research: { items: { checkout: { status: 'completed' } } },
+      discussion: { items: { checkout: { status: 'in-progress', subtopics } } },
+    },
+  });
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('draws the map, then the consent over what it holds undecided', () => {
+    withSubtopics({
+      'token-refresh': { status: 'exploring', parent: null },
+      'session-storage': { status: 'decided', parent: null },
+    });
+    assert.strictEqual(renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }), [
+      '=== DISPLAY: discussion map (emit verbatim as a code block) ===',
+      'Discussion Map — Checkout (2 subtopics — 1 decided · 1 exploring)',
+      '  ├─ ✓ Session Storage    [decided]',
+      '  └─ ◐ Token Refresh      [exploring]',
+      "=== MENU: defer gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 subtopic not yet decided — shown on the map above.',
+      '',
+      '**`◆ Defer and conclude?`**',
+      '',
+      '**`y/yes`** → Defer it and move toward concluding',
+      '**`n/no`**  → Continue discussing',
+      '',
+    ].join('\n'));
+  });
+
+  it('counts every subtopic still open', () => {
+    withSubtopics({ a: { status: 'pending', parent: null }, b: { status: 'converging', parent: null } });
+    const out = renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' });
+    assert.match(out, /There are still 2 subtopics not yet decided — shown on the map above\./);
+    assert.match(out, /Defer them and move toward concluding/);
+  });
+
+  it('refuses a settled map, another phase, and a topic with no discussion', () => {
+    withSubtopics({ a: { status: 'decided', parent: null }, b: { status: 'deferred', parent: null } });
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }),
+      /render defer-gate: nothing on "checkout"'s map is undecided — there is nothing to defer/);
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.research.checkout' }),
+      /render defer-gate: address must be <wu>\.discussion\.<topic> — the map is the discussion's; got phase "research"/);
+    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.ghost' }),
+      /render defer-gate: no discussion item "ghost" — no map to defer from/);
+  });
+});
+
 describe('render research-threads', () => {
   let dir;
   beforeEach(() => {
@@ -4062,7 +4113,17 @@ describe('render phase-tree', () => {
     assert.ok(lines[goalIdx + 1].startsWith('   │  goal'), 'wrapped detail carries the gutter');
   });
 
+  it('--menu-only is the structure gate alone — byte-identical to the one --approve appends, no payload read', () => {
+    const file = writePayload(dir, 'ph.json', { phases: [{ name: 'X', detail: [['Goal', 'g']] }] });
+    const approve = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
+    const gate = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', 'menu-only': '1' });
+    assert.ok(gate.startsWith('=== MENU: phase structure gate'), gate);
+    assert.strictEqual(approve.slice(approve.indexOf('=== MENU: phase structure gate')), gate);
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning', 'menu-only': '1' }), /address must be <work_unit>\.<phase>\.<topic>/);
+  });
+
   it('validates loudly', () => {
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'a.json', { phases: [] }) }), /"phases" must be a non-empty array/);
     assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'b.json', { phases: [{ name: 'X', detail: [] }] }) }), /"detail" must be a non-empty array/);
   });
@@ -4092,7 +4153,7 @@ describe('selection projection', () => {
       [{ name: 'crash', phase_label: 'specification (in-progress)' }, { name: 'leak', phase_label: 'investigation (in-progress)' }],
       { completed: 1, cancelled: 1 });
     assert.strictEqual(out, [
-      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '=== DISPLAY: selection (emit verbatim as a code block) ===',
       '2 bugfix(es) in progress',
       '  ├─ 1. Crash',
       '  │   Specification (In-Progress)',
@@ -4101,7 +4162,7 @@ describe('selection projection', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
@@ -4391,6 +4452,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
     const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
     assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
+    assert.ok(run(['phase-tree', 'pay.planning.pay', '--menu-only']).startsWith('=== MENU: phase structure gate'));
     const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
     assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
@@ -4907,7 +4969,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5690,9 +5752,9 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
   });
 
-  it('a card is its heading, its content in file order, then the menu every card wears', () => {
+  it('a card is its heading, then its content in file order — no gate; --menu-only is the menu every card wears', () => {
     const out = renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
-    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough card']);
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose']);
     assert.ok(out.startsWith([
       "=== TITLE (emit verbatim as markdown — the view's chrome heading) ===",
       `# **\`■ Help · ${cardTitle(1)}\`**`,
@@ -5710,7 +5772,7 @@ describe('walkthrough surfaces', () => {
       cursor = at;
     }
 
-    assert.strictEqual(menuOf(out), [
+    assert.strictEqual(renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': '1' }), [
       "=== MENU: walkthrough card (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`◆ What next?`**',
@@ -5722,13 +5784,15 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
   });
 
-  it('every card renders, and --menu-only is the keys back exactly as they stood', () => {
+  it('every card renders without a gate, and every card wears the same menu', () => {
+    const menus = new Set();
     for (const slug of SLUGS) {
-      const full = renderSurface(dir, 'walkthrough-topic', { name: slug });
+      assert.ok(!markers(renderSurface(dir, 'walkthrough-topic', { name: slug })).some((m) => m.startsWith('MENU')), slug);
       const menuOnly = renderSurface(dir, 'walkthrough-topic', { name: slug, 'menu-only': '1' });
-      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough card']);
-      assert.strictEqual(menuOnly, menuOf(full), slug);
+      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough card'], slug);
+      menus.add(menuOnly);
     }
+    assert.strictEqual(menus.size, 1);
   });
 
   it('refuses a missing or unknown card, naming the ones there are', () => {

@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: discussion projections — the Discussion Map view over one
-// discussion item's subtopics (see ../discussion-map.cjs).
+// discussion item's subtopics (see ../discussion-map.cjs), and the defer gate
+// the close draws over it.
 //
 // Deterministic: same manifest, same string. Rows hang off the header via the
 // kernel tree (├─/└─); rows sort by BREAKDOWN_ORDER rank (settled first, then
@@ -14,7 +15,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
-const { section, menuFrame, cmdOption } = require('./surfaces.cjs');
+const { section, menu, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 /** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
@@ -89,28 +90,26 @@ function discussionMap(topic, manifest) {
 }
 
 /**
- * The defer gate — the map snapshot appends it while undecided subtopics
- * remain; the concluding flow is the only prescribed emission point. The
- * undecided subtopics themselves are on the DISPLAY map above the menu.
- * @param {number} unresolvedCount  length of mapState().unresolved, > 0
- * @returns {string} one labelled MENU section
+ * The defer gate: the map, then the consent to set aside every subtopic still
+ * undecided on it — the statement points at the map drawn above it.
+ * @param {string} topic
+ * @param {object} manifest  a map with at least one undecided subtopic
+ * @returns {string} the map DISPLAY section and the MENU section
  */
-function discussionDeferGate(unresolvedCount) {
-  const one = unresolvedCount === 1;
-  return section(
-    'MENU: defer gate',
-    "emit verbatim as markdown only at the concluding step, then STOP for the user's response",
-    menuFrame([
+function discussionDeferGate(topic, manifest) {
+  const count = mapState(manifest, topic).unresolved.length;
+  const one = count === 1;
+  return section('DISPLAY: discussion map', 'emit verbatim as a code block', discussionMap(topic, manifest))
+    + section('MENU: defer gate', "emit verbatim as markdown, then STOP for the user's response", menu(
       one
         ? 'There is still 1 subtopic not yet decided — shown on the map above.'
-        : `There are still ${unresolvedCount} subtopics not yet decided — shown on the map above.`,
-      '',
-      '**`◆ Defer and conclude?`**',
-      '',
-      cmdOption('y', 'yes', one ? 'Defer it and move toward concluding' : 'Defer them and move toward concluding'),
-      cmdOption('n', 'no', 'Continue discussing'),
-    ]),
-  );
+        : `There are still ${count} subtopics not yet decided — shown on the map above.`,
+      [
+        cmdOption('y', 'yes', one ? 'Defer it and move toward concluding' : 'Defer them and move toward concluding'),
+        cmdOption('n', 'no', 'Continue discussing'),
+      ],
+      { question: 'Defer and conclude?' },
+    ));
 }
 
 module.exports = { discussionMap, discussionDeferGate };

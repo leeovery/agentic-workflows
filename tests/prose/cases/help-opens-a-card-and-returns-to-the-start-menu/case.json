@@ -29,6 +29,7 @@
       "render walkthrough-home",
       "render walkthrough-topics",
       "render walkthrough-topic --name kinds-of-work",
+      "render walkthrough-topic --name kinds-of-work --menu-only",
       "engine.cjs session repair"
     ],
     "calls_exclude": [
@@ -40,6 +41,7 @@
       "render walkthrough-home",
       "render walkthrough-topics",
       "render walkthrough-topic --name kinds-of-work",
+      "render walkthrough-topic --name kinds-of-work --menu-only",
       "render walkthrough-home",
       "engine.cjs session repair",
       "gateway.cjs"

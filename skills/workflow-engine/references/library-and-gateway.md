@@ -106,7 +106,7 @@ engine.project.startOverview(detail)              // → Workflow Overview displ
 engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options
 engine.project.emptyOverview(detail)              // → empty-state overview block
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
-engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies
+engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
 engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
 engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb
@@ -129,7 +129,7 @@ engine.project.specificationCompletedMenu(detail) // → { keys, title, display,
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
 engine.gateway.dataBlock(obj | string)            // → demarcated DATA section
 engine.gateway.displayBlock(text)                 // → demarcated DISPLAY section
-engine.gateway.menuBlock(text)                    // → demarcated MENU section
+engine.gateway.menuBlock(text)                    // → demarcated MENU section ('' for an empty menu — no gate, no section)
 ```
 
 `wrapWithPrefix` throws if the prefix leaves no room within the width — a misconfigured gutter fails loudly rather than silently overflowing.
@@ -140,10 +140,10 @@ Each skill's adapter script registers handlers and calls `runGateway`:
 
 ```js
 engine.gateway.runGateway({
-  index: () => ...,          // no-args call — the head-of-skill `!` insert
+  index: () => ...,          // no-args call — the head-of-skill `!` insert; never a gate
   view:  (wu) => ...,        // one snapshot: DATA + DISPLAY + MENU
   // skill-specific sub-views by verb; `fallback` catches unmatched argv
 });
 ```
 
-The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for.
+The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for. A MENU in a response is a live gate at that call, so a verb returns one only where the prose shows that gate at that call: the head insert runs before any step shows anything and carries none, and a gate a later step shows is that step's own verb (the continue skills' `select`).

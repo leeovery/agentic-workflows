@@ -42,18 +42,13 @@ Store work_unit for the handoff.
 
 #### If no `topic` (epic — scoped path)
 
-Render the scoped snapshot:
+Read the scoped state:
 
 ```bash
-node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
+node .claude/skills/workflow-specification-entry/scripts/gateway.cjs {work_unit}
 ```
 
-The output is one snapshot in up to three demarcated sections:
-
-- **DATA** — reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, the discussion/specification detail (statuses, sources, consult references with slice hints), and — for scenarios with a menu — the `ACTIONS` key table (`key  action  topic  verb`). Reason from it; never display or restate it.
-- **TITLE** / **DISPLAY** / **MENU** — the scenario's rendered surfaces. Never emitted from this call: the display reference each scenario routes to re-runs the view at its own emission point and emits from that response.
-
-A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+The output is one **DATA** section — the reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, and the discussion/specification detail (statuses, sources, consult references with slice hints). Reason from it; never display or restate it. A display reference a scenario routes to fetches its own snapshot where it shows it.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

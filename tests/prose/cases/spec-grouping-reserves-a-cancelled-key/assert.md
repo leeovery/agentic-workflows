@@ -1,6 +1,6 @@
 The prose should have taken this path:
 
-1. the scoped path (epic, no topic) renders the spec-entry snapshot:
+1. the scoped path (epic, no topic) reads the spec-entry routing state:
    both discussions concluded, nothing under `specifications:`, and
    `expansion` under `cancelled_specifications:` with both sources —
    the scenario is analyze, and prerequisites pass
@@ -20,7 +20,9 @@ The prose should have taken this path:
    reconcile commits, and the flow tells the user in one line that the
    grouping resembles the cancelled Expansion specification and that
    the epic menu's reactivate brings it back
-6. the groupings menu is presented and the walk stops there
+6. the flow reads the routing state afresh — the reconcile moved it —
+   and, the scenario now groupings, presents the groupings menu from the
+   display's own snapshot; the walk stops there
 
 Further claims about the end state:
 

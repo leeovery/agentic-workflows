@@ -23,10 +23,12 @@
   ],
   "invariants": {
     "calls_include": [
+      "workflow-specification-entry/scripts/gateway.cjs search-relevance",
       "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
       "presence scan search-relevance"
     ],
     "calls_in_order": [
+      "workflow-specification-entry/scripts/gateway.cjs search-relevance",
       "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
       "presence scan search-relevance"
     ],

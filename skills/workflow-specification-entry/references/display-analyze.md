@@ -8,7 +8,7 @@ Prompted when multiple completed discussions exist and none are in progress, no 
 
 ## A. Display
 
-Re-run the scoped snapshot — the emission draws from this response, never a carried one:
+Render the scoped snapshot:
 
 ```bash
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}

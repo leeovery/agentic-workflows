@@ -4,27 +4,25 @@
 
 ---
 
-Shows when proposed groupings exist (directly from routing) or after analysis completes. Each numbered item is a specification item from the manifest — proposed groupings and materialized specs alike. The tree, the menu, and the `ACTIONS` table share one ordering and numbering — they map 1:1.
+Shows when proposed groupings exist — reached from routing, or after an analysis that leaves some. Each numbered item is a specification item from the manifest — proposed groupings and materialized specs alike. The tree, the menu, and the `ACTIONS` table share one ordering and numbering — they map 1:1.
 
-## A. Display
+## A. Display and Menu
 
-Re-run the scoped snapshot — the emission draws from this response, never a carried one:
+Render the scoped snapshot:
 
 ```bash
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block.
+Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block, then the MENU section verbatim per its marker.
 
-→ Proceed to **B. Menu**.
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Selection**.
 
 ---
 
-## B. Menu
-
-Emit the MENU section verbatim as markdown (not a code block).
-
-**STOP.** Wait for user response.
+## B. Handle Selection
 
 Match the user's input to its `ACTIONS` entry by `key` — a number, or the command option's letter / long form. Every decision below reads the entry's `action` value, never its label text.
 
@@ -34,17 +32,19 @@ The entry's `topic` and `verb`, plus that item's DATA detail (sources, consult r
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 
+→ On return, return to **A. Display and Menu**.
+
 #### If `action` is `blocked_spec`
 
 The item's source discussions reopened — it cannot be entered until they re-conclude. Tell the user in one line which discussions hold it (the item's `blocked_by` in DATA names them) and that concluding those unlocks the spec, then re-present.
 
-→ Return to **B. Menu**.
+→ Return to **A. Display and Menu**.
 
 #### If `action` is `completed_menu`
 
 → Load **[display-completed-specs.md](display-completed-specs.md)** and follow its instructions as written.
 
-→ Return to **B. Menu**.
+→ On return, return to **A. Display and Menu**.
 
 #### If `action` is `unify`
 
@@ -52,7 +52,7 @@ The item's source discussions reopened — it cannot be entered until they re-co
 
 Do NOT proceed — reconcile step 6's invariant: an anchor is never overwritten by a proposed item, and a cancelled key is never reused. Tell the user in one line that the name is taken and which item holds it, then re-present.
 
-→ Return to **B. Menu**.
+→ Return to **A. Display and Menu**.
 
 **Otherwise:**
 
@@ -79,6 +79,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --stat
 Spec name: "Unified". Sources: all completed discussions.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
+
+→ On return, return to **A. Display and Menu**.
 
 #### If `action` is `reanalyze`
 

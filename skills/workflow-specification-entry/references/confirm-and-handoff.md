@@ -18,14 +18,22 @@ The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, 
 
 → Load **[confirm-unify.md](confirm-unify.md)** and follow its instructions as written.
 
+→ On return, return to caller.
+
 #### If verb is `Creating`
 
 → Load **[confirm-create.md](confirm-create.md)** and follow its instructions as written.
+
+→ On return, return to caller.
 
 #### If verb is `Continuing`
 
 → Load **[confirm-continue.md](confirm-continue.md)** and follow its instructions as written.
 
+→ On return, return to caller.
+
 #### If verb is `Refining`
 
 → Load **[confirm-refine.md](confirm-refine.md)** and follow its instructions as written.
+
+→ On return, return to caller.

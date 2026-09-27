@@ -14,20 +14,22 @@ Render the inbox pickup snapshot — re-run on every entry so archive and unarch
 node .claude/skills/workflow-start/scripts/gateway.cjs inbox
 ```
 
-The output is one snapshot in three demarcated sections:
+The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: `inbox_count`, `has_archived`, and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the numbered inbox list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the pickup menu. Emit verbatim as markdown (not a code block). The `a/archived` option renders only when the archived store has items.
+- **DISPLAY** — the numbered inbox list, or the empty line when the inbox holds nothing. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the pickup menu, present only when the inbox holds items. Emit verbatim as markdown (not a code block). The `a/archived` option renders only when the archived store has items.
 
-Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section (markdown), then the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 #### If `inbox_count` is 0
 
 → Return to caller.
 
 #### Otherwise
+
+Emit the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

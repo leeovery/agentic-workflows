@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: shared selection projection for the continue-* navigation skills — the
-// pick-list DISPLAY and MENU sections every type's gateway appends to its
-// index dump. One composition, five type configs: the clone-family factory
+// pick-list DISPLAY and MENU sections every type's gateway serves at its
+// select step. One composition, five type configs: the clone-family factory
 // for the selection step.
 // ---------------------------------------------------------------------------
 
@@ -54,10 +54,10 @@ const SELECT_CONFIG = {
 };
 
 /**
- * The selection step's deferred sections: the numbered pick-list display and
- * its menu. Epics sub-row on active phases; every other type on the
- * titlecased phase label. Empty units → empty string (the caller's flow
- * terminates on the zero case before selection).
+ * The select step's sections: the numbered pick-list display and its menu.
+ * Epics sub-row on active phases; every other type on the titlecased phase
+ * label. Empty units → empty string (the caller's flow terminates on the zero
+ * case before selection).
  * @param {string} type
  * @param {{name: string, phase_label?: string, active_phases?: string[], triage_phases?: string[]}[]} units
  * @param {{completed: number, cancelled: number}} counts
@@ -97,9 +97,9 @@ function selectionSections(type, units, counts) {
   if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage));
 
-  return section('DISPLAY: selection', 'emit verbatim as a code block only at the select step', disp.join('\n'))
+  return section('DISPLAY: selection', 'emit verbatim as a code block', disp.join('\n'))
     + '\n'
-    + section('MENU: selection', "emit verbatim as markdown only at the select step, then STOP for the user's response", menuFrame(menuLines));
+    + section('MENU: selection', "emit verbatim as markdown, then STOP for the user's response", menuFrame(menuLines));
 }
 
 /** Per-type wording for the invalid-selection terminal display. */

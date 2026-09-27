@@ -5,8 +5,8 @@
 // values come from the manifest (JSON state only — markdown artifacts are
 // never parsed), judgment content arrives as a validated JSON payload file,
 // and each surface returns demarcated sections the calling flow emits
-// verbatim at its prescribed moment. Gate-mode branching renders inside the
-// surface: the caller never chooses between gated and auto output.
+// verbatim beneath the call that fetched them. Gate-mode branching renders
+// inside the surface: the caller never chooses between gated and auto output.
 //
 // Surfaces read; they never write — with one exception. `code-gate`'s empty
 // path beats the addressed topic, because claiming the code slot and reading
@@ -37,6 +37,8 @@ const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_
 const { METADATA_FILE } = require('./kb.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
+const { mapState } = require('./discussion-map.cjs');
+const { discussionDeferGate } = require('./projections/discussion-map.cjs');
 const { latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
@@ -1627,18 +1629,35 @@ function authorTaskGate(cwd, { dotpath, m, total, title }) {
 // ---------------------------------------------------------------------------
 // phase-tree — the multi-phase structure display (D5): numbered phase nodes
 // with wrapped tree children, one visual grammar with the task list beneath.
-// `--approve` appends the phase-structure approval menu.
+// `--approve` appends the phase-structure approval menu; `--menu-only` is
+// that menu alone, put back beneath the full structure the flow shows in the
+// tree's place — no payload is read.
 // ---------------------------------------------------------------------------
+
+/** @returns {string} */
+function phaseStructureGate() {
+  return section(
+    'MENU: phase structure gate',
+    'emit verbatim as markdown, then STOP for the user\'s response',
+    menu('Approve this phase structure?', [
+      cmdOption('y', 'yes', 'Proceed to task breakdown'),
+      cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
+      promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
+      promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
+    ]),
+  );
+}
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string, approve?: string}} args
+ * @param {{dotpath: string, file?: string, approve?: string, 'menu-only'?: string}} args
  * @returns {string}
  */
 function phaseTree(cwd, args) {
   const { dotpath, file } = args;
-  if (!file) throw new Error('render phase-tree: --file <payload.json> is required');
   resolveAddress(cwd, dotpath, 'phase-tree');
+  if ('menu-only' in args) return phaseStructureGate();
+  if (!file) throw new Error('render phase-tree: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'phase-tree');
   if (!Array.isArray(p.phases) || p.phases.length === 0) {
     throw new Error('render phase-tree: "phases" must be a non-empty array of {name, detail?}');
@@ -1658,18 +1677,7 @@ function phaseTree(cwd, args) {
     if (i < count - 1) lines.push('');
   });
   const parts = [section('DISPLAY: phase tree', 'emit verbatim as a code block', lines.join('\n'))];
-  if ('approve' in args) {
-    parts.push(section(
-      'MENU: phase structure gate',
-      'emit verbatim as markdown, then STOP for the user\'s response',
-      menu('Approve this phase structure?', [
-        cmdOption('y', 'yes', 'Proceed to task breakdown'),
-        cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
-        promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
-        promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
-      ]),
-    ));
-  }
+  if ('approve' in args) parts.push(phaseStructureGate());
   return parts.join('\n');
 }
 
@@ -2719,6 +2727,29 @@ function closingGate(cwd, { dotpath, variant, reason }) {
   }
   const g = gate();
   return section(g.name, STOP_FOR_RESPONSE, menu(g.label, g.options, { question: g.question }));
+}
+
+// defer-gate — the discussion close's consent to set aside what the map still
+// holds undecided, over the map that shows it. Fetched where the user's own
+// signal meets an unsettled map; a settled map is never asked, so it refuses.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function deferGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'defer-gate');
+  if (phase !== 'discussion') {
+    throw new Error(`render defer-gate: address must be <wu>.discussion.<topic> — the map is the discussion's; got phase "${phase}"`);
+  }
+  if (!itemOf(manifest, 'discussion', topic)) {
+    throw new Error(`render defer-gate: no discussion item "${topic}" — no map to defer from`);
+  }
+  if (mapState(manifest, topic).unresolved.length === 0) {
+    throw new Error(`render defer-gate: nothing on "${topic}"'s map is undecided — there is nothing to defer`);
+  }
+  return discussionDeferGate(topic, manifest);
 }
 
 // ---------------------------------------------------------------------------
@@ -5780,8 +5811,8 @@ function walkthroughTopicsSurface(_cwd, _args) {
 
 /**
  * One reference card, addressed by the slug the topics menu's DATA table
- * gives for the number the reader pressed. `--menu-only` serves the return
- * from a question, as it does on a screen.
+ * gives for the number the reader pressed. `--menu-only` serves the card's
+ * menu alone, fetched by the help flow where it shows it.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughTopicSurface(_cwd, args) {
@@ -5869,6 +5900,7 @@ const SURFACES = {
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
   'closing-gate': closingGate,
+  'defer-gate': deferGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,

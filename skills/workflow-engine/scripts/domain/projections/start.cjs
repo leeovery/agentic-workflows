@@ -379,9 +379,11 @@ function itemLabel(item, meta) {
  * The inbox pickup snapshot: the type-grouped item tree, the
  * select/archived/back menu. Selection numbers resolve through the DATA
  * `ITEMS` table, which carries the same group-major numbering as the tree.
+ * An empty inbox is the display that says so and no menu — the flow returns
+ * to its caller without a pick to take.
  * @param {PickupItem[]} items      combined live inbox, pickup order
  * @param {boolean} hasArchived
- * @returns {{data: string, display: string, menu: string}}
+ * @returns {{data: string, display: string, menu?: string}}
  */
 function inboxPickupView(items, hasArchived) {
   const grouped = groupedPickup(items);
@@ -391,18 +393,15 @@ function inboxPickupView(items, hasArchived) {
     ...itemTable('ITEMS', grouped.ordered),
   ].join('\n');
 
-  const display = items.length > 0 ? grouped.display : 'No inbox items.\n';
+  if (items.length === 0) return { data, display: 'No inbox items.\n' };
 
-  const options = [];
-  if (items.length === 1) {
-    options.push(cmdOption('1', null, 'Select the item to work on'));
-  } else if (items.length > 1) {
-    options.push(rangeOption(1, items.length, 'Select item(s) to work on (comma-separated for several)'));
-  }
+  const options = [items.length === 1
+    ? cmdOption('1', null, 'Select the item to work on')
+    : rangeOption(1, items.length, 'Select item(s) to work on (comma-separated for several)')];
   if (hasArchived) options.push(cmdOption('a', 'archived', 'View archived items (restore or delete)'));
   options.push(cmdOption('b', 'back', 'Return'));
 
-  return { data, display, menu: dotMenu(['What would you like to do?', '', ...options]) };
+  return { data, display: grouped.display, menu: dotMenu(['What would you like to do?', '', ...options]) };
 }
 
 /**

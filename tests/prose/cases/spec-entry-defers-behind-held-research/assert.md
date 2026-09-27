@@ -1,13 +1,14 @@
 The prose should have taken this path:
 
-1. no topic resolves, so the scoped snapshot is rendered once and
-   everything downstream reasons from it — the DATA section is never
+1. no topic resolves, so the entry reads the scoped routing state — a
+   DATA-only read the prerequisites and the route reason from, never
    displayed or restated
 2. prerequisites pass: discussions exist, two are completed, none is
    open, so nothing blocks
-3. the route reads `analyze` and loads exactly that one display — the
-   cache is `none`, so the first-run message is emitted and the user is
-   asked whether to proceed
+3. the route reads `analyze` and loads exactly that one display, which
+   fetches its own snapshot and emits its title and display — the cache
+   is `none`, so the first-run message is emitted and the user is asked
+   whether to proceed
 4. the user agrees, and the analysis flow is entered — its first act is
    the held-source check, before any discussion is read and before
    anything is written

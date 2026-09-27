@@ -67,6 +67,14 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
   });
 
+  it('names every call — no bare call answers the home and its menu', () => {
+    writeRoadmap(dir, MAP);
+    const res = run([]);
+    assert.notStrictEqual(res.status, 0);
+    assert.strictEqual(res.stdout, '');
+    assert.match(res.stderr, /no `index` handler registered/);
+  });
+
   it('drops the pull row with nothing waiting; converse reads as open with no session', () => {
     writeRoadmap(dir, {
       horizons: ['mvp'],

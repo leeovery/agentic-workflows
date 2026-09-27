@@ -6,6 +6,7 @@
 // engine answers the skill's flow needs and sections the output.
 //
 //   gateway.cjs               → thin index dump, all active epics (head insert)
+//   gateway.cjs select        → the index dump, then the pick list and its menu (Step 3)
 //   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–8, bridge)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 9)
@@ -109,7 +110,13 @@ function format(result) {
   for (const u of result.cancelled) {
     lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
   }
-  return lines.join('\n') + '\n'
+  return lines.join('\n') + '\n';
+}
+
+// The select step's snapshot: the index dump its validation reads, then the
+// pick list and the menu that takes the pick.
+function select(result) {
+  return format(result)
     + engine.project.selectionSections('epic', result.epics, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
@@ -339,7 +346,7 @@ function subView(workUnit, projection) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}';
+const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}';
 
 /** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
 function usageError(message) {
@@ -360,6 +367,9 @@ if (require.main === module) {
     index: (...rest) => (rest.length > 0
       ? usageError('index takes no arguments')
       : format(discover(process.cwd()))),
+    select: (...rest) => (rest.length > 0
+      ? usageError('select takes no arguments')
+      : select(discover(process.cwd()))),
     view: (workUnit, newArrivalsJson, ...rest) => (!workUnit || rest.length > 0
       ? usageError('view takes a work unit and an optional new-arrivals JSON')
       : view(workUnit, newArrivalsJson)),
@@ -378,4 +388,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format, formatScoped };
+module.exports = { discover, format, select, formatScoped };

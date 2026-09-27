@@ -219,4 +219,20 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --stat
 
 When a grouping resembles a cancelled specification (**C**), tell the user in one line: it resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back.
 
+The reconcile moved the scenario — read it afresh:
+
+```bash
+node .claude/skills/workflow-specification-entry/scripts/gateway.cjs {work_unit}
+```
+
+Route on its `scenario`.
+
+#### If `scenario` is `groupings`
+
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.
+
+#### If `scenario` is `specs-menu`
+
+Every grouping mapped to an existing specification — no proposed items remain.
+
+→ Load **[display-specs-menu.md](display-specs-menu.md)** and follow its instructions as written.

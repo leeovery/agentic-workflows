@@ -8,7 +8,7 @@
 //   gateway.cjs                       → labelled dump, all work + inbox (head insert)
 //   gateway.cjs view                  → DATA + DISPLAY + MENU snapshot (Step 3 /
 //                                       empty state — the snapshot follows has_any_work)
-//   gateway.cjs inbox                 → inbox pickup snapshot
+//   gateway.cjs inbox                 → inbox pickup snapshot (no MENU when the inbox is empty)
 //   gateway.cjs archived              → archived store snapshot
 //   gateway.cjs working-set {path} …  → working-set snapshot (add/drop gates via their own verbs)
 //   gateway.cjs manage                → manage selection snapshot
@@ -123,7 +123,8 @@ function view() {
 }
 
 // The inbox pickup snapshot: the combined live list, numbered, plus the
-// select/archived/back menu.
+// select/archived/back menu — or, with nothing in the inbox, the display that
+// says so and no menu.
 function inboxView() {
   const detail = discover(process.cwd());
   const v = engine.project.inboxPickupView(engine.detail.combinedInbox(detail.inbox), detail.state.has_archived);
@@ -131,8 +132,8 @@ function inboxView() {
     engine.gateway.dataBlock(v.data),
     engine.gateway.titleBlock('Inbox'),
     engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu),
-  ].join('\n');
+    engine.gateway.menuBlock(v.menu ?? ''),
+  ].filter(Boolean).join('\n');
 }
 
 // The archived store snapshot: the combined archived list as a numbered pick

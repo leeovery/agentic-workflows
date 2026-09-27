@@ -417,20 +417,16 @@ describe('start projections: inbox pickup', () => {
     ].join('\n'));
   });
 
-  it('renders the empty inbox with no select option', () => {
+  it('renders the empty inbox as its display alone — no pick to take, so no menu', () => {
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     const v = pickup(dir);
     assert.strictEqual(v.data, [
       'inbox_count: 0',
-      'has_archived: false',
+      'has_archived: true',
       'ITEMS (n  type  date  slug  → path):',
     ].join('\n'));
     assert.strictEqual(v.display, 'No inbox items.\n');
-    assert.strictEqual(v.menu, [
-      DOTS,
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`b/back`** → Return',
-    ].join('\n'));
+    assert.strictEqual(v.menu, undefined);
   });
 });
 

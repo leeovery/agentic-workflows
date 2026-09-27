@@ -42,7 +42,13 @@ Answer it per **[answering-how-it-works.md](../../workflow-shared/references/ans
 node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug}
 ```
 
-Emit the response's sections in the order they arrive, each per its own marker: the `TITLE` verbatim as markdown, each `DISPLAY: walkthrough prose` section verbatim as markdown (not a code block), each `DISPLAY: walkthrough diagram` section verbatim as a code block, then the `MENU: walkthrough card` section verbatim as markdown (not a code block).
+Emit the response's sections in the order they arrive, each per its own marker: the `TITLE` verbatim as markdown, each `DISPLAY: walkthrough prose` section verbatim as markdown (not a code block), each `DISPLAY: walkthrough diagram` section verbatim as a code block. Then fetch the card's menu:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug} --menu-only
+```
+
+Emit the `MENU: walkthrough card` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

@@ -56,7 +56,8 @@
       "agent scan pay discussion pay",
       "agent ack pay discussion pay",
       "--clean",
-      "workflow-discussion-process/scripts/gateway.cjs map pay pay"
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "render defer-gate pay.discussion.pay"
     ],
     "calls_in_order": [
       "manifest get pay.discussion.pay status",
@@ -65,7 +66,9 @@
       "discussion(pay): initialize pay discussion",
       "knowledge.cjs query",
       "agent dispatch pay discussion pay --kind review",
-      "agent scan pay discussion pay"
+      "agent scan pay discussion pay",
+      "render defer-gate pay.discussion.pay",
+      "(deferral)"
     ],
     "calls_exclude": [
       "--kind perspective",

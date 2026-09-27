@@ -390,7 +390,7 @@ describe('discussion adapter: map verb', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('emits DATA (counts, all_decided, unresolved, review_arming) and the DISPLAY block', () => {
+  it('emits DATA (counts, all_decided, unresolved, review_arming) and the DISPLAY block — no gate, whatever stands undecided', () => {
     createManifest(dir, 'auth', manifestWith({
       'token-refresh': { status: 'exploring', parent: null },
       'session-storage': { status: 'decided', parent: null },
@@ -415,30 +415,7 @@ describe('discussion adapter: map verb', () => {
       '  ├─ ✓ Session Storage    [decided]',
       '  └─ ◐ Token Refresh      [exploring]',
       '',
-      '=== MENU: defer gate (emit verbatim as markdown only at the concluding step, then STOP for the user\'s response) ===',
-      '· · · · · · · · · · · ·',
-      'There is still 1 subtopic not yet decided — shown on the map above.',
-      '',
-      '**`◆ Defer and conclude?`**',
-      '',
-      '**`y/yes`** → Defer it and move toward concluding',
-      '**`n/no`**  → Continue discussing',
-      '',
     ].join('\n'));
-  });
-
-  it('defer gate pluralises and is absent once every subtopic is settled', () => {
-    createManifest(dir, 'auth', manifestWith({
-      a: { status: 'pending', parent: null },
-      b: { status: 'exploring', parent: null },
-    }));
-    const plural = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(plural, /There are still 2 subtopics not yet decided — shown on the map above\./);
-    assert.match(plural, /Defer them and move toward concluding/);
-
-    harness.ok(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'b=deferred']);
-    const settled = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.ok(!settled.includes('MENU: defer gate'), 'no defer gate once all subtopics are settled');
   });
 
   it('the free verdict rides DATA whole when the cache directory does not exist', () => {

@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-continue-bugfix/scripts/gateway.cjs');
+const { discover, format, select } = require('../../skills/workflow-continue-bugfix/scripts/gateway.cjs');
 
 describe('workflow-continue-bugfix discovery', () => {
   let dir;
@@ -152,7 +152,7 @@ describe('workflow-continue-bugfix format', () => {
     ].join('\n'));
   });
 
-  it('active, completed, and cancelled bugfixes pin the full dump byte-exactly', () => {
+  it('active, completed, and cancelled bugfixes pin the select step byte-exactly — the dump, then the pick list and its menu', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
       phases: {
@@ -166,7 +166,7 @@ describe('workflow-continue-bugfix format', () => {
     });
     createManifest(dir, 'fixed', { work_type: 'bugfix', status: 'completed', phases: { review: { items: { fixed: { status: 'completed' } } } } });
     createManifest(dir, 'wontfix', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { wontfix: { status: 'completed' } } } } });
-    const out = format(discover(dir));
+    const out = select(discover(dir));
     assert.strictEqual(out, [
       '=== BUGFIXES (2) ===',
       '  crash: specification (in-progress)',
@@ -175,7 +175,7 @@ describe('workflow-continue-bugfix format', () => {
       '  fixed (last phase: review)',
       '=== CANCELLED (1) ===',
       '  wontfix (last phase: investigation)',
-      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '=== DISPLAY: selection (emit verbatim as a code block) ===',
       '2 bugfix(es) in progress',
       '  ├─ 1. Crash',
       '  │   Specification (In-Progress)',
@@ -184,7 +184,7 @@ describe('workflow-continue-bugfix format', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '=== MENU: selection (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
@@ -194,6 +194,8 @@ describe('workflow-continue-bugfix format', () => {
       '**`m/manage`** → Manage a bugfix\'s lifecycle',
       '',
     ].join('\n'));
+    assert.strictEqual(format(discover(dir)), out.slice(0, out.indexOf('=== DISPLAY: selection')),
+      'the head insert is the dump alone — the pick list and its menu are the select step\'s');
   });
 
   it('carries no completed_phases clause — the view verb owns it', () => {
@@ -212,7 +214,7 @@ describe('workflow-continue-bugfix format', () => {
 
 describe('workflow-continue-bugfix CLI dispatch', () => {
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-bugfix/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs view {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -222,22 +224,52 @@ describe('workflow-continue-bugfix CLI dispatch', () => {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
 
-  it('bare call still renders the index byte-identically', () => {
+  it('the bare call is the head insert: the index dump alone, byte-identical to format()', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     const res = run([]);
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
     assert.strictEqual(res.stdout, format(discover(dir)));
+    assert.doesNotMatch(res.stdout, /^=== (DISPLAY|MENU): selection/m, 'the pick list and its menu are the select step\'s');
   });
 
-  it('view {work_unit} still answers the sectioned snapshot', () => {
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    const res = run(['view', 'crash']);
+  it('view {work_unit} answers the sectioned snapshot — a MENU section only when there is something to revisit', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { 'crash': { status: 'in-progress' } } } } });
+    const first = run(['view', 'crash']);
+    assert.strictEqual(first.status, 0);
+    assert.strictEqual(first.stderr, '');
+    assert.ok(first.stdout.includes('=== DATA'));
+    assert.ok(first.stdout.includes('=== DISPLAY'));
+    assert.ok(!first.stdout.includes('=== MENU'), 'nothing to revisit or finalise — no gate, so no MENU section');
+
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { 'crash': { status: 'completed' } } }, specification: { items: { 'crash': { status: 'in-progress' } } } } });
+    const later = run(['view', 'crash']);
+    assert.strictEqual(later.status, 0);
+    assert.match(later.stdout, /=== MENU \(emit verbatim as markdown\) ===\n· · ·/);
+  });
+
+  it('select answers the select step: the dump, then the pick list and its menu', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { 'crash': { status: 'in-progress' } } } } });
+    const res = run(['select']);
     assert.strictEqual(res.status, 0);
     assert.strictEqual(res.stderr, '');
-    assert.ok(res.stdout.includes('=== DATA'));
-    assert.ok(res.stdout.includes('=== DISPLAY'));
-    assert.ok(res.stdout.includes('=== MENU'));
+    assert.strictEqual(res.stdout, select(discover(dir)));
+    assert.match(res.stdout, /=== MENU: selection/);
+  });
+
+  it('select with positionals errors with usage', () => {
+    const res = run(['select', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: select takes no arguments\n' + USAGE);
+  });
+
+  it('view for an unknown name answers the not-found terminal display, no gate', () => {
+    const res = run(['view', 'ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.match(res.stdout, /error: no active bugfix with this name/);
+    assert.match(res.stdout, /=== DISPLAY: not found [^\n]*\nNo active bugfix named "ghost" found\./);
+    assert.doesNotMatch(res.stdout, /^=== MENU/m);
   });
 
   it('a bare positional errors instead of rendering the index', () => {

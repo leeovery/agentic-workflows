@@ -13,7 +13,9 @@
 //
 // Output sections are demarcated so the two surfaces can't be confused:
 // DATA is for reasoning (never displayed); DISPLAY and MENU are emitted to
-// the user verbatim (never parsed for decisions).
+// the user verbatim (never parsed for decisions). A MENU is a live gate at the
+// call that returns it, so the head-of-skill insert — fetched before any step
+// shows anything — never carries one.
 // ---------------------------------------------------------------------------
 
 /**
@@ -51,9 +53,10 @@ function displayBlock(body) {
   return SECTION.display + '\n' + String(body).replace(/\n+$/, '') + '\n';
 }
 
-/** @param {string} body menu block, pre-rendered */
+/** @param {string} body menu block, pre-rendered — empty renders no section: no gate, no marker */
 function menuBlock(body) {
-  return SECTION.menu + '\n' + String(body).replace(/\n+$/, '') + '\n';
+  const menu = String(body).replace(/\n+$/, '');
+  return menu === '' ? '' : SECTION.menu + '\n' + menu + '\n';
 }
 
 // `key: value` lines for flat values; nested objects/arrays render as compact
