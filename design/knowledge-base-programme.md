@@ -1,10 +1,10 @@
-# Knowledge Base Programme — measured retrieval, a chosen store, a module in the engine
+# Knowledge Base Programme — measured retrieval, our own store, a module in the engine
 
 The knowledge base was built early, before the engine existed in its current
 form, and it has not been revisited since. This is the design log for
-bringing it forward: first measuring what it retrieves, then choosing its
-store on measured merit, then moving it into the engine, then improving what
-it hands back. Opened 2026-09-25.
+bringing it forward. First we measure what it retrieves. Then we replace its
+store with our own, ranking included, and move it into the engine. Last, we
+improve what it hands back. Opened 2026-09-25.
 
 ## Motivation
 
@@ -88,13 +88,14 @@ Drawn from the owner's dex-engineering knowledge base:
   place of it.
 - **The knowledge directory is local to each checkout.** Store, metadata and
   config alike are never committed.
-- **Semantic search stays, and keyword-only is a first-class mode.** Any
-  store runs the vectors through a brute-force cosine scan. Keyword-only is
-  supported, never merely tolerated.
-- **The store is decided on measured merit.** The candidates are talked
-  through properly before anything is built, keeping today's store is a
-  valid outcome, and the decision rests on a benchmark with retrieval
-  quality held by the eval harness.
+- **Semantic search stays, and keyword-only is a first-class mode.** The
+  vectors go through a brute-force cosine scan. Keyword-only is supported,
+  never merely tolerated.
+- **The store is our own.** It is our own BM25, a float32 vector file and our
+  own file format, with no dependencies. It runs on every Node version the
+  product already supports, so the store never raises the Node floor. It
+  still has to earn its place: it ships only if the eval holds or improves
+  on today's pinned numbers. Step 2 records why.
 - **The KB becomes an engine module.** It is controlled by the engine and
   runs in process. It was kept separate only while the engine itself was in
   flux.
@@ -105,39 +106,37 @@ Drawn from the owner's dex-engineering knowledge base:
 
 1. **Eval harness.** Measure today's retrieval, so every later step is
    judged by what it does to results.
-2. **Ranking in our own code.** Run the keyword and vector searches
-   separately and merge them by RRF, still on Orama. Today Orama blends the
-   two itself, and `node:sqlite` has no hybrid mode, so a comparison across
-   stores would otherwise change store and merge at once, and the harness
-   could not tell which moved a result. Two separate searches also give the
-   keyword fallback for free: a failed embed leaves the keyword results
-   standing, with a note, and nobody is stopped.
-3. **Store benchmark and decision.** The conversation comes first, ahead of
-   step 2: which candidates, which criteria, and whether the store changes at
-   all. Step 2 draws the line between our ranking code and the store, and
-   that line has to fit every candidate on the table. The measurement comes
-   after step 2, each candidate behind the same line: eval quality, load,
-   query and index time, and size. Keeping Orama is a valid outcome.
-4. **KB into the engine**, on the winning store. The retrieval work that
-   follows lands in its final home.
+2. **Our own store, with ranking in our own code.** Our own BM25, a float32
+   vector file and our own file format replace Orama. The keyword and vector
+   searches run separately and merge by RRF. A failed embed leaves the
+   keyword results standing, with a note, and nobody is stopped. Orama and
+   msgpack leave with it, so the KB has no dependencies. This step comes
+   before the engine move because the engine is plain source with only
+   Node's built-ins, and carrying Orama into it would give the engine a
+   build step.
+3. **Local embeddings, measured.** Run the eval's hybrid mode with a local
+   model in place of OpenAI's. How a local model would ship is designed only
+   if one holds up.
+4. **KB into the engine.** With nothing to bundle, the KB becomes plain
+   engine source. The retrieval work that follows lands in its final home.
 5. **The rest of retrieval quality:** the relevance floor, printed scores,
    content-only search, heading paths and line ranges, a per-file cap,
-   excerpts, and lifecycle markers. The keyword side's stop words and
-   stemming are settings of the store's own tokenizer, so they wait for the
-   store decision. A floor drawn from vector scores needs neither, and may
-   come forward into step 2 (see step 1's findings).
+   excerpts, and lifecycle markers. A floor drawn from vector scores may come
+   forward into step 2 (see step 1's findings).
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
    programme, or an entry in `ideas/`.
 
-Each step is designed in full here when it is reached. Steps 2–7 below
-record only what is already decided and what is known to be open.
+Each step is designed in full here when it is reached. The steps after the
+one in hand record only what is already decided and what is known to be
+open.
 
 Each step ships as its own stack and its own release, never as one
-programme-long branch. A store change is a release of its own, because every
-install rebuilds its store once on first start. A fix found along the way
-ships standalone.
+programme-long branch. Within a stack, every layer that moves retrieval
+re-pins the eval, so each change's effect shows in the PR that makes it. A
+store change is a release of its own, because every install rebuilds its
+store once on first start. A fix found along the way ships standalone.
 
 ## Step 1 — the eval harness
 
@@ -345,18 +344,92 @@ median returned chunk is 3.1–3.7k characters and a quarter run past 5.7–8k.
   waits the time named, and a command waits at most 60 s in all, so a rate
   limit never outlasts the time limit of the call running it.
 
-## Step 2 — ranking in our own code
+## Step 2 — our own store, with ranking in our own code
 
-Decided:
+### Why our own store
 
-- The keyword and vector searches run separately and merge by RRF, with a
-  per-framing merge that rewards a chunk several framings agree on.
-- Decay, boosts and the confidence tier apply after fusion, and decay
-  stays unchanged.
-- A failed embed degrades to keyword-only with a note, and `query` exits 0.
-- `query --explain` shows each result's journey.
+Step 1 narrowed the question. Hybrid retrieval already finds the passage
+holding the answer in its top five 96% of the time, and nearly every weakness
+it found sits in ranking and rendering, above the store. So the store decides
+four things: speed, size, footprint, and control of the keyword side. Four
+candidates were researched against them.
 
-Open:
+The numbers below are research probes, not a benchmark. They come from a
+stand-in of 1,100 chunks cut from this repo's own markdown, with random
+1,536-dim vectors:
+
+| | Orama (today) | MiniSearch | `node:sqlite` | our own |
+|---|---|---|---|---|
+| on disk | ~50 MB | 3.7 MB index, text not stored | 15.9 MB | 2.4 MB index, 6.8 MB vectors, plus text |
+| load per query | 0.5–0.6 s | 0.12–0.15 s | under 1 ms | 16–17 ms |
+| keyword query | 2–82 ms | 10–29 ms | 4–5 ms | under 0.25 ms |
+| dependency | 80 KB of the 188 KB bundle | 6 KB gzipped | built into Node | none |
+| Node | declares ≥ 20 | any | 22.16 (warns on 22.x), 24.15 silent | any |
+
+- **Orama scores keywords wrongly, and no setting fixes it.**
+  - By default its tokenizer de-duplicates a chunk's words before scoring
+    (`tokenizer/index.js:63` in 3.1.18). A word said five times counts once,
+    and a chunk's length is its count of distinct words.
+  - Its `allowDuplicates` option counts every occurrence as a document
+    instead (`components/index.js:147-151`). A common word's document count
+    can then pass the number of chunks, and its weight turns negative.
+  - Once the two searches run separately, the vector side is a few lines of
+    our own. That would leave Orama doing only the keyword side, which is the
+    part it gets wrong.
+  - It has had no npm release since December 2025.
+- **MiniSearch scores correctly** and lets us own tokenization. But it is a
+  dependency standing in for about two hundred lines of code, it applies
+  filters after scoring, and it has had no commit since September 2025.
+- **`node:sqlite` gives the most, and costs the Node floor.**
+  - It brings FTS5's BM25, a Porter stemmer, incremental writes, and readers
+    that keep working during a write.
+  - It needs Node 22.16 for FTS5, where every run prints an experimental
+    warning on stderr, or 24.15 to run silently. Below that, the KB would not
+    run at all.
+  - It is still a release candidate, with its main classes being renamed.
+  - A custom tokenizer cannot be registered from JavaScript.
+  - Natural-language text has to be escaped into an OR query.
+  - On Node 22 a filtered query needs a forced plan. Without one it takes
+    73 ms at 1,100 chunks and 2.3 s at 10,000.
+  - What it adds over our own store starts to matter past 10,000 chunks.
+    Portal, the largest project, has ~1,100.
+- **Native add-ons are ruled out** (sqlite-vec, LanceDB, DuckDB). An install
+  copies files, with no build step.
+
+Every dependency also collides with step 4: the engine is plain source with
+only Node's built-ins.
+
+The cost of our own store is owning BM25's correctness. A reference
+implementation runs 130–250 lines, and the known mistakes are few and
+testable:
+- count documents by chunk, not by occurrence;
+- use raw term counts, and token counts for length;
+- use an IDF that never goes negative (Lucene's
+  `log(1 + (N − n + 0.5)/(n + 0.5))`);
+- keep word maps safe against keys like `constructor`;
+- use one tokenizer for both index and query.
+
+The eval guards the rest.
+
+### Decided
+
+- **The store.** Our own BM25 over an inverted index. Vectors as float32 in a
+  file of their own, scanned by brute-force cosine (~1.5 ms per 1,000
+  chunks). Our own file format. Orama and msgpack are removed.
+- **What stays.** The writer lock, the atomic rename and the metadata sidecar
+  are already independent of the store.
+- **Fusion.** The keyword and vector searches run separately and merge by
+  RRF, with a per-framing merge that rewards a chunk several framings agree
+  on.
+- **After fusion.** Decay, boosts and the confidence tier apply after fusion,
+  and decay stays unchanged.
+- **Embed failure.** A failed embed degrades to keyword-only with a note, and
+  `query` exits 0.
+- **Explain.** `query --explain` shows each result's journey.
+- **Release.** The step ships as one release, and every install rebuilds its
+  store once.
+
+### Open
 
 - The RRF constant, and whether the original framing is weighted above the
   others.
@@ -367,67 +440,60 @@ Open:
   set cannot judge that yet: 11 of its 12 boosted cases have their answer
   inside the boosted unit, so a stronger boost only ever looks better. Tuning
   it needs cases where the boosted unit holds nothing the query wants.
+- **What rides with the rebuild.** A tokenizer change (stemming, stop words,
+  which fields are searched) rebuilds only the keyword index, locally and in
+  seconds. A change to the chunk text (a heading path, a contextual header,
+  the chunk size) re-embeds every chunk through the provider. Whether step 5's
+  items of either kind land here, while every install is rebuilding anyway,
+  is open.
+- **How an install's old store is replaced.** Either re-embed from the files,
+  or carry its vectors over from the Orama store.
 
-## Step 3 — store benchmark and decision
+## Step 3 — local embeddings, measured
 
-The eval narrows the question. Hybrid retrieval on today's Orama store finds
-the passage holding the answer in its top five 96% of the time, and nearly
-every weakness found — no floor, a weak keyword side, oversized results —
-sits in ranking and rendering, above the store. What the store decides:
+Without an API key an install runs keyword-only, which step 1 measured well
+behind hybrid: primary hit@5 is 0.59 against 0.96. A local model would give
+every install semantic search.
 
-- **Speed.** The whole store loads on every query, and every index rewrites
-  the whole file.
-- **Size.** Fumi's store is 15 MB, ~49 KB per chunk against ~6 KB of text.
-- **Footprint.** Dependencies, and what the KB becomes once it is an engine
-  module.
-- **Control of the keyword side.** Stop words and stemming, where the
-  keyword gap lives.
+The measurement needs little or no code of ours. The `openai-compatible`
+provider already points at a local server (Ollama or LM Studio), and the
+eval's hybrid mode takes whatever provider the machine names.
 
-The candidates:
+The model must read long chunks. The median chunk is ~900 tokens and the 90th
+percentile ~4,000, so a model that stops at 512 tokens embeds only the start
+of most of them.
 
-- **Orama, trimmed.** Float32 vectors stored once, no sort index, only
-  content full-text indexed. The least change.
-- **`node:sqlite`.** FTS5 for the keyword side, vectors as float32 blobs
-  scanned by our own cosine; writes incrementally; no dependency. Needs
-  Node ≥ 22.13 unflagged, a floor weighed in the decision.
-- **No database.** Chunks plus a vector file, our own BM25 and a
-  brute-force vector scan. At this scale — portal is ~1,100 chunks — it
-  all fits in memory and a scan takes milliseconds. No dependency, full
-  control of the tokenizer; the cost is owning BM25's correctness.
-- **A smaller search library** (MiniSearch or similar) with our own vector
-  scan. A middle ground.
+Of the small models, `granite-embedding-small-english-r2` publishes scores
+level with `text-embedding-3-small`. It has 48M parameters, is 52 MB at int8,
+reads up to 8,192 tokens, and is licensed Apache-2.0.
 
-Ruled out: native add-ons (sqlite-vec, LanceDB, DuckDB). An install copies
-files with no build step, so a native binary cannot ship.
+| | granite-small-r2 | text-embedding-3-small |
+|---|---|---|
+| MTEB English retrieval | 53.9 | 53.5 |
+| long documents (LongEmbed) | 61.9 | 61.5 |
+| technical documentation (FreshStack) | 32.8 | 29.6 |
 
-Beside the store, one question the eval can answer: **where embeddings come
-from.** A local embedding model would give every install semantic search
-without an API key — which matters now that keyword-only is measured this
-far behind. It costs a model download and CPU time at indexing; the eval
-measures it against OpenAI.
+Leaderboards often do not carry over to real queries, so the eval decides.
+Whether a local server offers the model is checked when the step is reached;
+Ollama carries only granite's earlier release. Static embeddings (Model2Vec)
+are out, because they score below BM25 on retrieval.
 
-Measured for each, behind the line step 2 draws: eval quality (must hold or
-improve), query time including load, full and single-file index time, store
-size, install footprint, and the Node version it requires.
+What follows the measurement:
+- **If a local model holds,** a later step designs how it ships. One route
+  is in process: transformers.js on its WebAssembly backend, which is ~16 MB
+  of runtime plus a model downloaded on first use, and neither of its
+  published builds bundles cleanly. The other is a guided local server.
+- **If none holds,** it becomes an entry in `ideas/`.
 
-The conversation is prepared by research, not reached for: for each
-candidate, how it fits behind step 2's line, how much control it gives the
-keyword side, its Node floor and install footprint, and what is already
-known of its speed at this scale; for a local embedder, the model's size,
-its indexing time, and its standing against OpenAI's model. The literature
-gathered so far is thin on storage, so this research is new work.
-
-Known before measuring: Orama's filtered reads pre-allocated their `limit`,
-fixed separately (#1305). Insert and save remain most of a fresh index's
-time. A rate-limited embed waits the time the provider names, request by
-request, within 60 s per command (#1309).
+The vector file takes any width, so step 2 does not wait on this.
 
 ## Step 4 — the KB in the engine
 
 The KB runs in process as an engine module. It reads manifests directly,
 with no child process and no parsing of stderr, and each mirrored list
-collapses to one. If `node:sqlite` wins, the esbuild bundle is retired and
-the KB becomes plain engine source. The loose ends from the audit land here:
+collapses to one. Step 2 leaves nothing to bundle, so the esbuild bundle is
+retired and the KB becomes plain engine source. The loose ends from the audit
+land here:
 config keys validated, reconfiguration keeping tuning overrides,
 `base_url` recorded, the base-stability default reconciled with its
 documentation, and store creation single-homed.
@@ -438,7 +504,8 @@ Planned: a relevance floor (stop words, stemming, content-only indexing, a
 per-leg minimum), printed scores, a heading path on every chunk (indexed,
 and shown with a line range, `path:L120-188`), a per-file cap, excerpts by
 default with `--full`, and a marker on a reopened or in-progress topic's
-chunks. Contextual chunk headers are measured here.
+chunks. Contextual chunk headers are measured here. Any of these that change
+the tokenizer or the chunk text may move into step 2 instead (open there).
 
 ## Step 6 — lifecycle ranking within a topic
 
