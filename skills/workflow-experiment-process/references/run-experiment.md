@@ -48,7 +48,7 @@ Execute the setup as designed — the instruments, sample, and environment the d
 
 Author `{dir}/report.md` as the run goes — load **[report-template.md](report-template.md)** for its shape at the first result:
 
-- **Results land as they're measured.** Every number traces to a file under `{dir}` (curated extracts in `{dir}/data/`) or a named source. Raw output is kept by default; genuinely bulky output may stay out of git with the report linking it by path.
+- **Results land as they're measured, and stand as written.** Later results are added beneath, never folded into a rewrite of what is already there — a resumed run included. Every number traces to a file under `{dir}` (curated extracts in `{dir}/data/`) or a named source. Raw output is kept by default; genuinely bulky output may stay out of git with the report linking it by path.
 - **Deviations are logged as they happen** — the harness broke, the environment surprised. The record shows the run as it went.
 - **The design is frozen** — changes are dated amendments, never silent edits.
 - **Commit after each write** — don't batch; the history is the safety net across context refresh:
