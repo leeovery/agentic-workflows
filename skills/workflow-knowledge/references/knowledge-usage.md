@@ -105,15 +105,18 @@ Leave the artifact alone — no correction is owed. Everything outside the speci
 
 ## G. Sibling consult at cross-topic decision points
 
-A decision that names an entity, field, rule, or classification this topic's own artifact didn't introduce is deciding on ground another document may own. The trigger is local — whether this artifact introduced the term is checkable against the current file; whether another document owns it is exactly what the consult finds out. **Citation is not introduction**: a term this artifact only carries by citing another topic's decision was introduced there, and a new decision naming it triggers the consult however familiar the term reads in this file.
+A decision is deciding on ground another document may own when either trigger holds:
+
+- **A term this artifact didn't introduce** — the decision names an entity, field, rule, or classification this topic's own artifact didn't introduce. The trigger is local — whether this artifact introduced the term is checkable against the current file; whether another document owns it is exactly what the consult finds out. **Citation is not introduction**: a term this artifact only carries by citing another topic's decision was introduced there, and a new decision naming it triggers the consult however familiar the term reads in this file.
+- **Re-decided ground** — at an engagement decision point (below), the outcome re-decides ground this topic had already `decided`, whatever terms it names: a sibling may have built on the decision it replaces.
 
 Before documenting such a decision:
 
-1. **Consult** — run a scoped query for the term, or cite the sibling's current decided text when it is already in this session's context.
-2. **Trace** — record the check as one line inside the documented decision: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
+1. **Consult** — run a scoped query for the term or the re-decided ground, or cite the sibling's current decided text when it is already in this session's context.
+2. **Trace** — record the check as one line inside the documented decision, whether the consult queried or cited: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
 
 When the consult surfaces text the new decision contradicts or supersedes, route by owner. Text that *anticipates* the decision — a lean recorded as a lean, a question the sibling deferred or triaged to this topic — is neither: the deferral is its forward pointer, nothing is owed, and no reroute fires. A sibling topic in the same epic: reroute through the session's off-topic path at that moment. Another work unit's specification: it is owed a correction — never a prose note to carry — follow **E. When a surfaced artifact is wrong**. Any other document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E**'s non-spec arm).
 
-In ordinary conversation this is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a rerouted triage concern's fold — the consult is a required step; the engagement flows name it.
+In ordinary conversation the first trigger is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a rerouted triage concern's fold — both triggers apply and the consult is a required step; the engagement flows name it.
 
 → Return to caller.
