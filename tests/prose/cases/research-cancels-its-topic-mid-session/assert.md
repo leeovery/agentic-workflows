@@ -9,8 +9,9 @@ The prose should have taken this path:
    continue-or-restart gate — and the user continues
 3. initialisation and file strategy are skipped: the walk lands at the
    research guidelines, addresses the knowledge base once as a
-   contextual query (empty store — the session proceeds silently), and
-   enters the session step, which routes an epic to its own session
+   contextual query — the store holds the epic's discovery session log,
+   so results come back and one line acknowledges the surfaced context —
+   and enters the session step, which routes an epic to its own session
    wrapper
 4. the session loop's triage check no-ops on an empty queue; no dive has
    ever been dispatched, so nothing is folded

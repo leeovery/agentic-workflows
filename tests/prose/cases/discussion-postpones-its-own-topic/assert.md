@@ -11,8 +11,10 @@ The prose should have taken this path:
    detection — the triage queue read (empty, so no triage warning),
    then the continue-or-restart gate — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
-   addresses the knowledge base once as a contextual query (empty
-   store — the session proceeds silently), and enters the session step
+   addresses the knowledge base once as a contextual query — the
+   store holds the epic's discovery session log, so results come back
+   and one line acknowledges the surfaced context — and enters the
+   session step
 4. the session loop's triage check no-ops on an empty queue; its
    check-for-results finds an empty agent store — nothing pending,
    nothing to surface, no dispatch
