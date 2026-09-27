@@ -195,9 +195,10 @@ function assertPayloadDrawsMenu(gate, body, label) {
 
 /**
  * The GATE payload in an announced response, held against its MENU: it sits
- * directly above the first MENU and states the whole of it. Null when the
- * response carries no menu, which then carries no gate either, and when the
- * menu draws nothing, which leaves nothing to state.
+ * directly above the first MENU, asks a question over at least one row to
+ * press, and states the whole of the menu. Null when the response carries no
+ * menu, which then carries no gate either, and when the menu draws nothing,
+ * which leaves nothing to state.
  * @param {string} out  the response's stdout
  * @param {string} label  what the assertion messages name
  * @returns {GatePayload|null}
@@ -217,6 +218,8 @@ function auditGate(out, label) {
     return null;
   }
   const gate = JSON.parse(lines[menuAt - 1]);
+  assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
+  assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
   assertPayloadDrawsMenu(gate, body, label);
   return gate;
 }

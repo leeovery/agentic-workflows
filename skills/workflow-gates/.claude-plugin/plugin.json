@@ -1,0 +1,8 @@
+{
+  "name": "workflow-gates",
+  "version": "0.1.0",
+  "description": "Draws the agentic-workflows engine's gates in the band above the prompt — rows a click puts in the prompt and a second click sends — instead of a menu the model has to reproduce.",
+  "author": {
+    "name": "Lee Overy"
+  }
+}
