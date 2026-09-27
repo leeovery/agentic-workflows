@@ -123,8 +123,9 @@ the semantics are set and shipping is "weeks" away.
   waits behind ToolSearch) is cached until `$.ui.invalidate("tool.describe")`,
   which is acted on only at the person's next message. Every change of
   answer sends the tool list again and spends the prompt cache. `$.fs` reads
-  and writes relative to the session's cwd; `$.store` is per-plugin JSON
-  that survives restarts (4 MiB).
+  and writes relative to the session's working directory, which moves
+  under it (finding 58), or at an absolute path; `$.store` is per-plugin
+  JSON that survives restarts (4 MiB).
 - Distribution: a folder under the project's `.claude/skills/<name>/`
   carrying `.claude-plugin/plugin.json` loads as `<name>@skills-dir`
   (proven live: both mods load from agntc's copy of `skills/` on the
@@ -430,11 +431,11 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 - **R15 — the sent row reads as the answer.** `workflow-gates-rows`
   redraws the transcript row of an answer the band sent as `{question} →
   {answer} · {label}` (label left out when empty or equal to the answer).
-  On send the band writes `.workflows/.cache/.gates/sent.json` (`{ answer,
-  question, label }`); the rows plugin pairs it with the new row the first
-  time it draws it (matching answer), remembers the line by message id in
-  the conversation's folder (`rows.json`, R24) so scrolling and a resume
-  keep it, and spends the record.
+  On send the band records what it sent in the conversation's folder
+  (`sent.json`, `{ answer, question, label }`, R24); the rows plugin pairs
+  it with the new row the first time it draws it (matching answer),
+  remembers the line by message id in the same folder (`rows.json`) so
+  scrolling and a resume keep it, and spends the record.
   Expanded rows (ctrl+o) and every other row pass through. The grey sender
   line stays, and the model still reads Claude Code's framing — by design.
   A send that fails or is dropped writes `null` over the record, so no row
@@ -606,31 +607,46 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   draws lilac and a `text` fence white through `SendUserMessage` exactly
   as in Claude's own text (R21, tested in the lab).
 
-- **R24 — what belongs to a conversation lives in its folder, and goes
-  when Claude Code deletes the conversation.** A conversation is not
-  inside a work unit — it visits several, or none (the start menu, the
-  roadmap) — so what belongs to it cannot live in a unit's cache, which
-  goes when the unit closes. Each conversation that runs the workflows
-  has one folder, `.workflows/.cache/.conversations/{session-id}/`, and
-  each concern writes its own file there: the workflow marker (R20),
-  written once by any engine or gateway call that carries a session id,
-  after the command whatever its exit — never by the session hooks, which
-  run for every conversation in the project; the conversation's
-  transcript path, written by `engine conversation end`, which the
-  session-end hook runs from the path Claude Code hands every hook, and
-  only where the folder exists; the tmux label's resume position (moved
-  here by migration 061); the gate the mod saves for a resume (R6),
-  `null` when there is none to keep; and the rows mod's redrawn answers
-  (`rows.json`, R15). The mod names the folder the engine's
-  way, so both always reach the same one. One tidy-up, at boot, deletes a
-  folder once the transcript file it names is gone (a leading `~` read as
-  the home directory; an empty or relative path is unknown, and the folder
-  stays): whatever retention the
-  person set — thirty days, ten years — is the retention these records
-  keep, and no period is assumed anywhere. A folder whose conversation
-  ended without the hook running keeps no path and stays; it is a few
-  bytes. What belongs to a work unit — presence, per-topic session
-  state — stays in the unit's cache and goes when the unit closes.
+- **R24 — what belongs to a conversation lives in its folder, found from
+  anywhere, and goes when Claude Code deletes the conversation.** A
+  conversation is not inside a work unit — it visits several, or none (the
+  start menu, the roadmap) — so what belongs to it cannot live in a unit's
+  cache, which goes when the unit closes. Nor can it live in the project:
+  the directory a conversation runs in moves under it — a `cd` Claude runs
+  moves it, and a conversation can be resumed from another directory
+  (finding 58) — and a folder looked for from there is not found. Each
+  conversation that runs the workflows has one folder beside the
+  workflows' system config, `~/.config/workflows/conversations/{session-id}/`
+  (`WORKFLOWS_CONFIG_DIR` moves it with the config), found by the session
+  id alone: the engine by the id Claude Code hands every command, the mods
+  by `$.session.id()`, each naming the folder the same way, so wherever
+  the conversation is resumed and wherever its directory has moved, the
+  buttons and the harness come back, and the label with them where its
+  work unit is. Each concern writes its own file there:
+  - the workflow marker (R20), written once by any engine or gateway call
+    that carries a session id, run inside a workflows project, after the
+    command whatever its exit — never by the session hooks, which run for
+    every conversation in the project;
+  - the conversation's transcript path, recorded from the path Claude Code
+    hands every hook — by `engine conversation end` as the conversation
+    ends and by `engine conversation resume` as it is resumed, so a
+    transcript Claude Code moved on the resume is named where it now is —
+    each only where the folder exists;
+  - the tmux label's resume position (moved here by migration 061), kept
+    when a resume lands where its work unit is not;
+  - the gate the mod saves for a resume (R6), `null` when there is none to
+    keep;
+  - the band's send record (`sent.json`) and the rows mod's redrawn
+    answers (`rows.json`, R15).
+
+  One tidy-up, at any project's boot, deletes a folder once the transcript
+  file it names is gone (a leading `~` read as the home directory; an
+  empty or relative path is unknown, and the folder stays): whatever
+  retention the person set — thirty days, ten years — is the retention
+  these records keep, and no period is assumed anywhere. A folder whose
+  conversation ended without the hook running keeps no path and stays; it
+  is a few bytes. What belongs to a work unit — presence, per-topic
+  session state — stays in the unit's cache and goes when the unit closes.
 
 ## The stack
 
@@ -656,9 +672,10 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     harness (R20) → #1304 what a step shows reaches the person, with the
     dispatch sentence (R21, R22) → #1310 one vocabulary for how a block
     renders, every code block naming its fence (R23) → #1312 the
-    conversation folder (R24), the one home and one tidy-up for what belongs to a
-    conversation, replacing the boot recognition, the mod's own store for
-    saved gates and the label store's resume positions.
+    conversation folder (R24), the one home and one tidy-up for what
+    belongs to a conversation, found by its session id from any directory,
+    replacing the boot recognition, the mod's own store for saved gates and
+    the label store's resume positions.
   - **Next, after landing:** the bridge's handoff taken over by the mod —
     `$.command.run` clears the context and `$.prompt.submit` sends the
     continuation — in place of plan mode, which the workflows only use as
@@ -818,21 +835,27 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     `claude --resume` keeps the id, and Claude Code sets
     `CLAUDE_CODE_SESSION_ID` for every command at the moment it runs.
 55. Every hook input carries the conversation's `transcript_path` (an
-    empty string on some paths), and
-    resuming a conversation from another directory moves its transcript
-    under that directory's project. Claude Code's session retention is
-    the person's setting, not a constant. Hence R24's tidy-up by the
+    empty string on some paths). Claude Code's session retention is the
+    person's setting, not a constant. Hence R24's tidy-up by the
     transcript's presence.
 56. `AI_AGENT` (`claude-code_2-1-280_agent`), `CLAUDE_CODE_ENTRYPOINT`
     (`cli`, `claude-vscode`, the SDK's own) and `CLAUDE_CODE_REMOTE` (set
     on the web) reach every command Claude Code runs. Hence R9's
     applicability.
-57. A fork runs under a new session id, and a conversation resumed from
-    another directory carries its transcript to that project: either
-    comes back with no saved gate and no mark until its next engine call,
-    and the mod API names no parent to carry them over. Accepted — typing
-    still answers the gate, and the next engine call marks the
-    conversation.
+57. A fork runs under a new session id: it comes back with no saved gate
+    and no mark until its next engine call, and the mod API names no
+    parent to carry them over. Accepted — typing still answers the gate,
+    and the next engine call marks the conversation.
+58. The directory a conversation runs in moves under it. A `cd` Claude
+    runs in its Bash tool moves the session's working directory — and
+    every relative `$.fs` path with it — until another `cd` moves it back;
+    a conversation resumed from another directory runs there, and Claude
+    Code moves its transcript under that directory's project. A folder
+    found from the working directory is lost on either, and a record
+    written there lands wherever Claude has moved to — `$.fs.write`
+    creates the directories it needs. `$.fs` takes an absolute path. Hence
+    R24's per-user folder, and the resume re-recording where the
+    transcript is.
 
 ## Log
 
@@ -899,3 +922,8 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   (R9); the tidy-up reading only a path it can trust (R24). Finding 57. A
   gate drawn with nothing else to write — a put-back, the discussion's
   final review — goes to the lab.
+- 2026-09-27 — the conversation folder moved out of the project to
+  beside the system config, found by its session id wherever the
+  conversation is resumed or its directory moves; a resume re-records
+  where the transcript now is; the send record joined the folder (R15,
+  R24). Finding 58.
