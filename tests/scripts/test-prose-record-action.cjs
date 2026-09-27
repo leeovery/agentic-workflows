@@ -352,6 +352,27 @@ describe('prose recorder — the stop event', () => {
     assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Which feature?'), 'in the order they happened');
   });
 
+  it('keeps a walk handed back through the hand-back tool — it is the walk as told', () => {
+    // A walker may tell its whole walk in the runtime's hand-back tool and
+    // close on a line saying so; lifting text alone left the asserter an
+    // empty walk to judge.
+    const transcript = writeTranscript([
+      { message: { model: 'claude-sonnet-5', content: [{ type: 'tool_use', name: 'Bash', input: { command: 'echo not-a-turn' } }] }, cwd: world },
+      { message: { content: [{ type: 'tool_use', name: 'SubagentHandback', input: { message: 'ENTERED: entry § Step 1\nEMITTED (blocker):\n  research is still open' } }] } },
+      { message: { content: [{ type: 'text', text: 'Report delivered via SubagentHandback.' }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'Report delivered via SubagentHandback.',
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.ok(walk.includes('research is still open'), 'the handed-back walk survives');
+    assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Report delivered'), 'in the order it happened');
+    assert.ok(!walk.includes('not-a-turn'), 'another tool call is not a turn');
+  });
+
   it('appends the closing turn the stop race leaves out of the transcript', () => {
     // The hook runs inside the stop sequence: the agent's last message is
     // still being appended as it reads. That turn is where a closing
