@@ -8,7 +8,7 @@ The caller needs a horizon for what it is about to land. Set `{horizon}` and ret
 
 ## The Horizon
 
-The horizon is the user's, never yours to pick. They have not named one, so the map decides how to ask for it:
+The horizon is the user's, never yours to pick, and it is a label — launch, v1, someday; a reason or an aside the user gives with it is not part of it. They have not named one, so the map decides how to ask for it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
@@ -36,11 +36,13 @@ Resolve the number against `horizons` — that is the horizon.
 
 The user names one instead: ask in prose which horizon it belongs to — a name is content, not a choice — and **STOP.** Wait for user response.
 
+The label their answer names is `{horizon}`.
+
 → Return to caller.
 
 **Otherwise:**
 
-The user named a horizon in words rather than picking a row — a label already on the map, or a new one. That is `{horizon}`.
+The user named a horizon in words rather than picking a row — a label already on the map, or a new one. That label is `{horizon}`.
 
 → Return to caller.
 
@@ -49,5 +51,7 @@ The user named a horizon in words rather than picking a row — a label already 
 There is no roadmap yet, or it holds no horizons, so there is nothing to pick from. Ask in prose which horizon it belongs to, in the user's own staging words — launch, v1, someday.
 
 **STOP.** Wait for user response.
+
+The label their answer names is `{horizon}`.
 
 → Return to caller.
