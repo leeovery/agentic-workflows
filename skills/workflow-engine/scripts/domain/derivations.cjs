@@ -276,10 +276,11 @@ function movedFrom(item) {
 }
 
 /**
- * The started specifications sourcing a topic's discussion — the ones that
- * lock its Discovery unit. A proposed grouping never locks: it is a
- * regenerable suggestion the analysis writes for every unaccounted
- * discussion, discarded with its source.
+ * The started specifications sourcing a topic's discussion — its individual
+ * specifications: the ones that lock its Discovery unit, and that a unify or
+ * a fresh grouping over it incorporates and supersedes. A proposed grouping
+ * is never one: it is a regenerable suggestion the analysis writes for every
+ * unaccounted discussion, discarded with its source.
  * @param {object} manifest @param {string} topic
  * @returns {string[]}
  */

@@ -16,7 +16,8 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadActiveManifests, listFiles, filesChecksum, fileExists } = engine.reads;
-const { phaseItems, phaseData, sourceRows, specIsStarted, specGroupsSources } = engine.derivations;
+const { phaseItems, phaseData, sourceRows, specGroupsSources, lockingSpecs } = engine.derivations;
+const { discoverySpec } = engine.detail;
 
 // Actionable-first ordering rank for the spec menu. Lower sorts earlier:
 // proposed → in-progress → completed-with-pending → concluded → other/promoted.
@@ -51,26 +52,15 @@ function discover(cwd, workUnit) {
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
 
-      // An individual spec is a started specification sourcing the
-      // discussion — the one a unify incorporates. A proposed grouping is
-      // not one (so the single-discussion path and the grouping "matching
-      // spec" logic stay correct), and a cancelled or superseded
-      // specification holds nothing: its sources are free to be regrouped.
-      let hasIndividualSpec = false;
-      let specStatus = '';
-      for (const si of specItemsList) {
-        if (!specIsStarted(si)) continue;
-        if (si.sources && si.sources[item.name]) {
-          hasIndividualSpec = true;
-          specStatus = si.status || '';
-          break;
-        }
-      }
+      // The discussion's individual spec — the first started specification
+      // sourcing it; a proposed grouping is never one.
+      const [covering] = lockingSpecs(m, item.name);
+      const individual = covering && specItemsList.find(s => s.name === covering);
 
       discussions.push({
         name: item.name, work_unit: m.name, status: item.status || 'unknown',
-        work_type: m.work_type, has_individual_spec: hasIndividualSpec,
-        ...(hasIndividualSpec && { spec_status: specStatus }),
+        work_type: m.work_type, has_individual_spec: Boolean(individual),
+        ...(individual && { spec_status: individual.status }),
       });
     }
   }
@@ -88,18 +78,14 @@ function discover(cwd, workUnit) {
   let proposedCount = 0;
 
   for (const m of manifests) {
-    const specItemsList = phaseItems(m, 'specification');
-    const discItemsList = phaseItems(m, 'discussion');
-
-    for (const item of specItemsList) {
+    for (const item of phaseItems(m, 'specification')) {
       if (item.status === 'cancelled') {
         cancelledSpecifications.push({ name: item.name, work_unit: m.name, sources: sourceRows(item.sources).map(([name]) => name) });
       }
       if (!specGroupsSources(item)) continue;
-      const status = item.status || 'in-progress';
+      const spec = { ...discoverySpec(m, item.name, item), work_unit: m.name, work_type: m.work_type };
 
-      const isProposed = status === 'proposed';
-      if (isProposed) {
+      if (spec.status === 'proposed') {
         proposedCount++;
       } else {
         const specFile = path.join(workflowsDir, m.name, 'specification', item.name, 'specification.md');
@@ -107,35 +93,8 @@ function discover(cwd, workUnit) {
         specCount++;
       }
 
-      const spec = {
-        name: item.name, work_unit: m.name, status,
-        work_type: m.work_type,
-      };
       if (Number.isInteger(item.order)) spec.order = item.order;
-
       if (item.superseded_by) spec.superseded_by = item.superseded_by;
-
-      if (item.sources && typeof item.sources === 'object') {
-        spec.sources = Object.entries(item.sources).map(([srcName, srcData]) => {
-          // A status-less source row defaults to `pending`, not `incorporated` — deliberate fail-safe so an unmarked source never reads as already done.
-          const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'pending') : 'pending';
-          const match = discItemsList.find(i => i.name === srcName);
-          const discStatus = match ? (match.status || 'unknown') : 'unknown';
-          return { name: srcName, status: srcStatus, discussion_status: discStatus };
-        });
-      }
-
-      if (item.consult_references && typeof item.consult_references === 'object') {
-        spec.consult_references = Object.entries(item.consult_references).map(([refName, refData]) => {
-          const refStatus = (typeof refData === 'object') ? (refData.status || 'pending') : 'pending';
-          return { name: refName, status: refStatus };
-        });
-      }
-
-      // Stale counts as pending work: an extraction the source moved out from
-      // under still blocks conclusion, so the actionable/concluded split, the
-      // sort rank, and the Continuing/Refining verb all treat it as open.
-      spec.has_pending_sources = (spec.sources || []).some(s => s.status === 'pending' || s.status === 'stale');
 
       specifications.push(spec);
     }

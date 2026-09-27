@@ -4,75 +4,15 @@
 
 ---
 
-**Consult references** — if the selected grouping owes any (a `**Consult**` line in the consolidation-analysis doc, or a `consult_references` entry on the spec), append this block to the confirmation below, after the sources listing; omit it when there are none:
-
-> *Output the next fenced block as a code block:*
-
-```
-Consult references (read narrowly — do not extract):
-  • {ref-topic} — {slice hint}
-```
-
 ## A. Display Confirmation
 
-#### If no source discussions have individual specs
+When the DATA lists `consult:` lines under the selected grouping, write them to `.workflows/.cache/{work_unit}/specification/{topic}/consult.json` with the Write tool — `{"consult": [{"name": "…", "hint": "…"}]}`, one entry per line, `hint` the slice hint the line carries (left out when it carries none) — and pass the bracketed `--file`; otherwise leave it off.
 
-> *Output the next fenced block as a code block:*
-
-```
-Creating specification: {Title Case Name}
-
-Sources:
-  • {discussion-name}
-  • {discussion-name}
-
-Output: .workflows/{work_unit}/specification/{topic}/specification.md
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} --variant create [--file .workflows/.cache/{work_unit}/specification/{topic}/consult.json]
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
-
-**`y/yes`**
-**`n/no`**
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Response**.
-
-#### If any source discussion has an individual spec
-
-The DATA `discussions:` lines mark this (`individual spec: {status}`). It is computed proposed-blind — a discussion that appears only in a proposed grouping does not count as having an individual spec, so a proposed item never lands here for supersession.
-
-Note the supersession:
-
-> *Output the next fenced block as a code block:*
-
-```
-Creating specification: {Title Case Name}
-
-Sources:
-  • {discussion-name} (has individual spec — will be incorporated)
-  • {discussion-name}
-
-Output: .workflows/{work_unit}/specification/{topic}/specification.md
-
-After completion:
-  .workflows/{work_unit}/specification/{source-topic}/specification.md → marked as superseded
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -85,6 +25,8 @@ After completion:
 #### If `yes`
 
 **If any source discussions have individual specs:**
+
+The DATA `discussions:` lines mark this (`individual spec: {status}`). It is computed proposed-blind — a discussion that appears only in a proposed grouping does not count as having an individual spec, so a proposed item never lands here for supersession.
 
 → Load **[create-with-incorporation.md](handoffs/create-with-incorporation.md)** and follow its instructions as written.
 

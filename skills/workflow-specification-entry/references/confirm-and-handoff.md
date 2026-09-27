@@ -6,7 +6,7 @@
 
 ## Verb Rule
 
-The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, or the DATA `verb` on the single-discussion path:
+The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, or the DATA `verb` on the single-discussion path, where the DATA `proceed_name` is the topic:
 
 - **"Creating"** — no spec exists (proposed grouping or fresh single discussion)
 - **"Continuing"** — spec is `in-progress`, or `completed` with pending or stale sources
@@ -14,7 +14,7 @@ The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, 
 
 ## Route
 
-#### If selection is `Unify all`
+#### If the selected `ACTIONS` entry's `action` is `unify`
 
 → Load **[confirm-unify.md](confirm-unify.md)** and follow its instructions as written.
 

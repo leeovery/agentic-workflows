@@ -1,0 +1,41 @@
+{
+  "origin": "spec-entry confirm review — the confirm route keyed the unify on the menu label's text, which a gate surface takes out of what the model reads, so a unify pick could fall through to the create confirm; nothing walked the groupings menu's unify through its reconcile, its own confirm, and the incorporation handoff",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-specification-entry/references/check-prerequisites.md",
+    "skills/workflow-specification-entry/references/route-scenario.md",
+    "skills/workflow-specification-entry/references/display-groupings.md",
+    "skills/workflow-specification-entry/references/confirm-and-handoff.md",
+    "skills/workflow-specification-entry/references/confirm-unify.md",
+    "skills/workflow-specification-entry/references/handoffs/unify-with-incorporation.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
+      "manifest apply search-relevance",
+      "render spec-confirm-gate search-relevance.specification.unified --variant unify"
+    ],
+    "calls_exclude": [
+      "--variant create",
+      "topic start",
+      "topic complete",
+      "topic supersede",
+      "build-order sequence"
+    ],
+    "calls_in_order": [
+      "manifest apply search-relevance",
+      "render spec-confirm-gate search-relevance.specification.unified --variant unify"
+    ]
+  },
+  "conduct": "The user wants every discussion folded into one specification: at the groupings menu they pick the option that unifies all discussions into a single specification, and to any proceed-style confirmation they answer yes."
+}

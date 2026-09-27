@@ -440,7 +440,7 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(commit.status, 'addressed');
   });
 
-  it('defaults source status to pending when object-shaped without status', () => {
+  it('defaults source status to pending when object-shaped without status; a row that is not an object is no source, as the completion gate reads it', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -458,9 +458,30 @@ describe('workflow-specification-entry discovery', () => {
     createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
     const r = discover(dir);
     const spec = r.specifications[0];
-    assert.strictEqual(spec.sources.find(s => s.name === 'auth').status, 'pending');
-    assert.strictEqual(spec.sources.find(s => s.name === 'design').status, 'pending');
+    assert.deepStrictEqual(spec.sources, [{ name: 'auth', status: 'pending', discussion_status: 'completed' }]);
     assert.strictEqual(spec.has_pending_sources, true);
+  });
+
+  it('reads legacy array-form sources by name, for the spec and for the discussion it covers', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: {
+          items: {
+            core: { status: 'in-progress', sources: [{ name: 'auth', status: 'incorporated' }, { name: 'billing' }] },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/pay/specification/core/specification.md', '# Spec');
+    const r = discover(dir);
+    assert.deepStrictEqual(r.specifications[0].sources, [
+      { name: 'auth', status: 'incorporated', discussion_status: 'completed' },
+      { name: 'billing', status: 'pending', discussion_status: 'completed' },
+    ]);
+    assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec, d.spec_status]),
+      [['auth', true, 'in-progress'], ['billing', true, 'in-progress']]);
   });
 
   it('defaults consult reference status to pending when object-shaped without status', () => {

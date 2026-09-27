@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: specification-entry projections — the scenario overview
 // (DISPLAY), the grouping/spec menus (MENU), and the concluded-specs
-// sub-view, over one SpecificationDetail (see ../specification.cjs).
+// sub-view, over one SpecificationDetail (see ../specification.cjs); and the
+// confirmation above the handoff gate, over one SpecConfirmation.
 //
 // Deterministic: same detail, same string. The menu carries machine action
 // keys so the entry skill routes on keys, never on labels. Tree layout goes
@@ -13,7 +14,7 @@
 
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { menuFrame, cmdOption } = require('./surfaces.cjs');
+const { menuFrame, cmdOption, bulletRow } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -414,5 +415,80 @@ function specificationCompletedMenu(detail) {
   return { keys, title: 'Completed Specifications', display, rendered };
 }
 
+// ---------------------------------------------------------------------------
+// Confirmation
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {object} SpecConfirmation
+ * @property {'create'|'continue'|'refine'|'unify'} variant  the route the entry took
+ * @property {string} verb                Creating | Continuing | Refining
+ * @property {string} work_unit
+ * @property {string} name
+ * @property {string} status              the item's status — proposed before its first session
+ * @property {{name: string, status: string, individual: boolean}[]} sources  status: pending | stale | incorporated; individual: a started specification already covers it
+ * @property {string[]} supersedes        the started specifications the handoff supersedes
+ * @property {{name: string, hint: string}[]} consult
+ */
+
+/** A heading over its rows, or '' when there are none. @param {string} heading @param {string[]} rows */
+function listBlock(heading, rows) {
+  return rows.length === 0 ? '' : [heading, ...rows].join('\n');
+}
+
+/** @param {string[]} texts */
+function bulletRows(texts) {
+  return texts.flatMap((text) => bulletRow(text));
+}
+
+/**
+ * What the handoff is about to do, drawn above its consent gate: the verb
+ * and name, the sources by extraction state, the consult references, and
+ * the paths it writes and supersedes.
+ * @param {SpecConfirmation} c
+ * @returns {string}
+ */
+function specificationConfirmation(c) {
+  const specPath = (name) => `.workflows/${c.work_unit}/specification/${name}/specification.md`;
+  const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
+  const head = `${c.verb} specification: ${titlecase(c.name)}`;
+  const output = `Output: ${specPath(c.name)}`;
+  const consult = listBlock('Consult references (read narrowly — do not extract):',
+    bulletRows(c.consult.map((r) => (r.hint ? `${r.name} — ${r.hint}` : r.name))));
+
+  if (c.variant === 'unify') {
+    return compose([
+      head,
+      listBlock('Sources:', bulletRows(c.sources.map((s) => s.name))),
+      listBlock('Existing specifications to incorporate:', bulletRows(c.supersedes.map((n) => `${specPath(n)} → will be superseded`))),
+      output,
+    ]);
+  }
+  if (c.variant === 'create') {
+    return compose([
+      head,
+      listBlock('Sources:', bulletRows(c.sources.map((s) => (s.individual ? `${s.name} (has individual spec — will be incorporated)` : s.name)))),
+      consult,
+      output,
+      listBlock('After completion:', c.supersedes.map((n) => `  ${specPath(n)} → marked as superseded`)),
+    ]);
+  }
+
+  const existing = `Existing: ${specPath(c.name)} [${c.status}]`;
+  const pending = named('pending');
+  const stale = named('stale');
+  if (pending.length === 0 && stale.length === 0) {
+    return compose([head, existing, listBlock('All sources extracted:', bulletRows(c.sources.map((s) => s.name))), consult]);
+  }
+  return compose([
+    head,
+    existing,
+    listBlock(c.status === 'completed' ? 'New sources to extract:' : 'Sources to extract:', bulletRows(pending.map((n) => `${n} [pending]`))),
+    listBlock('Sources re-decided since extraction (reconcile):', bulletRows(stale.map((n) => `${n} [stale]`))),
+    listBlock('Previously extracted (for reference):', bulletRows(named('incorporated'))),
+    consult,
+  ]);
+}
+
 module.exports = {
-  SPEC_TITLE: TITLE, specificationDisplay, specificationMenu, specificationCompletedMenu };
+  SPEC_TITLE: TITLE, specificationDisplay, specificationMenu, specificationCompletedMenu, specificationConfirmation };

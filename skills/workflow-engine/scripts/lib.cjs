@@ -81,8 +81,8 @@ module.exports = {
     computeNeedsSequencing: derivations.computeNeedsSequencing,
     buildDiscoveryMap: derivations.buildDiscoveryMap,
     sourceRows: derivations.sourceRows,
-    specIsStarted: derivations.specIsStarted,
     specGroupsSources: derivations.specGroupsSources,
+    lockingSpecs: derivations.lockingSpecs,
     inputMoved: derivations.inputMoved,
     movedFrom: derivations.movedFrom,
   },
@@ -124,6 +124,7 @@ module.exports = {
     unitsOf: workunit.unitsOf,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
     specificationDetail: specification.specificationDetail,
+    discoverySpec: specification.discoverySpec,
   },
   project: {
     titlecase: conventions.titlecase,
