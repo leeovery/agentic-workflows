@@ -109,8 +109,10 @@ Drawn from the owner's dex-engineering knowledge base:
 2. **Our own store, with ranking in our own code.** Our own BM25, a float32
    vector file and our own file format replace Orama. The keyword and vector
    searches run separately and merge by RRF. A failed embed leaves the
-   keyword results standing, with a note, and nobody is stopped. Orama and
-   msgpack leave with it, so the KB has no dependencies. This step comes
+   keyword results standing, with a note, and nobody is stopped. A relevance
+   floor turns away a question the store cannot answer, and the keyword side
+   gains its stemming and stop words. Orama and msgpack leave with it, so the
+   KB has no dependencies. This step comes
    before the engine move because the engine is plain source with only
    Node's built-ins, and carrying Orama into it would give the engine a
    build step.
@@ -119,10 +121,8 @@ Drawn from the owner's dex-engineering knowledge base:
    if one holds up.
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
-5. **The rest of retrieval quality:** the relevance floor, printed scores,
-   content-only search, heading paths and line ranges, a per-file cap,
-   excerpts, and lifecycle markers. A floor drawn from vector scores may come
-   forward into step 2 (see step 1's findings).
+5. **The rest of retrieval quality:** printed scores, heading paths and line
+   ranges, a per-file cap, excerpts, and lifecycle markers.
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -411,43 +411,197 @@ testable:
 
 The eval guards the rest.
 
-### Decided
+### The store
 
-- **The store.** Our own BM25 over an inverted index. Vectors as float32 in a
-  file of their own, scanned by brute-force cosine (~1.5 ms per 1,000
-  chunks). Our own file format. Orama and msgpack are removed.
-- **What stays.** The writer lock, the atomic rename and the metadata sidecar
-  are already independent of the store.
-- **Fusion.** The keyword and vector searches run separately and merge by
-  RRF, with a per-framing merge that rewards a chunk several framings agree
-  on.
-- **After fusion.** Decay, boosts and the confidence tier apply after fusion,
-  and decay stays unchanged.
-- **Embed failure.** A failed embed degrades to keyword-only with a note, and
-  `query` exits 0.
-- **Explain.** `query --explain` shows each result's journey.
-- **Release.** The step ships as one release, and every install rebuilds its
-  store once.
+- **One file.** `store.bin` replaces `store.msp` in `.workflows/.knowledge/`.
+  - It holds a header naming the format version, then every chunk, then
+    every vector as raw float32. Each chunk carries its text, its metadata,
+    its source file's hash, the hash of its own text, and the counts BM25
+    needs.
+  - A query reads the file whole. At portal's size that is expected to take
+    tens of milliseconds, and layer 1 measures it. (The probe loaded
+    everything but the text in 16–17 ms.)
+  - Every write rewrites the file under the writer lock and renames it into
+    place. The lock, the rename and the metadata sidecar carry over
+    unchanged.
+- **BM25 done right.**
+  - Raw term counts, and a chunk's length in tokens.
+  - Document frequency counted by chunk.
+  - Lucene's IDF, which never goes negative, with k1 1.2 and b 0.75.
+  - Word maps safe against keys like `constructor`.
+  - Each mistake the research listed gets a test.
+  - The statistics are store-wide: a filter decides which chunks may be
+    returned, never how one scores.
+- **The tokenizer starts where today's is.**
+  - It lowercases, and splits on anything but letters, digits, `_`, `'` and
+    `-`.
+  - No stemming and no stop words.
+  - It searches the same three fields as today (content, source path, chunk
+    id), scoring each on its own and summing them.
+  - Orama's prefix matching, where a query word matches every word it
+    begins, is not carried over. Stemming, measured in its own layer, is the
+    principled way to the same recall.
+- **Vectors are keyed by their text.**
+  - Each chunk records the hash of the text it embedded. An index reuses the
+    vector of any chunk whose text the store already holds.
+  - So an edit re-embeds only the chunks it changed.
+  - A rebuild that leaves chunk text alone calls no provider.
+- **The upgrade.**
+  - The first start after the release finds no `store.bin` and reads as
+    `buildable`. The bulk index then builds the store from the files: the
+    keyword side first, in seconds, then the vectors, saved as they land.
+  - Nothing is carried over from the old store. For scale, step 1's hybrid
+    build embedded all three eval projects together in 48 s at the lowest
+    rate tier.
+  - Once the new store is written, the old `store.msp` is deleted, and
+    boot's `.worktreeinclude` sync lists `store.bin` in its place.
+
+### Ranking
+
+- **Two searches per framing.**
+  - A keyword search runs for every framing.
+  - When the query has a vector, a vector search runs too: a brute-force
+    cosine over every chunk the filters admit, ~1.5 ms per thousand chunks.
+  - Each search returns its top 50.
+- **Merged by rank.**
+  - All the lists merge by weighted reciprocal rank fusion. A chunk scores
+    the sum of w / (k + rank) over every list it appears in, with k starting
+    at 60 and every weight at 1.
+  - A chunk several framings agree on gains from each of them.
+- **Normalised, then re-ranked as today.**
+  - The fused score is divided by the most any chunk could score (first in
+    every list that ran), so it runs from 0 to 1 as today's blend does.
+  - Decay, the `--boost` directives (+0.1 each) and the confidence tier
+    (+0.01 per step) then apply exactly as they do today.
+- **`query --explain`** prints beneath each result:
+  - its rank in every list;
+  - its fused score;
+  - what decay, boosts and the tier did to it.
+
+  A framing the floor turned away is named, with its best vector score.
+
+### Without a vector
+
+- **A query never stops for want of a vector.**
+  - The query runs keyword-only whatever keeps it from a vector the store can
+    compare:
+    - no key;
+    - the provider down;
+    - a rate limit past the command's budget;
+    - an account out of quota;
+    - a store built with another model.
+  - It prints a note naming the cause and its fix, and exits 0.
+  - `query` exits non-zero only when the store itself cannot be read.
+    `knowledge-usage.md` §D, the pause for a failed query, narrows its likely
+    causes to match.
+- **An index never drops a chunk for want of a vector.**
+  - A chunk whose embed fails is written with its keywords and without a
+    vector. The next bulk index embeds every chunk that lacks one.
+  - The command still exits non-zero, naming the failure, so every caller's
+    warning path carries it as it does today.
+  - `status` counts the chunks waiting, and a query over a store with any
+    waiting says so in its note.
+- **A keyword-only store fills in.**
+  - When a provider is configured over a keyword-only store, the next bulk
+    index adopts it and fills the vectors the same way.
+  - The `upgrade-available` state goes, and with it the `knowledge rebuild`
+    it asks for.
+  - A store built with one model still refuses another. That stays a
+    rebuild.
+
+### The relevance floor
+
+- **It works per framing.**
+  - A framing contributes nothing when its best vector score, among the
+    chunks the filters admit, falls below the floor. That includes its
+    keyword search, which would otherwise fill the slots on its own.
+  - When no framing clears the floor, `query` prints a one-line note above
+    `[0 results]` and exits 0. `contextual-query.md`'s zero-results branch
+    keys on the count line.
+- **It is set so no answer is lost.** A missed decision costs an agent more
+  than a page of noise. So the floor sits at the highest value where no
+  positive case loses a judged passage from its top five. Whatever it turns
+  away at that value, negatives and near-miss negatives, is what it buys.
+- **It needs complete vectors.** While any chunk waits for its vector, the
+  floor turns nothing away, because the answer may be the chunk without one.
+- **Its setting.** `similarity_threshold` becomes the floor, and its default
+  is the value the eval sets. Its note that noise peaks near 0.2 goes:
+  off-topic framings reach 0.43.
+- **Keyword-only stores.**
+  - BM25 scores have no fixed scale, so a keyword-only store has no vector
+    floor.
+  - A keyword floor is a candidate in the tuning layer. It would require a
+    chunk to match a share of the framing's words, or to score near the best
+    the framing could reach.
+  - It is measured after stemming and stop words have settled what a matched
+    word is, and it stays only if it turns negatives away without losing
+    answers.
+
+### The keyword side
+
+Three changes land a layer each, and each stays only if the eval improves:
+- **Stemming:** Porter2, the Snowball English stemmer.
+- **Stop words:** a standard English list, starting from Lucene's 33 words.
+  Never the project's own vocabulary, which IDF already weighs.
+- **Searching content alone:** the chunk id and source path are dropped from
+  the searched fields.
+
+A tokenizer change rebuilds the keyword side alone, locally, in seconds.
+
+### The eval
+
+- **New cases.**
+  - Near-miss negatives: a subject a project discussed but never decided, a
+    handful per project, written and confirmed against the corpus as the
+    other negatives were.
+  - Boost counter-cases: harvested queries boosted toward a work unit that
+    holds nothing they want, judged as the unboosted query is.
+- **Embeddings cached by text.** The hybrid mode caches every embedding,
+  chunks and query terms alike, by provider identity and text. A change to
+  the store or the ranking then rebuilds locally, and only new chunk text
+  reaches the provider.
+- **Timings.** The by-hand run reports store size, plus load, query and index
+  times. Layer 1's PR records them before and after.
+- **Re-pinned per layer.** Every layer that moves retrieval re-pins keyword
+  mode in the gate and hybrid mode by hand.
+
+### The stack
+
+1. **Our own store.**
+   - The store above, with today's blend rebuilt on its searches, so the
+     eval shows what the store alone changed:
+     - each search's scores are divided by that search's best;
+     - the blend is 0.4 of the keyword score plus 0.6 of the vector score,
+       with vector hits under 0.3 left out;
+     - the framings merge by each chunk's best score.
+   - Orama and msgpack leave `package.json`.
+   - The eval's embedding cache and timings land here.
+2. **Rank fusion,** with the normalised score and `--explain`.
+3. **Without a vector.**
+4. **Eval cases.**
+5. **The vector floor.**
+6. **The keyword side,** one layer per change.
+7. **Tuning:**
+   - the RRF constant;
+   - the original framing's weight;
+   - each list's depth;
+   - the boost's strength, against the counter-cases;
+   - the keyword floor.
+
+Docs move in the layer that changes what they describe: the KB section of
+`CLAUDE.md`, the knowledge skill's `SKILL.md` and references, and
+`docs/knowledge-base.md`. A layer that touches skill prose names the prose
+cases it intersects. The stack ships as one release.
 
 ### Open
 
-- The RRF constant, and whether the original framing is weighted above the
-  others.
-- Whether the relevance floor comes forward into this step as a gate on
-  vector scores (the evidence is in step 1's findings), and what it does on
-  a keyword-only store, which has no vector score to gate on.
-- How strongly `--boost:work-unit` counts once scores are ranks. The case
-  set cannot judge that yet: 11 of its 12 boosted cases have their answer
-  inside the boosted unit, so a stronger boost only ever looks better. Tuning
-  it needs cases where the boosted unit holds nothing the query wants.
-- **What rides with the rebuild.** A tokenizer change (stemming, stop words,
-  which fields are searched) rebuilds only the keyword index, locally and in
-  seconds. A change to the chunk text (a heading path, a contextual header,
-  the chunk size) re-embeds every chunk through the provider. Whether step 5's
-  items of either kind land here, while every install is rebuilding anyway,
-  is open.
-- **How an install's old store is replaced.** Either re-embed from the files,
-  or carry its vectors over from the Orama store.
+The eval settles these inside the stack:
+- the RRF constant and weights;
+- each list's depth;
+- the floor's value;
+- which keyword changes stay;
+- whether a keyword floor exists;
+- how strongly a boost counts.
 
 ## Step 3 — local embeddings, measured
 
@@ -494,18 +648,25 @@ with no child process and no parsing of stderr, and each mirrored list
 collapses to one. Step 2 leaves nothing to bundle, so the esbuild bundle is
 retired and the KB becomes plain engine source. The loose ends from the audit
 land here:
-config keys validated, reconfiguration keeping tuning overrides,
-`base_url` recorded, the base-stability default reconciled with its
-documentation, and store creation single-homed.
+- config keys validated;
+- reconfiguration keeping tuning overrides;
+- `base_url` recorded;
+- the base-stability default reconciled with its documentation;
+- store creation single-homed.
 
 ## Step 5 — the rest of retrieval quality
 
-Planned: a relevance floor (stop words, stemming, content-only indexing, a
-per-leg minimum), printed scores, a heading path on every chunk (indexed,
-and shown with a line range, `path:L120-188`), a per-file cap, excerpts by
-default with `--full`, and a marker on a reopened or in-progress topic's
-chunks. Contextual chunk headers are measured here. Any of these that change
-the tokenizer or the chunk text may move into step 2 instead (open there).
+Planned:
+- printed scores;
+- a heading path on every chunk, indexed and shown with a line range
+  (`path:L120-188`);
+- a per-file cap;
+- excerpts by default, with `--full`;
+- a marker on a reopened or in-progress topic's chunks.
+
+Contextual chunk headers are measured here. A change to chunk text
+re-embeds only the chunks whose text it changes, because step 2 keys every
+vector by its text.
 
 ## Step 6 — lifecycle ranking within a topic
 
