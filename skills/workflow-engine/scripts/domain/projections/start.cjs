@@ -6,7 +6,8 @@
 // plus the skill's state-derived sub-views: the empty state, the inbox pickup
 // and archived lists, the working set, the manage flow, and the completed &
 // cancelled view. Sub-view projections return `{data, display, menu}` bodies
-// (the adapter wraps them in section markers); flows with later gates also
+// — a pick view carries its menu, or its display when there is nothing to
+// pick (the adapter wraps them in section markers); flows with later gates also
 // return labelled `sections` emitted at the same call (the mixed-type blocker).
 //
 // Deterministic: same detail, same string. The overview is a flat list (one
@@ -367,6 +368,13 @@ function groupedPickup(items) {
   return { ordered, display: lines.join('\n') + '\n' };
 }
 
+// A pickup item as a pick-menu row's label — the title, its metadata the
+// italic tail.
+/** @param {PickupItem} item @param {string} meta */
+function itemLabel(item, meta) {
+  return `${escapeMarkdown(item.title)} — *${meta}*`;
+}
+
 /**
  * The inbox pickup snapshot: the type-grouped item tree, the
  * select/archived/back menu. Selection numbers resolve through the DATA
@@ -398,25 +406,28 @@ function inboxPickupView(items, hasArchived) {
 }
 
 /**
- * The archived-store snapshot: numbered archived items and the select prompt
- * (empty menu when nothing is archived).
+ * The archived-store snapshot: the archived items as a numbered pick menu,
+ * group-major like the pickup — or, with nothing archived, the empty display
+ * and no menu.
  * @param {PickupItem[]} items  combined archived items, pickup order
- * @returns {{data: string, display: string, menu: string}}
+ * @returns {{data: string, display?: string, menu?: string}}
  */
 function archivedView(items) {
-  const grouped = groupedPickup(items);
+  const { ordered } = groupedPickup(items);
   const data = [
     `archived_count: ${items.length}`,
-    ...itemTable('ITEMS', grouped.ordered),
+    ...itemTable('ITEMS', ordered),
   ].join('\n');
 
-  const display = items.length > 0 ? grouped.display : 'No archived items.\n';
+  if (items.length === 0) return { data, display: 'No archived items.\n' };
 
-  const menu = items.length > 0
-    ? dotMenu(['Select an item (enter number, or **`b/back`** to return):'])
-    : '';
-
-  return { data, display, menu };
+  return {
+    data,
+    menu: menu('Which item?', [
+      ...ordered.map((item) => cmdOption(String(item.n), null, itemLabel(item, `${item.type}, ${item.date}`))),
+      cmdOption('b', 'back', 'Return to the inbox'),
+    ]),
+  };
 }
 
 /**
@@ -521,6 +532,16 @@ function workingSetView(ws, summaries = {}) {
   return { data, title, display, menu, sections: sections.join('\n') };
 }
 
+// The add and drop gates' pick: one row per candidate, several picks
+// comma-separated.
+/** @param {string} question @param {PickupItem[]} items @param {(item: PickupItem) => string} meta */
+function workingSetPick(question, items, meta) {
+  return menu('Pick one, or several comma-separated.', [
+    ...items.map((item) => cmdOption(String(item.n), null, itemLabel(item, meta(item)))),
+    cmdOption('b', 'back', 'Return to the working set'),
+  ], { question });
+}
+
 /**
  * The add-items gate over the working set's addable rows, served by the
  * gateway's `working-set-add-gate` verb at the gate that displays it.
@@ -531,18 +552,11 @@ function workingSetAddGate(ws) {
   if (ws.addable.length === 0) {
     throw new Error('working-set-add-gate: nothing addable — the whole inbox is already in the set');
   }
-  return [
-    labelled(
-      'DISPLAY: add candidates',
-      'emit verbatim as a code block',
-      ws.addable.map((item) => `  ${item.n}. ${item.title} [${item.type}] — ${item.date}`).join('\n'),
-    ),
-    labelled(
-      'MENU: add gate',
-      "emit verbatim as markdown, then STOP for the user's response",
-      dotMenu(['Add which? (enter number(s), comma-separated, or **`b/back`**)']),
-    ),
-  ].join('\n');
+  return labelled(
+    'MENU: add gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    workingSetPick('Add which?', ws.addable, (item) => `${item.type}, ${item.date}`),
+  );
 }
 
 /**
@@ -552,18 +566,11 @@ function workingSetAddGate(ws) {
  * @returns {string}
  */
 function workingSetDropGate(ws) {
-  return [
-    labelled(
-      'DISPLAY: drop candidates',
-      'emit verbatim as a code block',
-      ws.items.map((item) => `  ${item.n}. ${item.title} [${item.type}]`).join('\n'),
-    ),
-    labelled(
-      'MENU: drop gate',
-      "emit verbatim as markdown, then STOP for the user's response",
-      dotMenu(['Drop which? (enter number(s), comma-separated, or **`b/back`**)']),
-    ),
-  ].join('\n');
+  return labelled(
+    'MENU: drop gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    workingSetPick('Drop which?', ws.items, (item) => item.type),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -578,25 +585,16 @@ function workingSetDropGate(ws) {
  */
 
 /**
- * The manage selection snapshot: every active work unit by type, numbering
- * continuous across sections — the same order and numbers as the overview.
+ * The manage selection snapshot: every active work unit as a numbered pick
+ * row, numbering continuous across the type sections — the same order and
+ * numbers as the overview.
  * @param {StartDetail} detail
- * @returns {{data: string, display: string, menu: string, rows: ManageRow[]}}
+ * @returns {{data: string, menu: string, rows: ManageRow[]}}
  */
 function manageListView(detail) {
   /** @type {ManageRow[]} */
-  const rows = [];
-  const displayLines = [];
-  for (const s of SECTIONS) {
-    const units = detail[s.group].work_units;
-    if (units.length === 0) continue;
-    displayLines.push(s.label.replace(/:$/, ''));
-    units.forEach((u, i) => {
-      rows.push({ n: rows.length + 1, work_type: s.type, work_unit: u.name });
-      displayLines.push(`  ${i === units.length - 1 ? '└─' : '├─'} ${rows.length}. ${titlecase(u.name)}`);
-    });
-    displayLines.push('');
-  }
+  const rows = SECTIONS.flatMap((s) => detail[s.group].work_units.map((u) => ({ work_type: s.type, work_unit: u.name })))
+    .map((r, i) => ({ n: i + 1, ...r }));
 
   const data = [
     `unit_count: ${rows.length}`,
@@ -604,9 +602,6 @@ function manageListView(detail) {
     'UNITS (n  work_type  work_unit):',
     ...rows.map((r) => `  ${r.n}  ${r.work_type}  ${r.work_unit}`),
   ].join('\n');
-
-  const display = ''
-    + (rows.length > 0 ? displayLines.join('\n') : 'No active work units.\n');
 
   // The project baseline manages from here too — it is not a work unit, so
   // it rides as a command option rather than a numbered row. Label follows
@@ -618,17 +613,16 @@ function manageListView(detail) {
     native: 'Start the project baseline assessment',
     none: 'Start the project baseline assessment',
   }[detail.baseline.status];
-  const menuLines = [
-    cmdOption('a', 'baseline', baselineOption),
-    '',
-    'Select a work unit (enter number, or **`b/back`** to return):',
-  ];
 
-  const menu = rows.length > 0
-    ? dotMenu(menuLines)
-    : '';
-
-  return { data, display, menu, rows };
+  return {
+    data,
+    menu: menu('Which work unit?', [
+      ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${r.work_type}*`)),
+      cmdOption('a', 'baseline', baselineOption),
+      cmdOption('b', 'back', 'Return'),
+    ]),
+    rows,
+  };
 }
 
 /**
@@ -680,13 +674,7 @@ function manageUnitView(md) {
     ...actions.map(([k, a]) => `  ${k}  ${a}`),
   ].join('\n');
 
-  const menu = dotMenu([
-    `**${titlecase(md.work_unit)}** (${md.work_type})`,
-    '',
-    ...options,
-  ]);
-
-  return { data, menu };
+  return { data, menu: menu(`**${titlecase(md.work_unit)}** (${md.work_type})`, options, { question: 'What would you like to do?' }) };
 }
 
 /**
@@ -700,7 +688,7 @@ function absorbTargetMenu(md) {
     'MENU: absorb target',
     "emit verbatim as markdown, then STOP for the user's response",
     dotMenu([
-      'Select a target epic:',
+      'Which epic should absorb it?',
       '',
       ...md.available_epics.map((name, i) => cmdOption(String(i + 1), null, titlecase(name))),
       '',
@@ -763,21 +751,18 @@ const FILTER_LABELS = {
   epic: 'Epics',
 };
 
-/** One closed-set tree: numbered rows, the closing phase as each row's body. @param {ClosedRow[]} rows @param {string} label */
-function closedTree(rows, label) {
-  return renderTree(
-    rows.map((r) => ({ title: `${r.n}. ${titlecase(r.work_unit)}`, body: [`${label}: ${r.last_phase}`] })),
-    { width: TREE_WIDTH, bodyIndent: 1 },
-  ).replace(/\n$/, '');
-}
+// A closed row's tail: how it closed, and in which phase.
+/** @type {Record<string, string>} */
+const CLOSED_TAIL = { completed: 'completed after', cancelled: 'cancelled during' };
 
 /**
  * The completed & cancelled snapshot, optionally filtered to one work type
- * (the per-type navigation skills pass their own). Numbering is continuous
- * across the two lists; numbers resolve through the DATA `UNITS` table.
+ * (the per-type navigation skills pass their own): completed then cancelled
+ * as one numbered pick menu, numbers resolving through the DATA `UNITS`
+ * table — or, with nothing closed, the empty display and no menu.
  * @param {StartDetail} detail
  * @param {string} [filter]  a work type, or undefined for all
- * @returns {{data: string, display: string, menu: string, rows: ClosedRow[]}}
+ * @returns {{data: string, display?: string, menu?: string, rows: ClosedRow[]}}
  */
 function completedView(detail, filter) {
   if (filter !== undefined && !FILTER_LABELS[filter]) {
@@ -785,53 +770,30 @@ function completedView(detail, filter) {
   }
   const match = (/** @type {import('../start.cjs').ClosedEntry} */ e) => filter === undefined || e.work_type === filter;
   /** @type {ClosedRow[]} */
-  const rows = [];
-  for (const e of [...detail.completed.filter(match), ...detail.cancelled.filter(match)]) {
-    rows.push({ n: rows.length + 1, status: e.status, work_type: e.work_type, work_unit: e.name, last_phase: e.last_phase || 'none' });
-  }
-  const completedRows = rows.filter((r) => r.status === 'completed');
-  const cancelledRows = rows.filter((r) => r.status === 'cancelled');
+  const rows = [...detail.completed.filter(match), ...detail.cancelled.filter(match)]
+    .map((e, i) => ({ n: i + 1, status: e.status, work_type: e.work_type, work_unit: e.name, last_phase: e.last_phase || 'none' }));
 
   const data = [
     `filter: ${filter || '(none)'}`,
-    `completed_count: ${completedRows.length}`,
-    `cancelled_count: ${cancelledRows.length}`,
+    `completed_count: ${rows.filter((r) => r.status === 'completed').length}`,
+    `cancelled_count: ${rows.filter((r) => r.status === 'cancelled').length}`,
     'UNITS (n  status  work_type  work_unit  last_phase):',
     ...rows.map((r) => `  ${r.n}  ${r.status}  ${r.work_type}  ${r.work_unit}  ${r.last_phase}`),
   ].join('\n');
 
-  let display = '';
-  if (rows.length === 0) {
-    display += 'No completed or cancelled work units found.\n';
-  } else {
-    const lines = [];
-    if (filter !== undefined) {
-      lines.push(`Showing: ${FILTER_LABELS[filter]}`);
-      lines.push('');
-    }
-    // Each list is one tree off its header: the closing phase is the row's
-    // body, so the branch glyphs stay positional (`└─` marks the last row of
-    // the group, never every row's sub-line).
-    if (completedRows.length > 0) {
-      lines.push('Completed');
-      lines.push(closedTree(completedRows, 'Completed after'));
-      lines.push('');
-    }
-    if (cancelledRows.length > 0) {
-      lines.push('Cancelled');
-      lines.push(closedTree(cancelledRows, 'Cancelled during'));
-      lines.push('');
-    }
-    display += lines.join('\n').replace(/\n+$/, '\n');
-  }
+  if (rows.length === 0) return { data, display: 'No completed or cancelled work units found.\n', rows };
 
-  const menu = rows.length > 0
-    ? dotMenu([
-      'Select a work unit (enter number) for details, or **`b/back`** to return.',
-    ])
-    : '';
-
-  return { data, display, menu, rows };
+  const options = [
+    ...rows.map((r) => cmdOption(String(r.n), null, `${titlecase(r.work_unit)} — *${CLOSED_TAIL[r.status]} ${r.last_phase}*`)),
+    cmdOption('b', 'back', 'Return'),
+  ];
+  return {
+    data,
+    menu: filter === undefined
+      ? menu('Which work unit?', options)
+      : menu(`Showing: ${FILTER_LABELS[filter]}`, options, { question: 'Which work unit?' }),
+    rows,
+  };
 }
 
 /**

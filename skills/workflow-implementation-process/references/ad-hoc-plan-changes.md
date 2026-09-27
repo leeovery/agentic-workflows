@@ -6,7 +6,7 @@
 
 Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work** — except an addition to the task in flight, which enters at **C. Deliver to the Executor**: the orchestrator's own, and the answer the block gate took from the user.
 
-The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending when the conversation interrupted, re-present it — engine-rendered menus re-fetch from their surface, prose menus re-emit from their authoring file.
+The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending when the conversation interrupted, re-present it by re-fetching it from its surface.
 
 Context to hold before acting: `{format}` is the plan's output format, read at Step 2 — if it is not in session context (an early or post-refresh entry), read it now (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format`).
 

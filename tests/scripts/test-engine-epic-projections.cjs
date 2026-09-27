@@ -1168,7 +1168,7 @@ describe('epic projections: selection sub-views', () => {
     );
   });
 
-  it('postpone-menu: the empty state, and a set where every row is locked opens on a statement over back alone', () => {
+  it('postpone-menu: the empty state, and a set where every row is locked opens on a statement and asks what next over back alone', () => {
     const bare = detailFor(dir, 'p2', { work_type: 'epic', phases: { planning: { items: { orphan: { status: 'completed' } } } } });
     assert.strictEqual(epicPostponeMenu(bare).display, 'No postponable topics.\n');
     const locked = detailFor(dir, 'p3', {
@@ -1181,6 +1181,8 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicPostponeMenu(locked).rendered, [
       '· · · · · · · · · · · ·',
       'Nothing can be postponed right now — each row names what holds it.',
+      '',
+      '**`◆ What next?`**',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1324,11 +1326,13 @@ describe('epic projections: selection sub-views', () => {
       '  └─ Auth [completed] · implementation started — fix forward',
       '',
     ].join('\n'));
-    // Every row locked: a statement stands where the question would, over
-    // back alone — a question with nothing to pick would be a lie.
+    // Every row locked: the statement says so and the ask is what next, over
+    // back alone — the pick question would offer a pick that is not there.
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       'Nothing can be cancelled right now — each row names what holds it.',
+      '',
+      '**`◆ What next?`**',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1592,6 +1596,8 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       'Nothing can be reactivated right now — each row names what holds it.',
+      '',
+      '**`◆ What next?`**',
       '',
       '**`b/back`** → Return to menu',
     ].join('\n'));

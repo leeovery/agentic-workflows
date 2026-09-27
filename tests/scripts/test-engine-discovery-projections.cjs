@@ -279,7 +279,7 @@ describe('gateway.cjs adapter: map-view', () => {
     return spawnSync('node', [ADAPTER, ...args], { cwd: dir, encoding: 'utf8' });
   }
 
-  it('emits DATA + DISPLAY sections and no MENU — the confirm gate stays prose', () => {
+  it('emits DATA + DISPLAY sections and no MENU — a map shown for reading carries no gate', () => {
     richFixture(dir);
     const res = run(['map-view', 'payments']);
     assert.strictEqual(res.status, 0);

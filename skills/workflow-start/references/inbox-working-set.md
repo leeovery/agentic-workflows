@@ -86,7 +86,7 @@ Match each named item against the `ADDABLE` table — by title, or by the number
 
 #### Otherwise
 
-Fetch the add gate over the current set and emit its `DISPLAY: add candidates` section verbatim as a code block, then its `MENU: add gate` section verbatim as markdown (not a code block):
+Fetch the add gate over the current set and emit its `MENU: add gate` section verbatim as markdown (not a code block):
 
 ```bash
 node .claude/skills/workflow-start/scripts/gateway.cjs working-set-add-gate {path} [{path} …]
@@ -120,7 +120,7 @@ Resolve each named item against the working set by title or description. If any 
 
 #### Otherwise
 
-Fetch the drop gate over the current set and emit its `DISPLAY: drop candidates` section verbatim as a code block, then its `MENU: drop gate` section verbatim as markdown (not a code block):
+Fetch the drop gate over the current set and emit its `MENU: drop gate` section verbatim as markdown (not a code block):
 
 ```bash
 node .claude/skills/workflow-start/scripts/gateway.cjs working-set-drop-gate {path} [{path} …]

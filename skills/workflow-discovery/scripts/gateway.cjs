@@ -146,7 +146,8 @@ function format(result) {
 // ---------------------------------------------------------------------------
 // map-view — the Discovery Map snapshot: DATA (counts, rows, and — with a
 // proposed set — the per-name flags the persist step routes on) + DISPLAY
-// (the projection). No MENU: the confirm gate is static prose in the skill.
+// (the projection). No MENU: the harvest's confirm gate is its own render
+// (`render synthesis-gate`), fetched where it is shown.
 // ---------------------------------------------------------------------------
 
 /**

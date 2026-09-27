@@ -19,7 +19,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
-const { section, menu, menuFrame, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
@@ -93,12 +93,16 @@ function experimentApprovalGate(id) {
 
 /**
  * The record picker under the register — the several-live-records path: the
- * register shows the series, this menu takes the pick.
+ * register shows the series, this menu takes the pick, one row per live
+ * top-level record keyed by its id.
+ * @param {SeriesRow[]} live  live top-level rows, id order
  * @returns {string}
  */
-function experimentPick() {
-  const body = menuFrame(['Which experiment? (enter its id — E1, E2, …, or **`b/back`**)']);
-  return section('MENU: experiment pick', MENU_INSTRUCTION, body);
+function experimentPick(live) {
+  return section('MENU: experiment pick', MENU_INSTRUCTION, menu('Which experiment?', [
+    ...live.map((r) => cmdOption(r.id, null, `${r.slug} — *${r.status}*`)),
+    cmdOption('b', 'back', 'Leave without picking one'),
+  ]));
 }
 
 /**

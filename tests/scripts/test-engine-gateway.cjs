@@ -8,12 +8,14 @@ const assert = require('node:assert');
 const {
   runGateway,
   dataBlock,
+  titleBlock,
   displayBlock,
   menuBlock,
   SECTION,
 } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
 const lib = require('../../skills/workflow-engine/scripts/lib.cjs');
+const { dataSection, titleSection } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 // Capture stdout writes around a runGateway call.
 function captureRun(handlers, argv) {
@@ -97,6 +99,15 @@ describe('gateway: output sections', () => {
 
   it('dataBlock passes strings through', () => {
     assert.strictEqual(dataBlock('raw'), SECTION.data + '\nraw\n');
+  });
+
+  it('dataBlock opens on the same DATA marker a render surface draws', () => {
+    assert.strictEqual(dataBlock('raw'), dataSection(['raw']));
+  });
+
+  it('titleBlock draws the same TITLE section a render surface draws', () => {
+    assert.strictEqual(titleBlock('Workflow Start'), titleSection('Workflow Start'));
+    assert.ok(titleBlock('Workflow Start').startsWith(SECTION.title + '\n'));
   });
 
   it('displayBlock and menuBlock demarcate and trim trailing newlines', () => {

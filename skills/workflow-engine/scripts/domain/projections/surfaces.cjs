@@ -23,12 +23,10 @@ const MENU_GLYPH = '◆';
 
 // Option lines align their arrows into one column. The padding is measured
 // against the widest key in the same block, never against the terminal, so
-// the column itself is stable at any width — which is why prose may carry it
-// by hand. The label after the arrow is the half that consults the terminal:
-// a long label wraps at the display width with continuations aligned under
-// the label column, so the key column and the label column never bleed into
-// one another. Prose menus can't know the width, so theirs stay on one
-// authored line and soft-wrap (CONVENTIONS.md: Menus).
+// the column itself is stable at any width. The label after the arrow is the
+// half that consults the terminal: a long label wraps at the display width
+// with continuations aligned under the label column, so the key column and
+// the label column never bleed into one another (CONVENTIONS.md: Menus).
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
 // Continuation indents are non-breaking spaces — menus are markdown-emitted,
@@ -60,9 +58,10 @@ function renderedLen(head) {
 // a span's closing marker on the next line — the MENU surface is markdown,
 // so each emitted line has to stand alone. The scanner walks one word and
 // carries the open-span state across it: a backtick opens a code span (inside
-// one, only the closing backtick is markup), `**`/`~~`/`*` toggle emphasis
-// spans tracked as a stack (a marker matching the innermost open span closes
-// it; any other opens).
+// one, only the closing backtick is markup), a backslash escapes the character
+// after it (one rendered column), `**`/`~~`/`*` toggle emphasis spans tracked
+// as a stack (a marker matching the innermost open span closes it; any other
+// opens).
 
 /** @typedef {{code: boolean, spans: string[]}} MarkupState */
 
@@ -84,6 +83,7 @@ function scanWord(word, state) {
       continue;
     }
     if (word[i] === '`') { code = true; i += 1; continue; }
+    if (word[i] === '\\' && i + 1 < word.length) { rendered += 1; i += 2; continue; }
     const two = word.slice(i, i + 2);
     if (two === '**' || two === '~~') { toggleSpan(spans, two); i += 2; continue; }
     if (word[i] === '*') { toggleSpan(spans, '*'); i += 1; continue; }
@@ -202,6 +202,19 @@ function titleSection(text) {
   return section('TITLE', TITLE_INSTRUCTION, `# **\`■ ${text}\`**`);
 }
 
+// The reasoning surface beside a render (CONVENTIONS.md: Engine Output
+// Sections) — the flow decides from it, the user never sees it.
+const DATA_INSTRUCTION = 'reason from this — never display or parse the sections below';
+
+/**
+ * A DATA section carrying `lines`.
+ * @param {string[]} lines
+ * @returns {string}
+ */
+function dataSection(lines) {
+  return section('DATA', DATA_INSTRUCTION, lines.join('\n'));
+}
+
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
@@ -210,47 +223,64 @@ function titleSection(text) {
  *
  * A leading label (first line, blank line beneath it) takes the decision
  * glyph here rather than in `menu`, so a menu reads the same whether its
- * options were grouped by `menu` or composed by the projection itself.
- * `glyphLabel: false` suppresses that — a menu carrying an explicit question
- * line treats its leading statement as context, never a label.
- * `skip` exempts that many leading lines from the option scan: a caller
- * whose head chrome interpolates non-constant text must declare it, or an
- * option-shaped run in the text captures the arrow column.
- * @param {string[]} lines @param {{glyphLabel?: boolean, width?: number, skip?: number}} [opts] @returns {string}
+ * options were grouped by `menu` or composed by the projection itself —
+ * unless a line already carries the glyph, which makes the leading line
+ * context. `skip` exempts that many leading lines from the option scan: a
+ * caller whose head chrome interpolates non-constant text must declare it,
+ * or an option-shaped run in the text captures the arrow column.
+ * @param {string[]} lines @param {{width?: number, skip?: number}} [opts] @returns {string}
  */
-function menuFrame(lines, { glyphLabel = true, width, skip = 0 } = {}) {
+function menuFrame(lines, { width, skip = 0 } = {}) {
   const body = alignOptions(lines, { width, skip });
-  if (glyphLabel && body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
-    body[0] = `**\`${MENU_GLYPH} ${body[0]}\`**`;
+  if (!body.some((line) => GLYPHED_LINE.test(line)) && body[1] === '' && isGlyphable(body[0])) {
+    body[0] = glyphed(body[0]);
   }
+  asksOverRows(body);
   consentAsks(body);
   return [DOTS, ...body].join('\n');
 }
 
-// A `y/yes` row makes the menu a consent gate, and a consent gate asks on
-// its diamond line: a glyphed question above the rows, glyphable and ending
-// in `?`. An `n/no` row answers a `y/yes` row — never a verb synonym. The
-// check runs over the composed lines, so a menu grouped by `menu` and one a
+const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
+
+// A row's code-span head — cmdOption, bareOption and rangeOption write it.
+// The glyphed question shares the head's markup, so the glyph is what tells
+// them apart.
+/** @param {string} span */
+const headedRow = (span) => new RegExp(`^\\*\\*\`(?!${MENU_GLYPH} )${span}\`\\*\\*(?: +→ |$)`);
+const OPTION_ROW = headedRow('[^`]+');
+
+// A key the user presses names one key. A range's span holds both bounds
+// either side of an en dash — the numbers are typed, never pressed.
+const PRESSABLE_ROW = headedRow('[^`–]+');
+
+// Every menu asks: a glyphed question — glyphable, ending in `?` — stands
+// above its first row, and at least one row is a key to press. The check
+// runs over the composed lines, so a menu grouped by `menu` and one a
 // projection composes itself meet the same rule.
+/** @param {string[]} body */
+function asksOverRows(body) {
+  if (!body.some((line) => PRESSABLE_ROW.test(line))) {
+    throw new Error('menu: no row to press — a menu offers at least one single key (cmdOption or bareOption); a range row is typed, never pressed');
+  }
+  const firstRow = body.findIndex((line) => OPTION_ROW.test(line));
+  const ask = body.slice(0, firstRow).map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
+  if (!ask) {
+    throw new Error('menu: every menu asks a glyphed question — no `◆ …?` line stands above the rows; a statement stays context above a short question');
+  }
+  if (!ask[1].endsWith('?') || !isGlyphable(ask[1])) {
+    throw new Error(`menu: every menu asks a glyphed question — "${ask[1]}" is not one`);
+  }
+}
+
+// An `n/no` row answers a `y/yes` row — a consent gate's affirmative key is
+// never a verb synonym.
 const YES_ROW = '**`y/yes`**';
 const NO_ROW = '**`n/no`**';
-const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
 
 /** @param {string[]} body */
 function consentAsks(body) {
-  if (!body.some((line) => line.startsWith(YES_ROW))) {
-    if (body.some((line) => line.startsWith(NO_ROW))) {
-      throw new Error('menu: an n/no row answers a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym');
-    }
-    return;
-  }
-  const glyphed = body.map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
-  if (!glyphed) {
-    throw new Error('menu: a y/yes row answers a glyphed question — no `◆ …?` line stands above the rows; a statement label takes a question, a long or marked-up label splits into a statement and a question');
-  }
-  const ask = glyphed[1];
-  if (!ask.endsWith('?') || !isGlyphable(ask)) {
-    throw new Error(`menu: a y/yes row answers a glyphed question — "${ask}" is not one`);
+  if (body.some((line) => line.startsWith(NO_ROW)) && !body.some((line) => line.startsWith(YES_ROW))) {
+    throw new Error('menu: an n/no row answers a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym');
   }
 }
 
@@ -266,29 +296,27 @@ function isGlyphable(label) {
   return Boolean(label) && label.length <= LABEL_MAX && !/[\n*`]/.test(label);
 }
 
+/** @param {string} text */
+function glyphed(text) {
+  return `**\`${MENU_GLYPH} ${text}\`**`;
+}
+
 /**
- * Framed menu for the common shape: contextual label, blank line, options,
- * optional trailing prompt line separated by a blank line. A short plain
- * label carries the decision glyph; a longer one stays prose. An empty label
- * opens straight on the options — the label-less selection menu, for gates
- * whose context is carried by the display directly above them.
+ * Framed menu for the common shape: contextual label, blank line, options.
+ * A label that is itself a short plain question carries the decision glyph;
+ * any other label is a statement, and the ask rides `question` beneath it —
+ * the statement stays context, the question takes the glyph.
  * @param {string} label @param {string[]} options
- * @param {{prompt?: string, question?: string}} [opts]
+ * @param {{question?: string}} [opts]
  * @returns {string}
  */
-function menu(label, options, { prompt, question } = {}) {
+function menu(label, options, { question } = {}) {
   const lines = label ? [label, ''] : [];
-  // A yes/no gate whose label is a statement carries its ask separately: the
-  // statement stays context, the short question takes the decision glyph.
-  if (question) lines.push(`**\`${MENU_GLYPH} ${question}\`**`, '');
+  if (question) lines.push(glyphed(question), '');
   // Everything above the options is head chrome — never scanned for the
   // arrow column, so a label quoting model text cannot shift the options.
-  // The trailing prompt line IS scanned: it stays an engine-authored
-  // constant by convention, and skip is a prefix count by shape.
   const skip = lines.length;
-  lines.push(...options);
-  if (prompt) lines.push('', prompt);
-  return menuFrame(lines, { glyphLabel: !question, skip });
+  return menuFrame([...lines, ...options], { skip });
 }
 
 /**
@@ -406,5 +434,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

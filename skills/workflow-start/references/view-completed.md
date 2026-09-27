@@ -14,16 +14,18 @@ Render the completed & cancelled snapshot — append the work-type filter when t
 node .claude/skills/workflow-start/scripts/gateway.cjs completed [{work_type_filter}]
 ```
 
-The output is one snapshot in three demarcated sections:
+The output is one snapshot in demarcated sections:
 
-- **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled lists. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the completed & cancelled list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
-- **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing matches.
+- **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled units. Reason from it; never display or restate it.
+- **TITLE** — the view's chrome heading. Emit verbatim as markdown.
+- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim as markdown (not a code block). Absent when nothing matches.
+- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim as a code block.
 
-Emit the TITLE section (markdown), then the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section (markdown). A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 #### If `completed_count` and `cancelled_count` are both 0
+
+Emit the DISPLAY section.
 
 → Return to caller.
 
