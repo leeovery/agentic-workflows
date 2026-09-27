@@ -22,7 +22,7 @@ Two types of background agent operate during the discussion, and two protocol fi
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `discussion-map` commands record it, and the adapter renders it (see **E**). Follow this loop:
 
-1. **Check for findings** — anything waiting is surfaced before the conversation moves on.
+1. **Check for findings** — anything waiting is surfaced before the conversation moves on. Each check below reads fresh every iteration — an answer from an earlier read, resume detection's included, is not this iteration's.
 
    Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
@@ -32,7 +32,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the surfacing protocol for review findings.
    - **Perspective agents**: follow **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — promotes completed perspective sets to synthesis, then delegates to the surfacing protocol for synthesis findings.
    
-   Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the surfacing protocol.** Run it every iteration, never skipped on memory of what was dispatched: the store answers that, and a resumed session may hold agents from an earlier sitting.
+   Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the surfacing protocol.** Never skip it on memory of what was dispatched: the store answers that, and a resumed session may hold agents from an earlier sitting.
 
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
