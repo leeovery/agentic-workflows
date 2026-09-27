@@ -42,6 +42,10 @@ const LOG = '.walk-actions.log';
 const WALK = '.walk-transcript.log';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
+// The runtime's tool for a subagent to hand its report back. A walker
+// that tells its walk through it leaves no text turn to lift, so the
+// message it hands back is a turn of the walk like any other.
+const HANDBACK = 'SubagentHandback';
 // These caps exist to protect the asserter's prompt, never to save disk —
 // every recorded action is read into it, and a walk makes twenty-odd file
 // reads whose bodies are whole skill files.
@@ -106,6 +110,15 @@ function responseText(response, limit) {
   return flatten(response, limit);
 }
 
+/** What a transcript block told, or null for a block that told nothing. */
+function turnText(block) {
+  if (!block) return null;
+  const told = block.type === 'text' ? block.text
+    : block.type === 'tool_use' && block.name === HANDBACK && block.input ? block.input.message
+      : null;
+  return typeof told === 'string' && told.trim() ? told.trim() : null;
+}
+
 /**
  * The agent's own harness transcript — written by the runtime, not the
  * agent. Authority on the model it ran on, and on which world it walked,
@@ -132,7 +145,8 @@ function fromTranscript(transcriptPath) {
     if (message.model) models.add(message.model);
     if (!Array.isArray(message.content)) continue;
     for (const block of message.content) {
-      if (block && block.type === 'text' && block.text.trim()) turns.push(block.text.trim());
+      const text = turnText(block);
+      if (text) turns.push(text);
     }
   }
   const found = raw.match(WORLD);
