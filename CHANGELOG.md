@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-09-27
+
+✨ Added
+- Buttons above the prompt — where Claude Code's terminal app supports it, workflow menus render as clickable rows instead of plain text, with click-to-pick and click-to-send.
+- A settings-only sign-off gate on the investigation findings, retelling the root cause and fix in product terms before fix exploration begins.
+
+🔧 Changed
+- The workflows come with a Claude Code mod that turns on the buttons UI automatically on first run, and stops with restart instructions if a restart is needed.
+- Menus now always ask an explicit question, and every gate can be set aside for a clarifying question or comment and re-presented once the person is ready to move on, rather than requiring an immediate pick.
+- Dispatches to background agents now always state whether they run in the background or foreground, and end the turn on a single, consistent status sentence.
+- Session state that belongs to a single conversation (tmux label positions, gate state) now lives in a per-conversation folder next to the workflows' config, rather than mixed into shared caches, and is cleaned up automatically once the conversation is gone.
+- Display output now consistently distinguishes plain text, markdown, properties, and diff renderings, so code blocks and colored callouts render correctly instead of blending into the default text color.
+- The specification entry flow's confirmation screens (create, continue, refine, unify) are now driven by a single shared engine surface instead of hand-authored per-scenario text.
+- The plan output-format picker, complexity checks, and first-phase (research vs discussion) choice are now rendered by the engine instead of authored inline in skill prose.
+- Migrations now include one to move tmux label positions into the new per-conversation folder structure.
+
+🐛 Fixed
+- Selection menus across the continue-* skills (bugfix, feature, epic, quick-fix, cross-cutting) now number items consistently against a fresh index read, closing a gap where a stale list could produce indices that no longer matched.
+- The epic menu's "in-session" and held-topic rows are now built from the same shared row-building logic as the read-only menu key list, preventing drift between what a gate refuses and what the menu displays.
+
 ## [0.7.80] - 2026-09-26
 
 ✨ Added
