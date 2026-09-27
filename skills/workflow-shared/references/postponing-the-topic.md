@@ -118,7 +118,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 #### Otherwise
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when its `roadmap.reverted_join` is true, say in one line that the topic's own roadmap item is waiting again rather than a new one standing beside it:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when its `roadmap.reverted_join` is true, say in one line that the topic's own roadmap item is waiting again rather than a new one standing beside it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]

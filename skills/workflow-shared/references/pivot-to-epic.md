@@ -18,7 +18,7 @@ The caller provides this via context before loading:
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
 ```
 
-When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
+When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn

@@ -24,7 +24,7 @@ The grouping exists as a proposed item; the process skill flips it to in-progres
 
 #### If the status is `in-progress`
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb Resuming
@@ -44,7 +44,7 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} specification {topic}
 ```
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb Reopening

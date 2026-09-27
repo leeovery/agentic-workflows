@@ -14,7 +14,7 @@ Rerouted concerns are parked on this topic, but no session has ever run — this
 
 #### If status is `in-progress`
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.discussion.{topic} --verb Resuming
@@ -34,7 +34,7 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} discussion {topic}
 ```
 
-Render and emit the section verbatim:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.discussion.{topic} --verb Reopening

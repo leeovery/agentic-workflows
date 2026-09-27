@@ -38,7 +38,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_un
 
 ## C. Display
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--imports` carries `{N}`, the length of the response's `imports` (omit the flag when the list is empty), and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--imports` carries `{N}`, the length of the response's `imports` (omit the flag when the list is empty), and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit} [--imports {N}] [--warn]

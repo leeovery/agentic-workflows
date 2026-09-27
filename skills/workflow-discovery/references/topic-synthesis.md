@@ -87,7 +87,7 @@ The output arrives in demarcated sections. Read `=== DATA` to reason from (never
 - `matches_dismissed=true` — the name was previously dismissed. Fine to proceed — confirming at the gate below is the re-add decision; hold the flag for Step 12, which passes `--force-dismissed` on the write.
 - `waiting_on_roadmap=true` — the anti-twin rule: a waiting roadmap item already holds this ground, and a fresh topic beside it would strand its record. Never leave it in the working list — move it to the **pull-forward set** when it belongs in this epic (Step 12 lands it as a map topic and writes its join), or drop it from the proposal to leave it waiting.
 
-Emit the `=== DISPLAY` section verbatim **as a code block** — it shows the proposed topics with the existing map unchanged below, so the full picture is visible.
+Emit the `=== DISPLAY` section verbatim per its marker — it shows the proposed topics with the existing map unchanged below, so the full picture is visible.
 
 **If the park set is non-empty:** write it to `.workflows/.cache/{work_unit}/discovery/proposed-parks.json` in the shape Step 12 persists as-is — provenance included:
 
@@ -95,7 +95,7 @@ Emit the `=== DISPLAY` section verbatim **as a code block** — it shows the pro
 [{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/sessions/session-{session_number}.md"]}]
 ```
 
-Then render the roadmap overlay beneath the topic proposal, emitting its `=== DISPLAY` section verbatim as a code block (its DATA flags follow the same rules — `exists_on_roadmap=true` folds into the existing item or renames):
+Then render the roadmap overlay beneath the topic proposal, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow the same rules — `exists_on_roadmap=true` folds into the existing item or renames):
 
 ```bash
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
@@ -147,7 +147,7 @@ Reached from **C** when the harvest produced parks and no topics. Write the park
 [{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/sessions/session-{session_number}.md"]}]
 ```
 
-Render the roadmap overlay, emitting its `=== DISPLAY` section verbatim as a code block (its DATA flags follow **E**'s park rules):
+Render the roadmap overlay, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow **E**'s park rules):
 
 ```bash
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json

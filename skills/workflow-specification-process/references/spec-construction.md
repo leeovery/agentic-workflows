@@ -33,7 +33,7 @@ When extraction reveals information that affects **already-logged topics**, resu
 
 If it does: summarize what's changing in the chat — the summary is for discussion only; the specification just gets the clean replacement.
 
-Read the current approved content from the specification file. Prepare the updated version. Write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim at its marked instruction:
+Read the current approved content from the specification file. Prepare the updated version. Write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
@@ -51,7 +51,7 @@ Update the specification with the approved changes. Commit. Continue extraction.
 
 #### If `view full`
 
-Re-fetch with `--view full` and emit its sections verbatim — the full updated section with the menu minus the view option. **STOP.** Wait for user response, and handle it by these same branches.
+Re-fetch with `--view full` and emit its sections verbatim per their markers — the full updated section with the menu minus the view option. **STOP.** Wait for user response, and handle it by these same branches.
 
 → Return to **A. Exhaustive Extraction**.
 
@@ -107,7 +107,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate 
 
 #### If the response carried `DISPLAY: construction auto-approved`
 
-Emit the section per its marker.
+Emit the section verbatim per its marker.
 
 **CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
 
@@ -115,7 +115,7 @@ Emit the section per its marker.
 
 #### If the response carried `MENU: construction gate`
 
-Emit it per its marker.
+Emit the section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

@@ -14,7 +14,7 @@ Render the gate:
 node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.{artifact}.{topic} [--triage {N}]
 ```
 
-Emit each returned section verbatim at its marked instruction — the triage warning (when present) directly above the menu.
+Emit each returned section verbatim per its marker — the triage warning (when present) directly above the menu.
 
 **STOP.** Wait for user response.
 

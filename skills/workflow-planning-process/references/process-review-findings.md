@@ -39,7 +39,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 - `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
 - `status` — the finding's Resolution: `Fixed` or `Routed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
-Render and emit the section verbatim at its marked instruction:
+Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json
@@ -109,7 +109,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 - `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side. Change Type `add-task` or `add-phase`: `content` — `{"label": "Proposed Text", "lines": […]}` with the full content the tracking file carries. Change Type `remove-task` or `remove-phase`: `content` — `{"label": "Current", "lines": […]}` with the content being removed. Either `content` is held for `v/view`, never rendered at the gate.
 - `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
-Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
+Render, then emit each returned section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json
@@ -129,7 +129,7 @@ The response carries the finding presentation plus the surface for its move and 
    ```
 3. Update the tracking file: set resolution to "Fixed"
 4. Commit the tracking file and plan changes
-5. Emit the `DISPLAY: finding auto-approved` section now, per its marker.
+5. Emit the `DISPLAY: finding auto-approved` section now, verbatim per its marker.
 
 **If pending findings remain:**
 
@@ -145,7 +145,7 @@ The response carries the finding presentation plus the surface for its move and 
 
 #### If `view`
 
-Re-render with `--view full` and emit both returned sections verbatim at their marked instructions:
+Re-render with `--view full` and emit both returned sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json --view full

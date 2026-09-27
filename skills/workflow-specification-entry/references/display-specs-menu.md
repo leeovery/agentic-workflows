@@ -14,7 +14,7 @@ Render the scoped snapshot:
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
 ```
 
-Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block, then the MENU section verbatim per its marker.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 

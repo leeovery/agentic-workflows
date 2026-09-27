@@ -21,7 +21,7 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 - `summary` — a sentence or two in the report register (**[report-register.md](report-register.md)** → Task Brief): what this task is about to change, from the normalised task content.
 - `watch` — up to three short lines in the same register naming what deserves attention when this task lands: the UI to look at, the behaviour to try, the data to check — drawn from the task's acceptance criteria or its verification section. Omit the field when nothing earns a call-out; never restate the criteria wholesale.
 
-Render and emit its `DISPLAY: task brief` section verbatim at its marked instruction:
+Render and emit its `DISPLAY: task brief` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-brief {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-brief.json

@@ -17,15 +17,15 @@ node .claude/skills/workflow-start/scripts/gateway.cjs completed [{work_type_fil
 The output is one snapshot in demarcated sections:
 
 - **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled units. Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown.
-- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim as markdown (not a code block). Absent when nothing matches.
-- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim as a code block.
+- **TITLE** — the view's chrome heading. Emit verbatim per its marker.
+- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim per its marker. Absent when nothing matches.
+- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim per its marker.
 
-Emit the TITLE section (markdown). A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section verbatim per its marker.
 
 #### If `completed_count` and `cancelled_count` are both 0
 
-Emit the DISPLAY section.
+Emit the DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
@@ -65,7 +65,7 @@ Run the reactivate transaction — one command restores `status: in-progress`, c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {selected.name}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate [--warn]

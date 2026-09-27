@@ -13,7 +13,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.base
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: complete the assessment"
 ```
 
-Fetch the completion receipt and emit its `DISPLAY: baseline receipt` section:
+Fetch the completion receipt and emit its `DISPLAY: baseline receipt` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-receipt

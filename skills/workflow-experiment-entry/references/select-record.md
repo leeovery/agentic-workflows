@@ -88,7 +88,7 @@ Branch on `{record_status}` — no re-read. The note is the entry's one announce
 
 #### If status is `conceived`
 
-A fresh record — the spawn conceived it and no laboratory session has run. Render and emit the section verbatim:
+A fresh record — the spawn conceived it and no laboratory session has run. Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Starting --noun {id}
@@ -98,7 +98,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 
 #### Otherwise
 
-A record in flight (`designed`, `approved`, or `running`). Render and emit the section verbatim:
+A record in flight (`designed`, `approved`, or `running`). Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming --noun {id}

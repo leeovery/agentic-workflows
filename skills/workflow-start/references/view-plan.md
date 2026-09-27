@@ -32,7 +32,7 @@ Set `topic` to that topic.
 
 **If multiple topics exist:**
 
-Fetch and emit the `MENU: plan topics` section (its numbering follows `planning_topics` order):
+Fetch and emit the `MENU: plan topics` section verbatim per its marker (its numbering follows `planning_topics` order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render plan-topics {selected.name}

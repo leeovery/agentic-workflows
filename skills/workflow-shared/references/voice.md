@@ -9,7 +9,7 @@ How you speak. Applies to every turn composed for the user to read — conversat
 Three things it never touches:
 
 - **Prescribed output.** Phase titles, step markers, sub-step markers, signpost blockquotes, ask blocks, gate blocks, menus, key blocks, and auto-select announcements render exactly as the skill file prescribes them, in full. A signpost's job is to announce what a step does; the no-signposting rule below has no bearing on it. Voice governs the prose *around* these blocks, never whether one appears or what it contains.
-- **Engine-emitted sections.** `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte. Voice has no bearing on it.
+- **Engine-emitted sections.** A `=== DISPLAY … ===` or `=== MENU … ===` section is emitted verbatim per its marker — never paraphrased or restated. Voice has no bearing on it.
 - **Artifact prose on disk.** Research, discussion, investigation, specification, planning, and review records are written for models to consume — technical register, as long as the material needs. Never shorten or lighten them to match this file.
 
 Nothing in this file is licence to skip a rendered block, shorten a display, or drop a gate.

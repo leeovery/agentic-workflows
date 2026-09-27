@@ -58,7 +58,7 @@ The topic has no conversational ground yet, and an agenda of other topics' conce
 node .claude/skills/workflow-engine/scripts/engine.cjs render triage-announce {work_unit}.{phase}.{topic}
 ```
 
-Emit its `DISPLAY: triage announce` section verbatim as a code block, then open the session from its own material. The first offer waits for a genuine break in the session's own thread — or the user asking for the queue; the natural-breaks checklist's just-opened signal never satisfies this deferral.
+Emit its `DISPLAY: triage announce` section verbatim per its marker, then open the session from its own material. The first offer waits for a genuine break in the session's own thread — or the user asking for the queue; the natural-breaks checklist's just-opened signal never satisfies this deferral.
 
 → Return to caller.
 
@@ -98,7 +98,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-offer {work
 
 **If the response is `ok: false`** — the queue moved beneath the payload (a peer session landed a concern): re-run **A. Check**'s queue command, rebuild the payload over the fresh queue, and render again.
 
-Emit its `DISPLAY: triage agenda` section verbatim as markdown (not a code block), then its `MENU: triage offer` section verbatim as markdown (not a code block).
+Emit its `DISPLAY: triage agenda` section, then its `MENU: triage offer` section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -124,7 +124,7 @@ Take the lowest-numbered concern still queued — or whichever the user asks for
 node .claude/skills/workflow-engine/scripts/engine.cjs render requeue-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json
 ```
 
-Emit its `MENU: requeue offer` section verbatim as markdown (not a code block).
+Emit its `MENU: requeue offer` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

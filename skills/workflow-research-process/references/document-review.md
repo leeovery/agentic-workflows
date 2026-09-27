@@ -92,7 +92,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/carry-note.json

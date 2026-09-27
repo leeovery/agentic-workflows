@@ -140,7 +140,7 @@ Render the roadmap home snapshot (its TITLE section is the phase title):
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs view
 ```
 
-The output arrives in demarcated sections: read `=== DATA` to reason from (state, `ITEMS`, `SESSIONS`, the `ACTIONS` key table — never display it); emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown.
+The output arrives in demarcated sections: read `=== DATA` to reason from (state, `ITEMS`, `SESSIONS`, the `ACTIONS` key table — never display it); emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 

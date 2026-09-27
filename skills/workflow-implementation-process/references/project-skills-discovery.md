@@ -37,7 +37,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 
 **If `true` and project default is empty:**
 
-Fetch the gate, emitting each section verbatim at its marked instruction:
+Fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --variant skipped
@@ -57,7 +57,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 ## B. Confirm Skills
 
-Write the skill names from the project default — each path's last segment — to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": ["{skill-name}", ...]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the skill names from the project default — each path's last segment — to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": ["{skill-name}", ...]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant confirm
@@ -102,7 +102,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 #### If the scan finds project skills
 
-Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — one entry per skill, its `detail` a one-line description of what the skill governs: `{"skills": [{"name": "{skill-name}", "detail": "{what it governs}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — one entry per skill, its `detail` a one-line description of what the skill governs: `{"skills": [{"name": "{skill-name}", "detail": "{what it governs}"}]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant discovery

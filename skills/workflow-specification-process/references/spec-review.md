@@ -74,7 +74,7 @@ Auto mode is active — pass through to review. Section F concludes the review o
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-Fetch the gate and emit its section verbatim at its marked instruction:
+Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {work_unit}.specification.{topic} --variant continue
@@ -253,7 +253,7 @@ Cycle cap reached — concluding the review.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-Fetch the gate and emit its section verbatim at its marked instruction:
+Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render spec-review-gate {work_unit}.specification.{topic} --variant reloop

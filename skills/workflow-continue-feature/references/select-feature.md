@@ -16,7 +16,7 @@ node .claude/skills/workflow-continue-feature/scripts/gateway.cjs select
 
 **If it carries no selection sections** (no active features remain — possible after a loop-back cancelled or completed the last one): render the caller's no-features-in-progress terminal from its Step 2 and stop there.
 
-Otherwise emit its `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker. No auto-select, even with one item.
+Otherwise emit its `DISPLAY: selection` and `MENU: selection` sections verbatim per their markers. No auto-select, even with one item.
 
 **STOP.** Wait for user response.
 

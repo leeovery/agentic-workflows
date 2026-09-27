@@ -6,7 +6,7 @@
 
 The register for presenting a **report about the work** — findings, review summaries, validation gaps and risks, diagnostics, item summaries. Never for artifact content the user approves verbatim — spec prose, plan phases, diffs — which renders as the thing itself.
 
-Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate that follows a report is not part of the report. The register stops at the section boundary. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — a summary, a watch line — takes the register at authoring time, at the depth the authoring site prescribes.
+Engine-emitted sections sit outside it entirely: a `=== DISPLAY … ===` or `=== MENU … ===` section is emitted verbatim per its marker, never paraphrased or restated, and a gate that follows a report is not part of the report. The register stops at the section boundary. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — a summary, a watch line — takes the register at authoring time, at the depth the authoring site prescribes.
 
 This file composes with [altitude.md](altitude.md) and [voice.md](voice.md), both in context via the framework: altitude governs the level the report is told at, voice how the sentences sound, and this file the report's shape and depth.
 
