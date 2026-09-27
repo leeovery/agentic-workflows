@@ -3,10 +3,10 @@ The prose should have taken this path:
 1. resolves the topic to the work unit, since only an epic is given one
    explicitly, and asks the engine whether research is outstanding on
    it (it is not)
-2. reads the discussion status, finds nothing, and takes the new-entry
-   arm — phase validation is for entries that already exist
-3. ensuring a discovery item returns immediately: the map is epic-only,
+2. ensuring a discovery item returns immediately: the map is epic-only,
    and this is a feature
+3. reads the discussion status, finds nothing, and takes the new-entry
+   arm — phase validation is for entries that already exist
 4. checks the session log's exploration, finds a usable carrier, and
    gathers nothing — the carrier is the processing skill's to read at
    initialisation, and the user is asked nothing
