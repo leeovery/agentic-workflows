@@ -47,16 +47,20 @@ a walk.
    Dispatch the **prose-walker** agent with that output as its prompt,
    verbatim and unmodified — an Agent call with `subagent_type:
    "prose-walker"`, always: the field is what attaches the recording
-   hook, and a dispatch without it walks unrecorded. Its tool calls and
-   every turn it takes are recorded into the world by that hook — you do
-   nothing to collect them, and the message it returns to you is not
-   evidence.
+   hook, and a dispatch without it walks unrecorded. Dispatch it in the
+   foreground (`run_in_background: false`): the walk is over only when
+   that call returns — a message the walker hands back while it is still
+   running is not its end, and asserting or destroying the world then
+   judges a walk still in progress. Its tool calls and every turn it
+   takes are recorded into the world by that hook — you do nothing to
+   collect them, and the message it returns to you is not evidence.
 
 3. **Assert** — `node tests/prose/run.cjs assert <case-id> --world <dir>`.
    It writes the asserter's prompt into the world and answers with the
    file's path (`prompt_file`). Dispatch the **prose-asserter** agent —
-   an Agent call with `subagent_type: "prose-asserter"`, always — with
-   exactly this one line as its prompt:
+   an Agent call with `subagent_type: "prose-asserter"`, always, in the
+   foreground (`run_in_background: false`) — with exactly this one line
+   as its prompt:
 
    `Your prompt is the file at <prompt_file>. Read it in full and follow it.`
 
