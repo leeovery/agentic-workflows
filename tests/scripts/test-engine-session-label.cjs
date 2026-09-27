@@ -527,6 +527,14 @@ describe('engine session label — the manifest stamp', () => {
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
 
+  it('a manifest that does not parse, or whose root or defaults is no object, reads as never asked — never a throw', () => {
+    for (const content of ['{not json', '[]', 'null', JSON.stringify({ defaults: [true] })]) {
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), content);
+      const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+      assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' }, content);
+    }
+  });
+
   it('the opt-in is the manifest alone — a system config carrying one is never read', () => {
     const configDir = path.join(dir, '.wf-config');
     fs.mkdirSync(configDir, { recursive: true });
@@ -625,8 +633,8 @@ describe('engine session label-config', () => {
     assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
   });
 
-  it('WORKFLOWS_SKIP_SESSION_HOOKS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_SKIP_SESSION_HOOKS: '1' } });
+  it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_HOLD_PROJECT_SETTINGS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');

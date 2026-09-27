@@ -39,6 +39,7 @@ const cases = require('./cases.cjs');
 const { withFrozenClock } = require('./fake-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/domain/kb.cjs');
+const { MOD_DIR } = require('../../../skills/workflow-engine/scripts/domain/gate-surface.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
 // share a machine, and a directory another process is still walking answers
@@ -132,10 +133,10 @@ function recipeOverlay() {
     GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
     GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
     TZ: 'UTC',
-    // Boot installs the session hooks into `.claude/settings.json` — a
-    // file a snapshot holds as world state. The engine's test-only switch
-    // keeps a recipe's boot out of it.
-    WORKFLOWS_SKIP_SESSION_HOOKS: '1',
+    // Boot installs the session hooks into `.claude/settings.json` — a file
+    // a snapshot holds as world state. The engine's test-only switch keeps a
+    // recipe's boot out of it.
+    WORKFLOWS_HOLD_PROJECT_SETTINGS: '1',
     // Session labels read the real tmux identity — a recipe's engine calls
     // must never rename the terminal session the suite happens to run in.
     TMUX: undefined,
@@ -401,7 +402,7 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
-// --- harness world stamping — label kill + session-hook seed ---------
+// --- harness world stamping — label kill + settings seed ---------------
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
 const SETTINGS = path.join('.claude', 'settings.json');
@@ -418,9 +419,9 @@ const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
  * (creating the manifest when the fixture has none) — the engine's sole
  * label opt-in, pinned off so a walk never renames the terminal the suite
  * runs in. Canonical manifest style, so mid-walk engine rewrites stay
- * byte-stable. Then seed the session hooks boot wants under that kill
- * into `.claude/settings.json` (creating the file when the fixture has
- * none). Returns what was stamped beyond the label kill.
+ * byte-stable. Then seed the session hooks boot wants under that kill into
+ * `.claude/settings.json` (creating the file when the fixture has none).
+ * Returns what was stamped beyond the label kill.
  * @param {string} dir
  * @returns {Stamped}
  */
@@ -438,7 +439,7 @@ function stampHarnessState(dir) {
   // wins here.
   const baseline = manifest.baseline === undefined;
   if (baseline) manifest.baseline = { status: 'native' };
-  // The same shape for the same reason: workflow-start's Step 0.2 offers
+  // The same shape for the same reason: workflow-start's Step 0.3 offers
   // the walkthrough while nothing is recorded, so an unstamped world would
   // meet the offer in every start case that has no business with it.
   // `skipped` is the declined answer — the offer never repeats, and the
@@ -449,15 +450,15 @@ function stampHarnessState(dir) {
   if (walkthrough) manifest.walkthrough = { status: 'skipped' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-  // Boot syncs the session hooks into `.claude/settings.json` and
-  // commits the write — and a live walk's boot runs under the developer's
-  // real environment, which no env switch reaches. Seeding exactly the set
-  // boot wants under the label kill makes that sync a no-op: no write, no
+  // Boot syncs the session hooks into `.claude/settings.json` and commits
+  // the write — and a live walk's boot runs under the developer's real
+  // environment, which no env switch reaches. Seeding exactly what boot
+  // wants under the label kill makes that sync a no-op: no write, no
   // commit, nothing in the delta. The engine's own sync does the seeding,
   // so the hooks are the ones boot recognises.
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
   const sync = syncSessionHooks(dir, { session: false, presence: true });
-  if (sync.error) throw new Error(`cannot seed the session hooks: ${sync.error}`);
+  if (sync.error) throw new Error(`cannot seed the project settings: ${sync.error}`);
   return { baseline, walkthrough, settings_created: settingsCreated };
 }
 
@@ -526,12 +527,12 @@ function unstampManifest(tree, stamped) {
 }
 
 /**
- * Strip the hooks materialise seeded from the tree's settings file — the
- * engine's own sync, run to the empty set against a scratch copy, so what
- * counts as ours is decided once, in the engine — leaving every other key
- * (a permission the walk edited, a hook the user added) standing. A file
- * holding none of ours is untouched byte for byte; one the harness created
- * that nothing else filled goes entirely.
+ * Strip what materialise seeded from the tree's settings file against a
+ * scratch copy — the hooks through the engine's own sync, run to the empty
+ * set, so what counts as ours is decided once, in the engine — leaving
+ * every other key (a permission the walk edited, a hook the user added, an
+ * env key) standing. A file holding none of ours is untouched byte for
+ * byte; one the harness created that nothing else filled goes entirely.
  * @param {Map<string, Buffer>} tree @param {Stamped} stamped
  */
 function unstampSettings(tree, stamped) {
@@ -620,20 +621,26 @@ function buildWorld(caseId) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, buf);
   }
+  // Every skill but the gate mod. A walk runs inside the developer's own
+  // Claude session, which never loads a world's mod, so a world carrying it
+  // would boot to workflow-start's stop for a mod that is not running;
+  // without it the mod reads as not installed, and boot leaves it be.
+  const mod = path.join(dir, MOD_DIR);
   for (const layer of ['skills', 'agents']) {
     const src = path.join(ROOT, layer);
-    if (fs.existsSync(src)) fs.cpSync(src, path.join(dir, '.claude', layer), { recursive: true });
+    if (!fs.existsSync(src)) continue;
+    fs.cpSync(src, path.join(dir, '.claude', layer), { recursive: true, filter: (_, dest) => dest !== mod });
   }
 
   // The walker's engine calls inherit the developer's real environment —
   // tmux identity included — so every world carries the project-level
-  // session-label kill switch and the session hooks boot would
-  // otherwise install and commit. Stamped before the first commit (no
-  // dirt for the walk to sweep up) and stripped back out by diffWorld, so
-  // snapshots never see them. A fixture that layers the project manifest
-  // through its history is stamped when that layer lands instead — the
-  // root commit then holds no `.workflows/` at all, which is what lets a
-  // case put commits before the workflows' arrival.
+  // session-label kill switch, and the session hooks boot would otherwise
+  // install and commit. Stamped before the first commit (no dirt for the
+  // walk to sweep up) and stripped back out by diffWorld, so snapshots
+  // never see them. A fixture that layers the project manifest through its
+  // history is stamped when that layer lands instead — the root commit then
+  // holds no `.workflows/` at all, which is what lets a case put commits
+  // before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
   let stamped = manifestLayered
     ? { baseline: false, walkthrough: false, settings_created: false }

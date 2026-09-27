@@ -8,7 +8,7 @@ Eight screens, one at a time, each ending on its own menu. `screen` starts at 1.
 
 **Parameters** (provided by caller via Load directive):
 
-- `origin` — `first-run` (workflow-start's Step 0.2: screen 1 is the offer, and its answer is recorded) or `help` (the help home: a re-read, nothing recorded)
+- `origin` — `first-run` (workflow-start's Step 0.3: screen 1 is the offer, and its answer is recorded) or `help` (the help home: a re-read, nothing recorded)
 
 ## A. Render the Screen
 

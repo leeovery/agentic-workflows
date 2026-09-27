@@ -238,12 +238,22 @@ function drawLabel(label) {
 let collected = null;
 
 /**
+ * Whether the gate surface announced itself to this process — the mod sets
+ * the variable at session start, and every command the session runs
+ * inherits it.
+ * @returns {boolean}
+ */
+function gateSurfaceAnnounced() {
+  return process.env[GATE_SURFACE_ENV] === '1';
+}
+
+/**
  * Begin collecting this render's gate. A no-op while the gate surface is
  * unannounced, which is what keeps default output byte-identical.
  * @returns {void}
  */
 function openGate() {
-  collected = process.env[GATE_SURFACE_ENV] === '1'
+  collected = gateSurfaceAnnounced()
     ? { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [] }
     : null;
 }
@@ -694,5 +704,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, openGate, illustrate, gateBlock, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
 

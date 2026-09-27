@@ -47,7 +47,7 @@ the typed tool answers the rest.
   loaded. Prose that calls it cannot fall back to Bash, so the
   removability the gate design keeps (delete the mod, the text menus
   stand) is gone. That is the real gate on this idea: it is sane only once
-  the mod is no longer opt-in and function hooks are out of early access.
+  function hooks are out of early access.
 
 ## Shape
 
@@ -73,4 +73,4 @@ the typed tool answers the rest.
 
 ## Trigger
 
-After the workflow-gates mod ships and the opt-in is retired. Not before.
+When function hooks leave early access. Not before.
