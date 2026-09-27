@@ -11,15 +11,20 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { describe, it, before, after } = require('node:test');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const { embeddingEndpoint, knowledgeCli } = require('./knowledge-harness.cjs');
 
 const BUNDLE = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 const {
   store,
   StubProvider,
+  QuotaError,
+  AuthError,
+  RateLimitError,
   boostProblem,
+  queryProvider,
   querySettings,
   queryStore,
   renderQuery,
@@ -28,6 +33,8 @@ const {
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
 const STUB_BUILT = { provider: 'stub', model: 'stub', dimensions: DIMS };
+const OPENAI_BUILT = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
+const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for semantic search]';
 
 // A chunk and a query term sharing no word, embedded alike — only the vector
 // search can join them.
@@ -57,31 +64,63 @@ function keywordSettings() {
  * @param {any} db
  * @param {{terms: string[], options?: object, workUnits?: object[], settings?: object}} request
  */
-function query(db, { terms, options = {}, workUnits = [], settings = keywordSettings() }) {
+async function query(db, request) {
+  return (await outcomeOf(db, request)).results;
+}
+
+/**
+ * @param {any} db
+ * @param {{terms: string[], options?: object, workUnits?: object[], settings?: object}} request
+ */
+function outcomeOf(db, { terms, options = {}, workUnits = [], settings = keywordSettings() }) {
   return queryStore(db, settings, { terms, options, workUnits });
+}
+
+/** A stub-dimensioned provider whose every embedBatch throws `error`. @param {Error} error */
+function failing(error) {
+  return { model: () => 'stub', dimensions: () => DIMS, embedBatch: async () => { throw error; } };
 }
 
 describe('querySettings', () => {
   it('runs a keyword-only store keyword-only, with the ranking the config defaults to', () => {
     const settings = keywordSettings();
-    assert.strictEqual(settings.mode, 'keyword-only');
     assert.strictEqual(settings.provider, null);
+    assert.strictEqual(settings.note, CHOSEN_NOTE);
+    assert.strictEqual(settings.storeEmbedded, false);
     assert.strictEqual(settings.similarity, 0.3);
     assert.strictEqual(settings.stability, 5);
     assert.strictEqual(settings.weights.feature, 1);
   });
 
-  it('offers the upgrade over a keyword-only store once a provider is configured', () => {
+  it('runs a keyword-only store keyword-only once a provider is configured, until the next start embeds it', () => {
     const settings = querySettings(KEYWORD_ONLY, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }));
-    assert.strictEqual(settings.mode, 'upgrade-available');
     assert.strictEqual(settings.provider, null);
+    assert.strictEqual(settings.note, '[keyword-only mode — the store has no vectors yet; the next start embeds them]');
   });
 
   it('runs a store built with the configured provider in full', () => {
     const provider = new StubProvider({ dimensions: DIMS });
     const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
-    assert.strictEqual(settings.mode, 'full');
     assert.strictEqual(settings.provider, provider);
+    assert.strictEqual(settings.note, null);
+    assert.strictEqual(settings.storeEmbedded, true);
+  });
+
+  it('never throws for want of a vector: each conflict runs keyword-only, its note naming the cause and fix', () => {
+    const keyNote = '[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only]';
+    const cases = [
+      [OPENAI_BUILT, { provider: 'openai' }, null, keyNote],
+      [KEYWORD_ONLY, { provider: 'openai' }, null, keyNote],
+      [OPENAI_BUILT, {}, null,
+        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run knowledge rebuild]'],
+      [OPENAI_BUILT, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }),
+        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run knowledge rebuild]'],
+    ];
+    for (const [metadata, cfg, provider, note] of cases) {
+      const settings = querySettings(metadata, cfg, provider);
+      assert.strictEqual(settings.provider, null, note);
+      assert.strictEqual(settings.note, note);
+    }
   });
 });
 
@@ -137,19 +176,53 @@ describe('queryStore', () => {
     );
   });
 
-  it('embeds each term and searches hybrid in full mode', async () => {
-    const embedded = [];
+  it('embeds every framing in one embedBatch request, and searches hybrid', async () => {
+    const requests = [];
     const provider = {
       model: () => stub.model(),
       dimensions: () => stub.dimensions(),
-      embed: (text) => {
-        embedded.push(text);
-        return stub.embed(text);
+      embedBatch: async (texts) => {
+        requests.push(texts);
+        return stub.embedBatch(texts);
       },
     };
     const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
-    await query(db, { terms: ['token refresh', 'refunds'], settings });
-    assert.deepStrictEqual(embedded, ['token refresh', 'refunds']);
+    const outcome = await outcomeOf(db, { terms: ['token refresh', 'refunds', PARAPHRASE.term], settings });
+    assert.deepStrictEqual(requests, [['token refresh', 'refunds', PARAPHRASE.term]]);
+    assert.ok(outcome.results.some((r) => r.id === 'accounts-discussion-accounts-001'), 'the paraphrase found by its vector');
+    assert.deepStrictEqual(outcome.notes, []);
+  });
+
+  it('runs keyword-only whatever keeps the framings from their vectors, its note naming the cause and fix', async () => {
+    const terms = ['token', 'refunds'];
+    const keyword = await query(db, { terms });
+    const cases = [
+      [new Error('Embeddings endpoint embedding request failed (network error): fetch failed (ECONNREFUSED)'),
+        '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request failed (network error): fetch failed (ECONNREFUSED); retry once the provider answers]'],
+      [new RateLimitError('OpenAI rate limit exceeded (HTTP 429).', 120000),
+        "[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"],
+      [new QuotaError('OpenAI request refused: the account is out of quota (HTTP 429).'),
+        '[keyword-only mode — the embedding account is out of quota; add credit to it]'],
+      [new AuthError('OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run `knowledge setup` to fix.'),
+        '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `knowledge setup` to fix.]'],
+    ];
+    for (const [error, note] of cases) {
+      const settings = querySettings(STUB_BUILT, { provider: 'stub' }, failing(error));
+      const outcome = await outcomeOf(db, { terms, settings });
+      assert.deepStrictEqual(outcome.notes, [note]);
+      assert.deepStrictEqual(outcome.results.map((r) => [r.id, r.score]), keyword.map((r) => [r.id, r.score]), error.name);
+    }
+  });
+
+  it('says how many chunks await their vectors, over a store whose identity names a provider', async () => {
+    const awaiting = store.createStore();
+    store.insertDocument(awaiting, { ...doc('ledger', 1, 'Receipts reconcile nightly.'), embedding: stub.embed('receipts') });
+    store.insertDocument(awaiting, doc('ledger', 2, 'Receipts arrive late.'));
+    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'], settings: full })).notes,
+      ['[1 chunks await vectors — searched by keyword alone until the next start embeds them]']);
+    assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'] })).notes, [CHOSEN_NOTE],
+      'a keyword-only store awaits nothing');
   });
 
   it('blends in full mode: each search\'s scores over its best, 0.4 keyword and 0.6 vector', async () => {
@@ -157,7 +230,7 @@ describe('queryStore', () => {
     store.insertDocument(blended, { ...doc('both', 1, 'Receipts reconcile nightly.'), embedding: [1, 0] });
     store.insertDocument(blended, { ...doc('vector', 1, 'Ledgers balance at close.'), embedding: [0.6, 0.8] });
     store.insertDocument(blended, { ...doc('keyword', 1, 'Receipts arrive late.'), embedding: [0, 1] });
-    const axis = { model: () => 'axis', dimensions: () => 2, embed: () => [2, 0] };
+    const axis = { model: () => 'axis', dimensions: () => 2, embedBatch: async (texts) => texts.map(() => [2, 0]) };
     const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, { provider: 'axis' }, axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
@@ -174,6 +247,54 @@ describe('queryStore', () => {
     const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
     assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
     assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
+  });
+});
+
+describe('queryProvider', () => {
+  const STAND_IN = { provider: 'openai-compatible', model: 'stand-in', dimensions: 8 };
+  let endpoint;
+  let db;
+
+  /** The one-chunk store's query through the provider the query builds. @param {object} provider */
+  function queryThrough(provider) {
+    return outcomeOf(db, { terms: ['receipts'], settings: querySettings(STAND_IN, endpoint.config, provider) });
+  }
+
+  before(async () => {
+    endpoint = await embeddingEndpoint(8);
+    db = store.createStore();
+    store.insertDocument(db, { ...doc('ledger', 1, 'Receipts reconcile nightly.'), embedding: new StubProvider({ dimensions: 8 }).embed('receipts') });
+  });
+
+  after(() => endpoint.close());
+
+  beforeEach(() => {
+    endpoint.requests.length = 0;
+  });
+
+  it("waits out a rate limit for seconds, never the index's minute, then runs keyword-only", async () => {
+    endpoint.mode = 'rate-limited';
+    const waits = [];
+    const outcome = await queryThrough(queryProvider(endpoint.config, { sleep: async (ms) => { waits.push(ms); } }));
+    assert.deepStrictEqual(endpoint.requests, [['receipts']]);
+    assert.deepStrictEqual(waits, [], 'the 20 s wait the endpoint names never fits the query\'s budget');
+    assert.deepStrictEqual(outcome.notes, ["[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"]);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-discussion-ledger-001']);
+  });
+
+  it('gives an endpoint that never answers two tries of its timeout, then runs keyword-only', async () => {
+    endpoint.mode = 'silent';
+    const timeoutMs = 50;
+    const backoffMs = 1000;
+    const started = performance.now();
+    const outcome = await queryThrough(queryProvider(endpoint.config, { timeoutMs }));
+    const elapsed = performance.now() - started;
+    assert.deepStrictEqual(endpoint.requests, [['receipts'], ['receipts']], 'two tries');
+    assert.ok(elapsed < 2 * timeoutMs + backoffMs + 1000, `keyword-only within the bound, after ${Math.round(elapsed)} ms`);
+    assert.deepStrictEqual(outcome.notes, [
+      '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request timed out after 0.05s (network error): the endpoint did not answer; retry once the provider answers]',
+    ]);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-discussion-ledger-001']);
   });
 });
 
@@ -234,12 +355,118 @@ describe('knowledge query — the CLI', () => {
   });
 });
 
+describe('knowledge query — the CLI, without a vector', () => {
+  const RESULT = /^\[1 results\]\n\n\[discussion \| alpha\/alpha \|/m;
+  let endpoint;
+  let root;
+
+  /** @param {Record<string, any>} knowledge */
+  function configure(knowledge) {
+    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
+  }
+
+  /** @param {Record<string, any>} fields */
+  function rewriteMetadata(fields) {
+    const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), ...fields }));
+  }
+
+  before(async () => {
+    endpoint = await embeddingEndpoint(8);
+  });
+
+  after(() => endpoint.close());
+
+  beforeEach(async () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-cli-'));
+    const unit = path.join(root, '.workflows', 'alpha');
+    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
+      phases: { discussion: { items: { alpha: { status: 'completed' } } } },
+    }));
+    fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
+    configure(endpoint.config);
+    endpoint.mode = 'ok';
+    assert.strictEqual((await knowledgeCli(root, ['index'])).code, 0);
+    endpoint.requests.length = 0;
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('embeds every framing in one request, and prints no note', async () => {
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh', 'rate window']);
+    assert.strictEqual(code, 0);
+    assert.deepStrictEqual(endpoint.requests, [['token refresh', 'rate window']]);
+    assert.match(stdout, /^\[1 results\]\n/);
+  });
+
+  it('exits 0 keyword-only when the provider is down, naming the failure', async () => {
+    endpoint.mode = 'down';
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^\[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request failed \(HTTP 503\): .*; retry once the provider answers\]\n/);
+    assert.match(stdout, RESULT);
+  });
+
+  it('exits 0 keyword-only on a rate limit, without waiting it out', { timeout: 10000 }, async () => {
+    endpoint.mode = 'rate-limited';
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^\[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly\]\n/);
+    assert.match(stdout, RESULT);
+  });
+
+  it('exits 0 keyword-only when the account is out of quota', async () => {
+    endpoint.mode = 'quota';
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^\[keyword-only mode — the embedding account is out of quota; add credit to it\]\n/);
+    assert.match(stdout, RESULT);
+  });
+
+  it('exits 0 keyword-only when no key resolves, naming the key', async () => {
+    rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\]\n/);
+    assert.match(stdout, RESULT);
+  });
+
+  it('exits 0 keyword-only over a store built with another model, and asks for a rebuild', async () => {
+    configure({ ...endpoint.config, model: 'another' });
+    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run knowledge rebuild\]\n/);
+    assert.match(stdout, RESULT);
+    assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
+  });
+
+  it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
+    const knowledgeDir = path.join(root, '.workflows', '.knowledge');
+    fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
+    const missing = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(missing.code, 1);
+    assert.match(missing.stderr, /^metadata\.json missing but store exists/);
+
+    fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
+    const corrupt = await knowledgeCli(root, ['query', 'token refresh']);
+    assert.strictEqual(corrupt.code, 1);
+    assert.match(corrupt.stderr, /^Error: loadStore: corrupted store file at /);
+  });
+});
+
 describe('renderQuery', () => {
   const result = doc('auth', 1, 'Tokens refresh hourly.');
+  const awaiting = '[2 chunks await vectors — searched by keyword alone until the next start embeds them]';
 
-  it("opens a keyword-only query with its note, then each result's header, content and source", () => {
-    assert.strictEqual(renderQuery([result], 'keyword-only'), [
-      '[keyword-only mode — configure embedding provider for semantic search]',
+  it("opens with the query's notes, then each result's header, content and source", () => {
+    assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [
+      CHOSEN_NOTE,
+      awaiting,
       '[1 results]',
       '',
       '[discussion | auth/auth | medium | 2026-01-02]',
@@ -248,13 +475,13 @@ describe('renderQuery', () => {
     ].join('\n') + '\n');
   });
 
-  it('prints no note in full mode, and a bare count where there is no store', () => {
-    assert.match(renderQuery([result], 'full'), /^\[1 results\]\n/);
-    assert.strictEqual(renderQuery([], null), '[0 results]\n');
+  it('prints no note where there is none, and a bare count where there are no results', () => {
+    assert.match(renderQuery({ results: [result], notes: [] }), /^\[1 results\]\n/);
+    assert.strictEqual(renderQuery({ results: [], notes: [] }), '[0 results]\n');
   });
 
   it('strips control characters, keeping newlines and tabs', () => {
-    const text = renderQuery([{ ...result, content: 'a\x1b[31mred\x00\tb\nc' }], 'full');
+    const text = renderQuery({ results: [{ ...result, content: 'a\x1b[31mred\x00\tb\nc' }], notes: [] });
     assert.ok(text.includes('a[31mred\tb\nc'));
   });
 });

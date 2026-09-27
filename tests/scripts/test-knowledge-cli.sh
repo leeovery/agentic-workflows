@@ -475,8 +475,8 @@ assert_eq "exits non-zero on downgrade" "true" "$([ "$exit_code" -ne 0 ] && echo
 assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
-# --- Test 11: Keyword-only store indexes WITHOUT vectors when config has provider (case 4) ---
-echo "Test 11: Keyword-only store with provider in config (case 4)"
+# --- Test 11: A keyword-only store takes the configured provider at its next index ---
+echo "Test 11: Keyword-only store takes a provider configured over it"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
@@ -486,15 +486,15 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Verify metadata has null provider.
 meta_provider=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
 assert_eq "metadata.provider is null" "null" "$meta_provider"
-# Now switch to stub config and re-index — should succeed (case 4).
+# Now switch to stub config and re-index — the store takes the provider.
 write_stub_config
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
-assert_eq "succeeds in case 4" "0" "$exit_code"
-# Verify metadata provider NOT upgraded.
+output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+assert_eq "succeeds" "0" "$exit_code"
+assert_eq "asks for no rebuild" "false" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 meta_provider2=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
-assert_eq "metadata.provider still null after case 4" "null" "$meta_provider2"
+assert_eq "metadata.provider takes the configured provider" "stub" "$meta_provider2"
+assert_eq "every chunk has its vector" "true" "$(run_kb status 2>&1 | grep -q '^Chunks awaiting vectors: 0$' && echo true || echo false)"
 teardown_project
 
 # --- Test 12: Keyword-only mode from scratch ---
@@ -657,8 +657,8 @@ output=$(run_kb query "topic" 2>&1)
 assert_eq "shows keyword-only note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
 teardown_project
 
-# --- Test 22: Query refuses provider mismatch ---
-echo "Test 22: Provider mismatch refused"
+# --- Test 22: Query runs keyword-only over a provider mismatch, and asks for a rebuild ---
+echo "Test 22: Provider mismatch runs keyword-only"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
@@ -675,10 +675,11 @@ node -e "
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
 exit_code=0
-output=$(run_kb query "topic" 2>&1 || true)
-run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
-assert_eq "query refuses mismatch" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
+output=$(run_kb query "topic" 2>&1) || exit_code=$?
+assert_eq "query exits 0" "0" "$exit_code"
+assert_eq "notes it ran keyword-only, asking for a rebuild" "true" \
+  "$(echo "$output" | head -1 | grep -q '^\[keyword-only mode — .*; run knowledge rebuild\]$' && echo true || echo false)"
+assert_eq "still returns results" "true" "$(echo "$output" | grep -qE '^\[[1-9][0-9]* results\]$' && echo true || echo false)"
 teardown_project
 
 # --- Test 22b: Bulk index also refuses provider/dimension mismatch ---
@@ -712,8 +713,8 @@ assert_eq "bulk did NOT report the store in line" "false" \
   "$(echo "$output" | grep -q 'unchanged' && echo true || echo false)"
 teardown_project
 
-# --- Test 23: Stub-to-full upgrade note ---
-echo "Test 23: Stub-to-full upgrade note"
+# --- Test 23: A keyword-only store with a provider configured says the next start embeds it ---
+echo "Test 23: Keyword-only store with a provider configured"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
@@ -722,21 +723,31 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Now switch config to have a provider.
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
-assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
+assert_eq "says the next start embeds the store" "[keyword-only mode — the store has no vectors yet; the next start embeds them]" \
+  "$(echo "$output" | head -1)"
+status_out=$(run_kb status 2>&1)
+assert_eq "status says the same, with no rebuild" "true,false" \
+  "$(echo "$status_out" | grep -q '^NOTE: An embedding provider is configured — the next start embeds every chunk\.$' && echo true || echo false),$(echo "$status_out" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
-# --- Test 23b: Stub-to-full upgrade note also fires on `index` (not just query) ---
-echo "Test 23b: Upgrade note on index"
+# --- Test 23b: The bulk index takes the configured provider into a keyword-only store ---
+echo "Test 23b: Bulk index fills a keyword-only store in"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Upgrade config to have a provider.
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow.discussion.auth-flow status completed >/dev/null 2>&1
+run_kb index >/dev/null 2>&1
+assert_eq "indexed keyword-only first" "true" "$([ "$(chunk_count auth-flow discussion auth-flow)" -gt 0 ] && echo true || echo false)"
 write_stub_config
-# Re-index: should emit upgrade note on stderr.
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
-assert_eq "shows upgrade note on index" "true" "$(echo "$output" | grep -q 'Run .knowledge rebuild.' && echo true || echo false)"
+exit_code=0
+output=$(run_kb index 2>&1) || exit_code=$?
+assert_eq "exits 0" "0" "$exit_code"
+assert_eq "asks for no rebuild" "false" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
+assert_eq "the store takes the provider" "stub" \
+  "$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8')).provider))")"
+assert_eq "every chunk has its vector" "true" "$(run_kb status 2>&1 | grep -q '^Chunks awaiting vectors: 0$' && echo true || echo false)"
+assert_eq "the query runs hybrid, with no note" "true" "$(run_kb query "topic" 2>&1 | head -1 | grep -qE '^\[[0-9]+ results\]$' && echo true || echo false)"
 teardown_project
 
 # --- Test 23c: Empty-string query rejected ---
@@ -2113,8 +2124,8 @@ teardown_project
 echo ""
 echo "=== Stub-to-Full Upgrade Note Tests ==="
 
-# --- Test 67: Shows upgrade note when config has provider but store is keyword-only ---
-echo "Test 67: Upgrade note on query"
+# --- Test 67: A query over a keyword-only store with a provider configured names the next start ---
+echo "Test 67: No-vectors-yet note on query"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
@@ -2123,29 +2134,29 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Switch to stub config.
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
-assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
+assert_eq "shows the no-vectors-yet note" "true" "$(echo "$output" | grep -q 'no vectors yet' && echo true || echo false)"
 teardown_project
 
-# --- Test 68: No upgrade note when store and config match ---
-echo "Test 68: No upgrade note when matching"
+# --- Test 68: No note when store and config match ---
+echo "Test 68: No note when matching"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
-assert_eq "no upgrade note" "false" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
+assert_eq "opens on the count" "true" "$(echo "$output" | head -1 | grep -qE '^\[[0-9]+ results\]$' && echo true || echo false)"
 teardown_project
 
-# --- Test 69: No upgrade note in pure keyword mode ---
-echo "Test 69: No upgrade note in pure keyword mode"
+# --- Test 69: Keyword-only chosen outright carries its own note alone ---
+echo "Test 69: Keyword-only note alone in pure keyword mode"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
-assert_eq "no upgrade note pure keyword" "false" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
+assert_eq "no no-vectors-yet note" "false" "$(echo "$output" | grep -q 'no vectors yet' && echo true || echo false)"
 teardown_project
 
 # ============================================================================
@@ -3541,9 +3552,9 @@ assert_eq "surfaces the cause" "true" \
 teardown_project
 
 # --- Test R7: Configured-provider-without-key is diagnosed as a missing key ---
-# Pre-fix, a store built with openai + an unresolvable key reported "Provider/
-# model changed — run knowledge rebuild", which is false and destructive (a
-# keyword-only rebuild discards the embeddings). Now it points at the key.
+# A store built with openai, and its key unresolved: the query runs keyword-only
+# and the index writes by keyword, each naming the key — never a provider change,
+# whose rebuild would discard the embeddings.
 echo "Test R7: Missing key is not misdiagnosed as a provider change"
 setup_project
 create_work_unit "keyless-wu" "feature" "Keyless"
@@ -3562,7 +3573,9 @@ node -e "
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
 CONF
-qout=$(run_kb query "keyless" 2>&1 || true)
+qexit=0
+qout=$(run_kb query "keyless" 2>&1) || qexit=$?
+assert_eq "query runs keyword-only, exiting 0" "0" "$qexit"
 assert_eq "query message names the missing key" "true" \
   "$(echo "$qout" | grep -q 'could not be resolved' && echo true || echo false)"
 assert_eq "query message points at OPENAI_API_KEY" "true" \
@@ -3571,12 +3584,28 @@ assert_eq "query message points at setup --key-only" "true" \
   "$(echo "$qout" | grep -q 'key-only' && echo true || echo false)"
 assert_eq "query does NOT misdiagnose as a provider change" "false" \
   "$(echo "$qout" | grep -q 'changed since last index' && echo true || echo false)"
-# The index path (resolveProviderState case 3) must agree.
-iout=$(run_kb index .workflows/keyless-wu/discussion/keyless-wu.md 2>&1 || true)
-assert_eq "index message names the missing key" "true" \
-  "$(echo "$iout" | grep -q 'could not be resolved' && echo true || echo false)"
+# The index writes an edit by keyword, naming the key the same way.
+KEY_FIX='the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only'
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set keyless-wu.discussion.keyless-wu status completed >/dev/null 2>&1
+echo "A late addition to the discussion." >> "$TEST_ROOT/.workflows/keyless-wu/discussion/keyless-wu.md"
+iexit=0
+iout=$(run_kb index .workflows/keyless-wu/discussion/keyless-wu.md 2>&1) || iexit=$?
+assert_eq "single-file index exits non-zero" "1" "$iexit"
+assert_eq "single-file index names the key and its fix" "true" \
+  "$(echo "$iout" | grep -qxF "Failed to embed .workflows/keyless-wu/discussion/keyless-wu.md: $KEY_FIX" && echo true || echo false)"
+assert_eq "single-file index says the file is searchable by keyword" "true" \
+  "$(echo "$iout" | grep -qxF 'The file is searchable by keyword; its vectors come at the next start.' && echo true || echo false)"
 assert_eq "index does NOT misdiagnose as a provider change" "false" \
   "$(echo "$iout" | grep -q 'changed since last index' && echo true || echo false)"
+assert_eq "the edit is found by keyword" "true" \
+  "$(run_kb query "late addition" 2>&1 | grep -q 'A late addition to the discussion' && echo true || echo false)"
+bexit=0
+bout=$(run_kb index 2>&1) || bexit=$?
+assert_eq "bulk index exits non-zero" "1" "$bexit"
+assert_eq "bulk index names the key and its fix" "true" \
+  "$(echo "$bout" | grep -qxF "Failed to embed .workflows/keyless-wu/discussion/keyless-wu.md: $KEY_FIX" && echo true || echo false)"
+assert_eq "bulk index counts what awaits the key" "true" \
+  "$(echo "$bout" | grep -qE '^0 new, 0 changed, 0 removed, 1 unchanged, [1-9][0-9]* chunks awaiting vectors\.$' && echo true || echo false)"
 teardown_project
 
 # --- Test R8: Dotted work-unit / topic names rejected at index time ---

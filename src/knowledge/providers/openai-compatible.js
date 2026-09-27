@@ -18,7 +18,7 @@ const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine');
 
 class OpenAICompatibleProvider {
   /**
-   * @param {{ baseUrl: string, apiKey?: string|null, model?: string, dimensions?: number }} options
+   * @param {{ baseUrl: string, apiKey?: string|null, model?: string, dimensions?: number } & import('./openai-engine').Patience} options
    */
   constructor(options) {
     if (!options || !options.baseUrl) {
@@ -36,6 +36,9 @@ class OpenAICompatibleProvider {
       model: options.model,
       dimensions: options.dimensions,
       sendDimensionsParam: false,
+      timeoutMs: options.timeoutMs,
+      waitBudget: options.waitBudget,
+      sleep: options.sleep,
       errorContext: {
         label: 'Embeddings endpoint',
         authHint: 'The server requires an API key, or the provided key was rejected. Re-run `knowledge setup` to set one.',

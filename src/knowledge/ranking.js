@@ -46,31 +46,28 @@ const DEFAULT_BASE_STABILITY = 3;
  * @property {import('./store').Where} [where]
  * @property {number} limit  the query's result limit
  * @property {number} similarity  the vector search's per-chunk minimum
- * @property {((term: string) => Promise<ArrayLike<number>>)|null} embed  null when the query runs keyword-only
+ * @property {Array<ArrayLike<number>>|null} vectors  each framing's vector, in order — null when the query runs keyword-only
  */
 
 /**
  * Every framing's hits, best first and cut to twice the limit: the keyword
- * and vector searches blended when the query can embed, else the keyword
+ * and vector searches blended when the query has vectors, else the keyword
  * search's raw scores. Each hit carries its parts.
  * @param {import('./store').Store} db @param {string[]} terms @param {Searching} searching
- * @returns {Promise<{cut: number, framings: Array<Array<Record<string, any>>>}>}
+ * @returns {{cut: number, framings: Array<Array<Record<string, any>>>}}
  */
-async function searchFramings(db, terms, { where, limit, similarity, embed }) {
+function searchFramings(db, terms, { where, limit, similarity, vectors }) {
   const cut = limit * OVER_FETCH;
-  const framings = [];
-  for (const term of terms) {
-    if (!embed) {
+  const framings = terms.map((term, at) => {
+    if (!vectors) {
       const hits = store.searchKeyword(db, { term, where, limit: cut });
-      framings.push(hits.map((hit) => ({ ...hit, parts: [{ search: 'keyword', raw: hit.score }] })));
-      continue;
+      return hits.map((hit) => ({ ...hit, parts: [{ search: 'keyword', raw: hit.score }] }));
     }
-    const vector = await embed(term);
-    framings.push(blend([
+    return blend([
       { search: 'keyword', weight: KEYWORD_WEIGHT, hits: store.searchKeyword(db, { term, where }) },
-      { search: 'vector', weight: VECTOR_WEIGHT, hits: store.searchVector(db, { vector, similarity, where }) },
-    ]).slice(0, cut));
-  }
+      { search: 'vector', weight: VECTOR_WEIGHT, hits: store.searchVector(db, { vector: vectors[at], similarity, where }) },
+    ]).slice(0, cut);
+  });
   return { cut, framings };
 }
 

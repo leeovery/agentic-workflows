@@ -9,7 +9,7 @@ const { DIR_ENV, cachingProvider, embeddingCache, providerIdentity } = require('
 const dir = /** @type {string} */ (process.env[DIR_ENV]);
 const resolveProvider = config.resolveProvider;
 
-config.resolveProvider = (cfg) => {
-  const provider = resolveProvider(cfg);
+config.resolveProvider = (cfg, patience) => {
+  const provider = resolveProvider(cfg, patience);
   return provider && cachingProvider(provider, embeddingCache(dir, providerIdentity(cfg, provider)));
 };

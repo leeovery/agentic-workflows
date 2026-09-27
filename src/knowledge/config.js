@@ -355,9 +355,10 @@ function loadConfig(paths) {
  *   - Throws for unimplemented provider names
  *
  * @param {object} config  Merged config from loadConfig()
+ * @param {import('./providers/openai-engine').Patience} [patience]  how long an endpoint provider waits on its endpoint
  * @returns {object|null}  Provider instance or null (keyword-only mode)
  */
-function resolveProvider(config) {
+function resolveProvider(config, patience = {}) {
   if (!config || typeof config !== 'object') {
     throw new Error('resolveProvider: config is required');
   }
@@ -397,6 +398,7 @@ function resolveProvider(config) {
       apiKey: config._api_key,
       model: config.model || undefined,
       dimensions: config.dimensions || undefined,
+      ...patience,
     });
   }
 
@@ -415,6 +417,7 @@ function resolveProvider(config) {
       apiKey: config._api_key || null,
       model: config.model || undefined,
       dimensions: config.dimensions || undefined,
+      ...patience,
     });
   }
 

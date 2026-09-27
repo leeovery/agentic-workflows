@@ -132,6 +132,13 @@ class WaitBudget {
 
 const processWaitBudget = new WaitBudget(RATE_LIMIT_BUDGET_MS);
 
+/**
+ * @typedef {object} Patience  how long a provider waits on its endpoint
+ * @property {number} [timeoutMs]  for each request's answer — REQUEST_TIMEOUT_MS by default
+ * @property {WaitBudget} [waitBudget]  the rate-limit waiting it may spend — by default, the process's
+ * @property {(ms: number) => Promise<void>} [sleep]  how it waits out a rate limit
+ */
+
 class OpenAIEmbeddingsEngine {
   /**
    * @param {{
@@ -140,15 +147,12 @@ class OpenAIEmbeddingsEngine {
    *   model: string,
    *   dimensions: number,
    *   sendDimensionsParam: boolean,
-   *   timeoutMs?: number,
-   *   sleep?: (ms: number) => Promise<void>,
-   *   waitBudget?: WaitBudget,
    *   errorContext: {
    *     label: string,
    *     authHint: string,
    *     permissionHint: string,
    *   },
-   * }} policy
+   * } & Patience} policy
    */
   constructor(policy) {
     if (!policy || typeof policy !== 'object') {

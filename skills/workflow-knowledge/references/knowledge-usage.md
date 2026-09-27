@@ -52,8 +52,8 @@ If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not 
 ⚑ Knowledge query failed
   {error output}
 
-  Likely causes: expired API key, network outage, corrupted store,
-  or provider mismatch. Run `knowledge status` to diagnose.
+  Likely causes: a store that can't be read, or its metadata missing.
+  Run `knowledge status` to diagnose.
 ```
 
 Fetch the gate and emit its section verbatim per its marker:

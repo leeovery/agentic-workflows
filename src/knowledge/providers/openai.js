@@ -26,7 +26,7 @@ const OPENAI_ERROR_CONTEXT = {
 
 class OpenAIProvider {
   /**
-   * @param {{ apiKey: string, model?: string, dimensions?: number }} options
+   * @param {{ apiKey: string, model?: string, dimensions?: number } & import('./openai-engine').Patience} options
    */
   constructor(options) {
     if (!options || !options.apiKey) {
@@ -41,6 +41,9 @@ class OpenAIProvider {
       model: options.model || DEFAULT_MODEL,
       dimensions,
       sendDimensionsParam: true,
+      timeoutMs: options.timeoutMs,
+      waitBudget: options.waitBudget,
+      sleep: options.sleep,
       errorContext: OPENAI_ERROR_CONTEXT,
     });
   }

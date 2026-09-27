@@ -374,7 +374,7 @@ async function runSystemConfigStep(rl) {
     const reconfigure = await askYesNo(rl, 'Reconfigure system settings?', false);
     if (!reconfigure) {
       process.stdout.write('Keeping existing system config.\n');
-      return { provider: k.provider || null, previouslyStub: !k.provider };
+      return { provider: k.provider || null };
     }
   } else if (existing.exists && !existing.valid) {
     process.stdout.write(`\nSystem config at ${sysPath} is not valid: ${existing.reason}\n`);
@@ -386,9 +386,6 @@ async function runSystemConfigStep(rl) {
   } else {
     process.stdout.write(`\nNo system config found at ${sysPath}. Creating a new one.\n`);
   }
-
-  // Detect stub-to-full upgrade scenario (used after provider choice).
-  const previouslyStub = existing.exists && existing.valid && !existing.knowledge.provider;
 
   // Build a numbered menu from the registered driver descriptors, plus a
   // static "skip" entry for stub mode. Widest label sets the column width so
@@ -426,7 +423,7 @@ async function runSystemConfigStep(rl) {
       'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
       'Run `knowledge setup` again later to configure a provider.\n'
     );
-    return { provider: null, previouslyStub };
+    return { provider: null };
   }
 
   // Delegate to the chosen driver's collect(). It owns that provider's
@@ -444,7 +441,7 @@ async function runSystemConfigStep(rl) {
       'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
       'Re-run `knowledge setup` once the provider is reachable.\n'
     );
-    return { provider: null, previouslyStub };
+    return { provider: null };
   }
 
   // Persist a freshly entered key (key === null means env-sourced or already
@@ -456,7 +453,7 @@ async function runSystemConfigStep(rl) {
   }
   config.writeConfigFile(sysPath, result.knowledgeConfig);
   process.stdout.write(`\nWrote system config to ${sysPath}\n`);
-  return { provider: descriptor.id, previouslyStub };
+  return { provider: descriptor.id };
 }
 
 /**
@@ -599,6 +596,11 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
         `\n${summary.failed} artifact(s) failed to index — the next start retries them.\n`
       );
     }
+    if (summary.awaiting > 0) {
+      process.stderr.write(
+        `\n${summary.awaiting} chunk(s) await vectors — searchable by keyword; the next start embeds them.\n`
+      );
+    }
   } catch (err) {
     process.stderr.write(
       `\nInitial indexing hit an error: ${err.message}\n` +
@@ -645,11 +647,6 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.stdout.write(
       '\nStub mode: no embedding provider configured. The knowledge base will run in keyword-only (BM25) mode. ' +
       'Semantic search is disabled until you configure a provider.\n'
-    );
-  } else if (sysResult.previouslyStub) {
-    process.stdout.write(
-      '\nUpgraded from stub mode to a configured provider. ' +
-      'The existing store was indexed in keyword-only mode — run `knowledge rebuild` to re-index with embeddings for full hybrid search.\n'
     );
   }
 }

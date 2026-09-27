@@ -1205,6 +1205,23 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '');
   });
 
+  it('a provider that cannot be reached still builds the store by keyword — the index failing is a warning, never a block', async () => {
+    const closed = require('net').createServer();
+    await new Promise((resolve) => closed.listen(0, '127.0.0.1', () => resolve(undefined)));
+    const { port } = /** @type {import('net').AddressInfo} */ (closed.address());
+    await new Promise((resolve) => closed.close(() => resolve(undefined)));
+
+    const res = bootWith({ knowledge: { provider: 'openai-compatible', base_url: `http://127.0.0.1:${port}/v1`, model: 'm', dimensions: 8 } });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0],
+      /^knowledge index failed: Failed to embed \.workflows\/payments\/discussion\/payments\.md: .*\(network error\).*\nEach is searchable by keyword; its vectors come at the next start\.$/);
+    assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
+  });
+
   it('keyword-only chosen outright in the system config builds a keyword-only store', () => {
     const res = bootWith({ knowledge: {} });
 
