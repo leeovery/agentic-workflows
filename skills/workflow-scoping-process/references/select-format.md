@@ -44,7 +44,7 @@ Emit the call's MENU section verbatim per its marker.
 
 ## B. Select Format
 
-→ Load **[output-formats.md](../../workflow-planning-process/references/output-formats.md)** and follow its instructions as written.
+→ Load **[output-formats.md](../../workflow-planning-process/references/output-formats.md)** with phase = `scoping`.
 
 → Load the chosen format's **[about.md](../../workflow-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
 

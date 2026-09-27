@@ -319,7 +319,9 @@ Commands:
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
   render task-count-gate  <wu.planning.topic>
-  render plan-format-gate
+  render cross-cutting-gate --file <payload.json>
+  render cross-cutting-references --file <payload.json>
+  render plan-format-gate [--variant select --file <payload.json>]
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>

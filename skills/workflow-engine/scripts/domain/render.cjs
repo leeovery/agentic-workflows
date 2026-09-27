@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadManifest, loadProjectManifest } = require('./reads.cjs');
+const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost } = require('../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
 const { section, titleSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
@@ -3046,17 +3046,129 @@ function taskCountGate(cwd, { dotpath }) {
   ], { question: 'How would you like to proceed?' }));
 }
 
-// plan-format-gate — the plan's format offer, reached only when a project
-// default exists. The format is project-manifest state, so the surface reads
-// it rather than being told: an offer naming a format nobody set would be a
-// gate over nothing. The address is the project's, not a work unit's — the
-// planning item does not exist yet when this gate renders.
+// cross-cutting-gate — planning entry's stop over cross-cutting
+// specifications still being written. Which of them bear on the plan being
+// built is the session's read, so the names arrive as a payload; whether a
+// name is a cross-cutting unit whose specification is still open is state,
+// so the surface checks it rather than being told — a warning about a spec
+// that finished is worse than no warning at all.
+
+/**
+ * The cross-cutting work units whose specification reads `status`.
+ * @param {string} cwd
+ * @param {string} status
+ * @returns {string[]}
+ */
+function crossCuttingSpecs(cwd, status) {
+  return loadAllManifests(cwd)
+    .filter((m) => m.work_type === 'cross-cutting'
+      && phaseItems(m, 'specification').some((item) => item.status === status))
+    .map((m) => String(m.name));
+}
 
 /**
  * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function planFormatGate(cwd) {
+function crossCuttingGate(cwd, { file }) {
+  if (!file) throw new Error('render cross-cutting-gate: --file <payload.json> is required');
+  const units = stringLines(readJsonPayload(cwd, file, 'cross-cutting-gate').units, 'cross-cutting-gate', 'units');
+  if (units.length === 0) {
+    throw new Error('render cross-cutting-gate: "units" is empty — the gate renders over the specs this plan must know about');
+  }
+  const open = crossCuttingSpecs(cwd, 'in-progress');
+  for (const unit of units) {
+    if (!open.includes(unit)) {
+      throw new Error(`render cross-cutting-gate: "${unit}" is not a cross-cutting work unit with a specification in progress`);
+    }
+  }
+  return [
+    section('DISPLAY: cross-cutting in progress', 'emit verbatim as a code block, directly above the menu', [
+      'Cross-cutting specifications still in progress:',
+      ...indentedBody(['These may contain architectural decisions relevant to this plan.']),
+      '',
+      ...units.flatMap((unit) => bulletRow(unit)),
+    ].join('\n')),
+    section('MENU: cross-cutting gate', STOP_FOR_RESPONSE, menu('Proceed without these, or complete them first?', [
+      cmdOption('c', 'continue', 'Plan without them'),
+      cmdOption('s', 'stop', 'Complete them first'),
+    ])),
+  ].join('\n');
+}
+
+// cross-cutting-references — the completed cross-cutting specifications the
+// plan will reference. Which of them bear on the plan, and what each decides
+// that matters here, is the session's read, so the rows arrive as a payload;
+// whether a name is a cross-cutting unit whose specification completed is
+// state, so the surface checks it — a reference to an unfinished spec would
+// hand the plan decisions nobody has settled.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function crossCuttingReferences(cwd, { file }) {
+  if (!file) throw new Error('render cross-cutting-references: --file <payload.json> is required');
+  const { units } = readJsonPayload(cwd, file, 'cross-cutting-references');
+  if (!Array.isArray(units) || units.length === 0) {
+    throw new Error('render cross-cutting-references: "units" must be a non-empty array of {name, summary}');
+  }
+  const completed = crossCuttingSpecs(cwd, 'completed');
+  for (const unit of units) {
+    if (!unit || !isFilled(unit.name) || !isFilled(unit.summary)) {
+      throw new Error('render cross-cutting-references: every unit needs a non-empty "name" and "summary"');
+    }
+    if (!completed.includes(unit.name)) {
+      throw new Error(`render cross-cutting-references: "${unit.name}" is not a cross-cutting work unit with a completed specification`);
+    }
+  }
+  return section('DISPLAY: cross-cutting references', 'emit verbatim as a code block', [
+    'Cross-cutting specifications to reference:',
+    ...units.flatMap((unit) => bulletRow(`${unit.name}: ${unit.summary}`)),
+  ].join('\n'));
+}
+
+// plan-format-gate — the plan's format offer in its two moments. Bare, it is
+// the accept of the project default: the format is project-manifest state, so
+// the surface reads it rather than being told, and an offer naming a format
+// nobody set would be a gate over nothing. `--variant select` is the
+// catalogue reached when there is no default or the user declined it — which
+// formats a project ships is the planning skill's to name, so the rows arrive
+// as a payload and the surface numbers them in payload order. Neither takes
+// an address: the planning item does not exist yet when this gate renders.
+
+/**
+ * @param {string} cwd
+ * @param {string|undefined} file
+ * @returns {string}
+ */
+function planFormatSelect(cwd, file) {
+  if (!file) throw new Error('render plan-format-gate: --variant select requires --file <payload.json>');
+  const { formats } = readJsonPayload(cwd, file, 'plan-format-gate');
+  if (!Array.isArray(formats) || formats.length === 0) {
+    throw new Error('render plan-format-gate: "formats" must be a non-empty array of {name, label}');
+  }
+  for (const f of formats) {
+    if (!f || !isFilled(f.name) || !isFilled(f.label)) {
+      throw new Error('render plan-format-gate: every format needs a non-empty "name" and "label"');
+    }
+  }
+  return section('MENU: plan format select', STOP_FOR_RESPONSE, menu('Select an output format:',
+    formats.map((f, i) => cmdOption(String(i + 1), null, f.label))));
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, file?: string}} args
+ * @returns {string}
+ */
+function planFormatGate(cwd, { variant, file }) {
+  if (variant === 'select') return planFormatSelect(cwd, file);
+  if (variant !== undefined) {
+    throw new Error(`render plan-format-gate: --variant must be select, got "${variant}"`);
+  }
   const project = loadProjectManifest(cwd);
   const format = ((project || {}).defaults || {}).plan_format;
   if (!isFilled(format)) {
@@ -5641,6 +5753,8 @@ const SURFACES = {
   'executor-block-gate': executorBlockGate,
   'dependency-approval-gate': dependencyApprovalGate,
   'task-count-gate': taskCountGate,
+  'cross-cutting-gate': crossCuttingGate,
+  'cross-cutting-references': crossCuttingReferences,
   'plan-format-gate': planFormatGate,
   'plan-review-gate': planReviewGate,
   'correction-gate': correctionGate,

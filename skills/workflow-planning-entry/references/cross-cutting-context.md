@@ -42,24 +42,13 @@ The output is the full manifests — read each unit's spec status directly from 
 
 **If relevant in-progress specs exist:**
 
-> *Output the next fenced block as a code block:*
+Write the relevant work unit names to `.workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json` with the Write tool — `{"units": ["{cc_work_unit}", …]}` — then render it:
 
-```
-Cross-cutting specifications still in progress:
-These may contain architectural decisions relevant to this plan.
-
-  • {cc_work_unit}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-gate --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed without these, or complete them first?`**
-
-**`c/continue`** → Plan without them
-**`s/stop`**     → Complete them first
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -95,10 +84,16 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "{query_text}
 
 #### If the command exits with a non-zero code
 
-Load **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When D returns:
+→ Load **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
 
-- **If the user chose `skip`** — → Return to caller (plan proceeds without cross-cutting context).
-- **If a retry succeeded** — re-evaluate stdout using the `[0 results]` or results-returned branches below.
+- **If the user chose `skip`** — the plan proceeds without cross-cutting context. → Return to caller.
+- **If a retry succeeded** — results are now available. → Proceed to **E. Interpret the results**.
+
+#### Otherwise
+
+→ Proceed to **E. Interpret the results**.
+
+## E. Interpret the results
 
 #### If stdout is `[0 results]`
 
@@ -112,12 +107,21 @@ Read the returned chunks. Group by work unit — each unique `work_unit/topic` i
 
 Keep only the specs that are genuinely relevant to the plan being built. A chunk matching on generic vocabulary (e.g., both mention "authentication") but addressing unrelated concerns should be dropped.
 
-> *Output the next fenced block as a code block:*
+**If none are relevant:**
 
+Proceed without cross-cutting context.
+
+→ Return to caller.
+
+**If relevant specs remain:**
+
+Write each one's work unit name and a brief summary of its key decisions relevant to this plan to `.workflows/.cache/{work_unit}/planning/{topic}/cross-cutting-references.json` with the Write tool — `{"units": [{"name": "{cc_work_unit}", "summary": "{brief summary}"}, …]}` — then render it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-references --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting-references.json
 ```
-Cross-cutting specifications to reference:
-  • {cc_work_unit}: {brief summary of key decisions relevant to this plan}
-```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 These specifications contain validated architectural decisions that should inform the plan. The planning skill will incorporate them as a "Cross-Cutting References" section in the plan.
 
