@@ -15,6 +15,18 @@
  * Every path up to the cut fails open: the engine emits the menu regardless,
  * so where the module never loads, or a cut throws or overruns, the model
  * reads the text menu the engine wrote.
+ *
+ * The module also sets Claude Code's harness for the workflows: every session
+ * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
+ * that has run the engine's boot goes without Claude's thinking summarised as
+ * output and without the nudge to say what it is doing, the person's own
+ * values of both put back as it ends. A conversation that has not run the
+ * boot keeps them untouched.
+ *
+ * All of it happens in Claude Code's terminal app alone, from 2.1.282.
+ * Elsewhere — an IDE extension, Claude Code on the web, an older Claude
+ * Code — the session is not announced, and the module draws, keeps and sets
+ * nothing.
  */
 import type {
   AgentLoop,
@@ -56,6 +68,15 @@ const KEPT = 'band:'
  * a band kept longer belongs to a conversation that cannot come back.
  */
 const KEPT_FOR_MS = 30 * 24 * 60 * 60 * 1000
+
+/** The engine's boot, as a Bash command runs it. */
+const BOOT = /engine\.cjs\s+boot\b/
+
+/** The oldest Claude Code the mod runs on, major, minor and patch. */
+const OLDEST = [2, 1, 282]
+
+/** A release's version, as `claude --version` prints it. */
+const RELEASE = /^(\d+)\.(\d+)\.(\d+)$/
 
 const STOP_NOTE =
   "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
@@ -160,10 +181,51 @@ function gateIn(
 }
 
 /**
+ * Whether `version` is a release the mod runs on; one that does not read as
+ * a release, a development build's included, counts as older.
+ */
+function isSupported(version: string): boolean {
+  const release = RELEASE.exec(version)
+
+  if (release === null) {
+    return false
+  }
+
+  for (const [n, oldest] of OLDEST.entries()) {
+    const part = Number(release[n + 1])
+
+    if (part !== oldest) {
+      return part > oldest
+    }
+  }
+
+  return true
+}
+
+/**
+ * Whether the mod applies to the session, read as the engine's boot reads
+ * it: Claude Code's terminal app — the `cli` entrypoint, not Claude Code on
+ * the web — at a version the mod runs on. The flag that loads the mod is
+ * committed, so a teammate's IDE extension, the web or an older Claude Code
+ * can load it too.
+ */
+async function isApplicable($: EngineInterface): Promise<boolean> {
+  if (
+    (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) !== 'cli' ||
+    (await $.env.get('CLAUDE_CODE_REMOTE'))
+  ) {
+    return false
+  }
+
+  return isSupported((await $.session.version()).version)
+}
+
+/**
  * Whether the session announces the gate surface: set at its start, and
- * still set after a reload of the module. The band is kept and read back
- * only where it is, so a process whose session never announced — one this
- * module was loaded into after it started — never gets a kept gate back.
+ * still set after a reload of the module. The band is kept and read back,
+ * and the harness put on, only where it is, so a process whose session
+ * never announced — one the mod does not apply to, or one this module was
+ * loaded into after it started — never gets either.
  */
 async function isAnnounced($: EngineInterface): Promise<boolean> {
   return (await $.env.get('WORKFLOWS_GATE_SURFACE')) === '1'
@@ -394,14 +456,98 @@ async function keep(
   }
 }
 
+/** Whether a Bash command runs the engine's boot. */
+const isBoot = (command: unknown) =>
+  typeof command === 'string' && BOOT.test(command)
+
+/** Whether the conversation's transcript holds a boot that did not fail. */
+async function hasBooted($: EngineInterface): Promise<boolean> {
+  const messages = await $.session.messages()
+
+  return messages.some(message =>
+    message.toolUses.some(
+      use =>
+        use.tool === 'Bash' &&
+        use.isError !== true &&
+        isBoot(use.input.command),
+    ),
+  )
+}
+
+/**
+ * The person's own values of the settings the harness sets, absent where
+ * unset: what the harness replaced, kept while it is on.
+ */
+type Replaced = {
+  CLAUDE_CODE_THINKING_DISPLAY_UPDATES?: string
+  CLAUDE_CODE_SILENT_TURN_REMINDER?: string
+}
+
+/**
+ * Puts Claude Code's harness on for a workflow session, one whose
+ * conversation has run the engine's boot in a session that announced: no
+ * summary of Claude's thinking printed as if it were output, and no nudge to
+ * say what it is doing. Claude Code reads both per request. What it replaces
+ * is kept in the process's environment, which a reload of the module's files
+ * keeps, and only where nothing is kept yet: the values are read before that
+ * is looked at, so a harness another call has just put on is never kept as
+ * the person's.
+ */
+async function harnessOn($: EngineInterface) {
+  if (!(await isAnnounced($))) {
+    return
+  }
+
+  const replaced: Replaced = {
+    CLAUDE_CODE_THINKING_DISPLAY_UPDATES: await $.env.get(
+      'CLAUDE_CODE_THINKING_DISPLAY_UPDATES',
+    ),
+    CLAUDE_CODE_SILENT_TURN_REMINDER: await $.env.get(
+      'CLAUDE_CODE_SILENT_TURN_REMINDER',
+    ),
+  }
+
+  if ((await $.env.get('WORKFLOWS_HARNESS_REPLACED')) === undefined) {
+    await $.env.set('WORKFLOWS_HARNESS_REPLACED', JSON.stringify(replaced))
+  }
+
+  await $.env.set('CLAUDE_CODE_THINKING_DISPLAY_UPDATES', 'false')
+  await $.env.set('CLAUDE_CODE_SILENT_TURN_REMINDER', 'false')
+}
+
+/**
+ * Takes the harness off, putting back exactly what it replaced: the person's
+ * value, or none. Where the harness is not on, nothing is touched.
+ */
+async function harnessOff($: EngineInterface) {
+  const kept = await $.env.get('WORKFLOWS_HARNESS_REPLACED')
+
+  if (kept === undefined) {
+    return
+  }
+
+  const replaced = JSON.parse(kept) as Replaced
+
+  await $.env.set(
+    'CLAUDE_CODE_THINKING_DISPLAY_UPDATES',
+    replaced.CLAUDE_CODE_THINKING_DISPLAY_UPDATES,
+  )
+  await $.env.set(
+    'CLAUDE_CODE_SILENT_TURN_REMINDER',
+    replaced.CLAUDE_CODE_SILENT_TURN_REMINDER,
+  )
+  await $.env.set('WORKFLOWS_HARNESS_REPLACED', undefined)
+}
+
 /**
  * Settles the read-back the band owes, if `owing` says it owes one: `take`
  * gets the conversation the transcript holds now, with its kept gate where
  * the transcript still ends where it was kept, or none where it has moved
- * on, the kept band dropped while the read-back is still owed. Nothing
- * settles in a session that did not announce, while the transcript is
- * empty, or while it still holds the conversation that ended in this
- * process.
+ * on, the kept band dropped while the read-back is still owed. A
+ * conversation that has run the boot gets the workflow harness back, again
+ * while the read-back is still owed. Nothing settles in a session that did
+ * not announce, while the transcript is empty, or while it still holds the
+ * conversation that ended in this process.
  */
 async function readBack(
   $: EngineInterface,
@@ -418,6 +564,10 @@ async function readBack(
 
   if (place === null || isSamePlace(place, asked.ended)) {
     return
+  }
+
+  if ((await hasBooted($)) && owing() === asked) {
+    await harnessOn($)
   }
 
   const kept = place.key === null ? undefined : await $.store.get(place.key)
@@ -552,11 +702,21 @@ export const register: Register = on => {
   }
 
   // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this. A fresh load
-  // comes back to a conversation this module has not followed, so the band
-  // is read back from the store, and bands kept past any resume are dropped.
+  // that asked for one, and every Bash child inherits this. Where the mod
+  // does not apply nothing is announced, which leaves it inert there. A
+  // fresh load comes back to a conversation this module has not followed, so
+  // the band is read back from the store, and bands kept past any resume are
+  // dropped.
   on('session.start', async ($, e, next) => {
+    if (!(await isApplicable($))) {
+      return next(e)
+    }
+
     await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
+
+    // Claude Code builds its tool catalogue just after this hook, so only
+    // here does the switch that gives the session SendUserMessage count.
+    await $.env.set('CLAUDE_CODE_PEWTER_OWL_TOOL', 'true')
 
     owed = { ended: null }
     await readBack($, owing, takeBack)
@@ -571,9 +731,10 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // A /clear or a resume goes on in this process as another conversation,
-  // which no gate of this one answers. What the band showed is kept for this
-  // one first, stamped where its transcript ends now, which can have moved
-  // since its last turn's end.
+  // which no gate of this one answers and which is no workflow session until
+  // it boots or is read back as one that has. What the band showed is kept for
+  // this one first, stamped where its transcript ends now, which can have
+  // moved since its last turn's end.
   on('session.end', async ($, e, next) => {
     try {
       const place = await placeOf($)
@@ -587,6 +748,7 @@ export const register: Register = on => {
       owed = { ended: seen }
       seen = null
       $.ui.invalidate('ui.render')
+      await harnessOff($)
     }
 
     return next(e)
@@ -607,6 +769,10 @@ export const register: Register = on => {
       return result
     }
 
+    if (inConversation(e) && isBoot(e.command)) {
+      await harnessOn($)
+    }
+
     const record = result.result
     const stated = gateIn(record.stdout)
 
@@ -623,6 +789,17 @@ export const register: Register = on => {
     return {
       result: { ...record, stdout: isArmed ? stated.cut : stated.text },
     }
+  }).catch(($, e, next) => next(e))
+
+  // The tool waits behind ToolSearch in every session that announced,
+  // workflow or not: one answer, since a changed answer sends the tool list
+  // again and spends the prompt cache.
+  on('tool.describe', { tool: 'SendUserMessage' }, async ($, e, next) => {
+    const described = await next(e)
+
+    return (await isAnnounced($))
+      ? { ...described, isDeferred: true }
+      : described
   }).catch(($, e, next) => next(e))
 
   // Drawn at the turn's end, once what the rows choose between is on screen,
