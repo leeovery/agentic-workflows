@@ -363,11 +363,15 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   the flag cannot load the mod. Workflow-start's Step 0.2, straight after
   the boot and before the walkthrough and the other setup questions so all
   of them run with the mod, stops on `restart` and on `not-running`: under
-  a `▪ Workflow Mod` sub-step marker, the restart screen says what the mod
-  does and ends the session on a red title, "Restart Claude Code to finish
-  setting up", with a signpost saying why; the not-running screen says the
-  mod is not running and what usually causes it. There is nothing to
-  answer on either. Boot's warnings are said before either stop, so a
+  a `▪ Claude Code Setup` sub-step marker, the restart screen says the
+  workflows have set up Claude Code to show their menus as buttons and
+  ends the session on a red title, "Restart Claude Code to finish setting
+  up", with a signpost saying why; the not-running screen's red title says
+  Claude Code hasn't picked up the workflows' setup, and its signpost names
+  the usual cause and the person's own function-hooks switch. Neither
+  names the mod or how it works — the person meets buttons, not a
+  mechanism — and the Initialisation signpost counts the setup among what
+  the boot does. There is nothing to answer on either. Boot's warnings are said before either stop, so a
   refused settings commit is never silent. Only the boot's own review of
   migration changes comes before them. Those blocks are the terminal
   step's closing text, so they need no engine surface (R21). The text
@@ -627,11 +631,9 @@ JSON beside MENU         of what the model reads            rows · footer; keys
     that carries a session id, run inside a workflows project, after the
     command whatever its exit — never by the session hooks, which run for
     every conversation in the project;
-  - the conversation's transcript path, recorded from the path Claude Code
-    hands every hook — by `engine conversation end` as the conversation
-    ends and by `engine conversation resume` as it is resumed, so a
-    transcript Claude Code moved on the resume is named where it now is —
-    each only where the folder exists;
+  - the conversation's transcript path, recorded by `engine conversation
+    end` from the path Claude Code hands the session-end hook, only where
+    the folder exists;
   - the tmux label's resume position (moved here by migration 061), kept
     when a resume lands where its work unit is not;
   - the gate the mod saves for a resume (R6), `null` when there is none to
@@ -639,9 +641,15 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   - the band's send record (`sent.json`) and the rows mod's redrawn
     answers (`rows.json`, R15).
 
-  One tidy-up, at any project's boot, deletes a folder once the transcript
-  file it names is gone (a leading `~` read as the home directory; an
-  empty or relative path is unknown, and the folder stays): whatever
+  One tidy-up, at any project's boot, deletes a folder once its transcript
+  is gone. The recorded path does not say where the transcript is (finding
+  58), so the tidy-up reads it only for the directory Claude Code keeps its
+  projects in, and looks for the transcript by its file name in every
+  project folder there — read once per boot — deleting the folder only
+  when none holds it (a leading `~` read as the home directory; an empty
+  or relative path is unknown, and so is a projects directory that cannot
+  be read — the folder stays; one that no longer exists holds nothing):
+  whatever
   retention the person set — thirty days, ten years — is the retention
   these records keep, and no period is assumed anywhere. A folder whose
   conversation ended without the hook running keeps no path and stays; it
@@ -849,13 +857,21 @@ JSON beside MENU         of what the model reads            rows · footer; keys
 58. The directory a conversation runs in moves under it. A `cd` Claude
     runs in its Bash tool moves the session's working directory — and
     every relative `$.fs` path with it — until another `cd` moves it back;
-    a conversation resumed from another directory runs there, and Claude
-    Code moves its transcript under that directory's project. A folder
+    a conversation resumed from another directory runs there. A folder
     found from the working directory is lost on either, and a record
     written there lands wherever Claude has moved to — `$.fs.write`
-    creates the directories it needs. `$.fs` takes an absolute path. Hence
-    R24's per-user folder, and the resume re-recording where the
-    transcript is.
+    creates the directories it needs. `$.fs` takes an absolute path. And
+    after a resume from another checkout the hook input's
+    `transcript_path` names that checkout's project folder while Claude
+    Code goes on writing the transcript where the conversation began (seen
+    through further messages on 2.1.283): the path a hook hands over does
+    not say where the transcript is. Hence R24's per-user folder, and its
+    tidy-up finding the transcript by name.
+59. A turn whose only output is the band — a menu put back with nothing
+    else to show — ends on one line Claude writes itself ("The walk is
+    back at screen 1 of 8. Its options are on screen."); Claude Code's
+    no-visible-output message never fired. Accepted: the line is accurate
+    and orients the person once the screen has scrolled away.
 
 ## Log
 
@@ -924,6 +940,13 @@ JSON beside MENU         of what the model reads            rows · footer; keys
   final review — goes to the lab.
 - 2026-09-27 — the conversation folder moved out of the project to
   beside the system config, found by its session id wherever the
-  conversation is resumed or its directory moves; a resume re-records
-  where the transcript now is; the send record joined the folder (R15,
-  R24). Finding 58.
+  conversation is resumed or its directory moves, the send record with it
+  (R15, R24). The lab pass: the setup stops, buttons, harness and folder
+  held live; a resume in the same checkout and from another brought the
+  buttons back, and compaction kept them; a resume hook that re-recorded
+  the transcript path was built and dropped once the lab showed the path
+  it is handed names no file — the tidy-up finds the transcript by name
+  instead (R24, finding 58); a band-only turn's own line accepted (finding
+  59); the setup screens reworded to what the person meets, and the
+  migration summary written as markdown so it reflows on a narrow screen
+  (R9).
