@@ -39,11 +39,11 @@ Further claims:
   before the flag was cleared, and the read followed the research
   status read: the status decides the branch, never a guess at the
   file's existence
-- the reconcile flag was read twice in all — once at the entry, where
-  it was absent, and once by the session's own check, where it read
-  `research`; the flag is gone at the end, cleared by the advisory
-  inside the session — not by a reopen, and not left for a later
-  session
+- the reconcile flag read absent at the entry and `research` at the
+  session's own check — the advisory that check loads reads it again,
+  its own first step; the flag is gone at the end, cleared by the
+  advisory inside the session — not by a reopen, and not left for a
+  later session
 - no wait gate was fetched and no discussion completion or reopen was
   attempted: the research landed, so there is nothing to wait on, and
   the walk never reached the conclusion
