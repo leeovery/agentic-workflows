@@ -834,6 +834,25 @@ function completedView(detail, filter) {
   return { data, display, menu, rows };
 }
 
+/**
+ * The selected unit's action menu, served by `render completed-actions` once
+ * the list's number resolves to a row: reactivate, back, ask.
+ * @param {string} workUnit
+ * @param {string} status  `completed` or `cancelled`
+ * @returns {string}
+ */
+function completedActions(workUnit, status) {
+  return labelled(
+    'MENU: completed actions',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`**${titlecase(workUnit)}** (${status})`, [
+      cmdOption('r', 'reactivate', 'Set status back to in-progress'),
+      cmdOption('b', 'back', 'Return to the list'),
+      promptOption('Ask', 'Ask a question about this work unit'),
+    ], { question: 'What would you like to do?' }),
+  );
+}
+
 module.exports = {
   startOverview,
   startMenu,
@@ -852,4 +871,5 @@ module.exports = {
   absorbConfirmGate,
   planTopicsMenu,
   completedView,
+  completedActions,
 };

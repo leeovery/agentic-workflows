@@ -303,6 +303,7 @@ Commands:
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json>
+  render dismissed-topics <wu>
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
   render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
@@ -365,6 +366,7 @@ Commands:
   render plan-topics       <wu>
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
+  render completed-actions <wu>
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>

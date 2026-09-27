@@ -1065,4 +1065,29 @@ describe('start projections: completed & cancelled', () => {
   it('is loud on an unknown filter', () => {
     assert.throws(() => completedView(closedFixture(dir), 'gizmo'), /unknown work-type filter/);
   });
+
+  it('the action menu renders over the selected unit, and refuses one the list never holds', () => {
+    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+    closedFixture(dir);
+
+    assert.strictEqual(renderSurface(dir, 'completed-actions', { dotpath: 'done-feat' }), [
+      "=== MENU: completed actions (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**Done Feat** (completed)',
+      '',
+      '**`◆ What would you like to do?`**',
+      '',
+      '**`r/reactivate`** → Set status back to in-progress',
+      '**`b/back`**       → Return to the list',
+      '**Ask**          → Ask a question about this work unit',
+      '',
+    ].join('\n'));
+
+    assert.match(renderSurface(dir, 'completed-actions', { dotpath: 'dropped' }), /\*\*Dropped\*\* \(cancelled\)/);
+    createManifest(dir, 'live-one', {});
+    assert.throws(() => renderSurface(dir, 'completed-actions', { dotpath: 'live-one' }),
+      /render completed-actions: "live-one" is not completed or cancelled \(status: in-progress\)/);
+    assert.throws(() => renderSurface(dir, 'completed-actions', { dotpath: 'ghost' }),
+      /render completed-actions: work unit "ghost" not found/);
+  });
 });

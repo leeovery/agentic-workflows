@@ -43,24 +43,19 @@ Emit the MENU section.
 
 #### If user chose a number
 
-Store the selected work unit's `UNITS` row — its name and status.
+Store the selected work unit's name from its `UNITS` row.
 
 → Proceed to **C. Action Menu**.
 
 ## C. Action Menu
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the action menu over the selected unit:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render completed-actions {selected.name}
 ```
-· · · · · · · · · · · ·
-**{selected.name:(titlecase)}** ({selected.status})
 
-**`◆ What would you like to do?`**
-
-**`r/reactivate`** → Set status back to in-progress
-**`b/back`**       → Return to the list
-**Ask**          → Ask a question about this work unit
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
