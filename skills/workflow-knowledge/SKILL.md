@@ -67,7 +67,7 @@ Multiple positional arguments run separate searches in one invocation, merge the
 | `--work-type <type>` | Filter results to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter |
 | `--phase <phase>` | Filter to one or more phases. Same comma-separated syntax. Hard filter |
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
-| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear, just ranked lower |
+| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive — keyword-only, that only breaks near-ties. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear, just ranked lower |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
 | `--explain` | Print beneath each result how it ranked — for diagnosing retrieval, never needed to use the results |
 
