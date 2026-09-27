@@ -644,3 +644,34 @@ describe('the asserter prompt file: harness material, never world state', () => 
     }
   });
 });
+
+describe('assert: a walk still running is waited for, never judged', () => {
+  // The walk log and the recorded stop land together as the walker stops.
+  // A walker that hands a message back early wakes its orchestrator while
+  // it still walks; assert must say so rather than read the absent log as
+  // a broken hook — which the orchestrator answers by destroying the world.
+  const CASE = 'start-lists-active-work';
+  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
+  const assertOn = (dir) => execFileSync('node', [RUN, 'assert', CASE, '--world', dir], { encoding: 'utf8', stdio: 'pipe' });
+  const refusal = (dir) => {
+    try { assertOn(dir); } catch (e) { return String(e.stderr); }
+    return null;
+  };
+
+  it('names a walker with no recorded stop as still running, then a missing log as the hook, then judges', function () {
+    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
+    const dir = worlds.buildWorld(CASE);
+    try {
+      fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\n');
+      assert.match(refusal(dir), /the walker has not stopped/);
+
+      fs.appendFileSync(path.join(dir, worlds.ACTION_LOG), 'SubagentStop\t-\tclaude-sonnet-5\tdone\n');
+      assert.match(refusal(dir), /no walk log/);
+
+      fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
+      assert.match(assertOn(dir), /"prompt_file"/);
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+});

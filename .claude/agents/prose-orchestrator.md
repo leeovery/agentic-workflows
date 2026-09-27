@@ -70,8 +70,12 @@ a walk.
    The file already carries the walk; never append the walker's returned
    message to it, and never paste it anywhere else.
 
-   If that command **fails** rather than printing a prompt, the harness
-   is broken, not the prose. Stop there, destroy the world, and report
+   If it answers that **the walker has not stopped**, the walk is still
+   running: wait for the walker to finish, then run it again — never
+   judge or destroy the world before then.
+
+   If that command **fails** otherwise, rather than printing a prompt,
+   the harness is broken, not the prose. Stop there, destroy the world, and report
    `VERDICT: HARNESS ERROR` with the message it printed. Never fall back
    to judging a walk with no record of what it did.
 
