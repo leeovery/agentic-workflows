@@ -95,7 +95,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "{query_text}
 
 ## E. Interpret the results
 
-#### If stdout is `[0 results]`
+#### If the query reports `[0 results]`
 
 No cross-cutting specs are semantically relevant to this plan. Proceed without cross-cutting context.
 

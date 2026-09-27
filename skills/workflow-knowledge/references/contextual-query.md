@@ -45,7 +45,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<framing 1>"
 
 ## C. Interpret the results
 
-#### If stdout is `[0 results]`
+#### If the query reports `[0 results]`
 
 No prior context found. Proceed to the next step silently — no delay, no user noise.
 
