@@ -89,6 +89,31 @@ describe('rerank — soft down-rank', () => {
     assert.ok(loose[0].score > tight[0].score);
   });
 
+  it('adds the confidence tier, 0.01 per step, undimmed by decay', () => {
+    const tiers = ['high', 'medium', 'low-medium', 'low', 'unknown'].map((confidence) =>
+      rerank([{ id: confidence, score: 0.5, phase: 'discussion', confidence, progressElapsed: 3 }], [], 3)[0].score);
+    const expected = [0.04, 0.03, 0.02, 0.01, 0].map((tier) => 0.5 * 0.9 + tier);
+    tiers.forEach((score, i) => assert.ok(close(score, expected[i])));
+  });
+
+  it('records the decay, boost and tier each result received beside its scoring', () => {
+    const [out] = rerank(
+      [{ id: 'a', score: 0.5, phase: 'discussion', work_unit: 'x', confidence: 'low', progressElapsed: 3, scoring: { kept: 2 } }],
+      [{ field: 'work_unit', value: 'x' }, { field: 'phase', value: 'discussion' }],
+      3
+    );
+    assert.strictEqual(out.scoring.kept, 2);
+    assert.ok(close(out.scoring.decay, 0.9));
+    assert.ok(close(out.scoring.boost, 0.2));
+    assert.ok(close(out.scoring.tier, 0.01));
+    assert.ok(close(out.score, 0.5 * 0.9 + 0.2 + 0.01));
+  });
+
+  it('keeps results that score alike in the order they came', () => {
+    const out = rerank(['b', 'a', 'c'].map((id) => ({ id, score: 0.5, phase: 'discussion' })), [], 3);
+    assert.deepStrictEqual(out.map((r) => r.id), ['b', 'a', 'c']);
+  });
+
   it('returns an empty array unchanged', () => {
     assert.deepStrictEqual(rerank([], [], 3), []);
   });

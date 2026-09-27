@@ -214,6 +214,24 @@ describe('knowledge query — the CLI', () => {
     const units = [...knowledge('query', 'token refresh').matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
     assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
+
+  it('explains beneath each source line how the result ranked, and prints nothing else differently', () => {
+    const explained = knowledge('query', 'token refresh', 'rate window', '--explain');
+    const score = String.raw`\d+\.\d{4}`;
+    for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
+      assert.match(explained, new RegExp([
+        `^Source: \\.workflows/${unit}/discussion/${unit}\\.md`,
+        `Framing 1: keyword ${score}`,
+        `Framing 2: keyword ${score}`,
+        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0200 tier = ${score}$`,
+      ].join('\n'), 'm'));
+    }
+    assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), knowledge('query', 'token refresh', 'rate window'));
+  });
+
+  it('never reads the term after --explain as its value', () => {
+    assert.strictEqual(knowledge('query', '--explain', 'token refresh'), knowledge('query', 'token refresh', '--explain'));
+  });
 });
 
 describe('renderQuery', () => {
