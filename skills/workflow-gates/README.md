@@ -18,14 +18,14 @@ it as the next message, which the workflows read as the answer. Once a click
 has given the band the keyboard, the arrows move between rows, Enter or a row's
 own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
-plugin's; the mod leaves what it sent in `.workflows/.cache/.gates/sent.json`.
-A second plugin, `workflow-gates-rows` (`../workflow-gates-rows/`), reads that
-record to draw the row as the question and the answer, since no plugin can
-redraw the row of a prompt it submitted. Typing answers too: a key and Enter
-at the prompt, or Esc then Enter after a pick. Rows only typing can answer —
-Ask, Comment, a range — draw dim, and a click on one says to type it in the
-prompt. The footer under the rows says which: how to answer, what is in the
-prompt, or where to type.
+plugin's; the mod leaves what it sent in the conversation's own folder (see
+below) as `sent.json`. A second plugin, `workflow-gates-rows`
+(`../workflow-gates-rows/`), reads that record to draw the row as the question
+and the answer, since no plugin can redraw the row of a prompt it submitted.
+Typing answers too: a key and Enter at the prompt, or Esc then Enter after a
+pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
+click on one says to type it in the prompt. The footer under the rows says
+which: how to answer, what is in the prompt, or where to type.
 
 The band is never taller than the rows Claude Code gives it, so it never
 scrolls. A gate that fits shows whole: a rule, the statement and the question,
@@ -58,17 +58,25 @@ band stays empty, since the mod cannot tell a read from a write. A `/clear`
 takes the gate off the band.
 
 At the end of every turn, and as the conversation ends, the mod keeps what the
-band shows — the gate, or nothing — in its own store, stamped with where the
-transcript ends, not counting the lines Claude Code writes around an
-interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
-or picked up again by a restart or a reload of the mod's files, gets its gate
-back as long as its transcript still ends there, with nothing picked or held —
-a held answer waits on a turn that does not come back; one that moved on while
-the mod was not loaded gets nothing. A session the mod was loaded into after it
-started carries no announcement, so there it keeps and reads back nothing. The
-store holds at most one entry per conversation, and each session's start drops
-any older than 30 days, how long Claude Code keeps a transcript unless told
-otherwise.
+band shows — the gate, or nothing — in the conversation's own folder,
+`~/.config/workflows/conversations/{session-id}/gate.json` (under
+`WORKFLOWS_CONFIG_DIR` where that is set, beside the workflows' system
+config), found by the session id wherever the session's working directory has
+moved, and stamped with where the transcript ends, not counting the lines
+Claude Code writes around an interrupted turn. A conversation resumed with
+`claude --resume` or `/resume`, or picked up again by a restart or a reload of
+the mod's files, gets its gate back as long as its transcript still ends
+there, with nothing picked or held — a held answer waits on a turn that does
+not come back; one that moved on while the mod was not loaded gets nothing. A
+session the mod was loaded into after it started carries no announcement, so
+there it keeps and reads back nothing, and a conversation that does not run
+the workflows has no folder and keeps nothing — nor does one in a process
+that names neither a home directory nor `WORKFLOWS_CONFIG_DIR`. The folder
+holds one gate, and goes once Claude Code has deleted the conversation's
+transcript, so a kept gate lives as long as its conversation can be resumed,
+with one exception: a conversation whose end the session-end hook never saw
+keeps its folder — the session that first installed the hook, which Claude
+Code picks up only as a session starts, or one that crashed.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
@@ -102,20 +110,23 @@ the only moment the switch counts. The mod keeps the tool behind ToolSearch
 in every such session, one answer that never changes and so never spends the
 prompt cache; a plain session's tool list is Claude Code's own.
 
-When the engine's boot, which only `/workflow-start` runs, succeeds there in
-the conversation itself rather than in a subagent, the mod sets
+In a conversation that runs the workflows there, the mod sets
 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries of
 Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
 Claude is doing; project settings cannot set the second. Claude Code reads
-both per request. What they replace, the person's own value or none, is kept
-in the process's environment (`WORKFLOWS_HARNESS_REPLACED`), which a reload of
-the mod's files keeps, and a `/clear` or a resume puts it back exactly. A
-conversation whose transcript holds the boot gets the workflow values back when
-the mod next follows it, whether `claude --resume`, a restart or `/resume` in
-the same process brings it back. A plain conversation in the same project
-keeps Claude Code's defaults and the person's own settings: the mod never
-touches either there.
+both per request. Every engine call marks the conversation that made it — a
+`workflow` file in its folder, named by the session id Claude Code hands every
+command — and the mod reads that mark by its own session id after each of the
+conversation's Bash calls and when it starts, so a command that only mentions
+the engine marks nothing. What the settings replace, the person's own value or
+none, is kept in the process's environment (`WORKFLOWS_HARNESS_REPLACED`),
+which a reload of the mod's files keeps, and a `/clear` or a resume puts it
+back exactly. A marked conversation gets the workflow values back when the mod
+next follows it, whether `claude --resume`, a restart or `/resume` in the same
+process brings it back. A plain conversation in the same project keeps Claude
+Code's defaults and the person's own settings: the mod never touches either
+there.
 
 ## Working on it
 

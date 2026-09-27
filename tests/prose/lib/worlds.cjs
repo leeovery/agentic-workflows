@@ -141,6 +141,9 @@ function recipeOverlay() {
     // must never rename the terminal session the suite happens to run in.
     TMUX: undefined,
     TMUX_PANE: undefined,
+    // Every engine call marks the conversation whose id it carries — a
+    // recipe's calls belong to no conversation.
+    CLAUDE_CODE_SESSION_ID: undefined,
   };
 }
 
@@ -457,7 +460,7 @@ function stampHarnessState(dir) {
   // commit, nothing in the delta. The engine's own sync does the seeding,
   // so the hooks are the ones boot recognises.
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
-  const sync = syncSessionHooks(dir, { session: false, presence: true });
+  const sync = syncSessionHooks(dir, { session: false, workflows: true });
   if (sync.error) throw new Error(`cannot seed the project settings: ${sync.error}`);
   return { baseline, walkthrough, settings_created: settingsCreated };
 }
@@ -543,7 +546,7 @@ function unstampSettings(tree, stamped) {
     const file = path.join(scratch, SETTINGS);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, buf);
-    const sync = syncSessionHooks(scratch, { session: false, presence: false });
+    const sync = syncSessionHooks(scratch, { session: false, workflows: false });
     if (sync.error) throw new Error('cannot strip the session hooks: ' + sync.error);
     if (!sync.changed) return;
     const next = fs.readFileSync(file);

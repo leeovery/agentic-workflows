@@ -134,9 +134,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const buf = tree.get(worlds.SETTINGS);
     return buf ? JSON.parse(buf.toString('utf8')) : null;
   }
-  /** Every SessionEnd command in a settings object, in order. */
+  /** Every hook command in a settings object, event by event, in order. */
   function hooksOf(settings) {
-    return (settings.hooks?.SessionEnd ?? []).flatMap((g) => g.hooks.map((h) => h.command));
+    return Object.values(settings.hooks ?? {}).flatMap((groups) => groups.flatMap((g) => g.hooks.map((h) => h.command)));
   }
   function writeSettings(dir, settings) {
     const file = path.join(dir, worlds.SETTINGS);
@@ -144,6 +144,8 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   }
   const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
+  const END_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation end';
+  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
   const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
@@ -232,20 +234,20 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     });
   });
 
-  it('a world with no settings file is seeded the presence hook, and the marker records the file as the harness\'s', () => {
+  it('a world with no settings file is seeded the workflows\' own hooks, and the marker records the file as the harness\'s', () => {
     const dir = scratch();
     try {
       const stamped = worlds.stampHarnessState(dir);
       assert.strictEqual(stamped.settings_created, true);
       const settings = settingsOf(worlds.collectTree(dir));
-      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK], 'presence cleanup, never session cleanup under the label kill');
+      assert.deepStrictEqual(hooksOf(settings), WORKFLOW_HOOKS, 'the workflows\' own, never session cleanup under the label kill');
       assert.deepStrictEqual(Object.keys(settings), ['hooks'], 'and nothing the harness invented — no function-hooks flag either');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('a fixture\'s own settings file keeps its permissions and env around the seeded hook', () => {
+  it('a fixture\'s own settings file keeps its permissions and env around the seeded hooks', () => {
     const dir = scratch();
     try {
       writeSettings(dir, { permissions: PERMISSIONS, env: { EDITOR: 'vim' } });
@@ -253,7 +255,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.strictEqual(stamped.settings_created, false);
       const settings = settingsOf(worlds.collectTree(dir));
       assert.deepStrictEqual(settings.permissions, PERMISSIONS);
-      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK]);
+      assert.deepStrictEqual(hooksOf(settings), WORKFLOW_HOOKS);
       assert.deepStrictEqual(settings.env, { EDITOR: 'vim' });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -370,10 +372,45 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false, walkthrough: true, settings_created: false },
         'the fixture brought its own settings file, and its own baseline');
       const settings = JSON.parse(fs.readFileSync(path.join(dir, worlds.SETTINGS), 'utf8'));
-      assert.deepStrictEqual(hooksOf(settings), [PRESENCE_HOOK], 'the seeded hook lands with the manifest layer');
+      assert.deepStrictEqual(hooksOf(settings), WORKFLOW_HOOKS, 'the seeded hooks land with the manifest layer');
       assert.strictEqual(statusLines(dir).length, 0, 'no dirt for the walk to sweep up');
     } finally {
       worlds.destroyWorld(dir);
+    }
+  });
+});
+
+describe('a recipe\'s calls belong to no conversation', () => {
+  /** Run `fn` with the developer's own session id in this process's environment. */
+  function inSession(fn) {
+    const before = process.env.CLAUDE_CODE_SESSION_ID;
+    process.env.CLAUDE_CODE_SESSION_ID = 'developer-session';
+    try {
+      return fn();
+    } finally {
+      if (before === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = before;
+    }
+  }
+
+  it('the recipe env carries no session id, whatever the process holds', () => {
+    const env = inSession(() => worlds.recipeEnv());
+    assert.ok(!('CLAUDE_CODE_SESSION_ID' in env));
+  });
+
+  it('a recipe\'s engine calls mark no conversation', () => {
+    const id = `${SCRATCH_PREFIX}marks-nothing`;
+    removeScratchCase(id);
+    fs.mkdirSync(path.join(cases.CASES_DIR, id), { recursive: true });
+    fs.writeFileSync(path.join(cases.CASES_DIR, id, cases.FILES.fixtureState),
+      `'use strict';\nmodule.exports = { build(h) { h.engine('session', 'repair'); } };\n`);
+    let dir;
+    try {
+      dir = inSession(() => worlds.runRecipe(id, 'fixtureState'));
+      assert.ok(!fs.existsSync(path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations')));
+    } finally {
+      removeScratchCase(id);
+      if (dir) fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });

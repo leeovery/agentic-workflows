@@ -4,8 +4,12 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover, format } = require('../../skills/workflow-bridge/scripts/gateway.cjs');
+
+const GATEWAY = path.resolve(__dirname, '../../skills/workflow-bridge/scripts/gateway.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
 const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
@@ -402,5 +406,30 @@ describe('workflow-bridge format', () => {
     assert.ok(!out.includes('(no files)'));
     assert.ok(!out.includes('  discussion:'));
     assert.ok(!out.includes(': none'));
+  });
+});
+
+describe('workflow-bridge gateway script', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const run = (/** @type {string[]} */ args) => spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
+
+  it('with no work unit, prints its usage on stderr and exits 1', () => {
+    const res = run([]);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stderr, 'Error: work unit name required\nUsage: gateway.cjs <work_unit>\n');
+    assert.strictEqual(res.stdout, '');
+  });
+
+  it('with a work unit, prints its dump', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    const res = run(['auth']);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stdout, format(discover(dir, 'auth')));
   });
 });

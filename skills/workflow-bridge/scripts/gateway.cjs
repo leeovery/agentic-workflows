@@ -89,12 +89,14 @@ function format(result) {
 }
 
 if (require.main === module) {
-  const workUnit = process.argv[2];
-  if (!workUnit) {
-    process.stderr.write('Error: work unit name required\nUsage: gateway.cjs <work_unit>\n');
-    process.exit(1);
-  }
-  process.stdout.write(format(discover(process.cwd(), workUnit)));
+  engine.gateway.runGateway({
+    index: () => {
+      process.stderr.write('Error: work unit name required\nUsage: gateway.cjs <work_unit>\n');
+      process.exit(1);
+      return ''; // unreachable; keeps the handler's return type uniform
+    },
+    fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
+  });
 }
 
 module.exports = { discover, format };

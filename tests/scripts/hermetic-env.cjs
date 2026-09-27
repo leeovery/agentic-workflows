@@ -2,10 +2,11 @@
 
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, no provider
-// key, no gate surface, no user or system git config, a fixed display width.
-// A test never reads the developer's config or credentials, never reaches an
-// embedding provider — every knowledge store a test builds is keyword-only —
-// and never renders a gate payload it did not announce itself.
+// key, no gate surface, no Claude Code session, no user or system git config,
+// a fixed display width. A test never reads the developer's config or
+// credentials, never reaches an embedding provider — every knowledge store a
+// test builds is keyword-only — never renders a gate payload it did not
+// announce itself, and never marks a conversation it did not name itself.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -47,5 +48,8 @@ delete process.env.OPENAI_API_KEY;
 // A session whose gate surface is loaded announces it to every command it
 // runs, the suite included — and every golden pins the unannounced bytes.
 delete process.env.WORKFLOWS_GATE_SURFACE;
+// Claude Code hands every command it runs its conversation's id, and every
+// engine call marks that conversation's folder.
+delete process.env.CLAUDE_CODE_SESSION_ID;
 
 module.exports = HERMETIC_ENV;
