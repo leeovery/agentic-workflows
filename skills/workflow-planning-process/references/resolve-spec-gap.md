@@ -254,9 +254,10 @@ The landing moved the ground beneath the specification, and what is built from i
 
 #### If `{lane}` is `implementation`
 
-Commit the session's work:
+Commit the session's work — the task's record in the plan's storage, then the implementation topic:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record the paused task" --plan {topic}
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): pause — gap routed to {landed_topic}" --topic implementation/{topic}
 ```
 
