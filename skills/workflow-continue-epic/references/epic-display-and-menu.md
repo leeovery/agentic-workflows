@@ -305,7 +305,7 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 #### If user chose a numbered dependency
 
-Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the dependency to mark). Record the user's call — the dependency is satisfied outside the workflow:
+Store the selected entry's `topic` (the plan) and the `(dep: …)` value on its `ACTIONS` row (the dependency to mark — the key it is recorded under; the `{plan}:{task}` reference the menu row shows names the blocking task, never the key). Record the user's call — the dependency is satisfied outside the workflow:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
