@@ -55,14 +55,20 @@ const SECTION_MARKER = '=== '
 /** The `Client`'s key: what `ui.message` matches the board's posts on. */
 const ELEMENT = 'gate'
 
-/** Where a send leaves what it answered, for a mod that draws the sent row. */
-const SENT = '.workflows/.cache/.gates/sent.json'
+/**
+ * The file in the conversation's folder where a send leaves what it answered,
+ * for a mod that draws the sent row.
+ */
+const SENT = 'sent.json'
 
 /** The record that claims no send, which that mod draws nothing from. */
 const NOTHING_SENT = 'null'
 
-/** Where each conversation that runs the workflows keeps what belongs to it. */
-const CONVERSATIONS = '.workflows/.cache/.conversations'
+/**
+ * Where each conversation that runs the workflows keeps what belongs to it,
+ * in the workflows' system config directory.
+ */
+const CONVERSATIONS = 'conversations'
 
 /** The file the engine marks a conversation that runs the workflows with. */
 const MARKER = 'workflow'
@@ -276,8 +282,9 @@ async function fill($: EngineInterface, text: string): Promise<boolean> {
 }
 
 /**
- * Sends a row as the next message, the send recorded; whether it entered. A
- * send that fails or is dropped leaves no send recorded.
+ * Sends a row as the next message, the send recorded in the conversation's
+ * folder where it has one; whether it entered. A send that fails or is
+ * dropped leaves no send recorded.
  */
 async function submit(
   $: EngineInterface,
@@ -285,11 +292,16 @@ async function submit(
   option: Option,
 ): Promise<boolean> {
   const answer = answerOf(option)
+  const folder = await folderOf($, await $.session.id())
+  const record = async (text: string) => {
+    if (folder !== null) {
+      await $.fs.write(inFolder(folder, SENT), text)
+    }
+  }
   let isSent = false
 
   try {
-    await $.fs.write(
-      SENT,
+    await record(
       JSON.stringify({ answer, question: gate.question, label: option.head }),
     )
     // Framed for the model and labelled on screen as this plugin's, by design.
@@ -298,7 +310,7 @@ async function submit(
     isSent = drop === undefined
   } finally {
     if (!isSent) {
-      await $.fs.write(SENT, NOTHING_SENT)
+      await record(NOTHING_SENT)
     }
   }
 
@@ -416,15 +428,42 @@ const isKept = (value: unknown): value is Kept =>
   typeof (value as Kept).stamp === 'string'
 
 /**
- * A file in the folder of the conversation `id`, which the engine names by
- * the id's safe characters alone.
+ * The folder of the conversation `id`, which the engine names by the id's
+ * safe characters alone, in the workflows' system config directory:
+ * `WORKFLOWS_CONFIG_DIR`, else `.config/workflows` in the home directory.
+ * Found by the id, so a `cd` or a resume elsewhere finds it all the same;
+ * null where the process names neither directory.
  */
-const inFolder = (id: string, file: string) =>
-  `${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}/${file}`
+async function folderOf(
+  $: EngineInterface,
+  id: string,
+): Promise<string | null> {
+  const home = await $.env.get('HOME')
+  const config =
+    (await $.env.get('WORKFLOWS_CONFIG_DIR')) ||
+    (home ? `${home}/.config/workflows` : null)
 
-/** Whether the engine has marked the conversation `id` as one that runs the workflows. */
-async function isWorkflow($: EngineInterface, id: string): Promise<boolean> {
-  return $.fs.exists(inFolder(id, MARKER))
+  return config === null
+    ? null
+    : `${config}/${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}`
+}
+
+/** A file in a conversation's folder. */
+const inFolder = (folder: string, file: string) => `${folder}/${file}`
+
+/**
+ * The folder of the conversation `id` where the engine has marked it as one
+ * that runs the workflows; null for any other conversation.
+ */
+async function markedFolder(
+  $: EngineInterface,
+  id: string,
+): Promise<string | null> {
+  const folder = await folderOf($, id)
+
+  return folder !== null && (await $.fs.exists(inFolder(folder, MARKER)))
+    ? folder
+    : null
 }
 
 /**
@@ -433,23 +472,25 @@ async function isWorkflow($: EngineInterface, id: string): Promise<boolean> {
  * that runs the workflows: any other conversation gets no folder.
  */
 async function keep($: EngineInterface, place: Place | null, gate: Gate | null) {
-  if (
-    place === null ||
-    !(await isAnnounced($)) ||
-    !(await isWorkflow($, place.id))
-  ) {
+  if (place === null || !(await isAnnounced($))) {
+    return
+  }
+
+  const folder = await markedFolder($, place.id)
+
+  if (folder === null) {
     return
   }
 
   const kept: Kept | null = gate === null ? null : { stamp: place.stamp, gate }
 
-  await $.fs.write(inFolder(place.id, KEPT), JSON.stringify(kept))
+  await $.fs.write(inFolder(folder, KEPT), JSON.stringify(kept))
 }
 
-/** What the folder of the conversation `id` keeps; undefined where it keeps nothing readable. */
-async function keptFor($: EngineInterface, id: string): Promise<unknown> {
+/** What `folder` keeps of its band; undefined where it keeps nothing readable. */
+async function keptIn($: EngineInterface, folder: string): Promise<unknown> {
   try {
-    return JSON.parse(await $.fs.read(inFolder(id, KEPT)))
+    return JSON.parse(await $.fs.read(inFolder(folder, KEPT)))
   } catch {
     return undefined
   }
@@ -547,11 +588,13 @@ async function readBack(
     return
   }
 
-  if ((await isWorkflow($, place.id)) && owing() === asked) {
+  const folder = await markedFolder($, place.id)
+
+  if (folder !== null && owing() === asked) {
     await harnessOn($)
   }
 
-  const kept = await keptFor($, place.id)
+  const kept = folder === null ? undefined : await keptIn($, folder)
 
   if (isKept(kept) && kept.stamp === place.stamp) {
     take(asked, { place, gate: kept.gate })
@@ -559,8 +602,8 @@ async function readBack(
     return
   }
 
-  if (isKept(kept) && owing() === asked) {
-    await $.fs.write(inFolder(place.id, KEPT), JSON.stringify(null))
+  if (folder !== null && isKept(kept) && owing() === asked) {
+    await $.fs.write(inFolder(folder, KEPT), JSON.stringify(null))
   }
 
   take(asked, { place, gate: null })
@@ -729,7 +772,10 @@ export const register: Register = on => {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
 
-    if (inConversation(e) && (await isWorkflow($, await $.session.id()))) {
+    if (
+      inConversation(e) &&
+      (await markedFolder($, await $.session.id())) !== null
+    ) {
       await harnessOn($)
     }
 

@@ -3,16 +3,26 @@ import { describe, expect, test, tier, type Engine } from 'claude-code/testing'
 
 tier('user')
 
-const SENT = '.workflows/.cache/.gates/sent.json'
+/**
+ * The person's home directory, as the process names it — under `/Users`,
+ * since the kit's host check refuses macOS's automounted `/home`.
+ */
+const HOME = '/Users/person'
 
-/** The folder of the conversation the engine names `name`, under the working directory. */
-const folderOf = (name: string) => `.workflows/.cache/.conversations/${name}`
+/** The workflows' system config directory, in the person's home. */
+const CONFIG = `${HOME}/.config/workflows`
+
+/** The folder of the conversation the engine names `name`, in the directory `config`. */
+const folderOf = (name: string, config = CONFIG) => `${config}/conversations/${name}`
 
 /** The engine's mark, which gives the conversation `name` its folder. */
 const markerOf = (name: string) => `${folderOf(name)}/workflow`
 
 /** Where the conversation `name` keeps its redrawn rows. */
 const rowsAt = (name: string) => `${folderOf(name)}/rows.json`
+
+/** Where the band leaves what it sent from the conversation `s0`. */
+const SENT = `${folderOf('s0')}/sent.json`
 
 const QUESTION = 'Approve this task?'
 const COMMIT = 'Commit and continue to next task'
@@ -46,40 +56,34 @@ const recordOf = (answer = 'yes', question = QUESTION, label = COMMIT) =>
   JSON.stringify({ answer, question, label })
 
 /**
- * A path as the world files it: from the working directory down, wherever
- * the kit resolves the working directory to.
- */
-const underWork = (path: string) => {
-  const at = path.indexOf('/.workflows/')
-
-  return at === -1 ? path : path.slice(at + 1)
-}
-
-/**
- * The world beneath the plugin: the files under the working directory, the
+ * The world beneath the plugin: the process's environment, the files, the
  * session's id, the plugin's store, and the transcript drawing each row's
  * text.
  *
- * `files` holds each file by its path: the send record, the folders the
- * engine `marked` by name, and the rows `kept` in them. `calls` is what the
- * plugin asked of the files and the store, in order, each with its path or
- * key; `leaves` is the mod writing its next record, or none (`undefined`, the
- * file missing); a write to a path in `refusing` rejects.
+ * `env` is what the process holds over the person's home, a name given
+ * `undefined` unset. `files` holds each file by its path: the folders the
+ * engine `marked` by name in the system config directory, the rows `kept` in
+ * them, and the send record in `s0`'s. `calls` is what the plugin asked of
+ * the files and the store, in order, each with its path or key; `leaves` is
+ * the mod writing its next record, or none (`undefined`, the file missing); a
+ * write to a path in `refusing` rejects.
  *
  * @param on the test's `on`
  * @param record the send record's text at the start, missing when not given
- * @param options the session's id, the folders marked, and the rows kept
+ * @param options the environment, the session's id, the folders marked, and the rows kept
  */
 function world(
   on: On,
   record?: string,
   options: {
+    env?: Readonly<Record<string, string | undefined>>
     id?: string
     marked?: readonly string[]
     kept?: Readonly<Record<string, Readonly<Record<string, string>>>>
   } = {},
 ) {
-  const { id = 's0', marked = ['s0'], kept = {} } = options
+  const { env = {}, id = 's0', marked = ['s0'], kept = {} } = options
+  const environment: Readonly<Record<string, string | undefined>> = { HOME, ...env }
 
   const calls: string[] = []
   const refusing = new Set<string>()
@@ -96,13 +100,15 @@ function world(
 
   on('session.id', () => ({ value: id }))
 
+  on('env.get', ($, e) => ({ value: environment[e.name] }))
+
   on('ui.render', { component: 'UserMessage' }, ($, e) => ({
     type: 'Text',
     children: [e.props.text],
   }))
 
   on('fs.exists', ($, e) => {
-    const path = underWork(e.path)
+    const { path } = e
 
     calls.push(`exists ${path}`)
 
@@ -114,7 +120,7 @@ function world(
   })
 
   on('fs.read', ($, e) => {
-    const path = underWork(e.path)
+    const { path } = e
     const text = files.get(path)
 
     calls.push(`read ${path}`)
@@ -127,7 +133,7 @@ function world(
   })
 
   on('fs.write', ($, e) => {
-    const path = underWork(e.path)
+    const { path } = e
 
     calls.push(`write ${path}`)
 
@@ -266,29 +272,68 @@ describe('register', () => {
     expect(rowsIn('s0')).toEqual({ m1: PAIRED, m2: PAIRED })
   })
 
-  test('the folder is the one the engine names, by the session id’s safe characters alone', async ($, on) => {
-    const { rowsIn } = world(on, recordOf(), {
+  test('the folder is the one the engine names, in the system config directory by the session id’s safe characters alone', async ($, on) => {
+    const { files, rowsIn } = world(on, undefined, {
       id: 'a1/../b2',
       marked: ['a1b2'],
       kept: { a1b2: { m1: 'Pick a topic → back' } },
     })
+
+    files.set(`${CONFIG}/conversations/a1b2/sent.json`, recordOf())
 
     expect(await drawn($, rowOf('m1', { text: framed('back') }))).toBe(
       'Pick a topic → back',
     )
     expect(await drawn($, rowOf('m2'))).toBe(PAIRED)
     expect(rowsIn('a1b2')).toEqual({ m1: 'Pick a topic → back', m2: PAIRED })
+    expect(files.get(`${CONFIG}/conversations/a1b2/sent.json`)).toBe('null')
   })
 
+  const configs = [
+    {
+      where: 'the directory WORKFLOWS_CONFIG_DIR names',
+      env: { WORKFLOWS_CONFIG_DIR: `${HOME}/elsewhere` },
+      config: `${HOME}/elsewhere`,
+    },
+    {
+      where: 'the home’s .config/workflows while WORKFLOWS_CONFIG_DIR is empty',
+      env: { WORKFLOWS_CONFIG_DIR: '' },
+      config: CONFIG,
+    },
+  ]
+
+  for (const { where, env, config } of configs) {
+    test(`the folder is in ${where}: the record read and spent there, the row kept there`, async ($, on) => {
+      const { files } = world(on, undefined, { env, marked: [] })
+      const folder = folderOf('s0', config)
+
+      files.set(`${folder}/workflow`, '')
+      files.set(`${folder}/sent.json`, recordOf())
+
+      expect(await drawn($, rowOf('m1'))).toBe(PAIRED)
+      expect(files.get(`${folder}/sent.json`)).toBe('null')
+      expect(JSON.parse(files.get(`${folder}/rows.json`) ?? '0')).toEqual({ m1: PAIRED })
+    })
+  }
+
   test('a conversation with no folder writes nothing and draws the row as Claude Code does', async ($, on) => {
-    const { calls, files } = world(on, recordOf(), { marked: [] })
+    const { calls, rowsIn } = world(on, undefined, { marked: [] })
 
     expect(await drawn($, rowOf('m1'))).toBe(framed('yes'))
     expect(await drawn($, rowOf('m1'))).toBe(framed('yes'))
     expect(calls.filter(call => call.startsWith('write'))).toEqual([])
-    expect(files.get(SENT)).toBe(recordOf())
-    expect(files.has(rowsAt('s0'))).toBe(false)
+    expect(rowsIn('s0')).toBeUndefined()
   })
+
+  for (const [how, home] of [['unset', undefined], ['empty', '']] as const) {
+    test(`a process whose home is ${how}, with no WORKFLOWS_CONFIG_DIR, gives the conversation no folder: nothing read or written, the row drawn as Claude Code does`, async ($, on) => {
+      const { calls, files } = world(on, recordOf(), { env: { HOME: home } })
+
+      expect(await drawn($, rowOf('m1'))).toBe(framed('yes'))
+      expect(calls).toEqual([])
+      expect(files.get(SENT)).toBe(recordOf())
+    })
+  }
 
   test('a row drawn alone stays so, once a record of its answer arrives', async ($, on) => {
     const { leaves } = world(on)

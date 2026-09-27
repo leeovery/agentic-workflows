@@ -18,14 +18,14 @@ it as the next message, which the workflows read as the answer. Once a click
 has given the band the keyboard, the arrows move between rows, Enter or a row's
 own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
-plugin's; the mod leaves what it sent in `.workflows/.cache/.gates/sent.json`.
-A second plugin, `workflow-gates-rows` (`../workflow-gates-rows/`), reads that
-record to draw the row as the question and the answer, since no plugin can
-redraw the row of a prompt it submitted. Typing answers too: a key and Enter
-at the prompt, or Esc then Enter after a pick. Rows only typing can answer —
-Ask, Comment, a range — draw dim, and a click on one says to type it in the
-prompt. The footer under the rows says which: how to answer, what is in the
-prompt, or where to type.
+plugin's; the mod leaves what it sent in the conversation's own folder (see
+below) as `sent.json`. A second plugin, `workflow-gates-rows`
+(`../workflow-gates-rows/`), reads that record to draw the row as the question
+and the answer, since no plugin can redraw the row of a prompt it submitted.
+Typing answers too: a key and Enter at the prompt, or Esc then Enter after a
+pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
+click on one says to type it in the prompt. The footer under the rows says
+which: how to answer, what is in the prompt, or where to type.
 
 The band is never taller than the rows Claude Code gives it, so it never
 scrolls. A gate that fits shows whole: a rule, the statement and the question,
@@ -59,22 +59,28 @@ takes the gate off the band.
 
 At the end of every turn, and as the conversation ends, the mod keeps what the
 band shows — the gate, or nothing — in the conversation's own folder,
-`.workflows/.cache/.conversations/{session-id}/gate.json`, stamped with where
-the transcript ends, not counting the lines Claude Code writes around an
-interrupted turn. A conversation resumed with `claude --resume` or `/resume`,
-or picked up again by a restart or a reload of the mod's files, gets its gate
-back as long as its transcript still ends there, with nothing picked or held —
-a held answer waits on a turn that does not come back; one that moved on while
-the mod was not loaded gets nothing. A session the mod was loaded into after it
-started carries no announcement, so there it keeps and reads back nothing, and
-a conversation that does not run the workflows has no folder and keeps
-nothing. The folder holds one gate, and goes once Claude Code has deleted the
-conversation's transcript, so a kept gate lives as long as its conversation
-can be resumed — with two exceptions. A conversation whose end the session-end
-hook never saw keeps its folder: the session that first installed the hook,
-which Claude Code picks up only as a session starts, or one that crashed. A
-conversation resumed from another directory takes its transcript to that
-project, so its folder in the old one goes at that project's next boot.
+`~/.config/workflows/conversations/{session-id}/gate.json` (under
+`WORKFLOWS_CONFIG_DIR` where that is set, beside the workflows' system
+config), found by the session id wherever the session's working directory has
+moved, and stamped with where the transcript ends, not counting the lines
+Claude Code writes around an interrupted turn. A conversation resumed with
+`claude --resume` or `/resume`, or picked up again by a restart or a reload of
+the mod's files, gets its gate back as long as its transcript still ends
+there, with nothing picked or held — a held answer waits on a turn that does
+not come back; one that moved on while the mod was not loaded gets nothing. A
+session the mod was loaded into after it started carries no announcement, so
+there it keeps and reads back nothing, and a conversation that does not run
+the workflows has no folder and keeps nothing — nor does one in a process
+that names neither a home directory nor `WORKFLOWS_CONFIG_DIR`. The folder
+holds one gate, and goes once Claude Code has deleted the conversation's
+transcript — a resume from another directory, which can move the transcript,
+has the workflows' session-start hook name it where it now is — so a kept
+gate lives as long as its conversation can be resumed, with two exceptions. A
+conversation whose end the session-end hook never saw keeps its folder: the
+session that first installed the hook, which Claude Code picks up only as a
+session starts, or one that crashed. A conversation resumed in a directory
+whose project has no workflows installed runs no hook there, so a transcript
+that resume moved takes the folder with it at the next boot.
 
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.

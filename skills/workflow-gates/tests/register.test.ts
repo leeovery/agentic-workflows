@@ -51,8 +51,14 @@ const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 /** A process whose session announced the gate surface before the mod loaded. */
 const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
 
+/**
+ * The person's home directory, as the process names it — under `/Users`,
+ * since the kit's host check refuses macOS's automounted `/home`.
+ */
+const HOME = '/Users/person'
+
 /** Claude Code's terminal app, as its process holds it: where the mod applies. */
-const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli' }
+const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli', HOME }
 
 /** The oldest Claude Code the mod runs on, as the session answers its version. */
 const OLDEST = '2.1.282'
@@ -60,12 +66,12 @@ const OLDEST = '2.1.282'
 /** What a session start that applies sets first, for every child it starts. */
 const ANNOUNCEMENT = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
 
-/** Where a send leaves what it answered, under the session's working directory. */
-const SENT = '.workflows/.cache/.gates/sent.json'
+/** The workflows' system config directory, in the person's home. */
+const CONFIG = `${HOME}/.config/workflows`
 
-/** A file in the folder of the conversation `id`, under the working directory. */
-const inFolder = (id: string, file: string) =>
-  `.workflows/.cache/.conversations/${id}/${file}`
+/** A file in the folder of the conversation `id`, in the directory `config`. */
+const inFolder = (id: string, file: string, config = CONFIG) =>
+  `${config}/conversations/${id}/${file}`
 
 /** The engine's mark that the conversation `id` runs the workflows. */
 const marker = (id: string) => inFolder(id, 'workflow')
@@ -73,15 +79,8 @@ const marker = (id: string) => inFolder(id, 'workflow')
 /** Where the conversation `id` keeps its band for a resume. */
 const keptAt = (id: string) => inFolder(id, 'gate.json')
 
-/**
- * A path as the world files it: from the working directory down, wherever
- * the kit resolves the working directory to.
- */
-const underWork = (path: string) => {
-  const at = path.indexOf('/.workflows/')
-
-  return at === -1 ? path : path.slice(at + 1)
-}
+/** Where a send leaves what it answered: the conversation's folder. */
+const sentAt = (id: string) => inFolder(id, 'sent.json')
 
 const COMMIT = 'Commit and continue to next task'
 const AUTH = 'Continue "Auth"'
@@ -492,10 +491,10 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * answers, `reads` what the transcript holds, `resumesAs` the session's id,
  * and `stopsSubmitting` fails every submission from then on. The prompt box
  * holds what a fill put there until the person `types` over it, and
- * `boxHolds` reads it. `files` holds what is written under the working
- * directory: the conversations `marked` by the engine at the start and the
- * gates `kept` for them, by session id; `marks` is the engine marking one
- * later.
+ * `boxHolds` reads it. `files` holds every file by its path, the folders of
+ * the conversations among them: those `marked` by the engine at the start and
+ * the gates `kept` for them, by session id, in the system config directory
+ * under the person's home; `marks` is the engine marking one later.
  *
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
@@ -569,10 +568,10 @@ function world(
     return { value: [...transcript] }
   })
 
-  on('fs.exists', ($, e) => ({ value: files.has(underWork(e.path)) }))
+  on('fs.exists', ($, e) => ({ value: files.has(e.path) }))
 
   on('fs.read', async ($, e) => {
-    const path = underWork(e.path)
+    const { path } = e
 
     if (path.endsWith('/gate.json')) {
       await lag?.('kept')
@@ -626,12 +625,12 @@ function world(
   on('prompt.read', () => ({ value: { text: box, cursor: box.length } }))
 
   on('fs.write', async ($, e) => {
-    const path = underWork(e.path)
+    const { path } = e
 
     calls.push('write')
     files.set(path, e.text)
 
-    if (path === SENT) {
+    if (path.endsWith('/sent.json')) {
       await disk?.sleep(1000)
     }
 
@@ -742,9 +741,12 @@ async function quitAndResume($: Engine) {
   await $.session.start(SESSION)
 }
 
-/** What the last send recorded, read back as the mod wrote it. */
-function sentIn(files: Map<string, string>): unknown {
-  const text = files.get(SENT)
+/**
+ * What the last send in the conversation `id` recorded in its folder, read
+ * back as the mod wrote it.
+ */
+function sentIn(files: Map<string, string>, id = 's0'): unknown {
+  const text = files.get(sentAt(id))
 
   expect(text, 'a send record was written').toBeDefined()
 
@@ -2775,7 +2777,7 @@ describe('register', () => {
     await presented($)
     await $.session.end(QUIT)
 
-    expect([...files.keys()].filter(path => path.includes('.conversations'))).toEqual([])
+    expect([...files.keys()]).toEqual([])
   })
 
   test('the lines Claude Code writes around an interrupted turn move no stamp: the gate is kept the same with them as without', async ($, on) => {
@@ -3358,6 +3360,99 @@ describe('register', () => {
 
     expect(harnessIn(written)).toEqual(HARNESS_ON)
   })
+
+  const configs = [
+    {
+      where: 'the directory WORKFLOWS_CONFIG_DIR names',
+      env: { WORKFLOWS_CONFIG_DIR: `${HOME}/elsewhere` },
+      config: `${HOME}/elsewhere`,
+    },
+    {
+      where: 'the home’s .config/workflows while WORKFLOWS_CONFIG_DIR is empty',
+      env: { WORKFLOWS_CONFIG_DIR: '' },
+      config: CONFIG,
+    },
+  ]
+
+  for (const { where, env, config } of configs) {
+    test(`the folder is found by the session id in ${where}, wherever the session has moved: the mark read, the gate kept and the send recorded there`, async ($, on) => {
+      const { files, reads, written } = world($, on, announced(), { env })
+
+      files.set(inFolder('s0', 'workflow', config), '')
+      reads(AT_GATE)
+
+      await $.session.start({ ...SESSION, cwd: '/work/src/lib' })
+      await $.tool.call(ENGINE_CALL)
+      await $.turn.complete(TURN_END)
+
+      expect(harnessIn(written), 'at the read-back and after the call').toEqual([...HARNESS_ON, ...HARNESS_ON])
+      expect(JSON.parse(files.get(inFolder('s0', 'gate.json', config)) ?? '0')).toEqual(KEPT_AT_GATE)
+
+      const ui = await $.ui.mount(MOUNT)
+
+      await click(ui, COMMIT)
+      await click(ui, COMMIT)
+
+      expect(JSON.parse(files.get(inFolder('s0', 'sent.json', config)) ?? '0')).toEqual({
+        answer: 'yes',
+        question: 'Approve this task?',
+        label: COMMIT,
+      })
+
+      await ui.unmount()
+    })
+  }
+
+  test('a send is recorded in the folder of the conversation it answers in, found by its id', async ($, on) => {
+    const { files, reads, resumesAs } = world($, on, announced(), {
+      marked: ['s1'],
+    })
+
+    resumesAs('s1')
+    reads(AT_GATE)
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    expect(sentIn(files, 's1')).toEqual({
+      answer: 'yes',
+      question: 'Approve this task?',
+      label: COMMIT,
+    })
+    expect(files.has(sentAt('s0'))).toBe(false)
+
+    await ui.unmount()
+  })
+
+  for (const [how, home] of [['unset', undefined], ['empty', '']] as const) {
+    test(`a process whose home is ${how}, with no WORKFLOWS_CONFIG_DIR, gives the conversation no folder: no mark read, nothing kept or recorded — and a press still sends`, async ($, on) => {
+      const { calls, files, reads, written, submitted } = world($, on, announced(), {
+        env: { HOME: home },
+        marked: ['s0'],
+      })
+
+      reads(AT_GATE)
+
+      await presented($)
+
+      const ui = await $.ui.mount(MOUNT)
+
+      await click(ui, COMMIT)
+      await click(ui, COMMIT)
+      await $.session.end(QUIT)
+
+      expect(submitted).toEqual(['yes'])
+      expect(harnessIn(written)).toEqual([])
+      expect(calls).not.toContain('write')
+      expect([...files.keys()]).toEqual([marker('s0')])
+
+      await ui.unmount()
+    })
+  }
 
   test('a command that only mentions the engine sets no harness: the mark counts, never the words', async ($, on) => {
     const { written } = world($, on)

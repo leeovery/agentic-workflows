@@ -3,10 +3,10 @@ import type { EngineInterface, RenderPropsOf, Register } from 'claude-code'
 
 const SENDER = 'workflow-gates'
 
-const SENT = '.workflows/.cache/.gates/sent.json'
+const SENT = 'sent.json'
 const SPENT = 'null'
 
-const CONVERSATIONS = '.workflows/.cache/.conversations'
+const CONVERSATIONS = 'conversations'
 const ROWS = 'rows.json'
 
 const FRAMED = /sent a message:\n([\s\S]+?)\n\nThis is how Claude Code surfaces a prompt/
@@ -24,9 +24,20 @@ const isSent = (value: unknown): value is Sent => {
 const isRows = (value: unknown): value is Rows =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-// The engine names the folder so (domain/conversation.cjs), and the band with it.
-const folderOf = (id: string) =>
-  `${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}`
+// The engine names the folder so (domain/conversation.cjs), and the band with
+// it: in the system config directory, `WORKFLOWS_CONFIG_DIR` or else
+// `.config/workflows` in the home directory; none where neither is named.
+async function folderOf($: EngineInterface): Promise<string | null> {
+  const home = await $.env.get('HOME')
+  const config =
+    (await $.env.get('WORKFLOWS_CONFIG_DIR')) ||
+    (home ? `${home}/.config/workflows` : null)
+  const id = await $.session.id()
+
+  return config === null
+    ? null
+    : `${config}/${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}`
+}
 
 function lineOf({ answer, question, label }: Sent): string {
   const answered = `${question} → ${answer}`
@@ -46,9 +57,9 @@ function answerIn({
   return FRAMED.exec(text)?.[1] ?? null
 }
 
-async function lastSent($: EngineInterface): Promise<Sent | null> {
+async function lastSent($: EngineInterface, folder: string): Promise<Sent | null> {
   try {
-    const sent: unknown = JSON.parse(await $.fs.read(SENT))
+    const sent: unknown = JSON.parse(await $.fs.read(`${folder}/${SENT}`))
 
     return isSent(sent) ? sent : null
   } catch {
@@ -71,9 +82,9 @@ async function firstLineOf(
   requestId: string,
   answer: string,
 ): Promise<string | null> {
-  const folder = folderOf(await $.session.id())
+  const folder = await folderOf($)
 
-  if (!(await $.fs.exists(folder))) {
+  if (folder === null || !(await $.fs.exists(folder))) {
     return null
   }
 
@@ -84,7 +95,7 @@ async function firstLineOf(
     return kept
   }
 
-  const sent = await lastSent($)
+  const sent = await lastSent($, folder)
   const paired = sent?.answer === answer
   const line = paired ? lineOf(sent) : answer
 
@@ -94,7 +105,7 @@ async function firstLineOf(
   )
 
   if (paired) {
-    await $.fs.write(SENT, SPENT)
+    await $.fs.write(`${folder}/${SENT}`, SPENT)
   }
 
   return line
