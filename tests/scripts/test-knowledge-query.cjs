@@ -89,17 +89,17 @@ describe('queryStore', () => {
   const stub = new StubProvider({ dimensions: DIMS });
   let db;
 
-  before(async () => {
-    db = await store.createStore(DIMS);
+  before(() => {
+    db = store.createStore();
     for (const d of [
       doc('old', 1, 'Token refresh follows the rate window.'),
       doc('new', 1, 'Token refresh follows the rate window.'),
       doc('billing', 1, 'Invoices are issued monthly.'),
       doc('billing', 2, 'Refunds reverse the invoice.'),
     ]) {
-      await store.insertDocument(db, { ...d, embedding: stub.embed(d.content) });
+      store.insertDocument(db, { ...d, embedding: stub.embed(d.content) });
     }
-    await store.insertDocument(db, { ...doc('accounts', 1, PARAPHRASE.content), embedding: stub.embed(PARAPHRASE.term) });
+    store.insertDocument(db, { ...doc('accounts', 1, PARAPHRASE.content), embedding: stub.embed(PARAPHRASE.term) });
   });
 
   it('merges every term, each chunk once, and cuts to the limit', async () => {
@@ -150,6 +150,23 @@ describe('queryStore', () => {
     const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
     await query(db, { terms: ['token refresh', 'refunds'], settings });
     assert.deepStrictEqual(embedded, ['token refresh', 'refunds']);
+  });
+
+  it('blends in full mode: each search\'s scores over its best, 0.4 keyword and 0.6 vector', async () => {
+    const blended = store.createStore();
+    store.insertDocument(blended, { ...doc('both', 1, 'Receipts reconcile nightly.'), embedding: [1, 0] });
+    store.insertDocument(blended, { ...doc('vector', 1, 'Ledgers balance at close.'), embedding: [0.6, 0.8] });
+    store.insertDocument(blended, { ...doc('keyword', 1, 'Receipts arrive late.'), embedding: [0, 1] });
+    const axis = { model: () => 'axis', dimensions: () => 2, embed: () => [2, 0] };
+    const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, { provider: 'axis' }, axis);
+    const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
+    const best = Math.max(...Object.values(keyword));
+    const confidence = 0.03;
+    const results = Object.fromEntries((await query(blended, { terms: ['receipts'], settings })).map((r) => [r.work_unit, r.score]));
+    assert.deepStrictEqual(Object.keys(results), ['both', 'keyword', 'vector']);
+    assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6 + confidence);
+    assert.strictEqual(results.keyword, 0.4 * (keyword.keyword / best) + confidence);
+    assert.ok(Math.abs(results.vector - (0.6 * 0.6 + confidence)) < 1e-6, 'a vector hit alone, its cosine over the best');
   });
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {

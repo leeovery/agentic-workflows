@@ -1213,7 +1213,7 @@ describe('engine topic complete', () => {
     writeFile(dir, '.workflows/.knowledge/metadata.json',
       JSON.stringify({ provider: null, model: null, dimensions: null, last_indexed: null }) + '\n');
     // A store the CLI cannot load — the failure outlasts every retry.
-    writeFile(dir, '.workflows/.knowledge/store.msp', 'not msgpack');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'not a store');
 
     const res = engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
 
@@ -2288,7 +2288,7 @@ describe('the knowledge store never rides an engine commit', () => {
     dir = setupEpicFixture();
     // Store dirt beside the work — what a transaction's index or remove
     // leaves; simulated here since the fixture has no real knowledge CLI.
-    writeFile(dir, '.workflows/.knowledge/store.msp', 'v1\n');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'v1\n');
   });
   afterEach(() => { cleanupFixture(dir); });
 

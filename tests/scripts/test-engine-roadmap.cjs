@@ -1186,7 +1186,7 @@ describe('engine CLI: import edge discipline and the commit scope', () => {
 
   it('close and import commit the roadmap and the project manifest — never the store', () => {
     fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'store.msp'), 'store\n');
+    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'store.bin'), 'store\n');
     fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
     runOk(dir, ['session', 'open', '--session-log-file', 'draft.md']);
     runOk(dir, ['session', 'close', '-m', 'roadmap: session 001']);

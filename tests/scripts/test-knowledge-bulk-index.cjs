@@ -1,8 +1,9 @@
 'use strict';
 
 // The bulk index's write: one store load and one save per run, embedding
-// batched across files with a per-file fallback, and the run's view of the
-// manifests and the store refreshed under the lock before it saves.
+// batched across files with a per-file fallback, only the text the store
+// lacks sent to the provider, and the run's view of the manifests and the
+// store refreshed under the lock before it saves.
 
 require('./hermetic-env.cjs');
 
@@ -12,7 +13,7 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const { cmdIndexBulk, store, StubProvider, InvalidRequestError } = require('../../src/knowledge/index');
+const { cmdIndexBulk, indexSingleFile, store, StubProvider, InvalidRequestError } = require('../../src/knowledge/index');
 
 const { loadStore, saveStore } = store;
 const CFG = { provider: 'stub', dimensions: 128 };
@@ -76,9 +77,43 @@ function spyProvider({ refuse = () => false, during = async () => {}, unreachabl
   };
 }
 
-async function chunksFor(root, topic) {
-  const db = await loadStore(path.join(root, '.workflows', '.knowledge', 'store.msp'));
-  return (await store.searchAllFulltext(db)).filter((c) => c.topic === topic);
+function storeFile(root) {
+  return path.join(root, '.workflows', '.knowledge', store.STORE_FILE);
+}
+
+function chunksFor(root, topic) {
+  return store.allChunks(loadStore(storeFile(root))).filter((c) => c.topic === topic);
+}
+
+/** A discussion long enough to chunk by its sections, one chunk per body. */
+function sectioned(bodies) {
+  const filler = Array.from({ length: 20 }, (_, i) => `Line ${i} of the reasoning.`).join('\n');
+  return bodies.map((body, i) => `## Section ${i + 1}\n\n${body}\n\n${filler}`).join('\n\n');
+}
+
+/**
+ * Hold what the CLI writes, and a restore that ends the hold.
+ * @returns {{output: {stdout: string, stderr: string}, restore: () => void}}
+ */
+function captureOutput() {
+  const output = { stdout: '', stderr: '' };
+  const writes = { stdout: process.stdout.write, stderr: process.stderr.write };
+  // The CLI writes strings; the test runner's own frames are buffers and
+  // pass through, or a run that waits on a retry's backoff would eat them.
+  for (const stream of ['stdout', 'stderr']) {
+    process[stream].write = (chunk, ...rest) => {
+      if (typeof chunk !== 'string') return writes[stream].call(process[stream], chunk, ...rest);
+      output[stream] += chunk;
+      return true;
+    };
+  }
+  return {
+    output,
+    restore: () => {
+      process.stdout.write = writes.stdout;
+      process.stderr.write = writes.stderr;
+    },
+  };
 }
 
 describe('knowledge bulk index — one write per run', () => {
@@ -91,22 +126,12 @@ describe('knowledge bulk index — one write per run', () => {
     root = buildProject();
     cwd0 = process.cwd();
     process.chdir(root);
-    output = { stdout: '', stderr: '', loads: 0, saves: 0 };
-    const writes = { stdout: process.stdout.write, stderr: process.stderr.write };
-    // The CLI writes strings; the test runner's own frames are buffers and
-    // pass through, or a run that waits on a retry's backoff would eat them.
-    for (const stream of ['stdout', 'stderr']) {
-      process[stream].write = (chunk, ...rest) => {
-        if (typeof chunk !== 'string') return writes[stream].call(process[stream], chunk, ...rest);
-        output[stream] += chunk;
-        return true;
-      };
-    }
-    store.loadStore = async (...args) => { output.loads += 1; return loadStore(...args); };
-    store.saveStore = async (...args) => { output.saves += 1; return saveStore(...args); };
+    const captured = captureOutput();
+    output = Object.assign(captured.output, { loads: 0, saves: 0 });
+    store.loadStore = (...args) => { output.loads += 1; return loadStore(...args); };
+    store.saveStore = (...args) => { output.saves += 1; return saveStore(...args); };
     restore = () => {
-      process.stdout.write = writes.stdout;
-      process.stderr.write = writes.stderr;
+      captured.restore();
       store.loadStore = loadStore;
       store.saveStore = saveStore;
     };
@@ -150,8 +175,8 @@ describe('knowledge bulk index — one write per run', () => {
     assert.deepStrictEqual(summary, { new: 2, changed: 0, removed: 0, unchanged: 0, failed: 1 });
     assert.strictEqual(provider.batches.length, 1 + TOPICS.length);
     assert.match(output.stderr, /^Failed to index \.workflows\/payments\/discussion\/beta\.md: HTTP 400: input refused$/m);
-    assert.strictEqual((await chunksFor(root, 'alpha')).length, 1);
-    assert.strictEqual((await chunksFor(root, 'beta')).length, 0);
+    assert.strictEqual(chunksFor(root, 'alpha').length, 1);
+    assert.strictEqual(chunksFor(root, 'beta').length, 0);
     assert.strictEqual(output.saves, 1);
   });
 
@@ -165,32 +190,31 @@ describe('knowledge bulk index — one write per run', () => {
     for (const batch of provider.batches) assert.strictEqual(batch.length, 2);
     for (const topic of ['alpha', 'beta']) {
       assert.match(output.stderr, new RegExp(`^Failed to index \\.workflows/payments/discussion/${topic}\\.md: embedding request failed \\(network error\\): fetch failed$`, 'm'));
-      assert.doesNotMatch((await chunksFor(root, topic))[0].content, /revised/, `${topic} keeps its indexed content`);
+      assert.doesNotMatch(chunksFor(root, topic)[0].content, /revised/, `${topic} keeps its indexed content`);
     }
     assert.match(output.stdout, /^Removed \.workflows\/payments\/discussion\/gamma\.md — 1 chunks \(source deleted\)$/m);
-    assert.strictEqual((await chunksFor(root, 'gamma')).length, 0);
+    assert.strictEqual(chunksFor(root, 'gamma').length, 0);
     assert.strictEqual(output.saves, 1);
   });
 
   it("reloads under the lock when a peer wrote the store mid-run, keeping the peer's write", async () => {
     await indexThenEditAll();
-    const sp = path.join(root, '.workflows', '.knowledge', 'store.msp');
     const peerWrite = async () => {
       writeDiscussion(root, 'peer', 'A peer indexed this.');
       setItemStatus(root, 'peer', 'completed');
-      const db = await loadStore(sp);
-      await store.insertDocument(db, {
+      const db = loadStore(storeFile(root));
+      store.insertDocument(db, {
         id: 'payments-discussion-peer-001', content: 'A peer indexed this.', work_unit: 'payments', work_type: 'epic',
         phase: 'discussion', topic: 'peer', confidence: 'medium', source_file: '.workflows/payments/discussion/peer.md',
         timestamp: Date.now(), embedding: new StubProvider({ dimensions: CFG.dimensions }).embed('peer'),
       });
-      await saveStore(db, sp);
+      saveStore(db, storeFile(root));
     };
     const summary = await cmdIndexBulk({}, CFG, spyProvider({ during: peerWrite }));
     assert.strictEqual(summary.changed, 3);
     assert.strictEqual(output.loads, 2, 'the plan read, then the reload under the lock');
-    assert.strictEqual((await chunksFor(root, 'peer')).length, 1);
-    assert.ok((await chunksFor(root, 'alpha'))[0].content.includes('revised'));
+    assert.strictEqual(chunksFor(root, 'peer').length, 1);
+    assert.ok(chunksFor(root, 'alpha')[0].content.includes('revised'));
   });
 
   it('removes a topic retired while the run embedded, in the same run', async () => {
@@ -199,7 +223,7 @@ describe('knowledge bulk index — one write per run', () => {
     assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0 });
     assert.match(output.stdout, /^Removed \.workflows\/payments\/discussion\/beta\.md — 1 chunks \(discussion cancelled\)$/m);
     assert.doesNotMatch(output.stdout, /^Indexed \.workflows\/payments\/discussion\/beta\.md/m);
-    assert.strictEqual((await chunksFor(root, 'beta')).length, 0);
+    assert.strictEqual(chunksFor(root, 'beta').length, 0);
   });
 
   it('touches nothing when the store is already in line', async () => {
@@ -211,5 +235,67 @@ describe('knowledge bulk index — one write per run', () => {
     assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0 });
     assert.strictEqual(provider.batches.length, 0);
     assert.strictEqual(output.saves, 0);
+  });
+});
+
+describe('knowledge index — vectors keyed by their text', () => {
+  let root;
+  let cwd0;
+  let restore;
+
+  beforeEach(async () => {
+    root = buildProject();
+    cwd0 = process.cwd();
+    process.chdir(root);
+    restore = captureOutput().restore;
+    writeDiscussion(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    await cmdIndexBulk({}, CFG, spyProvider());
+    writeDiscussion(root, 'alpha', sectioned(['The first ruling.', 'The second ruling, revised.', 'The third ruling.']));
+  });
+
+  afterEach(() => {
+    restore();
+    process.chdir(cwd0);
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  /** Every alpha chunk carries the vector of its own text. */
+  function assertAlphaVectored() {
+    const vectors = store.vectorsByContentHash(loadStore(storeFile(root)));
+    const alpha = chunksFor(root, 'alpha');
+    assert.ok(alpha.length >= 3);
+    for (const chunk of alpha) assert.ok(vectors.has(chunk.content_hash), chunk.id);
+  }
+
+  it('the bulk index embeds only the chunk whose text changed', async () => {
+    const provider = spyProvider();
+    const summary = await cmdIndexBulk({}, CFG, provider);
+    assert.deepStrictEqual(summary, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0 });
+    assert.strictEqual(provider.batches.length, 1);
+    assert.strictEqual(provider.batches[0].length, 1);
+    assert.match(provider.batches[0][0], /The second ruling, revised\./);
+    assertAlphaVectored();
+  });
+
+  it('the single-file index embeds only the chunk whose text changed', async () => {
+    const provider = spyProvider();
+    const identity = { workUnit: 'payments', phase: 'discussion', topic: 'alpha' };
+    await indexSingleFile('.workflows/payments/discussion/alpha.md', identity, CFG, provider);
+    assert.strictEqual(provider.batches.length, 1);
+    assert.strictEqual(provider.batches[0].length, 1);
+    assert.match(provider.batches[0][0], /The second ruling, revised\./);
+    assertAlphaVectored();
+  });
+
+  it('a new file whose text the store already holds reaches no provider', async () => {
+    fs.copyFileSync(discussionPath(root, 'beta'), discussionPath(root, 'delta'));
+    setItemStatus(root, 'delta', 'completed');
+    writeDiscussion(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    const provider = spyProvider();
+    const summary = await cmdIndexBulk({}, CFG, provider);
+    assert.deepStrictEqual(summary, { new: 1, changed: 0, removed: 0, unchanged: 3, failed: 0 });
+    assert.strictEqual(provider.batches.length, 0);
+    const [delta] = chunksFor(root, 'delta');
+    assert.ok(store.vectorsByContentHash(loadStore(storeFile(root))).has(delta.content_hash));
   });
 });

@@ -181,10 +181,10 @@ class OpenAIEmbeddingsEngine {
    * The response-length checks in embedBatch only count vectors, not their
    * width — a model whose native output differs from the configured
    * `dimensions` returns the right COUNT of wrong-WIDTH vectors, which then
-   * surfaces as a raw Orama insert error mid-index (or, for embed(), silently
-   * stores a mis-sized vector). Catch it here with a clean provider-level
-   * error naming the mismatch. Skipped only when dimensions is not a positive
-   * integer (nothing to validate against).
+   * surfaces as the store refusing the insert mid-index (or, for embed(), a
+   * query vector the store cannot compare). Catch it here with a clean
+   * provider-level error naming the mismatch. Skipped only when dimensions is
+   * not a positive integer (nothing to validate against).
    * @param {*} vec
    * @param {string} [where] contextual suffix, e.g. "at index 3"
    */
@@ -246,7 +246,7 @@ class OpenAIEmbeddingsEngine {
     for (const batch of requestBatches(texts)) {
       const res = await this._fetch(this._body(batch.texts));
       // Validate response length — a short response silently propagates
-      // undefined embeddings into Orama and degrades chunks to keyword-only
+      // undefined embeddings into the store and degrades chunks to keyword-only
       // with no warning. Also doubles as a "config dims ≠ model native dims"
       // sanity check for compatible endpoints.
       if (!Array.isArray(res.data) || res.data.length !== batch.texts.length) {

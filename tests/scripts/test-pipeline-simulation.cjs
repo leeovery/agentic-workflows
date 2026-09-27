@@ -804,7 +804,7 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`]);
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.
-    assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.msp')), 'the completion built the store');
+    assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });

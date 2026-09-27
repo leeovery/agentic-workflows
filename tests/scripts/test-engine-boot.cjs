@@ -44,7 +44,7 @@ const LABELS_ON = JSON.stringify({
 
 /** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
-const STORE_FILES = ['store.msp', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
+const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
 const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
@@ -659,7 +659,7 @@ describe('engine boot', () => {
   });
 
   it('a ready store is never committed — the index is the checkout\'s own', () => {
-    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    writeFile(fix.project, '.workflows/.knowledge/store.bin', 'v1\n');
     writeFile(fix.project, '.workflows/.knowledge/metadata.json', '{}\n');
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
@@ -709,7 +709,7 @@ describe('engine boot', () => {
     // content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    writeFile(fix.project, '.workflows/.knowledge/store.bin', 'v1\n');
     git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'a peer topic']);
@@ -849,7 +849,7 @@ describe('engine boot: the store leaves git', () => {
   });
 
   it('takes everything tracked under the knowledge directory in one commit — the config and a rebuild backup too', () => {
-    const backup = `${KNOWLEDGE_DIR}/store.msp.bak`;
+    const backup = `${KNOWLEDGE_DIR}/store.bin.bak`;
     commitStore([...STORE_FILES, backup]);
 
     runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
@@ -1028,6 +1028,25 @@ describe('engine boot: the worktree include', () => {
     runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n${STORE_FILES[2]}\n`);
+  });
+
+  it('renames the retired store file\'s line in place, every other line as it was', () => {
+    writeFile(fix.project, '.worktreeinclude', `node_modules/\n  ${KNOWLEDGE_DIR}/store.msp\n${STORE_FILES[1]}\n.env`);
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.worktree_include_installed, true);
+    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[0]}\n${STORE_FILES[1]}\n.env\n${STORE_FILES[2]}\n`);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: copy the knowledge store into new worktrees');
+  });
+
+  it('drops the retired store file\'s line where the store is already listed — never listing it twice', () => {
+    writeFile(fix.project, '.worktreeinclude', `node_modules/\n${KNOWLEDGE_DIR}/store.msp\n.env\n${WORKTREE_INCLUDE}`);
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.worktree_include_installed, true);
+    assert.strictEqual(include(), `node_modules/\n.env\n${WORKTREE_INCLUDE}`);
   });
 
   it('a file already listing the knowledge files is left alone', () => {
@@ -1678,7 +1697,7 @@ describe('engine boot (real scripts)', () => {
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('runs the real migrate.cjs and knowledge CLI against an isolated project', async () => {
+  it('runs the real migrate.cjs and knowledge CLI against an isolated project', () => {
     const first = runEngine(real, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
@@ -1706,7 +1725,7 @@ describe('engine boot (real scripts)', () => {
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
     const store = require('../../src/knowledge/store.js');
-    await store.createStore(3).then((db) => store.saveStore(db, path.join(project, '.workflows/.knowledge/store.msp')));
+    store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
 
     // …and the restart's boot finds the store ready and leaves the whole
     // directory out of git: the first boot's migrations ignore it.
@@ -1731,14 +1750,14 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(third.migrations_committed, null);
   });
 
-  it('a store an earlier version committed leaves git at the first boot — before, and without, the migration commit that ignores it', async () => {
+  it('a store an earlier version committed leaves git at the first boot — before, and without, the migration commit that ignores it', () => {
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
     const store = require('../../src/knowledge/store.js');
-    await store.createStore(3).then((db) => store.saveStore(db, path.join(project, '.workflows/.knowledge/store.msp')));
+    store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
     git(project, ['add', '-A']);
     git(project, ['commit', '-q', '-m', 'chore(knowledge): initialise store']);
-    const storeBytes = fs.readFileSync(path.join(project, '.workflows/.knowledge/store.msp'));
+    const storeBytes = fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin'));
 
     const res = runEngine(real, project, ['boot']);
 
@@ -1750,7 +1769,7 @@ describe('engine boot (real scripts)', () => {
       git(project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
       STORE_FILES.map((f) => `D\t${f}`).sort());
     assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
-    assert.ok(fs.readFileSync(path.join(project, '.workflows/.knowledge/store.msp')).equals(storeBytes), 'the store stays on disk, byte for byte');
+    assert.ok(fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin')).equals(storeBytes), 'the store stays on disk, byte for byte');
     assert.match(git(project, ['status', '--porcelain', '--', '.workflows/.gitignore']), /\.workflows\/\.gitignore/, 'the rules are not committed yet');
 
     // The skill's reviewed migration commit takes the whole tree — and the
@@ -1761,7 +1780,7 @@ describe('engine boot (real scripts)', () => {
     assert.ok(files.includes('.workflows/.gitignore'));
     assert.ok(!files.some((f) => STORE_FILES.includes(f)), `the store rode the migration commit:\n${files.join('\n')}`);
     assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
-    assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge/store.msp')));
+    assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge/store.bin')));
 
     const head = git(project, ['rev-parse', 'HEAD']).trim();
     const again = runEngine(real, project, ['boot']);

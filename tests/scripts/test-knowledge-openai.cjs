@@ -592,7 +592,7 @@ describe('OpenAIProvider embedBatch (mocked)', () => {
 // Per-vector width validation — a model whose native output differs from the
 // configured dimensions returns the right COUNT of wrong-WIDTH vectors. The
 // count check does not catch it; the width check does, with a clean
-// provider-level error rather than a raw Orama insert failure mid-index.
+// provider-level error rather than the store refusing an insert mid-index.
 // ---------------------------------------------------------------------------
 
 describe('OpenAIProvider vector-width validation', () => {

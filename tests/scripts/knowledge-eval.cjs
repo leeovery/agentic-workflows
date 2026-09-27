@@ -395,7 +395,7 @@ function stageFixture(project, parent, settings) {
 /**
  * Run `fn`, and time it.
  * @template T
- * @param {() => Promise<T>} fn
+ * @param {() => T | Promise<T>} fn
  * @returns {Promise<{value: T, ms: number}>}
  */
 async function stopwatch(fn) {
@@ -595,7 +595,7 @@ async function projectTimings(built, opened, chunks, runs) {
  */
 async function runProject(built, cases, timed) {
   const opened = await openStore(built);
-  const chunks = await knowledge.store.searchAllFulltext(opened.db);
+  const chunks = knowledge.store.allChunks(opened.db);
   const unmatched = unmatchedJudgments(cases, chunks);
   if (unmatched.length > 0) throw new Error(`judgments no indexed chunk matches:\n  ${unmatched.join('\n  ')}`);
   const runs = [];

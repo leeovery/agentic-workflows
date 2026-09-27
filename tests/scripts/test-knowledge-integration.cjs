@@ -5,8 +5,8 @@
 // This test imports from the BUILT bundle (not the source files) so it
 // validates that esbuild bundling preserves all functionality — catching
 // issues the source-level unit tests miss (e.g. tree-shaking dropping a
-// code path, CJS interop breakage, Float32Array→plain array conversion
-// not surviving MsgPack round-trip).
+// code path, CJS interop breakage, vectors not surviving the store file's
+// round trip).
 
 require('./hermetic-env.cjs');
 
@@ -17,14 +17,14 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
 const bundle = require('../../skills/workflow-knowledge/scripts/knowledge.cjs');
-const { StubProvider, store } = bundle;
+const { StubProvider, store, querySettings, queryStore } = bundle;
 const {
   createStore,
   insertDocument,
   removeByIdentity,
-  searchFulltext,
+  allChunks,
+  searchKeyword,
   searchVector,
-  searchHybrid,
   saveStore,
   loadStore,
   writeMetadata,
@@ -117,13 +117,20 @@ const FIXTURE_DOCS = [
   },
 ];
 
-async function seedStore(db, provider) {
+function seedStore(db, provider) {
   for (const doc of FIXTURE_DOCS) {
-    await insertDocument(db, {
+    insertDocument(db, {
       ...doc,
       embedding: provider.embed(doc.content),
     });
   }
+}
+
+/** The blended query the CLI runs over a store built with the stub provider. */
+function hybrid(db, term, provider) {
+  const metadata = { provider: 'stub', model: provider.model(), dimensions: provider.dimensions() };
+  const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0 }, provider);
+  return queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [] });
 }
 
 function stripForCompare(hits) {
@@ -143,7 +150,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
 
   before(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-integration-'));
-    storePath = path.join(tmpDir, 'store.msp');
+    storePath = path.join(tmpDir, store.STORE_FILE);
     metaPath = path.join(tmpDir, 'metadata.json');
     provider = new StubProvider({ dimensions: STUB_DIMS });
   });
@@ -157,19 +164,20 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(typeof createStore, 'function');
     assert.strictEqual(typeof insertDocument, 'function');
     assert.strictEqual(typeof removeByIdentity, 'function');
-    assert.strictEqual(typeof searchFulltext, 'function');
+    assert.strictEqual(typeof allChunks, 'function');
+    assert.strictEqual(typeof searchKeyword, 'function');
     assert.strictEqual(typeof searchVector, 'function');
-    assert.strictEqual(typeof searchHybrid, 'function');
+    assert.strictEqual(typeof queryStore, 'function');
     assert.strictEqual(typeof saveStore, 'function');
     assert.strictEqual(typeof loadStore, 'function');
     assert.strictEqual(typeof writeMetadata, 'function');
     assert.strictEqual(typeof readMetadata, 'function');
   });
 
-  it('inserts multiple documents with vectors from StubProvider', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
-    const hits = await searchFulltext(db, { term: 'rate', limit: 20 });
+  it('inserts multiple documents with vectors from StubProvider', () => {
+    const db = createStore();
+    seedStore(db, provider);
+    const hits = searchKeyword(db, { term: 'rate', limit: 20 });
     // Three documents contain "rate": auth-discussion-1, data-disc-1, data-spec-1.
     const ids = new Set(hits.map((h) => h.id));
     assert.ok(ids.has('auth-discussion-1'));
@@ -178,51 +186,45 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(hits.length, 3);
   });
 
-  it('returns correct fulltext search results', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
-    const hits = await searchFulltext(db, { term: 'partitioning' });
+  it('returns correct fulltext search results', () => {
+    const db = createStore();
+    seedStore(db, provider);
+    const hits = searchKeyword(db, { term: 'partitioning' });
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].id, 'data-research-1');
   });
 
-  it('returns correct vector search results', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('returns correct vector search results', () => {
+    const db = createStore();
+    seedStore(db, provider);
     // Embed the exact same content as data-spec-1 — that doc must be top.
     const query = provider.embed('Persist rate limiting counters in Redis with per-tenant prefixes.');
-    const hits = await searchVector(db, { vector: query, similarity: 0, limit: 10 });
+    const hits = searchVector(db, { vector: query, similarity: 0, limit: 10 });
     assert.ok(hits.length >= 1);
     assert.strictEqual(hits[0].id, 'data-spec-1');
   });
 
   it('returns correct hybrid search results', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
-    const query = provider.embed('rate limiting');
-    const hits = await searchHybrid(db, {
-      term: 'rate limiting',
-      vector: query,
-      similarity: 0,
-      limit: 10,
-    });
+    const db = createStore();
+    seedStore(db, provider);
+    const hits = await hybrid(db, 'rate limiting', provider);
     const ids = hits.map((h) => h.id);
     assert.ok(ids.includes('auth-discussion-1'));
     assert.ok(ids.includes('data-disc-1'));
     assert.ok(ids.includes('data-spec-1'));
   });
 
-  it('filters results by metadata enum fields', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
-    const hits = await searchFulltext(db, {
+  it('filters results by metadata enum fields', () => {
+    const db = createStore();
+    seedStore(db, provider);
+    const hits = searchKeyword(db, {
       term: 'rate',
       where: { phase: { eq: 'specification' } },
     });
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].id, 'data-spec-1');
 
-    const multi = await searchFulltext(db, {
+    const multi = searchKeyword(db, {
       term: 'rate',
       where: { work_type: { eq: 'epic' } },
     });
@@ -230,11 +232,11 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.deepStrictEqual(multiIds, ['data-disc-1', 'data-spec-1']);
   });
 
-  it('surfaces analysis-phase documents in queries with correct provenance', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('surfaces analysis-phase documents in queries with correct provenance', () => {
+    const db = createStore();
+    seedStore(db, provider);
 
-    const hits = await searchFulltext(db, { term: 'caching' });
+    const hits = searchKeyword(db, { term: 'caching' });
     assert.strictEqual(hits.length, 1);
     const hit = hits[0];
     assert.strictEqual(hit.id, 'data-analysis-1');
@@ -243,7 +245,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(hit.work_unit, 'data-model');
     assert.strictEqual(hit.confidence, 'low');
 
-    const filtered = await searchFulltext(db, {
+    const filtered = searchKeyword(db, {
       term: 'caching',
       where: { phase: { eq: 'analysis' } },
     });
@@ -251,25 +253,25 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(filtered[0].id, 'data-analysis-1');
   });
 
-  it('removes analysis-phase documents by identity', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('removes analysis-phase documents by identity', () => {
+    const db = createStore();
+    seedStore(db, provider);
 
-    const removed = await removeByIdentity(db, {
+    const removed = removeByIdentity(db, {
       work_unit: 'data-model',
       phase: 'analysis',
       topic: 'gap-analysis',
     });
     assert.strictEqual(removed, 1);
 
-    const gone = await searchFulltext(db, { term: 'caching' });
+    const gone = searchKeyword(db, { term: 'caching' });
     assert.strictEqual(gone.length, 0);
   });
 
-  it('keeps discovery sessions as distinct per-session identities', async () => {
-    const db = await createStore(STUB_DIMS);
+  it('keeps discovery sessions as distinct per-session identities', () => {
+    const db = createStore();
     const base = { work_unit: 'payments', work_type: 'epic', phase: 'discovery', confidence: 'low' };
-    await insertDocument(db, {
+    insertDocument(db, {
       ...base,
       id: 'payments-discovery-session-001-1',
       content: 'Session one explored the offline mode surface for the ordering flow.',
@@ -278,7 +280,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
       timestamp: 1700000070000,
       embedding: provider.embed('offline mode surface'),
     });
-    await insertDocument(db, {
+    insertDocument(db, {
       ...base,
       id: 'payments-discovery-session-002-1',
       content: 'Session two explored the analytics dashboard tempo versus live operational state.',
@@ -289,8 +291,8 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     });
 
     // Both sessions coexist under the same (work_unit, phase) but distinct topics.
-    const s1 = await searchFulltext(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
-    const s2 = await searchFulltext(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
+    const s1 = searchKeyword(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
+    const s2 = searchKeyword(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
     assert.strictEqual(s1.length, 1);
     assert.strictEqual(s1[0].topic, 'session-001');
     assert.strictEqual(s2.length, 1);
@@ -298,28 +300,28 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
 
     // Removing one session's identity leaves the other intact — the core of the
     // per-session-topic decision (topic=work_unit would wipe both at once).
-    const removed = await removeByIdentity(db, { work_unit: 'payments', phase: 'discovery', topic: 'session-001' });
+    const removed = removeByIdentity(db, { work_unit: 'payments', phase: 'discovery', topic: 'session-001' });
     assert.strictEqual(removed, 1);
-    const afterS1 = await searchFulltext(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
-    const afterS2 = await searchFulltext(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
+    const afterS1 = searchKeyword(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
+    const afterS2 = searchKeyword(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
     assert.strictEqual(afterS1.length, 0);
     assert.strictEqual(afterS2.length, 1);
   });
 
-  it('returns an empty array for queries with zero matches', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
-    const hits = await searchFulltext(db, { term: 'zzz-definitely-not-present' });
+  it('returns an empty array for queries with zero matches', () => {
+    const db = createStore();
+    seedStore(db, provider);
+    const hits = searchKeyword(db, { term: 'zzz-definitely-not-present' });
     assert.deepStrictEqual(hits, []);
   });
 
-  it('stores content verbatim with no metadata prefix added', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('stores content verbatim with no metadata prefix added', () => {
+    const db = createStore();
+    seedStore(db, provider);
 
     // Fetch every doc we inserted and compare content byte-for-byte.
     for (const original of FIXTURE_DOCS) {
-      const hits = await searchFulltext(db, {
+      const hits = searchKeyword(db, {
         term: original.content.split(' ')[0],
         where: { topic: { eq: original.topic }, phase: { eq: original.phase } },
         limit: 50,
@@ -334,7 +336,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     }
 
     // Spot-check the bracket case via fulltext search and inspect content.
-    const bracketHits = await searchFulltext(db, { term: 'brackets' });
+    const bracketHits = searchKeyword(db, { term: 'brackets' });
     assert.strictEqual(bracketHits.length, 1);
     assert.strictEqual(
       bracketHits[0].content,
@@ -342,12 +344,12 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     );
   });
 
-  it('removes documents by identity key and leaves others intact', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('removes documents by identity key and leaves others intact', () => {
+    const db = createStore();
+    seedStore(db, provider);
 
     // auth-flow/specification/auth-flow has 2 chunks (auth-spec-1, auth-spec-2).
-    const removed = await removeByIdentity(db, {
+    const removed = removeByIdentity(db, {
       work_unit: 'auth-flow',
       phase: 'specification',
       topic: 'auth-flow',
@@ -355,38 +357,36 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(removed, 2);
 
     // Both removed docs are gone.
-    const gone = await searchFulltext(db, { term: 'UUID' });
+    const gone = searchKeyword(db, { term: 'UUID' });
     assert.strictEqual(gone.length, 0);
-    const gone2 = await searchFulltext(db, { term: 'Brackets' });
+    const gone2 = searchKeyword(db, { term: 'Brackets' });
     assert.strictEqual(gone2.length, 0);
 
     // Surviving docs are untouched.
-    const survivors = await searchFulltext(db, { term: 'rate', limit: 20 });
+    const survivors = searchKeyword(db, { term: 'rate', limit: 20 });
     const ids = survivors.map((h) => h.id).sort();
     assert.deepStrictEqual(ids, ['auth-discussion-1', 'data-disc-1', 'data-spec-1']);
   });
 
-  it('persists store to MsgPack and reloads with identical results across all modes', async () => {
-    const db = await createStore(STUB_DIMS);
-    await seedStore(db, provider);
+  it('persists the store to its file and reloads with identical results across all modes', async () => {
+    const db = createStore();
+    seedStore(db, provider);
 
     // Capture results across all three modes + a filtered search +
     // an empty-result search. All must round-trip identically.
     const termQuery = 'rate';
     const vectorQuery = provider.embed('rate limiting at the edge');
 
-    const beforeFull = await searchFulltext(db, { term: termQuery, limit: 20 });
-    const beforeVector = await searchVector(db, { vector: vectorQuery, similarity: 0, limit: 20 });
-    const beforeHybrid = await searchHybrid(db, {
-      term: termQuery, vector: vectorQuery, similarity: 0, limit: 20,
-    });
-    const beforeFiltered = await searchFulltext(db, {
+    const beforeFull = searchKeyword(db, { term: termQuery, limit: 20 });
+    const beforeVector = searchVector(db, { vector: vectorQuery, similarity: 0, limit: 20 });
+    const beforeHybrid = await hybrid(db, termQuery, provider);
+    const beforeFiltered = searchKeyword(db, {
       term: termQuery,
       where: { work_type: { eq: 'epic' } },
     });
-    const beforeEmpty = await searchFulltext(db, { term: 'absent-token-xyzzy' });
+    const beforeEmpty = searchKeyword(db, { term: 'absent-token-xyzzy' });
 
-    await saveStore(db, storePath);
+    saveStore(db, storePath);
     assert.ok(fs.existsSync(storePath));
     assert.ok(fs.statSync(storePath).size > 0);
 
@@ -398,18 +398,16 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
       last_indexed: '2026-04-10T12:00:00.000Z',
     });
 
-    const loaded = await loadStore(storePath);
+    const loaded = loadStore(storePath);
 
-    const afterFull = await searchFulltext(loaded, { term: termQuery, limit: 20 });
-    const afterVector = await searchVector(loaded, { vector: vectorQuery, similarity: 0, limit: 20 });
-    const afterHybrid = await searchHybrid(loaded, {
-      term: termQuery, vector: vectorQuery, similarity: 0, limit: 20,
-    });
-    const afterFiltered = await searchFulltext(loaded, {
+    const afterFull = searchKeyword(loaded, { term: termQuery, limit: 20 });
+    const afterVector = searchVector(loaded, { vector: vectorQuery, similarity: 0, limit: 20 });
+    const afterHybrid = await hybrid(loaded, termQuery, provider);
+    const afterFiltered = searchKeyword(loaded, {
       term: termQuery,
       where: { work_type: { eq: 'epic' } },
     });
-    const afterEmpty = await searchFulltext(loaded, { term: 'absent-token-xyzzy' });
+    const afterEmpty = searchKeyword(loaded, { term: 'absent-token-xyzzy' });
 
     assert.deepStrictEqual(stripForCompare(afterFull), stripForCompare(beforeFull));
     assert.deepStrictEqual(stripForCompare(afterVector), stripForCompare(beforeVector));

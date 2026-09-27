@@ -22,43 +22,13 @@
 // pipeline": every emitted chunk's content must be a verbatim substring of
 // the post-frontmatter source. Chunks are sliced from the source by offset,
 // never assembled by concatenating strings with a synthetic separator.
-//
-// One deliberate exception: whitespace-free runs longer than
-// MAX_TOKEN_LENGTH are split with a space (see capTokenRuns). Orama's
-// tokenizer normalises each token via String.fromCharCode(...codes) — one
-// spread argument per character — so a single ~200k-char token (base64
-// blob, minified JS) overflows the call stack with an uncatchable-looking
-// RangeError deep inside indexing. Such runs carry no retrieval value at
-// that length; splitting them keeps every byte while capping token size.
 
 const FENCE_RE = /^\s*(```+|~~~+)/;
 const FRONTMATTER_DELIM = /^---\s*$/;
 const HEADING_RE = /^(#{1,6})\s+(.*)$/;
 
-// Maximum length of a single whitespace-free run allowed into a chunk.
-const MAX_TOKEN_LENGTH = 2048;
-const LONG_RUN_RE = new RegExp(`\\S{${MAX_TOKEN_LENGTH + 1},}`, 'g');
-
 // ≈3.5k tokens of English prose — under half the 8192-token embedding input limit, leaving room for code and non-Latin text, which tokenise denser.
 const MAX_CHUNK_CHARS = 16000;
-
-/**
- * Split any whitespace-free run longer than MAX_TOKEN_LENGTH into
- * space-separated pieces of at most MAX_TOKEN_LENGTH chars, so no single
- * token can overflow the tokenizer's per-character argument spread.
- *
- * @param {string} text
- * @returns {string}
- */
-function capTokenRuns(text) {
-  return text.replace(LONG_RUN_RE, (run) => {
-    const pieces = [];
-    for (let i = 0; i < run.length; i += MAX_TOKEN_LENGTH) {
-      pieces.push(run.slice(i, i + MAX_TOKEN_LENGTH));
-    }
-    return pieces.join(' ');
-  });
-}
 
 /**
  * Chunk a markdown string according to the given config.
@@ -87,14 +57,8 @@ function chunk(markdown, config) {
   // 0. Normalise line endings so CRLF fixtures chunk identically to LF.
   const normalised = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // 1. Strip YAML frontmatter if configured, then cap pathological
-  //    whitespace-free runs before any content can reach the tokenizer.
-  //    Applied to the body (not per-chunk) so every return path below is
-  //    covered; only spaces are inserted, so line structure — and with it
-  //    heading/fence parsing — is unchanged.
-  const body = capTokenRuns(
-    stripFrontmatter ? stripOpeningFrontmatter(normalised) : normalised
-  );
+  // 1. Strip YAML frontmatter if configured.
+  const body = stripFrontmatter ? stripOpeningFrontmatter(normalised) : normalised;
 
   if (body.trim() === '') return [];
 
@@ -584,4 +548,4 @@ function sliceLine(doc, line) {
   return chunks;
 }
 
-module.exports = { chunk, MAX_TOKEN_LENGTH, MAX_CHUNK_CHARS };
+module.exports = { chunk, MAX_CHUNK_CHARS };
