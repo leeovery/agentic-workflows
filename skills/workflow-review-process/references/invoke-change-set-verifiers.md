@@ -90,6 +90,8 @@ NOT_MEASURED: {N}
 SUMMARY: {1 sentence}
 ```
 
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The change-set verifier agents have been dispatched for the specification's sections.`
+
 > **CHECKPOINT**: Do not proceed until every dispatched agent has returned.
 
 → Proceed to **D. Check the Tree**.

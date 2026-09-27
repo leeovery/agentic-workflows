@@ -10,12 +10,6 @@ This step uses the `workflow-planning-task-designer` agent (`../../../agents/wor
 
 ## A. Design Task List
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.
-```
-
 ### Invoke the Agent
 
 Read `work_type` from the manifest:
@@ -32,6 +26,14 @@ Invoke `workflow-planning-task-designer` with these file paths:
 5. **Context guidance**: `task-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **All approved phases**: the complete phase structure from the planning file
 7. **Target phase number**: the phase being broken into tasks
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.
+```
+
+This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The task designer agent has been dispatched for phase {N}.`
 
 ### Present the Output
 

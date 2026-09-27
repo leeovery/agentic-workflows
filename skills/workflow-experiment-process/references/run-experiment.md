@@ -44,7 +44,7 @@ The record is terminal — a peer session closed it, and its verdict or reason s
 
 ## B. Measure as Designed
 
-Execute the setup as designed — the instruments, sample, and environment the design froze. The run is mostly autonomous; choose the execution shape that produces the most dependable results, as the design proposed: doing it directly, writing deterministic code that does the work while you run and observe it, background shells with monitors, or ad-hoc sub-agents (Agent tool) for independent legs. No custom workflow agents exist for this phase. Harness code is instrument, not product code — it lives in `{dir}`; ephemeral working files use `.workflows/.cache/{work_unit}/experiment/{topic}/`.
+Execute the setup as designed — the instruments, sample, and environment the design froze. The run is mostly autonomous; choose the execution shape that produces the most dependable results, as the design proposed: doing it directly, writing deterministic code that does the work while you run and observe it, background shells with monitors, or ad-hoc sub-agents (Agent tool) for independent legs. The run waits for every leg: the sub-agents run in the foreground (`run_in_background: false`), several dispatched in one message running in parallel. No custom workflow agents exist for this phase. Harness code is instrument, not product code — it lives in `{dir}`; ephemeral working files use `.workflows/.cache/{work_unit}/experiment/{topic}/`.
 
 Author `{dir}/report.md` as the run goes — load **[report-template.md](report-template.md)** for its shape at the first result:
 

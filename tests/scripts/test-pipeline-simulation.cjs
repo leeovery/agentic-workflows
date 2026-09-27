@@ -4509,9 +4509,12 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
     assert.strictEqual(dropped.item_status, 'in-progress', 'a live sibling keeps the item open');
 
-    // The return leg's gate: a record just closed and E3 still lives, so the
-    // session offers the next experiment or the menu; once the series is
-    // finished the gate refuses and the bridge exit follows.
+    // The return leg re-renders the register — the series moved — ahead of
+    // its gate: a record just closed and E3 still lives, so the session
+    // offers the next experiment or the menu; once the series is finished
+    // the gate refuses and the bridge exit follows.
+    assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
+      /Experiments — Timing \(4 experiments\)[\s\S]*E2 multi-monitor\n.*↳ Abandoned — settled by E1 after all/);
     assert.match(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }),
       /The series still holds E3 stacking-order\./);
     const last = sim.run(['experiment', 'abandon', wu, 'timing', 'E3', '--reason', 'settled by E1 after all']);

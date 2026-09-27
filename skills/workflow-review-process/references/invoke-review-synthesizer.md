@@ -36,6 +36,8 @@ The synthesizer receives:
 
 ## Wait for Completion
 
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The findings synthesizer agent has been dispatched for review cycle {N}.`
+
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 
 If the agent fails (error, timeout), record the failure and report "synthesis failed" to the user.

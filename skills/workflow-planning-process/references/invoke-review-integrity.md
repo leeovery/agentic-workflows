@@ -20,6 +20,8 @@ Invoke `workflow-planning-review-integrity` with:
 6. **Task design path**: `task-design.md`
 7. **Earlier cycles' tracking files**: every `review-traceability-tracking-c{M}.md` and `review-integrity-tracking-c{M}.md` beside the plan whose `{M}` is below the current cycle — the paths the caller listed, the settled directions a finding may not reverse. None at cycle 1.
 
+The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The integrity review agent has been dispatched for review cycle {N}.`
+
 ---
 
 ## Expected Result

@@ -27,11 +27,29 @@ Retell the investigation file's findings as a markdown narrative (not a code blo
 
 Each beat lands in a paragraph the user takes in at a glance — complete in coverage, compact in telling. The code-perspective retelling is one `t` away; the record file itself one `v` away.
 
-→ On return, proceed to **B. Sign-off Gate**.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
+```
+
+Emit the call's MENU section verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Response**.
 
 ---
 
-## B. Sign-off Gate
+## B. Handle Response
+
+#### If `yes`
+
+→ Return to caller.
+
+#### If `technical`
+
+→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
+
+Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first, as a markdown narrative (not a code block). Then put the gate back beneath it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
@@ -41,43 +59,23 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If `yes`
-
-→ Return to caller.
-
-#### If `technical`
-
-→ Proceed to **C. Technical Perspective**.
+→ Return to **B. Handle Response**.
 
 #### If `view`
 
-→ Proceed to **D. View the Record**.
+Render the full content of `.workflows/{work_unit}/investigation/{topic}.md` as markdown (not a code block). Then put the gate back beneath it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
+```
+
+Emit the call's MENU section verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+→ Return to **B. Handle Response**.
 
 #### If the user provides feedback
-
-→ Proceed to **E. Address Feedback**.
-
----
-
-## C. Technical Perspective
-
-→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
-
-Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first, as a markdown narrative (not a code block).
-
-→ Return to **B. Sign-off Gate**.
-
----
-
-## D. View the Record
-
-Render the full content of `.workflows/{work_unit}/investigation/{topic}.md` as markdown (not a code block).
-
-→ Return to **B. Sign-off Gate**.
-
----
-
-## E. Address Feedback
 
 Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit. The feedback sets the gate aside until the person is ready to move on; to put it back:
 
