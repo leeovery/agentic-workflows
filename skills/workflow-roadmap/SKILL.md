@@ -164,7 +164,7 @@ Load **[start-menu.md](../workflow-start/references/start-menu.md)** and follow 
 
 #### If the user asks a question
 
-Answer from the DATA and the map.
+Answer from the DATA and the map. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **Step 3**.
 

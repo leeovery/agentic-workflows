@@ -176,16 +176,17 @@ The numbered options render recommended-first, so the number the user typed inde
 
 #### If comment (the choice menu's prompt option)
 
-Work the point through in conversation. Where it settles on an option, land it as the numbered-pick branch does — the plan write, the `task_map` upkeep, the tracking file, the commit — and continue. Where it concludes the finding should not land at all, set Resolution `Declined` with the reason in Notes, announce it in a line, and commit.
+Work the point through in conversation — the comment sets the gate aside. Where it settles on an option, confirm it with the person, then land it as the numbered-pick branch does — the plan write, the `task_map` upkeep, the tracking file, the commit — and continue. Where it concludes the finding should not land at all, set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Where the choice stands, **B** re-presents it once the person is ready to move on.
 
 → Return to **B. Process One Item at a Time**.
 
 #### If discuss (the settled gate's prompt option)
 
-Work the point through in conversation — a challenge, an adjustment, or a decline all start here.
+Work the point through in conversation — a challenge, an adjustment, or a decline all start here, and the comment sets the gate aside.
 
 - **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
+- **The finding stands as presented**: **B** re-presents it once the person is ready to move on.
 - **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it lands as the outcome of an exchange, this one or the choice menu's Comment, or at **B**'s dispose over a finding whose whole substance is the builder's.
 
 → Return to **B. Process One Item at a Time**.

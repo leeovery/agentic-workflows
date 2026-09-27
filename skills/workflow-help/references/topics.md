@@ -66,14 +66,6 @@ Emit the `MENU: walkthrough card` section verbatim per its marker.
 
 #### If the user asks a question
 
-Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)**. Then put this card's menu back — the menu alone, never the whole card again:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-topic --name {slug} --menu-only
-```
-
-Emit the `MENU: walkthrough card` section verbatim per its marker.
-
-**STOP.** Wait for user response.
+Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is this card's alone, never the whole card again, re-fetched with the `--menu-only` call at **C. The Card**.
 
 → Return to **D. Handle the Card**.

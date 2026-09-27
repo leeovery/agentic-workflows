@@ -60,7 +60,7 @@ The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action
 
 #### If user asked a question
 
-Answer from the set items' content. Keep it short. Do not act on the set — the menu is always the next thing shown.
+Answer from the set items' content. Keep it short, and do not act on the set. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **A. Render the Working Set**.
 

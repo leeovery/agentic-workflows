@@ -47,10 +47,14 @@ The prose should have taken this path:
 9. planning keeps no running record, so nothing is noted in the plan
    document; the user is told in one line that it is in the inbox
 10. control returns to the caller. The interrupted flow is
-    construction at its phase-structure gate, so that gate comes back
-    and the walk never falls through to the skill's Step 0. It stops
-    there: the gate unanswered, Phase 1's task design never
-    dispatched, no task-designer agent ever invoked
+    construction at its phase-structure gate, which the aside set
+    aside: the session asks in conversation — no gate, no menu —
+    whether the user is ready to move on, and the walk never falls
+    through to the skill's Step 0. The walk STOPS
+11. the fourth scripted answer says they are ready — never the gate's
+    answer — so that gate comes back, fetched from the engine. It stops there: the
+    gate unanswered, Phase 1's task design never dispatched, no
+    task-designer agent ever invoked
 
 The end world's claims:
 
@@ -76,7 +80,7 @@ The end world's claims:
   topic, and no knowledge index call runs anywhere in the walk
 - the cache's phase-tree payload and `backlog.json` are expected
   working artifacts
-- the three scripted answers were consumed by the resume choice, the
-  aside, and the backlog gate, in that order. The user was never
+- the four scripted answers were consumed by the resume choice, the
+  aside, the backlog gate, and the readiness question, in that order. The user was never
   asked which horizon it belongs to, never shown a park confirm, and
   never asked to approve the capture

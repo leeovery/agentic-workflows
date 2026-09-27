@@ -116,7 +116,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "ch
 
 **If ask:**
 
-Answer the user's question, then fetch the confirm gate again and emit it as above.
+Answer the user's question. The question sets the gate aside until the person is ready to move on; to put it back, fetch the confirm gate again and emit it as above.
 
 **STOP.** Wait for user response.
 

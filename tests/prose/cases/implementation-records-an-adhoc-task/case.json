@@ -41,7 +41,8 @@
     "y — skip project skills again",
     "y — skip linters again",
     "hold this approval a moment — separate from this task: we need a nightly reconciliation job that compares gateway captures against orders marked paid and flags mismatches. Add it to the plan as its own task; it belongs in this phase with the payment core work — no particular priority, no dependencies",
-    "y — create the task"
+    "y — create the task",
+    "yes, I'm ready"
   ],
   "conduct": "Beyond the scripted answers, the user wants the reconciliation job absorbed as one task in the open phase; asked anything about scope, placement, priority, or dependencies, they repeat that preference and add nothing new.",
   "stubs": {

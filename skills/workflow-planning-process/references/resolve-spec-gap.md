@@ -112,7 +112,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gat
 
 **If the comment shows it needs real discussion work and the specification has no sources:**
 
-A quick-fix has no discussion behind it and nothing to route to — the work has outgrown its type. Say so in one line, then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again:
+A quick-fix has no discussion behind it and nothing to route to — the work has outgrown its type. Say so in one line. The exchange sets the gate aside until the person is ready to move on; to put it back, re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result blocked --file .workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json
@@ -122,7 +122,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gat
 
 **If the comment is a question back or feedback:**
 
-Answer it. Where the feedback moves the Options — a side you missed, a cost you read wrong — revise them, re-emit the revised Options, and rewrite the payload. Then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again:
+Answer it. Where the feedback moves the Options — a side you missed, a cost you read wrong — revise them, re-emit the revised Options, and rewrite the payload. The exchange sets the gate aside until the person is ready to move on; to put it back, re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result blocked --file .workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json

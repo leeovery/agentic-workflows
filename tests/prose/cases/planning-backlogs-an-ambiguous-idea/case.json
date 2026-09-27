@@ -31,7 +31,8 @@
   "answers": [
     "c — pick the plan up where it left off",
     "one aside before we carry on — nothing to do with this plan: shoppers should be able to see their past orders and their receipts in an account area of their own. Backlog that for later.",
-    "i — the inbox"
+    "i — the inbox",
+    "yes, I'm ready"
   ],
   "conduct": "Beyond the scripted answers, the user is settling nothing about the account area today. Asked what to call it, how to summarise it, or for more detail, they say the same thing again — a shopper signing in and finding their past orders and receipts — and add no scope, no screens, no mechanics. They have no view on when it gets picked up, and they do not want the plan changed for it.",
   "invariants": {

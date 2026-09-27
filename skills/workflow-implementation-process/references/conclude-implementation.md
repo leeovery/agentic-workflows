@@ -16,7 +16,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If ask
 
-Answer from the record the session already holds — the plan, the task results, the analysis reports, the code.
+Answer from the record the session already holds — the plan, the task results, the analysis reports, the code. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **A. Conclude Gate**.
 

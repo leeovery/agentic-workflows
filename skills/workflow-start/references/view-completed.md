@@ -79,6 +79,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### If user asked a question
 
-Answer the question.
+Answer the question. The question sets the gate aside until the person is ready to move on; to put it back:
 
 → Return to **B. Action Menu**.

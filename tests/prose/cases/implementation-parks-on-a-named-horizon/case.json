@@ -39,7 +39,8 @@
     "y — skip project skills again",
     "y — skip linters again",
     "hold the gate a second — nothing to do with this task: a shopper should be able to save a card at checkout and pay with it next time without typing it in again. Put that on the roadmap under Next.",
-    "yes — park it"
+    "yes — park it",
+    "yes, I'm ready"
   ],
   "conduct": "Beyond the scripted answers, the user wants saved cards on the roadmap under Next and nothing else from this session. Asked what to call it, how to summarise it, or which horizon it belongs to, they answer in the same words — Next, and a shopper paying with a card they saved earlier — and they add no scope, no detail about this task, and no second idea.",
   "stubs": {

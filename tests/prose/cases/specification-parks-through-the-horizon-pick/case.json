@@ -29,7 +29,8 @@
     "c — pick the specification up where it left off",
     "before you write that — one thing that is not this spec's: an operator should be able to refund a paid order from the order screen, without going into the gateway's own dashboard. Put that on the roadmap.",
     "2",
-    "yes — park it"
+    "yes — park it",
+    "yes, I'm ready"
   ],
   "conduct": "The user is turning their completed card-payments discussion into the specification and knows its decisions cold: the existing gateway account with no new provider onboarding, card-only for v1 with wallets deferred, and capture confirmed by gateway webhook with no polling anywhere. Beyond the scripted answers they add no scope and reopen nothing. On the refund capability they have no more to give than they said — an operator refunding a paid order from the order screen — and asked what to call it or how to summarise it they answer in those same words.",
   "invariants": {

@@ -21,15 +21,20 @@ The prose should have taken this path:
    which it loads at the question and not before: what a phase is, in
    the product's terms and the words the screens have already used, with
    no engine verb, file path or skill name in the answer
-7. puts the second screen's menu back on its own — the menu-only render,
-   never the whole screen again — and stops
-8. on `s`, ends the walk where it stands and hands back to
+7. the question set the menu aside: the answer is followed by a
+   question in conversation — no menu, no gate — asking whether they
+   are ready to move on, and the walk stops
+8. the third scripted answer says yes to being ready, which is never
+   the menu's answer. The second screen's menu comes back on its own —
+   the menu-only render, fetched once, never the whole screen again —
+   and the walk stops
+9. on `s`, ends the walk where it stands and hands back to
    workflow-start: nothing further is recorded, because the answer was
    recorded once already
-9. passes through the rest of initialisation without a word, then gets
-   the workflow state from the discovery gateway script and shows the
-   empty-state menu — no active work — whose rows include `h/help`,
-   where the rest of the walk stays reachable
+10. passes through the rest of initialisation without a word, then
+    gets the workflow state from the discovery gateway script and shows
+    the empty-state menu — no active work — whose rows include
+    `h/help`, where the rest of the walk stays reachable
 
 Further claims:
 
@@ -37,6 +42,8 @@ Further claims:
   pick a key, and does not treat the sentence as an invalid answer
 - the answer is a few sentences, not a screen: no reference card is
   rendered for it and nothing is re-emitted above the returning menu
+- the menu-only render runs exactly once, after the yes — never
+  straight after the answer, and never twice
 - no screen past the second is ever fetched
 - the project manifest's walkthrough reads `walked` afterwards; nothing
   else about the project changes

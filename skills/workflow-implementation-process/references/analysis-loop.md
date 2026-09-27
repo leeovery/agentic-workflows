@@ -150,7 +150,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implement
 
 **If comment:**
 
-Name the implementation files plus the ones the user specified.
+Confirm your reading of the comment with the person before anything acts on it, then name the implementation files plus the ones the user specified.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation files and the named ones} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}

@@ -16,7 +16,7 @@ Any of these qualifies:
 - The user just said "what's next?", "move on", "anything else?", "ok", "done", or similar navigation cues
 - The user just raised a new topic themselves (a clear pivot away from the current thread)
 - A commit just landed AND the exchange prior to that commit resolved your outstanding question
-- The phase is about to conclude (the closing gates, the conclude gate, wrap-up)
+- The phase is about to conclude — the closing gates or the conclude gate are next, or the session is wrapping up
 - The user explicitly asked about background-agent state ("anything come back yet?", "any results?")
 - The session just opened or resumed and no conversation thread is underway yet — a pending announcement lands here, before momentum builds, rather than falling to **C**'s default
 
@@ -25,6 +25,7 @@ Any of these qualifies:
 Any of these means defer:
 
 - You asked the user a direct question in your previous response and their reply hasn't yet arrived
+- A gate is waiting on the user's answer — what arrived is held until it is answered
 - A subtopic is actively `exploring`, or a thread is being dug, and you are mid-probe on a specific concern within it
 - The user is mid-response to a question you initiated (said "hold on", "let me think", or has only partially answered)
 - You are mid-synthesis or mid-summary and haven't closed out the current point

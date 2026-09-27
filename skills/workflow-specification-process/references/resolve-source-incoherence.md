@@ -66,11 +66,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {
 
 Work it through conversationally, then re-classify against what the exchange produced.
 
-A settled resolution lands like a picked side:
+A resolution the exchange settles, confirmed with the person, lands like a picked side:
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the yielding document's topic}`.
 
-An exchange that moved the ground but left the choice open re-presents the gate (rewrite the payload, re-fetch):
+An exchange that left the choice open has set the gate aside, and re-presents it once the person is ready to move on (rewrite the payload where the ground moved, re-fetch):
 
 → Return to **A. Classify** (the gate above).
 
