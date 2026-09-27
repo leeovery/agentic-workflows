@@ -4837,7 +4837,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -7086,6 +7086,51 @@ describe('render — the adopted phase gates', () => {
       /address must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'ghost' }),
       /work unit "ghost" not found/);
+  });
+});
+
+describe('render plan-context-gate', () => {
+  let dir;
+  const dot = 'checkout.planning.checkout';
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'checkout', { work_type: 'feature' });
+  });
+  afterEach(() => teardown(dir));
+
+  it('offers the specification as-is beside the chance to add what changed', () => {
+    assert.strictEqual(renderSurface(dir, 'plan-context-gate', { dotpath: dot }), [
+      "=== MENU: plan context gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Any additional context since the specification was completed?',
+      '',
+      '**`c/continue`**  → Continue with the specification as-is',
+      '**Add context** → Tell me the priorities, constraints, or new',
+      `${NB(14)}considerations`,
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses another phase, an unknown unit, and a plan already under way', () => {
+    assert.throws(() => renderSurface(dir, 'plan-context-gate', { dotpath: 'checkout.specification.checkout' }),
+      /address must be <work_unit>\.planning\.<topic>, got phase "specification"/);
+    assert.throws(() => renderSurface(dir, 'plan-context-gate', { dotpath: 'ghost.planning.checkout' }),
+      /work unit "ghost" not found/);
+    writeManifest(dir, 'checkout', {
+      work_type: 'feature',
+      phases: { planning: { items: { checkout: { status: 'in-progress' } } } },
+    });
+    assert.throws(() => renderSurface(dir, 'plan-context-gate', { dotpath: dot }),
+      /planning item "checkout" is in-progress — the context offer opens a fresh plan/);
+  });
+
+  it('a planning item restored to never-attempted still opens the offer', () => {
+    writeManifest(dir, 'checkout', {
+      work_type: 'feature',
+      phases: { planning: { items: { checkout: { status: null } } } },
+    });
+    assert.match(renderSurface(dir, 'plan-context-gate', { dotpath: dot }),
+      /Any additional context since the specification was completed\?/);
   });
 });
 

@@ -15,17 +15,13 @@ Propose research-vs-discussion from the shaping cues, then let the user confirm 
 - **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
 - **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns. For cross-cutting this is the usual spine (research is optional).
 
-Lead with your read and one reason, then render the choice:
+Write your one-line read and its reason to `.workflows/.cache/{work_unit}/discovery/first-phase.json` with the Write tool — e.g. `{"read": "The shape's clear and the open questions are trade-offs — I'd start with discussion."}` — then render the choice:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/first-phase.json
 ```
-· · · · · · · · · · · ·
-{One-line read + reason, e.g. "The shape's clear and the open questions are trade-offs — I'd start with discussion."}
 
-**`r/research`**   → Explore feasibility and options first, no decisions yet
-**`d/discussion`** → Ready to discuss and make decisions
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
