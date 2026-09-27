@@ -94,7 +94,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {string[]} warnings non-blocking failures (knowledge index, compaction, the store's untracking, ledger commit, the worktree include, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
- * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
+ * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` and SessionStart's `conversation resume` (matcher `resume`) for every project, SessionEnd's `session cleanup` and SessionStart's `session resume` while labels are on; false when the file already carried exactly those
  * @property {boolean} worktree_include_installed this boot wrote the knowledge files into `.worktreeinclude`; false when it already listed them
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, a version before 2.1.282, the mod not installed) and boot wrote nothing; where it can: `on` where it is running, its announcement in boot's own environment; `restart` where this boot wrote the function-hooks flag into `.claude/settings.json` and the mod is not running; `not-running` where the flag was already there and the mod is not running — workflow-start stops on both
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
@@ -297,10 +297,11 @@ function boot(cwd) {
   // The session hooks live in the project's settings, so every boot
   // re-syncs them: SessionEnd's `presence cleanup` for every project — a
   // /clear'd session's heartbeats otherwise read held until its process
-  // exits — and its `conversation end`, with `session cleanup` and
-  // SessionStart's `session resume` while labels are on. The function-hooks
-  // flag the gate mod loads under lives in the same file and is put back the
-  // same way wherever the mod can run: it is part of the workflows. A checkout that predates either,
+  // exits — and its `conversation end`, SessionStart's `conversation resume`
+  // (matcher `resume`) for every project too, with `session cleanup` and
+  // `session resume` while labels are on. The function-hooks flag the gate
+  // mod loads under lives in the same file and is put back the same way
+  // wherever the mod can run: it is part of the workflows. A checkout that predates either,
   // or lost it to a hand edit, gets it back here. The file is written
   // either way, and the commit failing is a warning, never a block.
   //

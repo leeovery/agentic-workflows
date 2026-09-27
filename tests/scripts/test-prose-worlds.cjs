@@ -134,9 +134,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     const buf = tree.get(worlds.SETTINGS);
     return buf ? JSON.parse(buf.toString('utf8')) : null;
   }
-  /** Every SessionEnd command in a settings object, in order. */
+  /** Every hook command in a settings object, event by event, in order. */
   function hooksOf(settings) {
-    return (settings.hooks?.SessionEnd ?? []).flatMap((g) => g.hooks.map((h) => h.command));
+    return Object.values(settings.hooks ?? {}).flatMap((groups) => groups.flatMap((g) => g.hooks.map((h) => h.command)));
   }
   function writeSettings(dir, settings) {
     const file = path.join(dir, worlds.SETTINGS);
@@ -145,7 +145,8 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   }
   const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
   const END_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation end';
-  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
+  const CONVERSATION_RESUME_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation resume';
+  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK, CONVERSATION_RESUME_HOOK];
   const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };

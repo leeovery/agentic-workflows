@@ -17,8 +17,8 @@
 //                  the gate mod reads to set the workflow harness — written
 //                  by every engine and gateway call that carries a session
 //                  id, run in a project whose `.workflows/` already exists
-//   transcript     the conversation's transcript path, written as it ends by
-//                  the SessionEnd hook
+//   transcript     the conversation's transcript path, written by the
+//                  session hooks as it ends and as it is resumed
 //   position.json  the tmux label's resume position (session-label.cjs)
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press (the mod's own)
@@ -72,14 +72,15 @@ function markConversation(cwd) {
 }
 
 /**
- * Record the ending conversation's transcript path — `conversation end`,
- * the SessionEnd hook's target — in its folder, and only where the folder
- * exists: a conversation that never ran the workflows gets nothing. Never
- * throws: a hook must exit clean.
+ * Record the conversation's transcript path in its folder — `conversation
+ * end`, the SessionEnd hook's target, and `conversation resume`, the
+ * SessionStart hook's, since a resume from another directory can move the
+ * transcript — and only where the folder exists: a conversation that never
+ * ran the workflows gets nothing. Never throws: a hook must exit clean.
  * @param {unknown} sessionId @param {unknown} transcriptPath
  * @returns {{recorded: boolean}}
  */
-function endConversation(sessionId, transcriptPath) {
+function recordTranscript(sessionId, transcriptPath) {
   if (typeof sessionId !== 'string' || !sessionId || typeof transcriptPath !== 'string' || !transcriptPath) {
     return { recorded: false };
   }
@@ -124,4 +125,4 @@ function tidyConversations() {
   }
 }
 
-module.exports = { conversationDir, markConversation, endConversation, tidyConversations };
+module.exports = { conversationDir, markConversation, recordTranscript, tidyConversations };
