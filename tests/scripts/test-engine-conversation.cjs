@@ -1,14 +1,16 @@
 'use strict';
 
 //
-// Tests for the conversation folder, `.workflows/.cache/.conversations/
-// {session-id}/`: the mark every engine and gateway call leaves where Claude
+// Tests for the conversation folder, `{config}/conversations/{session-id}/`
+// beside the system config — `WORKFLOWS_CONFIG_DIR`, else
+// `~/.config/workflows` — and found by the session id alone from wherever a
+// command runs: the mark every engine and gateway call leaves where Claude
 // Code handed it a session id — once, never without an id, never outside a
 // workflows project, never from the commands Claude Code's own hooks run —
 // `conversation end`, the SessionEnd hook's record of the transcript path as
-// the hook hands it, written only where the folder exists, and the tidy boot
-// runs over the folders, reading a leading `~` as the home directory and a
-// relative path as naming no file.
+// the hook hands it, written only where the folder exists, and the tidy any
+// project's boot runs over every folder, reading a leading `~` as the home
+// directory and a relative path as naming no file.
 //
 
 require('./hermetic-env.cjs');
@@ -24,19 +26,35 @@ const { tidyConversations } = require('../../skills/workflow-engine/scripts/doma
 
 const SKILLS = path.resolve(__dirname, '..', '..', 'skills');
 
-let dir;
+let dir; // a workflows project
+let config; // this test's system config directory
+let pinned; // the suite's own, put back after
 
 function setup() {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-'));
   fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
+  pinned = process.env.WORKFLOWS_CONFIG_DIR;
+  process.env.WORKFLOWS_CONFIG_DIR = config;
 }
 
 function teardown() {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  process.env.WORKFLOWS_CONFIG_DIR = pinned;
+  for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
+/** A directory beside the project, removed after `fn`. @param {(elsewhere: string) => void} fn */
+function inScratch(fn) {
+  const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-elsewhere-'));
+  try {
+    fn(elsewhere);
+  } finally {
+    fs.rmSync(elsewhere, { recursive: true, force: true });
+  }
 }
 
 function conversationsRoot() {
-  return path.join(dir, '.workflows', '.cache', '.conversations');
+  return path.join(config, 'conversations');
 }
 
 /** @param {string} id */
@@ -70,10 +88,20 @@ describe('the mark', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('an engine call carrying a session id marks its conversation', () => {
+  it('an engine call carrying a session id marks its conversation, in its folder beside the system config — nothing lands in the project', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
     assert.ok(fs.existsSync(marker('sess-1')));
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows')), []);
+  });
+
+  it('with no WORKFLOWS_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/workflows`', () => {
+    inScratch((home) => {
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-1'), HOME: home, WORKFLOWS_CONFIG_DIR: undefined } });
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-2'), HOME: home, WORKFLOWS_CONFIG_DIR: '' } });
+      assert.deepStrictEqual(fs.readdirSync(path.join(home, '.config', 'workflows', 'conversations')).sort(), ['sess-1', 'sess-2']);
+    });
+    assert.ok(!fs.existsSync(conversationsRoot()));
   });
 
   it('a call that fails marks it all the same', () => {
@@ -117,26 +145,57 @@ describe('the mark', () => {
   });
 
   it('marks only inside a workflows project — an engine call or a gateway run where no `.workflows/` exists makes none', () => {
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-bare-'));
-    try {
+    inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
       spawnSync('node', [path.join(SKILLS, 'workflow-start', 'scripts/gateway.cjs')],
         { cwd: bare, encoding: 'utf8', env: { ...process.env, ...session('sess-1') } });
       assert.deepStrictEqual(fs.readdirSync(bare), []);
-    } finally {
-      fs.rmSync(bare, { recursive: true, force: true });
-    }
+    });
+    assert.ok(!fs.existsSync(conversationsRoot()));
   });
 
   it('the folder is named by the id\'s safe characters alone — never outside the root', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('a/../../evil') });
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['aevil']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows', 'evil')));
+    assert.deepStrictEqual(fs.readdirSync(config), ['conversations']);
   });
 
   it('a mark that cannot be written costs the command nothing', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache'), 'a file where the cache must go');
+    fs.writeFileSync(conversationsRoot(), 'a file where the folders must go');
     assert.deepStrictEqual(harness.ok(dir, ['session', 'repair'], { env: session('sess-1') }), { ok: true, repaired: false });
+  });
+});
+
+describe('one folder, found by the id from anywhere', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('a mark made in one project is the folder a hook fired from another project, or from a directory Claude moved to, records into', () => {
+    harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
+    const subdirectory = path.join(dir, 'src', 'lib');
+    fs.mkdirSync(subdirectory, { recursive: true });
+    inScratch((other) => {
+      fs.mkdirSync(path.join(other, '.workflows'));
+      assert.deepStrictEqual(harness.ok(other, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/a/sess-1.jsonl' }) }),
+        { ok: true, recorded: true });
+      assert.strictEqual(transcriptOf('sess-1'), '/a/sess-1.jsonl');
+    });
+    assert.deepStrictEqual(harness.ok(subdirectory, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/b/sess-1.jsonl' }) }),
+      { ok: true, recorded: true });
+    assert.strictEqual(transcriptOf('sess-1'), '/b/sess-1.jsonl');
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
+  });
+
+  it('a call from another workflows project marks nothing new — the conversation\'s folder is already there', () => {
+    harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(marker('sess-1'), past, past);
+    inScratch((other) => {
+      fs.mkdirSync(path.join(other, '.workflows'));
+      harness.ok(other, ['session', 'repair'], { env: session('sess-1') });
+    });
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
+    assert.strictEqual(fs.statSync(marker('sess-1')).mtimeMs, past.getTime());
   });
 });
 
@@ -186,22 +245,17 @@ describe('engine conversation end', () => {
     writeConversation('evil', { workflow: '' });
     harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: '../../evil', transcript_path: '/t/evil.jsonl' }) });
     assert.strictEqual(transcriptOf('evil'), '/t/evil.jsonl');
-    assert.ok(!fs.existsSync(path.join(dir, 'transcript')));
+    assert.deepStrictEqual(fs.readdirSync(config), ['conversations']);
+    assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['evil']);
   });
 
-  it('a hook fired outside the project root finds the project through CLAUDE_PROJECT_DIR', () => {
+  it('a hook fired where no project is finds the folder by the id alone', () => {
     writeConversation('sess-1', { workflow: '' });
-    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-elsewhere-'));
-    try {
-      const res = harness.ok(elsewhere, ['conversation', 'end'], {
-        env: { CLAUDE_PROJECT_DIR: dir },
-        stdin: endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' }),
-      });
+    inScratch((elsewhere) => {
+      const res = harness.ok(elsewhere, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' }) });
       assert.deepStrictEqual(res, { ok: true, recorded: true });
-      assert.strictEqual(transcriptOf('sess-1'), '/t/sess-1.jsonl');
-    } finally {
-      fs.rmSync(elsewhere, { recursive: true, force: true });
-    }
+    });
+    assert.strictEqual(transcriptOf('sess-1'), '/t/sess-1.jsonl');
   });
 
   it('a record that cannot be written answers nothing recorded, never a failure — a hook must exit clean', () => {
@@ -212,9 +266,9 @@ describe('engine conversation end', () => {
   });
 
   it('refuses an argument loudly — an authoring bug, never a silent no-op', () => {
-    const err = harness.refuses(dir, ['conversation', 'end', 'sess-1']);
-    assert.match(err.error, /Usage: engine conversation end/);
-    assert.match(harness.refuses(dir, ['conversation', 'begin']).error, /Usage: engine conversation end/);
+    for (const args of [['conversation', 'end', 'sess-1'], ['conversation', 'begin'], ['conversation']]) {
+      assert.match(harness.refuses(dir, args).error, /Usage: engine conversation end/, args.join(' '));
+    }
   });
 });
 
@@ -229,7 +283,7 @@ describe('tidyConversations', () => {
     writeConversation('live', { workflow: '', transcript: live, 'gate.json': 'null' });
     writeConversation('unnamed', { workflow: '', 'position.json': '{"name":"pay"}' });
     writeConversation('empty', { workflow: '', transcript: '' });
-    tidyConversations(dir);
+    tidyConversations();
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), ['empty', 'live', 'unnamed']);
     assert.deepStrictEqual(fs.readdirSync(folder('live')).sort(), ['gate.json', 'transcript', 'workflow']);
   });
@@ -241,7 +295,7 @@ describe('tidyConversations', () => {
     const past = new Date(Date.now() - 10 * 365 * 24 * 60 * 60 * 1000);
     fs.utimesSync(path.join(folder('old'), 'workflow'), past, past);
     fs.utimesSync(folder('old'), past, past);
-    tidyConversations(dir);
+    tidyConversations();
     assert.ok(fs.existsSync(folder('old')));
   });
 
@@ -253,7 +307,7 @@ describe('tidyConversations', () => {
       fs.writeFileSync(path.join(dir, '.claude', 'projects', 'p', 'live.jsonl'), '');
       writeConversation('live', { workflow: '', transcript: '~/.claude/projects/p/live.jsonl' });
       writeConversation('gone', { workflow: '', transcript: '~/.claude/projects/p/gone.jsonl' });
-      tidyConversations(dir);
+      tidyConversations();
     } finally {
       process.env.HOME = home;
     }
@@ -264,15 +318,15 @@ describe('tidyConversations', () => {
     writeConversation('bare', { workflow: '', transcript: 'gone.jsonl' });
     writeConversation('nested', { workflow: '', transcript: 'projects/p/gone.jsonl' });
     writeConversation('user', { workflow: '', transcript: '~someone/gone.jsonl' });
-    tidyConversations(dir);
+    tidyConversations();
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), ['bare', 'nested', 'user']);
   });
 
-  it('leaves what is not a folder, and a project with no conversations, alone', () => {
-    tidyConversations(dir);
+  it('leaves what is not a folder, and a machine with no conversations, alone', () => {
+    tidyConversations();
     fs.mkdirSync(conversationsRoot(), { recursive: true });
     fs.writeFileSync(path.join(conversationsRoot(), 'stray'), '/gone/transcript.jsonl');
-    tidyConversations(dir);
+    tidyConversations();
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['stray']);
   });
 });

@@ -380,7 +380,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   });
 });
 
-describe('a conversation\'s folder: never the world\'s', () => {
+describe('a recipe\'s calls belong to no conversation', () => {
   /** Run `fn` with the developer's own session id in this process's environment. */
   function inSession(fn) {
     const before = process.env.CLAUDE_CODE_SESSION_ID;
@@ -398,7 +398,7 @@ describe('a conversation\'s folder: never the world\'s', () => {
     assert.ok(!('CLAUDE_CODE_SESSION_ID' in env));
   });
 
-  it('a recipe\'s engine calls mark no conversation in the world they build', () => {
+  it('a recipe\'s engine calls mark no conversation', () => {
     const id = `${SCRATCH_PREFIX}marks-nothing`;
     removeScratchCase(id);
     fs.mkdirSync(path.join(cases.CASES_DIR, id), { recursive: true });
@@ -407,25 +407,10 @@ describe('a conversation\'s folder: never the world\'s', () => {
     let dir;
     try {
       dir = inSession(() => worlds.runRecipe(id, 'fixtureState'));
-      assert.ok(!fs.existsSync(path.join(dir, '.workflows', '.cache', '.conversations')));
+      assert.ok(!fs.existsSync(path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations')));
     } finally {
       removeScratchCase(id);
       if (dir) fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('the collected tree leaves a conversation\'s folder out — a walk\'s engine calls mark the developer\'s own conversation in the world', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-world-'));
-    try {
-      const write = (rel) => {
-        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-        fs.writeFileSync(path.join(dir, rel), '{}\n');
-      };
-      write('.workflows/.cache/.conversations/developer-session/workflow');
-      write('.workflows/.cache/pay/research/pay/state.json');
-      assert.deepStrictEqual([...worlds.collectTree(dir).keys()], [path.join('.workflows', '.cache', 'pay', 'research', 'pay', 'state.json')]);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });

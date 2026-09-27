@@ -1007,7 +1007,7 @@ function runConversation(call, argv) {
     if (command === 'end' && rest.length === 0) {
       // The SessionEnd hook's target.
       const input = hookInput(call);
-      respond(call, endConversation(hookProjectDir(call.cwd), input.session_id, input.transcript_path));
+      respond(call, endConversation(input.session_id, input.transcript_path));
       return;
     }
     throw new Error('Usage: engine conversation end');
@@ -2072,8 +2072,8 @@ const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', '
  * a handler that threw without answering, and gets the CLI's last word — the
  * message on stderr, exit 1. Whatever the exit, a command the conversation
  * ran marks it as one that runs the workflows — after the command, which
- * may clear the cache the mark lives in: a first boot's migrations purge
- * every cache no work unit owns.
+ * may take the folder the mark lives in: boot's tidy-up deletes one whose
+ * transcript is gone.
  * @param {Call} call @param {string[]} argv @returns {number}
  */
 function dispatch(call, argv) {

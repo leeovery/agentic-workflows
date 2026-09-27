@@ -285,6 +285,9 @@ function auditGatePayload(sim, args, identity) {
 class Sim {
   constructor() {
     this.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-'));
+    // The system config directory sits beside the project, as a real one
+    // does: the conversation folders the sim's calls mark live there.
+    this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
     git(this.dir, ['init', '-q', '-b', 'main']);
     git(this.dir, ['config', 'user.email', 'sim@example.com']);
     git(this.dir, ['config', 'user.name', 'Sim']);
@@ -310,7 +313,7 @@ class Sim {
     // The sim's own identity: this process, alive with a real start time, so
     // the rows its verbs beat read `held`.
     this.env = {
-      WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config'),
+      WORKFLOWS_CONFIG_DIR: this.configDir,
       CLAUDE_CODE_SESSION_ID: 'sim-session',
       CLAUDE_PID: String(process.pid),
       TMUX: undefined,
@@ -319,7 +322,7 @@ class Sim {
   }
 
   destroy() {
-    fs.rmSync(this.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    for (const d of [this.dir, this.configDir]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 
   write(rel, content) {

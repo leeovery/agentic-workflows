@@ -12,13 +12,14 @@
 // it. A resumed session gets its label back: every landed label records
 // the session's position (`position.json` in the conversation's folder,
 // outliving the session — cleanup leaves it), and `session resume`, a
-// SessionStart hook fired on `claude --resume`, re-applies it; `repair`
-// drops the calling session's own position with its own label (the start
-// menu is no position). The feature is a display courtesy, never state: for
-// the user who has not opted in, or outside tmux, or on any tmux error,
-// every path degrades to a no-op JSON response and the label never gates a
-// flow. (A bad argument from an opted-in call site still fails loudly —
-// that is an authoring bug, not an environment condition.)
+// SessionStart hook fired on `claude --resume`, re-applies it where the
+// project has its work unit; `repair` drops the calling session's own
+// position with its own label (the start menu is no position). The feature
+// is a display courtesy, never state: for the user who has not opted in, or
+// outside tmux, or on any tmux error, every path degrades to a no-op JSON
+// response and the label never gates a flow. (A bad argument from an
+// opted-in call site still fails loudly — that is an authoring bug, not an
+// environment condition.)
 //
 // Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
 // means never asked, which is what workflow-start's one-time prompt keys on
@@ -287,10 +288,10 @@ function writeRecord(file, record) {
 /**
  * Where a labelled session's working position outlives it: the
  * conversation's own folder.
- * @param {string} cwd @param {string} sessionId
+ * @param {string} sessionId
  */
-function positionPath(cwd, sessionId) {
-  return path.join(conversationDir(cwd, sessionId), 'position.json');
+function positionPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'position.json');
 }
 
 /**
@@ -304,29 +305,29 @@ function positionPath(cwd, sessionId) {
  * Record the calling session's position behind a landed label — what
  * `session resume` re-applies. Nothing without a session id; a write that
  * fails costs nothing, the next label writes again.
- * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ * @param {string} name @param {string} [phase] @param {string} [topic]
  */
-function recordPosition(cwd, name, phase, topic) {
+function recordPosition(name, phase, topic) {
   const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
   if (!sessionId) return;
   /** @type {LabelPosition} */
   const position = { name, phase, topic };
-  try { writeRecord(positionPath(cwd, sessionId), position); } catch { /* a courtesy, never a failure */ }
+  try { writeRecord(positionPath(sessionId), position); } catch { /* a courtesy, never a failure */ }
 }
 
-/** @param {string} cwd @param {string} sessionId @returns {LabelPosition|null} */
-function readPosition(cwd, sessionId) {
+/** @param {string} sessionId @returns {LabelPosition|null} */
+function readPosition(sessionId) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(positionPath(cwd, sessionId), 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
     if (isObject(parsed) && typeof parsed.name === 'string') return /** @type {LabelPosition} */ (parsed);
   } catch { /* none recorded, or unreadable */ }
   return null;
 }
 
-/** @param {string} cwd @param {string|null|undefined} sessionId */
-function dropPosition(cwd, sessionId) {
+/** @param {string|null|undefined} sessionId */
+function dropPosition(sessionId) {
   if (!sessionId) return;
-  try { fs.unlinkSync(positionPath(cwd, sessionId)); } catch { /* none recorded */ }
+  try { fs.unlinkSync(positionPath(sessionId)); } catch { /* none recorded */ }
 }
 
 /**
@@ -485,7 +486,7 @@ function applySessionLabel(cwd, name, phase, topic) {
   for (const f of visited) {
     if (f !== file) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
   }
-  recordPosition(cwd, name, phase, topic);
+  recordPosition(name, phase, topic);
   return { labelled: true, name: applied };
 }
 
@@ -495,20 +496,20 @@ function applySessionLabel(cwd, name, phase, topic) {
  * session's last label is re-applied through `applySessionLabel`, so the
  * gates are `label`'s own (disabled, no tmux, a tmux error all no-op), the
  * stash records the resuming process's identity, and a name already worn
- * costs no rename. A position naming a work unit or phase that no longer
- * exists is dropped: nothing to come back to. Never throws: a hook must
- * exit clean.
+ * costs no rename. A position naming a work unit or phase this project does
+ * not have — the conversation resumed in another checkout, or its unit gone
+ * — labels nothing and is kept: its folder's tidy-up owns its lifetime.
+ * Never throws: a hook must exit clean.
  * @param {string} cwd @param {string|null} sessionId
  * @returns {{resumed: boolean}}
  */
 function resumeSessionLabel(cwd, sessionId) {
   if (!sessionId) return { resumed: false };
-  const position = readPosition(cwd, sessionId);
+  const position = readPosition(sessionId);
   if (!position) return { resumed: false };
   try {
     return { resumed: applySessionLabel(cwd, position.name, position.phase, position.topic).labelled };
   } catch {
-    dropPosition(cwd, sessionId);
     return { resumed: false };
   }
 }
@@ -623,7 +624,7 @@ function repairSessionLabels(cwd) {
       tmux(['rename-session', '-t', ctx.id, original], ctx.socket);
       repaired = true;
       for (const f of visited) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
-      if (own) dropPosition(cwd, process.env.CLAUDE_CODE_SESSION_ID);
+      if (own) dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
     } catch { /* tmux errored — the records keep the repair available */ }
   }
   /** @type {Map<string, {id: string, name: string}[]|null>} */

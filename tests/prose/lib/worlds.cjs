@@ -220,9 +220,6 @@ function excluded(rel) {
   // pin an mtime artifact. Other cache content (the agent store) stays
   // visible — cases pin its rows.
   if (parts[0] === '.workflows' && parts[1] === '.cache' && parts[parts.length - 1] === 'presence') return true;
-  // A conversation's folder belongs to whichever session ran the command — a
-  // walk's is the developer's own — never to the world.
-  if (rel === path.join('.workflows', '.cache', '.conversations')) return true;
   return false;
 }
 

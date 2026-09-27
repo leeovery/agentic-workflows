@@ -23,16 +23,16 @@
 // offer setup without extra probes. A failing bulk index or compact is a
 // warning, never a block.
 //
-// Boot is also where the conversation folders are tidied: one goes once the
-// transcript it names is gone.
+// Boot is also where the conversation folders are tidied, whichever project
+// the conversations ran in: one goes once the transcript it names is gone.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
+const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
 const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
@@ -42,11 +42,6 @@ const { SETTINGS_SPEC } = require('./settings.cjs');
 const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
-
-/** The system config directory — `WORKFLOWS_CONFIG_DIR` overrides for tests. */
-function configDir() {
-  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
-}
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -120,7 +115,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @returns {SystemConfigReport}
  */
 function detectSystemConfig() {
-  const p = path.join(configDir(), 'config.json');
+  const p = path.join(systemConfigDir(), 'config.json');
   if (!fs.existsSync(p)) return { status: 'absent', provider: null, model: null };
   try {
     const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -328,7 +323,7 @@ function boot(cwd) {
   }
 
   const worktreeIncludeInstalled = installWorktreeInclude(cwd, warnings);
-  tidyConversations(cwd);
+  tidyConversations();
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */

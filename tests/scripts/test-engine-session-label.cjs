@@ -48,6 +48,8 @@ const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: 
 
 let dir; // temp project root — a git repo, since recording the opt-in commits
 let stubDir; // holds the tmux stub + state/log files
+let configDir; // this test's system config directory, where the conversations' folders sit
+let pinnedConfigDir; // the suite's own, put back after
 
 /** @param {string[]} args */
 function git(args) {
@@ -63,10 +65,14 @@ function setup() {
   git(['config', 'commit.gpgsign', 'false']);
   git(['commit', '-q', '--allow-empty', '-m', 'init']);
   stubDir = installTmuxStub();
+  configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-config-'));
+  pinnedConfigDir = process.env.WORKFLOWS_CONFIG_DIR;
+  process.env.WORKFLOWS_CONFIG_DIR = configDir;
 }
 
 function teardown() {
-  for (const d of [dir, stubDir]) {
+  process.env.WORKFLOWS_CONFIG_DIR = pinnedConfigDir;
+  for (const d of [dir, stubDir, configDir]) {
     fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
@@ -153,9 +159,9 @@ function writeStash(basename, record) {
   fs.writeFileSync(path.join(stashStore(), `${basename}.json`), JSON.stringify({ socket: '/fake/sock', ...record }) + '\n');
 }
 
-/** Where every conversation keeps its folder. */
+/** Where every conversation keeps its folder, beside the system config. */
 function conversationsRoot() {
-  return path.join(dir, '.workflows', '.cache', '.conversations');
+  return path.join(configDir, 'conversations');
 }
 
 /** A conversation's folder, where its position is kept. */
@@ -396,7 +402,6 @@ describe('engine session label', () => {
 
   it('reports stash-error and leaves the name alone when the stash cannot be written', () => {
     optIn();
-    fs.rmSync(path.join(dir, '.workflows', '.cache'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.workflows', '.cache'), ''); // a file where the cache dir must go
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'stash-error' });
@@ -470,7 +475,6 @@ describe('engine session label — the position record', () => {
 
   it('a failed stash records nothing either', () => {
     optIn();
-    fs.rmSync(path.join(dir, '.workflows', '.cache'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.workflows', '.cache'), '');
     assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
     assert.strictEqual(position('sess-1'), null);
@@ -490,7 +494,7 @@ describe('engine session label — the position record', () => {
     engine(['session', 'label', 'pay'], { sessionId: 'a/../../evil' });
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), ['aevil', 'sess-1'], 'beside the opt-in\'s own');
     assert.deepStrictEqual(position('aevil'), { name: 'pay' });
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows', '.cache', 'evil')));
+    assert.deepStrictEqual(fs.readdirSync(configDir), ['conversations']);
   });
 
   it('a landed label with no session id records nothing — there is no id to resume under', () => {
@@ -1188,20 +1192,54 @@ describe('engine session resume', () => {
     assert.ok(position('sess-1'));
   });
 
-  it('never throws on a work unit that no longer exists — the dead position is dropped, the rest of its folder kept', () => {
+  it('never throws on a work unit the project no longer has — it labels nothing and keeps the position, which goes with its folder', () => {
     ended();
     fs.rmSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
-    assert.strictEqual(position('sess-1'), null);
-    assert.deepStrictEqual(fs.readdirSync(conversation('sess-1')), ['workflow']);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  it('a phase the engine no longer knows is a dead position too', () => {
+  it('a phase the engine no longer knows labels nothing and keeps the position too', () => {
     optIn();
     writePosition('sess-1', { name: 'pay', phase: 'deploying', topic: 'alpha' });
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
-    assert.strictEqual(position('sess-1'), null);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'deploying', topic: 'alpha' });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+  });
+
+  /** A second workflows project, opted in, with the work units named — another checkout. */
+  function otherProject(/** @type {string[]} */ units) {
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-other-'));
+    for (const unit of units) fs.mkdirSync(path.join(other, '.workflows', unit), { recursive: true });
+    fs.mkdirSync(path.join(other, '.workflows'), { recursive: true });
+    fs.writeFileSync(path.join(other, '.workflows', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
+    return other;
+  }
+
+  it('the position is the conversation\'s, found from any project — resumed in another checkout that has its work unit, the label comes back there', () => {
+    ended();
+    const other = otherProject(['pay']);
+    try {
+      assert.deepStrictEqual(resume(['sess-1'], { cwd: other }), { ok: true, resumed: true });
+      assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true });
+    }
+  });
+
+  it('resumed in a project without its work unit, it labels nothing and keeps the position — back in its own project, the label returns', () => {
+    ended();
+    const other = otherProject([]);
+    try {
+      assert.deepStrictEqual(resume([], { cwd: other, input: RESUME_STDIN('sess-1') }), { ok: true, resumed: false });
+      assert.strictEqual(tmuxName(), 'proj-abc');
+      assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true });
+    }
+    assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
   });
 
   it('a hook fired outside the project root finds the store through CLAUDE_PROJECT_DIR', () => {
