@@ -183,7 +183,7 @@ Intersect the row's `remaining` with each finding's lane, and take the first lan
 
 #### If no lane holds findings
 
-The row is drained — the final surface call incorporated it. Close it out loud in this same turn, never silently: one line that the {agent_type}'s findings are worked through, then hand the conversation back where the announce interrupted it — resume the open thread, or when the session was already winding down, say so and name the next move. A caller with its own continuation (the final-review drain at phase conclusion) resumes it on return instead.
+The row is drained — the final surface call incorporated it. Close it out loud in this same turn, never silently: one line that the {agent_type}'s findings are worked through, then hand the conversation back where the announce interrupted it — resume the open thread, or when the session was already winding down, say so and name the next move. A caller with its own continuation — the final-review menu, when the drain completes inside its own call — resumes it on return instead. A drain whose last raise the conversation settled returns to the session loop, however it began: the loop's check resumes a close already underway.
 
 → Return to caller.
 
