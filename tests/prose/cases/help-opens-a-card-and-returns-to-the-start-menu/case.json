@@ -33,6 +33,7 @@
       "engine.cjs session repair"
     ],
     "calls_exclude": [
+      "walkthrough-offer",
       "walkthrough-screen",
       "walkthrough record"
     ],

@@ -542,7 +542,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 → Proceed to **Step 0.3**.
 
 ### Step 0.3: Walkthrough
-[one-time offer when the boot response says so — the loaded walk records the answer; otherwise silent]
+[one-time offer when the boot response says so — records the answer, and a yes loads the walk; otherwise silent]
 → Proceed to **Step 0.4**.
 
 ### Step 0.4: Session Labels

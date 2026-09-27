@@ -10,7 +10,7 @@ Explain how the workflows work: the walk through the system, the reference cards
 
 ## Purpose in the Workflow
 
-Project-level and outside the pipeline — no work unit, no phases, no session label. Invoked from the `h/help` row on both start menus. The first-run offer is the same walk reached a different way: workflow-start loads **[walk.md](references/walk.md)** across the skill boundary, without invoking this skill.
+Project-level and outside the pipeline — no work unit, no phases, no session label. Invoked from the `h/help` row on both start menus. The first-run offer is workflow-start's, and taking it is the same walk reached a different way: workflow-start loads **[walk.md](references/walk.md)** across the skill boundary, without invoking this skill.
 
 **Stay in your lane**: explain the system, never do the work. Nothing here reads or writes a work unit, and a question about what the user should build belongs to the phase that holds it.
 

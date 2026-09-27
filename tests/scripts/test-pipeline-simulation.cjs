@@ -4024,7 +4024,16 @@ describe('pipeline simulation', () => {
 
     // The walkthrough is the project's other one-time record, and the same
     // shape: refuse anything but the two answers, write once, and stay
-    // recorded. Its screens are content, so they render at any state.
+    // recorded. Its offer and screens are content, so they render at any
+    // state; the offer stands before the walk, so its yes records before
+    // the first screen renders.
+    assert.match(sim.render(['walkthrough-offer'], { expect: 'content' }), /Take the walkthrough\?/);
+    assert.match(sim.render(['walkthrough-offer', '--menu-only'], { expect: 'content' }), /y\/yes/);
+    sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
+    const answer = sim.run(['walkthrough', 'record', 'walked']);
+    assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.walkthrough.status']), 'walked');
+    sim.refuses(['walkthrough', 'record', 'skipped'], /recorded once/);
     assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How the workflows work · 1 of 8/);
     // Screen 2 draws the start menu as its sample; the gate it stops at is its own.
     assert.match(sim.render(['walkthrough-screen', '--screen', '2', '--from', 'help'], { expect: 'content' }), /n\/next/);
@@ -4034,11 +4043,6 @@ describe('pipeline simulation', () => {
     assert.doesNotMatch(sim.render(['walkthrough-topic', '--name', 'the-inbox'], { expect: 'content' }), /^=== MENU/m);
     assert.match(sim.render(['walkthrough-topic', '--name', 'the-inbox', '--menu-only'], { expect: 'content' }), /t\/topics/);
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
-    sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
-    const answer = sim.run(['walkthrough', 'record', 'walked']);
-    assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
-    assert.strictEqual(sim.read(['manifest', 'get', 'project.walkthrough.status']), 'walked');
-    sim.refuses(['walkthrough', 'record', 'skipped'], /recorded once/);
     assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
 
     // After every refusal the unit still derives and completes normally.

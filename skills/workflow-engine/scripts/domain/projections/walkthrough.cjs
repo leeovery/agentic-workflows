@@ -14,7 +14,9 @@
 //
 // The menu is the walk: its rows differ by the screen's position and by where
 // the walk was entered from, and nothing else about a screen is conditional.
-// A card's menu is the same at every card — a card is read, not walked.
+// A card's menu is the same at every card — a card is read, not walked. The
+// first-run offer stands before the walk and outside it: it is not a screen,
+// so it carries no position and never counts toward the walk's length.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -28,6 +30,7 @@ const { DIAGRAM_KINDS, isDiagramKind, renderDiagram } = require('./walkthrough-d
 const CONTENT_DIR = path.join(__dirname, '..', '..', '..', 'content', 'walkthrough');
 const SCREENS_DIR = path.join(CONTENT_DIR, 'screens');
 const TOPICS_DIR = path.join(CONTENT_DIR, 'topics');
+const OFFER_FILE = path.join(CONTENT_DIR, 'offer.md');
 
 const PROSE_INSTRUCTION = emitAs('markdown');
 const DIAGRAM_INSTRUCTION = emitAs('text');
@@ -174,8 +177,8 @@ function loadCard(name) {
 
 /**
  * A screen's command exits. The first screen has nowhere to go back to on a
- * first run, where it is the offer itself; the last screen has only its way
- * out.
+ * first run, where the offer before it is already answered, and its way back
+ * from help is the way out; the last screen has only its way out.
  * @param {Screen} s @param {string} origin
  * @returns {string[]}
  */
@@ -185,16 +188,14 @@ function screenCommands(s, origin) {
     return [cmdOption('d', 'done', firstRun ? 'Go to the start menu' : 'Back to help')];
   }
   const options = [cmdOption('n', 'next', s.next_title)];
-  if (s.index === 1) {
-    options.push(firstRun
-      ? cmdOption('s', 'skip', "Skip this for now — it's under h/help whenever you want it")
-      : cmdOption('b', 'back', 'Back to help'));
-    return options;
+  if (s.index > 1) options.push(cmdOption('b', 'back', 'Go back a screen'));
+  if (firstRun) {
+    options.push(cmdOption('s', 'skip', "Stop here — it's under h/help whenever you want it"));
+  } else {
+    options.push(s.index === 1
+      ? cmdOption('b', 'back', 'Back to help')
+      : cmdOption('s', 'stop', 'Stop here and go back to help'));
   }
-  options.push(cmdOption('b', 'back', 'Go back a screen'));
-  options.push(firstRun
-    ? cmdOption('s', 'skip', "Stop here — it's under h/help whenever you want it")
-    : cmdOption('s', 'stop', 'Stop here and go back to help'));
   return options;
 }
 
@@ -234,6 +235,31 @@ function walkthroughScreen(s, origin, menuOnly) {
     titleSection(`How the workflows work · ${s.index} of ${s.total} · ${s.title}`),
     ...chunkSections(s.chunks),
     screenMenu(s, origin),
+  ].join('\n');
+}
+
+/** The offer's menu — the same section whether it arrives under the offer or alone. @returns {string} */
+function offerMenu() {
+  return section('MENU: walkthrough offer', MENU_INSTRUCTION, menu('', [
+    cmdOption('y', 'yes', "Let's do it"),
+    cmdOption('s', 'skip', "Skip for now — it's under h/help whenever you want it"),
+    promptOption('Ask', HELP_ASK_PROMPT),
+  ], { question: 'Take the walkthrough?' }));
+}
+
+/**
+ * The first-run offer: its heading, its content, its menu. `menuOnly` serves
+ * the return from a question, as a screen's does.
+ * @param {boolean} menuOnly
+ * @returns {string}
+ */
+function walkthroughOffer(menuOnly) {
+  if (menuOnly) return offerMenu();
+  const { title, chunks } = parseContent(OFFER_FILE);
+  return [
+    titleSection(title),
+    ...chunkSections(chunks),
+    offerMenu(),
   ].join('\n');
 }
 
@@ -294,4 +320,4 @@ function walkthroughTopic(card, menuOnly) {
   ].join('\n');
 }
 
-module.exports = { ORIGINS, parseContent, loadScreen, loadCard, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic };
+module.exports = { ORIGINS, parseContent, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic };
