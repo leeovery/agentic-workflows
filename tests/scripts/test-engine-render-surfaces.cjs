@@ -2728,6 +2728,47 @@ describe('render hypothesis-board', () => {
   });
 });
 
+describe('render findings-signoff-gate', () => {
+  let dir;
+  const dot = 'hooks.investigation.crash';
+  const record = () => {
+    const p = path.join(dir, '.workflows', 'hooks', 'investigation', 'crash.md');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, '# Investigation — crash\n');
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('asks the sign-off over the retelling, the technical lens and the record itself', () => {
+    record();
+    assert.strictEqual(renderSurface(dir, 'findings-signoff-gate', { dotpath: dot }), [
+      "=== MENU: findings sign-off gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Do these findings match your understanding?`**',
+      '',
+      '**`y/yes`**            → Findings are correct, move to fix exploration',
+      "**`t/technical`**      → Retell the findings from the code's",
+      `${NB(19)}perspective`,
+      '**`v/view`**           → Show the full investigation file',
+      "**Provide feedback** → Tell me what's off or unclear",
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses another phase, an unknown unit, and a topic with no investigation file', () => {
+    record();
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'hooks.discussion.crash' }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'ghost.investigation.crash' }),
+      /work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'hooks.investigation.other' }),
+      /no investigation file for "other" — the sign-off is read from the record/);
+  });
+});
+
 describe('render validation-gate / validation-report', () => {
   let dir;
   const inv = 'hooks.investigation.crash';
@@ -4796,7 +4837,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -7177,6 +7218,88 @@ describe('render cross-cutting-references', () => {
     });
     assert.throws(() => renderSurface(dir, 'cross-cutting-references', { file }),
       /"cache-policy" is not a cross-cutting work unit with a completed specification/);
+  });
+});
+
+describe('render complexity-gate / first-phase-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'support-email', { work_type: 'quick-fix' });
+  });
+  afterEach(() => teardown(dir));
+
+  it('names the criteria the payload judged failed, above the continue-or-promote ask', () => {
+    const file = writePayload(dir, 'concerns.json', {
+      concerns: ['Requires design decisions about the new API surface', 'Three call sites need new behaviour'],
+    });
+    assert.strictEqual(renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file }), [
+      '=== DISPLAY: complexity check (emit verbatim as a code block, directly above the menu) ===',
+      'Complexity Check',
+      '',
+      'This change may be more involved than a quick-fix:',
+      '',
+      '  • Requires design decisions about the new API surface',
+      '  • Three call sites need new behaviour',
+      '',
+      "=== MENU: complexity gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ How would you like to proceed?`**',
+      '',
+      '**`c/continue`** → Continue as quick-fix anyway',
+      '**`f/feature`**  → Promote to feature (full pipeline)',
+      '**`b/bugfix`**   → Promote to bugfix (investigation pipeline)',
+      '',
+    ].join('\n'));
+  });
+
+  it('complexity-gate refuses a missing payload, an empty or malformed list, and a unit already promoted', () => {
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'support-email' }),
+      /--file <payload\.json> is required/);
+    const empty = writePayload(dir, 'empty.json', { concerns: [] });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file: empty }),
+      /"concerns" must be a non-empty array of non-empty strings/);
+    const blank = writePayload(dir, 'blank.json', { concerns: ['  '] });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file: blank }),
+      /"concerns" must be a non-empty array of non-empty strings/);
+    const wrong = writePayload(dir, 'wrong.json', { concerns: 'too big' });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file: wrong }),
+      /"concerns" must be an array of strings/);
+    writeManifest(dir, 'support-email', { work_type: 'feature' });
+    const file = writePayload(dir, 'concerns.json', { concerns: ['Requires design decisions'] });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'support-email', file }),
+      /"support-email" is a feature — the complexity check is the quick-fix's own/);
+  });
+
+  it('first-phase-gate carries the read as a statement, never an ask, over the two routes', () => {
+    writeManifest(dir, 'support-email', { work_type: 'feature' });
+    const file = writePayload(dir, 'read.json', { read: "The concern is an open unknown — I'd start with research." });
+    assert.strictEqual(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }), [
+      "=== MENU: first phase gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      "The concern is an open unknown — I'd start with research.",
+      '',
+      '**`r/research`**   → Explore feasibility and options first, no',
+      `${NB(15)}decisions yet`,
+      '**`d/discussion`** → Ready to discuss and make decisions',
+      '',
+    ].join('\n'));
+  });
+
+  it('first-phase-gate refuses a fixed-first-phase type, a missing payload, and a read that is not one line', () => {
+    const file = writePayload(dir, 'read.json', { read: 'The shape is clear.' });
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }),
+      /a quick-fix has a fixed first phase — the choice belongs to feature and cross-cutting work/);
+    writeManifest(dir, 'support-email', { work_type: 'cross-cutting' });
+    assert.ok(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }).includes('The shape is clear.'));
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email' }),
+      /--file <payload\.json> is required/);
+    const blank = writePayload(dir, 'blank.json', { read: '' });
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: blank }),
+      /"read" must be a non-empty string/);
+    const split = writePayload(dir, 'split.json', { read: 'The shape is clear.\nI would discuss it.' });
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: split }),
+      /"read" must be a single line — it becomes the menu's statement label/);
   });
 });
 

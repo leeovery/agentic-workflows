@@ -916,6 +916,34 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
 }
 
 // ---------------------------------------------------------------------------
+// findings-signoff-gate — the one sign-off on the investigation record. The
+// findings are retold above it from the investigation file, and both the
+// technical retelling and the view read that same file, so the gate refuses
+// where the file is not there: every row it offers would be over nothing.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function findingsSignoffGate(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'findings-signoff-gate');
+  if (phase !== 'investigation') {
+    throw new Error(`render findings-signoff-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
+  }
+  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'investigation', `${topic}.md`))) {
+    throw new Error(`render findings-signoff-gate: no investigation file for "${topic}" — the sign-off is read from the record`);
+  }
+  return section('MENU: findings sign-off gate', STOP_FOR_RESPONSE, menu('Do these findings match your understanding?', [
+    cmdOption('y', 'yes', 'Findings are correct, move to fix exploration'),
+    cmdOption('t', 'technical', "Retell the findings from the code's perspective"),
+    cmdOption('v', 'view', 'Show the full investigation file'),
+    promptOption('Provide feedback', "Tell me what's off or unclear"),
+  ]));
+}
+
+// ---------------------------------------------------------------------------
 // fix-direction — the candidate approaches, presented for the user to steer.
 // The shape is the surface's so a reader can compare: every option carries
 // the same rows, and what varies with the material — whether options are
@@ -3208,6 +3236,73 @@ function planReviewGate(cwd, { dotpath, variant }) {
     cmdOption('y', 'yes', 'Run another round (traceability + integrity)'),
     cmdOption('p', 'proceed', 'Proceed to conclusion'),
   ], { question: 'Run another review round?' }));
+}
+
+// complexity-gate / first-phase-gate — the two stops of scoping's complexity
+// check. Which criteria the change fails is the session's read, so the
+// concerns ride a payload, while the type is state: an offer to promote a
+// unit that is not a quick-fix, or one already promoted, is a gate over
+// nothing. The second is the onward route a promotion opens — research or
+// discussion, offered only to the types that have the choice, the read that
+// leans one way the session's own and a statement rather than an ask.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function complexityGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render complexity-gate: --file <payload.json> is required');
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'complexity-gate');
+  if (manifest.work_type !== 'quick-fix') {
+    throw new Error(`render complexity-gate: "${dotpath}" is a ${manifest.work_type} — the complexity check is the quick-fix's own`);
+  }
+  const concerns = stringLines(readJsonPayload(cwd, file, 'complexity-gate').concerns, 'complexity-gate', 'concerns');
+  if (concerns.length === 0 || concerns.some((c) => !isFilled(c))) {
+    throw new Error('render complexity-gate: "concerns" must be a non-empty array of non-empty strings — the warning names what failed');
+  }
+  return [
+    section('DISPLAY: complexity check', 'emit verbatim as a code block, directly above the menu', [
+      'Complexity Check',
+      '',
+      ...indentedBody(['This change may be more involved than a quick-fix:'], { indent: '' }),
+      '',
+      ...concerns.flatMap((c) => bulletRow(c)),
+    ].join('\n')),
+    section('MENU: complexity gate', STOP_FOR_RESPONSE, menu('How would you like to proceed?', [
+      cmdOption('c', 'continue', 'Continue as quick-fix anyway'),
+      cmdOption('f', 'feature', 'Promote to feature (full pipeline)'),
+      cmdOption('b', 'bugfix', 'Promote to bugfix (investigation pipeline)'),
+    ])),
+  ].join('\n');
+}
+
+const FIRST_PHASE_TYPES = ['feature', 'cross-cutting'];
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function firstPhaseGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render first-phase-gate: --file <payload.json> is required');
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'first-phase-gate');
+  if (!FIRST_PHASE_TYPES.includes(String(manifest.work_type))) {
+    throw new Error(`render first-phase-gate: a ${manifest.work_type} has a fixed first phase — the choice belongs to ${FIRST_PHASE_TYPES.join(' and ')} work`);
+  }
+  const { read } = readJsonPayload(cwd, file, 'first-phase-gate');
+  if (!isFilled(read)) {
+    throw new Error('render first-phase-gate: "read" must be a non-empty string — the choice opens on which phase leans, and why');
+  }
+  if (/\n/.test(read)) {
+    throw new Error('render first-phase-gate: "read" must be a single line — it becomes the menu\'s statement label');
+  }
+  return section('MENU: first phase gate', STOP_FOR_RESPONSE, menuFrame([
+    read,
+    '',
+    cmdOption('r', 'research', 'Explore feasibility and options first, no decisions yet'),
+    cmdOption('d', 'discussion', 'Ready to discuss and make decisions'),
+  ], { glyphLabel: false, skip: 2 }));
 }
 
 // correction-gate — the consent stop before editing another work unit's
@@ -5716,6 +5811,7 @@ const SURFACES = {
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,
   'hypothesis-board': hypothesisBoard,
+  'findings-signoff-gate': findingsSignoffGate,
   'fix-direction': fixDirection,
   'validation-gate': validationGate,
   'validation-report': validationReport,
@@ -5757,6 +5853,8 @@ const SURFACES = {
   'cross-cutting-references': crossCuttingReferences,
   'plan-format-gate': planFormatGate,
   'plan-review-gate': planReviewGate,
+  'complexity-gate': complexityGate,
+  'first-phase-gate': firstPhaseGate,
   'correction-gate': correctionGate,
   'analysis-proceed-gate': analysisProceedGate,
   'spec-confirm-gate': specConfirmGate,

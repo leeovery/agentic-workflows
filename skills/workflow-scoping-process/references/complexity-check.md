@@ -24,29 +24,13 @@ Assess whether this change is genuinely quick-fix material. Evaluate against the
 
 ## B. Complexity Warning
 
-If any criterion fails, surface the concern:
+Write the failing criteria to `.workflows/.cache/{work_unit}/scoping/{topic}/complexity.json` with the Write tool — `{"concerns": ["{concern}", …]}`, one line each (e.g. "Requires design decisions about the new API surface") — then render the warning:
 
-> *Output the next fenced block as a code block:*
-
-```
-Complexity Check
-
-This change may be more involved than a quick-fix:
-
-  • {specific concern — e.g., "Requires design decisions about the new API surface"}
-  • {additional concern if applicable}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render complexity-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/complexity.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
-
-**`c/continue`** → Continue as quick-fix anyway
-**`f/feature`**  → Promote to feature (full pipeline)
-**`b/bugfix`**   → Promote to bugfix (investigation pipeline)
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -97,17 +81,13 @@ Propose research-vs-discussion — the concerns that triggered promotion are the
 - **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
 - **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns.
 
-Lead with your read and one reason, then render the choice:
+Write your one-line read and its reason to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool — e.g. `{"read": "The concern is an open unknown — I'd start with research."}` — then render the choice:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
 ```
-· · · · · · · · · · · ·
-{One-line read + reason, e.g. "The concern is an open unknown — I'd start with research."}
 
-**`r/research`**   → Explore feasibility and options first, no decisions yet
-**`d/discussion`** → Ready to discuss and make decisions
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

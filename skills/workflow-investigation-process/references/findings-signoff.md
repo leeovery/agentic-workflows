@@ -33,17 +33,11 @@ Each beat lands in a paragraph the user takes in at a glance — complete in cov
 
 ## B. Sign-off Gate
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Do these findings match your understanding?`**
 
-**`y/yes`**            → Findings are correct, move to fix exploration
-**`t/technical`**      → Retell the findings from the code's perspective
-**`v/view`**           → Show the full investigation file
-**Provide feedback** → Tell me what's off or unclear
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
