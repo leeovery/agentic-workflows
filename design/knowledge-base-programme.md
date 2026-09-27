@@ -68,7 +68,8 @@ Drawn from the owner's dex-engineering knowledge base:
   keywords with the answer (Turbopuffer: file precision 65% → 87%).
 - **Fuse by rank, not by blended score.** Reciprocal rank fusion (RRF) is
   robust where score scales differ. Distribution-based fusion edges it
-  slightly (AutoRAG: DBSF 0.696, RRF 0.676, convex blend 0.653).
+  slightly (AutoRAG: DBSF 0.696, RRF 0.676, convex blend 0.653). Our own
+  eval overturned this; see step 2's ranking.
 - **Supersession comes from lifecycle, not similarity.** Cosine separates a
   contradiction from a duplicate at AUROC 0.59. A deterministic lifecycle
   key serves the stale value close to never (MemStrata).
@@ -108,11 +109,10 @@ Drawn from the owner's dex-engineering knowledge base:
    judged by what it does to results.
 2. **Our own store, with ranking in our own code.** Our own BM25, a float32
    vector file and our own file format replace Orama. The keyword and vector
-   searches run separately and merge by RRF. A failed embed leaves the
-   keyword results standing, with a note, and nobody is stopped. A relevance
-   floor turns away a question the store cannot answer, and the keyword side
-   gains its stemming and stop words. Orama and msgpack leave with it, so the
-   KB has no dependencies. This step comes
+   searches run separately and blend by score. A failed embed leaves the
+   keyword results standing, with a note, and nobody is stopped. The keyword
+   side gains its stemming and stop words. Orama and msgpack leave with it,
+   so the KB has no dependencies. This step comes
    before the engine move because the engine is plain source with only
    Node's built-ins, and carrying Orama into it would give the engine a
    build step.
@@ -122,7 +122,8 @@ Drawn from the owner's dex-engineering knowledge base:
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
 5. **The rest of retrieval quality:** printed scores, heading paths and line
-   ranges, a per-file cap, excerpts, and lifecycle markers.
+   ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
+   floor is reassessed here and in step 3.
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -248,9 +249,11 @@ that moved, and each case whose best rank changed.
     default tuning;
   - it builds the projects one at a time, each under the provider's
     per-minute limit;
-  - its embedded stores are cached in a gitignored directory, keyed on the
-    chunk set, the store format and the provider identity, so a ranking
-    change reuses the embeddings and a chunking change re-embeds;
+  - every vector it makes is cached in a gitignored directory, chunks and
+    query terms alike, by provider identity and exact text. A store or
+    ranking change embeds nothing; only new text reaches the provider;
+  - `--timings` adds each project's store size and its index, load and
+    query times, which are never pinned;
   - `baseline-hybrid.json` records the provider it was pinned with, and a
     run under another provider refuses to compare.
 
@@ -264,9 +267,9 @@ config resolve to), `queryStore(db, settings, { terms, options, workUnits })`
 `queryStore` the same way. Every later step changes what happens inside it;
 none changes how it is called.
 
-`query --explain` (each result's rank in each leg, and what fusion, decay
-and boosts did to it) belongs to step 2, where the legs first exist
-separately.
+`query --explain` (each result's score in every search and framing, and
+what decay, boosts and the tier did to it) belongs to step 2, where the
+searches first run separately.
 
 ### The measured baseline
 
@@ -287,16 +290,18 @@ modes (the negatives at their harvested limits):
 
 Measured over the pinned cases and the cached embedded stores.
 
-**Vector scores separate a question with an answer from one without.** The
-best vector score each query framing reaches:
+**Vector scores separate an off-topic question from one with an answer.**
+The best vector score each query framing reaches:
 
 | | lowest | median | highest |
 |---|---|---|---|
-| positive framings (118) | 0.36 | 0.55 | 0.71 |
+| positive framings (118) | 0.36 | 0.54 | 0.71 |
 | negative framings (16) | 0.23 | 0.37 | 0.43 |
 
-A cut at 0.44 turns away every negative framing and keeps 111 of the 118
+A cut at 0.44 turns away every negative framing and keeps 109 of the 118
 positive ones; at 0.42 it keeps 115 and lets 2 of 16 negatives through.
+Near-miss negatives, added in step 2, do not separate this way (see step 2's
+relevance floor).
 Today nothing is turned away: the configured vector threshold is 0.3, below
 most negatives' best score, and when the vector side comes back empty the
 keyword side still fills every slot — every negative, in either mode,
@@ -306,10 +311,11 @@ agents write: off-topic noise reaches 0.43. The nine negatives are all
 clearly off-topic; a floor is set only after the set gains near-miss
 negatives — a related subject the project never decided.
 
-**Keyword-only has a real gap, not a tuning problem.** Agents write long
-natural-language framings, as the query guidance asks, and batch three or
-four in one call: the worst case for BM25 with no stop words and no
-stemming. The right file is in the keyword top five 96% of the time, but:
+**Keyword-only lagged far behind.** Most of the lag turned out to be
+Orama's keyword scoring: once step 2 scored BM25 correctly, keyword-only
+primary hit@5 rose from 0.592 to 0.959. Agents write long natural-language
+framings, as the query guidance asks, and batch three or four in one call.
+On Orama the right file was in the keyword top five 96% of the time, but:
 
 - its first result is one the adjudication ruled irrelevant in 21 of 49
   positive cases;
@@ -456,86 +462,116 @@ The eval guards the rest.
   - Once the new store is written, the old `store.msp` is deleted, and
     boot's `.worktreeinclude` sync lists `store.bin` in its place.
 
+### What the store changed
+
+Measured with today's blend rebuilt on the new searches, so only the store
+moved:
+
+| metric | keyword before → after | hybrid before → after |
+|---|---|---|
+| primary hit@5 | 0.592 → 0.959 | 0.959 → 0.980 |
+| MRR@10 | 0.691 → 0.925 | 0.934 → 0.969 |
+| recall@10 | 0.431 → 0.709 | 0.678 → 0.785 |
+| bytes per query | 49.4K → 53.9K | 42.0K → 47.2K |
+
+- **Portal's store** loads in ~8 ms (it took ~220 ms), and stores are less
+  than half the size.
+- **The bundle** falls from 188 KB to 90 KB.
+- **Bytes rose.** Correct BM25 favours the long sections that repeat a
+  query's words.
+
 ### Ranking
 
 - **Two searches per framing.**
   - A keyword search runs for every framing.
   - When the query has a vector, a vector search runs too: a brute-force
     cosine over every chunk the filters admit, ~1.5 ms per thousand chunks.
-  - Each search returns its top 50.
-- **Merged by rank.**
-  - All the lists merge by weighted reciprocal rank fusion. A chunk scores
-    the sum of w / (k + rank) over every list it appears in, with k starting
-    at 60 and every weight at 1.
-  - A chunk several framings agree on gains from each of them.
-- **Normalised, then re-ranked as today.**
-  - The fused score is divided by the most any chunk could score (first in
-    every list that ran), so it runs from 0 to 1 as today's blend does.
-  - Decay, the `--boost` directives (+0.1 each) and the confidence tier
-    (+0.01 per step) then apply exactly as they do today.
+- **Blended by score.**
+  - Each search's scores are divided by that search's best score.
+  - They are weighted 0.4 keyword and 0.6 vector, summed per chunk, and cut
+    to twice the limit.
+  - Keyword-only, a framing keeps its raw BM25 scores.
+- **The best framing wins.** Each chunk keeps its best framing's score.
+- **Then re-ranked.** Decay, the `--boost` directives (+0.1 each) and the
+  confidence tier (+0.01 per step) apply as before.
 - **`query --explain`** prints beneath each result:
-  - its rank in every list;
-  - its fused score;
+  - its score in every search and framing;
+  - the framing whose score it kept;
   - what decay, boosts and the tier did to it.
-
-  A framing the floor turned away is named, with its best vector score.
+- **Rank fusion was measured and dropped.** Weighted RRF summed across
+  framings made retrieval worse: keyword primary hit@5 fell 0.959 → 0.857,
+  hybrid 0.980 → 0.898.
+  - An agent's framings are angles on one question. The passage holding the
+    answer usually tops one framing, while broad summaries sit halfway down
+    all of them. Summing rewards being everywhere.
+  - 22 variants were measured: blend or RRF within a framing, best or sum
+    across framings, k from 1 to 60. None beat the blend on both primary
+    hit@5 and recall in either mode, and every summed variant lost.
+  - The literature's case for RRF (robust where score scales differ) does
+    not survive dividing each search by its best score.
 
 ### Without a vector
 
 - **A query never stops for want of a vector.**
-  - The query runs keyword-only whatever keeps it from a vector the store can
+  - It embeds all its framings in one request.
+  - It runs keyword-only whatever keeps it from a vector the store can
     compare:
     - no key;
-    - the provider down;
-    - a rate limit past the command's budget;
+    - the provider down or silent;
+    - a rate limit;
     - an account out of quota;
     - a store built with another model.
   - It prints a note naming the cause and its fix, and exits 0.
+  - A query waits at most 5 s on a rate limit, and tries a silent endpoint
+    twice at 5 s each. An index keeps its 60 s budget.
   - `query` exits non-zero only when the store itself cannot be read.
     `knowledge-usage.md` §D, the pause for a failed query, narrows its likely
     causes to match.
 - **An index never drops a chunk for want of a vector.**
-  - A chunk whose embed fails is written with its keywords and without a
-    vector. The next bulk index embeds every chunk that lacks one.
+  - A file's chunks are written with their keywords first, searchable at
+    once.
+  - The vectors follow in batches, saved as each lands, so a failure keeps
+    what landed. The next start embeds every chunk still waiting.
+  - A missing key is a waiting vector, not a refusal.
   - The command still exits non-zero, naming the failure, so every caller's
     warning path carries it as it does today.
   - `status` counts the chunks waiting, and a query over a store with any
     waiting says so in its note.
 - **A keyword-only store fills in.**
-  - When a provider is configured over a keyword-only store, the next bulk
-    index adopts it and fills the vectors the same way.
+  - When a provider is configured over a keyword-only store, the next index
+    adopts it and fills the vectors the same way.
   - The `upgrade-available` state goes, and with it the `knowledge rebuild`
     it asks for.
   - A store built with one model still refuses another. That stays a
     rebuild.
 
-### The relevance floor
+### The relevance floor: measured, not built
 
-- **It works per framing.**
-  - A framing contributes nothing when its best vector score, among the
-    chunks the filters admit, falls below the floor. That includes its
-    keyword search, which would otherwise fill the slots on its own.
-  - When no framing clears the floor, `query` prints a one-line note above
-    `[0 results]` and exits 0. `contextual-query.md`'s zero-results branch
-    keys on the count line.
-- **It is set so no answer is lost.** A missed decision costs an agent more
-  than a page of noise. So the floor sits at the highest value where no
-  positive case loses a judged passage from its top five. Whatever it turns
-  away at that value, negatives and near-miss negatives, is what it buys.
-- **It needs complete vectors.** While any chunk waits for its vector, the
-  floor turns nothing away, because the answer may be the chunk without one.
-- **Its setting.** `similarity_threshold` becomes the floor, and its default
-  is the value the eval sets. Its note that noise peaks near 0.2 goes:
-  off-topic framings reach 0.43.
-- **Keyword-only stores.**
-  - BM25 scores have no fixed scale, so a keyword-only store has no vector
-    floor.
-  - A keyword floor is a candidate in the tuning layer. It would require a
-    chunk to match a share of the framing's words, or to score near the best
-    the framing could reach.
-  - It is measured after stemming and stop words have settled what a matched
-    word is, and it stays only if it turns negatives away without losing
-    answers.
+The floor would have turned away a framing whose best vector score fell
+below a threshold. Near-miss negatives (questions close to a project's
+material that it never answered) overlap real answers. The best vector score
+each framing reaches:
+
+| | lowest | median | highest |
+|---|---|---|---|
+| positive framings (118) | 0.36 | 0.54 | 0.71 |
+| near-miss framings (27) | 0.33 | 0.41 | 0.57 |
+| off-topic framings (16) | 0.23 | 0.37 | 0.43 |
+
+The highest floor at which no positive case loses a judged passage from its
+top five is 0.36. There it turns away:
+- 1 of 12 near-miss queries;
+- 2 of 9 off-topic queries.
+
+At 0.43 three positive cases already lose answers. The value is also
+specific to the embedding model: `similarity_threshold` is one number, not
+set per provider or model. So the floor is not built.
+
+It is reassessed at two points:
+- **In step 3**, where other models are measured and each would need its
+  own calibration. A floor that returns does so set per provider and model.
+- **After step 5's excerpts**, which cut what a weak result costs and may
+  show the floor is not needed.
 
 ### The keyword side
 
@@ -550,43 +586,40 @@ A tokenizer change rebuilds the keyword side alone, locally, in seconds.
 
 ### The eval
 
-- **New cases.**
-  - Near-miss negatives: a subject a project discussed but never decided, a
-    handful per project, written and confirmed against the corpus as the
-    other negatives were.
-  - Boost counter-cases: harvested queries boosted toward a work unit that
-    holds nothing they want, judged as the unboosted query is.
-- **Embeddings cached by text.** The hybrid mode caches every embedding,
-  chunks and query terms alike, by provider identity and text. A change to
-  the store or the ranking then rebuilds locally, and only new chunk text
-  reaches the provider.
-- **Timings.** The by-hand run reports store size, plus load, query and index
-  times. Layer 1's PR records them before and after.
+- **Hard cases.** 17 cases join the 58, making 75.
+  - 12 near-miss negatives, each confirmed absent by searching the corpus
+    and by reading every top-10 result in both modes. They are reported apart
+    as `near_miss_results` and `near_miss_bytes`.
+  - 5 wrong-boost counter-cases: harvested queries boosted toward a unit
+    that holds nothing they want but sits in the candidate pool. Fumi has one
+    work unit, so it has none.
+- **Embeddings cached by text.** The hybrid mode caches every embedding by
+  provider identity and text. A change to the store or the ranking then
+  embeds nothing.
+- **Timings.** `--timings` reports store size, plus load, query and index
+  times.
 - **Re-pinned per layer.** Every layer that moves retrieval re-pins keyword
   mode in the gate and hybrid mode by hand.
 
 ### The stack
 
-1. **Our own store.**
-   - The store above, with today's blend rebuilt on its searches, so the
-     eval shows what the store alone changed:
-     - each search's scores are divided by that search's best;
-     - the blend is 0.4 of the keyword score plus 0.6 of the vector score,
-       with vector hits under 0.3 left out;
-     - the framings merge by each chunk's best score.
-   - Orama and msgpack leave `package.json`.
-   - The eval's embedding cache and timings land here.
-2. **Rank fusion,** with the normalised score and `--explain`.
-3. **Without a vector.**
-4. **Eval cases.**
-5. **The vector floor.**
-6. **The keyword side,** one layer per change.
-7. **Tuning:**
-   - the RRF constant;
-   - the original framing's weight;
-   - each list's depth;
-   - the boost's strength, against the counter-cases;
-   - the keyword floor.
+1. **The eval's embedding cache and timings** (#1313).
+2. **Our own store** (#1314), with today's blend rebuilt on its searches.
+3. **Ranking in its own module, and `--explain`** (#1316). Retrieval is
+   unchanged.
+4. **Without a vector** (#1322).
+5. **The hard eval cases** (#1326).
+6. **The zero-results branches.** `contextual-query.md` and
+   `cross-cutting-context.md` read the count line: a note can now precede
+   `[0 results]`.
+7. **The keyword side,** one layer per change.
+8. **Tuning:**
+   - the blend's weights and its over-fetch;
+   - the boost's strength against the counter-cases. A boost only reorders
+     a framing's candidate pool, and in keyword-only mode it is inert against
+     raw BM25 scores;
+   - a tail cut that drops results scoring far below the query's best, kept
+     only if the eval shows it cuts noise without losing answers.
 
 Docs move in the layer that changes what they describe: the KB section of
 `CLAUDE.md`, the knowledge skill's `SKILL.md` and references, and
@@ -596,18 +629,18 @@ cases it intersects. The stack ships as one release.
 ### Open
 
 The eval settles these inside the stack:
-- the RRF constant and weights;
-- each list's depth;
-- the floor's value;
+- the blend's weights and over-fetch;
 - which keyword changes stay;
-- whether a keyword floor exists;
-- how strongly a boost counts.
+- how strongly a boost counts, and whether it acts in keyword-only mode;
+- whether the tail cut stays.
 
 ## Step 3 — local embeddings, measured
 
-Without an API key an install runs keyword-only, which step 1 measured well
-behind hybrid: primary hit@5 is 0.59 against 0.96. A local model would give
-every install semantic search.
+Without an API key an install runs keyword-only. Step 1 measured that well
+behind hybrid, but step 2's correct BM25 closed most of the gap: primary
+hit@5 is 0.959 keyword-only against 0.980 hybrid, and recall 0.709 against
+0.785. A local model would still give every install semantic search, and the
+wider recall that comes with it.
 
 The measurement needs little or no code of ours. The `openai-compatible`
 provider already points at a local server (Ollama or LM Studio), and the
@@ -641,6 +674,10 @@ What follows the measurement:
 
 The vector file takes any width, so step 2 does not wait on this.
 
+The relevance floor is reassessed here (see step 2). Each model scores on its
+own scale, so a floor that returns is set per provider and model, calibrated
+by the eval's near-miss negatives.
+
 ## Step 4 — the KB in the engine
 
 The KB runs in process as an engine module. It reads manifests directly,
@@ -667,6 +704,11 @@ Planned:
 Contextual chunk headers are measured here. A change to chunk text
 re-embeds only the chunks whose text it changes, because step 2 keys every
 vector by its text.
+
+Excerpts cut what a weak result costs an agent, which is most of what a
+relevance floor would have bought. Once they land, the floor is reassessed:
+closed if the eval shows it is not needed, built per provider and model if it
+is.
 
 ## Step 6 — lifecycle ranking within a topic
 
