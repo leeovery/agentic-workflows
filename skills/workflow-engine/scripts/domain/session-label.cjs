@@ -33,9 +33,8 @@
 // end`, present in every workflow project regardless — the heartbeat sweep
 // and the conversation's transcript record are the workflows' own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
-// resume` while labels are on, and `conversation resume` regardless.
-// Recording the choice syncs the hooks (`recordLabelChoice`) and every boot
-// re-syncs them (`syncSessionHooks`).
+// resume` while labels are on. Recording the choice syncs the hooks
+// (`recordLabelChoice`) and every boot re-syncs them (`syncSessionHooks`).
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
@@ -76,7 +75,6 @@ const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
 const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
 const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const CONVERSATION_END_COMMAND = `${HOOK_ENGINE} conversation end`;
-const CONVERSATION_RESUME_COMMAND = `${HOOK_ENGINE} conversation resume`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
 // install prefix or carrying a timeout is recognised and never twinned; the
@@ -134,7 +132,7 @@ function marksOf(group) {
  * resumed session's label back, its matcher having Claude Code fire it on
  * `claude --resume` alone — and the workflows' own (`workflows`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
- * transcript, and SessionStart records it again where a resume moved it.
+ * transcript.
  * @param {{session: boolean, workflows: boolean}} want
  * @returns {{event: string, matcher?: string, commands: string[]}[]}
  */
@@ -143,7 +141,7 @@ function wantedByEvent({ session, workflows }) {
   const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
   return [
     { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, workflows && PRESENCE_CLEANUP_COMMAND, workflows && CONVERSATION_END_COMMAND]) },
-    { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND, workflows && CONVERSATION_RESUME_COMMAND]) },
+    { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
   ];
 }
 
@@ -173,10 +171,9 @@ function reconcileEventGroups(groups, commands, matcher) {
  * Ensure the session hooks in the project's `.claude/settings.json` match
  * what is wanted: SessionEnd carries `session cleanup` iff `session`, and
  * `presence cleanup` and `conversation end` iff `workflows`; SessionStart
- * carries `session resume` iff `session`, and `conversation resume` iff
- * `workflows` — each event reconciled on its own, every other key
- * (permissions, other events, foreign groups and their matchers)
- * preserved, an event emptied by a removal gone. A settings file that does
+ * carries `session resume` iff `session` — each event reconciled on its
+ * own, every other key (permissions, other events, foreign groups and their
+ * matchers) preserved, an event emptied by a removal gone. A settings file that does
  * not parse is left untouched and reported rather than thrown: neither
  * caller may fail over hook plumbing it cannot read.
  * @param {string} cwd @param {{session: boolean, workflows: boolean}} want

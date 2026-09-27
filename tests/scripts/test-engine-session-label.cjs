@@ -6,7 +6,7 @@
 // project-manifest opt-in and the hooks it syncs in the project's settings
 // (SessionEnd: `session cleanup` while labels are on, `presence cleanup` and
 // `conversation end` regardless; SessionStart: `session resume` while labels
-// are on, `conversation resume` regardless), the
+// are on), the
 // per-checkout stash, the arrival forms (a work unit alone, the roadmap and
 // baseline identities), phase-hop recomposition, peer-checkout isolation,
 // user-rename adoption, id drift across a server restart (chain resolution,
@@ -34,21 +34,15 @@ const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup
 const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
 const END_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation end` };
-const CONVERSATION_RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation resume` };
 // The settings a project reaches with labels on — one group per event, ours
 // alone — and with them off.
 const LABELS_ON = {
   hooks: {
     SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
-    SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK, CONVERSATION_RESUME_HOOK] }],
+    SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }],
   },
 };
-const LABELS_OFF = {
-  hooks: {
-    SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }],
-    SessionStart: [{ matcher: 'resume', hooks: [CONVERSATION_RESUME_HOOK] }],
-  },
-};
+const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }] } };
 // The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
 const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
@@ -668,7 +662,7 @@ describe('syncSessionHooks', () => {
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
   });
 
-  it('installs the workflows\' own alone while labels are off — `conversation resume` alone in the SessionStart group', () => {
+  it('installs the workflows\' own alone while labels are off — no SessionStart event at all', () => {
     assert.deepStrictEqual(syncSessionHooks(dir, WORKFLOWS), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_OFF);
   });
@@ -690,7 +684,7 @@ describe('syncSessionHooks', () => {
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
-        SessionStart: [{ matcher: 'startup', hooks: [theirs] }, { matcher: 'resume', hooks: [RESUME_HOOK, CONVERSATION_RESUME_HOOK] }],
+        SessionStart: [{ matcher: 'startup', hooks: [theirs] }, { matcher: 'resume', hooks: [RESUME_HOOK] }],
       },
       showClearContextOnPlanAccept: true,
     });
@@ -714,7 +708,6 @@ describe('syncSessionHooks', () => {
         ],
         SessionStart: [
           { matcher: 'startup|resume', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session resume' }] },
-          { matcher: 'resume', hooks: [CONVERSATION_RESUME_HOOK] },
         ],
       },
     });
@@ -729,7 +722,7 @@ describe('syncSessionHooks', () => {
     assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });
 
-  it('turning labels off takes `session cleanup` and `session resume` out and leaves the workflows\' own on both events; nothing wanted empties the file', () => {
+  it('turning labels off takes `session cleanup` and `session resume` out — the emptied SessionStart event with them — and leaves the workflows\' own; nothing wanted empties the file', () => {
     syncSessionHooks(dir, BOTH);
     assert.deepStrictEqual(syncSessionHooks(dir, WORKFLOWS), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_OFF);
@@ -745,7 +738,7 @@ describe('syncSessionHooks', () => {
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ hooks: [theirs, SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }, { matcher: 'clear', hooks: [theirs] }],
-        SessionStart: [{ matcher: 'startup|resume', hooks: [theirs, RESUME_HOOK, CONVERSATION_RESUME_HOOK] }],
+        SessionStart: [{ matcher: 'startup|resume', hooks: [theirs, RESUME_HOOK] }],
       },
     });
     assert.deepStrictEqual(syncSessionHooks(dir, NONE), { changed: true });
@@ -781,7 +774,7 @@ describe('syncSessionHooks', () => {
     const hand = { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }, PRESENCE_HOOK, END_HOOK] };
     writeSettings({ hooks: { SessionEnd: [hand] } });
     assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK, CONVERSATION_RESUME_HOOK] }] } });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
   });
 
   it('a hook of ours is ours under any event — a resume hook misplaced under SessionEnd moves to SessionStart', () => {

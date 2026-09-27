@@ -42,7 +42,7 @@ const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
-const { markConversation, recordTranscript } = require('./domain/conversation.cjs');
+const { markConversation, endConversation } = require('./domain/conversation.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -216,7 +216,6 @@ Commands:
   session cleanup [session-id]
   session resume [session-id]
   conversation end
-  conversation resume
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -1008,16 +1007,10 @@ function runConversation(call, argv) {
     if (command === 'end' && rest.length === 0) {
       // The SessionEnd hook's target.
       const input = hookInput(call);
-      respond(call, recordTranscript(input.session_id, input.transcript_path));
+      respond(call, endConversation(input.session_id, input.transcript_path));
       return;
     }
-    if (command === 'resume' && rest.length === 0) {
-      // The SessionStart hook's target.
-      const input = hookInput(call);
-      respondOnStderr(call, recordTranscript(input.session_id, input.transcript_path));
-      return;
-    }
-    throw new Error('Usage: engine conversation <end|resume>');
+    throw new Error('Usage: engine conversation end');
   } catch (err) {
     failJson(call, err);
   }
@@ -2071,7 +2064,7 @@ function runCli(call, argv) {
 
 // The commands Claude Code's own hooks run as any conversation in the project
 // ends or resumes, whether it ran the workflows or not.
-const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', 'conversation resume'];
+const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end'];
 
 /**
  * One command against a bound call, answering its exit code. Every stop a

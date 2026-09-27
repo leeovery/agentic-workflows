@@ -145,8 +145,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   }
   const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
   const END_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation end';
-  const CONVERSATION_RESUME_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation resume';
-  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK, CONVERSATION_RESUME_HOOK];
+  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
   const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };

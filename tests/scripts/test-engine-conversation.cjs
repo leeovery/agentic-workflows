@@ -7,11 +7,10 @@
 // command runs: the mark every engine and gateway call leaves where Claude
 // Code handed it a session id — once, never without an id, never outside a
 // workflows project, never from the commands Claude Code's own hooks run —
-// the transcript path `conversation end` (SessionEnd) and `conversation
-// resume` (SessionStart, answering on stderr) record as the hook hands it,
-// only where the folder exists, and the tidy any project's boot runs over
-// every folder, reading a leading `~` as the home directory and a relative
-// path as naming no file.
+// `conversation end`, the SessionEnd hook's record of the transcript path as
+// the hook hands it, written only where the folder exists, and the tidy any
+// project's boot runs over every folder, reading a leading `~` as the home
+// directory and a relative path as naming no file.
 //
 
 require('./hermetic-env.cjs');
@@ -79,22 +78,6 @@ const session = (id) => ({ CLAUDE_CODE_SESSION_ID: id });
 /** The SessionEnd hook's stdin, as Claude Code writes it. @param {object} fields */
 const endInput = (fields) => JSON.stringify({ hook_event_name: 'SessionEnd', reason: 'clear', cwd: dir, ...fields });
 
-/** The SessionStart hook's stdin on a resume, as Claude Code writes it. @param {object} fields */
-const resumeInput = (fields) => JSON.stringify({ hook_event_name: 'SessionStart', source: 'resume', cwd: dir, ...fields });
-
-/**
- * `conversation resume` — the SessionStart hook's target, which answers on
- * stderr with stdout empty: a SessionStart hook's stdout becomes the resumed
- * conversation's context.
- * @param {string} stdin @param {string} [cwd]
- */
-function resume(stdin, cwd = dir) {
-  const res = harness.call(cwd, ['conversation', 'resume'], { stdin });
-  assert.strictEqual(res.code, 0, res.stderr);
-  assert.strictEqual(res.stdout, '', 'a SessionStart hook target prints nothing on stdout');
-  return JSON.parse(res.stderr.trim());
-}
-
 /** A conversation's folder holding `files`, by name. @param {string} id @param {Record<string, string>} files */
 function writeConversation(id, files) {
   fs.mkdirSync(folder(id), { recursive: true });
@@ -143,7 +126,7 @@ describe('the mark', () => {
 
   it('the commands Claude Code\'s own hooks run never mark — any conversation in the project ends and resumes through them', () => {
     const input = endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' });
-    for (const args of [['presence', 'cleanup'], ['session', 'cleanup'], ['session', 'resume'], ['conversation', 'end'], ['conversation', 'resume']]) {
+    for (const args of [['presence', 'cleanup'], ['session', 'cleanup'], ['session', 'resume'], ['conversation', 'end']]) {
       const res = harness.call(dir, args, { env: session('sess-1'), stdin: input });
       assert.strictEqual(res.code, 0, `${args.join(' ')}: ${res.stderr}`);
     }
@@ -197,7 +180,8 @@ describe('one folder, found by the id from anywhere', () => {
         { ok: true, recorded: true });
       assert.strictEqual(transcriptOf('sess-1'), '/a/sess-1.jsonl');
     });
-    assert.deepStrictEqual(resume(resumeInput({ session_id: 'sess-1', transcript_path: '/b/sess-1.jsonl' }), subdirectory), { ok: true, recorded: true });
+    assert.deepStrictEqual(harness.ok(subdirectory, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/b/sess-1.jsonl' }) }),
+      { ok: true, recorded: true });
     assert.strictEqual(transcriptOf('sess-1'), '/b/sess-1.jsonl');
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
   });
@@ -282,48 +266,9 @@ describe('engine conversation end', () => {
   });
 
   it('refuses an argument loudly — an authoring bug, never a silent no-op', () => {
-    for (const args of [['conversation', 'end', 'sess-1'], ['conversation', 'resume', 'sess-1'], ['conversation', 'begin'], ['conversation']]) {
-      assert.match(harness.refuses(dir, args).error, /Usage: engine conversation <end\|resume>/, args.join(' '));
+    for (const args of [['conversation', 'end', 'sess-1'], ['conversation', 'begin'], ['conversation']]) {
+      assert.match(harness.refuses(dir, args).error, /Usage: engine conversation end/, args.join(' '));
     }
-  });
-});
-
-describe('engine conversation resume', () => {
-  beforeEach(setup);
-  afterEach(teardown);
-
-  it('records where the transcript is now — the path the SessionStart hook hands it, over the one the end recorded', () => {
-    writeConversation('sess-1', { workflow: '', transcript: '/old/sess-1.jsonl' });
-    assert.deepStrictEqual(resume(resumeInput({ session_id: 'sess-1', transcript_path: '/new/sess-1.jsonl' })), { ok: true, recorded: true });
-    assert.strictEqual(transcriptOf('sess-1'), '/new/sess-1.jsonl');
-  });
-
-  it('a resumed conversation that never ran the workflows gets nothing — no folder is made for it — and stdout stays empty all the same', () => {
-    assert.deepStrictEqual(resume(resumeInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' })), { ok: true, recorded: false });
-    assert.ok(!fs.existsSync(conversationsRoot()));
-  });
-
-  it('records nothing without a session id and a transcript path, each a string', () => {
-    writeConversation('sess-1', { workflow: '' });
-    for (const stdin of ['', 'not json', resumeInput({ session_id: 'sess-1' }), resumeInput({ session_id: 'sess-1', transcript_path: '' })]) {
-      assert.deepStrictEqual(resume(stdin), { ok: true, recorded: false }, stdin);
-    }
-    assert.strictEqual(transcriptOf('sess-1'), null);
-  });
-
-  it('a record that cannot be written answers nothing recorded, never a failure — a hook must exit clean', () => {
-    writeConversation('sess-1', { workflow: '' });
-    fs.mkdirSync(path.join(folder('sess-1'), 'transcript'));
-    assert.deepStrictEqual(resume(resumeInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' })), { ok: true, recorded: false });
-  });
-
-  it('a transcript Claude Code moved on the resume keeps its folder through the next tidy', () => {
-    const moved = path.join(dir, 'moved.jsonl');
-    fs.writeFileSync(moved, '');
-    writeConversation('sess-1', { workflow: '', transcript: path.join(dir, 'gone.jsonl'), 'gate.json': 'null' });
-    resume(resumeInput({ session_id: 'sess-1', transcript_path: moved }));
-    tidyConversations();
-    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['gate.json', 'transcript', 'workflow']);
   });
 });
 
