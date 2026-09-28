@@ -176,7 +176,7 @@ Read what the Symptoms section already holds — initialisation seeded it from t
 
 Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its questions to gather symptoms from the user.
 
-Document symptoms in the investigation file as you gather them. Commit after each significant addition. The Symptoms section's fields are prompts, not a form: it holds only what the carrier and the user said. What they don't know goes in as not known, in their words; a Symptoms field the interview never reached is dropped, never filled in. The other sections stay as the template left them.
+Document symptoms in the investigation file as you gather them: what an answer gave goes into the file before the next question is asked. Commit after each significant addition. The Symptoms section's fields are prompts, not a form: it holds only what the carrier and the user said. What they don't know goes in as not known, in their words; a Symptoms field the interview never reached is dropped, never filled in. The other sections stay as the template left them.
 
 Then surface the triage queue — an empty queue is a no-op. Load **[rerouted-concerns.md](../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
