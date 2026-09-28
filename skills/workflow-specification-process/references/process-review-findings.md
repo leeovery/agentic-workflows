@@ -278,7 +278,7 @@ On return, land the outcome by what actually happened there:
 - **The resolution was queued to a session holding the document** (nothing landed): leave the specification's copy alone — the delivery flagged the source's extractions stale, and this specification cannot conclude while its row for `{doc}` is `pending` or `stale`; the reconcile runs when the source re-concludes.
 - **The gap was parked on the roadmap** (nothing landed anywhere and nothing reopened): the ground is beyond this specification's scope. Content the finding indicted as a decision no source made comes out of the specification — the capability is the roadmap's now, and the specification states no rule for it; a finding about an absence removes nothing.
 
-Then update the tracking file — Resolution `Routed` with a note naming what landed or queued where, or `Declined` with the roadmap item the park named — and commit. (The gap exit's other destinations do not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+Then update the tracking file — Resolution `Routed` with a note naming what landed or queued where, or `Declined` with the roadmap item the park named, announced in a line — and commit. (The gap exit's other destinations do not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
 
 → Return to **E. The Routes**.
 
