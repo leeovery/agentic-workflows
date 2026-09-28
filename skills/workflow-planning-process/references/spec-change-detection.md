@@ -32,7 +32,7 @@ Specification unchanged since planning started.
 
 #### If changes detected
 
-Summarise the extent of changes:
+Summarise the extent of changes as markdown (not a code block):
 
 - **What files changed** (specification, cross-cutting specs, or both)
 - **Whether any cross-cutting specs are new** (didn't exist at the stored commit)
