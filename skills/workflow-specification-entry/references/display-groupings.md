@@ -68,7 +68,13 @@ Reconcile the manifest to a single proposed grouping immediately, so it never la
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/unify-ops.json
    ```
 
-Then rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
+Then rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Add note: `Custom groupings confirmed by user (unified).`
+
+The cache's checksum stays as it is; restamp its date:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discussion analysis_cache.generated "{ISO date}"
+```
 
 Commit:
 
