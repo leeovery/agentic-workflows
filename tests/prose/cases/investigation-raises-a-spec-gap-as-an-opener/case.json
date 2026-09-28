@@ -55,8 +55,8 @@
       "discussion-map",
       "experiment create",
       "agent dispatch",
-      "knowledge.cjs index",
-      "knowledge.cjs query"
+      "engine.cjs knowledge index",
+      "engine.cjs knowledge query"
     ]
   }
 }

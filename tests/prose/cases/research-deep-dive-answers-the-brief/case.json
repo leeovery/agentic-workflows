@@ -72,7 +72,7 @@
       "render experiment-spawn-gate",
       "render research-conclude-gate",
       "topic complete",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

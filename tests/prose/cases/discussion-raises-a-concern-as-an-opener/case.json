@@ -72,7 +72,7 @@
       "agent dispatch",
       "--kind review",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

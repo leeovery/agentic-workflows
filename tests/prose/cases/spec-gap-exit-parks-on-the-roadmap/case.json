@@ -61,7 +61,7 @@
       "sources stale",
       "render finding-batch",
       "spec(search-relevance): pause",
-      "knowledge.cjs index .workflows/search-relevance/discussion"
+      "engine.cjs knowledge index .workflows/search-relevance/discussion"
     ],
     "calls_in_order": [
       "manifest set search-relevance.specification.behavioural-ranking review_cycle=1",

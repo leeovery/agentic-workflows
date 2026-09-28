@@ -49,7 +49,7 @@
     ],
     "calls_exclude": [
       "--from discovery",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "cp notes/Rival Checkout Permissions.PNG",
       "mv notes/Rival Checkout Permissions.PNG",
       "research/assets",

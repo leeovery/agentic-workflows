@@ -55,7 +55,7 @@ Expected path:
     wrapper, because there is no prior block to revise, and no map
     registration. The section speaks in the document's own voice and
     names neither the specification nor this session
-11. the edited discussion is reindexed through the knowledge CLI; the
+11. the edited discussion is reindexed through `engine knowledge index`; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
     the sweep shape (`--topic discussion/pay --sweep`)

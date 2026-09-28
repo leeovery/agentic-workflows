@@ -63,7 +63,7 @@
       "topic absorb",
       "discussion-map add",
       "discussion-map set",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

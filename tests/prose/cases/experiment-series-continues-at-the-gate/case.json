@@ -60,7 +60,7 @@
       "experiment abandon",
       "topic complete search-relevance experiment",
       "agent dispatch",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

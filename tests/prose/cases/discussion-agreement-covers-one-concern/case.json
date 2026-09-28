@@ -72,7 +72,7 @@
       "discovery-map add",
       "--kind perspective",
       "--kind review",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.relevance-measurement status",

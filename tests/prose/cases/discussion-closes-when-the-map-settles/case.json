@@ -44,7 +44,7 @@
     "calls_include": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "discussion-map set pay pay declined-card-messaging decided",
       "commit pay --topic discussion/pay",
       "render wait-gate pay.discussion.pay",
@@ -77,7 +77,7 @@
       "topic reopen",
       "(deferral)",
       "render triage-block",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

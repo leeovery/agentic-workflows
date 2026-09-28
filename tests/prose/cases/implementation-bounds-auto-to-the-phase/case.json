@@ -135,7 +135,7 @@
       "--skipped",
       "git add -A",
       "git add --all",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "comment corrections"
     ]
   }

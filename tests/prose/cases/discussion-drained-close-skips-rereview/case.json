@@ -41,7 +41,7 @@
     "calls_include": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "workflow-discussion-process/scripts/gateway.cjs map pay pay",
       "agent scan pay discussion pay",
       "git log --since=",
@@ -59,7 +59,7 @@
       "agent ack",
       "agent surface",
       "topic complete",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

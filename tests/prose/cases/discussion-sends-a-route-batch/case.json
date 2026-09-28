@@ -78,7 +78,7 @@
       "agent incorporate",
       "topic start search-relevance discussion synonym-handling",
       "topic complete",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "agent surface search-relevance discussion behavioural-ranking review-001 F1,F2,F3,F4"
     ]
   }

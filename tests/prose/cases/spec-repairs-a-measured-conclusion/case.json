@@ -49,7 +49,7 @@
       "manifest get pay imports",
       "finding_gate_mode=gated",
       "presence scan pay",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "discussion(pay/pay):",
       "--topic discussion/pay --sweep",
       "manifest set pay.specification.pay review_cycle=1",
@@ -62,7 +62,7 @@
       "topic start pay specification pay",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay --sweep",
       "manifest set pay.specification.pay review_cycle=1",
       "topic complete pay specification pay"

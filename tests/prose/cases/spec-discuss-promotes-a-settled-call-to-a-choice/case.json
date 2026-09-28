@@ -50,7 +50,7 @@
       "render finding-batch pay.specification.pay",
       "render finding pay.specification.pay",
       "presence scan pay",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay --sweep",
       "tracking.review-gap-analysis-tracking-c1 complete",
       "render spec-review-gate pay.specification.pay --variant reloop",
@@ -69,7 +69,7 @@
       "render finding pay.specification.pay",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "tracking.review-gap-analysis-tracking-c1 complete",
       "render spec-review-gate pay.specification.pay --variant reloop",
       "topic complete pay specification pay"

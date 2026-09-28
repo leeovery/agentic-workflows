@@ -53,7 +53,7 @@
     "calls_include": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "workflow-discussion-process/scripts/gateway.cjs map pay pay",
       "render wait-gate pay.discussion.pay",
       "render closing-gate pay.discussion.pay --variant final-review",
@@ -90,7 +90,7 @@
       "discussion-map add",
       "topic reopen",
       "render triage-block",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

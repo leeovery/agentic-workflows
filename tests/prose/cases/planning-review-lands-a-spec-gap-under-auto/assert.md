@@ -65,7 +65,7 @@ Expected path:
     is no prior block to revise. The section speaks in the document's
     own voice: nothing in it names planning, a review, a tracking file,
     a finding or this session
-12. the edited discussion is re-indexed through the knowledge CLI; the
+12. the edited discussion is re-indexed through `engine knowledge index`; the
     sources-stale step is **skipped** — single-topic work has no
     sibling specifications — and the resolution commits scoped to the
     discussion with the sweep shape (`--topic discussion/pay

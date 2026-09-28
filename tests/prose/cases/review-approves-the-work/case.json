@@ -80,7 +80,7 @@
       "render proposed-task",
       "restart review",
       "workunit create",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "task start",
       "manifest push pay.review.pay out_of_scope"
     ]

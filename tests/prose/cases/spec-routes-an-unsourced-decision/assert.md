@@ -35,7 +35,7 @@ The prose should have taken this path:
    no Initial wrapper, because no prior block exists to revise; the
    section speaks in the document's own voice, and nothing in it
    narrates specification or this session
-7. the edited discussion is reindexed through the knowledge CLI; the
+7. the edited discussion is reindexed through `engine knowledge index`; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
 8. back in the findings flow the specification's Webhook Verification

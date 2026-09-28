@@ -90,7 +90,7 @@
       "restart planning",
       "finding_gate_mode auto",
       "workunit create",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

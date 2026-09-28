@@ -50,7 +50,7 @@
       "topic start pay discussion pay",
       "discussion-map add pay pay",
       "discussion(pay): initialize pay discussion",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "discussion-map set pay pay",
       "(deferral)",
       "agent dispatch pay discussion pay --kind review",
@@ -65,7 +65,7 @@
       "topic start pay discussion pay",
       "write:.workflows/pay/discussion/pay.md",
       "discussion(pay): initialize pay discussion",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "agent dispatch pay discussion pay --kind review",
       "agent scan pay discussion pay",
       "render defer-gate pay.discussion.pay",
@@ -78,7 +78,7 @@
       "topic complete",
       "topic reopen",
       "discovery-map add",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

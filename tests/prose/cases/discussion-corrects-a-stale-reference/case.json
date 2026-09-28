@@ -69,7 +69,7 @@
       "topic reopen",
       "discovery-map add",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",

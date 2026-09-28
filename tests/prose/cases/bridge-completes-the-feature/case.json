@@ -82,7 +82,7 @@
       "render proposed-task",
       "restart review",
       "workunit create",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "task start",
       "render next-phase-gate",
       "--skipped-review",

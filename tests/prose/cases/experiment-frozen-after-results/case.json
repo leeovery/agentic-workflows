@@ -49,7 +49,7 @@
       "render experiment-pick",
       "render experiment-next-gate",
       "agent dispatch",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

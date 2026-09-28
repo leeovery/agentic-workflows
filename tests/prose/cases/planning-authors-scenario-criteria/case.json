@@ -84,7 +84,7 @@
       "task start",
       "topic complete",
       "topic reopen",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

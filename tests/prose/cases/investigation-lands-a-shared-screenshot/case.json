@@ -36,7 +36,7 @@
     ],
     "calls_exclude": [
       "--from discovery",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "cp notes/checkout-500.png",
       "mv notes/checkout-500.png",
       "investigation/assets",

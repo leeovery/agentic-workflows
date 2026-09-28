@@ -48,8 +48,8 @@
       "discovery-map add",
       "topic complete",
       "topic reopen",
-      "knowledge.cjs query",
-      "knowledge.cjs index",
+      "engine.cjs knowledge query",
+      "engine.cjs knowledge index",
       "workunit create",
       "--origin seed",
       "--origin user"

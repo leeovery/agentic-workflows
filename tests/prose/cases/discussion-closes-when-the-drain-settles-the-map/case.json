@@ -46,7 +46,7 @@
       "manifest get pay.discussion.pay status",
       "topic queue pay discussion pay",
       "render resume-gate pay.discussion.pay --triage 1",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "render triage-offer pay.discussion.pay",
       "manifest get pay.discussion.pay subtopics",
       "discussion-map set pay pay failed-payment-retries exploring",
@@ -89,7 +89,7 @@
       "render triage-block",
       "discussion-map add pay pay failed-payment-retries",
       "(deferral)",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

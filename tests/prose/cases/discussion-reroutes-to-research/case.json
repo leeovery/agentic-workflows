@@ -67,7 +67,7 @@
       "topic start search-relevance research behavioural-ranking",
       "topic reopen search-relevance discussion behavioural-ranking",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",

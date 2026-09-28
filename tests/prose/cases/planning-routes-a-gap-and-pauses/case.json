@@ -65,7 +65,7 @@
       "render wait-gate pay.planning.pay"
     ],
     "calls_exclude": [
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "corrigendum",
       "render correction-gate",
       "render incoherence-gate",

@@ -84,7 +84,7 @@
       "topic reopen search-relevance",
       "discovery-map add",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

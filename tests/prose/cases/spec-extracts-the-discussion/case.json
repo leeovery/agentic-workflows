@@ -63,7 +63,7 @@
       "topic supersede",
       "construction_gate_mode auto",
       "finding_gate_mode auto",
-      "knowledge.cjs",
+      "engine.cjs knowledge",
       "workunit create"
     ],
     "dispatches": [

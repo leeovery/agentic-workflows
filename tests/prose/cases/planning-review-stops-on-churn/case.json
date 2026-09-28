@@ -86,7 +86,7 @@
       "topic triage",
       "restart planning",
       "workunit create",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "render resume-gate pay.planning.pay --variant plan",

@@ -33,7 +33,7 @@
     ],
     "calls_exclude": [
       "topic complete",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "topic reopen"
     ]
   }

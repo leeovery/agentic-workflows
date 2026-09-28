@@ -96,7 +96,7 @@
       "topic reopen",
       "restart planning",
       "workunit create",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

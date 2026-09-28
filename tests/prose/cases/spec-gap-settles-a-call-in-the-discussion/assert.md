@@ -84,7 +84,7 @@ Expected path:
     is no prior block to revise, and no map registration. The section
     speaks in the document's own voice, and nothing in it names the
     specification, a review, a tracking file or this session
-15. the edited discussion is reindexed through the knowledge CLI; the
+15. the edited discussion is reindexed through `engine knowledge index`; the
     sources-stale step is skipped — single-topic work has no sibling
     specs — and the resolution commits scoped to the discussion with
     the sweep shape (`--topic discussion/pay --sweep`)

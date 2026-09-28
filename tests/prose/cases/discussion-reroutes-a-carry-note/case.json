@@ -71,7 +71,7 @@
       "topic start search-relevance discussion behavioural-ranking",
       "discovery-map add",
       "discussion-map add search-relevance synonym-handling",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

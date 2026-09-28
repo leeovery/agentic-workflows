@@ -68,7 +68,7 @@
       "discovery-map add",
       "topic reopen search-relevance",
       "--kind perspective",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "topic complete",
       "render conclude-gate",
       "render closing-gate"

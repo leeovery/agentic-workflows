@@ -69,7 +69,7 @@
       "topic complete search-relevance discussion relevance-measurement",
       "topic reopen",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.relevance-measurement status",

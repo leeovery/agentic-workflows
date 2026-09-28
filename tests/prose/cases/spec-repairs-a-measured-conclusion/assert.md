@@ -37,7 +37,7 @@ The prose should have taken this path:
    every restatement swept: the Journey's measurement and the Key
    Insight no longer assert 500 per page or 4 requests as standing
    fact (only the wrapped Initial block keeps the original prose)
-7. the edited discussion is reindexed through the knowledge CLI; the
+7. the edited discussion is reindexed through `engine knowledge index`; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
    with the sweep shape (`--topic discussion/pay --sweep`)

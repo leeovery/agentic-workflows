@@ -63,7 +63,7 @@
       "agent incorporate",
       "discussion-map add",
       "topic complete",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

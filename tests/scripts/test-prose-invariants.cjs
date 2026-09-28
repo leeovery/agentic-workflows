@@ -255,24 +255,24 @@ describe('calls_in_order — presence is not sequence', () => {
     const rows = [
       bash(`${ENGINE} render entry-gate pay.planning.pay`),
       bash(`${ENGINE} manifest list`),
-      bash('cd . && node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query x'),
+      bash(`${ENGINE} knowledge query x`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['render entry-gate pay.planning.pay', 'knowledge.cjs query'],
+      calls_in_order: ['render entry-gate pay.planning.pay', 'engine.cjs knowledge query'],
     });
     assert.equal(result.ok, true);
   });
 
   it('fails when they ran in the wrong order — the arm was chosen some other way', () => {
     const rows = [
-      bash('cd . && node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query x'),
+      bash(`${ENGINE} knowledge query x`),
       bash(`${ENGINE} render entry-gate pay.planning.pay`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['render entry-gate pay.planning.pay', 'knowledge.cjs query'],
+      calls_in_order: ['render entry-gate pay.planning.pay', 'engine.cjs knowledge query'],
     });
     assert.equal(result.ok, false);
-    assert.match(result.detail, /"knowledge.cjs query" never ran after "render entry-gate/);
+    assert.match(result.detail, /"engine.cjs knowledge query" never ran after "render entry-gate/);
   });
 
   it('matches the sequence through quoting differences', () => {

@@ -65,7 +65,7 @@
       "topic complete",
       "topic reopen",
       "restart planning",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

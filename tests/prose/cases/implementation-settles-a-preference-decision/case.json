@@ -101,7 +101,7 @@
       "impl(pay): pre-analysis checkpoint",
       "render correction-gate",
       "render incoherence-gate",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "specification(pay): corrigendum",
       "topic reopen",
       "topic start pay specification",

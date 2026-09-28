@@ -52,7 +52,7 @@
       "render finding-batch pay.specification.pay",
       "finding_gate_mode auto",
       "presence scan pay",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay --sweep",
       "tracking.review-input-tracking-c1 complete",
       "tracking.review-gap-analysis-tracking-c1 complete",
@@ -77,7 +77,7 @@
       "render finding-batch pay.specification.pay",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
-      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "engine.cjs knowledge index .workflows/pay/discussion/pay.md",
       "tracking.review-gap-analysis-tracking-c1 complete",
       "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"

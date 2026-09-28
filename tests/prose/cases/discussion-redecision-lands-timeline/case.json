@@ -76,7 +76,7 @@
       "topic reopen",
       "topic start search-relevance discussion synonym-handling",
       "discovery-map add",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "discussion-map add search-relevance synonym-handling expansion-source"
     ]
   }

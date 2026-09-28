@@ -64,7 +64,7 @@
       "render requeue-offer",
       "roadmap",
       "discovery-map",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "commit search-relevance",
       "workunit create"
     ]

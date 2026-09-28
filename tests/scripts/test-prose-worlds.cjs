@@ -595,7 +595,7 @@ describe('case selection: what a diff implicates', () => {
   });
 
   it('an unrelated path selects nothing', () => {
-    assert.deepStrictEqual(cases.selectCases(all, ['README.md', 'src/knowledge/index.js']), []);
+    assert.deepStrictEqual(cases.selectCases(all, ['README.md', 'package.json']), []);
   });
 });
 

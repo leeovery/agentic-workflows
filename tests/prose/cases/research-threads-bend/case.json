@@ -72,7 +72,7 @@
       "topic complete",
       "topic triage",
       "discovery-map add",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

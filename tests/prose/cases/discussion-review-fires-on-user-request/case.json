@@ -60,7 +60,7 @@
       "discussion-map add",
       "topic complete",
       "topic reopen",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

@@ -52,7 +52,7 @@
       "manifest push pay.implementation.pay project_skills",
       "task start",
       "task complete",
-      "knowledge.cjs query"
+      "engine.cjs knowledge query"
     ]
   }
 }

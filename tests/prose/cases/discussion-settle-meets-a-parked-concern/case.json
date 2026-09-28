@@ -90,7 +90,7 @@
       "discovery-map add",
       "--kind perspective",
       "(deferral)",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }
