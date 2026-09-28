@@ -4,6 +4,7 @@
   "private": true,
   "description": "Agentic engineering workflows for Claude Code",
   "scripts": {
+    "knowledge:repl": "node scripts/knowledge-repl.js",
     "typecheck": "tsc -p tsconfig.json",
     "mod:types": "mkdir -p skills/workflow-gates/types && gh api repos/anthropics/claude-code/contents/mods/types/claude-code.d.ts -H 'Accept: application/vnd.github.raw' > skills/workflow-gates/types/claude-code.d.ts",
     "typecheck:mod": "tsc -p skills/workflow-gates/tsconfig.json && tsc -p skills/workflow-gates-rows/tsconfig.json",
