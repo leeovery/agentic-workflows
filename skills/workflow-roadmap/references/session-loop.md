@@ -14,12 +14,12 @@ If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient
 
 #### If `genesis_continuation` is set (the shaping conversation just arrived here)
 
-The conversation is already live and its record persisted at Step 2 — don't re-open with a cold prompt. Render a brief transition that moves from "what is this" into laying the product out:
+The conversation is already live and its record persisted at Step 2 — don't re-open with a cold prompt, and don't restate Step 2's signpost. Render a brief transition into laying the product out:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-This is about the product as a whole — we'll lay it out, then start building the first part when you're ready. Nothing we say here commits you to building anything.
+Let's lay it out — you pick where to start building when you're ready.
 
 Where do you want to dig in?
 ```
