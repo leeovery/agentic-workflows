@@ -140,7 +140,7 @@ async function validateOrRefuse(call, name, provider, dimensions, refusal) {
  * The provider the merged config names, validated — nothing to validate for
  * a providerless (keyword-only) config. The openai key must resolve;
  * openai-compatible may go keyless, as local servers usually do.
- * @param {Call} call @param {Record<string, any>} cfg
+ * @param {Call} call @param {import('./embedder.cjs').Config} cfg
  */
 async function validateConfiguredProvider(call, cfg) {
   if (!cfg.provider) return;

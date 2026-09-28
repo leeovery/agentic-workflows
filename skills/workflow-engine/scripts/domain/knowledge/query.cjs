@@ -141,7 +141,7 @@ function querySettings(metadata, cfg, provider) {
     note: cause ? keywordOnlyNote(cause) : null,
     storeEmbedded: Boolean(metadata.provider),
     fillFailure: metadata.fill_failure || null,
-    ignored: cfg._ignored || [],
+    ignored: cfg._ignored,
     similarity: resolveSimilarityThreshold(cfg),
     stability: resolveStability(cfg),
     weights: resolveDecayWeights(cfg),

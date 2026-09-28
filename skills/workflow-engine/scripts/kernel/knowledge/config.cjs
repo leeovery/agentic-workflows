@@ -334,6 +334,14 @@ function resolveApiKey(provider, opts) {
  */
 
 /**
+ * @typedef {object} LoadedFields  what loading adds to the merged settings
+ * @property {string|null} _api_key  the configured provider's key, resolved — null where none resolves
+ * @property {string[]} _ignored  a line per key loading ignored, naming it, the file, and why
+ */
+
+/** @typedef {Record<string, any> & LoadedFields} KnowledgeConfig  the merged knowledge config */
+
+/**
  * Why loading ignores a key of a config file's knowledge settings, or null
  * when it reads it: a provider setting is read as written — a wrong one
  * refuses where it is used — a tuning key when its value is one its use can
@@ -354,7 +362,7 @@ function ignoredBecause(key, value) {
  * clear a system setting — the provider included. A key loading ignores
  * leaves the level beneath it in force, and is named in `_ignored`.
  * @param {ConfigPaths} paths
- * @returns {Record<string, any>} the merged config, the resolved key as `_api_key`, and a line per ignored key as `_ignored`
+ * @returns {KnowledgeConfig}
  */
 function loadConfig(paths) {
   const systemPath = paths.systemPath || systemConfigPath();
@@ -376,9 +384,11 @@ function loadConfig(paths) {
     }
   }
 
-  merged._api_key = resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath });
-  merged._ignored = ignored;
-  return merged;
+  return {
+    ...merged,
+    _api_key: resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath }),
+    _ignored: ignored,
+  };
 }
 
 /**
@@ -391,7 +401,7 @@ function loadConfig(paths) {
  *   - Throws for unimplemented provider names, and for openai-compatible
  *     without a base_url
  *
- * @param {Record<string, any>} config  Merged config from loadConfig()
+ * @param {KnowledgeConfig} config
  * @param {import('./providers/openai-engine.cjs').Patience} [patience]  how long an endpoint provider waits on its endpoint
  * @returns {import('./embeddings.cjs').EmbeddingProvider|null}  Provider instance or null (keyword-only mode)
  */

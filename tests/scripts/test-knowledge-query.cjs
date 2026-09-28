@@ -53,9 +53,18 @@ function doc(unit, n, content) {
   };
 }
 
+/**
+ * A config as loading makes it: `settings` merged, no key resolved, nothing
+ * ignored.
+ * @param {Record<string, any>} [settings]
+ */
+function loaded(settings = {}) {
+  return { _api_key: null, _ignored: [], ...settings };
+}
+
 /** The ranking settings a keyword-only query runs with by default. */
 function keywordSettings() {
-  return querySettings(KEYWORD_ONLY, {}, null);
+  return querySettings(KEYWORD_ONLY, loaded(), null);
 }
 
 /**
@@ -91,14 +100,14 @@ describe('querySettings', () => {
   });
 
   it('runs a keyword-only store keyword-only once a provider is configured, until the next start embeds it', () => {
-    const settings = querySettings(KEYWORD_ONLY, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }));
+    const settings = querySettings(KEYWORD_ONLY, loaded({ provider: 'stub' }), new StubProvider({ dimensions: DIMS }));
     assert.strictEqual(settings.provider, null);
     assert.strictEqual(settings.note, '[keyword-only mode — the store has no vectors yet; the next start embeds them]');
   });
 
   it('runs a store built with the configured provider in full', () => {
     const provider = new StubProvider({ dimensions: DIMS });
-    const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
+    const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     assert.strictEqual(settings.provider, provider);
     assert.strictEqual(settings.note, null);
     assert.strictEqual(settings.storeEmbedded, true);
@@ -115,7 +124,7 @@ describe('querySettings', () => {
         '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
     ];
     for (const [metadata, cfg, provider, note] of cases) {
-      const settings = querySettings(metadata, cfg, provider);
+      const settings = querySettings(metadata, loaded(cfg), provider);
       assert.strictEqual(settings.provider, null, note);
       assert.strictEqual(settings.note, note);
     }
@@ -201,7 +210,7 @@ describe('queryStore', () => {
         return stub.embedBatch(texts);
       },
     };
-    const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
+    const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     const outcome = await outcomeOf(db, { terms: ['token refresh', 'refunds', PARAPHRASE.term], settings });
     assert.deepStrictEqual(requests, [['token refresh', 'refunds', PARAPHRASE.term]]);
     assert.ok(outcome.results.some((r) => r.id === 'accounts-discussion-accounts-001'), 'the paraphrase found by its vector');
@@ -222,7 +231,7 @@ describe('queryStore', () => {
         '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.]'],
     ];
     for (const [error, note] of cases) {
-      const settings = querySettings(STUB_BUILT, { provider: 'stub' }, failing(error));
+      const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), failing(error));
       const outcome = await outcomeOf(db, { terms, settings });
       assert.deepStrictEqual(outcome.notes, [note]);
       assert.deepStrictEqual(outcome.results.map((r) => [r.id, r.score]), keyword.map((r) => [r.id, r.score]), error.name);
@@ -233,7 +242,7 @@ describe('queryStore', () => {
     const awaiting = store.createStore();
     store.insertDocument(awaiting, { ...doc('ledger', 1, 'Receipts reconcile nightly.'), embedding: stub.embed('receipts') });
     store.insertDocument(awaiting, doc('ledger', 2, 'Receipts arrive late.'));
-    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'], settings: full })).notes,
       ['[1 chunks await vectors — searched by keyword alone; each start retries them]']);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'] })).notes, [CHOSEN_NOTE],
@@ -246,7 +255,7 @@ describe('queryStore', () => {
     store.insertDocument(blended, { ...doc('vector', 1, 'Ledgers balance at close.'), embedding: [0.6, 0.8] });
     store.insertDocument(blended, { ...doc('keyword', 1, 'Receipts arrive late.'), embedding: [0, 1] });
     const axis = { model: () => 'axis', dimensions: () => 2, embedBatch: async (texts) => texts.map(() => [2, 0]) };
-    const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, { provider: 'axis' }, axis);
+    const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, loaded({ provider: 'axis' }), axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
     const confidence = 0.03;
@@ -259,7 +268,7 @@ describe('queryStore', () => {
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
     const accounts = 'accounts-discussion-accounts-001';
-    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
     assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
   });
@@ -272,7 +281,7 @@ describe('queryProvider', () => {
 
   /** The one-chunk store's query through the provider the query builds. @param {object} provider */
   function queryThrough(provider) {
-    return outcomeOf(db, { terms: ['receipts'], settings: querySettings(STAND_IN, endpoint.config, provider) });
+    return outcomeOf(db, { terms: ['receipts'], settings: querySettings(STAND_IN, loaded(endpoint.config), provider) });
   }
 
   before(async () => {

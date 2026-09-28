@@ -50,7 +50,7 @@ function readiness(root, warn) {
 /**
  * The config and provider a report reads, or the error that fails them.
  * @param {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} files
- * @returns {{cfg: Record<string, any>|null, provider: import('./embedder.cjs').EmbeddingProvider|null, error: Error|null}}
+ * @returns {{cfg: import('./embedder.cjs').Config|null, provider: import('./embedder.cjs').EmbeddingProvider|null, error: Error|null}}
  */
 function reportSettings(files) {
   try {

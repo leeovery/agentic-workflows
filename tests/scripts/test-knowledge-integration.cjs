@@ -126,7 +126,7 @@ function seedStore(db, provider) {
 /** The blended query `engine knowledge query` runs over a store built with the stub provider — its results. */
 async function hybrid(db, term, provider) {
   const metadata = { provider: 'stub', model: provider.model(), dimensions: provider.dimensions() };
-  const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0 }, provider);
+  const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0, _api_key: null, _ignored: [] }, provider);
   return (await queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [] })).results;
 }
 
