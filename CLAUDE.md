@@ -193,7 +193,7 @@ Migrations keep workflow files in sync with current system design (run via `engi
 
 **One reviewed commit lands an upgrade.** A migration may stage in git — a change to what git tracks is staged (`git rm --cached`) — and never commits. After the user's yes at workflow-start's migration gate, `engine commit --migrations` stages every owned path — edits, new files, deletions — and records it all in one commit, the migration ledger and the user's own uncommitted edits in a listed file included. Boot makes no commit for a migration's changes, the ledger aside when no document changed (below).
 
-**A released migration is never touched** — not edited, not deleted. Every correction is a new migration; hardening a frozen `.sh` migration's failure path (below) is the one edit a released migration takes.
+**A released migration is never touched** — not edited, not deleted. Every correction is a new migration.
 
 **How it works:**
 - `skills/workflow-migrate/scripts/migrate.cjs` (Node) runs every script in `skills/workflow-migrate/scripts/migrations/` — both the frozen `*.sh` fleet and modern `*.cjs` migrations — in one strict numeric-prefix ordering
@@ -201,7 +201,7 @@ Migrations keep workflow files in sync with current system design (run via `engi
 - Progress tracked in `.workflows/.state/migrations`: numeric-only IDs, one per line, extension-independent. An ID is recorded only after its migration completes; any failure aborts the whole run without recording (boot treats a non-zero exit as fatal — migrations must never half-run silently). Whenever no document changed the ledger is the only dirt a run can leave, so boot commits it itself (`chore: record workflow migrations`) — the line this run recorded, or one an earlier boot stranded; when documents did change, the ledger rides the skill's reviewed migration commit
 
 **Two migration formats:**
-- **`*.sh` — the frozen fleet (001–046).** Shipped and already run by real installs. Edit only to harden a failure path, **never** to change semantics. The orchestrator sources each in a spawned bash with `report_update`/`report_skip` helpers, `PROJECT_DIR` pinned to `.`, cwd = project root, under `set -eo pipefail` (`return 0` semantics preserved).
+- **`*.sh` — the frozen fleet (001–046).** Released and already run by real installs, so never edited. The orchestrator sources each in a spawned bash with `report_update`/`report_skip` helpers, `PROJECT_DIR` pinned to `.`, cwd = project root, under `set -eo pipefail` (`return 0` semantics preserved).
 - **`*.cjs` — all new migrations.** A `.cjs` migration is a module exporting `id`, `description`, and a `run` function, executed in-process:
   ```js
   module.exports = {

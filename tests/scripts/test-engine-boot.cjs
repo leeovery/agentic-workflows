@@ -14,6 +14,7 @@ const harness = require('./engine-harness.cjs');
 const { git, knowledgeCalls } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_KNOWLEDGE = path.resolve(REAL_SCRIPTS, '../../workflow-knowledge');
+const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -221,7 +222,7 @@ describe('engine boot', () => {
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
-      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [] },
+      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], paths: [...OWNED_PATHS] },
       knowledge: 'ready',
       indexed: true,
       compacted: true,
@@ -486,6 +487,16 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
+  it('migrations.paths is the commit door\'s owned list — present on every boot', () => {
+    const quiet = runEngine(stubbed, fix.project, ['boot']);
+    assert.strictEqual(quiet.migrations.changed, false);
+    assert.deepStrictEqual(quiet.migrations.paths, [...OWNED_PATHS]);
+
+    const changed = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
+    assert.strictEqual(changed.migrations.changed, true);
+    assert.deepStrictEqual(changed.migrations.paths, [...OWNED_PATHS]);
+  });
+
   it('a migration touching config files commits none of them — the reviewed commit takes them with the rest', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update-config',
@@ -496,8 +507,10 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    // The review reads the diff over `migrations.paths` — every change the
+    // migration made, and nothing boot committed first.
     assert.deepStrictEqual(
-      git(fix.project, ['status', '--porcelain', '--', '.claude', '.gitignore', '.workflows']).split('\n').filter(Boolean).sort(),
+      git(fix.project, ['status', '--porcelain', '--', ...res.migrations.paths]).split('\n').filter(Boolean).sort(),
       [' M .claude/settings.json', '?? .gitignore', '?? .workflows/.state/']);
 
     runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);

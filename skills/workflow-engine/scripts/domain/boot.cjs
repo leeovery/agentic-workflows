@@ -33,7 +33,7 @@ const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
-const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
+const { commitPathspecScoped, commitUntrackScoped, OWNED_PATHS } = require('./commit.cjs');
 const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
 const { syncGateSurface } = require('./gate-surface.cjs');
@@ -86,7 +86,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /**
  * @typedef {object} BootResult
- * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
+ * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], paths: string[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing; `paths` are the paths the reviewed migration commit takes, the workflows' owned paths
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing, no chunk left awaiting its vector, no store provider key left unresolved
  * @property {boolean} compacted
@@ -248,6 +248,7 @@ function boot(cwd) {
     ran,
     output: trimReport(stdout),
     verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
+    paths: [...OWNED_PATHS],
   };
 
   // A migration that ran while changing no document still wrote the ledger,
