@@ -279,6 +279,27 @@ describe('prose recorder — the stop event', () => {
     assert.equal(logLines().length, 1, 'the stop event reaches the world log');
   });
 
+  it('writes a stop into the world its transcript walked, never a world the payload happens to name', () => {
+    const peer = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-world-'));
+    try {
+      const transcript = writeTranscript([
+        { message: { model: 'claude-sonnet-5', content: [{ type: 'text', text: 'ENTERED: a.md § Step 1' }] }, cwd: world },
+      ]);
+      fire({
+        hook_event_name: 'SubagentStop',
+        cwd: peer,
+        agent_type: 'prose-walker',
+        agent_transcript_path: transcript,
+        last_assistant_message: 'STOPPED: end of flow',
+      });
+      assert.equal(logLines().length, 1, 'the stop lands in the world the walk ran in');
+      assert.ok(fs.existsSync(path.join(world, '.walk-transcript.log')), 'and so does its walk');
+      assert.deepEqual(fs.readdirSync(peer), [], 'the peer world is left untouched');
+    } finally {
+      fs.rmSync(peer, { recursive: true, force: true });
+    }
+  });
+
   it('names the model the walk actually ran on', () => {
     const transcript = writeTranscript([
       { message: { model: 'claude-sonnet-5' }, cwd: world },
