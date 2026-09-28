@@ -167,7 +167,7 @@ describe('engine workunit absorb — happy path', () => {
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
     fix = setupFixture();
-    indexFiles(fix, FEATURE_FILES);
+    indexFiles(fix, [...FEATURE_FILES, '.workflows/payments/research/exploration.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.workflows/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     const res = engine(fix, ABSORB);
@@ -250,11 +250,13 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // KB: feature chunks removed, moved artifacts indexed at epic identities —
-    // completed phase artifacts only, imports and seeds always.
+    // completed phase artifacts only, imports and seeds always — and the
+    // epic's own chunks left standing.
     assert.deepStrictEqual(indexedFiles(fix.project), [
       '.workflows/payments/discussion/auth.md',
       '.workflows/payments/imports/notes-2.md',
       '.workflows/payments/research/auth.md',
+      '.workflows/payments/research/exploration.md',
       '.workflows/payments/seeds/seed.md',
     ]);
   });

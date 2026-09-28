@@ -481,10 +481,17 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   const epic = () => JSON.parse(epicText());
 
   const RESEARCH = '.workflows/mvp/research/ordering.md';
-  /** The topic's completed research indexed into a keyword-only store — the chunks a postpone takes. */
+  const SIBLING = '.workflows/mvp/discussion/menus.md';
+  /**
+   * The topic's completed research indexed into a keyword-only store — the
+   * chunks a postpone takes — beside a sibling topic's discussion, which it
+   * leaves.
+   */
   const indexResearch = () => {
     keywordOnlyKnowledge(dir);
+    fs.writeFileSync(path.join(dir, SIBLING), '# Menus\n\nOperators maintain them.\n');
     output(dir, ['knowledge', 'index', RESEARCH]);
+    output(dir, ['knowledge', 'index', SIBLING]);
   };
 
   it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
@@ -566,7 +573,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
       /"v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
     assert.strictEqual(epicText(), before, 'the hold is never written');
-    assert.deepStrictEqual(indexedFiles(dir), [RESEARCH], 'and no chunk is removed for a topic that stayed');
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'and no chunk is removed for a topic that stayed');
   });
 
   it('a refusal at the landing leaves the epic manifest unsaved and its chunks in place', () => {
@@ -582,7 +589,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
       /roadmap\.horizons is malformed/);
     assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
-    assert.deepStrictEqual(indexedFiles(dir), [RESEARCH]);
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH]);
   });
 
   it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
@@ -672,12 +679,12 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   it('pull-forward back into the same epic restores the unit, re-indexes its completed artifacts, and drops postponed_from', () => {
     indexResearch();
     ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    assert.deepStrictEqual(indexedFiles(dir), [], 'the postpone removes the chunks');
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING], 'the postpone removes the topic\'s chunks, and only those');
     const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
     assert.strictEqual(res.op, 'pull-forward');
     assert.strictEqual(res.state, 'in-flight');
     assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.deepStrictEqual(indexedFiles(dir), [RESEARCH], 'the return re-indexes the completed artifact');
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'the return re-indexes the completed artifact');
     const m = epic();
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined, 'the marker is gone');
     assert.strictEqual(m.phases.discovery.items.ordering.order, 1, 'the map order returns');

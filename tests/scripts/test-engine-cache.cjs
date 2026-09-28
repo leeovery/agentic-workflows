@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { ok: engine, refuses: engineFails } = require('./engine-harness.cjs');
+const { ok: engine, refuses: engineFails, output, keywordOnlyKnowledge, indexedFiles } = require('./engine-harness.cjs');
 const { stampAnalysisCache } = require('../../skills/workflow-engine/scripts/domain/cache.cjs');
 const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -107,6 +107,17 @@ describe('engine cache stamp: gap-analysis', () => {
     const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.workflows'), 'gap-analysis');
     assert.strictEqual(res.files, inputs.length);
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
+  });
+
+  it('indexes discovery-gap-analysis.md into the store beside what it already holds', () => {
+    keywordOnlyKnowledge(dir);
+    output(dir, ['knowledge', 'index', '.workflows/payments/discussion/auth-flow.md']);
+    createFile(dir, '.workflows/payments/.state/discovery-gap-analysis.md', '# Gap analysis\n\nThe gaps found.\n');
+    assert.deepStrictEqual(engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).warnings, []);
+    assert.deepStrictEqual(indexedFiles(dir), [
+      '.workflows/payments/.state/discovery-gap-analysis.md',
+      '.workflows/payments/discussion/auth-flow.md',
+    ]);
   });
 
   it('indexes discovery-gap-analysis.md in the same call — a failed index is a warning, never a block', () => {

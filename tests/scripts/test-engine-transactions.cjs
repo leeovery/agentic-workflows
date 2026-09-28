@@ -2715,3 +2715,82 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
     assert.strictEqual(after.phases.planning.items['refund-policy'].reconcile_needed, 'specification');
   });
 });
+
+// Each transaction's knowledge change against a real keyword-only store that
+// also holds chunks the change must leave alone — a sibling topic, the same
+// topic's other phase, another work unit — so a change that wiped too much
+// fails as surely as one that took too little.
+describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
+  const RESEARCH = '.workflows/payments/research/auth-flow.md';
+  const DISCUSSION = '.workflows/payments/discussion/auth-flow.md';
+  const SIBLING = '.workflows/payments/discussion/session-model.md';
+  const SPEC = '.workflows/payments/specification/session-model/specification.md';
+  const OTHER_SPEC = '.workflows/payments/specification/fee-model/specification.md';
+  const OTHER_UNIT = '.workflows/billing/discussion/billing.md';
+  let dir;
+
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
+    writeFile(dir, '.workflows/billing/manifest.json', JSON.stringify({
+      name: 'billing', work_type: 'feature', status: 'in-progress',
+      phases: { discussion: { items: { billing: { status: 'completed' } } } },
+    }, null, 2) + '\n');
+    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) writeFile(dir, file, `# ${path.basename(file, '.md')}\n\nIts decision.\n`);
+    commitAll(dir, 'init');
+    harness.keywordOnlyKnowledge(dir);
+    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', file]);
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const indexed = () => harness.indexedFiles(dir);
+
+  it('a Discovery-unit cancel takes the topic\'s research and discussion, and nothing else', () => {
+    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SIBLING, OTHER_SPEC, SPEC]);
+  });
+
+  it('a Definition-unit cancel takes the specification, and leaves the discussion of its name', () => {
+    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, DISCUSSION, SIBLING, RESEARCH, OTHER_SPEC]);
+  });
+
+  it('a reactivate re-indexes the completed artifact it restores, and only it', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    assert.deepStrictEqual(engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SIBLING, RESEARCH, OTHER_SPEC, SPEC], 'the in-progress discussion waits for its conclusion');
+  });
+
+  it('a supersede takes the superseded specification alone', () => {
+    assert.deepStrictEqual(engine(dir, ['topic', 'supersede', 'payments', 'specification', 'session-model', '--by', 'fee-model']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, DISCUSSION, SIBLING, RESEARCH, OTHER_SPEC]);
+  });
+
+  it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its completed artifacts — another unit\'s untouched', () => {
+    assert.deepStrictEqual(engine(dir, ['workunit', 'cancel', 'payments']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT]);
+    assert.deepStrictEqual(engine(dir, ['workunit', 'reactivate', 'payments']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, SIBLING, RESEARCH, OTHER_SPEC]);
+  });
+
+  it('a work-unit complete leaves the store as it stands', () => {
+    const before = fs.readFileSync(path.join(dir, '.workflows/.knowledge/store.bin'));
+    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'payments', '-m', 'workflow(payments): complete']).warnings, []);
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.workflows/.knowledge/store.bin')), before);
+  });
+
+  it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
+    const m = readManifest(dir, 'billing');
+    m.phases.specification = { items: { billing: { status: 'completed' } } };
+    writeFile(dir, '.workflows/billing/manifest.json', JSON.stringify({ ...m, work_type: 'cross-cutting' }, null, 2) + '\n');
+    writeFile(dir, '.workflows/billing/specification/billing/specification.md', '# Billing spec\n\nIts decision.\n');
+    commitAll(dir, 'billing finished');
+    engine(dir, ['workunit', 'cancel', 'billing']);
+    assert.ok(!indexed().includes(OTHER_UNIT));
+    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'billing', '-m', 'workflow(billing): complete']).warnings, []);
+    assert.deepStrictEqual(indexed(), [
+      OTHER_UNIT, '.workflows/billing/specification/billing/specification.md', DISCUSSION, SIBLING, RESEARCH, OTHER_SPEC, SPEC,
+    ]);
+  });
+});
