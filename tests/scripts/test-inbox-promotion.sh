@@ -11,9 +11,9 @@
 # work unit and its verbatim content reaches every downstream phase.
 #
 # This test executes that documented promotion sequence against the real
-# engine.cjs and knowledge.cjs CLIs and asserts the end state for every
-# inbox type (idea / bug / quick-fix) and a representative spread of resulting
-# work types (feature / epic / bugfix / quick-fix). It also runs the
+# engine.cjs CLI, its knowledge verbs included, and asserts the end state for
+# every inbox type (idea / bug / quick-fix) and a representative spread of
+# resulting work types (feature / epic / bugfix / quick-fix). It also runs the
 # downstream-surfacing path check — a paraphrased, work-unit-boosted query
 # exactly like the contextual-query step every consuming phase runs — and
 # confirms the result carries a readable Source: path, so two-step retrieval
@@ -22,7 +22,6 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUNDLE="$SCRIPT_DIR/../../skills/workflow-knowledge/scripts/knowledge.cjs"
 ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
 
 PASS=0
@@ -42,7 +41,7 @@ assert_eq() {
 }
 
 # Isolate from the developer's real ~/.config/workflows/ so a real OpenAI
-# config can't leak in and break the stub-only knowledge calls.
+# config can't leak in and break the keyword-only knowledge calls.
 FAKE_HOME=$(mktemp -d)
 export HOME="$FAKE_HOME"
 trap 'rm -rf "$FAKE_HOME"' EXIT
@@ -51,8 +50,10 @@ TEST_ROOT=""
 setup_project() {
   TEST_ROOT=$(mktemp -d)
   mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  # Keyword-only: an index over a provider that can embed launches the
+  # background vector fill, which would race the teardown.
   cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128 } }
+{ "knowledge": { "provider": null } }
 CONF
 }
 
@@ -128,7 +129,7 @@ promote_and_assert() {
   mv ".workflows/.inbox/$folder/$basename" ".workflows/$work_unit/seeds/$dest"
   node "$ENGINE_JS" manifest push "$work_unit" seeds \
     "{\"path\":\"seeds/$dest\",\"source\":\"inbox:$type\",\"seeded_at\":\"2026-06-02T00:00:00Z\"}" >/dev/null 2>&1
-  node "$BUNDLE" index ".workflows/$work_unit/seeds/$dest" >/dev/null 2>&1
+  node "$ENGINE_JS" knowledge index ".workflows/$work_unit/seeds/$dest" >/dev/null 2>&1
 
   # Assert: landed in seeds/ (not imports/).
   assert_eq "$label: file lands in seeds/" "true" \
@@ -159,7 +160,7 @@ promote_and_assert() {
   # Assert: KB-indexed under the seeds phase and surfaces via the SAME query
   # the consuming phase runs — paraphrased phrase + work-unit BOOST.
   local query_out
-  query_out=$(node "$BUNDLE" query "$query_phrase" --boost:work-unit "$work_unit" 2>&1)
+  query_out=$(node "$ENGINE_JS" knowledge query "$query_phrase" --boost:work-unit "$work_unit" 2>&1)
   assert_eq "$label: seed surfaces via contextual-style query" "false" \
     "$(printf '%s' "$query_out" | grep -q '\[0 results\]' && echo true || echo false)"
   assert_eq "$label: query result carries seeds provenance" "true" \
