@@ -23,7 +23,7 @@ The prose should have taken this path:
 8. the conclusion runs in order: the queue is empty, the user confirms,
    the summary is confirmed populated, the topic is completed through the
    engine — which indexes the artifact — and the conclusion's own commit
-   carries the topic scope and the knowledge-base rider, in one call
+   carries the topic scope, in one call
 9. only then the sweep: the working tree is read for workflow dirt, and
    two other topics' documents are sitting uncommitted. The presence scan
    decides between them — research on relevance measurement is held by a
