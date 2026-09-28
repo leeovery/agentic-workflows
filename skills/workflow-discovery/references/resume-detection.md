@@ -50,7 +50,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_
 
 #### If `continue`
 
-Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/sessions/session-{session_number}.md` is the working state for the session loop, which briefs across the prior sessions on re-open (see [continuity-load.md](continuity-load.md)).
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/sessions/session-{session_number}.md` is the installed log and the working state for the session loop — every write this session edits it in place, and no new session is opened. The loop briefs across the prior sessions on re-open (see [continuity-load.md](continuity-load.md)).
 
 → Return to caller.
 

@@ -89,7 +89,9 @@ applied. Format:}
 
 ## Lazy creation and finalisation
 
-The log file is **not created at session start**. It is conjured on the **first state change of any kind**:
+While the `phases.discovery.active_session` marker is set, the session's log is installed — the confirm-trigger's, the roadmap pull's, or the interrupted one a resume picked up — and every write edits it in place. Never open a second session over it.
+
+A fresh session — no log on disk for `session_number` — does **not create its log at session start**. It is conjured on the **first state change of any kind**:
 
 - A natural pause in the exploration produces an Exploration entry
 - An edit operation is applied to an existing map item
