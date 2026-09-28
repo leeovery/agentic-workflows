@@ -239,6 +239,11 @@ describe('manifest set — a field and its value, either form', () => {
     assert.equal(invariants.check(rows, { calls_exclude: ['manifest set pay.planning.pay review_cycle 1'] })[0].ok, false);
   });
 
+  it('a needle naming a field alone, `field=`, matches whatever value the command computed', () => {
+    const rows = [bash(`${ENGINE} manifest set pay.specification.pay review_cycle=1 review_baseline_words=$(wc -w < spec.md)`)];
+    assert.equal(invariants.check(rows, { calls_include: ['review_baseline_words='] })[0].ok, true);
+  });
+
   it('still tells one value from another', () => {
     const rows = [bash(`${ENGINE} manifest set pay.planning.pay review_cycle=1`)];
     assert.equal(invariants.check(rows, { calls_include: ['manifest set pay.planning.pay review_cycle 2'] })[0].ok, false);
