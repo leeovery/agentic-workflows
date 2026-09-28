@@ -21,6 +21,7 @@
     "engine_before_write": true,
     "calls_include": [
       "engine.cjs boot",
+      "commit --migrations",
       "chore: apply workflow migrations",
       "workflow-start/scripts/gateway.cjs"
     ],

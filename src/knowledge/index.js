@@ -250,14 +250,6 @@ function storePath(root) {
   return path.join(knowledgeDir(root), store.STORE_FILE);
 }
 
-/**
- * The store file an earlier version kept — deleted once the current one is written.
- * @param {string} [root]  the project root — by default, the one the working directory sits in
- */
-function legacyStorePath(root) {
-  return path.join(knowledgeDir(root), 'store.msp');
-}
-
 /** @param {string} [root]  the project root — by default, the one the working directory sits in */
 function metadataPath(root) {
   return path.join(knowledgeDir(root), store.METADATA_FILE);
@@ -1000,7 +992,7 @@ function identityOf(entry) {
  * chunks replaced by its new documents, then every identity `retire` names
  * over the result removed. A store the checkout lacked is created and saved,
  * empty or not, as is a retokenized one; otherwise nothing is saved when
- * nothing changed. A save deletes the store an earlier version kept.
+ * nothing changed.
  * @param {{
  *   cfg: object,
  *   provider: object|null,
@@ -1024,7 +1016,6 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = () =
     const sp = storePath();
     if (created || db.retokenized || built.length > 0 || retired.length > 0) {
       store.saveStore(db, sp);
-      fs.rmSync(legacyStorePath(), { force: true });
       recordIndexed(cfg, provider, created);
     }
     return { retired, snapshot: { db, stamp: store.storeStamp(sp) } };

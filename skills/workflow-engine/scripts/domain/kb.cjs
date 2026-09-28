@@ -65,4 +65,4 @@ function knowledge(cwd, args, label, warnings) {
   return !failed;
 }
 
-module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, STORE_FILE, METADATA_FILE, STORE_FILES };
+module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, METADATA_FILE, STORE_FILES };

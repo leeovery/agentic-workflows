@@ -4177,6 +4177,42 @@ describe('pipeline simulation', () => {
       'the restart leaves nothing of the work unit behind');
   });
 
+  it('the migration gate\'s yes: one commit lands every path the workflows own, and a code session\'s staging stays out', () => {
+    const wu = 'upgraded';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Carried through an upgrade', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write('.claude/settings.json', '{}\n');
+    sim.write('.gitignore', 'node_modules\n');
+    sim.write('src/app.js', 'const x = 1;\n');
+    git(sim.dir, ['add', '-A']);
+    git(sim.dir, ['commit', '-q', '-m', 'a project mid-flight']);
+
+    // What a boot's migrations leave for the review gate, beside a code
+    // session's staged work.
+    sim.write('.claude/settings.json', '{"permissions":{}}\n');
+    sim.write('.worktreeinclude', `${KNOWLEDGE_DIR}/store.bin\n`);
+    fs.rmSync(path.join(sim.dir, '.gitignore'));
+    sim.write('.workflows/.state/migrations', '062\n');
+    sim.write('src/app.js', 'const x = 2;\n');
+    git(sim.dir, ['add', '--', 'src/app.js']);
+
+    assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
+    const landed = sim.run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    assert.match(landed.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(git(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
+      'A\t.workflows/.state/migrations',
+      'A\t.worktreeinclude',
+      'D\t.gitignore',
+      'M\t.claude/settings.json',
+    ]);
+    assert.strictEqual(git(sim.dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'the code session\'s staging stays staged');
+
+    // The unit carries on from the upgraded tree.
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Upgraded\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+  });
+
   // -------------------------------------------------------------------------
   // Concurrency — several sessions on one checkout, interleaved.
   //

@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitPathspecScoped, discoveryScope } = require('./domain/commit.cjs');
+const { commitPathspecScoped, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
@@ -271,6 +271,7 @@ Commands:
   commit --inbox -m <message>
   commit --roadmap -m <message>
   commit --workflows -m <message>
+  commit --migrations -m <message>
   render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
@@ -1725,7 +1726,7 @@ function commitCodePaths(cwd, paths, message, target) {
   return result;
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -1741,6 +1742,7 @@ function runCommit(call, argv) {
     let stateScope = false;
     let inbox = false;
     let workflows = false;
+    let migrationsScope = false;
     let roadmapScope = false;
     let importsScope = false;
     let sweep = false;
@@ -1759,6 +1761,7 @@ function runCommit(call, argv) {
       else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
+      else if (a === '--migrations') migrationsScope = true;
       else if (a === '--roadmap') roadmapScope = true;
       else if (paths) files.push(a);
       else if (workUnit === null) workUnit = a;
@@ -1773,7 +1776,7 @@ function runCommit(call, argv) {
       const parts = (forTopicSpec || '').split('/');
       if (!message || files.length === 0 || forSpec.length !== 2 || !forWorkUnit || parts.length !== 2
           || !CODE_PHASES.includes(parts[0]) || !parts[1] || plan !== null || topicSpec !== null
-          || discovery || importsScope || stateScope || inbox || workflows || roadmapScope || sweep || workUnit !== null) {
+          || discovery || importsScope || stateScope || inbox || workflows || migrationsScope || roadmapScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       respond(call, commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] }));
@@ -1783,7 +1786,7 @@ function runCommit(call, argv) {
     // `--state` names two scopes by whether a work unit rides with it: the
     // unit's own analysis dir, or the global one.
     const globalState = stateScope && workUnit === null;
-    const scopeCount = [inbox, workflows, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
+    const scopeCount = [inbox, workflows, migrationsScope, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [plan !== null, topicSpec !== null, discovery, importsScope, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || forSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
@@ -1798,6 +1801,14 @@ function runCommit(call, argv) {
       scope = '.workflows/.state';
     } else if (workflows) {
       scope = '.workflows';
+    } else if (migrationsScope) {
+      // The reviewed migration commit: every path the workflows own, taken
+      // as the index records it — a migration may stage a removal there
+      // that the working tree cannot show.
+      const committed = commitStagedScoped(cwd, OWNED_PATHS, message);
+      if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
+      else respond(call, { committed });
+      return;
     } else if (inbox) {
       scope = '.workflows/.inbox';
     } else if (roadmapScope) {

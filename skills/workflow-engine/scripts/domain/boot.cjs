@@ -13,15 +13,14 @@
 // commits that line itself — this run's, or one an earlier boot stranded.
 //
 // The knowledge directory — the store, its metadata, the knowledge config —
-// is local to each checkout and never in git: boot keeps git from tracking
-// anything under it, and keeps its files listed in `.worktreeinclude` so a
-// worktree Claude Code creates starts with a copy. A checkout set up (its
-// local config) with no store gets one built by the bulk index when this
-// machine's config says how — `check` answers `buildable`. Anything else
-// not-ready is the caller's gate: boot never sets a checkout up itself, and
-// a not-ready response carries the system-config report so the gate can
-// offer setup without extra probes. A failing bulk index or compact is a
-// warning, never a block.
+// is local to each checkout and git-ignored: boot keeps its files listed in
+// `.worktreeinclude` so a worktree Claude Code creates starts with a copy.
+// A checkout set up (its local config) with no store gets one built by the
+// bulk index when this machine's config says how — `check` answers
+// `buildable`. Anything else not-ready is the caller's gate: boot never sets
+// a checkout up itself, and a not-ready response carries the system-config
+// report so the gate can offer setup without extra probes. A failing bulk
+// index or compact is a warning, never a block.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone.
@@ -33,8 +32,8 @@ const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
-const { commitPathspecScoped, commitUntrackScoped } = require('./commit.cjs');
-const { knowledge: runKnowledge, spawnKnowledge, KNOWLEDGE_DIR } = require('./kb.cjs');
+const { commitPathspecScoped } = require('./commit.cjs');
+const { knowledge: runKnowledge, spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
 const { syncGateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
@@ -91,11 +90,11 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing, no chunk left awaiting its vector, no store provider key left unresolved
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (knowledge index, compaction, the store's untracking, ledger commit, the worktree include, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (knowledge index, compaction, ledger commit, the worktree include, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended, or the retired store file's line renamed or dropped; false when it left the file as it was
+ * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended; false when it left the file as it was
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, a version before 2.1.282, the mod not installed) and boot wrote nothing; where it can: `on` where it is running, its announcement in boot's own environment; `restart` where this boot wrote the function-hooks flag into `.claude/settings.json` and the mod is not running; `not-running` where the flag was already there and the mod is not running — workflow-start stops on both
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
@@ -250,30 +249,10 @@ function boot(cwd) {
     verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
   };
 
-  // Migrations reach past .workflows: some edit .claude/settings.json
-  // (permission/hook plumbing) and the repo-root .gitignore. The skill's
-  // .workflows-scoped migration commit misses those, leaving them dirty after
-  // boot for some later unrelated commit to sweep up. When migrations changed,
-  // commit whichever of the two exist on disk, confined to them — a boot runs
-  // beside live sessions and beside the user's own staged work, and neither
-  // belongs in a migration commit. The migration files are already applied,
-  // so a commit failure is a warning, never a block.
-  if (migrations.changed) {
-    try {
-      const configSpecs = [SETTINGS_SPEC, '.gitignore']
-        .filter((p) => fs.existsSync(path.join(cwd, p)));
-      if (configSpecs.length > 0) {
-        commitPathspecScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
-      }
-    } catch (err) {
-      warnings.push(`migration config commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
   // A migration that ran while changing no document still wrote the ledger,
   // and that write has no other path to a commit: with nothing to review the
   // calling skill says "up to date" and never reaches its `commit
-  // --workflows`. So boot leaves the ledger clean whenever no reviewed commit
+  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
   // will carry it — dirt this run recorded, and dirt an earlier boot left
   // behind the same way, which is the state every install that met this bug
   // is sitting in. When the review gate does fire, its own commit takes the
@@ -291,7 +270,6 @@ function boot(cwd) {
     }
   }
 
-  untrackStore(cwd, warnings);
   const { knowledge, indexed, compacted } = syncKnowledge(cwd, warnings);
 
   // The session hooks live in the project's settings, so every boot
@@ -336,23 +314,6 @@ function boot(cwd) {
   // mode choice, or fall back to the terminal wizard) without extra probes.
   if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return result;
-}
-
-/**
- * Stop git tracking anything under the knowledge directory: one confined
- * commit records the removal and the files stay on disk. It runs before the
- * migration commit that lands the directory's ignore rule, and holds without
- * it — the rule is live in the working tree from the moment the migration
- * writes it. Nothing tracked, nothing done; a failure — a merge or rebase in
- * progress among them — is a warning, and the next boot tries again.
- * @param {string} cwd @param {string[]} warnings
- */
-function untrackStore(cwd, warnings) {
-  try {
-    commitUntrackScoped(cwd, [KNOWLEDGE_DIR], 'chore(knowledge): stop tracking the store');
-  } catch (err) {
-    warnings.push(`knowledge store untracking failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
 }
 
 /**
