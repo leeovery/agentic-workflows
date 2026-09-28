@@ -124,8 +124,8 @@ Drawn from the owner's dex-engineering knowledge base:
    unsupported.
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
-   It waits on step 1 of `design/upgrades-in-migrations.md`, which moves
-   the `store.msp` retirement into a migration.
+   Its prerequisite, step 1 of `design/upgrades-in-migrations.md`, is
+   merged: the `store.msp` retirement is a migration.
 5. **The rest of retrieval quality:** printed scores, heading paths and line
    ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
    floor is reassessed here.
@@ -464,8 +464,8 @@ The eval guards the rest.
   - Nothing is carried over from the old store. For scale, step 1's hybrid
     build embedded all three eval projects together in 48 s at the lowest
     rate tier.
-  - Once the new store is written, the old `store.msp` is deleted, and
-    boot's `.worktreeinclude` sync lists `store.bin` in its place.
+  - Migration 063 deletes the old `store.msp` and renames its
+    `.worktreeinclude` line to `store.bin`.
 
 ### What the store changed
 
@@ -730,9 +730,10 @@ the record.
 
 ## Step 4 — the KB in the engine
 
-Waits on step 1 of `design/upgrades-in-migrations.md`, which moves the
-`store.msp` retirement into a migration and makes the migration commit
-carry everything the workflows own.
+Its prerequisite, step 1 of `design/upgrades-in-migrations.md`, is
+merged (#1424): migration 063 retires `store.msp`, migration 064 untracks
+the knowledge directory, and the migration commit carries every path the
+workflows own. The KB carries no upgrade code into the engine.
 
 ### What it starts from
 
