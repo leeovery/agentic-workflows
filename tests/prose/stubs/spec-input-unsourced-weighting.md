@@ -28,8 +28,7 @@ The specification says the behavioural score combines click-through
 rate and purchase rate, weighted 30/70 in favour of purchases. The
 discussion settles how the signals reach ranking — a nightly batch
 over the events pipeline, streaming rejected — and stops there. It
-never says the two rates combine into a single score, and it never
-says what either is worth against the other.
+never says what either rate is worth against the other.
 
 The weighting is what the ranker optimises for, so it is what a
 shopper sees: under 30/70 the first page fills with what people buy,
