@@ -34,7 +34,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 
 ## Hold the Grouping Analysis's Tensions
 
-Read any `**Tension**` lines for this specification's grouping from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — single-source specs and bugfixes have none). Hold them in session: construction raises each per its Resolve Source Incoherence discipline when the topic that touches it arrives.
+Read any `**Tension**` lines for this specification's grouping from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — single-source specs and bugfixes have none). Hold them in session: construction raises each per its Resolve Source Incoherence discipline.
 
 ## Reconcile Stale Sources First
 
