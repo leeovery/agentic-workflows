@@ -1744,10 +1744,10 @@ assert_eq "compact prunes them" "true" "$(echo "$output" | grep -q 'Compacted: r
 assert_eq "and the next bulk index leaves them pruned" "0 new, 0 changed, 0 removed, 1 unchanged." "$(run_kb index 2>&1)"
 teardown_project
 
-# --- Test RC13: An invalid decay_prune_below prunes nothing and blocks nothing ---
-# Compact refuses the setting and status reports it; the bulk index indexes
-# everything regardless.
-echo "Test RC13: Bulk index proceeds past an invalid prune floor"
+# --- Test RC13: An invalid decay_prune_below falls back to the default and blocks nothing ---
+# The bulk index and compact run at the default floor; status names the
+# ignored setting.
+echo "Test RC13: Bulk index and compact proceed past an invalid prune floor"
 setup_project
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null, "decay_prune_below": "high" } }
@@ -1761,9 +1761,9 @@ assert_eq "exits zero" "0" "$exit_code"
 assert_eq "indexes the artifact" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 exit_code=0
 run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "compact still refuses it" "1" "$exit_code"
-assert_eq "status still reports it" "true" \
-  "$(run_kb status 2>&1 | grep -q 'WARNING: Invalid decay_prune_below' && echo true || echo false)"
+assert_eq "compact runs at the default floor" "0" "$exit_code"
+assert_eq "status names the ignored setting" "true" \
+  "$(run_kb status 2>&1 | grep -q '^WARNING: decay_prune_below in .*/.workflows/.knowledge/config.json is ignored: "high" is not false or a number from 0 to 1$' && echo true || echo false)"
 teardown_project
 
 # --- Test RC14: A registered unit whose manifest is unreadable keeps its chunks ---
@@ -2208,53 +2208,22 @@ assert_eq "names the file and the error" "true" \
   "$(echo "$stderr_out" | grep -q '^Failed to index .workflows/auth-flow/discussion/auth-flow.md: No chunks produced' && echo true || echo false)"
 teardown_project
 
-# --- Test 73: Negative decay_prune_below rejected ---
-echo "Test 73: Negative decay_prune_below rejected"
-setup_project
-create_work_unit "alpha" "feature" "Alpha"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "decay_prune_below": -0.5 } }
-CONF
-create_discussion_file "alpha" "alpha"
-run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
-exit_code=0
-output=$(run_kb compact 2>&1 || true)
-run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "negative prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "mentions invalid prune" "true" "$(echo "$output" | grep -q 'Invalid decay_prune_below' && echo true || echo false)"
-teardown_project
-
-# --- Test 74: String decay_prune_below rejected ---
-echo "Test 74: String decay_prune_below rejected"
-setup_project
-create_work_unit "alpha" "feature" "Alpha"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "decay_prune_below": "0.5" } }
-CONF
-create_discussion_file "alpha" "alpha"
-run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
-exit_code=0
-output=$(run_kb compact 2>&1 || true)
-run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "string prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-teardown_project
-
-# --- Test 75: Out-of-range (>1) decay_prune_below rejected ---
-echo "Test 75: Out-of-range decay_prune_below rejected"
-setup_project
-create_work_unit "alpha" "feature" "Alpha"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "decay_prune_below": 1.5 } }
-CONF
-create_discussion_file "alpha" "alpha"
-run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
-exit_code=0
-run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "out-of-range prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-teardown_project
+# --- Test 73: An invalid decay_prune_below falls back to the default ---
+echo "Test 73: Invalid decay_prune_below falls back to the default"
+for prune in '-0.5' '"0.5"' '1.5'; do
+  setup_project
+  create_work_unit "alpha" "feature" "Alpha"
+  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  echo "{ \"knowledge\": { \"provider\": null, \"decay_prune_below\": $prune } }" > "$TEST_ROOT/.workflows/.knowledge/config.json"
+  create_discussion_file "alpha" "alpha"
+  run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+  exit_code=0
+  run_kb compact >/dev/null 2>&1 || exit_code=$?
+  assert_eq "compact exits zero past decay_prune_below $prune" "0" "$exit_code"
+  assert_eq "status names decay_prune_below $prune" "true" \
+    "$(run_kb status 2>&1 | grep -qF "is ignored: $prune is not false or a number from 0 to 1" && echo true || echo false)"
+  teardown_project
+done
 
 # --- Test 77: Path-traversal via .. rejected ---
 echo "Test 77: Path-traversal rejected"
@@ -3702,39 +3671,22 @@ assert_eq "bulk index skips session state" "true" \
   "$(echo "$output" | grep -q 'dossier-core' && echo false || echo true)"
 teardown_project
 
-# --- Test 91: String similarity_threshold rejected ---
-echo "Test 91: String similarity_threshold rejected"
-setup_project
-create_work_unit "alpha" "feature" "Alpha"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "similarity_threshold": "0.5" } }
-CONF
-create_discussion_file "alpha" "alpha"
-run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
-exit_code=0
-output=$(run_kb query "topic" 2>&1 || true)
-run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
-assert_eq "string threshold exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "mentions invalid threshold" "true" "$(echo "$output" | grep -q 'Invalid similarity_threshold' && echo true || echo false)"
-teardown_project
-
-# --- Test 92: Out-of-range (>1) similarity_threshold rejected ---
-echo "Test 92: Out-of-range similarity_threshold rejected"
-setup_project
-create_work_unit "alpha" "feature" "Alpha"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "similarity_threshold": 2 } }
-CONF
-create_discussion_file "alpha" "alpha"
-run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
-exit_code=0
-output=$(run_kb query "topic" 2>&1 || true)
-run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
-assert_eq "out-of-range threshold exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "mentions invalid threshold" "true" "$(echo "$output" | grep -q 'Invalid similarity_threshold' && echo true || echo false)"
-teardown_project
+# --- Test 91: An invalid similarity_threshold never halts a search ---
+echo "Test 91: Invalid similarity_threshold never halts a search"
+for threshold in '"0.5"' '2'; do
+  setup_project
+  create_work_unit "alpha" "feature" "Alpha"
+  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  echo "{ \"knowledge\": { \"provider\": null, \"similarity_threshold\": $threshold } }" > "$TEST_ROOT/.workflows/.knowledge/config.json"
+  create_discussion_file "alpha" "alpha"
+  run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+  exit_code=0
+  output=$(run_kb query "topic" 2>&1) || exit_code=$?
+  assert_eq "query exits zero past similarity_threshold $threshold" "0" "$exit_code"
+  assert_eq "its note names similarity_threshold $threshold" "true" \
+    "$(echo "$output" | grep -qF "is ignored: $threshold is not a number from 0 to 1]" && echo true || echo false)"
+  teardown_project
+done
 
 # --- Summary ---
 echo ""

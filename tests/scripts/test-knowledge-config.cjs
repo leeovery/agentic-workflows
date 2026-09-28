@@ -137,15 +137,6 @@ describe('resolveSimilarityThreshold', () => {
   it('passes a configured override through', () => {
     assert.strictEqual(resolveSimilarityThreshold({ similarity_threshold: 0.45 }), 0.45);
   });
-
-  for (const bad of ['0.5', 2, -1, NaN]) {
-    it(`refuses ${JSON.stringify(bad)} as a UserError naming the key`, () => {
-      assert.throws(
-        () => resolveSimilarityThreshold({ similarity_threshold: bad }),
-        (err) => err.name === 'UserError' && /Invalid similarity_threshold/.test(err.message)
-      );
-    });
-  }
 });
 
 // ---------------------------------------------------------------------------
@@ -312,15 +303,139 @@ describe('loadConfig', () => {
     assert.strictEqual(cfg._api_key, null);
   });
 
-  it('ignores unknown fields without error (forward compatibility)', () => {
+  it('names nothing ignored in a config that holds only known settings', () => {
     const sysPath = path.join(tmpDir, 'sys.json');
-    writeJSON(sysPath, { knowledge: { provider: 'stub', future_field: 'whatever' } });
-    const cfg = loadConfig({
-      systemPath: sysPath,
-      projectPath: path.join(tmpDir, 'proj.json'),
+    const projPath = path.join(tmpDir, 'proj.json');
+    writeJSON(sysPath, { knowledge: { provider: 'stub', dimensions: 64, similarity_threshold: 0.4 } });
+    writeJSON(projPath, { knowledge: { decay_prune_below: false, decay_base_stability: 8, decay_weights: { epic: 2 } } });
+    assert.deepStrictEqual(loadConfig({ systemPath: sysPath, projectPath: projPath })._ignored, []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadConfig — a mistake in either file warns and falls back
+// ---------------------------------------------------------------------------
+
+describe('loadConfig — a mistake in either file', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  /** The config the two files load to, each written only where given. */
+  function load({ system, project } = {}) {
+    const systemPath = path.join(tmpDir, 'sys.json');
+    const projectPath = path.join(tmpDir, 'proj.json');
+    if (system) writeJSON(systemPath, { knowledge: system });
+    if (project) writeJSON(projectPath, { knowledge: project });
+    return { cfg: loadConfig({ systemPath, projectPath }), systemPath, projectPath };
+  }
+
+  /** Each key's invalid values, as the warning shows them. */
+  const INVALID = {
+    similarity_threshold: {
+      expected: 'a number from 0 to 1',
+      values: [['"0.5"', '0.5'], ['2', 2], ['-1', -1], ['true', true], ['[]', []]],
+    },
+    decay_prune_below: {
+      expected: 'false or a number from 0 to 1',
+      values: [['-0.5', -0.5], ['1.5', 1.5], ['"0.5"', '0.5'], ['true', true]],
+    },
+    decay_base_stability: {
+      expected: 'a number above 0',
+      values: [['0', 0], ['-3', -3], ['"5"', '5'], ['false', false]],
+    },
+    decay_weights: {
+      expected: 'an object giving work types numbers of 0 or more',
+      values: [['3', 3], ['[1]', [1]], ['{"feature":-1}', { feature: -1 }], ['{"feature":"high"}', { feature: 'high' }]],
+    },
+  };
+
+  for (const [key, { expected, values }] of Object.entries(INVALID)) {
+    for (const [shown, value] of values) {
+      for (const level of ['system', 'project']) {
+        it(`ignores ${key} ${shown} in the ${level} config for its default, naming it`, () => {
+          const { cfg, systemPath, projectPath } = load({ [level]: { [key]: value } });
+          assert.deepStrictEqual(cfg[key], DEFAULTS[key]);
+          const file = level === 'system' ? systemPath : projectPath;
+          assert.deepStrictEqual(cfg._ignored, [`${key} in ${file} is ignored: ${shown} is not ${expected}`]);
+        });
+      }
+    }
+  }
+
+  for (const level of ['system', 'project']) {
+    it(`leaves an unknown key in the ${level} config out, naming it — whatever its value`, () => {
+      const { cfg, systemPath, projectPath } = load({ [level]: { provider: 'stub', strategy: 'hybrid', notes: null } });
+      const file = level === 'system' ? systemPath : projectPath;
+      assert.strictEqual(cfg.provider, 'stub');
+      assert.ok(!('strategy' in cfg) && !('notes' in cfg));
+      assert.deepStrictEqual(cfg._ignored, [
+        `strategy in ${file} is ignored: not a knowledge setting`,
+        `notes in ${file} is ignored: not a knowledge setting`,
+      ]);
     });
-    assert.strictEqual(cfg.provider, 'stub');
-    assert.strictEqual(cfg.future_field, 'whatever');
+  }
+
+  it("names each file's mistakes, the system config's first", () => {
+    const { cfg, systemPath, projectPath } = load({ system: { cadence: 3 }, project: { similarity_threshold: 7 } });
+    assert.deepStrictEqual(cfg._ignored, [
+      `cadence in ${systemPath} is ignored: not a knowledge setting`,
+      `similarity_threshold in ${projectPath} is ignored: 7 is not a number from 0 to 1`,
+    ]);
+  });
+
+  it("leaves the system config's value in force beneath a project value it ignores", () => {
+    const { cfg } = load({ system: { similarity_threshold: 0.45 }, project: { similarity_threshold: '0.5' } });
+    assert.strictEqual(cfg.similarity_threshold, 0.45);
+  });
+
+  it('takes the bounds of every range', () => {
+    for (const [key, value] of [
+      ['similarity_threshold', 0], ['similarity_threshold', 1],
+      ['decay_prune_below', 0], ['decay_prune_below', 1], ['decay_prune_below', false],
+      ['decay_base_stability', 0.5], ['decay_weights', {}], ['decay_weights', { epic: 0, feature: 2.5 }],
+    ]) {
+      const { cfg } = load({ project: { [key]: value } });
+      assert.deepStrictEqual(cfg[key], value, key);
+      assert.deepStrictEqual(cfg._ignored, [], key);
+    }
+  });
+
+  it('unsets a tuning key set to null — the default applies — and names nothing', () => {
+    const { cfg } = load({ system: { similarity_threshold: 0.45, decay_base_stability: 8 }, project: { similarity_threshold: null } });
+    assert.ok(!('similarity_threshold' in cfg));
+    assert.strictEqual(resolveSimilarityThreshold(cfg), DEFAULTS.similarity_threshold);
+    assert.strictEqual(cfg.decay_base_stability, 8);
+    assert.deepStrictEqual(cfg._ignored, []);
+  });
+
+  it('reads the provider settings as written, whatever their value — they refuse where they are used', () => {
+    const { cfg } = load({ project: { provider: 'nonexistent', model: 7, dimensions: 'wide', base_url: false } });
+    assert.deepStrictEqual([cfg.provider, cfg.model, cfg.dimensions, cfg.base_url], ['nonexistent', 7, 'wide', false]);
+    assert.deepStrictEqual(cfg._ignored, []);
+    assert.throws(() => resolveProvider(cfg), /Provider "nonexistent" is not available/);
+    assert.throws(
+      () => resolveProvider(load({ project: { provider: 'openai-compatible', model: 'm', dimensions: 8 } }).cfg),
+      /requires a "base_url"/
+    );
+  });
+
+  it('still refuses a file that is not valid JSON, or whose knowledge is not an object', () => {
+    const systemPath = path.join(tmpDir, 'sys.json');
+    const projectPath = path.join(tmpDir, 'proj.json');
+    fs.writeFileSync(projectPath, '{ not json', 'utf8');
+    assert.throws(() => loadConfig({ systemPath, projectPath }), /Invalid JSON/);
+    writeJSON(projectPath, { knowledge: 'hybrid' });
+    assert.throws(() => loadConfig({ systemPath, projectPath }), /must be an object/);
+  });
+
+  it('never reads a key outside the knowledge object, and never rewrites the file', () => {
+    const systemPath = path.join(tmpDir, 'sys.json');
+    writeJSON(systemPath, { session: { tmux_labels: true }, knowledge: { strategy: 'hybrid' } });
+    const before = fs.readFileSync(systemPath, 'utf8');
+    const cfg = loadConfig({ systemPath, projectPath: path.join(tmpDir, 'proj.json') });
+    assert.ok(!('session' in cfg));
+    assert.deepStrictEqual(cfg._ignored, [`strategy in ${systemPath} is ignored: not a knowledge setting`]);
+    assert.strictEqual(fs.readFileSync(systemPath, 'utf8'), before);
   });
 });
 

@@ -113,6 +113,7 @@ function embedFailureCause(err) {
  * @property {string|null} note  why the query runs keyword-only, when it does
  * @property {boolean} storeEmbedded  whether the store's identity names a provider — a chunk without a vector then awaits one
  * @property {string|null} fillFailure  why the last vector fill fell short
+ * @property {string[]} ignored  each config setting loading ignored, named
  * @property {number} similarity  the vector leg's cosine floor
  * @property {number} stability  S0 for the decay curve
  * @property {Record<string, number>} weights  the progress clock's significance weights
@@ -124,13 +125,7 @@ function embedFailureCause(err) {
  * @param {Config} cfg @returns {number}
  */
 function resolveSimilarityThreshold(cfg) {
-  const similarity = cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
-  if (typeof similarity !== 'number' || !Number.isFinite(similarity) || similarity < 0 || similarity > 1) {
-    throw new UserError(
-      `Invalid similarity_threshold: ${JSON.stringify(similarity)}. Expected a number in [0, 1].`
-    );
-  }
-  return similarity;
+  return cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
 }
 
 /**
@@ -146,6 +141,7 @@ function querySettings(metadata, cfg, provider) {
     note: cause ? keywordOnlyNote(cause) : null,
     storeEmbedded: Boolean(metadata.provider),
     fillFailure: metadata.fill_failure || null,
+    ignored: cfg._ignored || [],
     similarity: resolveSimilarityThreshold(cfg),
     stability: resolveStability(cfg),
     weights: resolveDecayWeights(cfg),
@@ -249,7 +245,7 @@ async function queryStore(db, settings, { terms, options, workUnits }) {
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
   return {
     results: rerank(dated, boosts, settings.stability).slice(0, limit),
-    notes: [...(note ? [note] : []), ...vectorNotes(db, settings)],
+    notes: [...(note ? [note] : []), ...vectorNotes(db, settings), ...settings.ignored.map((line) => `[knowledge config — ${line}]`)],
   };
 }
 

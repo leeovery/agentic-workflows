@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the knowledge base's state — whether a checkout is ready, and
 // the report `status` prints: the store's contents, the embedder it records,
-// what a query over it runs in, and what the next bulk index would do.
+// what a query over it runs in, the config settings it ignores, and what the
+// next bulk index would do.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -110,6 +111,7 @@ function statusReport(root) {
     out.push(`Metadata: missing (run \`${ENGINE_COMMAND} knowledge rebuild\` to fix)`);
   }
   if (settings.error) warn(settings.error);
+  for (const line of settings.cfg ? settings.cfg._ignored : []) warn(line);
 
   // What the next bulk index does: the artifacts it indexes — never indexed,
   // or changed since — those compact prunes, which it skips, and the indexed
@@ -121,13 +123,7 @@ function statusReport(root) {
     warn(err);
   }
   if (manifests) {
-    let pruning = null;
-    try {
-      pruning = pruneTest(settings.cfg, manifests.workUnits);
-    } catch (err) {
-      warn(err);
-    }
-    const plan = planIndex(root, chunks, manifests, { scope: null, pruning });
+    const plan = planIndex(root, chunks, manifests, { scope: null, pruning: pruneTest(settings.cfg, manifests.workUnits) });
     for (const [label, rows] of /** @type {Array<[string, string[]]>} */ ([
       ['Unindexed completed artifacts', plan.fresh.map((a) => a.file)],
       ['Changed since indexing', plan.changed.map((a) => a.file)],

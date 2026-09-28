@@ -14,7 +14,6 @@
 
 const { DEFAULTS } = require('../../kernel/knowledge/config.cjs');
 const { retrievability } = require('../../kernel/knowledge/ranking.cjs');
-const { UserError } = require('../../kernel/knowledge/retry.cjs');
 
 /**
  * Parse a date-only "YYYY-MM-DD" as local midnight, anything else by the Date
@@ -106,11 +105,7 @@ function buildProgressClock(units, weights) {
  * @param {Record<string, any>|null} cfg @returns {Record<string, number>}
  */
 function resolveDecayWeights(cfg) {
-  const override = cfg && cfg.decay_weights;
-  if (override && typeof override === 'object' && !Array.isArray(override)) {
-    return Object.assign({}, DEFAULTS.decay_weights, override);
-  }
-  return Object.assign({}, DEFAULTS.decay_weights);
+  return Object.assign({}, DEFAULTS.decay_weights, cfg && cfg.decay_weights);
 }
 
 /**
@@ -139,9 +134,7 @@ function progressElapsed(workUnits, weights) {
 
 /** @param {Record<string, any>|null} cfg @returns {number} */
 function resolveStability(cfg) {
-  return cfg && Number.isFinite(cfg.decay_base_stability)
-    ? cfg.decay_base_stability
-    : DEFAULTS.decay_base_stability;
+  return (cfg && cfg.decay_base_stability) ?? DEFAULTS.decay_base_stability;
 }
 
 /**
@@ -151,20 +144,18 @@ function resolveStability(cfg) {
  */
 
 /**
- * Compact's prune test: a unit's non-spec chunks are pruned once its
- * retrievability has decayed below `decay_prune_below`. A unit the clock has
- * not moved past — in progress, undateable, the frontier — never is, and
- * specifications never decay. Null when `decay_prune_below` is false.
+ * Compact's prune test — the one rule compact removes by and an index skips
+ * by: a unit's non-spec chunks are pruned once its retrievability has decayed
+ * below `decay_prune_below`. A unit the clock has not moved past — in
+ * progress, undateable, the frontier — never is, and specifications never
+ * decay. Null when `decay_prune_below` is false.
  * @param {Record<string, any>|null} cfg
  * @param {Array<Record<string, any>>} workUnits  the manifest list the clock is built from
  * @returns {Pruning|null}
  */
 function pruneTest(cfg, workUnits) {
-  const floor = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : DEFAULTS.decay_prune_below;
+  const floor = (cfg && cfg.decay_prune_below) ?? DEFAULTS.decay_prune_below;
   if (floor === false) return null;
-  if (typeof floor !== 'number' || !Number.isFinite(floor) || floor < 0 || floor > 1) {
-    throw new UserError(`Invalid decay_prune_below: ${JSON.stringify(floor)}. Expected false or a number in [0, 1].`);
-  }
   const stability = resolveStability(cfg);
   const elapsedOf = progressElapsed(workUnits, resolveDecayWeights(cfg));
   return {
@@ -176,26 +167,10 @@ function pruneTest(cfg, workUnits) {
   };
 }
 
-/**
- * Compact's prune test as an index skips by: an invalid `decay_prune_below`
- * prunes nothing here — compact alone refuses it.
- * @param {Record<string, any>|null} cfg @param {Array<Record<string, any>>} workUnits
- * @returns {Pruning|null}
- */
-function indexPruning(cfg, workUnits) {
-  try {
-    return pruneTest(cfg, workUnits);
-  } catch (err) {
-    if (err instanceof UserError) return null;
-    throw err;
-  }
-}
-
 module.exports = {
   buildProgressClock,
   progressElapsed,
   resolveDecayWeights,
   resolveStability,
   pruneTest,
-  indexPruning,
 };

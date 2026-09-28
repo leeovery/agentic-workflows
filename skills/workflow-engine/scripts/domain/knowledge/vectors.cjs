@@ -28,7 +28,7 @@ const { messageOf } = require('../../kernel/call.cjs');
 const { currentStore, recordWrite, readStore } = require('./indexing.cjs');
 const { loadSettings, indexProvider, canEmbed, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { readManifests } = require('./artifacts.cjs');
-const { indexPruning } = require('./decay.cjs');
+const { pruneTest } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Chunk} Chunk */
@@ -361,7 +361,7 @@ async function fill(root) {
     } catch (err) {
       shortfall = messageOf(err);
     }
-    const pruning = indexPruning(cfg, workUnits);
+    const pruning = pruneTest(cfg, workUnits);
     return await fillVectors(files, cfg, embedder, (chunk) => !(pruning && pruning.prunes(chunk.work_unit, chunk.phase)), { shortfall });
   } finally {
     release();

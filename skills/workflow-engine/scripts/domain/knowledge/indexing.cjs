@@ -17,7 +17,7 @@ const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const { identityKey, deriveIdentity, workTypeOf, readManifests, discoverArtifacts, retirements } = require('./artifacts.cjs');
 const { indexProvider, newStoreEmbedder, embedderIdentity, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
-const { indexPruning } = require('./decay.cjs');
+const { pruneTest } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
@@ -417,7 +417,7 @@ function reconcile(root, { cfg, provider }, scope = null) {
   // line, and a store this machine may not create must never be started.
   const embedder = indexProvider(files, cfg, provider);
   const snapshot = readStore(files);
-  const pruning = indexPruning(cfg, manifests.workUnits);
+  const pruning = pruneTest(cfg, manifests.workUnits);
   const plan = planIndex(root, snapshot.db ? store.allChunks(snapshot.db) : [], manifests, {
     scope,
     pruning,

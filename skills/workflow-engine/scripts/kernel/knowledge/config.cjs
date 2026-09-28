@@ -8,7 +8,9 @@
 // Project config: .workflows/.knowledge/config.json
 //
 // Both wrap knowledge settings under a top-level "knowledge" key. Project
-// overrides system; missing fields fall through; absent files are fine.
+// overrides system; missing fields fall through; absent files are fine. An
+// unknown key, or a tuning value its use cannot take, is ignored and named;
+// the provider settings are read as written.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -54,6 +56,38 @@ const DEFAULTS = {
     'epic': 1.0,
   },
 };
+
+/**
+ * @typedef {object} TuningRule  the values a tuning key's use can take
+ * @property {string} expected  what a valid value is, as a warning words it
+ * @property {(value: unknown) => boolean} valid
+ */
+
+/** @param {unknown} value @returns {value is number} */
+function isNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** @param {unknown} value */
+function isFraction(value) {
+  return isNumber(value) && value >= 0 && value <= 1;
+}
+
+/** @type {Record<keyof typeof DEFAULTS, TuningRule>} */
+const TUNING = {
+  similarity_threshold: { expected: 'a number from 0 to 1', valid: isFraction },
+  decay_base_stability: { expected: 'a number above 0', valid: (value) => isNumber(value) && value > 0 },
+  decay_prune_below: { expected: 'false or a number from 0 to 1', valid: (value) => value === false || isFraction(value) },
+  decay_weights: {
+    expected: 'an object giving work types numbers of 0 or more',
+    valid: (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+      && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
+  },
+};
+
+// The settings that name the embedding provider — what setup writes, and
+// what decides the vectors a store holds.
+const PROVIDER_FIELDS = ['provider', 'model', 'dimensions', 'base_url'];
 
 // Known providers that have implementations in this codebase.
 const AVAILABLE_PROVIDERS = ['stub', 'openai', 'openai-compatible'];
@@ -301,28 +335,50 @@ function resolveApiKey(provider, opts) {
  */
 
 /**
+ * Why loading ignores a key of a config file's knowledge settings, or null
+ * when it reads it: a provider setting is read as written — a wrong one
+ * refuses where it is used — a tuning key when its value is one its use can
+ * take, or null, and any other key never.
+ * @param {string} key @param {unknown} value
+ * @returns {string|null}
+ */
+function ignoredBecause(key, value) {
+  if (PROVIDER_FIELDS.includes(key)) return null;
+  if (!Object.hasOwn(TUNING, key)) return 'not a knowledge setting';
+  const rule = /** @type {Record<string, TuningRule>} */ (TUNING)[key];
+  return value === null || rule.valid(value) ? null : `${JSON.stringify(value)} is not ${rule.expected}`;
+}
+
+/**
  * Load and merge config from the system and project levels over the
  * defaults. `null` at either level unsets a key, so a project config can
- * clear a system setting — the provider included.
+ * clear a system setting — the provider included. A key loading ignores
+ * leaves the level beneath it in force, and is named in `_ignored`.
  * @param {ConfigPaths} paths
- * @returns {Record<string, any>} the merged config, the resolved key as `_api_key`
+ * @returns {Record<string, any>} the merged config, the resolved key as `_api_key`, and a line per ignored key as `_ignored`
  */
 function loadConfig(paths) {
-  const system = readConfigFile(paths.systemPath || systemConfigPath(), { sharedFile: true });
-  const project = readConfigFile(paths.projectPath);
+  const systemPath = paths.systemPath || systemConfigPath();
+  const levels = [
+    { file: systemPath, settings: readConfigFile(systemPath, { sharedFile: true }) },
+    { file: paths.projectPath, settings: readConfigFile(paths.projectPath) },
+  ];
 
   /** @type {Record<string, any>} */
   const merged = Object.assign({}, DEFAULTS);
-  for (const level of [system, project]) {
-    if (!level) continue;
-    for (const key of Object.keys(level)) {
-      if (level[key] === undefined) continue;
-      if (level[key] === null) delete merged[key];
-      else merged[key] = level[key];
+  /** @type {string[]} */
+  const ignored = [];
+  for (const { file, settings } of levels) {
+    for (const [key, value] of Object.entries(settings || {})) {
+      const because = ignoredBecause(key, value);
+      if (because) ignored.push(`${key} in ${file} is ignored: ${because}`);
+      else if (value === null) delete merged[key];
+      else merged[key] = value;
     }
   }
 
   merged._api_key = resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath });
+  merged._ignored = ignored;
   return merged;
 }
 
@@ -448,6 +504,7 @@ function writeConfigFile(filePath, payload) {
 
 module.exports = {
   DEFAULTS,
+  PROVIDER_FIELDS,
   AVAILABLE_PROVIDERS,
   PROVIDER_ENV_VARS,
   systemConfigPath,

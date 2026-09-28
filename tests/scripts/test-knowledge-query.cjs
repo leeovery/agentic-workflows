@@ -557,6 +557,70 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 });
 
+describe('knowledge query and status — a mistake in the knowledge config', () => {
+  let root;
+  let configFile;
+
+  /** @param {Record<string, any>} knowledge */
+  function configure(knowledge) {
+    fs.writeFileSync(configFile, JSON.stringify({ knowledge }));
+  }
+
+  beforeEach(async () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-config-'));
+    const unit = path.join(root, '.workflows', 'alpha');
+    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
+      phases: { discussion: { items: { alpha: { status: 'completed' } } } },
+    }));
+    fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
+    configFile = path.join(root, '.workflows', '.knowledge', 'config.json');
+    configure({ provider: null });
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('a search runs past it at the default, its note naming each ignored key after the others', async () => {
+    configure({ provider: null, similarity_threshold: '0.5', strategy: 'hybrid' });
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.deepStrictEqual(stdout.split('\n').slice(0, 4), [
+      CHOSEN_NOTE,
+      `[knowledge config — similarity_threshold in ${configFile} is ignored: "0.5" is not a number from 0 to 1]`,
+      `[knowledge config — strategy in ${configFile} is ignored: not a knowledge setting]`,
+      '[1 results]',
+    ]);
+  });
+
+  it('a search over a sound config carries no config note', async () => {
+    const { stdout } = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.doesNotMatch(stdout, /knowledge config/);
+  });
+
+  it('status names each ignored key, and a query still runs', async () => {
+    configure({ provider: null, decay_base_stability: 0, decay_weights: [1] });
+    const status = await engineKnowledge(root, ['status']);
+    assert.strictEqual(status.code, 0);
+    assert.match(status.stdout, /^Mode: Keyword-only — /m);
+    const warnings = status.stdout.split('\n').filter((line) => line.startsWith('WARNING: '));
+    assert.deepStrictEqual(warnings, [
+      `WARNING: decay_base_stability in ${configFile} is ignored: 0 is not a number above 0`,
+      `WARNING: decay_weights in ${configFile} is ignored: [1] is not an object giving work types numbers of 0 or more`,
+    ]);
+  });
+
+  it('compact runs at the default floor past an invalid one', async () => {
+    configure({ provider: null, decay_prune_below: 'high' });
+    const compact = await engineKnowledge(root, ['compact']);
+    assert.strictEqual(compact.code, 0, compact.stderr);
+    assert.strictEqual(compact.stderr, '');
+  });
+});
+
 describe('renderQuery', () => {
   const result = doc('auth', 1, 'Tokens refresh hourly.');
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
