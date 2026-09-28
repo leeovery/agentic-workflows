@@ -3,9 +3,9 @@ The prose should have taken this path:
 1. the entry resolves the topic from its arguments, reads the research
    status, finds it in progress, emits the resuming phase note, checks
    the reconcile flag (absent — silent), and hands off to the processing
-   skill without asking the user anything; the epic context arm reads the
-   map item's source, finds it map-shaped rather than direct-start, and
-   gathers nothing
+   skill without asking the user anything; context gathering is the
+   fresh path's — a resumed topic already has its carrier — so no source
+   is read and nothing is gathered
 2. the process reads the status again, finds the file, renders the
    thread register once above resume detection — three threads, one
    being dug, one open, one learned, the header's breakdown naming all
