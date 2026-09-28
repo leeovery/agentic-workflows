@@ -155,7 +155,7 @@ function formatDispatches(records, dir) {
   return records.map((r, i) => {
     const input = r.tool_input || {};
     const head = `${i + 1}. ${input.subagent_type || '-'} — ${input.description || ''}`
-      + ` (background: ${input.run_in_background === true})`;
+      + ` (background: ${input.run_in_background !== false})`;
     return `${head}\n${prompts.indent(String(input.prompt || '').split(world).join('.'))}`;
   }).join('\n\n');
 }
