@@ -662,7 +662,7 @@ function buildWorld(caseId) {
   fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'),
     [ACTION_LOG, WALK_LOG, ASSERT_PROMPT, `${KNOWLEDGE_DIR}/`].map((p) => `${p}\n`).join(''));
   git('add', '-A');
-  git('commit', '-q', '-m', `world: ${caseId}`);
+  git('commit', '-q', '-m', 'Initial commit');
 
   // Layer the declared history: one real commit per group, in order,
   // each carrying exactly its declared files — the shape the walk's
