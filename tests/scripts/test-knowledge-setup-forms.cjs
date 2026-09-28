@@ -268,6 +268,68 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 });
 
+describe('setup writes the provider settings alone', () => {
+  let configHome;
+  let project;
+  let files;
+
+  /** @param {string} file @param {Record<string, any>} content */
+  const writeJson = (file, content) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(content));
+  };
+  /** @param {string} file */
+  const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+  /** A prompter answering each question in turn. @param {string[]} answers */
+  const prompter = (answers) => () => ({ question: (_prompt, answer) => answer(answers.shift()), close: () => {} });
+  const wizard = (answers) => runWizard(heldCall(project).call, project, { requireTTY: () => {}, createPrompter: prompter(answers) });
+
+  const TUNED = { similarity_threshold: 0.4, decay_weights: { epic: 2 }, strategy: 'hybrid' };
+
+  beforeEach(() => {
+    configHome = fakeConfigHome();
+    project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-setup-keys-'));
+    fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
+    files = knowledgeFiles(project);
+  });
+
+  afterEach(() => {
+    configHome.restore();
+    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it('--from-system drops the project config\'s provider overrides and keeps every other key', async () => {
+    writeJson(config.systemConfigPath(), { knowledge: { provider: 'stub', dimensions: 8 } });
+    writeJson(files.config, { knowledge: { provider: 'openai', model: 'text-embedding-3-small', ...TUNED } });
+    await forms.runFromSystem(heldCall(project).call, project);
+    assert.deepStrictEqual(readJson(files.config), { knowledge: TUNED });
+  });
+
+  it('--keyword-only pins the provider off and keeps every other key of the project config', async () => {
+    writeJson(files.config, { knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8, ...TUNED } });
+    await forms.runKeywordOnly(heldCall(project).call, project);
+    assert.deepStrictEqual(readJson(files.config), { knowledge: { provider: null, ...TUNED } });
+  });
+
+  it("the wizard's keyword-only choice replaces the system config's provider and keeps every other key", async () => {
+    const system = config.systemConfigPath();
+    writeJson(system, {
+      session: { tmux_labels: true },
+      knowledge: { provider: 'openai-compatible', base_url: 'http://127.0.0.1:9/v1', model: 'm', dimensions: 8, ...TUNED },
+    });
+    await wizard(['y', '3']);
+    assert.deepStrictEqual(readJson(system), { session: { tmux_labels: true }, knowledge: TUNED });
+  });
+
+  it("the wizard's reinitialise keeps every key of the project config but the provider settings", async () => {
+    writeJson(config.systemConfigPath(), { knowledge: { provider: 'stub', dimensions: 8 } });
+    await forms.runKeywordOnly(heldCall(project).call, project);
+    writeJson(files.config, { knowledge: { provider: null, model: 'stale', ...TUNED } });
+    await wizard(['n', 'y']);
+    assert.deepStrictEqual(readJson(files.config), { knowledge: TUNED });
+  });
+});
+
 describe('runInitialIndexStep', () => {
   let project;
   let held;

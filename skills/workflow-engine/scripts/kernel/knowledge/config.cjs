@@ -461,16 +461,41 @@ function resolveProvider(config, patience = {}) {
 }
 
 /**
- * Atomically write a config file. The payload carries the knowledge
- * subsystem's full view (including the top-level `knowledge` wrapper); any
- * other top-level keys already on disk are preserved —
- * the file is shared, and a knowledge write must never clobber a sibling
- * subsystem. Writes to `<path>.tmp` then renames — matches the
+ * A JSON object's own record, or an empty one for anything else.
+ * @param {unknown} value @returns {Record<string, unknown>}
+ */
+function objectOr(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? /** @type {Record<string, unknown>} */ (value)
+    : {};
+}
+
+/**
+ * The parsed JSON object at a path — empty where there is no file, or where
+ * it does not parse to an object: the caller is committing to a write, and
+ * replaces it.
+ * @param {string} filePath @returns {Record<string, unknown>}
+ */
+function readWritableObject(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  try {
+    return objectOr(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Atomically write a config file's provider settings — the payload's
+ * `knowledge` object, as setup builds it. They replace the provider fields
+ * the file holds as a set; every other key of its `knowledge` object, and
+ * every other top-level key (another subsystem's), stays as the file has
+ * it. Writes to `<path>.tmp` then renames — matches the
  * manifest/store convention so a crash mid-write never leaves a truncated
  * JSON file.
  *
  * @param {string} filePath  Absolute path to write
- * @param {object} payload   Full JSON object (must include `knowledge` key)
+ * @param {{knowledge: Record<string, unknown>}} payload  the provider settings under the `knowledge` wrapper
  */
 function writeConfigFile(filePath, payload) {
   if (!filePath) throw new Error('writeConfigFile: filePath is required');
@@ -478,18 +503,9 @@ function writeConfigFile(filePath, payload) {
     throw new Error('writeConfigFile: payload must be an object with a top-level "knowledge" key');
   }
 
-  let existing = null;
-  if (fs.existsSync(filePath)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (_) {
-      // Corrupt file — the caller is committing to a write; replace it.
-      existing = null;
-    }
-  }
-  const full = existing && typeof existing === 'object' && !Array.isArray(existing)
-    ? Object.assign({}, existing, payload)
-    : payload;
+  const existing = readWritableObject(filePath);
+  const kept = Object.entries(objectOr(existing.knowledge)).filter(([key]) => !PROVIDER_FIELDS.includes(key));
+  const full = { ...existing, knowledge: { ...payload.knowledge, ...Object.fromEntries(kept) } };
 
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {

@@ -58,7 +58,6 @@ const NAMING_FLAGS = ['work-unit', 'phase', 'topic'];
 const OPTION_KEYS = new Set(['boosts', 'limit', ...FILTER_FLAGS]);
 const PINNED_CASE_FIELDS = ['first', 'first_primary', 'primary_found', 'primary_total', 'results', 'bytes'];
 
-const PROVIDER_IDENTITY_KEYS = ['provider', 'model', 'dimensions', 'base_url'];
 const TUNING_UNSET = Object.fromEntries(Object.keys(config.DEFAULTS).map((key) => [key, null]));
 const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
 
@@ -496,7 +495,7 @@ function openHybridMode(scratch) {
 function hybridSettings() {
   const system = config.readConfigFile(config.systemConfigPath(), { sharedFile: true }) || {};
   return {
-    ...Object.fromEntries(PROVIDER_IDENTITY_KEYS.map((key) => [key, system[key] ?? null])),
+    ...Object.fromEntries(config.PROVIDER_FIELDS.map((key) => [key, system[key] ?? null])),
     ...TUNING_UNSET,
   };
 }

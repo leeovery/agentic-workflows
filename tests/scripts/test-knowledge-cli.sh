@@ -3235,13 +3235,13 @@ assert_eq "system config was not written" "true" \
 clean_system_config
 teardown_project
 
-# --- Test S13: --provider openai-compatible keyless end-to-end; old schema self-heals ---
-echo "Test S13: setup --provider openai-compatible keyless + self-heal"
+# --- Test S13: --provider openai-compatible keyless end-to-end; the file's other keys kept ---
+echo "Test S13: setup --provider openai-compatible keyless, keeping every other key"
 setup_project
 rm -rf "$TEST_ROOT/.workflows/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/config.json" <<'CONF'
-{ "knowledge": { "provider": "openai", "model": "old-model", "decay_months": 6, "api_key_env": "LEGACY_VAR" } }
+{ "session": { "tmux_labels": true }, "knowledge": { "provider": "openai", "model": "old-model", "dimensions": 1536, "similarity_threshold": 0.4, "strategy": "hybrid" } }
 CONF
 start_fake_embed_server 4
 exit_code=0
@@ -3253,15 +3253,9 @@ assert_eq "validated before writing" "true" \
   "$(echo "$output" | grep -q 'Validating openai-compatible via a test embed' && echo true || echo false)"
 assert_eq "summary names provider and model" "true" \
   "$(echo "$output" | grep -q 'provider: openai-compatible' && echo "$output" | grep -q 'model:    fake-embed' && echo true || echo false)"
-sys_after=$(cat "$HOME/.config/workflows/config.json")
-assert_eq "old decay_months field dropped on write" "true" \
-  "$(echo "$sys_after" | grep -q 'decay_months' && echo false || echo true)"
-assert_eq "old api_key_env field dropped on write" "true" \
-  "$(echo "$sys_after" | grep -q 'api_key_env' && echo false || echo true)"
-assert_eq "current schema written (provider)" "true" \
-  "$(echo "$sys_after" | grep -q '"provider": "openai-compatible"' && echo true || echo false)"
-assert_eq "current schema written (base_url)" "true" \
-  "$(echo "$sys_after" | grep -q '"base_url"' && echo true || echo false)"
+assert_eq "the provider settings replaced as a set, every other key kept" \
+  "{\"session\":{\"tmux_labels\":true},\"knowledge\":{\"provider\":\"openai-compatible\",\"base_url\":\"http://127.0.0.1:$FAKE_SERVER_PORT/v1\",\"model\":\"fake-embed\",\"dimensions\":4,\"similarity_threshold\":0.4,\"strategy\":\"hybrid\"}}" \
+  "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$HOME/.config/workflows/config.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project

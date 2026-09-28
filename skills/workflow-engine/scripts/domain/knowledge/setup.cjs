@@ -27,9 +27,10 @@ const OPENAI_DEFAULT_DIMENSIONS = 1536;
 
 
 // ---------------------------------------------------------------------------
-// The system config's shape — provider identity alone, never a tuning
-// default: a default written here would freeze at the value of the day setup
-// ran, where DEFAULTS apply at load time.
+// The config files' shape as setup writes it — provider identity alone,
+// never a tuning default: a default written here would freeze at the value of
+// the day setup ran, where DEFAULTS apply at load time. A write replaces the
+// provider settings alone (config.writeConfigFile).
 // ---------------------------------------------------------------------------
 
 /** @typedef {{knowledge: Record<string, unknown>}} ConfigPayload  a config file whole, its settings under `knowledge` */
@@ -57,6 +58,10 @@ function buildSystemConfigStub() {
 /** @returns {ConfigPayload} */
 function buildProjectConfigEmpty() {
   return { knowledge: {} };
+}
+
+function buildProjectConfigKeywordOnly() {
+  return { knowledge: { provider: null } };
 }
 
 /**
@@ -124,23 +129,30 @@ function createEmptyStore(call, files) {
 }
 
 /**
- * Drop the provider-selection overrides (provider, model, dimensions,
- * base_url) from an existing project config, so the project inherits the
- * system settings.
+ * An existing project config's knowledge settings — refused where they do
+ * not read, before setup writes anything over them.
+ * @param {string} projectConfigFile
+ * @returns {Record<string, any>}
+ */
+function readProjectConfig(projectConfigFile) {
+  try {
+    return config.readConfigFile(projectConfigFile) || {};
+  } catch (err) {
+    throw new UserError(`project config at ${projectConfigFile} is invalid: ${messageOf(err)}`);
+  }
+}
+
+/**
+ * Drop the provider overrides (provider, model, dimensions, base_url) from an
+ * existing project config, so the project inherits the system settings.
  * @param {Call} call @param {string} projectConfigFile
  */
 function stripProviderOverrides(call, projectConfigFile) {
   if (!fs.existsSync(projectConfigFile)) return;
-  let knowledge;
-  try {
-    knowledge = config.readConfigFile(projectConfigFile) || {};
-  } catch (err) {
-    throw new UserError(`project config at ${projectConfigFile} is invalid: ${messageOf(err)}`);
-  }
-  const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
+  const knowledge = readProjectConfig(projectConfigFile);
+  const overrides = config.PROVIDER_FIELDS.filter((f) => f in knowledge);
   if (overrides.length === 0) return;
-  for (const f of overrides) delete knowledge[f];
-  config.writeConfigFile(projectConfigFile, { knowledge });
+  config.writeConfigFile(projectConfigFile, buildProjectConfigEmpty());
   call.out(`Project config overrode ${overrides.join(', ')} — reset to inherit the system settings.\n`);
 }
 
@@ -272,10 +284,12 @@ module.exports = {
   buildSystemConfigCompatible,
   buildSystemConfigStub,
   buildProjectConfigEmpty,
+  buildProjectConfigKeywordOnly,
   detectSystemConfig,
   detectProjectInit,
   inconsistentStoreMessage,
   createEmptyStore,
+  readProjectConfig,
   stripProviderOverrides,
   validateProvider,
   describeValidationError,

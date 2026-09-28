@@ -757,6 +757,34 @@ describe('writeConfigFile', () => {
     assert.strictEqual(parsed.knowledge.provider, 'openai');
   });
 
+  it('replaces the provider settings as a set, and keeps every other knowledge key as the file has it', () => {
+    const filePath = path.join(tmpDir, 'config.json');
+    writeJSON(filePath, {
+      knowledge: {
+        provider: 'openai-compatible', base_url: 'http://localhost:1234/v1', model: 'local', dimensions: 768,
+        similarity_threshold: 0.4, decay_weights: { epic: 2 }, strategy: 'hybrid',
+      },
+    });
+    writeConfigFile(filePath, { knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 } });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(filePath, 'utf8')), {
+      knowledge: {
+        provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536,
+        similarity_threshold: 0.4, decay_weights: { epic: 2 }, strategy: 'hybrid',
+      },
+    });
+    writeConfigFile(filePath, { knowledge: {} });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(filePath, 'utf8')), {
+      knowledge: { similarity_threshold: 0.4, decay_weights: { epic: 2 }, strategy: 'hybrid' },
+    });
+  });
+
+  it('replaces a knowledge value that is not an object', () => {
+    const filePath = path.join(tmpDir, 'config.json');
+    writeJSON(filePath, { session: { tmux_labels: true }, knowledge: [1, 2] });
+    writeConfigFile(filePath, { knowledge: { provider: 'stub' } });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(filePath, 'utf8')), { session: { tmux_labels: true }, knowledge: { provider: 'stub' } });
+  });
+
   it('preserves sibling subsystem keys on an existing file', () => {
     const filePath = path.join(tmpDir, 'config.json');
     fs.writeFileSync(filePath, JSON.stringify({ editor: { theme: 'dark' }, knowledge: { provider: 'stub' } }), 'utf8');
