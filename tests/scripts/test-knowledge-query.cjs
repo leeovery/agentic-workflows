@@ -218,8 +218,8 @@ describe('queryStore', () => {
         "[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"],
       [new QuotaError('OpenAI request refused: the account is out of quota (HTTP 429).'),
         '[keyword-only mode — the embedding account is out of quota; add credit to it]'],
-      [new AuthError('OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run `knowledge setup` to fix.'),
-        '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `knowledge setup` to fix.]'],
+      [new AuthError('OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.'),
+        '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.]'],
     ];
     for (const [error, note] of cases) {
       const settings = querySettings(STUB_BUILT, { provider: 'stub' }, failing(error));
