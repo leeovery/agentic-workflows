@@ -111,6 +111,15 @@ describe('the mark', () => {
     assert.ok(fs.existsSync(marker('sess-1')));
   });
 
+  it('a command that waits on the embedding provider marks it once it answers, whatever its answer', async () => {
+    const answered = await harness.callAsync(dir, ['knowledge', 'query', 'cards'], { env: session('sess-waits') });
+    assert.strictEqual(answered.code, 0, answered.stderr);
+    assert.ok(fs.existsSync(marker('sess-waits')));
+    const refused = await harness.callAsync(dir, ['knowledge', 'query', ' '], { env: session('sess-refused') });
+    assert.strictEqual(refused.code, 1);
+    assert.ok(fs.existsSync(marker('sess-refused')));
+  });
+
   it('no session id, no mark — absent or empty', () => {
     harness.ok(dir, ['session', 'repair']);
     harness.ok(dir, ['session', 'repair'], { env: session('') });

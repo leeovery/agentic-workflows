@@ -131,6 +131,26 @@ describe('the launch — only a provider that can embed, only while chunks await
     assert.deepStrictEqual(launched, [root]);
   });
 
+  it('a transaction that brings a work unit back in line launches the fill for what it left awaiting', (t) => {
+    const launched = recordLaunches(t);
+    root = buildProject(STUB, ['alpha', 'beta']);
+    /** @type {string[]} */
+    const warnings = [];
+    syncKnowledge(root, [{ reindex: 'pay' }], warnings);
+    assert.deepStrictEqual(warnings, []);
+    assert.deepStrictEqual(awaiting(root).sort(), ['alpha', 'beta']);
+    assert.deepStrictEqual(launched, [root]);
+  });
+
+  it('a transaction that only removes launches none', (t) => {
+    root = buildProject(STUB, ['alpha', 'beta']);
+    syncKnowledge(root, [{ index: discussion('alpha') }, { index: discussion('beta') }], []);
+    const launched = recordLaunches(t);
+    syncKnowledge(root, [{ remove: { workUnit: 'pay', phase: 'discussion', topic: 'alpha' } }], []);
+    assert.deepStrictEqual(awaiting(root), ['beta'], 'a chunk still awaits, but no write of this transaction left it');
+    assert.deepStrictEqual(launched, []);
+  });
+
   it('launches `engine knowledge fill` detached, its output ignored, never waited on', (t) => {
     /** @type {any[]} */
     const spawned = [];
