@@ -12,7 +12,8 @@ The prose should have taken this path:
    required and returns without asking anything; the plan adapter
    loads for the manifest's format; project skills and linter
    discovery each ask only their skip-again question — the first two
-   scripted answers skip both
+   scripted answers skip both,
+   each recording its empty set on the topic
 5. the loop reads work_type once at entry; the crash-resume healing
    finds nothing to heal; task pay-1-1 is selected, normalised,
    started via the engine, marked in-progress, and its brief renders

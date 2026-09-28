@@ -10,14 +10,14 @@ The prose should have taken this path:
 4. environment setup finds the existing document stating no setup is
    required and returns without asking anything
 5. the plan adapter is loaded for the manifest's format
-6. project skills discovery reads an unpopulated topic value, finds the
+6. project skills discovery reads no topic value, finds the
    project default populated, and confirms it: the skill names (the
    stored paths' last segments) are written to the cache payload and
    the confirm variant of the render surface is fetched — the compact
    presentation, a count line over a comma run of names, never the
    numbered discovery worklist; the scripted yes copies the project
    default's paths to the topic level
-7. linter setup does the same: unpopulated topic value, populated
+7. linter setup does the same: no topic value, populated
    project default, names written to the cache payload, the confirm
    variant fetched; the scripted yes copies the project default's
    value to the topic level

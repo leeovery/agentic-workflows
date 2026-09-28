@@ -60,7 +60,9 @@
       "render park-gate",
       "--source pay/specification/pay/specification.md",
       "roadmap add",
-      "--origin park:pay"
+      "--origin park:pay",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render task-gate pay.implementation.pay",

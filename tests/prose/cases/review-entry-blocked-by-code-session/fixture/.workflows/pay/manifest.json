@@ -59,10 +59,10 @@
           "consolidation_gate_mode": "gated",
           "fix_attempts": 0,
           "analysis_cycle_total": 0,
-          "linters": [],
-          "project_skills": [],
           "current_phase": 1,
           "current_task": null,
+          "project_skills": [],
+          "linters": [],
           "completed_tasks": [
             "pay-1-1",
             "pay-1-2"

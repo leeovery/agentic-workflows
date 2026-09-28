@@ -317,10 +317,13 @@ function implement(h) {
   // No `topic start` here: implementation is the one phase whose prose
   // never issues it — `task init` owns creation (process Step 0, the
   // created arm), and only that arm writes the full field set. The
-  // code commits are declared as world history (per-task messages in
-  // the task-loop's convention) so a materialised world's git log
-  // carries what the review scope-grep reads.
+  // setup steps then record the topic's project skills and linters —
+  // none confirmed, stored as []. The code commits are declared as world
+  // history (per-task messages in the task-loop's convention) so a
+  // materialised world's git log carries what the review scope-grep reads.
   h.engine('task', 'init', WU, WU);
+  h.engine('manifest', 'set', `${WU}.implementation.${WU}`, 'project_skills', '[]');
+  h.engine('manifest', 'set', `${WU}.implementation.${WU}`, 'linters', '[]');
   h.engine('task', 'start', WU, WU, `${WU}-1-1`);
   h.write('src/checkout/payment-intent.js', [
     "// Create a gateway payment intent when checkout begins. Card-only",

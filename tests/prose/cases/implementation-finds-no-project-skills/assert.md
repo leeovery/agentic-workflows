@@ -10,12 +10,12 @@ The prose should have taken this path:
 4. environment setup finds the existing document stating no setup is
    required and returns without asking anything
 5. the plan adapter is loaded for the manifest's format
-6. project skills discovery reads an unpopulated topic value and finds
+6. project skills discovery reads no topic value and finds
    no project default exists, so it proceeds to discovery; the scan
    reports no project skills — the workflow system's own skills are
    never candidates — with no menu and no question, and both the topic
    and project levels record the empty array
-7. linter discovery reads an unpopulated topic value and no project
+7. linter discovery reads no topic value and no project
    default, so it proceeds to discovery; the analysis finds no
    candidate linters — a project with no source code has nothing to
    lint — so the no-linters notice is emitted with no menu and no

@@ -13,12 +13,12 @@ The prose should have taken this path:
    again
 5. the plan adapter is loaded for the manifest's format; about.md
    demands no setup
-6. project skills discovery reads an unpopulated topic value, finds
-   the project default present but empty, and asks only the skip-again
-   question — the first scripted answer skips; no scan of
-   .claude/skills happens
+6. project skills discovery reads no topic value, finds the project
+   default present but empty, and asks only the skip-again question —
+   the first scripted answer skips, recording the topic's empty set;
+   no scan of .claude/skills happens
 7. linter discovery takes the same shape — the second scripted answer
-   skips; no linter discovery runs
+   skips, recording the topic's empty set; no linter discovery runs
 8. knowledge usage loads and returns; no knowledge query is made —
    implementation reads code, not the knowledge base
 9. the loop reads work_type once at entry; the crash-resume healing

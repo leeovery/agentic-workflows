@@ -8,7 +8,8 @@ The prose should have taken this path:
    implementation; environment setup finds the existing document and
    asks nothing; the plan adapter loads; project skills and linter
    discovery each ask only their skip-again question — the first two
-   scripted answers skip both
+   scripted answers skip both,
+   each recording its empty set on the topic
 3. the loop reads work_type once at entry; task pay-1-1 is selected
    first, normalised, started via the engine, and marked in-progress;
    its brief renders via `render task-brief` before the dispatch
