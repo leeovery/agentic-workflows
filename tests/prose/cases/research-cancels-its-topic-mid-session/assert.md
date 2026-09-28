@@ -23,7 +23,10 @@ The prose should have taken this path:
    research is never completed — with or without a dead end
 6. the cancel protocol resolves the unit before anything else — the work
    type is read from the manifest, and a research session on an epic
-   addresses the Discovery stage under the topic's own name
+   addresses the Discovery stage under the topic's own name; before the
+   confirm, what the sitting discussed and had not yet recorded — the
+   user's answers on the open questions — is written into the research
+   file and committed with the session's own cadence commit on its topic
 7. the confirm is fetched from the engine at
    `search-relevance.discovery.synonym-handling` and its menu emitted,
    and the flow STOPs. The statement is the engine's — the session never
@@ -63,7 +66,8 @@ EXPECTED WORLD — from the fixture:
   `handled` marker. The other two map rows are untouched, and their
   orders still read 1 and 3
 - the research file is still on disk with its content intact — a cancel
-  takes the item, never the document — and the thread register still
+  takes the item, never the document — and it carries what the user said
+  on the open questions this sitting; the thread register still
   carries both threads in whatever state the session's own turns left
   them
 - no discussion, specification, planning, implementation, or review item
@@ -71,7 +75,7 @@ EXPECTED WORLD — from the fixture:
   still in progress
 - git history holds the engine's own cancel commit over the manifest
   (`workflow(search-relevance): cancel synonym-handling (discovery)`);
-  any commit the session made before it is a cadence commit on the
-  research topic, and nothing else was committed
+  preceded by the session's cadence commit on the research topic;
+  nothing else was committed
 - per-turn cache heartbeats under `.workflows/.cache/` are expected, not
   writes

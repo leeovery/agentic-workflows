@@ -24,8 +24,9 @@ The prose should have taken this path:
    unit are the same thing, so there is no stage to address and no
    per-topic cancel to run
 7. one work-unit cancel transaction runs — `workunit cancel pay` —
-   having first committed anything the session had written and not yet
-   committed. No cancel gate is fetched: the linear path carries no
+   having first written into the discussion what the sitting discussed
+   and had not yet recorded, and committed it with the session's own
+   cadence commit. No cancel gate is fetched: the linear path carries no
    confirm of its own, and the session never authors one
 8. the receipt is fetched from the engine (`render workunit-receipt pay
    --verb cancel`) and emitted, and the flow stops on a terminal
@@ -47,10 +48,10 @@ EXPECTED WORLD — from the fixture:
   the whole unit is what was cancelled
 - the discussion file is still on disk with its Capture Confirmation
   section intact — a cancel takes the unit's status, never its documents
+  — and it carries what the user said on the live subtopic this sitting
 - the work unit's cache directory is gone, purged by the cancel
 - git history holds the engine's own cancel commit
-  (`workflow(pay): mark as cancelled`); any commit the session made
-  before it is a cadence commit on the discussion topic, and nothing
-  else was committed
+  (`workflow(pay): mark as cancelled`), preceded by the session's
+  cadence commit on the discussion topic; nothing else was committed
 - no second work unit exists, and no phase item was created under any
   name

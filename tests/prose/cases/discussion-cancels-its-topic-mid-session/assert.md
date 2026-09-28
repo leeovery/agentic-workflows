@@ -24,7 +24,12 @@ The prose should have taken this path:
    closing gates, no wait gate, no document review, no `topic complete`
 6. the cancel protocol resolves the unit before anything else — the
    work type is read from the manifest, and a discussion session on an
-   epic addresses the Discovery stage under the topic's own name
+   epic addresses the Discovery stage under the topic's own name;
+   before the confirm, what the sitting discussed and had not yet
+   recorded — the user's answers on the open thread — is written into
+   the discussion and committed with the session's own cadence commit
+   on its topic, so the conversation that called the topic off stays
+   on record
 7. the confirm is fetched from the engine at
    `search-relevance.discovery.behavioural-ranking` and its menu
    emitted, and the flow STOPs. The statement is the engine's — the
@@ -66,7 +71,8 @@ EXPECTED WORLD — from the fixture:
   `previous_order`. The other two map rows are untouched, and their
   orders still read 2 and 3
 - the discussion file is still on disk with its Signal Set section
-  intact — a cancel takes the item, never the document. The discussion
+  intact — a cancel takes the item, never the document — and it carries
+  what the user said on the open thread this sitting. The discussion
   map's subtopics are unchanged or carry only what the session's own
   turns added; nothing is `deferred`
 - no research, specification, planning, implementation, or review item
@@ -74,7 +80,7 @@ EXPECTED WORLD — from the fixture:
   still in progress
 - git history holds the engine's own cancel commit over the manifest
   (`workflow(search-relevance): cancel behavioural-ranking
-  (discovery)`); any commit the session made before it is a cadence
-  commit on the discussion topic, and nothing else was committed
+  (discovery)`), preceded by the session's cadence commit on the
+  discussion topic; nothing else was committed
 - per-turn cache heartbeats under `.workflows/.cache/` are expected,
   not writes

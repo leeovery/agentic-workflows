@@ -34,10 +34,12 @@ The prose should have taken this path:
    and the walk STOPs. Nothing in prose asks the user to name a horizon
    — that arm belongs to a map that does not exist — and the second
    horizon, `v2`, is what comes back
-8. before the confirm, the session commits what it has written with its
-   own cadence commit on its own topic: the postpone transaction writes
-   the manifests alone, so the sitting that sent the topic away is on
-   record with the rest of it
+8. before the confirm, what the sitting discussed and had not yet
+   recorded — the user's answers on the refresh cadence — is written
+   into the discussion and committed with the session's own cadence
+   commit on its topic: the postpone transaction writes the manifests
+   alone, so the sitting that sent the topic away is on record with the
+   rest of it when the topic comes back
 9. the confirm is fetched from the engine at
    `search-relevance.discovery.behavioural-ranking` with the horizon,
    and its menu emitted, and the flow STOPs. The statement is the
@@ -78,9 +80,11 @@ EXPECTED WORLD — from the fixture:
   `previous_order`. The other two map rows are untouched, and their
   orders still read 2 and 3
 - the discussion file is still on disk with its Signal Set section
-  intact — a postpone takes the item, never the document — and so is the
-  topic's brief. The discussion map's subtopics are unchanged or carry
-  only what the session's own turns added; nothing is `deferred`
+  intact — a postpone takes the item, never the document — and it
+  carries what the user said on the refresh cadence this sitting; the
+  topic's brief is untouched. The discussion map's subtopics are
+  unchanged or carry only what the session's own turns added; nothing
+  is `deferred`
 - the roadmap holds the same two horizons it started with, `v1` then
   `v2`, in that order, and the two fixture items are untouched. A third
   item now waits under `v2`, named for the topic, its summary the map
@@ -91,7 +95,7 @@ EXPECTED WORLD — from the fixture:
   exists under any name; no second work unit; the work-unit status is
   still in progress; nothing is under `.workflows/.inbox/`
 - git history holds the engine's own postpone commit over both
-  manifests; any commit the session made before it is a cadence commit
-  on the discussion topic, and nothing else was committed
+  manifests, preceded by the session's cadence commit on the discussion
+  topic; nothing else was committed
 - per-turn cache heartbeats under `.workflows/.cache/` are expected, not
   writes
