@@ -217,6 +217,14 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     assert.ok(!('WORKFLOWS_PROBE' in process.env), 'and gone once it answered');
   });
 
+  it('overlapping calls each hold their own environment, and leave none behind', async () => {
+    delete process.env.WORKFLOWS_PROBE;
+    const answers = await Promise.all(['first', 'second', 'third'].map((probe) =>
+      engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { WORKFLOWS_PROBE: probe } })));
+    for (const res of answers) assert.strictEqual(res.code, 0, res.stderr);
+    assert.ok(!('WORKFLOWS_PROBE' in process.env), `left behind: ${process.env.WORKFLOWS_PROBE}`);
+  });
+
   it('answers a command that never waits exactly as run does', async () => {
     const args = ['manifest', 'get', 'payments.research.payments', 'status'];
     assert.deepStrictEqual(await engine.runAsync(args, { cwd: dir }), engine.run(args, { cwd: dir }));
@@ -230,6 +238,46 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
 
   it('run refuses a command it cannot wait for, naming runAsync', () => {
     assert.throws(() => engine.run(['knowledge', 'query', 'cards'], { cwd: dir }), /engine knowledge query answers asynchronously — call runAsync/);
+  });
+
+  it('run refuses a waiting command before it acts — nothing written, the environment untouched', () => {
+    const knowledge = path.join(dir, '.workflows', '.knowledge');
+    fs.rmSync(path.join(knowledge, 'store.bin'));
+    fs.rmSync(path.join(knowledge, 'metadata.json'));
+    const conversations = path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations');
+    delete process.env.WORKFLOWS_PROBE;
+    assert.throws(
+      () => engine.run(['knowledge', 'index'], { cwd: dir, env: { WORKFLOWS_PROBE: 'held', CLAUDE_CODE_SESSION_ID: 'refused-before-acting' } }),
+      /engine knowledge index answers asynchronously — call runAsync/,
+    );
+    assert.ok(!('WORKFLOWS_PROBE' in process.env));
+    assert.ok(!fs.existsSync(path.join(knowledge, 'store.bin')), 'no store built');
+    assert.ok(!fs.existsSync(path.join(conversations, 'refused-before-acting')), 'no conversation marked');
+  });
+
+  it('a single-file index answers at once, so run takes it', () => {
+    const res = engine.run(['knowledge', 'index', '.workflows/payments/research/payments.md'], { cwd: dir });
+    assert.strictEqual(res.code, 0, res.stderr);
+  });
+
+  it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
+    const { runKnowledge, knowledgeWaits } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
+    const forms = [
+      ['index'], ['index', '.workflows/payments/research/payments.md'], ['query', 'cards'], ['check'], ['status'],
+      ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
+      ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
+    ];
+    for (const argv of forms) {
+      const call = { cwd: dir, out: () => {}, err: () => {}, stdin: () => '' };
+      let answer;
+      try {
+        answer = runKnowledge(call, argv);
+      } catch {
+        answer = undefined;
+      }
+      assert.strictEqual(answer instanceof Promise, knowledgeWaits(argv), `knowledge ${argv.join(' ')}`);
+      if (answer) await answer.catch(() => {});
+    }
   });
 
   it('the spawned CLI answers a waiting command byte for byte as runAsync does', async () => {

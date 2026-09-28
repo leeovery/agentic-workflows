@@ -55,7 +55,7 @@ const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
-const { runKnowledge } = require('./domain/knowledge/commands.cjs');
+const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf } = require('./kernel/call.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
@@ -2167,7 +2167,7 @@ function bufferedCall(cwd, stdin) {
  * exits, chdirs, or leaves the environment moved. Callers are test harnesses
  * that want the engine's answers without a process per answer; skills' own
  * scripts take the library (lib.cjs). A command that waits on the embedding
- * provider is runAsync's.
+ * provider is runAsync's, refused here before it runs.
  *
  * The cwd is a parameter rather than a chdir because `process.chdir` is
  * refused inside a worker thread, and the prose world builder runs in one.
@@ -2176,22 +2176,36 @@ function bufferedCall(cwd, stdin) {
  * @returns {Answer}
  */
 function run(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
+  if (argv[0] === 'knowledge' && knowledgeWaits(argv.slice(1))) {
+    throw new TypeError(`engine ${argv.slice(0, 2).join(' ')} answers asynchronously — call runAsync`);
+  }
   const { call, answer } = bufferedCall(cwd, stdin);
-  const code = withEnv(env, () => dispatch(call, argv));
-  if (typeof code !== 'number') throw new TypeError(`engine ${argv.slice(0, 2).join(' ')} answers asynchronously — call runAsync`);
-  return answer(code);
+  return answer(/** @type {number} */ (withEnv(env, () => dispatch(call, argv))));
 }
+
+/** @type {Promise<void>|null} the last runAsync call still to settle */
+let held = null;
 
 /**
  * The in-process entry for any command, awaited — the one a command that
  * waits on the embedding provider needs. The environment is held until it
- * answers.
+ * answers, so overlapping calls take turns: each starts once the one before
+ * it has answered and put the environment back.
  * @param {string[]} argv @param {InProcessOptions} [options]
  * @returns {Promise<Answer>}
  */
-async function runAsync(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
-  const { call, answer } = bufferedCall(cwd, stdin);
-  return answer(await withEnv(env, () => dispatch(call, argv)));
+function runAsync(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
+  const start = async () => {
+    const { call, answer } = bufferedCall(cwd, stdin);
+    return answer(await withEnv(env, () => dispatch(call, argv)));
+  };
+  const turn = held ? held.then(start) : start();
+  const settled = turn.then(() => {}, () => {});
+  held = settled;
+  settled.then(() => {
+    if (held === settled) held = null;
+  });
+  return turn;
 }
 
 /** The shell door: the process's own argv, directory, streams and stdin. */

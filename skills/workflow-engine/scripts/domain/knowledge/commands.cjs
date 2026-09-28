@@ -460,18 +460,40 @@ async function runFill(call, { root }) {
   }
 }
 
-/** @type {Record<string, (call: Call, request: Request) => void|Promise<void>>} */
+const always = () => true;
+const never = () => false;
+
+/**
+ * Each verb's handler, and whether it waits on the embedding provider for
+ * the positionals after it.
+ * @type {Record<string, {run: (call: Call, request: Request) => void|Promise<void>, waits: (args: string[]) => boolean}>}
+ */
 const VERBS = {
-  index: runIndex,
-  query: runQuery,
-  check: runCheck,
-  status: runStatus,
-  remove: runRemove,
-  compact: runCompact,
-  rebuild: runRebuild,
-  setup: runSetup,
-  fill: runFill,
+  index: { run: runIndex, waits: (args) => args.length === 0 },
+  query: { run: runQuery, waits: always },
+  check: { run: runCheck, waits: never },
+  status: { run: runStatus, waits: never },
+  remove: { run: runRemove, waits: never },
+  compact: { run: runCompact, waits: never },
+  rebuild: { run: runRebuild, waits: always },
+  setup: { run: runSetup, waits: always },
+  fill: { run: runFill, waits: always },
 };
+
+/** @param {string[]} argv */
+const helpAsked = (argv) => argv.includes('--help') || argv.includes('-h') || argv[0] === 'help';
+
+/**
+ * Whether `engine knowledge <argv>` answers asynchronously — decided before
+ * it runs.
+ * @param {string[]} argv
+ * @returns {boolean}
+ */
+function knowledgeWaits(argv) {
+  if (helpAsked(argv)) return false;
+  const [verb, ...args] = parseArgs(argv).positional;
+  return Boolean(verb) && Object.hasOwn(VERBS, verb) && VERBS[verb].waits(args);
+}
 
 /**
  * A failure that is no exit of the command's own, said as the command's
@@ -491,14 +513,14 @@ function failed(call, err) {
  * @returns {void|Promise<void>}
  */
 function runKnowledge(call, argv) {
-  if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') {
+  if (helpAsked(argv)) {
     call.out(USAGE + '\n');
     return;
   }
   const { positional, flags, boosts } = parseArgs(argv);
   const [verb, ...args] = positional;
   if (!verb) stop(call, USAGE + '\n');
-  const handler = Object.hasOwn(VERBS, verb) ? VERBS[verb] : null;
+  const handler = Object.hasOwn(VERBS, verb) ? VERBS[verb].run : null;
   if (!handler) stop(call, `Unknown command "${verb}".\n\n${USAGE}\n`);
 
   const root = config.findProjectRoot(call.cwd);
@@ -512,4 +534,4 @@ function runKnowledge(call, argv) {
   return answer && answer.catch((err) => failed(call, err));
 }
 
-module.exports = { runKnowledge, parseArgs, buildOptions, USAGE };
+module.exports = { runKnowledge, knowledgeWaits, buildOptions };
