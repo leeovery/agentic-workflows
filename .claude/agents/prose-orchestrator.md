@@ -72,7 +72,13 @@ a walk.
 
    If it answers that **the walker has not stopped**, the walk is still
    running: wait for the walker to finish, then run it again — never
-   judge or destroy the world before then.
+   judge or destroy the world before then. If the walker has finished —
+   its completion notification has arrived — and assert still answers
+   the same, its stop hook never fired: record the stop from the
+   walker's own transcript with
+   `node tests/prose/run.cjs stop {case-id} --world <dir> --agent <the walker's agent id>`,
+   then run assert again. `stop` refuses a walk whose last turn is not
+   finished.
 
    If that command **fails** otherwise, rather than printing a prompt,
    the harness is broken, not the prose. Stop there, destroy the world, and report
