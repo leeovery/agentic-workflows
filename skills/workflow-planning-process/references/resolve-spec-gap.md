@@ -148,7 +148,7 @@ Compose the fork in product terms: what the work needs and cannot be built witho
 
 The decision's home is `{doc}` — the document that records decisions; the specification records none, and re-aligns to it. A quick-fix is the exception: no document stands behind its specification, which is its own record — the first branch below is its, and it runs no scan.
 
-Another session may hold `{doc}`. Scan presence — read the `sessions` rows only; the response's deferral section is the analysis dispatch's and is not emitted here:
+Another session may hold `{doc}`. Scan presence now — a scan from before the exchange predates the answer. Read the `sessions` rows only; the response's deferral section is the analysis dispatch's and is not emitted here:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}

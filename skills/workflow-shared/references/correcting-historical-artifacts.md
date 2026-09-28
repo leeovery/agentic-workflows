@@ -126,8 +126,10 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
 2. **Corrigenda section.** Append the entry to the end of the `## Corrigenda` section at the bottom of the file, appending the section as the file's last when absent. One entry per correction — and a mechanical, uniform substitution landing across many lines (a rename, a moved path) is a single correction: one entry stating the mapping — old term → new term, throughout — never an entry per edited line:
 
    ```markdown
-   > **Corrigendum {YYYY-MM-DD}** (from `{correcting_phase}`): {original claim, quoted} — corrected: {what is true}.
+   > **Corrigendum {YYYY-MM-DD}** (from `{correcting_phase}`): {original claim, quoted} — corrected: {what is true} — settled by: {what settled it}.
    ```
+
+   `{what settled it}` names the ground — the landed change, the measurement, or the decision and the document that records it.
 
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks — continue, and the next start retries it:
 
@@ -157,7 +159,7 @@ Neither the record nor a measurement settles it directly.
 
 **If a defensible derivation from precedent or constraints — or, for a technical point, an honest call you can stand behind — picks the side** (a derivable gap, or a technical parameter):
 
-Settle it here — apply the four record-settled steps above, the corrigendum entry recording the derivation or the call's reasoning; where the defect is an omission, the entry states the point the specification left open in place of a quoted claim.
+Settle it here — apply the four record-settled steps above, the corrigendum's ground being the derivation or the call's reasoning; where the defect is an omission, the entry states the point the specification left open in place of a quoted claim.
 
 → Return to caller.
 
