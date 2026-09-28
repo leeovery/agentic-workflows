@@ -22,7 +22,13 @@ Two ids appear below: `{id}` is the row id the dispatch answers (`deep-dive-{NNN
 
 Offer a dive where the conversation reaches a question neither party can answer from the room and the answer is worth more than a lookup — a substantial thread, independent of what is being discussed right now, that dedicated tools (web search, source code, documentation) would serve. Quick lookups, single searches, and questions that inform the next conversational turn stay in the main thread.
 
-The register is the anchor: the offer names a thread. A question new to the register is added first — origin `user` when the user raised it, `conversation` otherwise; a question that reshapes a thread already on the register is that thread, reframed, never a second row beside it:
+The register is the anchor: the offer names a thread. A question that reshapes a thread already on the register is that thread, reframed first — never a second row beside it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs research-threads reframe {work_unit} {topic} {slug} --question "{the question, as it now stands}"
+```
+
+A question new to the register is added first — origin `user` when the user raised it, `conversation` otherwise:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {user|conversation} [--parent {slug}]
