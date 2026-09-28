@@ -4989,7 +4989,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5462,6 +5462,33 @@ describe('baseline surfaces', () => {
     writeBaseline({ status: 'native' });
     assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
     assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /the baseline is "native" — no assessment has been started/);
+  });
+
+  it('migrations-applied: the session\'s summary above the run\'s counts, the counts left out where no file was updated', () => {
+    const counted = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
+      summary: 'Recovered a rerouted concern the converter missed.', migrations: 2, files: 3,
+    });
+    assert.strictEqual(renderSurface(dir, 'migrations-applied', { file: counted }), [
+      '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '**Migrations Applied**',
+      '',
+      'Recovered a rerouted concern the converter missed.',
+      '',
+      '2 migration(s), 3 file(s) updated.',
+      '',
+    ].join('\n'));
+    const fixesOnly = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'Recovered a rerouted concern.' });
+    assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a rerouted concern.\n'));
+  });
+
+  it('migrations-applied: refuses a payload it cannot render truthfully', () => {
+    assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
+    const blank = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: ' ' });
+    assert.throws(() => renderSurface(dir, 'migrations-applied', { file: blank }), /"summary" must be a non-empty string/);
+    const half = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
+    assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
+    const zero = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
+    assert.throws(() => renderSurface(dir, 'migrations-applied', { file: zero }), /"files" must be a positive integer/);
   });
 
   it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {

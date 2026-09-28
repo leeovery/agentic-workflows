@@ -84,16 +84,10 @@ Files were updated, or a migration handed over checks its code could not perform
    → Proceed to **Step 0.2**.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):
+4. Write the summary to `.workflows/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "migrations": {N}, "files": {M}}`, `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes — verification fixes only — leave both counts out. Fetch the summary and emit its section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**Migrations Applied**
-
-{your natural language summary}
-
-{N} migration(s), {M} file(s) updated.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render migrations-applied --file .workflows/.cache/migrations-applied.json
 ```
 
 5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:

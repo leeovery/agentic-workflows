@@ -8,7 +8,7 @@
 // render surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
@@ -16,6 +16,22 @@ const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
 const WIZARD_COMMAND = `${ENGINE_COMMAND} knowledge setup`;
+
+/**
+ * What the migrations did, above the confirm gate: the summary the session
+ * wrote, then the run's counts — left out where the run updated no file and
+ * only the verification fixed anything.
+ * @param {{summary: string, counts: {migrations: number, files: number}|null}} applied
+ * @returns {string}
+ */
+function migrationsApplied({ summary, counts }) {
+  return section('DISPLAY: migrations applied', CONTINUE_MARKDOWN_INSTRUCTION, [
+    '**Migrations Applied**',
+    '',
+    summary,
+    ...(counts ? ['', `${counts.migrations} migration(s), ${counts.files} file(s) updated.`] : []),
+  ].join('\n'));
+}
 
 /**
  * The migration confirm gate — after the summary of what the migrations did.
@@ -139,4 +155,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };
+module.exports = { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };

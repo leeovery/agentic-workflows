@@ -4215,6 +4215,12 @@ describe('pipeline simulation', () => {
     sim.write('src/app.js', 'const x = 2;\n');
     git(sim.dir, ['add', '--', 'src/app.js']);
 
+    // The summary rides a payload in the cache, which the commit below never
+    // carries.
+    const applied = sim.write('.workflows/.cache/migrations-applied.json',
+      { summary: 'Restored the settings and the worktree include.', migrations: 1, files: 3 });
+    assert.match(sim.render(['migrations-applied', '--file', applied], { expect: 'content' }),
+      /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     const landed = sim.run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
     assert.match(landed.committed, /^[0-9a-f]+$/);

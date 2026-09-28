@@ -34,6 +34,7 @@
     ],
     "calls_in_order": [
       "engine.cjs boot",
+      "render migrations-applied --file .workflows/.cache/migrations-applied.json",
       "chore: apply workflow migrations",
       "workflow-start/scripts/gateway.cjs"
     ]

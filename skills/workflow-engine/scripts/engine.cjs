@@ -382,6 +382,7 @@ Commands:
   render walkthrough-home
   render walkthrough-topics
   render walkthrough-topic --name <slug> [--menu-only]
+  render migrations-applied --file <payload.json>
   render migration-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]

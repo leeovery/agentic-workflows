@@ -34,7 +34,7 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -5523,6 +5523,25 @@ function shapeGateSurface(_cwd, _args) {
   ], { question: 'Have I read this right?' }));
 }
 
+/**
+ * workflow-start's migration summary — the payload is the session's summary
+ * and, where the run updated files, its two counts.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function migrationsAppliedSurface(cwd, { file }) {
+  if (!file) throw new Error('render migrations-applied: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'migrations-applied');
+  if (!isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  const given = ['migrations', 'files'].filter((key) => p[key] !== undefined);
+  if (given.length === 1) {
+    throw new Error('render migrations-applied: "migrations" and "files" come together — both counts, or neither where the run updated no file');
+  }
+  for (const key of given) {
+    if (!Number.isInteger(p[key]) || p[key] < 1) throw new Error(`render migrations-applied: "${key}" must be a positive integer`);
+  }
+  return migrationsApplied({ summary: p.summary.trim(), counts: given.length ? { migrations: p.migrations, files: p.files } : null });
+}
+
 /** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */
 function synthesisGateSurface(_cwd, _args) {
   return section('MENU: synthesis gate', MENU_INSTRUCTION, menu('', [
@@ -6071,6 +6090,7 @@ const SURFACES = {
   'walkthrough-home': walkthroughHomeSurface,
   'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
+  'migrations-applied': migrationsAppliedSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
