@@ -143,9 +143,10 @@ describe('the launch — only a provider that can embed, only while chunks await
   });
 
   it('a transaction that only removes launches none', (t) => {
+    const launched = recordLaunches(t);
     root = buildProject(STUB, ['alpha', 'beta']);
     syncKnowledge(root, [{ index: discussion('alpha') }, { index: discussion('beta') }], []);
-    const launched = recordLaunches(t);
+    launched.length = 0;
     syncKnowledge(root, [{ remove: { workUnit: 'pay', phase: 'discussion', topic: 'alpha' } }], []);
     assert.deepStrictEqual(awaiting(root), ['beta'], 'a chunk still awaits, but no write of this transaction left it');
     assert.deepStrictEqual(launched, []);
