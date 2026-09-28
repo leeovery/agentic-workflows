@@ -12,6 +12,14 @@ const path = require('path');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest.cjs');
 const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
+const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
+
+/**
+ * The roadmap's directory, from its owner — required where it is read, since
+ * the owner requires the knowledge base itself.
+ * @returns {string}
+ */
+const roadmapDir = () => require('../roadmap-session.cjs').ROADMAP_DIR;
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
@@ -86,18 +94,11 @@ function assertSegment(kind, name) {
   rejectDottedSegment(kind, name);
 }
 
-// Markdown alone is embedded; any other import is reference material tracked
-// on the manifest.
-/** @param {string} name */
-function isIndexableImportPath(name) {
-  return name.endsWith('.md');
-}
-
 // A flat import carrying another extension — refused by name, with the
 // policy as the reason; a subdirectory or a dotfile is still a bad shape.
 /** @param {string} name */
 function isNonMarkdownImport(name) {
-  return !isIndexableImportPath(name) && /^[^./][^/]*\.[^/.]+$/.test(name);
+  return !isIndexableImport(name) && /^[^./][^/]*\.[^/.]+$/.test(name);
 }
 
 /** @param {string} filePath */
@@ -144,7 +145,7 @@ function roadmapIdentity(rest, filePath) {
   if (otherImport && isNonMarkdownImport(otherImport[1])) throw nonMarkdownImportError(filePath);
   throw new UserError(
     `Unexpected roadmap path structure: ${rest}\n` +
-      'Expected: .workflows/.roadmap/sessions/session-NNN.md or .workflows/.roadmap/imports/{name}.md'
+      `Expected: ${roadmapDir()}/sessions/session-NNN.md or ${roadmapDir()}/imports/{name}.md`
   );
 }
 
@@ -223,8 +224,8 @@ function deriveIdentity(filePath) {
   // capture and read as an invalid work unit.
   const baselineMatch = /\.workflows\/\.baseline\/(.+)$/.exec(norm);
   if (baselineMatch) return baselineIdentity(baselineMatch[1]);
-  const roadmapMatch = /\.workflows\/\.roadmap\/(.+)$/.exec(norm);
-  if (roadmapMatch) return roadmapIdentity(roadmapMatch[1], filePath);
+  const roadmapAt = norm.indexOf(`${roadmapDir()}/`);
+  if (roadmapAt !== -1) return roadmapIdentity(norm.slice(roadmapAt + roadmapDir().length + 1), filePath);
   const stateMatch = /\.workflows\/([^/]+)\/\.state\/(.+)$/.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
 
@@ -347,9 +348,10 @@ function readManifestsOr(root, warn, context) {
  * manifest edit no lander makes, refused so it cannot poison the store — each
  * topic once, and only while its file exists.
  * @param {string} root @param {Record<string, any>} unit @param {string} field
+ * @param {(workUnit: string, dest: string) => string} fileOf  the project-relative file an entry's filename lands at
  * @returns {Artifact[]}
  */
-function flatEntries(root, unit, field) {
+function flatEntries(root, unit, field, fileOf) {
   const entries = unit[field];
   if (!Array.isArray(entries)) return [];
   const shape = new RegExp(`^${field}/([^/]+)$`);
@@ -358,11 +360,11 @@ function flatEntries(root, unit, field) {
   const out = [];
   for (const entry of entries) {
     const m = entry && typeof entry.path === 'string' ? shape.exec(entry.path) : null;
-    if (!m || !isIndexableImportPath(m[1]) || m[1].includes('..') || m[1].startsWith('.')) continue;
+    if (!m || !isIndexableImport(m[1]) || m[1].includes('..') || m[1].startsWith('.')) continue;
     const topic = m[1].slice(0, -3);
     if (!topic || seen.has(topic)) continue;
     seen.add(topic);
-    const file = path.posix.join('.workflows', unit.name, entry.path);
+    const file = fileOf(unit.name, m[1]);
     if (fs.existsSync(path.resolve(root, file))) out.push({ file, workUnit: unit.name, phase: field, topic });
   }
   return out;
@@ -390,7 +392,7 @@ function closedSessionLogs(root, dir, liveSession) {
  */
 function flatMarkdown(root, dir) {
   try {
-    return fs.readdirSync(path.resolve(root, dir)).filter((f) => isIndexableImportPath(f) && /^[^./]+$/.test(f.slice(0, -3)));
+    return fs.readdirSync(path.resolve(root, dir)).filter((f) => isIndexableImport(f) && /^[^./]+$/.test(f.slice(0, -3)));
   } catch {
     return [];
   }
@@ -405,8 +407,8 @@ function flatMarkdown(root, dir) {
  */
 function projectArtifacts(root, roadmapSession) {
   const baselineDir = '.workflows/.baseline';
-  const sessionsDir = '.workflows/.roadmap/sessions';
-  const importsDir = '.workflows/.roadmap/imports';
+  const sessionsDir = `${roadmapDir()}/sessions`;
+  const importsDir = `${roadmapDir()}/imports`;
   /** @param {string} dir @param {string} workUnit @param {string} phase @returns {(f: string) => Artifact} */
   const artifact = (dir, workUnit, phase) => (f) => ({ file: path.posix.join(dir, f), workUnit, phase, topic: f.slice(0, -3) });
   return [
@@ -436,7 +438,10 @@ function unitArtifacts(root, unit) {
       if (exists(file)) items.push({ file, workUnit, phase, topic });
     }
   }
-  items.push(...flatEntries(root, unit, 'imports'), ...flatEntries(root, unit, 'seeds'));
+  items.push(
+    ...flatEntries(root, unit, 'imports', importArtifact),
+    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join('.workflows', wu, 'seeds', dest)),
+  );
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
     const file = path.posix.join('.workflows', workUnit, '.state', `${basename}.md`);
     if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
