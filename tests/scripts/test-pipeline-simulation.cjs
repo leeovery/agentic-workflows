@@ -3389,6 +3389,15 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     assert.strictEqual(init.gates.consolidation_gate_mode, 'gated', 'the boundary walk gate ships gated');
+    // The setup steps (project-skills-discovery.md, linter-setup.md) read the
+    // topic's answers: task init leaves both absent, so a fresh topic is asked.
+    // A confirmed empty set — here the skip-again gate's `yes` — is stored as
+    // [] and answers every later session.
+    for (const field of ['project_skills', 'linters']) {
+      assert.strictEqual(sim.read(['manifest', 'get', `${wu}.implementation.${wu}`, field]), '',
+        `task init leaves ${field} absent — never asked`);
+      sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, field, '[]']);
+    }
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     const firstStart = sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     assert.strictEqual(firstStart.mode, 'started', 'a task taken up fresh dispatches the executor');
@@ -3419,6 +3428,10 @@ describe('pipeline simulation', () => {
     // executor blind to findings the user has never answered.
     assert.strictEqual(sim.run(['task', 'init', wu, wu]).counters.fix_attempts, 1,
       'the in-flight pair survives the session reset');
+    for (const field of ['project_skills', 'linters']) {
+      assert.strictEqual(sim.read(['manifest', 'get', `${wu}.implementation.${wu}`, field]), '[]',
+        `the resume keeps the confirmed empty ${field} — setup returns without asking`);
+    }
     const resumedStart = sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     assert.strictEqual(resumedStart.mode, 'resumed', 'restarting the in-flight task reports the resume');
     assert.strictEqual(resumedStart.do_banking, true, 'the resume answers the banking question too');

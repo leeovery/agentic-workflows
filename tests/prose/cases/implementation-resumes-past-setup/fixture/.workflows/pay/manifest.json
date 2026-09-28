@@ -59,6 +59,12 @@
           "consolidation_gate_mode": "gated",
           "fix_attempts": 0,
           "analysis_cycle_total": 0,
+          "current_phase": 1,
+          "current_task": null,
+          "project_skills": [
+            ".claude/skills/laravel-conventions",
+            ".claude/skills/laravel-testing"
+          ],
           "linters": [
             {
               "name": "pint",
@@ -68,13 +74,7 @@
               "name": "phpstan",
               "command": "vendor/bin/phpstan analyse"
             }
-          ],
-          "project_skills": [
-            ".claude/skills/laravel-conventions",
-            ".claude/skills/laravel-testing"
-          ],
-          "current_phase": 1,
-          "current_task": null
+          ]
         }
       }
     }

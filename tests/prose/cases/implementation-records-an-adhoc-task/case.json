@@ -65,7 +65,9 @@
       "staging.ad-hoc-1.tasks.1 approved",
       "task_map.pay-1-4",
       "manifest set pay.planning.pay external_id",
-      "impl(pay): add 1 ad hoc task(s)"
+      "impl(pay): add 1 ad hoc task(s)",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

@@ -8,8 +8,9 @@ The prose should have taken this path:
 3. resume detection reports the resumed mode: the one-line resuming
    notice, and no start commit
 4. environment setup finds the existing document and returns without
-   asking; project skills and linters both read their populated topic
-   values and return silently
+   asking; project skills and linters both read the empty arrays the
+   topic stored — a confirmed none — and return silently, with no
+   skip-again gate and no project default read
 5. the task loop opens, and the plan's reading procedure gives the
    task still in flight — `pay-1-1` — as the next task
 6. the task is started through the engine, which answers that this is a

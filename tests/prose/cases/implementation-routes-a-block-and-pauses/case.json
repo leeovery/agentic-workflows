@@ -63,7 +63,9 @@
       "impl(pay): record the paused task",
       "--plan pay",
       "impl(pay): pause — gap routed to pay",
-      "--topic implementation/pay"
+      "--topic implementation/pay",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

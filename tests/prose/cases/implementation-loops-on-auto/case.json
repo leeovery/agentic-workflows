@@ -74,7 +74,9 @@
       "impl(pay): Tpay-1-2",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "manifest push pay.implementation.pay consolidated_phases 1",
-      "manifest exists pay.implementation.pay bank"
+      "manifest exists pay.implementation.pay bank",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

@@ -12,13 +12,13 @@ Read topic-level `project_skills` via `engine manifest`:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills
 ```
 
-#### If `project_skills` is populated
+#### If the output is an array
 
-The set was confirmed when this topic stored it — use it without re-asking.
+The set was confirmed when this topic stored it — `[]` included — use it without re-asking.
 
 → Return to caller.
 
-#### Otherwise
+#### If the output is empty (never asked)
 
 Check whether a project-level default `project_skills` exists and read its value via `engine manifest`:
 
@@ -46,6 +46,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 **STOP.** Wait for user response.
 
 **If `yes`:**
+
+Store empty array at topic level:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
+```
 
 → Return to caller.
 

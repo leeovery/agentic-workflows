@@ -40,7 +40,10 @@ function planPhases() {
   };
 }
 
-/** The full set of fields `task init` writes on creation. */
+/**
+ * The full set of fields `task init` writes on creation — `linters` and
+ * `project_skills` absent until the setup steps record them.
+ */
 function freshItem() {
   return {
     status: 'in-progress',
@@ -50,8 +53,6 @@ function freshItem() {
     consolidation_gate_mode: 'gated',
     fix_attempts: 0,
     analysis_cycle_total: 0,
-    linters: [],
-    project_skills: [],
     current_phase: 1,
     current_task: null,
   };
@@ -147,6 +148,29 @@ describe('engine task init', () => {
     expected.consolidation_gate_mode = 'gated';
     expected.fix_attempts = 0;
     assert.deepStrictEqual(implItem(dir), expected);
+  });
+
+  it('resume keeps a confirmed empty linters and project_skills — a stored [] is an answer', () => {
+    const phases = planPhases();
+    const item = freshItem();
+    item.linters = [];
+    item.project_skills = [];
+    phases.implementation = { items: { 'auth-flow': item } };
+    createManifest(dir, 'auth', { phases });
+
+    assert.strictEqual(engine(dir, ['init', 'auth', 'auth-flow']).mode, 'resumed');
+    assert.deepStrictEqual(implItem(dir).linters, []);
+    assert.deepStrictEqual(implItem(dir).project_skills, []);
+  });
+
+  it('resume leaves never-asked linters and project_skills absent', () => {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': freshItem() } };
+    createManifest(dir, 'auth', { phases });
+
+    assert.strictEqual(engine(dir, ['init', 'auth', 'auth-flow']).mode, 'resumed');
+    assert.ok(!('linters' in implItem(dir)));
+    assert.ok(!('project_skills' in implItem(dir)));
   });
 
   it('leaves a legacy analysis_cycle_session where it lies — never read, never reset', () => {

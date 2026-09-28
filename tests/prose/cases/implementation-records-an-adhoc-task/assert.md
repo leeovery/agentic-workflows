@@ -13,7 +13,8 @@ The prose should have taken this path:
    again
 5. the plan adapter is loaded for the manifest's format; project
    skills and linter discovery each ask only their skip-again question
-   — the first two scripted answers skip both
+   — the first two scripted answers skip both,
+   each recording its empty set on the topic
 6. the loop selects pay-1-1 first (phase order, then task order),
    normalises it, notes its position across the three backend tasks,
    starts it via the engine, marks it in-progress, and renders its

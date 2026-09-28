@@ -78,7 +78,9 @@
       "manifest set pay.planning.pay task_map.pay-2-3",
       "impl(pay): analysis cycle 1 — staged tasks",
       "impl(pay): add analysis cycle 1",
-      "--plan pay"
+      "--plan pay",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

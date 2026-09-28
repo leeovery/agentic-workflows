@@ -85,7 +85,9 @@
       "manifest delete pay.implementation.pay bank",
       "task start pay pay pay-1-3",
       "impl(pay): Tpay-1-3",
-      "--phase-complete"
+      "--phase-complete",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

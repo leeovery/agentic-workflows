@@ -60,7 +60,9 @@
       "render task-gate pay.implementation.pay",
       "task complete pay pay pay-1-1 --phase 1 --next-task pay-1-2",
       "impl(pay): Tpay-1-1",
-      "commit --paths"
+      "commit --paths",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

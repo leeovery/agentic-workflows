@@ -62,7 +62,13 @@
       "fix_gate_mode bounded",
       "task_gate_mode auto",
       "task_gate_mode bounded",
-      "render task-gate"
+      "render task-gate",
+      "render project-skills",
+      "render linters",
+      "project.defaults.project_skills",
+      "project.defaults.linters",
+      "manifest set pay.implementation.pay project_skills",
+      "manifest set pay.implementation.pay linters"
     ]
   }
 }
