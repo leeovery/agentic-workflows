@@ -1945,14 +1945,14 @@ const DEFAULT_QUERY_LIMIT = 10;
 async function queryStore(db, settings, { terms, options, workUnits }) {
   const boosts = normaliseBoosts(options.boosts || []);
   const limit = options.limit || DEFAULT_QUERY_LIMIT;
-  const framings = await searchFramings(db, terms, {
+  const { cut, framings } = await searchFramings(db, terms, {
     where: queryWhere(options),
     limit,
     similarity: settings.similarity,
     embed: settings.mode === 'full' ? termEmbedder(settings.provider) : null,
   });
   const clock = progressClockOf(workUnits, settings.weights);
-  const dated = mergeFramings(framings).map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
+  const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
   return rerank(dated, boosts, settings.stability).slice(0, limit);
 }
 

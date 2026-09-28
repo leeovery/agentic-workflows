@@ -55,7 +55,7 @@ const KEYWORD = 'unit-discussion-unit-003';
 describe('searchFramings', () => {
   it("keyword-only, keeps each framing's raw keyword scores, cut to twice the limit", async () => {
     const db = storeOf(30);
-    const [framing] = await searchFramings(db, ['token'], { limit: 10, similarity: 0.3, embed: null });
+    const { framings: [framing] } = await searchFramings(db, ['token'], { limit: 10, similarity: 0.3, embed: null });
     const raw = store.searchKeyword(db, { term: 'token', limit: 20 });
     assert.deepStrictEqual(framing.map((h) => [h.id, h.score]), raw.map((h) => [h.id, h.score]));
     assert.deepStrictEqual(framing[0].parts, [{ search: 'keyword', raw: raw[0].score }]);
@@ -68,7 +68,7 @@ describe('searchFramings', () => {
       embedded.push(term);
       return axis();
     };
-    const [receipts] = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed });
+    const { framings: [receipts] } = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed });
     assert.deepStrictEqual(embedded, ['receipts', 'ledgers']);
     const keyword = Object.fromEntries(store.searchKeyword(db, { term: 'receipts' }).map((h) => [h.id, h.score]));
     const best = Math.max(...Object.values(keyword));
@@ -83,8 +83,9 @@ describe('searchFramings', () => {
     ], 'the vector search turned it away, under the similarity minimum');
   });
 
-  it('cuts each blended framing to twice the limit', async () => {
-    const framings = await searchFramings(storeOf(30), ['token', 'refresh'], { limit: 5, similarity: 0.3, embed: axis });
+  it('cuts each blended framing to twice the limit, and returns the cut', async () => {
+    const { cut, framings } = await searchFramings(storeOf(30), ['token', 'refresh'], { limit: 5, similarity: 0.3, embed: axis });
+    assert.strictEqual(cut, 10);
     assert.deepStrictEqual(framings.map((hits) => hits.length), [10, 10]);
   });
 });
@@ -96,23 +97,23 @@ function hit(id, score) {
 
 describe('mergeFramings', () => {
   it("keeps each chunk once, in the order the framings first found it, with its best framing's score", () => {
-    const merged = mergeFramings([[hit('a', 5), hit('b', 4)], [hit('b', 9), hit('c', 3)]]);
-    assert.deepStrictEqual(merged.map((r) => [r.id, r.score, r.scoring.kept]), [['a', 5, 1], ['b', 9, 2], ['c', 3, 2]]);
+    const merged = mergeFramings([[hit('a', 5), hit('b', 4)], [hit('b', 9), hit('c', 3)]], 2);
+    assert.deepStrictEqual(merged.map((r) => [r.id, r.score, r.scoring.kept, r.scoring.cut]), [['a', 5, 1, 2], ['b', 9, 2, 2], ['c', 3, 2, 2]]);
     assert.deepStrictEqual(merged[1].scoring.framings.map((f) => f.score), [4, 9]);
     assert.strictEqual(merged[2].scoring.framings[0], null);
     assert.ok(!('parts' in merged[0]));
   });
 
   it('keeps the earliest framing where framings tie', () => {
-    assert.strictEqual(mergeFramings([[hit('a', 5)], [hit('a', 5)]])[0].scoring.kept, 1);
+    assert.strictEqual(mergeFramings([[hit('a', 5)], [hit('a', 5)]], 2)[0].scoring.kept, 1);
   });
 });
 
 describe('explanation', () => {
   it("prints each framing's scores, then the framing kept, worked through decay, boost and tier", async () => {
     const db = axisStore();
-    const framings = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed: axis });
-    const dated = mergeFramings(framings).map((r) => ({ ...r, progressElapsed: 3 }));
+    const { cut, framings } = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed: axis });
+    const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: 3 }));
     const results = rerank(dated, [{ field: 'work_unit', value: 'unit' }], 3);
     const receipts = store.searchKeyword(db, { term: 'receipts' })[0].score.toFixed(4);
     const ledgers = store.searchKeyword(db, { term: 'ledgers' })[0].score.toFixed(4);
@@ -128,15 +129,27 @@ describe('explanation', () => {
     ]);
   });
 
-  it('keyword-only, prints the raw keyword score, and a framing that missed the chunk as absent', async () => {
+  it('keyword-only, prints the raw keyword score, and a framing whose hits lack the chunk as not in its top N', async () => {
     const db = axisStore();
-    const framings = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed: null });
-    const both = rerank(mergeFramings(framings), [], 3).find((r) => r.id === BOTH);
+    const { cut, framings } = await searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, embed: null });
+    const both = rerank(mergeFramings(framings, cut), [], 3).find((r) => r.id === BOTH);
     const raw = store.searchKeyword(db, { term: 'receipts' })[0].score;
     assert.deepStrictEqual(explanation(both), [
       `Framing 1: keyword ${raw.toFixed(4)}`,
-      'Framing 2: absent',
+      'Framing 2: not in its top 20',
       `Score: kept framing 1's ${raw.toFixed(4)} × 1.0000 decay + 0.0000 boost + 0.0300 tier = ${(raw + 0.03).toFixed(4)}`,
     ]);
+  });
+
+  it('never claims a framing missed a chunk it matched and ranked below the cut, in either mode', async () => {
+    const db = storeOf(30);
+    const shortest = 'unit-discussion-unit-001';
+    assert.ok(store.searchKeyword(db, { term: 'refresh' }).some((h) => h.id === shortest), 'the term matches it');
+    const embed = async (term) => (term === 'token' ? [1, 0] : [0, 1]);
+    for (const mode of [null, embed]) {
+      const { cut, framings } = await searchFramings(db, ['token', 'refresh'], { limit: 5, similarity: 0.3, embed: mode });
+      const [result] = rerank(mergeFramings(framings, cut).filter((r) => r.id === shortest), [], 3);
+      assert.strictEqual(explanation(result)[1], 'Framing 2: not in its top 10');
+    }
   });
 });

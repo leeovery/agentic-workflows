@@ -114,7 +114,7 @@ Source: .workflows/payments-overhaul/research/identity.md
 - **Blank line** between chunks.
 - **Empty results**: `[0 results]` — no provenance lines, nothing else. Treat as "no prior context found" — move on.
 - **Stub-mode note** (when applicable): prepended as the first line before the header — `[keyword-only mode — configure embedding provider for semantic search]`.
-- **Explanation** (`--explain` only): beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best, and their blend (keyword-only: the raw keyword score; `absent` where the term missed the chunk) — then `Score:`, naming the term whose score the chunk kept and working it through decay, boosts and confidence tier to the final value.
+- **Explanation** (`--explain` only): beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best (`absent` where that search missed the chunk), and their blend (keyword-only: the raw keyword score). A framing whose hits, cut to twice the limit, lack the chunk reads `not in its top 20` at the default limit, whether or not the term matched it. Then `Score:` names the framing whose score the chunk kept and works it through decay, boosts and confidence tier to the final value.
 
 ### Confidence tiers — how to weigh results
 

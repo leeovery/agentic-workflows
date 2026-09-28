@@ -16,7 +16,7 @@ const CONFIDENCE_RANK = {
 };
 
 const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
-const DEFAULT_BASE_STABILITY = 3; // S0 fallback when config is absent
+const DEFAULT_BASE_STABILITY = 3;
 
 /**
  * @typedef {object} SearchScore  what one search made of a chunk
@@ -35,6 +35,7 @@ const DEFAULT_BASE_STABILITY = 3; // S0 fallback when config is absent
  * @typedef {object} Scoring  how a result came by its score
  * @property {Array<FramingScore|null>} framings  null where a framing's hits lack the chunk
  * @property {number} kept  the framing whose score the chunk kept, from 1
+ * @property {number} cut  the length every framing's hits were cut to
  * @property {number} [decay]
  * @property {number} [boost]
  * @property {number} [tier]
@@ -53,7 +54,7 @@ const DEFAULT_BASE_STABILITY = 3; // S0 fallback when config is absent
  * and vector searches blended when the query can embed, else the keyword
  * search's raw scores. Each hit carries its parts.
  * @param {import('./store').Store} db @param {string[]} terms @param {Searching} searching
- * @returns {Promise<Array<Array<Record<string, any>>>>}
+ * @returns {Promise<{cut: number, framings: Array<Array<Record<string, any>>>}>}
  */
 async function searchFramings(db, terms, { where, limit, similarity, embed }) {
   const cut = limit * OVER_FETCH;
@@ -70,7 +71,7 @@ async function searchFramings(db, terms, { where, limit, similarity, embed }) {
       { search: 'vector', weight: VECTOR_WEIGHT, hits: store.searchVector(db, { vector, similarity, where }) },
     ]).slice(0, cut));
   }
-  return framings;
+  return { cut, framings };
 }
 
 /**
@@ -97,17 +98,17 @@ function blend(searches) {
  * Every framing's hits merged: each chunk once, in the order the framings
  * first found it, keeping its best framing's score — the earliest, where
  * framings tie.
- * @param {Array<Array<Record<string, any>>>} framings
+ * @param {Array<Array<Record<string, any>>>} framings @param {number} cut  the length they were cut to
  * @returns {Array<Record<string, any>>}  each chunk with its scoring
  */
-function mergeFramings(framings) {
+function mergeFramings(framings, cut) {
   const merged = new Map();
   framings.forEach((hits, at) => {
     for (const { parts, ...hit } of hits) {
       const prior = merged.get(hit.id);
       const scores = prior ? prior.scoring.framings : framings.map(() => null);
       scores[at] = { parts, score: hit.score };
-      if (!prior || hit.score > prior.score) merged.set(hit.id, { ...hit, scoring: { framings: scores, kept: at + 1 } });
+      if (!prior || hit.score > prior.score) merged.set(hit.id, { ...hit, scoring: { framings: scores, kept: at + 1, cut } });
     }
   });
   return [...merged.values()];
@@ -173,8 +174,9 @@ function framingLine({ parts, score }) {
  */
 function explanation({ score, scoring }) {
   const kept = /** @type {FramingScore} */ (scoring.framings[scoring.kept - 1]);
+  const unlisted = `not in its top ${scoring.cut}`;
   return [
-    ...scoring.framings.map((framing, at) => `Framing ${at + 1}: ${framing ? framingLine(framing) : 'absent'}`),
+    ...scoring.framings.map((framing, at) => `Framing ${at + 1}: ${framing ? framingLine(framing) : unlisted}`),
     `Score: kept framing ${scoring.kept}'s ${shown(kept.score)} × ${shown(scoring.decay)} decay`
       + ` + ${shown(scoring.boost)} boost + ${shown(scoring.tier)} tier = ${shown(score)}`,
   ];
