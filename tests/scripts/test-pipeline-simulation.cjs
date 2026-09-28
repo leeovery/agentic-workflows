@@ -3081,6 +3081,9 @@ describe('pipeline simulation', () => {
     // user places an item themselves — a direct add, an op recorded under
     // Edits — so the log opens first and the open's response numbers it.
     assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);
+    // The wrong order is impossible: an add naming the log before its open refuses.
+    sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
+      '--source', '.roadmap/sessions/session-002.md'], /source "\.roadmap\/sessions\/session-002\.md" does not exist under \.workflows\/ — a source must exist before an item records it/);
     const draft = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
     const opened = sim.run(['roadmap', 'session', 'open', '--session-log-file', draft]);
     assert.strictEqual(opened.session, '002');
@@ -3107,8 +3110,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkToLiveImplementation(sim, wu, wu);
     // The park's source is the record the session is writing, relative to
-    // `.workflows/` — backlogging's table.
+    // `.workflows/` — backlogging's table — and on disk, as the specification
+    // phase left it.
     const spec = `${wu}/specification/${wu}/specification.md`;
+    sim.write(`.workflows/${spec}`, '# Specification: Orders\n');
 
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.

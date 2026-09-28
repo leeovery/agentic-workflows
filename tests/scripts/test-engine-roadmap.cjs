@@ -44,6 +44,13 @@ function projectManifestText(dir) {
   return fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8');
 }
 
+/** Put a source on disk under `.workflows/` — an item records only a file already there. */
+function writeSource(dir, rel) {
+  const abs = path.join(dir, '.workflows', rel);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, '# Session\n');
+}
+
 /** Write a joined item directly — corrupt-shape and orphan fixtures the verbs refuse to create. */
 function joinItem(dir, name, workUnit, topic) {
   const manifest = readProject(dir);
@@ -58,6 +65,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
   it('JIT-births the node and the horizon, writes the item, self-commits scoped', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
+    writeSource(dir, '.roadmap/sessions/session-001.md');
     const res = runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards', '--origin', 'park:mvp', '--source', '.roadmap/sessions/session-001.md']);
     assert.strictEqual(res.op, 'add');
     assert.strictEqual(res.state, 'waiting');
@@ -116,6 +124,27 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
+  it('refuses a source not on disk, naming each missing path — the log opens before the op, nothing written', () => {
+    const before = projectManifestText(dir);
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+
+    assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-002.md']).error,
+      'source ".roadmap/sessions/session-002.md" does not exist under .workflows/ — a source must exist before an item records it; '
+      + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
+
+    writeSource(dir, '.roadmap/sessions/session-001.md');
+    const several = runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's',
+      '--source', 'mvp/discussion/ordering.md', '--source', '.roadmap/sessions/session-001.md', '--source', '.roadmap/sessions/session-002.md']).error;
+    assert.match(several, /^sources "mvp\/discussion\/ordering\.md", "\.roadmap\/sessions\/session-002\.md" do not exist under \.workflows\/ — /);
+    assert.ok(!several.includes('session-001'), 'a source on disk is never named');
+
+    assert.strictEqual(projectManifestText(dir), before);
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-001.md']);
+    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.sources, ['.roadmap/sessions/session-001.md']);
+  });
+
   it('accepts park:, inbox: and postpone: origins with non-empty tails', () => {
     runOk(dir, ['add', 'a', '--horizon', 'v1', '--summary', 's', '--origin', 'park:mvp']);
     runOk(dir, ['add', 'b', '--horizon', 'v1', '--summary', 's', '--origin', 'inbox:2026-08-01--gift-cards']);
@@ -125,6 +154,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
   });
 
   it('add-batch lands the whole set under one commit, JIT horizons in entry order', () => {
+    writeSource(dir, '.roadmap/sessions/session-001.md');
     const payload = [
       { name: 'ordering', horizon: 'mvp', summary: 'customers order from a menu' },
       { name: 'menus', horizon: 'mvp', summary: 'operators maintain the menu' },
@@ -168,6 +198,17 @@ describe('engine CLI: roadmap add / add-batch', () => {
       { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.workflows/.roadmap/sessions/session-001.md'] },
     ]));
     assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.workflows\/"/);
+
+    // One entry's source not yet on disk refuses the whole batch, the path named once.
+    writeSource(dir, '.roadmap/sessions/session-001.md');
+    fs.writeFileSync(path.join(dir, 'unopened.json'), JSON.stringify([
+      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-001.md'] },
+      { name: 'early', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-002.md'] },
+      { name: 'later', horizon: 'v1', summary: 's', sources: ['.roadmap/sessions/session-002.md'] },
+    ]));
+    assert.strictEqual(runFail(dir, ['add-batch', '--file', 'unopened.json']).error,
+      'add-batch: source ".roadmap/sessions/session-002.md" does not exist under .workflows/ — a source must exist before an item records it; '
+      + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
 
     assert.strictEqual(projectManifestText(dir), before);
   });
@@ -652,6 +693,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('the re-wait merges into the sources the item already carries — never a duplicate', () => {
+    writeSource(dir, '.roadmap/sessions/session-001.md');
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
       '--source', '.roadmap/sessions/session-001.md', '--source', 'mvp/research/ordering.md']);
     runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
