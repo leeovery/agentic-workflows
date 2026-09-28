@@ -6,8 +6,7 @@
 # AI-assisted setup (inspects your project and proposes config): run `mint setup`
 
 # Release-notes diffs can exceed mint's 50000 default on large skill-documentation
-# releases. The previous ./release script ran at 60000 for this exact reason;
-# carried over.
+# releases.
 max_diff_lines = 60000
 
 # Keep release-notes NOISE out of the AI diff (the release itself is unaffected):

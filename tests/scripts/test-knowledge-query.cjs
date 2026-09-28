@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, knowledgeCli, withoutBackoff } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, engineKnowledge, withoutBackoff } = require('./knowledge-harness.cjs');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
@@ -362,7 +362,7 @@ describe('provider patience', () => {
   });
 });
 
-describe('knowledge query — the CLI', () => {
+describe('knowledge query — `engine knowledge query`', () => {
   let root;
 
   /** @param {string} name @param {string} completedAt */
@@ -378,7 +378,7 @@ describe('knowledge query — the CLI', () => {
 
   /** @param {...string} args */
   async function knowledge(...args) {
-    const answer = await knowledgeCli(root, args);
+    const answer = await engineKnowledge(root, args);
     assert.strictEqual(answer.code, 0, answer.stderr);
     return answer.stdout;
   }
@@ -421,7 +421,7 @@ describe('knowledge query — the CLI', () => {
   });
 });
 
-describe('knowledge query — the CLI, without a vector', () => {
+describe('knowledge query — `engine knowledge query`, without a vector', () => {
   const RESULT = /^\[1 results\]\n\n\[discussion \| alpha\/alpha \|/m;
   let endpoint;
   let root;
@@ -456,14 +456,14 @@ describe('knowledge query — the CLI, without a vector', () => {
     fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
     configure(endpoint.config);
     endpoint.mode = 'ok';
-    assert.strictEqual((await knowledgeCli(root, ['index'])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
     endpoint.requests.length = 0;
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   it('embeds every framing in one request, and prints no note', async () => {
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh', 'rate window']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh', 'rate window']);
     assert.strictEqual(code, 0);
     assert.deepStrictEqual(endpoint.requests, [['token refresh', 'rate window']]);
     assert.match(stdout, /^\[1 results\]\n/);
@@ -471,7 +471,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only when the provider is down, naming the failure', async () => {
     endpoint.mode = 'down';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request failed \(HTTP 503\): .*; retry once the provider answers\]\n/);
     assert.match(stdout, RESULT);
@@ -479,7 +479,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only on a rate limit, without waiting it out', { timeout: 10000 }, async () => {
     endpoint.mode = 'rate-limited';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly\]\n/);
     assert.match(stdout, RESULT);
@@ -487,7 +487,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only when the account is out of quota', async () => {
     endpoint.mode = 'quota';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the embedding account is out of quota; add credit to it\]\n/);
     assert.match(stdout, RESULT);
@@ -496,7 +496,7 @@ describe('knowledge query — the CLI, without a vector', () => {
   it('exits 0 keyword-only when no key resolves, naming the key', async () => {
     rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
@@ -504,7 +504,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only over a store built with another model, and asks for a rebuild', async () => {
     configure({ ...endpoint.config, model: 'another' });
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
@@ -513,8 +513,8 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it("status says the mode a query runs in, naming why it runs keyword-only in the query's own words", async () => {
     const modeAndNote = async () => [
-      (await knowledgeCli(root, ['status'])).stdout.match(/^Mode: (.*)$/m)[1],
-      (await knowledgeCli(root, ['query', 'token refresh'])).stdout.split('\n')[0],
+      (await engineKnowledge(root, ['status'])).stdout.match(/^Mode: (.*)$/m)[1],
+      (await engineKnowledge(root, ['query', 'token refresh'])).stdout.split('\n')[0],
     ];
     const keywordOnly = (cause) => [`Keyword-only — ${cause}`, `[keyword-only mode — ${cause}]`];
     assert.deepStrictEqual(await modeAndNote(), ['Full (hybrid search)', '[1 results]']);
@@ -535,22 +535,22 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
     fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ not json');
-    const status = await knowledgeCli(root, ['status']);
+    const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
     assert.match(status.stdout, /^WARNING: Invalid JSON in config file at .*config\.json: /m);
-    assert.strictEqual((await knowledgeCli(root, ['query', 'token refresh'])).code, 1);
+    assert.strictEqual((await engineKnowledge(root, ['query', 'token refresh'])).code, 1);
   });
 
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
     const knowledgeDir = path.join(root, '.workflows', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
-    const missing = await knowledgeCli(root, ['query', 'token refresh']);
+    const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
     assert.match(missing.stderr, /^metadata\.json missing but store exists/);
 
     fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
-    const corrupt = await knowledgeCli(root, ['query', 'token refresh']);
+    const corrupt = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(corrupt.code, 1);
     assert.match(corrupt.stderr, /^Error: loadStore: corrupted store file at /);
   });

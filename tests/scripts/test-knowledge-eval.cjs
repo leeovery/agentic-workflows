@@ -322,7 +322,7 @@ describe('knowledge eval — the embedding cache', () => {
     assert.deepStrictEqual([cached.model(), cached.dimensions()], ['stub', STUB_IDENTITY.dimensions]);
   });
 
-  it('the knowledge CLI embeds through the cache, and a warm cache reaches no provider', async () => {
+  it('`engine knowledge` embeds through the cache, and a warm cache reaches no provider', async () => {
     const endpoint = await fakeEndpoint(8);
     const cache = embeddings.embeddingCache(cacheDir, endpoint.identity);
     try {

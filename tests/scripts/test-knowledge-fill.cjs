@@ -25,7 +25,7 @@ const { launcher, fillVectors, fill } = require('../../skills/workflow-engine/sc
 const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowledge/indexing.cjs');
 const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/workflow-engine/scripts/domain/knowledge/sync.cjs');
-const { embeddingEndpoint, knowledgeCli, recordLaunches } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
 const ENGINE_CJS = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
@@ -86,7 +86,7 @@ describe('the launch — only a provider that can embed, only while chunks await
   it('a single-file index over a provider that can embed launches the fill for its project', async (t) => {
     const launched = recordLaunches(t);
     root = buildProject(STUB);
-    const res = await knowledgeCli(root, ['index', discussion('alpha')]);
+    const res = await engineKnowledge(root, ['index', discussion('alpha')]);
     assert.strictEqual(res.code, 0, res.stderr);
     assert.deepStrictEqual(launched, [root]);
     assert.deepStrictEqual(awaiting(root), ['alpha'], 'the keyword side alone was written');
@@ -95,7 +95,7 @@ describe('the launch — only a provider that can embed, only while chunks await
   it('a keyword-only store never launches one', async (t) => {
     const launched = recordLaunches(t);
     root = buildProject({ provider: null });
-    assert.strictEqual((await knowledgeCli(root, ['index', discussion('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', discussion('alpha')])).code, 0);
     assert.deepStrictEqual(launched, []);
   });
 
@@ -105,7 +105,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     root = buildProject(openai);
     store.saveStore(store.createStore(), knowledgeFiles(root).store);
     store.writeMetadata(knowledgeFiles(root).metadata, { ...openai, last_indexed: null });
-    assert.strictEqual((await knowledgeCli(root, ['index', discussion('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', discussion('alpha')])).code, 0);
     assert.deepStrictEqual(awaiting(root), ['alpha']);
     assert.deepStrictEqual(launched, []);
   });
@@ -113,9 +113,9 @@ describe('the launch — only a provider that can embed, only while chunks await
   it('a write that leaves nothing awaiting launches none', async (t) => {
     root = buildProject(STUB);
     const launched = recordLaunches(t);
-    await knowledgeCli(root, ['index']);
+    await engineKnowledge(root, ['index']);
     launched.length = 0;
-    assert.strictEqual((await knowledgeCli(root, ['index', discussion('alpha')])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index', discussion('alpha')])).code, 0);
     assert.deepStrictEqual(awaiting(root), [], 'the re-index reused the vector its text already had');
     assert.deepStrictEqual(launched, []);
   });
@@ -285,13 +285,13 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
     assert.ok(!fs.existsSync(knowledgeFiles(root).fill), 'the claim is released whatever the outcome');
 
     endpoint.mode = 'ok';
-    const searched = await knowledgeCli(root, ['query', 'the alpha decision']);
+    const searched = await engineKnowledge(root, ['query', 'the alpha decision']);
     assert.match(searched.stdout, /^\[1 chunks await vectors — searched by keyword alone; each start retries them\]\n\[the last vector fill fell short — \.workflows\/pay\/discussion\/alpha\.md: /);
-    assert.match((await knowledgeCli(root, ['status'])).stdout, /^Last vector fill fell short: \.workflows\/pay\/discussion\/alpha\.md: /m);
+    assert.match((await engineKnowledge(root, ['status'])).stdout, /^Last vector fill fell short: \.workflows\/pay\/discussion\/alpha\.md: /m);
 
     assert.deepStrictEqual(await fill(root), { unembedded: [], awaiting: 0 });
     assert.strictEqual(metadata(root).fill_failure, null);
-    assert.doesNotMatch((await knowledgeCli(root, ['query', 'the alpha decision'])).stdout, /fell short/);
+    assert.doesNotMatch((await engineKnowledge(root, ['query', 'the alpha decision'])).stdout, /fell short/);
   });
 
   it('a shortfall survives the keyword writes after it — only a fill clears it', async () => {
@@ -314,11 +314,11 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
   });
 
   it('the fill verb is silent when it lands everything, and says what fell short otherwise', async () => {
-    assert.deepStrictEqual(await knowledgeCli(root, ['fill']), { code: 0, stdout: '', stderr: '' });
+    assert.deepStrictEqual(await engineKnowledge(root, ['fill']), { code: 0, stdout: '', stderr: '' });
     writeDiscussion(root, 'alpha', 'The alpha decision, revised.');
     indexOne(root, 'alpha');
     endpoint.mode = 'quota';
-    const short = await knowledgeCli(root, ['fill']);
+    const short = await engineKnowledge(root, ['fill']);
     assert.strictEqual(short.code, 1);
     assert.match(short.stderr, /^Failed to embed \.workflows\/pay\/discussion\/alpha\.md: .*out of quota.*\nEach is searchable by keyword; its vectors come at the next start\.\n$/);
   });

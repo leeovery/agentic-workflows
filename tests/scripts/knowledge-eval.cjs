@@ -3,8 +3,8 @@
 // The knowledge base's eval harness: judged queries over a frozen snapshot of
 // three real projects, measuring how often retrieval returns the passage an
 // agent needed, how high, and at what cost in output. Each project's fixture
-// is copied and indexed through the source CLI's bulk index; every case runs
-// in process through the query function the CLI itself calls, and the
+// is copied and indexed through `engine knowledge index`; every case runs in
+// process through the query function `engine knowledge query` calls, and the
 // measurements compare exactly with a pinned baseline.
 //
 // The gate (test-knowledge-eval.cjs) runs the keyword mode. By hand:
@@ -81,7 +81,7 @@ const execFileAsync = promisify(execFile);
  * @property {string} [from]  an off-topic negative's source — the project its query was asked in
  * @property {string} need
  * @property {string[]} terms
- * @property {Record<string, any>} [options]  the CLI's flag names: boosts, filters, limit
+ * @property {Record<string, any>} [options]  `engine knowledge query`'s flag names: boosts, filters, limit
  * @property {Judgment[]} relevant
  */
 
@@ -101,14 +101,14 @@ const execFileAsync = promisify(execFile);
  * @property {string} root
  * @property {Record<string, any>} cfg
  * @property {any} provider  embeds each query term — null in the keyword mode
- * @property {string|null} cacheDir  the embedding cache its knowledge CLI embeds through — null in the keyword mode
+ * @property {string|null} cacheDir  the embedding cache its `engine knowledge` embeds through — null in the keyword mode
  * @property {number} indexMs  how long its bulk index took
  */
 
 /**
  * @typedef {object} CaseRun
  * @property {EvalCase} evalCase
- * @property {Array<Record<string, any>>} results  ranked, as the CLI would print them
+ * @property {Array<Record<string, any>>} results  ranked, as `engine knowledge query` would print them
  * @property {number} bytes  the rendered output's size
  * @property {number} ms  how long the query took
  */
@@ -379,7 +379,7 @@ function unmatchedJudgments(cases, chunks) {
 // ---------------------------------------------------------------------------
 
 /**
- * A project's config as the CLI resolves it there — its project config over
+ * A project's config as the engine resolves it there — its project config over
  * the system config, the key from the environment or the credentials file.
  * @param {string} root
  */
@@ -520,7 +520,7 @@ function workUnitsOf(root) {
 }
 
 /**
- * A built project, loaded for querying as the CLI loads it, and how long
+ * A built project, loaded for querying as the engine loads it, and how long
  * the store's load took.
  * @param {BuiltProject} built
  */
@@ -549,7 +549,7 @@ const MODES = {
 /** @typedef {keyof typeof MODES} Mode */
 
 /**
- * One case, called exactly as the CLI calls the query with the case's flags.
+ * One case, called exactly as `engine knowledge query` calls the query with the case's flags.
  * @param {Awaited<ReturnType<typeof openStore>>} opened @param {EvalCase} evalCase
  * @returns {Promise<CaseRun>}
  */
@@ -576,7 +576,7 @@ function representativeFile(root, chunks) {
 
 /**
  * What the project cost this machine: its store measured as built, then a
- * representative file re-indexed into it through the CLI's single-file index.
+ * representative file re-indexed into it through `engine knowledge index <file>`.
  * @param {BuiltProject} built @param {{loadMs: number}} opened
  * @param {Array<Record<string, any>>} chunks @param {CaseRun[]} runs
  * @returns {Promise<ProjectTimings>}

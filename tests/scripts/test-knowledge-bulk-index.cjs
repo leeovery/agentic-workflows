@@ -21,7 +21,7 @@ const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/kn
 const { InvalidRequestError, QuotaError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const { indexBulk } = require('../../skills/workflow-engine/scripts/domain/knowledge/bulk.cjs');
 const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowledge/indexing.cjs');
-const { embeddingEndpoint, knowledgeCli, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 
 const { loadStore, saveStore, withLock } = store;
 const CFG = { provider: 'stub', dimensions: 128 };
@@ -552,7 +552,7 @@ describe('knowledge index — a key that does not resolve', () => {
   });
 });
 
-describe('knowledge index — the CLI, without a vector', () => {
+describe('knowledge index — `engine knowledge index`, without a vector', () => {
   let endpoint;
   let root;
 
@@ -566,7 +566,7 @@ describe('knowledge index — the CLI, without a vector', () => {
   }
 
   /** @param {...string} args */
-  const cli = (...args) => knowledgeCli(root, args);
+  const cli = (...args) => engineKnowledge(root, args);
 
   before(async () => {
     endpoint = await embeddingEndpoint(8);
@@ -638,7 +638,7 @@ describe('knowledge index — the CLI, without a vector', () => {
 
   it('a rebuild that leaves chunks awaiting vectors exits non-zero', async () => {
     endpoint.mode = 'quota';
-    const rebuilt = await knowledgeCli(root, ['rebuild'], {}, 'rebuild\n');
+    const rebuilt = await engineKnowledge(root, ['rebuild'], {}, 'rebuild\n');
     assert.strictEqual(rebuilt.code, 1);
     assert.match(rebuilt.stdout, /^3 new, 0 changed, 0 removed, 0 unchanged, 3 chunks awaiting vectors\.$/m);
     assert.match((await cli('status')).stdout, /^Chunks awaiting vectors: 3$/m);
@@ -668,11 +668,11 @@ describe('knowledge index — the CLI, without a vector', () => {
     fs.rmSync(path.join(root, '.workflows', '.knowledge'), { recursive: true, force: true });
     try {
       const env = { WORKFLOWS_CONFIG_DIR: system };
-      assert.strictEqual((await knowledgeCli(root, ['setup', '--keyword-only'], env)).code, 0);
-      assert.strictEqual((await knowledgeCli(root, ['index'], env)).code, 0);
+      assert.strictEqual((await engineKnowledge(root, ['setup', '--keyword-only'], env)).code, 0);
+      assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 0);
       assert.strictEqual(metadata().provider, null);
       assert.deepStrictEqual(endpoint.requests, []);
-      assert.match((await knowledgeCli(root, ['query', 'the alpha decision'], env)).stdout,
+      assert.match((await engineKnowledge(root, ['query', 'the alpha decision'], env)).stdout,
         /^\[keyword-only mode — configure embedding provider for semantic search\]\n/);
     } finally {
       fs.rmSync(system, { recursive: true, force: true });

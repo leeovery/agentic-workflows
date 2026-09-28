@@ -12,9 +12,8 @@
 //
 // Every shape takes the project directory first, then argv, then the call's
 // own environment and stdin. The environment is an overlay whose `undefined`
-// takes a key away, which is how a suite reproduces an environment it used to
-// pass down by replacement. A command that waits on the embedding provider
-// answers through `callAsync`.
+// takes a key away. A command that waits on the embedding provider answers
+// through `callAsync`.
 //
 // A suite whose transactions index sets its fixture's knowledge up
 // keyword-only: the store they build is real, what it holds is the

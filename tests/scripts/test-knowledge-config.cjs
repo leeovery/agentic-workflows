@@ -363,12 +363,7 @@ describe('resolveProvider', () => {
     );
   });
 
-  it('returns null when api_key_env resolves to empty (keyword-only mode)', () => {
-    // This only applies to known but unimplemented providers. In Phase 3,
-    // only stub is available and stub doesn't need a key. But the function
-    // must handle the pattern: provider is known + key is absent = null.
-    // Since openai is not in AVAILABLE_PROVIDERS yet, this will throw.
-    // We test the null-provider path instead.
+  it('returns null for a config naming no provider (keyword-only mode)', () => {
     const provider = resolveProvider({ _api_key: null });
     assert.strictEqual(provider, null);
   });

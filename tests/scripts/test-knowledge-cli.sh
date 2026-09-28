@@ -1206,9 +1206,8 @@ teardown_project
 
 # --- Test 37d: Corrupt config overrides otherwise-ready state ---
 # Strongest guard: an otherwise-healthy KB (valid store, valid metadata)
-# whose config gets corrupted. Pre-fix, cmdCheck only checked file
-# existence for config — so this reported 'ready' and deferred the
-# parse error to the next index/query. Now: not-ready.
+# whose config gets corrupted reads not-ready — the config is parsed, not
+# only found, so its error never waits for the next index or query.
 echo "Test 37d: Check not-ready (corrupt config overrides ready state)"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
@@ -3451,9 +3450,8 @@ assert_eq "nothing removed from a subdirectory" "0 new, 0 changed, 0 removed, 1 
 teardown_project
 
 # --- Test R5: Bulk discovery finds imports from a subdirectory ---
-# Pre-fix, discoverArtifacts' existsSync checks anchored at cwd, so bulk index
-# from a subdirectory silently skipped every import/seed/analysis/discovery
-# artifact. Now root-anchored.
+# Discovery's existence checks anchor at the project root, so a bulk index
+# from a subdirectory finds every import/seed/analysis/discovery artifact.
 echo "Test R5: Bulk discovery from a subdirectory"
 setup_project
 create_work_unit "sub-bulk" "epic" "SubBulk"
@@ -3573,8 +3571,8 @@ assert_eq "bulk index counts what awaits the key" "true" \
 teardown_project
 
 # --- Test R8: Dotted work-unit / topic names rejected at index time ---
-# Pre-fix, deriveIdentity accepted dots; the artifact indexed once but was
-# unreachable by status/remove/discovery (all split identity on ".").
+# A dotted name would index once and be unreachable by status/remove/discovery,
+# which all split identity on ".".
 echo "Test R8: Dotted work-unit name rejected"
 setup_project
 create_work_unit "dot.unit" "feature" "Dotted"
@@ -3603,8 +3601,8 @@ assert_eq "dotted topic explains dots are not allowed" "true" \
 teardown_project
 
 # --- Test R9: check reports not-ready for a store missing its metadata ---
-# Pre-fix, cmdCheck stopped at "store loads" and reported ready even when
-# metadata.json was absent — the exact partial state `query` then refuses.
+# A store that loads without its metadata.json is the partial state `query`
+# refuses, so check reads it not-ready.
 echo "Test R9: check not-ready when metadata is missing"
 setup_project
 create_work_unit "meta-wu" "feature" "Meta"

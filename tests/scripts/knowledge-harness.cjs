@@ -68,7 +68,7 @@ async function embeddingEndpoint(dimensions) {
  * @param {string} root @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [input]
  * @returns {Promise<{code: number, stdout: string, stderr: string}>}
  */
-function knowledgeCli(root, args, env = {}, input = '') {
+function engineKnowledge(root, args, env = {}, input = '') {
   return engine.runAsync(['knowledge', ...args], { cwd: root, env, stdin: input });
 }
 
@@ -123,4 +123,4 @@ async function withoutBackoff(t, run) {
   return running;
 }
 
-module.exports = { embeddingEndpoint, knowledgeCli, heldCall, recordLaunches, withoutBackoff };
+module.exports = { embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff };

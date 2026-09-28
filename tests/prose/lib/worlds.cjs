@@ -11,8 +11,9 @@
 //
 // Rebuilds are skipped when nothing that feeds them has changed — the
 // hash of the case's recipes, the shared mainlines, and the engine's
-// sources, the knowledge base's among them. The verify keeps that hash itself, in a gitignored
-// local cache it writes only after a byte-identical rebuild: a hash it
+// sources, the knowledge base's among them. The verify keeps that hash
+// itself, in a gitignored local cache it writes only after a
+// byte-identical rebuild: a hash it
 // cannot find, or one an engine change has moved on from, costs a rebuild,
 // so drift can never hide behind the skip and no PR carries the
 // bookkeeping.

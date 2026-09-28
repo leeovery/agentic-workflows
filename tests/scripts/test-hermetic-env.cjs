@@ -57,7 +57,7 @@ function cleanup(dir) {
 /**
  * Index the project's one document; answers the run and the store's
  * metadata — null when no store was built.
- * @param {string} [configDir]  the system config directory, over the suite's
+ * @param {string} [configDir]  the system config directory, over the suite's own
  */
 function indexUnderConfigDir(configDir) {
   const project = setupProject();

@@ -1,19 +1,7 @@
 'use strict';
 
-// Pins the bulk-discovery artifact SET on a rich fixture. discoverArtifacts()
-// must yield exactly the completed artifacts the pre-refactor walk produced —
-// this is the equivalence guard for the perf change that dropped the per-topic
-// `engine manifest resolve` spawns and derives phase-artifact paths locally.
-//
-// File paths are compared project-root-relative: the old engine-resolve path
-// returned ABSOLUTE paths for the four phase artifacts (research, discussion,
-// investigation, specification) while imports/seeds/analysis/discovery were
-// already relative; the local derivation returns relative for all. Same on-disk
-// target either way, so normalising to `.workflows/…` proves set-equivalence.
-//
-// The golden set below was captured from the pre-refactor discoverArtifacts()
-// on this exact fixture (absolute phase paths relativised) and is unchanged by
-// the refactor.
+// Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
+// yields exactly the completed artifacts below, every path project-root-relative.
 
 require('./hermetic-env.cjs');
 
@@ -227,9 +215,7 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.ok(!files.includes('.workflows/.roadmap/imports/diagram.png'));
   });
 
-  it('accepts manifests already read and yields the identical set', () => {
-    // The bulk index and status read the manifests once and pass them in; the
-    // result must match the self-fetching path exactly.
+  it('yields the identical set over the manifests however they were read', () => {
     const workUnits = JSON.parse(require('./engine-harness.cjs').output(root, ['manifest', 'list']));
     assert.deepStrictEqual(normalise(discoverArtifacts(root, { workUnits, registry: null, roadmapSession: null })), EXPECTED);
   });
