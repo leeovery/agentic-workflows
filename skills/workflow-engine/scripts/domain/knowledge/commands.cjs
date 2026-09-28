@@ -16,9 +16,9 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { readProjectManifest } = require('../../kernel/manifest.cjs');
 const { ExitSignal, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
-const { RESERVED_IDENTITIES, deriveIdentity, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
-const { loadSettings, newStoreEmbedder } = require('./embedder.cjs');
-const { indexArtifact } = require('./indexing.cjs');
+const { RESERVED_IDENTITIES, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
+const { loadSettings, newStoreEmbedder, metadataMissing } = require('./embedder.cjs');
+const { artifactAt, indexArtifact } = require('./indexing.cjs');
 const { launchFillIfAwaiting, fill } = require('./vectors.cjs');
 const { indexBulk, indexFailed, reportUnembedded } = require('./bulk.cjs');
 const { NO_RESULTS, queryProvider, boostProblem, querySettings, queryStore, renderQuery } = require('./query.cjs');
@@ -177,9 +177,8 @@ function runIndex(call, { root, files, args, options }) {
     });
   }
   const file = args[0];
-  const abs = path.resolve(root, file);
-  if (!fs.existsSync(abs)) stop(call, `File not found: ${abs}\n`);
-  const artifact = { file, ...deriveIdentity(file) };
+  const artifact = artifactAt(root, file);
+  if (!artifact) stop(call, `File not found: ${path.resolve(root, file)}\n`);
   let written;
   try {
     written = indexArtifact(root, artifact, settings);
@@ -217,7 +216,7 @@ async function runQuery(call, { root, files, args, options }) {
     return;
   }
   const db = store.loadStore(files.store);
-  if (!fs.existsSync(files.metadata)) {
+  if (metadataMissing(files)) {
     stop(call, `${path.basename(files.metadata)} missing but store exists. Run \`knowledge rebuild\` to fix.\n`);
   }
   const settings = querySettings(store.readMetadata(files.metadata), cfg, provider);

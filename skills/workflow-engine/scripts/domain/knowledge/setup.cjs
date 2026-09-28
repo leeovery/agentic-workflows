@@ -70,20 +70,12 @@ function buildProjectConfigEmpty() {
  * @returns {SystemConfigState}
  */
 function detectSystemConfig(sysPath) {
-  if (!fs.existsSync(sysPath)) return { exists: false, valid: false, knowledge: null };
   try {
-    const parsed = JSON.parse(fs.readFileSync(sysPath, 'utf8'));
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { exists: true, valid: false, knowledge: null, reason: 'not a JSON object' };
-    }
-    if (parsed.knowledge === undefined) return { exists: false, valid: false, knowledge: null };
-    if (!parsed.knowledge || typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
-      return { exists: true, valid: false, knowledge: null, reason: 'invalid "knowledge" key' };
-    }
-    return { exists: true, valid: true, knowledge: parsed.knowledge };
-  } catch {
-    // Never the parse error's message: it quotes the untrusted file.
-    return { exists: true, valid: false, knowledge: null, reason: 'not valid JSON' };
+    const knowledge = config.readConfigFile(sysPath, { sharedFile: true });
+    return knowledge ? { exists: true, valid: true, knowledge } : { exists: false, valid: false, knowledge: null };
+  } catch (err) {
+    // Never the error's message: a parse error quotes the untrusted file.
+    return { exists: true, valid: false, knowledge: null, reason: err instanceof config.ConfigFileError ? err.reason : 'not readable' };
   }
 }
 
@@ -100,7 +92,6 @@ function detectProjectInit(files) {
     dirExists,
     configExists,
     storeExists,
-    metadataExists,
     fullyInitialised: configExists && storeExists && metadataExists,
     partiallyInitialised: dirExists && !(configExists && storeExists && metadataExists),
   };

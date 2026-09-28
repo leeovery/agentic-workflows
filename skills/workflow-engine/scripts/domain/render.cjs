@@ -36,6 +36,8 @@ const {
 } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
+const { readMetadata } = require('../kernel/knowledge/store.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -5897,12 +5899,11 @@ function knowledgeReadySurface(cwd) {
   if (!fs.existsSync(file)) {
     throw new Error(`render knowledge-ready: no ${shown} — this checkout has no knowledge store yet`);
   }
-  /** @type {{provider?: string|null, model?: string|null}} */
   let metadata;
   try {
-    metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
+    metadata = readMetadata(file);
   } catch (err) {
-    throw new Error(`render knowledge-ready: ${shown} is not valid JSON — ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`render knowledge-ready: ${shown} is not valid JSON — ${messageOf(err)}`);
   }
   return knowledgeReady(metadata);
 }

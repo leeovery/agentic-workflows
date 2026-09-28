@@ -96,6 +96,16 @@ function credentialsPath() {
   return path.join(systemConfigDir(), 'credentials.json');
 }
 
+/** A config file that does not read, with why in words that quote nothing from it. */
+class ConfigFileError extends Error {
+  /** @param {string} message @param {string} reason */
+  constructor(message, reason) {
+    super(message);
+    this.name = 'ConfigFileError';
+    this.reason = reason;
+  }
+}
+
 /**
  * Read a single config file and return the unwrapped `knowledge` object.
  * Returns null if the file does not exist. A file without a `knowledge` key
@@ -116,34 +126,37 @@ function readConfigFile(filePath, opts) {
   try {
     raw = fs.readFileSync(filePath, 'utf8');
   } catch (e) {
-    throw new Error(`Failed to read config file at ${filePath}: ${e.message}`);
+    throw new ConfigFileError(`Failed to read config file at ${filePath}: ${e.message}`, 'not readable');
   }
 
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    throw new Error(`Invalid JSON in config file at ${filePath}: ${e.message}`);
+    throw new ConfigFileError(`Invalid JSON in config file at ${filePath}: ${e.message}`, 'not valid JSON');
   }
 
   if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(
+    throw new ConfigFileError(
       `Config file at ${filePath} must be a JSON object. ` +
-        'Expected format: { "knowledge": { ... } }'
+        'Expected format: { "knowledge": { ... } }',
+      'not a JSON object'
     );
   }
 
   if (parsed.knowledge === undefined) {
     if (opts && opts.sharedFile) return null;
-    throw new Error(
+    throw new ConfigFileError(
       `Config file at ${filePath} is missing the required top-level "knowledge" key. ` +
-        'Expected format: { "knowledge": { ... } }'
+        'Expected format: { "knowledge": { ... } }',
+      'missing "knowledge" key'
     );
   }
 
   if (parsed.knowledge == null || typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
-    throw new Error(
-      `Config file at ${filePath}: the "knowledge" key must be an object.`
+    throw new ConfigFileError(
+      `Config file at ${filePath}: the "knowledge" key must be an object.`,
+      'invalid "knowledge" key'
     );
   }
 
@@ -440,6 +453,7 @@ module.exports = {
   systemConfigPath,
   findProjectRoot,
   credentialsPath,
+  ConfigFileError,
   readConfigFile,
   loadConfig,
   loadCredentials,

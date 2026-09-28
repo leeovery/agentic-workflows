@@ -149,6 +149,17 @@ function storeMetadata(files) {
   return fs.existsSync(files.store) && fs.existsSync(files.metadata) ? store.readMetadata(files.metadata) : null;
 }
 
+/**
+ * Whether the checkout's store has lost its metadata — the partial state a
+ * query refuses and setup never papers over: fresh metadata against the
+ * store would hide a provider or dimensions mismatch, so rebuild is the way
+ * out.
+ * @param {KnowledgeFiles} files
+ */
+function metadataMissing(files) {
+  return fs.existsSync(files.store) && !fs.existsSync(files.metadata);
+}
+
 /** @type {Array<keyof EmbedderIdentity>} */
 const IDENTITY_FIELDS = ['provider', 'model', 'dimensions'];
 
@@ -316,6 +327,7 @@ module.exports = {
   storeBuildable,
   embedderIdentity,
   storeMetadata,
+  metadataMissing,
   assertStoreEmbedder,
   indexProvider,
   canEmbed,

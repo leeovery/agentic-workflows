@@ -836,6 +836,42 @@ describe('describeValidationError', () => {
   });
 });
 
+describe('metadataMissing — the store left without its metadata', () => {
+  const { metadataMissing } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('is the store present and its metadata absent — nothing else', () => {
+    const files = knowledgeFiles(tmpDir);
+    fs.mkdirSync(files.dir, { recursive: true });
+    assert.strictEqual(metadataMissing(files), false, 'neither');
+    fs.writeFileSync(files.metadata, '{}');
+    assert.strictEqual(metadataMissing(files), false, 'metadata alone describes nothing');
+    fs.writeFileSync(files.store, '');
+    assert.strictEqual(metadataMissing(files), false, 'both');
+    fs.rmSync(files.metadata);
+    assert.strictEqual(metadataMissing(files), true, 'the store alone');
+  });
+});
+
+describe('detectSystemConfig — why a file does not read, quoting nothing from it', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('names each shape readConfigFile refuses', () => {
+    const cases = [
+      ['{not json', 'not valid JSON'],
+      ['[1]', 'not a JSON object'],
+      ['{"knowledge": [1]}', 'invalid "knowledge" key'],
+    ];
+    for (const [text, reason] of cases) {
+      const filePath = path.join(tmpDir, 'sys.json');
+      fs.writeFileSync(filePath, text);
+      assert.deepStrictEqual(detectSystemConfig(filePath), { exists: true, valid: false, knowledge: null, reason }, text);
+    }
+  });
+});
+
 describe('detectProjectInit', () => {
   beforeEach(setup);
   afterEach(teardown);
@@ -845,7 +881,6 @@ describe('detectProjectInit', () => {
     assert.strictEqual(result.dirExists, false);
     assert.strictEqual(result.configExists, false);
     assert.strictEqual(result.storeExists, false);
-    assert.strictEqual(result.metadataExists, false);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, false);
   });

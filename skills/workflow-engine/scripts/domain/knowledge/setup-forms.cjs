@@ -25,6 +25,7 @@ const { OpenAIProvider } = require('../../kernel/knowledge/providers/openai.cjs'
 const { OpenAICompatibleProvider } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
+const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
@@ -159,11 +160,10 @@ async function validateConfiguredProvider(call, cfg) {
  * @param {KnowledgeFiles} files
  */
 function consistentProjectInit(files) {
-  const detected = setup.detectProjectInit(files);
-  if (detected.storeExists && !detected.metadataExists) {
+  if (metadataMissing(files)) {
     refuse(`project ${setup.inconsistentStoreMessage(files)}\n  Run \`knowledge rebuild\` to re-create the store with matching metadata.`);
   }
-  return detected;
+  return setup.detectProjectInit(files);
 }
 
 /**

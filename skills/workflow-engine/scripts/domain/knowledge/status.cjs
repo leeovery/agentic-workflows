@@ -12,7 +12,7 @@ const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { readManifests } = require('./artifacts.cjs');
-const { loadSettings, storeBuildable, keywordOnlyCause } = require('./embedder.cjs');
+const { loadSettings, storeBuildable, keywordOnlyCause, metadataMissing } = require('./embedder.cjs');
 const { planIndex } = require('./indexing.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { pruneTest } = require('./decay.cjs');
@@ -43,8 +43,7 @@ function readiness(root, warn) {
   } catch {
     return 'not-ready';
   }
-  // A store without its metadata is the partial state a query refuses.
-  return fs.existsSync(files.metadata) ? 'ready' : 'not-ready';
+  return metadataMissing(files) ? 'not-ready' : 'ready';
 }
 
 /**
@@ -98,7 +97,7 @@ function statusReport(root) {
   out.push('', `Store size: ${(fs.statSync(files.store).size / 1024).toFixed(1)} KB`);
   const warn = (/** @type {unknown} */ err) => out.push('', `WARNING: ${messageOf(err)}`);
   const settings = reportSettings(files);
-  if (fs.existsSync(files.metadata)) {
+  if (!metadataMissing(files)) {
     const metadata = store.readMetadata(files.metadata);
     out.push(`Last indexed: ${metadata.last_indexed || 'unknown'}`);
     out.push(metadata.provider ? `Provider: ${metadata.provider} (model: ${metadata.model}, dimensions: ${metadata.dimensions})` : 'Provider: none');

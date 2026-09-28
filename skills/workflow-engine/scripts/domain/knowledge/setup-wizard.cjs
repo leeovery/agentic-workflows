@@ -26,6 +26,7 @@ const { ExitSignal } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('../../kernel/knowledge/providers/openai.cjs');
 const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
+const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
@@ -318,8 +319,7 @@ async function runSystemConfigStep(call, rl) {
  * @param {Call} call @param {KnowledgeFiles} files @param {Prompter} rl
  */
 async function runProjectInitStep(call, files, rl) {
-  const detected = setup.detectProjectInit(files);
-  if (detected.storeExists && !detected.metadataExists) {
+  if (metadataMissing(files)) {
     call.err(
       `\nProject ${setup.inconsistentStoreMessage(files)}\n` +
       '  Setup cannot recover this safely — run `knowledge rebuild` (which\n' +
@@ -329,6 +329,7 @@ async function runProjectInitStep(call, files, rl) {
     throw new ExitSignal(1);
   }
 
+  const detected = setup.detectProjectInit(files);
   if (detected.fullyInitialised) {
     call.out(`\nProject knowledge base already initialised at ${files.dir}\n`);
     if (!(await askYesNo(rl, 'Reinitialise (destroys existing store)?', false))) {

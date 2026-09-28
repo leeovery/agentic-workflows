@@ -252,13 +252,24 @@ function indexArtifact(root, artifact, { cfg, provider }) {
 }
 
 /**
+ * The artifact at a project-relative path — null where no file is there; a
+ * path of no artifact's shape refuses.
+ * @param {string} root @param {string} file
+ * @returns {Artifact|null}
+ */
+function artifactAt(root, file) {
+  if (!fs.existsSync(path.resolve(root, file))) return null;
+  return { file, ...deriveIdentity(file) };
+}
+
+/**
  * Index the artifact at a project-relative path (see indexArtifact).
  * @param {string} root @param {string} file @param {Settings} settings
  */
 function indexPath(root, file, settings) {
-  const abs = path.resolve(root, file);
-  if (!fs.existsSync(abs)) throw new UserError(`File not found: ${abs}`);
-  return indexArtifact(root, { file, ...deriveIdentity(file) }, settings);
+  const artifact = artifactAt(root, file);
+  if (!artifact) throw new UserError(`File not found: ${path.resolve(root, file)}`);
+  return indexArtifact(root, artifact, settings);
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +451,7 @@ module.exports = {
   createStore,
   recordWrite,
   planIndex,
+  artifactAt,
   indexArtifact,
   indexPath,
   reconcile,
