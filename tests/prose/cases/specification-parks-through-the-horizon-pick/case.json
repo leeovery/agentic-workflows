@@ -23,7 +23,8 @@
     "skills/workflow-specification-process/references/exhaustive-extraction.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",
-    "skills/workflow-shared/references/backlogging.md"
+    "skills/workflow-shared/references/backlogging.md",
+    "skills/workflow-shared/references/choosing-a-horizon.md"
   ],
   "answers": [
     "c — pick the specification up where it left off",
