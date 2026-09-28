@@ -60,7 +60,7 @@ The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action
 
 #### If user asked a question
 
-Answer from the set items' content. Keep it short, and do not act on the set. The question sets the gate aside until the person is ready to move on; to put it back:
+Answer from the set items' content. Keep it short, and do not act on the set. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **A. Render the Working Set**.
 

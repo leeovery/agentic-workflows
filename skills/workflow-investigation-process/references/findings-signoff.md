@@ -77,6 +77,6 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If the user provides feedback
 
-Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit. The feedback sets the gate aside until the person is ready to move on; to put it back:
+Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit. The feedback sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **A. Present & Confirm**.

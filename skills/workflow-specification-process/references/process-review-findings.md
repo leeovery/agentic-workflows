@@ -157,7 +157,7 @@ Write that finding's payload per **The Finding Payload** with `move` = `settled`
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
-A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged. The ask sets the gate aside until the person is ready to move on; to put it back:
+A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **C. The Settled Batch**.
 
