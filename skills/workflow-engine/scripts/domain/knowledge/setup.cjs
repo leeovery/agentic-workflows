@@ -32,25 +32,29 @@ const OPENAI_DEFAULT_DIMENSIONS = 1536;
 // ran, where DEFAULTS apply at load time.
 // ---------------------------------------------------------------------------
 
-/** @param {Record<string, unknown>} fields */
+/** @typedef {{knowledge: Record<string, unknown>}} ConfigPayload  a config file whole, its settings under `knowledge` */
+
+/** @param {Record<string, unknown>} fields @returns {ConfigPayload} */
 function buildSystemConfig(fields) {
   return { knowledge: { ...fields } };
 }
 
-/** @param {{model: string, dimensions: number}} settings */
+/** @param {{model: string, dimensions: number}} settings @returns {ConfigPayload} */
 function buildSystemConfigOpenAI({ model, dimensions }) {
   return buildSystemConfig({ provider: 'openai', model, dimensions });
 }
 
-/** @param {{baseUrl: string, model: string, dimensions: number}} settings */
+/** @param {{baseUrl: string, model: string, dimensions: number}} settings @returns {ConfigPayload} */
 function buildSystemConfigCompatible({ baseUrl, model, dimensions }) {
   return buildSystemConfig({ provider: 'openai-compatible', base_url: baseUrl, model, dimensions });
 }
 
+/** @returns {ConfigPayload} */
 function buildSystemConfigStub() {
   return { knowledge: {} };
 }
 
+/** @returns {ConfigPayload} */
 function buildProjectConfigEmpty() {
   return { knowledge: {} };
 }

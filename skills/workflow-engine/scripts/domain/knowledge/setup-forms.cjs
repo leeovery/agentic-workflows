@@ -279,7 +279,7 @@ async function runProviderForm(call, root, flags) {
 
   /** @type {EmbeddingProvider} */
   let provider;
-  /** @type {object} */
+  /** @type {import('./setup.cjs').ConfigPayload} */
   let payload;
   const baseUrl = flags['base-url'];
   if (providerId === 'openai') {
