@@ -19,6 +19,9 @@ Use this structure for investigation documents.
 **Actual behavior:**
 {What actually happens}
 
+**Started:**
+{When it was first noticed, and any change it followed}
+
 ### Manifestation
 
 {How the bug surfaces:}
