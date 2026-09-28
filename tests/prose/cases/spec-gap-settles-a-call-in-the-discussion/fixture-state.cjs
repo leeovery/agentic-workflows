@@ -6,8 +6,8 @@
 // document itself determines. Gap analysis has two: the wait before a
 // payment is unconfirmed, which the specification's own delivery
 // schedule and exhaustion rule fix between them, and what the customer
-// gets when that wait runs out — staged on an analogy to the rejection
-// rule, which is consistency and not determination, so the call is the
+// gets when that wait runs out, which no source states and first
+// principles over the capture rules settle, so the call is the
 // session's to make and name. The discussion decides the gateway and
 // refunds and is silent on an unconfirmed order, so that call has a
 // document to own it and a new subtopic to be written into.

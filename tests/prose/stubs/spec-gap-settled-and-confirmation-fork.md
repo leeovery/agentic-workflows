@@ -2,10 +2,12 @@
 
 A gap analysis agent returning two `settled` findings and nothing
 else: one the specification's own record determines — two stated rules
-whose consequence follows with no alternative — and one staged on an
-analogy to a neighbouring rule over what the checkout tells a customer
-while a capture is still confirming, a fork more than one answer fits
-and each answer costs the customer something real. Write the tracking
+whose consequence follows with no alternative — and one staged as a
+call the record does not state, over what the checkout tells a
+customer while a capture is still confirming: first principles over
+the capture rule settle it, the alternative that also fits named
+beside it, though each answer costs the customer something real and
+what the business will wear is the user's to know. Write the tracking
 file to
 `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
@@ -72,12 +74,14 @@ have, and hears otherwise by email hours later, or they walk away
 unsure whether the money left their account and phone support to ask.
 
 **Proposal**:
-Payment Intent decides that a gateway rejection at creation surfaces as
-a user-visible checkout error — the customer is told the state of
-their payment rather than left to infer it. The same rule read forward
-covers the wait: the checkout tells them the payment is still
-confirming and the order is not yet paid. I would state it in Payment
-Intent.
+Capture is confirmed by gateway webhook, never by polling, so when the
+customer leaves the checkout nothing yet knows whether the payment went
+through. Telling them the order is confirmed states what nothing has
+confirmed; telling them the payment is still confirming states what is
+true. So the checkout tells them the payment is still confirming and
+the order is not yet paid. Confirming the order at the end of checkout
+and emailing the customer if the payment later fails also fits the
+record. I would state it in Payment Intent.
 
 **Proposed Text**:
 - Until the capture webhook lands, the checkout tells the customer the

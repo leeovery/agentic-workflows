@@ -50,21 +50,18 @@ Expected path:
 11. **Finding 2 (staged settled — an order whose payment is never
     confirmed)** is disposed **before anything renders for it** and
     stands settled as a call **this session** makes rather than one
-    the record determines: its staged derivation is an analogy to the
-    rejection rule in Payment Intent, which is consistency with the
-    record rather than determination by it, and more than one answer
-    fits — the order cancelled, or the order held. The session makes
-    the call — the order stands as awaiting confirmation and the
-    customer is told the payment is still confirming, with nothing
-    cancelled on the checkout's own initiative — names what leaned
-    (the specification's own decision that capture is confirmed out of
-    band and never polled, so the flow is built for a confirmation
-    that arrives after the customer has gone), and names the
-    alternative that also fits the record (cancel when the
-    re-deliveries are exhausted and show the payment-failed error the
-    rejection rule already defines). The tracking row is rewritten
-    before anything renders: Move `settled`, that Proposal, a Proposed
-    Text for Capture Webhooks
+    the record determines: no source says what becomes of the order,
+    and first principles over the specification's own capture rules
+    settle it — capture is confirmed by webhook, never by polling, and
+    an exhausted delivery leaves the payment unconfirmed, not failed —
+    so the order stands as awaiting confirmation and the customer is
+    told the payment is still confirming, with nothing cancelled on the
+    checkout's own initiative. The staged Proposal already carries the
+    call, what leaned, and the alternative that also fits the record
+    (cancel when the re-deliveries are exhausted and show the
+    payment-failed error the rejection rule defines), so the row stands
+    as staged: Move `settled`, that Proposal, the Proposed Text for
+    Capture Webhooks
 12. with both findings disposed the walk reaches the settled batch
     again and writes a two-item payload. `finding_gate_mode` now holds
     `auto`, so the surface answers with its auto-approved display
@@ -120,8 +117,8 @@ Also true:
 - the specification's Refunds section carries the 30-day window
 - the specification's Capture Webhooks section carries the 25-minute
   wait and the held-order rule, and never says the order is cancelled
-  at the ceiling. A walk that wrote the cancellation in has taken an
-  analogy for a determination and applied a decision nobody made
+  at the ceiling. A walk that wrote the cancellation in has applied a
+  decision nobody made
 - the discussion gains one new subtopic section owning what happens to
   an order the gateway never confirms; the Gateway Integration and
   Refunds subtopics stand as they were, and no timeline entry appears

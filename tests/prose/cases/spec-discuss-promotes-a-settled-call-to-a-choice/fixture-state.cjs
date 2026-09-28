@@ -4,8 +4,8 @@
 // two settled calls: one the specification's own rules determine
 // between them — how long an order waits before its payment is
 // unconfirmed — and one over what the checkout tells a customer while
-// the capture is still confirming, staged on an analogy to the
-// rejection rule, which is consistency and not determination. The
+// the capture is still confirming, which no source states and first
+// principles over the capture rule settle. The
 // second is the one that moves: the gate stays on, the user pulls it
 // off the screen to talk about it, and the exchange shows the pick is
 // theirs, so the row is rewritten to a choice and walked. The

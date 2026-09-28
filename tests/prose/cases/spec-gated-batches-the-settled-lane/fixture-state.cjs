@@ -4,9 +4,9 @@
 // three settled calls: two the specification's own rules determine
 // between them — how long an order waits before its payment is
 // unconfirmed, and whether a refund can run before capture is — and
-// one over what the customer gets when that wait runs out, staged on
-// an analogy to the rejection rule, which is consistency and not
-// determination, so the call is the session's to make and name. The
+// one over what the customer gets when that wait runs out, which no
+// source states and first principles over the capture rules settle, so
+// the call is the session's to make and name. The
 // gate stays on throughout, so the three land from one screen the user
 // reads, expands, and approves. The discussion decides the gateway and
 // refunds and is silent on an unconfirmed order, so the session's call

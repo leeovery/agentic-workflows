@@ -30,15 +30,15 @@ Expected path:
    staged
 8. **Finding 2 (what the checkout tells a customer while a capture is
    confirming)** stands settled as a call **this session** makes
-   rather than one the record determines: its staged derivation is an
-   analogy to the rejection rule in Payment Intent, which is
-   consistency with the record rather than determination by it, and
-   more than one answer fits. The session makes the call, names what
-   leaned and names the alternative that also fits the record — the
-   checkout confirming the order at the end of checkout and emailing
-   the customer if the payment later fails. The row is rewritten
-   before anything renders: Move `settled`, that Proposal, a Proposed
-   Text
+   rather than one the record determines: no source says what the
+   checkout shows, and first principles over the specification's own
+   capture rule settle it — capture is confirmed by webhook, never by
+   polling, so the checkout cannot yet know the payment went through,
+   and telling the customer it did states what nothing has confirmed.
+   The staged Proposal already carries the call, what leaned, and the
+   alternative that also fits the record — the checkout confirming the
+   order at the end of checkout and emailing the customer if the
+   payment later fails — so the row stands as staged
 9. the settled batch renders once — a two-row payload at the
    specification's address with lane `settled`, each row the call and
    what it rests on, both fitting one screen with nothing remaining
