@@ -60,3 +60,13 @@ Four tuning keys exist, and the only way one appears in a file is that you put i
 - `decay_weights` — how much each kind of completed work counts toward that sinking, per work type.
 
 Specifications never decay whatever these say. Changing a value takes effect on the next query; nothing needs re-running.
+
+## A local embedding model
+
+The recommended ways to run the knowledge base are OpenAI's embedding service or keyword-only. It also works with an embedding model on your own machine, served by anything that speaks OpenAI's embeddings interface — Ollama, LM Studio, or llama.cpp's own server among them: choose the compatible provider at setup and give it the server's address, the model's name and its dimensions. The route is open but unsupported. Setup installs and starts nothing, and while the server is down, searches run on words alone, as they do whenever an embedding service is out of reach.
+
+Choose the model with care. Six local models were measured against the knowledge base's own retrieval evaluation, and four fell behind keyword-only somewhere — most often by returning more text per search; the widely used `bge-m3` also ranked answers worse. Two held up everywhere, recovering a little over half of the recall OpenAI adds while returning less text than keyword-only: `granite-embedding-english-r2` (768 dimensions) and `snowflake-arctic-embed-l-v2.0` (1024 dimensions). None matched OpenAI. Three things decide it:
+
+- **The model must read at least 8,192 tokens.** Documents are stored by section and most sections run past 512 tokens. A local server can cut longer input without saying so, leaving a short-context model to judge each section by its opening alone.
+- **Queries and documents are sent as written, with no prefix.** A model that expects an instruction or a `query:` prefix on searches runs below its best. The two above held up without one.
+- **The first index embeds everything on your machine.** For a sizeable project that took a few minutes on an Apple-silicon Mac's GPU, and runs longer on a processor alone; later indexes embed only what changed.
