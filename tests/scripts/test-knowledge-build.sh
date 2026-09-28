@@ -7,9 +7,9 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUNDLE="$REPO_DIR/skills/workflow-knowledge/scripts/knowledge.cjs"
-MAX_BUNDLE_BYTES=122880  # 120 KB — current is 88 KB, all of it our own code:
-                         # the bundle carries no dependency. Exists to catch
-                         # regressions, not to hit an absolute target.
+MAX_BUNDLE_BYTES=122880  # 120 KB. The bundle is all our own code — it carries
+                         # no dependency. Exists to catch regressions, not to
+                         # hit an absolute target.
 LOG_DIR="${TMPDIR:-/tmp}"
 
 PASS=0

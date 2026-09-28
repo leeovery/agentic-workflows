@@ -257,7 +257,7 @@ function legacyStorePath(root) {
 
 /** @param {string} [root]  the project root — by default, the one the working directory sits in */
 function metadataPath(root) {
-  return path.join(knowledgeDir(root), 'metadata.json');
+  return path.join(knowledgeDir(root), store.METADATA_FILE);
 }
 
 function lockFilePath() {
@@ -955,7 +955,7 @@ function assertStoreDimensions(provider) {
   if (!provider || !metadata) return;
   if (metadata.provider && metadata.dimensions !== provider.dimensions()) {
     throw new Error(
-      'Store schema changed during index (concurrent rebuild). ' +
+      "The store's vector width changed during index (concurrent rebuild). " +
         `Embeddings produced for dims=${provider.dimensions()}, store now has dims=${metadata.dimensions}.`
     );
   }
@@ -2122,7 +2122,7 @@ async function cmdQuery(args, options, cfg, provider) {
   const db = store.loadStore(sp);
 
   if (!fs.existsSync(mp)) {
-    process.stderr.write('metadata.json missing but store exists. Run `knowledge rebuild` to fix.\n');
+    process.stderr.write(`${store.METADATA_FILE} missing but store exists. Run \`knowledge rebuild\` to fix.\n`);
     process.exit(1);
   }
 
@@ -2592,23 +2592,22 @@ async function cmdCompact(_args, options, cfg) {
 
   const db = store.loadStore(sp);
 
-  // Discover unique work units in the store by searching for all docs.
-  const allResults = store.allChunks(db);
-  if (allResults.length === 0) return;
+  const chunks = store.allChunks(db);
+  if (chunks.length === 0) return;
 
   // Group by work unit.
   const byWorkUnit = {};
-  for (const r of allResults) {
-    if (!byWorkUnit[r.work_unit]) byWorkUnit[r.work_unit] = [];
-    byWorkUnit[r.work_unit].push(r);
+  for (const chunk of chunks) {
+    if (!byWorkUnit[chunk.work_unit]) byWorkUnit[chunk.work_unit] = [];
+    byWorkUnit[chunk.work_unit].push(chunk);
   }
 
   // Evaluate each work unit against the prune floor.
   const removals = []; // { workUnit, count, phases: Set }
   const toRemoveIds = [];
 
-  for (const [wu, chunks] of Object.entries(byWorkUnit)) {
-    const candidates = chunks.filter((c) => pruning.prunes(wu, c.phase));
+  for (const [wu, unitChunks] of Object.entries(byWorkUnit)) {
+    const candidates = unitChunks.filter((c) => pruning.prunes(wu, c.phase));
     if (candidates.length === 0) continue;
 
     const phases = new Set(candidates.map((c) => c.phase));

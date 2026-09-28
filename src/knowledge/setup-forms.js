@@ -205,13 +205,13 @@ async function initProjectStore({ provider, providerName, projectConfigPayload }
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
   const storeFile = path.join(projectDir, store.STORE_FILE);
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
   const detected = setup.detectProjectInit(projectDir);
 
   if (detected.storeExists && !detected.metadataExists) {
     refuse(
       `project knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      `  ${store.STORE_FILE} is present but metadata.json is missing.\n` +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       '  Run `knowledge rebuild` to re-create the store with matching metadata.'
     );
   }
@@ -239,7 +239,7 @@ async function initProjectStore({ provider, providerName, projectConfigPayload }
       dimensions: provider ? provider.dimensions() : null,
       last_indexed: null,
     });
-    process.stdout.write('  metadata.json written\n');
+    process.stdout.write(`  ${store.METADATA_FILE} written\n`);
   }
 }
 
@@ -309,7 +309,7 @@ async function runKeywordOnly(cmdIndexBulk, options) {
   if (detected.storeExists && !detected.metadataExists) {
     refuse(
       `project knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      `  ${store.STORE_FILE} is present but metadata.json is missing.\n` +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       '  Run `knowledge rebuild` to re-create the store with matching metadata.'
     );
   }

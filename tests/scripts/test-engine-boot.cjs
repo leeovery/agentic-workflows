@@ -810,7 +810,7 @@ describe('engine boot: the store leaves git', () => {
   const tracked = () => git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim().split('\n').filter(Boolean);
   const committedChanges = () => git(fix.project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
 
-  /** Commit the store as an earlier version did. */
+  /** Commit files under the knowledge directory, as a checkout that tracks it does. */
   function commitStore(files = STORE_FILES) {
     for (const f of files) writeFile(fix.project, f, `${f} v1\n`);
     git(fix.project, ['add', '--', ...files]);
@@ -1750,7 +1750,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(third.migrations_committed, null);
   });
 
-  it('a store an earlier version committed leaves git at the first boot — before, and without, the migration commit that ignores it', () => {
+  it('a checkout that committed its knowledge directory stops tracking it at the first boot — before, and without, the migration commit that ignores it', () => {
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
     const store = require('../../src/knowledge/store.js');

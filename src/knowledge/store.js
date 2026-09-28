@@ -11,6 +11,9 @@ const keyword = require('./keyword');
 /** The store's file in the knowledge directory. */
 const STORE_FILE = 'store.bin';
 
+/** The metadata's file in the knowledge directory. */
+const METADATA_FILE = 'metadata.json';
+
 const REQUIRED_FIELDS = [
   'id',
   'content',
@@ -662,6 +665,7 @@ function readMetadata(metadataPath) {
 
 module.exports = {
   STORE_FILE,
+  METADATA_FILE,
   METADATA_FIELDS,
   contentHash,
   createStore,

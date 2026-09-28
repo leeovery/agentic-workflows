@@ -186,7 +186,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(hits.length, 3);
   });
 
-  it('returns correct fulltext search results', () => {
+  it('returns correct keyword search results', () => {
     const db = createStore();
     seedStore(db, provider);
     const hits = searchKeyword(db, { term: 'partitioning' });
@@ -214,7 +214,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.ok(ids.includes('data-spec-1'));
   });
 
-  it('filters results by metadata enum fields', () => {
+  it('filters results by metadata fields', () => {
     const db = createStore();
     seedStore(db, provider);
     const hits = searchKeyword(db, {

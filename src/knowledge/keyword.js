@@ -9,11 +9,7 @@ const FIELDS = ['content', 'source_file', 'id'];
 const K1 = 1.2;
 const B = 0.75;
 
-// Orama's English tokenizer, less its de-duplication: the same lowercasing,
-// the same splitter, and its one normalisation — folding the accented letters
-// the splitter keeps, which may happen before the split, since a folded letter
-// splits exactly as its accented form does.
-const SPLITTER = /[^A-Za-zàèéìòóù0-9_'-]+/i;
+const SPLITTER = /[^a-z0-9_'-]+/;
 const ACCENTED = /[àèéìòóù]/g;
 const UNACCENTED = { à: 'a', è: 'e', é: 'e', ì: 'i', ò: 'o', ó: 'o', ù: 'u' };
 

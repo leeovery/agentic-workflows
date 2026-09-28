@@ -260,7 +260,7 @@ function detectSystemConfig(sysPath) {
 function detectProjectInit(projectDir) {
   const configFile = path.join(projectDir, 'config.json');
   const storeFile = path.join(projectDir, store.STORE_FILE);
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
   const dirExists = fs.existsSync(projectDir);
   const configExists = fs.existsSync(configFile);
   const storeExists = fs.existsSync(storeFile);
@@ -499,7 +499,7 @@ async function runProjectInitStep(rl) {
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
   const storeFile = path.join(projectDir, store.STORE_FILE);
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
 
   const detected = detectProjectInit(projectDir);
 
@@ -512,7 +512,7 @@ async function runProjectInitStep(rl) {
   if (detected.storeExists && !detected.metadataExists) {
     process.stderr.write(
       `\nProject knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      `  ${store.STORE_FILE} is present but metadata.json is missing.\n` +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       `  Setup cannot recover this safely — run \`knowledge rebuild\` (which\n` +
       `  re-creates the store from scratch and writes matching metadata) and\n` +
       `  then re-run \`knowledge setup\` if needed.\n`
@@ -574,7 +574,7 @@ async function runProjectInitStep(rl) {
       dimensions: provider ? dims : null,
       last_indexed: null,
     });
-    process.stdout.write(`  metadata.json written\n`);
+    process.stdout.write(`  ${store.METADATA_FILE} written\n`);
   }
 
   return { created: true, provider, dimensions: dims };

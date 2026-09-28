@@ -3358,7 +3358,7 @@ teardown_project
 echo ""
 echo "=== Robustness Tests ==="
 
-# --- Test R1: A ~200k-char unbroken token indexes cleanly (no stack overflow) ---
+# --- Test R1: A ~200k-char unbroken token indexes cleanly ---
 # A single 200k-char token (base64 blob, minified JS) indexes like any other
 # text, and the CLI's top-level catch never prints a raw stack.
 echo "Test R1: 200k unbroken token indexes cleanly"

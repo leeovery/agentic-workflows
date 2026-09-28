@@ -245,7 +245,7 @@ describe('knowledge store — keyword search', () => {
 });
 
 describe('knowledge store — tokenizer', () => {
-  it('lowercases, splits on all but letters, digits, _, \' and -, keeps repeats, and folds the accents the split keeps', () => {
+  it('lowercases, folds à è é ì ò ó ù, splits on all but a-z, digits, _, \' and -, and keeps repeats', () => {
     assert.deepStrictEqual(tokenize("Hello, World! It's rate-limiting_v2 — hello ÀÉÌ"), ['hello', 'world', "it's", 'rate-limiting_v2', 'hello', 'aei']);
     assert.deepStrictEqual(tokenize('naïve über'), ['na', 've', 'ber'], 'an accent the split drops splits the word');
     assert.deepStrictEqual(tokenize('  ...  '), []);
@@ -377,6 +377,71 @@ describe('knowledge store — the file', () => {
       assert.throws(() => store.loadStore(file), (err) => err.message.startsWith(`loadStore: corrupted store file at ${file}: `) && err.message.includes(problem), problem);
     }
   });
+
+  const PREAMBLE_BYTES = 16;
+  const HEADER_LENGTH_AT = 12;
+  /** @param {number} offset */
+  const aligned = (offset) => Math.ceil(offset / 8) * 8;
+
+  /** The file's header, and the offset each section starts at. */
+  function layoutOf(bytes) {
+    const headerEnd = PREAMBLE_BYTES + bytes.readUInt32LE(HEADER_LENGTH_AT);
+    const header = JSON.parse(bytes.toString('utf8', PREAMBLE_BYTES, headerEnd));
+    const starts = {};
+    let offset = aligned(headerEnd);
+    for (const [name, length] of header.sections) {
+      starts[name] = offset;
+      offset = aligned(offset + length);
+    }
+    return { header, headerEnd, starts };
+  }
+
+  /** A header's section-table entry — `[name, bytes]`. */
+  function sectionEntry(header, name) {
+    return header.sections.find(([section]) => section === name);
+  }
+
+  /** The file with its header rewritten by `edit`, its sections kept byte for byte. */
+  function withHeader(bytes, edit) {
+    const { header, headerEnd } = layoutOf(bytes);
+    edit(header);
+    const json = Buffer.from(JSON.stringify(header), 'utf8');
+    const preamble = Buffer.from(bytes.subarray(0, PREAMBLE_BYTES));
+    preamble.writeUInt32LE(json.length, HEADER_LENGTH_AT);
+    return Buffer.concat([preamble, json, Buffer.alloc(aligned(json.length) - json.length), bytes.subarray(aligned(headerEnd))]);
+  }
+
+  /** The file with the last end a section records one past where it truly falls. */
+  function withLastEndPastItsData(bytes, name) {
+    const { header, starts } = layoutOf(bytes);
+    const at = starts[name] + sectionEntry(header, name)[1] - 4;
+    const damaged = Buffer.from(bytes);
+    damaged.writeUInt32LE(damaged.readUInt32LE(at) + 1, at);
+    return damaged;
+  }
+
+  const damage = {
+    'the header runs past the end': (good) => {
+      const damaged = Buffer.from(good);
+      damaged.writeUInt32LE(good.length, HEADER_LENGTH_AT);
+      return damaged;
+    },
+    'section text runs past the end': (good) => withHeader(good, (header) => { sectionEntry(header, 'text')[1] = good.length; }),
+    'section words is missing': (good) => withHeader(good, (header) => { sectionEntry(header, 'words')[0] = 'renamed'; }),
+    'a section splits an element': (good) => withHeader(good, (header) => { sectionEntry(header, 'text_ends')[1] -= 1; }),
+    'chunk text out of step with the chunks': (good) => withLastEndPastItsData(good, 'text_ends'),
+    'content terms out of step with the chunks': (good) => withLastEndPastItsData(good, 'content.ends'),
+    'vectors out of step with their norms': (good) => withHeader(good, (header) => { header.dimensions /= 2; }),
+    'vectors out of step with the chunks': (good) => withHeader(good, (header) => { header.chunks[0].vector = false; }),
+  };
+
+  for (const [problem, damaged] of Object.entries(damage)) {
+    it(`reads a damaged file as a corrupted store, naming the damage: ${problem}`, () => {
+      store.saveStore(mixedStore(), file);
+      fs.writeFileSync(file, damaged(fs.readFileSync(file)));
+      assert.throws(() => store.loadStore(file), { message: `loadStore: corrupted store file at ${file}: ${problem}` });
+    });
+  }
 
   it('stamps the file as it stands, and nothing where there is none', () => {
     assert.strictEqual(store.storeStamp(file), null);

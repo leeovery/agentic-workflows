@@ -21,7 +21,7 @@ const { StubProvider, store } = bundle;
 const DIMS = 128;
 
 // Same fixture corpus the integration test uses — realistic enough to
-// exercise BM25 ranking, enum filtering, and vector search.
+// exercise BM25 ranking, filtering, and vector search.
 const FIXTURE_DOCS = [
   {
     id: 'auth-discussion-1',
