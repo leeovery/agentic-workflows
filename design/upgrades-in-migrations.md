@@ -124,18 +124,32 @@ Each step ships as its own stack and release.
 
 - **`engine commit --migrations -m <message>`** stages and commits the
   owned-path list: edits, new files and deletions, confined to those
-  paths. `commit --workflows` stays as it is, the whole `.workflows/`
-  tree for its other callers.
-- **workflow-start's migration step commits with it** after the gate. The
-  migration ledger rides in with the rest, as it does today.
+  paths. It commits the paths as the index records them, from a scratch
+  index holding HEAD, so a removal a migration staged lands (a pathspec
+  commit would read the file back from disk), and anything else staged
+  stays staged and out. `commit --workflows` stays as it is, the whole
+  `.workflows/` tree for its other callers.
+- **workflow-start's migration step reviews and commits with it** after
+  the gate. Boot's response names the owned paths (`migrations.paths`),
+  so the review reads the list rather than repeating it. The migration
+  ledger rides in with the rest, as it does today.
 - **Boot's own commit of `.claude/settings.json` and `.gitignore` after a
   migration run is deleted.** Boot's other commits are not upgrades and
   stay as they are:
   - the ledger when no document changed;
   - the session hooks and the function-hooks flag;
   - `.worktreeinclude`'s knowledge lines.
+- **An upgrade left at the gate comes back to it.** When a session ends at
+  the migration gate unanswered, the next boot finds the ledger recording
+  a migration HEAD's ledger lacks, from an earlier run, beside other
+  owned-path changes. It commits nothing and reports the migrations
+  changed, so the review and the gate run again. A ledger dirty with
+  every other owned path clean is still committed by boot alone, and
+  owned-path changes beside a clean ledger (a live session's work) offer
+  nothing. The migration runner reports the IDs it recorded, so this
+  run's lines are told from an earlier run's.
 
-### Migration 062 — the retired store file
+### Migration 063 — the retired store file
 
 - Deletes `.workflows/.knowledge/store.msp` where it exists.
 - In `.worktreeinclude`, renames a `.workflows/.knowledge/store.msp` line
@@ -150,13 +164,14 @@ Deleted with it:
 - their tests and their doc lines.
 
 The file belongs to one copy of the project, so a second clone that sees
-062 already recorded keeps its own `store.msp`. It is dead and harmless.
+063 already recorded keeps its own `store.msp`. It is dead and harmless.
 
-### Migration 063 — the knowledge folder untracked
+### Migration 064 — the knowledge folder untracked
 
 - Where the project is a git repository and git tracks anything under
   `.workflows/.knowledge/`, it stages the removal
-  (`git rm -r --cached`). The files stay on disk.
+  (`git rm -r --cached -f`). The files stay on disk; the force covers a
+  store whose staged content differs from both HEAD and the disk.
 - The reviewed commit records the removal. Migration 060's ignore rule
   keeps the files from being staged again.
 - Idempotent: nothing tracked, nothing staged.
