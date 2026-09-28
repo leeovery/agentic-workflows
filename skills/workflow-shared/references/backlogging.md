@@ -68,10 +68,12 @@ Emit the call's MENU section verbatim per its marker.
 | `planning` | `{work_unit}/planning/{topic}/planning.md` |
 | `scoping`, `specification`, `implementation`, `review` | `{work_unit}/specification/{topic}/specification.md` |
 
-**The confirm** — it states the item and its summary, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source. A refusal means the name is already on the roadmap: derive another and render again.
+A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write, a planning session before `planning.md`), the park carries none: both calls below leave `[--source {source}]` out.
+
+**The confirm** — it states the item and its summary, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render park-gate --name {name} --horizon "{horizon}" --summary "{summary}" --source {source}
+node .claude/skills/workflow-engine/scripts/engine.cjs render park-gate --name {name} --horizon "{horizon}" --summary "{summary}" [--source {source}]
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -83,7 +85,7 @@ Emit the call's MENU section verbatim per its marker.
 Park it — the verb validates, births the map and any new horizon, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {source}
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
 ```
 
 Note the park where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing. The other phases keep none: the item's own origin and source are its provenance. Tell the user in one line what was parked and where.
