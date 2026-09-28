@@ -32,6 +32,10 @@ a walk.
 - **Never investigate a failure.** Do not read the skill or engine source
   to explain a verdict, and do not add your own analysis to what the
   asserter returned. Pass the verdict through as given.
+- **Hand back once, with the verdict.** SubagentHandback delivers a
+  single report per agent and refuses a second. Never hand back a status
+  update while you wait on a walker or an asserter — the verdict would
+  then have no way out.
 - Destroy every world you build. On a FAIL, FLAKY, or INVALID, first
   archive its evidence — `node tests/prose/run.cjs archive <case-id>
   --world <dir>` — and carry the printed path into the verdict's

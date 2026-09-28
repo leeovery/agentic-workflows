@@ -148,6 +148,10 @@ Record these inline, exactly as named, the moment they occur:
 Stop at the task's stop condition, the end of the flow, an
 `UNSCRIPTED QUESTION`, or a hard error — whichever comes first.
 
+Hand your report back once, when you stop. SubagentHandback delivers a
+single report per agent: an earlier call — a checkpoint, a placeholder —
+wakes your caller while you still walk and spends the only delivery.
+
 ## Narrate as you go
 
 **Write each entry as it happens, not afterwards.** The harness captures
