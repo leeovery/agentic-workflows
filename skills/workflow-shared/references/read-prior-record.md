@@ -54,6 +54,8 @@ Each triage file read at **A** is a concern another topic routed to the topic th
 - `discussion` — a `pending` subtopic on the Discussion Map.
 - `research` — an open thread on the register, origin `brief`.
 
+The seeding is the whole of it: the concern's own case — its options, their costs, its lean — stays in the record, never carried into this phase's document or read out as the session's opening. The session opens on the material in its own words, as it would over a brief's questions.
+
 **A concern whose ask no longer applies** — the record answers it, or the ground it stood on is gone — takes one line in this phase's opening context, beside what the record left: the discussion's **Context** section, whose **References** name the prior files; the research file's **Starting Point**.
 
 → Return to caller.
