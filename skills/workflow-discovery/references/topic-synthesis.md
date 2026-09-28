@@ -8,9 +8,9 @@ The harvest ceremony. Analyse the session's exploration as a whole, produce a to
 
 ## A. Gather Source Material
 
-You have three sources of truth:
+Read the active session log — `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md` — now, every time, whatever is already in context. It holds the first of three sources of truth:
 
-1. **The Exploration section** of the active session log at `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md`. Read it now, every time, whatever is already in context.
+1. **The Exploration section** of that log.
 2. **In-context memory of the conversation.** When not compacted, this carries detail the Exploration summary may have skipped.
 3. **The existing discovery map** from Step 7's discovery output. Continuing sessions add to it; first sessions seed it.
 
@@ -66,7 +66,7 @@ For each topic in the synthesised set, propose `research` or `discussion` based 
 
 ## E. Render Proposal
 
-Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); descriptions are two or three sentences drawn from the exploration — what the topic covers and why it surfaced; routing is the value inferred in **D**:
+Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); descriptions are two or three sentences drawn from the exploration — what the topic covers and why it surfaced, a point the user left open never worded as settled; routing is the value inferred in **D**:
 
 ```json
 [
