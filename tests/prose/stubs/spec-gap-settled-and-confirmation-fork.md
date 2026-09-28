@@ -6,9 +6,7 @@ whose consequence follows with no alternative — and one staged as a
 call the record does not state, over what the checkout tells a
 customer while a capture is still confirming: first principles over
 the capture rule settle it, the alternative that also fits named
-beside it, though each answer costs the customer something real and
-what the business will wear is the user's to know. Write the tracking
-file to
+beside it. Write the tracking file to
 `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
 return the status block. Nothing else: no git activity, no other files.
