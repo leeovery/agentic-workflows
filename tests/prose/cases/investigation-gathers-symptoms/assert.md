@@ -8,8 +8,9 @@ The prose should have taken this path:
 3. **the interview happens anyway.** The section carrying the carrier's
    account is not treated as symptoms already gathered — the seed is
    where the questioning starts, not a reason to skip it
-4. questioning opens broad and narrows on what the answers give back,
-   rather than putting the whole bank to the user at once
+4. questioning starts from what the carrier leaves unanswered and goes a
+   few questions at a time, rather than putting the whole bank to the
+   user at once
 5. what the user says is written into the investigation file as it is
    gathered, and committed
 6. the questioning ends and the prose turns to the knowledge base, which
