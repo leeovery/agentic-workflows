@@ -32,14 +32,13 @@ const DEFAULTS = {
   similarity_threshold: 0.3,
   // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S),
   // in "feature-equivalents" (see decay_weights). Higher = slower decay;
-  // half-life ≈ 6.6 × S0. Set to 5 (not 3) because weighting inflates
-  // progressElapsed for epic-heavy work, so a larger S0 keeps the curve gentle:
-  // one 4-topic epic ≈ 0.92, three ≈ 0.78.
+  // half-life ≈ 6.6 × S0. Weighting inflates progressElapsed for epic-heavy
+  // work, so S0 sits high enough to keep the curve gentle: one 4-topic epic
+  // ≈ 0.92, three ≈ 0.78.
   decay_base_stability: 5,
   // Storage backstop: `compact` prunes a unit's non-spec chunks once their
   // retrievability R falls below this floor (i.e. already unreachable in
-  // ranking). false disables pruning. Replaces the old wall-clock
-  // decay_months — decay is progress-based now.
+  // ranking). false disables pruning.
   decay_prune_below: 0.05,
   // Significance weighting for the progress clock. progressElapsed sums
   // topics(V) × weight[work_type(V)] over later units, so a quick-fix advances

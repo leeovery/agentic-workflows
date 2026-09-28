@@ -105,6 +105,10 @@ describe('readConfigFile', () => {
 // ---------------------------------------------------------------------------
 
 describe('DEFAULTS', () => {
+  it('holds the one default decay_base_stability, 5', () => {
+    assert.strictEqual(DEFAULTS.decay_base_stability, 5);
+  });
+
   it('keeps similarity_threshold below the scores a real embedding model gives relevant text', () => {
     // OpenAI text-embedding-3-small scores relevant query→chunk pairs at
     // 0.5–0.7 and off-topic ones around 0.2. A threshold at or above 0.5

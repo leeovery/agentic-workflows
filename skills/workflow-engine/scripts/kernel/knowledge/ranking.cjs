@@ -22,7 +22,6 @@ const CONFIDENCE_RANK = {
 };
 
 const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
-const DEFAULT_BASE_STABILITY = 3;
 
 /**
  * @typedef {object} SearchScore  what one search made of a chunk
@@ -126,13 +125,12 @@ function mergeFramings(framings, cut) {
  * progressElapsed 0 → R = 1 (nothing completed past the chunk). More work
  * completed past a chunk's unit → smaller R. This is the multiplier the soft
  * down-rank applies to a chunk's base relevance.
- * @param {number} progressElapsed @param {number} stability
+ * @param {number} progressElapsed @param {number} stability  above 0
  */
 function retrievability(progressElapsed, stability) {
   const p = progressElapsed > 0 ? progressElapsed : 0;
   if (p === 0) return 1;
-  const s = stability > 0 ? stability : DEFAULT_BASE_STABILITY;
-  return Math.pow(DECAY_BASE, p / s);
+  return Math.pow(DECAY_BASE, p / stability);
 }
 
 /**
@@ -147,7 +145,7 @@ function retrievability(progressElapsed, stability) {
  * @param {number} stability  S0 for the decay curve
  * @returns {Ranked[]}
  */
-function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
+function rerank(results, boosts, stability) {
   return results
     .map((r) => {
       const decay = retrievability(r.progressElapsed || 0, stability);
