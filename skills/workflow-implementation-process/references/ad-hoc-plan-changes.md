@@ -190,19 +190,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 Invoke the task-writer agent.
 
-**Agent path**: `../../../agents/workflow-implementation-task-writer.md`
+**Agent path**: `.claude/agents/workflow-implementation-task-writer.md`
 
 Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
-3. **Staging file path** — the `ad-hoc-tasks-{n}.md` file from **E**
+3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/ad-hoc-tasks-{n}.md`, the file from **E**
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+5. **Plan format reading adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/reading.md`
+6. **Plan format authoring adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/authoring.md`
 7. **Phase placement** — `per-task`
 8. **Approved task numbers** — the task numbers whose staging rows are `approved`
-9. **Plan format graph adapter path** — `../../workflow-planning-process/references/output-formats/{format}/graph.md`, when any approved task carries a `priority:` or `depends_on:` line
+9. **Plan format graph adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/graph.md`, when any approved task carries a `priority:` or `depends_on:` line
 
 The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present). It returns:
 

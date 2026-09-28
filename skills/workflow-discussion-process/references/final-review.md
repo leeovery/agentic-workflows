@@ -172,7 +172,7 @@ Read the topic's dismissed grounds — the user's standing rulings on what not t
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
 ```
 
-**Agent path**: `../../../agents/workflow-discussion-review.md`
+**Agent path**: `.claude/agents/workflow-discussion-review.md`
 
 Dispatch **one agent** as a foreground task (pass `run_in_background: false` — results are needed before continuing).
 

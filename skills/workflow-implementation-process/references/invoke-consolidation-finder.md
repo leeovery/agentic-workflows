@@ -4,7 +4,7 @@
 
 ---
 
-This step invokes the `workflow-implementation-consolidation-finder` agent (`../../../agents/workflow-implementation-consolidation-finder.md`) to sweep one phase's combined surface.
+This step invokes the `workflow-implementation-consolidation-finder` agent (`.claude/agents/workflow-implementation-consolidation-finder.md`) to sweep one phase's combined surface.
 
 ---
 
@@ -26,7 +26,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/workflow-implementation-consolidation-finder.md`
+**Agent path**: `.claude/agents/workflow-implementation-consolidation-finder.md`
 
 Dispatch a **fresh** agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built.
 

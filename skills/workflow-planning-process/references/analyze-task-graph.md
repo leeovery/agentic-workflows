@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `workflow-planning-dependency-grapher` agent (`../../../agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `workflow-planning-dependency-grapher` agent (`.claude/agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
 
 ---
 
@@ -22,8 +22,8 @@ Load the format's **[reading.md](output-formats/{format}/reading.md)** and **[gr
 Invoke `workflow-planning-dependency-grapher` with these inputs:
 
 1. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
-2. **reading.md**: the format's reading reference loaded above
-3. **graph.md**: the format's graph reference loaded above
+2. **reading.md**: `.claude/skills/workflow-planning-process/references/output-formats/{format}/reading.md`
+3. **graph.md**: `.claude/skills/workflow-planning-process/references/output-formats/{format}/graph.md`
 4. **Plan external ID**: the `external_id` value read above
 5. **Task map**: the `task_map` value read above
 

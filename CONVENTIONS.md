@@ -501,6 +501,8 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 
 One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence. Lint check 25 holds all three.
 
+A path an agent is handed is written as installed, from the project root — `.claude/skills/{skill}/references/{file}`, `.claude/agents/{name}.md`, a work artifact as `.workflows/…` — never relative to the instruction file: the session hands it over as written. Lint check 26 holds it.
+
 ### Heading Hierarchy
 
 - **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)

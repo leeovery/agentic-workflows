@@ -14,7 +14,7 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {topic} --kind fix-validation
 ```
 
-**Agent path**: `../../../agents/workflow-investigation-fix-validation.md`
+**Agent path**: `.claude/agents/workflow-investigation-fix-validation.md`
 
 > *Output the next fenced block as a text code block (```text fence):*
 

@@ -18,9 +18,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 Findings from an earlier cycle were judged against code that remediation has since changed — some may now be done, moot, or wrong. Dispatch **one assessor** over the set before offering anything:
 
-- **Agent path**: `../../../agents/workflow-review-finding-assessor.md`
+- **Agent path**: `.claude/agents/workflow-review-finding-assessor.md`
 
-Write the set to `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.txt` (one block per finding, opening with its id) and pass it as the findings path, with the code standard path and an output path of `…/oos-recheck.jsonl`.
+Write the set to `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.txt` (one block per finding, opening with its id) and pass it as the findings path, with the code standard path `.claude/skills/workflow-implementation-process/references/code-quality.md` and an output path of `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.jsonl`.
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The assessor agent has been dispatched for the out-of-scope findings.`
 

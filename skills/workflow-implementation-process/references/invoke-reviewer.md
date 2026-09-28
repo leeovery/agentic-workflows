@@ -4,7 +4,7 @@
 
 ---
 
-This step invokes the `workflow-implementation-task-reviewer` agent (`../../../agents/workflow-implementation-task-reviewer.md`) to independently verify a completed task.
+This step invokes the `workflow-implementation-task-reviewer` agent (`.claude/agents/workflow-implementation-task-reviewer.md`) to independently verify a completed task.
 
 ---
 
