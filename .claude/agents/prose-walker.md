@@ -140,7 +140,10 @@ any harness substitutions. Follow it exactly.
   that fails over it, and never dispatch a fresh agent in its place.
   Then the armed substitution that names the continuation fires, or you
   go on playing that agent from where it left off, with what you sent.
-  Expected, not a `DEVIATION`, no marker.
+  Expected, not a `DEVIATION`, no marker. SendMessage is for that alone:
+  never a send to `main` or to anyone the prose did not dispatch — what
+  the user sees you write as your own turn, and your report goes back
+  once, at the stop.
 - **A report-shaped `.md` write may be refused.** The harness blocks
   subagents writing report-looking `.md` files. Where the prose or an
   armed substitution calls for one, write the same path with a `.txt`
