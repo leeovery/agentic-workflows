@@ -70,10 +70,13 @@ The prose should have taken this path:
     `stale` and the specification item takes `reconcile_needed:
     discussion`, and the whole thing commits itself as `impl(pay): gap
     routed to pay`
-12. the session commits its own work — `commit pay -m "impl(pay): pause —
-    gap routed to pay" --topic implementation/pay`. Everything the walk
-    touched is either already committed by the transaction or sits in
-    the gitignored cache, so the call answers that there was nothing to
+12. the session commits its own work in two calls: first the paused
+    task's record in the plan — `commit pay -m "impl(pay): record the
+    paused task" --plan pay`, which takes the task file the loop marked
+    in progress — then `commit pay -m "impl(pay): pause — gap routed to
+    pay" --topic implementation/pay`. Everything else the walk touched is
+    either already committed by the transaction or sits in the gitignored
+    cache, so the second call may answer that there was nothing to
     commit, and that is correct rather than a miss
 13. one line says the concern is queued on the discussion and
     implementation resumes once it has decided, and the walk **STOPS

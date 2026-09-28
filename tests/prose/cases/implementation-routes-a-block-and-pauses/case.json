@@ -60,6 +60,8 @@
       "topic triage pay discussion pay",
       "--concern .workflows/.cache/pay/implementation/pay/gap-concern.md",
       "impl(pay): gap routed to pay",
+      "impl(pay): record the paused task",
+      "--plan pay",
       "impl(pay): pause — gap routed to pay",
       "--topic implementation/pay"
     ],
@@ -72,6 +74,7 @@
       "render executor-block-gate pay.implementation.pay --result blocked --file .workflows/.cache/pay/implementation/pay/block-sides.json",
       "write:.workflows/.cache/pay/implementation/pay/gap-concern.md",
       "topic triage pay discussion pay",
+      "impl(pay): record the paused task",
       "impl(pay): pause — gap routed to pay"
     ],
     "calls_exclude": [
