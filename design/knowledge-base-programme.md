@@ -817,11 +817,13 @@ pre-tag hook in `.mint.toml` that rebuilds and commits the bundle.
   in one path, and an invalid value is treated as its siblings are.
 - **Store creation and the file names live in one place,** the engine.
 - **The KB's JSDoc comes under `npm run typecheck`.**
-
-Open: reconfiguration and tuning overrides (a change of provider drops
-them today, and `similarity_threshold` is set on one model's scale); and
-whether `base_url` is still worth recording, now that a local model is
-unsupported.
+- **Setup replaces only the provider fields** (`provider`, `model`,
+  `dimensions`, `base_url`) and leaves every other key as the user wrote
+  it, in the system config as in the project config. A change of provider
+  keeps the tuning keys.
+- **The store records no `base_url`.** Its metadata stays provider, model
+  and dimensions: the address belongs to the unsupported local route alone,
+  and a change of server there is met by `rebuild`.
 
 ## Step 5 — the rest of retrieval quality
 
