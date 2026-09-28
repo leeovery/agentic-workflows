@@ -1,8 +1,10 @@
 'use strict';
 
-// Porter2, the Snowball English stemmer (snowballstem.org/algorithms/english).
-// Each step is the algorithm's step of the same name, and a word arrives
-// lowercase, as the tokenizer gives it.
+// ---------------------------------------------------------------------------
+// Kernel: Porter2, the Snowball English stemmer
+// (snowballstem.org/algorithms/english). Each step is the algorithm's step of
+// the same name, and a word arrives lowercase, as the tokenizer gives it.
+// ---------------------------------------------------------------------------
 
 const VOWEL = /[aeiouy]/;
 const VOWELS = new Set('aeiouy');
@@ -14,7 +16,7 @@ const DOUBLES = ['bb', 'dd', 'ff', 'gg', 'mm', 'nn', 'pp', 'rr', 'tt'];
 const EXCEPTIONS = new Map([
   ['skis', 'ski'], ['skies', 'sky'],
   ['idly', 'idl'], ['gently', 'gentl'], ['ugly', 'ugli'], ['early', 'earli'], ['only', 'onli'], ['singly', 'singl'],
-  ...['sky', 'news', 'howe', 'atlas', 'cosmos', 'bias', 'andes'].map((word) => [word, word]),
+  ...['sky', 'news', 'howe', 'atlas', 'cosmos', 'bias', 'andes'].map((word) => /** @type {[string, string]} */ ([word, word])),
 ]);
 const REGION_PREFIXES = ['gener', 'commun', 'arsen', 'past', 'univers', 'later', 'emerg', 'organ', 'inter'];
 const EED_KEPT = new Set(['proc', 'exc', 'succ']);

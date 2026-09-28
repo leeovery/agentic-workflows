@@ -5527,7 +5527,7 @@ describe('baseline surfaces', () => {
       '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
       '',
-      '  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup',
+      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup',
       '',
       'It configures system defaults, initialises the project store, and',
       'runs the initial indexing pass.',

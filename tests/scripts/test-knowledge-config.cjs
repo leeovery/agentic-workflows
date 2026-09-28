@@ -20,8 +20,8 @@ const {
   credentialsPath,
   DEFAULTS,
   PROVIDER_ENV_VARS,
-} = require('../../src/knowledge/config');
-const { StubProvider } = require('../../src/knowledge/embeddings');
+} = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const {
   buildSystemConfigOpenAI,
   buildSystemConfigStub,
@@ -29,9 +29,10 @@ const {
   detectSystemConfig,
   detectProjectInit,
   describeValidationError,
-} = require('../../src/knowledge/setup');
-const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
-const { QuotaError, RateLimitError, WaitBudget } = require('../../src/knowledge/providers/openai-engine');
+} = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
+const { resolveSimilarityThreshold } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 
 let tmpDir;
 
@@ -840,7 +841,7 @@ describe('detectProjectInit', () => {
   afterEach(teardown);
 
   it('reports all-absent when the directory does not exist', () => {
-    const result = detectProjectInit(path.join(tmpDir, '.workflows', '.knowledge'));
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.dirExists, false);
     assert.strictEqual(result.configExists, false);
     assert.strictEqual(result.storeExists, false);
@@ -852,7 +853,7 @@ describe('detectProjectInit', () => {
   it('reports partiallyInitialised when the directory exists but files are missing', () => {
     const dir = path.join(tmpDir, '.workflows', '.knowledge');
     fs.mkdirSync(dir, { recursive: true });
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.dirExists, true);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, true);
@@ -862,7 +863,7 @@ describe('detectProjectInit', () => {
     const dir = path.join(tmpDir, '.workflows', '.knowledge');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.configExists, true);
     assert.strictEqual(result.storeExists, false);
     assert.strictEqual(result.fullyInitialised, false);
@@ -875,7 +876,7 @@ describe('detectProjectInit', () => {
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     fs.writeFileSync(path.join(dir, 'store.bin'), '', 'utf8');
     fs.writeFileSync(path.join(dir, 'metadata.json'), '{}', 'utf8');
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.fullyInitialised, true);
     assert.strictEqual(result.partiallyInitialised, false);
   });

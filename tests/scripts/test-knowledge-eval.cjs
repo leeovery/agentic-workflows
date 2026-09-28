@@ -16,7 +16,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const knowledge = require('../../src/knowledge/index');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
@@ -198,7 +200,7 @@ function writeJson(file, value) {
 
 /** The stub provider, recording each call it takes. */
 function recordingProvider() {
-  const stub = new knowledge.StubProvider({ dimensions: STUB_IDENTITY.dimensions });
+  const stub = new StubProvider({ dimensions: STUB_IDENTITY.dimensions });
   const calls = [];
   return {
     calls,
@@ -219,7 +221,7 @@ function recordingProvider() {
 
 /** The stub's vector for a text, as the cache keeps it. @param {string} text */
 function kept(text) {
-  return new knowledge.StubProvider({ dimensions: STUB_IDENTITY.dimensions }).embed(text).map(Math.fround);
+  return new StubProvider({ dimensions: STUB_IDENTITY.dimensions }).embed(text).map(Math.fround);
 }
 
 /**
@@ -228,7 +230,7 @@ function kept(text) {
  * @param {number} dimensions
  */
 async function fakeEndpoint(dimensions) {
-  const stub = new knowledge.StubProvider({ dimensions });
+  const stub = new StubProvider({ dimensions });
   /** @type {string[]} */
   const texts = [];
   const server = http.createServer((req, res) => {
@@ -267,7 +269,7 @@ function discussedProject(parent, identity) {
   for (const topic of topics) {
     writeFile(path.join(root, '.workflows', 'auth', 'discussion', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
-  writeJson(knowledge.config.projectConfigPath(root), { knowledge: identity });
+  writeJson(knowledgeFiles(root).config, { knowledge: identity });
   return root;
 }
 
@@ -331,7 +333,7 @@ describe('knowledge eval — the embedding cache', () => {
       const rebuilt = discussedProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
-      assert.strictEqual(knowledge.store.readMetadata(knowledge.metadataPath(rebuilt)).provider, 'openai-compatible');
+      assert.strictEqual(store.readMetadata(knowledgeFiles(rebuilt).metadata).provider, 'openai-compatible');
       assert.strictEqual(cache.size(), 2);
     } finally {
       await endpoint.close();

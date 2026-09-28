@@ -175,7 +175,6 @@ describe('migration 057: remove research-analysis residue', () => {
     assert.strictEqual(execCalls[0].file, 'node');
     const [cli, ...rest] = execCalls[0].args;
     assert.ok(cli.endsWith(path.join('workflow-knowledge', 'scripts', 'knowledge.cjs')), `CLI path resolves into the skill tree: ${cli}`);
-    assert.ok(fs.existsSync(cli), 'the resolved CLI exists on disk');
     assert.deepStrictEqual(rest, ['remove', '--work-unit', 'pay', '--phase', 'analysis', '--topic', 'research-analysis']);
   });
 

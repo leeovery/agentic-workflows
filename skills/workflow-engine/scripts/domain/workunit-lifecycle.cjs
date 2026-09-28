@@ -28,7 +28,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -132,7 +132,7 @@ function cancelWorkUnit(cwd, workUnit) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
+  syncKnowledge(cwd, [{ remove: { workUnit } }], warnings);
 
   // The cancel-revert hop, whole-unit form: every roadmap item joined to
   // the unit returns to waiting (the delivery attempt is over; the record
@@ -152,27 +152,22 @@ function cancelWorkUnit(cwd, workUnit) {
 }
 
 /**
- * Re-index a work unit's chunk-backed material in ONE knowledge spawn (formerly
- * one spawn per artifact). `knowledge index --work-unit <wu>` runs the bulk
- * discovery scoped to this unit — exactly the set the per-artifact walk covered:
- * every completed indexed-phase topic, the shape-valid imports and seeds, the
- * on-disk analysis caches, and (epics only) the discovery session logs. The CLI
- * reads the manifest itself, so no manifest is threaded in here.
+ * Re-index a work unit's chunk-backed material: the bulk pass scoped to the
+ * unit — every completed indexed-phase topic, the shape-valid imports and
+ * seeds, the analysis caches, and an epic's discovery session logs.
  *
- * `clearFirst` (pivot) removes the unit's chunks before re-indexing. A pivot
- * refreshes chunk work_type metadata on ALREADY-indexed chunks, and bulk index
- * skips artifacts that are already indexed — so the stale chunks must be cleared
- * first for the fresh index to re-stamp them. reactivate / complete-from-
- * cancelled start from removed chunks (cancellation cleared them), so the index
- * alone restores them. All warn-don't-block.
+ * `clearFirst` (pivot) removes the unit's chunks before re-indexing: a pivot
+ * restamps the work_type of chunks already indexed, which the bulk pass
+ * would otherwise leave standing. Reactivation from a cancel starts from
+ * removed chunks, so the index alone restores them.
  * @param {string} cwd @param {string} workUnit @param {string[]} warnings
  * @param {{clearFirst?: boolean}} [opts]
  */
 function reindexWorkUnit(cwd, workUnit, warnings, opts) {
-  if (opts && opts.clearFirst) {
-    knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
-  }
-  knowledge(cwd, ['index', '--work-unit', workUnit], 'knowledge index', warnings);
+  syncKnowledge(cwd, [
+    ...(opts && opts.clearFirst ? [{ remove: { workUnit } }] : []),
+    { reindex: workUnit },
+  ], warnings);
 }
 
 /**

@@ -1,18 +1,16 @@
-// The knowledge store: every chunk with its text, its metadata and — when it
-// has one — its vector, searched by keyword (keyword.js) and by vector
-// (cosine similarity), and kept in one file of its own format.
-
 'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: the knowledge store — every chunk with its text, its metadata and,
+// when it has one, its vector, searched by keyword (keyword.cjs) and by vector
+// (cosine similarity), and kept in one file of its own format. Writers hold
+// the engine's lock-file protocol; readers never lock.
+// ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 const fs = require('fs');
-const keyword = require('./keyword');
-
-/** The store's file in the knowledge directory. */
-const STORE_FILE = 'store.bin';
-
-/** The metadata's file in the knowledge directory. */
-const METADATA_FILE = 'metadata.json';
+const keyword = require('./keyword.cjs');
+const { acquireLockFile, releaseLockFile } = require('../manifest-io.cjs');
 
 const REQUIRED_FIELDS = [
   'id',
@@ -46,7 +44,7 @@ const REQUIRED_FIELDS = [
  * @property {Chunk} chunk
  * @property {Float32Array|null} vector
  * @property {number} norm  the vector's length — 0 without one
- * @property {import('./keyword').FieldTerms[]} terms  field by field
+ * @property {import('./keyword.cjs').FieldTerms[]} terms  field by field
  */
 
 /**
@@ -54,8 +52,8 @@ const REQUIRED_FIELDS = [
  * @property {Entry[]} entries  in insertion order, a removal closing the gap
  * @property {Set<string>} ids
  * @property {number|null} dimensions  the vectors' width — null while the store holds none
- * @property {import('./keyword').Vocabulary} vocabulary
- * @property {import('./keyword').Postings[]|null} index  built by the first keyword search after a write
+ * @property {import('./keyword.cjs').Vocabulary} vocabulary
+ * @property {import('./keyword.cjs').Postings[]|null} index  built by the first keyword search after a write
  * @property {boolean} retokenized  its terms re-derived on load from a file another tokenizer wrote, and not yet saved
  */
 
@@ -378,7 +376,7 @@ function bytesOf(data) {
 /**
  * One field's terms as sections: where each chunk's words end, then every
  * chunk's word ids and counts, chunk after chunk.
- * @param {string} field @param {import('./keyword').FieldTerms[]} terms
+ * @param {string} field @param {import('./keyword.cjs').FieldTerms[]} terms
  * @returns {Array<[string, Uint32Array]>}
  */
 function termSections(field, terms) {
@@ -461,9 +459,10 @@ function sectionReader(buf, table, start) {
 function typed(buf, section, Type) {
   ensure(section.bytes % Type.BYTES_PER_ELEMENT === 0, 'a section splits an element');
   const at = buf.byteOffset + section.offset;
+  const buffer = /** @type {ArrayBuffer} */ (buf.buffer);
   const view = at % Type.BYTES_PER_ELEMENT === 0
-    ? new Type(buf.buffer, at, section.bytes / Type.BYTES_PER_ELEMENT)
-    : new Type(buf.buffer.slice(at, at + section.bytes));
+    ? new Type(buffer, at, section.bytes / Type.BYTES_PER_ELEMENT)
+    : new Type(buffer.slice(at, at + section.bytes));
   return /** @type {InstanceType<T>} */ (view);
 }
 
@@ -471,7 +470,7 @@ function typed(buf, section, Type) {
  * A chunk's terms for one field, read in place.
  * @param {Buffer} buf @param {(name: string) => {offset: number, bytes: number}} section
  * @param {string} field @param {number} count  how many chunks the store holds
- * @returns {(position: number) => import('./keyword').FieldTerms}
+ * @returns {(position: number) => import('./keyword.cjs').FieldTerms}
  */
 function termsReader(buf, section, field, count) {
   const ends = typed(buf, section(`${field}.ends`), Uint32Array);
@@ -487,8 +486,8 @@ function termsReader(buf, section, field, count) {
 
 /**
  * @typedef {object} ChunkTerms
- * @property {import('./keyword').Vocabulary} vocabulary  the words the terms number
- * @property {(chunk: Chunk, position: number) => import('./keyword').FieldTerms[]} of  a chunk's terms, field by field
+ * @property {import('./keyword.cjs').Vocabulary} vocabulary  the words the terms number
+ * @property {(chunk: Chunk, position: number) => import('./keyword.cjs').FieldTerms[]} of  a chunk's terms, field by field
  */
 
 /**
@@ -610,93 +609,53 @@ function loadStore(storePath) {
 }
 
 // ---------------------------------------------------------------------------
-// File locking — same discipline as the engine kernel's manifest-io.
-//
-// WRITE operations (saveStore) must be wrapped in withLock. READ
-// operations (loadStore, all searches) do NOT lock — stale reads are
-// acceptable per the design doc.
+// Locking — writes hold the lock; loads and searches never do, a stale read
+// being harmless.
 // ---------------------------------------------------------------------------
 
-const LOCK_STALE_MS = 30000;
-const LOCK_RETRY_MS = 50;
+// A whole-store rewrite takes longer than a manifest write, so a writer waits
+// longer for its turn than a manifest writer does.
 const LOCK_TIMEOUT_MS = 30000;
 
-function tryAcquire(lockPath) {
+/**
+ * Run `fn` holding the store's lock.
+ * @template T
+ * @param {string} lockFile @param {() => T} fn
+ * @returns {T}
+ */
+function withLock(lockFile, fn) {
+  acquireLockFile(lockFile, 'Timed out waiting for the knowledge store lock', LOCK_TIMEOUT_MS);
   try {
-    const fd = fs.openSync(lockPath, 'wx');
-    fs.writeSync(fd, String(process.pid));
-    fs.closeSync(fd);
-    return true;
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
-    return false;
-  }
-}
-
-function sleepMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function acquireLock(lockPath) {
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
-  while (true) {
-    if (tryAcquire(lockPath)) return;
-
-    // Stale lock detection
-    try {
-      const stat = fs.statSync(lockPath);
-      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-        try { fs.unlinkSync(lockPath); } catch (_) { /* already gone */ }
-        continue;
-      }
-    } catch (_) {
-      // Lock disappeared between attempts — retry
-      continue;
-    }
-
-    if (Date.now() >= deadline) {
-      throw new Error(
-        `knowledge store: timed out waiting for lock at ${lockPath}. ` +
-        'If no other process is running, delete the file manually.'
-      );
-    }
-
-    // Async sleep — yields to the event loop so other work (including
-    // the lock holder's own release) can progress.
-    await sleepMs(LOCK_RETRY_MS);
-  }
-}
-
-function releaseLock(lockPath) {
-  try { fs.unlinkSync(lockPath); } catch (_) { /* already gone */ }
-}
-
-async function withLock(lockPath, fn) {
-  await acquireLock(lockPath);
-  try {
-    return await fn();
+    return fn();
   } finally {
-    releaseLock(lockPath);
+    releaseLockFile(lockFile);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Metadata — sidecar JSON file tracking provider/model/dimensions and the
-// last index time. Created on first index; this module only provides the
-// read/write primitives.
+// Metadata — the sidecar JSON beside the store: the embedder its vectors came
+// from, when it was last written, and why the last vector fill fell short.
 // ---------------------------------------------------------------------------
 
-const METADATA_FIELDS = ['provider', 'model', 'dimensions', 'last_indexed'];
+/**
+ * @typedef {object} Metadata
+ * @property {string|null} provider
+ * @property {string|null} model
+ * @property {number|null} dimensions
+ * @property {string|null} last_indexed  ISO time of the last write
+ * @property {string|null} fill_failure  why the last vector fill left chunks without a vector — null once one lands them all
+ */
 
+/** @type {Array<keyof Metadata>} */
+const METADATA_FIELDS = ['provider', 'model', 'dimensions', 'last_indexed', 'fill_failure'];
+
+/**
+ * Write the metadata whole: exactly METADATA_FIELDS, any other key dropped
+ * and a missing one written as null — keyword-only reads back as nulls.
+ * @param {string} metadataPath @param {Partial<Metadata>} data
+ */
 function writeMetadata(metadataPath, data) {
-  if (!metadataPath) throw new Error('writeMetadata: metadataPath is required');
-  if (data == null || typeof data !== 'object') {
-    throw new Error('writeMetadata: data must be an object');
-  }
-  // Every call writes exactly METADATA_FIELDS — no partial updates, and any
-  // other key on `data` is dropped. Missing fields are normalised to explicit
-  // null so keyword-only mode round-trips as
-  // { provider: null, model: null, dimensions: null }.
+  /** @type {Record<string, unknown>} */
   const full = {};
   for (const f of METADATA_FIELDS) full[f] = data[f] === undefined ? null : data[f];
   const tmp = metadataPath + '.tmp';
@@ -704,8 +663,11 @@ function writeMetadata(metadataPath, data) {
   fs.renameSync(tmp, metadataPath);
 }
 
+/**
+ * @param {string} metadataPath
+ * @returns {Metadata}
+ */
 function readMetadata(metadataPath) {
-  if (!metadataPath) throw new Error('readMetadata: metadataPath is required');
   if (!fs.existsSync(metadataPath)) {
     throw new Error(`readMetadata: metadata file not found at ${metadataPath}`);
   }
@@ -715,19 +677,14 @@ function readMetadata(metadataPath) {
   } catch (e) {
     throw new Error(`readMetadata: failed to read ${metadataPath}: ${e.message}`);
   }
-  let parsed;
   try {
-    parsed = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch (e) {
     throw new Error(`readMetadata: invalid JSON at ${metadataPath}: ${e.message}`);
   }
-  return parsed;
 }
 
 module.exports = {
-  STORE_FILE,
-  METADATA_FILE,
-  METADATA_FIELDS,
   contentHash,
   createStore,
   insertDocument,
@@ -743,8 +700,6 @@ module.exports = {
   saveStore,
   loadStore,
   storeStamp,
-  acquireLock,
-  releaseLock,
   withLock,
   writeMetadata,
   readMetadata,

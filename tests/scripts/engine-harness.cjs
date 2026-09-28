@@ -13,7 +13,12 @@
 // Every shape takes the project directory first, then argv, then the call's
 // own environment and stdin. The environment is an overlay whose `undefined`
 // takes a key away, which is how a suite reproduces an environment it used to
-// pass down by replacement.
+// pass down by replacement. A command that waits on the embedding provider
+// answers through `callAsync`.
+//
+// A suite whose transactions index sets its fixture's knowledge up
+// keyword-only: the store they build is real, what it holds is the
+// assertion, and no vector fill is ever launched.
 
 require('./hermetic-env.cjs');
 
@@ -24,6 +29,8 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const { cleanupFixture } = require('./discovery-test-utils.cjs');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -34,15 +41,14 @@ const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine
  */
 
 /**
- * The shapes bound to one engine module — `harness()` for the repo's own.
- * A suite that runs the engine from a copied skills tree (its own stub
- * `migrate.cjs` or `knowledge.cjs` beside it, which the engine resolves from
- * its own `__dirname`) binds that copy's `engine.cjs`; `stubbedEngine()` is
- * that tree for the knowledge CLI alone.
+ * The shapes bound to one engine module — `harness()` for the repo's own. A
+ * suite that runs the engine from a copied skills tree (its own stub
+ * `migrate.cjs` beside it, which the engine resolves from its own
+ * `__dirname`) binds that copy's `engine.cjs`.
  * @param {string} [enginePath]
  */
 function harness(enginePath = ENGINE) {
-  /** @type {{run: (argv: string[], opts: {cwd: string, env?: Record<string, string|undefined>, stdin?: string}) => {stdout: string, stderr: string, code: number}}} */
+  /** @type {typeof import('../../skills/workflow-engine/scripts/engine.cjs')} */
   const engine = require(enginePath);
 
   /**
@@ -50,6 +56,12 @@ function harness(enginePath = ENGINE) {
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
   const call = (dir, args, { env, stdin } = {}) => engine.run(args, { cwd: dir, env, stdin });
+
+  /**
+   * The raw answer of a command that waits on the embedding provider.
+   * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+   */
+  const callAsync = (dir, args, { env, stdin } = {}) => engine.runAsync(args, { cwd: dir, env, stdin });
 
   /**
    * The raw answer of a call that must succeed.
@@ -102,50 +114,29 @@ function harness(enginePath = ENGINE) {
    */
   const output = (dir, args, opts) => succeeded(dir, args, opts).stdout;
 
-  return { call, ok, okSections, refuses, output };
+  return { call, callAsync, ok, okSections, refuses, output };
 }
-
-// A knowledge CLI that records instead of indexing: the engine's KB behaviour
-// has to be deterministic in tests, where the real CLI's answer depends on the
-// machine's knowledge configuration. Each invocation is appended to
-// `knowledge-calls.log` in the project cwd; `STUB_KNOWLEDGE_EXIT` makes it fail.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (process.env.STUB_KNOWLEDGE_EXIT) {
-  process.stderr.write('kb exploded\\n');
-  process.exit(parseInt(process.env.STUB_KNOWLEDGE_EXIT, 10));
-}
-process.exit(0);
-`;
-
-/** @type {ReturnType<typeof harness>|null} */
-let stubbed = null;
 
 /**
- * The engine copied into a temp skills tree beside a stub knowledge CLI — the
- * layout an install has, so the engine's own `__dirname`-relative resolution
- * is what a suite exercises while the real store stays out of it. One tree per
- * process: the copy is never written to, and each fixture brings its own
- * project directory.
+ * The checkout's knowledge set up keyword-only, as `setup --keyword-only`
+ * pins it: a transaction's index builds a real store, and never launches a
+ * vector fill.
+ * @param {string} dir
  */
-function stubbedEngine() {
-  if (stubbed) return stubbed;
-  const skills = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-skills-'));
-  process.on('exit', () => fs.rmSync(skills, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-  fs.cpSync(path.dirname(ENGINE), path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  const stub = path.join(skills, 'workflow-knowledge/scripts/knowledge.cjs');
-  fs.mkdirSync(path.dirname(stub), { recursive: true });
-  fs.writeFileSync(stub, STUB_KNOWLEDGE);
-  stubbed = harness(path.join(skills, 'workflow-engine/scripts/engine.cjs'));
-  return stubbed;
+function keywordOnlyKnowledge(dir) {
+  const config = knowledgeFiles(dir).config;
+  fs.mkdirSync(path.dirname(config), { recursive: true });
+  fs.writeFileSync(config, '{ "knowledge": { "provider": null } }\n');
 }
 
-/** What the stub knowledge CLI was asked for, in order. @param {string} project */
-function knowledgeCalls(project) {
-  const log = path.join(project, 'knowledge-calls.log');
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
+/**
+ * The files the store holds chunks of, sorted — none without a store.
+ * @param {string} dir @returns {string[]}
+ */
+function indexedFiles(dir) {
+  const file = knowledgeFiles(dir).store;
+  if (!fs.existsSync(file)) return [];
+  return [...new Set(store.allChunks(store.loadStore(file)).map((chunk) => chunk.source_file))].sort();
 }
 
 /** @param {string} dir @param {string[]} args */
@@ -169,10 +160,11 @@ function setupGitFixture(prefix = 'engine-') {
   return dir;
 }
 
-const { call, ok, okSections, refuses, output } = harness();
+const { call, callAsync, ok, okSections, refuses, output } = harness();
 
 module.exports = {
-  ENGINE, harness, stubbedEngine, knowledgeCalls,
-  call, ok, okSections, refuses, output,
+  ENGINE, harness,
+  call, callAsync, ok, okSections, refuses, output,
+  keywordOnlyKnowledge, indexedFiles,
   git, setupGitFixture, cleanupFixture,
 };

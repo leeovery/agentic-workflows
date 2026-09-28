@@ -20,7 +20,8 @@
 const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
-const { INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
+const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const {
   VALID_WORK_TYPES,
@@ -36,7 +37,7 @@ const {
 } = require('../kernel/manifest-schema.cjs');
 
 // Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
-// Derived from kb's INDEXED_ARTIFACTS, the one table declaring what the KB
+// Derived from INDEXED_ARTIFACTS, the one table declaring what the KB
 // indexes and where, so the resolve scope can never drift from it.
 const INDEXED_PHASES = Object.keys(INDEXED_ARTIFACTS);
 
@@ -832,39 +833,8 @@ function cmdList(cwd, args, out) {
     }
   }
 
-  const wfDir = workflowsDir(cwd);
-  if (!fs.existsSync(wfDir)) {
-    out('[]\n');
-    return;
-  }
-
-  // Use project manifest for work unit names, fall back to filesystem scan
-  const proj = io.readProjectManifest(wfDir);
-  let names;
-  if (proj.work_units && Object.keys(proj.work_units).length > 0) {
-    names = Object.keys(proj.work_units);
-  } else {
-    names = fs.readdirSync(wfDir, { withFileTypes: true })
-      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
-      .map(e => e.name);
-  }
-
-  const results = [];
-
-  for (const name of names) {
-    if (!fs.existsSync(manifestPath(cwd, name))) continue;
-
-    try {
-      const manifest = io.readWorkUnitManifest(wfDir, name);
-
-      if (filterStatus && manifest.status !== filterStatus) continue;
-      if (filterWorkType && manifest.work_type !== filterWorkType) continue;
-
-      results.push(manifest);
-    } catch (_) {
-      // Skip malformed manifests
-    }
-  }
+  const results = listWorkUnitManifests(cwd).filter((manifest) =>
+    (!filterStatus || manifest.status === filterStatus) && (!filterWorkType || manifest.work_type === filterWorkType));
 
   out(JSON.stringify(results, null, 2) + '\n');
 }

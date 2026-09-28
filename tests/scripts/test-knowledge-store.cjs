@@ -9,9 +9,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../src/knowledge/store.js');
-const { tokenize, TOKENIZER_VERSION } = require('../../src/knowledge/keyword.js');
-const { StubProvider } = require('../../src/knowledge/embeddings.js');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { tokenize, TOKENIZER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const STUB_DIMS = 16;
 const stub = new StubProvider({ dimensions: STUB_DIMS });
@@ -299,7 +299,7 @@ describe('knowledge store — tokenizer', () => {
         version: 2,
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
-      'the tokenizer\'s output changed: bump TOKENIZER_VERSION in src/knowledge/keyword.js, then update this golden to the new version and tokens',
+      'the tokenizer\'s output changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version and tokens',
     );
   });
 });
@@ -345,7 +345,7 @@ describe('knowledge store — the file', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-store-'));
-    file = path.join(tmpDir, store.STORE_FILE);
+    file = path.join(tmpDir, 'store.bin');
   });
 
   afterEach(() => {
@@ -402,7 +402,7 @@ describe('knowledge store — the file', () => {
 
   it('writes through a temporary file renamed into place, and refuses a directory that does not exist', () => {
     store.saveStore(mixedStore(), file);
-    assert.deepStrictEqual(fs.readdirSync(tmpDir), [store.STORE_FILE]);
+    assert.deepStrictEqual(fs.readdirSync(tmpDir), ['store.bin']);
     assert.throws(() => store.saveStore(mixedStore(), path.join(tmpDir, 'nested', 'store.bin')), /ENOENT/);
   });
 
@@ -554,17 +554,9 @@ describe('knowledge store — locking', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it('acquires and releases a file lock', async () => {
+  it('withLock holds the lock for the call and releases it', () => {
     const lockPath = path.join(tmpDir, '.lock');
-    await store.acquireLock(lockPath);
-    assert.ok(fs.existsSync(lockPath));
-    store.releaseLock(lockPath);
-    assert.ok(!fs.existsSync(lockPath));
-  });
-
-  it('withLock wraps execution and releases on success', async () => {
-    const lockPath = path.join(tmpDir, '.lock');
-    const observed = await store.withLock(lockPath, async () => {
+    const observed = store.withLock(lockPath, () => {
       assert.ok(fs.existsSync(lockPath));
       return 'ok';
     });
@@ -572,24 +564,21 @@ describe('knowledge store — locking', () => {
     assert.ok(!fs.existsSync(lockPath));
   });
 
-  it('withLock releases the lock even when the wrapped function throws', async () => {
+  it('withLock releases the lock even when the wrapped function throws', () => {
     const lockPath = path.join(tmpDir, '.lock');
-    await assert.rejects(() =>
-      store.withLock(lockPath, async () => {
-        throw new Error('boom');
-      })
-    );
+    assert.throws(() => store.withLock(lockPath, () => {
+      throw new Error('boom');
+    }), /boom/);
     assert.ok(!fs.existsSync(lockPath));
   });
 
-  it('detects and cleans stale locks older than 30s', async () => {
+  it('breaks a stale lock older than 30s', () => {
     const lockPath = path.join(tmpDir, '.lock');
     fs.writeFileSync(lockPath, '99999');
     const past = Date.now() / 1000 - 60;
     fs.utimesSync(lockPath, past, past);
-    await store.acquireLock(lockPath);
-    assert.ok(fs.existsSync(lockPath));
-    store.releaseLock(lockPath);
+    assert.strictEqual(store.withLock(lockPath, () => fs.readFileSync(lockPath, 'utf8')), String(process.pid));
+    assert.ok(!fs.existsSync(lockPath));
   });
 });
 
@@ -604,36 +593,26 @@ describe('knowledge store — metadata', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it('writes metadata.json with exactly its 4 fields', () => {
+  it('writes metadata.json with exactly its 5 fields', () => {
     const metaPath = path.join(tmpDir, 'metadata.json');
-    store.writeMetadata(metaPath, {
+    const metadata = {
       provider: 'openai',
       model: 'text-embedding-3-small',
       dimensions: 1536,
       last_indexed: '2026-04-10T12:34:56.789Z',
-    });
-    const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-    assert.deepStrictEqual(parsed, {
-      provider: 'openai',
-      model: 'text-embedding-3-small',
-      dimensions: 1536,
-      last_indexed: '2026-04-10T12:34:56.789Z',
-    });
+      fill_failure: '.workflows/a/discussion/a.md: quota',
+    };
+    store.writeMetadata(metaPath, metadata);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(metaPath, 'utf8')), metadata);
   });
 
-  it('drops the retired retry-queue arrays on the next write', () => {
+  it('drops a field of its own on the next write', () => {
     const metaPath = path.join(tmpDir, 'metadata.json');
-    fs.writeFileSync(metaPath, JSON.stringify({
-      provider: null, model: null, dimensions: null, last_indexed: null,
-      pending: [{ file: 'x.md', failed_at: '2026-04-10T12:00:00.000Z', error: 'oops' }],
-      pending_removals: [{ workUnit: 'gone', attempts: 3 }],
-    }));
+    fs.writeFileSync(metaPath, JSON.stringify({ provider: null, model: null, dimensions: null, last_indexed: null, fill_failure: null, note: 'x' }));
     const meta = store.readMetadata(metaPath);
-    meta.last_indexed = '2026-04-11T00:00:00.000Z';
-    store.writeMetadata(metaPath, meta);
+    store.writeMetadata(metaPath, { ...meta, last_indexed: '2026-04-11T00:00:00.000Z' });
     const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-    assert.strictEqual('pending' in parsed, false);
-    assert.strictEqual('pending_removals' in parsed, false);
+    assert.strictEqual('note' in parsed, false);
     assert.strictEqual(parsed.last_indexed, '2026-04-11T00:00:00.000Z');
   });
 
@@ -645,6 +624,7 @@ describe('knowledge store — metadata', () => {
       model: null,
       dimensions: null,
       last_indexed: '2026-04-10T00:00:00.000Z',
+      fill_failure: null,
     });
   });
 

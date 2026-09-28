@@ -14,7 +14,7 @@ const { displayWidth } = require('../../kernel/terminal.cjs');
 
 const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
-const WIZARD_COMMAND = 'node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup';
+const WIZARD_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup';
 
 /**
  * The migration confirm gate — after the summary of what the migrations did.

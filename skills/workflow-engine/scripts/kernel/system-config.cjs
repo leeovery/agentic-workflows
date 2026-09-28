@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: the workflows' system config directory — one per user, beside no
-// project: `WORKFLOWS_CONFIG_DIR` when set, else `~/.config/workflows`. The
-// knowledge CLI resolves the same directory by the same rule.
+// project: `WORKFLOWS_CONFIG_DIR` when set, else `~/.config/workflows`.
 // ---------------------------------------------------------------------------
 
 const os = require('os');

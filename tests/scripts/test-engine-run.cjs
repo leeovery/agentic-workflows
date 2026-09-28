@@ -11,8 +11,12 @@
 // one call and restored after it, the width memo resolves per call, and a
 // handler that stops the command never stops the process.
 //
-// The last test pins the two doors together: whatever `run` answers, the
-// spawned CLI answers byte for byte.
+// A command that waits on the embedding provider answers through
+// `engine.runAsync`, the environment held until it settles; `run` refuses to
+// answer one it cannot wait for.
+//
+// The last tests pin the two doors together: whatever the in-process entry
+// answers, the spawned CLI answers byte for byte.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -184,6 +188,55 @@ describe('engine.run — the invocation is the caller\'s', () => {
     const res = engine.run(['nonsense'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]/);
+  });
+});
+
+describe('engine.runAsync — a command that waits on the embedding provider', () => {
+  let dir;
+
+  beforeEach(() => {
+    dir = setupFixture();
+    seed(dir);
+    createFile(dir, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    createFile(dir, '.workflows/payments/research/payments.md', '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', '.workflows/payments/research/payments.md'], { cwd: dir });
+  });
+  afterEach(() => cleanupFixture(dir));
+
+  it('answers a knowledge query once it settles', async () => {
+    const res = await engine.runAsync(['knowledge', 'query', 'cards settle'], { cwd: dir });
+    assert.strictEqual(res.code, 0, res.stderr);
+    assert.match(res.stdout, /^\[keyword-only mode — configure embedding provider for semantic search\]\n\[1 results\]\n/);
+  });
+
+  it('holds the call\'s environment until the answer settles, then restores it', async () => {
+    delete process.env.WORKFLOWS_PROBE;
+    const pending = engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { WORKFLOWS_PROBE: 'held' } });
+    assert.strictEqual(process.env.WORKFLOWS_PROBE, 'held', 'held while the query waits');
+    await pending;
+    assert.ok(!('WORKFLOWS_PROBE' in process.env), 'and gone once it answered');
+  });
+
+  it('answers a command that never waits exactly as run does', async () => {
+    const args = ['manifest', 'get', 'payments.research.payments', 'status'];
+    assert.deepStrictEqual(await engine.runAsync(args, { cwd: dir }), engine.run(args, { cwd: dir }));
+  });
+
+  it('a waiting command\'s failure is its exit code, never a rejection', async () => {
+    const res = await engine.runAsync(['knowledge', 'query', 'cards', '--boost:bogus', 'x'], { cwd: dir });
+    assert.strictEqual(res.code, 1);
+    assert.match(res.stderr, /^Unknown --boost field: "bogus"/);
+  });
+
+  it('run refuses a command it cannot wait for, naming runAsync', () => {
+    assert.throws(() => engine.run(['knowledge', 'query', 'cards'], { cwd: dir }), /engine knowledge query answers asynchronously — call runAsync/);
+  });
+
+  it('the spawned CLI answers a waiting command byte for byte as runAsync does', async () => {
+    const args = ['knowledge', 'query', 'cards settle', '--explain'];
+    const spawned = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+    const inProcess = await engine.runAsync(args, { cwd: dir });
+    assert.deepStrictEqual(inProcess, { stdout: spawned.stdout, stderr: spawned.stderr, code: spawned.status });
   });
 });
 

@@ -1,6 +1,12 @@
 'use strict';
 
-const store = require('./store');
+// ---------------------------------------------------------------------------
+// Kernel: ranking — each framing's keyword and vector searches blended by
+// score, the framings merged by each chunk's best, then re-ranked by decay,
+// boosts and the confidence tier; and the account `--explain` prints.
+// ---------------------------------------------------------------------------
+
+const store = require('./store.cjs');
 
 const KEYWORD_WEIGHT = 0.4;
 const VECTOR_WEIGHT = 0.6;
@@ -42,8 +48,12 @@ const DEFAULT_BASE_STABILITY = 3;
  */
 
 /**
+ * @typedef {Record<string, any> & {score: number, scoring: Required<Scoring>}} Ranked  a re-ranked result
+ */
+
+/**
  * @typedef {object} Searching  how a query's searches run
- * @property {import('./store').Where} [where]
+ * @property {import('./store.cjs').Where} [where]
  * @property {number} limit  the query's result limit
  * @property {number} similarity  the vector search's per-chunk minimum
  * @property {Array<ArrayLike<number>>|null} vectors  each framing's vector, in order — null when the query runs keyword-only
@@ -53,7 +63,7 @@ const DEFAULT_BASE_STABILITY = 3;
  * Every framing's hits, best first and cut to twice the limit: the keyword
  * and vector searches blended when the query has vectors, else the keyword
  * search's raw scores. Each hit carries its parts.
- * @param {import('./store').Store} db @param {string[]} terms @param {Searching} searching
+ * @param {import('./store.cjs').Store} db @param {string[]} terms @param {Searching} searching
  * @returns {{cut: number, framings: Array<Array<Record<string, any>>>}}
  */
 function searchFramings(db, terms, { where, limit, similarity, vectors }) {
@@ -135,6 +145,7 @@ function retrievability(progressElapsed, stability) {
  *        (attached by the query pipeline; absent → 0 → no decay)
  * @param {Array<{field: string, value: string}>} boosts  normalised boost list
  * @param {number} stability  S0 for the decay curve
+ * @returns {Ranked[]}
  */
 function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
   return results
@@ -166,7 +177,7 @@ function framingLine({ parts, score }) {
  * The lines `query --explain` prints beneath a ranked result: its score in
  * every framing, then the framing it kept, worked through decay, the boosts
  * and the tier.
- * @param {{score: number, scoring: Required<Scoring>}} result
+ * @param {Ranked} result
  * @returns {string[]}
  */
 function explanation({ score, scoring }) {

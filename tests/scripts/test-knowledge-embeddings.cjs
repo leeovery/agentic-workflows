@@ -5,7 +5,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { StubProvider, STUB_MODEL_ID, DEFAULT_STUB_DIMENSIONS } = require('../../src/knowledge/embeddings.js');
+const { StubProvider, STUB_MODEL_ID, DEFAULT_STUB_DIMENSIONS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 describe('StubProvider', () => {
   it('returns a vector of correct length for a single string', () => {

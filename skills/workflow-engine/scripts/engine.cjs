@@ -55,30 +55,10 @@ const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
+const { runKnowledge } = require('./domain/knowledge/commands.cjs');
+const { ExitSignal } = require('./kernel/call.cjs');
 
-/**
- * One invocation: the directory it acts on, where its two output streams go,
- * and the text it was handed on stdin (read lazily — a command that wants
- * none never asks).
- * @typedef {object} Call
- * @property {string} cwd
- * @property {(text: string) => void} out
- * @property {(text: string) => void} err
- * @property {() => string} stdin
- */
-
-/**
- * A command's exit, thrown rather than taken on the process: `main` turns it
- * into an exit code, `run` answers with one. A handler that stops the command
- * must never stop its caller.
- */
-class ExitSignal extends Error {
-  /** @param {number} code */
-  constructor(code) {
-    super(`engine exited ${code}`);
-    this.code = code;
-  }
-}
+/** @typedef {import('./kernel/call.cjs').Call} Call */
 
 /** @param {unknown} err @returns {string} */
 function messageOf(err) {
@@ -159,6 +139,7 @@ const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot
+  knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
   manifest set    <dotpath> <field> <value>
   manifest set    <dotpath> <field>=<value> [<field>=<value> …]
@@ -1996,10 +1977,16 @@ function runRender(call, argv) {
   }
 }
 
-/** @param {Call} call @param {string[]} argv */
+/**
+ * The command argv names — answering later only where the command waits on
+ * the embedding provider.
+ * @param {Call} call @param {string[]} argv @returns {void|Promise<void>}
+ */
 function runCli(call, argv) {
   const [command, ...rest] = argv;
   switch (command) {
+    case 'knowledge':
+      return runKnowledge(call, rest);
     case 'boot':
       runBoot(call);
       break;
@@ -2079,34 +2066,46 @@ function runCli(call, argv) {
 const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end'];
 
 /**
- * One command against a bound call, answering its exit code. Every stop a
- * handler takes arrives here as an ExitSignal; anything else that escapes is
- * a handler that threw without answering, and gets the CLI's last word — the
- * message on stderr, exit 1. Whatever the exit, a command the conversation
- * ran marks it as one that runs the workflows — after the command, which
- * may take the folder the mark lives in: boot's tidy-up deletes one whose
- * transcript is gone.
- * @param {Call} call @param {string[]} argv @returns {number}
+ * The exit code a stop answers with. A stop that is no ExitSignal is a
+ * handler that threw without answering, and gets the CLI's last word — the
+ * message on stderr, exit 1.
+ * @param {Call} call @param {unknown} err @returns {number}
  */
-function dispatch(call, argv) {
-  try {
-    runCli(call, argv);
-  } catch (err) {
-    if (err instanceof ExitSignal) return err.code;
-    call.err(messageOf(err) + '\n');
-    return 1;
-  } finally {
-    if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
-  }
-  return 0;
+function exitCode(call, err) {
+  if (err instanceof ExitSignal) return err.code;
+  call.err(messageOf(err) + '\n');
+  return 1;
 }
 
 /**
- * Environment keys held for the duration of `fn` and restored exactly — a key
- * that was absent is absent again afterwards. `undefined` takes a key away
- * for the call, which is how a caller hands over an environment a spawned
- * process would have had by replacement rather than overlay. Inside a worker
- * thread `process.env` is that thread's own copy, so this is thread-local.
+ * One command against a bound call, answering its exit code — later, for a
+ * command that waits on the embedding provider. Whatever the exit, a command
+ * the conversation ran marks it as one that runs the workflows — after the
+ * command, which may take the folder the mark lives in: boot's tidy-up
+ * deletes one whose transcript is gone.
+ * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
+ */
+function dispatch(call, argv) {
+  const settle = (/** @type {number} */ code) => {
+    if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
+    return code;
+  };
+  let answer;
+  try {
+    answer = runCli(call, argv);
+  } catch (err) {
+    return settle(exitCode(call, err));
+  }
+  return answer ? answer.then(() => 0, (err) => exitCode(call, err)).then(settle) : settle(0);
+}
+
+/**
+ * Environment keys held for the duration of `fn` — until its promise
+ * settles, where it answers with one — and restored exactly: a key that was
+ * absent is absent again afterwards. `undefined` takes a key away for the
+ * call, which is how a caller hands over an environment a spawned process
+ * would have had by replacement rather than overlay. Inside a worker thread
+ * `process.env` is that thread's own copy, so this is thread-local.
  *
  * The display width is a memo over the environment, resolved once per process
  * because a CLI process is one command: scoping the environment scopes the
@@ -2127,12 +2126,43 @@ function withEnv(overlay, fn) {
     apply(key, value);
   }
   resetDisplayWidth();
-  try {
-    return fn();
-  } finally {
+  const restore = () => {
     for (const [key, value] of saved) apply(key, value);
     resetDisplayWidth();
+  };
+  let result;
+  try {
+    result = fn();
+  } catch (err) {
+    restore();
+    throw err;
   }
+  if (result instanceof Promise) return /** @type {T} */ (result.finally(restore));
+  restore();
+  return result;
+}
+
+/**
+ * @typedef {object} InProcessOptions
+ * @property {string} [cwd]
+ * @property {Record<string, string|undefined>} [env]
+ * @property {string} [stdin]
+ */
+
+/** @typedef {{stdout: string, stderr: string, code: number}} Answer */
+
+/**
+ * A call bound to buffers, and the answer they hold once the command exits.
+ * @param {string} cwd @param {string} stdin
+ * @returns {{call: Call, answer: (code: number) => Answer}}
+ */
+function bufferedCall(cwd, stdin) {
+  /** @type {string[]} */ const stdout = [];
+  /** @type {string[]} */ const stderr = [];
+  return {
+    call: { cwd, out: (text) => stdout.push(text), err: (text) => stderr.push(text), stdin: () => stdin },
+    answer: (code) => ({ stdout: stdout.join(''), stderr: stderr.join(''), code }),
+  };
 }
 
 /**
@@ -2141,25 +2171,32 @@ function withEnv(overlay, fn) {
  * the same bytes on the same two streams, the same exit code — and never
  * exits, chdirs, or leaves the environment moved. Callers are test harnesses
  * that want the engine's answers without a process per answer; skills' own
- * scripts take the library (lib.cjs).
+ * scripts take the library (lib.cjs). A command that waits on the embedding
+ * provider is runAsync's.
  *
  * The cwd is a parameter rather than a chdir because `process.chdir` is
  * refused inside a worker thread, and the prose world builder runs in one.
  *
- * @param {string[]} argv
- * @param {{cwd?: string, env?: Record<string, string|undefined>, stdin?: string}} [options]
- * @returns {{stdout: string, stderr: string, code: number}}
+ * @param {string[]} argv @param {InProcessOptions} [options]
+ * @returns {Answer}
  */
 function run(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
-  /** @type {string[]} */ const stdout = [];
-  /** @type {string[]} */ const stderr = [];
-  const code = withEnv(env, () => dispatch({
-    cwd,
-    out: (text) => stdout.push(text),
-    err: (text) => stderr.push(text),
-    stdin: () => stdin,
-  }, argv));
-  return { stdout: stdout.join(''), stderr: stderr.join(''), code };
+  const { call, answer } = bufferedCall(cwd, stdin);
+  const code = withEnv(env, () => dispatch(call, argv));
+  if (typeof code !== 'number') throw new TypeError(`engine ${argv.slice(0, 2).join(' ')} answers asynchronously — call runAsync`);
+  return answer(code);
+}
+
+/**
+ * The in-process entry for any command, awaited — the one a command that
+ * waits on the embedding provider needs. The environment is held until it
+ * answers.
+ * @param {string[]} argv @param {InProcessOptions} [options]
+ * @returns {Promise<Answer>}
+ */
+async function runAsync(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
+  const { call, answer } = bufferedCall(cwd, stdin);
+  return answer(await withEnv(env, () => dispatch(call, argv)));
 }
 
 /** The shell door: the process's own argv, directory, streams and stdin. */
@@ -2178,12 +2215,17 @@ function main() {
     // A terminal hands nothing over until someone types; a hook's JSON
     // arrives on a pipe.
     stdin: () => (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8')),
+    ...(process.stdin.isTTY ? { terminal: { input: process.stdin, output: process.stdout } } : {}),
   }, process.argv.slice(2));
   // Only a failure exits explicitly: falling off the end lets Node flush a
   // long render to a pipe before the process goes.
-  if (code !== 0) process.exit(code);
+  const exit = (/** @type {number} */ answered) => {
+    if (answered !== 0) process.exit(answered);
+  };
+  if (typeof code === 'number') exit(code);
+  else code.then(exit);
 }
 
 if (require.main === module) main();
 
-module.exports = { parseArgs, run };
+module.exports = { parseArgs, run, runAsync };

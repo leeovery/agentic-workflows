@@ -3,8 +3,8 @@
 // The shared engine runner's own contract: each shape answers what its name
 // says, the refusal shape asserts the refusal, the call's environment and
 // stdin reach the engine, the git fixture is a repo an engine commit lands
-// in, and the stubbed tree is the one the engine resolves its knowledge CLI
-// against.
+// in, and a keyword-only checkout is one a transaction's index builds a real
+// store in.
 
 require('./hermetic-env.cjs');
 
@@ -126,22 +126,29 @@ describe('engine harness — the git fixture', () => {
   });
 });
 
-describe('engine harness — the stubbed tree', () => {
+describe('engine harness — a keyword-only checkout', () => {
   let dir;
-  const stubbed = harness.stubbedEngine();
-  beforeEach(() => { dir = setupGitFixture('harness-stub-'); seed(dir); });
+  beforeEach(() => { dir = setupGitFixture('harness-kb-'); seed(dir); });
   afterEach(() => cleanupFixture(dir));
 
-  it('is the tree the engine resolves its knowledge CLI against — the store is never reached', () => {
-    const res = stubbed.ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
-    assert.deepStrictEqual(res.warnings, [], 'the stub answers where the real CLI would have failed');
-    assert.deepStrictEqual(harness.knowledgeCalls(dir), ['index .workflows/pay/research/pay.md']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.knowledge')));
+  it('is one a transaction indexes into: the store is real, and says what it holds', () => {
+    harness.keywordOnlyKnowledge(dir);
+    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.deepStrictEqual(harness.indexedFiles(dir), ['.workflows/pay/research/pay.md']);
   });
 
-  it('is one tree per process, and the repo\'s own engine is a separate door', () => {
-    assert.strictEqual(harness.stubbedEngine(), stubbed);
+  it('holds nothing where the checkout was never set up — the index a warning, no store built', () => {
+    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    assert.match(res.warnings[0], /^knowledge index failed: No knowledge store here/);
+    assert.deepStrictEqual(harness.indexedFiles(dir), []);
+  });
+
+  it('answers a command that waits on the embedding provider through callAsync', async () => {
+    harness.keywordOnlyKnowledge(dir);
     ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
-    assert.deepStrictEqual(harness.knowledgeCalls(dir), [], 'the real engine never reaches the stub');
+    const answer = await harness.callAsync(dir, ['knowledge', 'query', 'research']);
+    assert.strictEqual(answer.code, 0);
+    assert.match(answer.stdout, /^\[keyword-only mode — configure embedding provider for semantic search\]\n\[1 results\]\n/);
   });
 });

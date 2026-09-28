@@ -10,8 +10,8 @@
 // a world goes red at the gate and lands as a reviewable diff.
 //
 // Rebuilds are skipped when nothing that feeds them has changed — the
-// hash of the case's recipes, the shared mainlines, and the engine and
-// knowledge sources. The verify keeps that hash itself, in a gitignored
+// hash of the case's recipes, the shared mainlines, and the engine's
+// sources, the knowledge base's among them. The verify keeps that hash itself, in a gitignored
 // local cache it writes only after a byte-identical rebuild: a hash it
 // cannot find, or one an engine change has moved on from, costs a rebuild,
 // so drift can never hide behind the skip and no PR carries the
@@ -38,7 +38,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const cases = require('./cases.cjs');
 const { withFrozenClock } = require('./fake-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
-const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/domain/kb.cjs');
+const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { MOD_DIR } = require('../../../skills/workflow-engine/scripts/domain/gate-surface.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
@@ -52,7 +52,6 @@ function removeTree(dir) {
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
-const KNOWLEDGE = path.join(ROOT, 'skills/workflow-knowledge/scripts/knowledge.cjs');
 const MAINLINES_DIR = path.join(cases.PROSE_DIR, 'mainlines');
 const CLOCK = path.join(__dirname, 'fake-clock-preload.cjs');
 
@@ -130,8 +129,8 @@ const SIDECARS = [WORLD_HISTORY, WORLD_PRESENCE, WORLD_DIRT];
 // The environment a recipe's calls run under, as a delta from this process's:
 // the keys to hold, and the keys to take away (`undefined`). The engine runs
 // in-process and holds the delta for the length of one call; git and the
-// knowledge CLI are spawned and take the whole environment `recipeEnv`
-// composes from it.
+// engine's knowledge verbs — setup waits on the embedding provider — are
+// spawned and take the whole environment `recipeEnv` composes from it.
 function recipeOverlay() {
   if (/\s/.test(CLOCK)) {
     throw new Error(`fake-clock preload path contains whitespace — NODE_OPTIONS cannot carry it: ${CLOCK}`);
@@ -186,7 +185,7 @@ function makeHarness(dir) {
       }
       return res.stdout;
     }),
-    knowledge: (...args) => node(KNOWLEDGE, args),
+    knowledge: (...args) => node(ENGINE, ['knowledge', ...args]),
     git: (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env }),
     write(rel, content) {
       const full = path.join(dir, rel);
@@ -289,7 +288,7 @@ function hashPaths(paths) {
 }
 
 /** What every world is built from, whichever case it belongs to. */
-const SHARED_INPUTS = [MAINLINES_DIR, path.join(ROOT, 'skills/workflow-engine/scripts'), KNOWLEDGE];
+const SHARED_INPUTS = [MAINLINES_DIR, path.join(ROOT, 'skills/workflow-engine/scripts')];
 
 let sharedDigest = null;
 
@@ -707,9 +706,12 @@ function buildWorld(caseId) {
     }
   }
 
-  // The world's own checkout-local knowledge setup — never committed.
-  const knowledge = path.join(dir, '.claude/skills/workflow-knowledge/scripts/knowledge.cjs');
-  const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8' });
+  // The world's own checkout-local knowledge setup — never committed. Like
+  // a recipe's calls, it belongs to no conversation.
+  const worldEngine = path.join(dir, '.claude/skills/workflow-engine/scripts/engine.cjs');
+  const setupEnv = { ...process.env };
+  delete setupEnv.CLAUDE_CODE_SESSION_ID;
+  const setup = spawnSync('node', [worldEngine, 'knowledge', 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8', env: setupEnv });
   if (setup.status !== 0) {
     removeTree(dir);
     throw new Error(`knowledge setup failed in world:\nstdout: ${setup.stdout}\nstderr: ${setup.stderr}`);
@@ -818,7 +820,7 @@ function readWalkLog(worldDir) {
 }
 
 module.exports = {
-  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
+  ROOT, ENGINE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
   DISPATCH_LOG, readDispatches,
   runRecipe, collectTree, hasSnapshot, readSnapshot, snapshotDir,

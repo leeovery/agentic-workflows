@@ -1,9 +1,12 @@
 'use strict';
 
-// The store's keyword side: the one tokenizer an index and a query share, each
-// chunk's term counts, and BM25 over them — every field scored on its own.
+// ---------------------------------------------------------------------------
+// Kernel: the store's keyword side — the one tokenizer an index and a query
+// share, each chunk's term counts, and BM25 over them, every field scored on
+// its own.
+// ---------------------------------------------------------------------------
 
-const { stem } = require('./stemmer');
+const { stem } = require('./stemmer.cjs');
 
 /** The fields a keyword search scores, each with its own length statistics. */
 const FIELDS = ['content', 'source_file', 'id'];

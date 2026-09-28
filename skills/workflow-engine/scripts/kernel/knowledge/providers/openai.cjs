@@ -1,4 +1,7 @@
-// OpenAI embedding provider — public cloud entry for the /v1/embeddings API.
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: OpenAI embedding provider — public cloud entry for the /v1/embeddings API.
 //
 // Thin OUTER driver: validates that an API key is present (cloud requires
 // one), builds the cloud policy, and delegates the four-method interface to
@@ -7,10 +10,9 @@
 //
 // Re-exports AuthError, DEFAULT_MODEL and DEFAULT_DIMENSIONS for the tests that
 // import them from this module.
+// ---------------------------------------------------------------------------
 
-'use strict';
-
-const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine');
+const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine.cjs');
 
 const DEFAULT_MODEL = 'text-embedding-3-small';
 const DEFAULT_DIMENSIONS = 1536;
@@ -26,7 +28,7 @@ const OPENAI_ERROR_CONTEXT = {
 
 class OpenAIProvider {
   /**
-   * @param {{ apiKey: string, model?: string, dimensions?: number } & import('./openai-engine').Patience} options
+   * @param {{ apiKey: string, model?: string, dimensions?: number } & import('./openai-engine.cjs').Patience} options
    */
   constructor(options) {
     if (!options || !options.apiKey) {

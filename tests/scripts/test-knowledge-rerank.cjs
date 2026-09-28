@@ -1,14 +1,13 @@
 'use strict';
 
 // Unit tests for progress-driven soft down-rank (idea #33, PR3).
-// Imports the built bundle to validate the shipped surface.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { retrievability, rerank } = require('../../skills/workflow-knowledge/scripts/knowledge.cjs');
+const { retrievability, rerank } = require('../../skills/workflow-engine/scripts/kernel/knowledge/ranking.cjs');
 
 const EPS = 1e-9;
 const close = (a, b) => Math.abs(a - b) < EPS;

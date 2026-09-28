@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { STORE_FILES } = require('./kb.cjs');
+const { STORE_FILES } = require('../kernel/knowledge/files.cjs');
 
 const WORKTREE_INCLUDE = '.worktreeinclude';
 

@@ -1,4 +1,7 @@
-// OpenAI embeddings engine — shared wire logic for the /v1/embeddings API.
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: OpenAI embeddings engine — shared wire logic for the /v1/embeddings API.
 //
 // This is the INNER engine. It holds the domain logic (request shaping,
 // response-length validation, batch chunking, error mapping) that is
@@ -24,8 +27,7 @@
 // waits out request by request — the operation-level retry wrapper repeats a
 // whole job, re-sending every request already answered — drawing each wait
 // from a budget every engine in the process shares.
-
-'use strict';
+// ---------------------------------------------------------------------------
 
 const MAX_BATCH_SIZE = 2048;
 
@@ -47,8 +49,8 @@ const RATE_LIMIT_WAITS_MS = [1000, 2000, 4000, 8000, 16000];
 const MAX_RATE_LIMIT_WAIT_MS = 60000;
 
 // The rate-limit waiting one process does across all its requests. Callers
-// run the knowledge CLI under time limits of their own, and a file left
-// unembedded is retried by the next start's bulk index.
+// run the knowledge verbs under time limits of their own, and a chunk left
+// unembedded is retried by the next vector fill.
 const RATE_LIMIT_BUDGET_MS = 60000;
 
 // A duration as rate-limit messages state it: "6.007s", "500ms", "1m20.5s", "2h3m".

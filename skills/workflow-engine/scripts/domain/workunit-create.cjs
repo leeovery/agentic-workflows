@@ -29,7 +29,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
 const {
   normaliseBasename,
@@ -219,12 +219,11 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
   /** @type {string[]} */
   const warnings = [];
-  for (const move of importMoves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', importArtifact(workUnit, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
-  }
-  for (const move of seedMoves) {
-    knowledge(cwd, ['index', `.workflows/${workUnit}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
-  }
+  syncKnowledge(cwd, [
+    ...importMoves.filter((m) => isIndexableImport(m.dest))
+      .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: `.workflows/${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+  ], warnings);
 
   // Seed removals ride along in the same commit as their new home, and the
   // project-manifest registration lands with it too.

@@ -1,17 +1,16 @@
 'use strict';
 
-// The knowledge CLI driven as a process, against a stand-in OpenAI-compatible
-// embeddings endpoint that answers as its mode says and records what it was
-// sent. The CLI runs asynchronously, so the endpoint — served from the test's
-// own process — can answer it. And, in process, a run whose retry backoff
-// costs no real time.
+// The knowledge base driven through its engine door, against a stand-in
+// OpenAI-compatible embeddings endpoint that answers as its mode says and
+// records what it was sent. The door runs in process and waits, so the
+// endpoint — served from the test's own process — can answer it. And, in
+// process, a run whose retry backoff costs no real time, a call whose output
+// is held, and the vector fill's launches recorded rather than spawned.
 
 const http = require('http');
-const path = require('path');
-const { execFile } = require('child_process');
-const { StubProvider } = require('../../src/knowledge/embeddings');
-
-const BUNDLE = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
+const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { launcher } = require('../../skills/workflow-engine/scripts/domain/knowledge/vectors.cjs');
 
 /** How the endpoint answers in each failing mode. */
 const FAILURES = {
@@ -64,18 +63,44 @@ async function embeddingEndpoint(dimensions) {
 }
 
 /**
- * Run the knowledge CLI in `root`, the call's environment laid over the
+ * `engine knowledge <args>` in `root`, the call's environment laid over the
  * process's own, `input` its stdin.
- * @param {string} root @param {string[]} args @param {Record<string, string>} [env] @param {string} [input]
+ * @param {string} root @param {string[]} args @param {Record<string, string|undefined>} [env] @param {string} [input]
  * @returns {Promise<{code: number, stdout: string, stderr: string}>}
  */
 function knowledgeCli(root, args, env = {}, input = '') {
-  return new Promise((resolve) => {
-    const child = execFile(process.execPath, [BUNDLE, ...args], { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => {
-      resolve({ code: err ? /** @type {any} */ (err).code : 0, stdout, stderr });
-    });
-    if (input) child.stdin.end(input);
-  });
+  return engine.runAsync(['knowledge', ...args], { cwd: root, env, stdin: input });
+}
+
+/**
+ * A call whose output is held: `output.stdout` and `output.stderr` gather
+ * what the domain writes.
+ * @param {string} cwd
+ */
+function heldCall(cwd) {
+  const output = { stdout: '', stderr: '' };
+  return {
+    output,
+    call: {
+      cwd,
+      out: (/** @type {string} */ text) => { output.stdout += text; },
+      err: (/** @type {string} */ text) => { output.stderr += text; },
+      stdin: () => '',
+    },
+  };
+}
+
+/**
+ * The vector fill's launches recorded — the project root of each — rather
+ * than a process spawned, for the length of the test.
+ * @param {import('node:test').TestContext} t
+ * @returns {string[]}
+ */
+function recordLaunches(t) {
+  /** @type {string[]} */
+  const launched = [];
+  t.mock.method(launcher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+  return launched;
 }
 
 /**
@@ -98,4 +123,4 @@ async function withoutBackoff(t, run) {
   return running;
 }
 
-module.exports = { embeddingEndpoint, knowledgeCli, withoutBackoff };
+module.exports = { embeddingEndpoint, knowledgeCli, heldCall, recordLaunches, withoutBackoff };
