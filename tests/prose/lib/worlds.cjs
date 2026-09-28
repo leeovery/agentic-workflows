@@ -580,8 +580,8 @@ function diffWorld(caseId, worldDir, claimsMode = false) {
     expecting: which === 'assertion'
       ? 'the assertion state'
       : (claimsMode
-        ? 'no fixed world — the delta below is against the STARTING state, is expected to be '
-          + "non-empty, and must be judged against the case's stated claims"
+        ? 'no fixed world — the delta below is against the STARTING state and must be judged '
+          + "against the case's stated claims, which say whether it should be empty"
         : 'the fixture state, unchanged'),
     added,
     removed,
