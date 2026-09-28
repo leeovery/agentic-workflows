@@ -89,6 +89,11 @@ any harness substitutions. Follow it exactly.
   is finished — those you derive from the prose, exactly as before. A
   described user who would happily stop talking is still not permission
   to cut a loop the prose has not ended.
+- **The two roles know different things.** What the payload says about
+  the user is the user's to say: the session's side knows only what the
+  conversation, the files, and the tool results have put in front of it.
+  A fact from the user's description never appears in a session turn, or
+  in anything the session writes, until the user has said it.
 - **Never silently repair, reinterpret, or improve the prose.** Execute
   what is written, even where it looks wrong. A broken instruction is the
   finding — the single most damaging thing you can do is quietly do the
