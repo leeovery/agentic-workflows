@@ -22,14 +22,14 @@
     "calls_include": [
       "render entry-gate pay.planning.pay",
       "render plan-context-gate pay.planning.pay",
-      "manifest list",
-      "knowledge.cjs query"
+      "manifest list --work-type cross-cutting"
     ],
     "calls_in_order": [
       "render entry-gate pay.planning.pay",
-      "knowledge.cjs query"
+      "manifest list --work-type cross-cutting"
     ],
     "calls_exclude": [
+      "knowledge.cjs query",
       "knowledge.cjs index",
       "knowledge.cjs remove",
       "topic reopen"
