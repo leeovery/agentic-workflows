@@ -10,7 +10,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const store = require('../../src/knowledge/store.js');
-const { tokenize } = require('../../src/knowledge/keyword.js');
+const { tokenize, TOKENIZER_VERSION } = require('../../src/knowledge/keyword.js');
 const { StubProvider } = require('../../src/knowledge/embeddings.js');
 
 const STUB_DIMS = 16;
@@ -290,6 +290,18 @@ describe('knowledge store — tokenizer', () => {
     assert.deepStrictEqual(tokenize('The limits of such throttling are not in the queues'), ['limit', 'throttl', 'queue']);
     assert.deepStrictEqual(tokenize('theirs'), ['their'], 'a stop word is a whole word, matched before the stem');
   });
+
+  it('pins its output to TOKENIZER_VERSION — a changed output takes the next version', () => {
+    const text = "The Rate-Limiters' queues are NOT draining: naïve café refreshes, it's tokens_v2 in 2026 — generously ORGANISED!";
+    assert.deepStrictEqual(
+      { version: TOKENIZER_VERSION, tokens: tokenize(text) },
+      {
+        version: 2,
+        tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
+      },
+      'the tokenizer\'s output changed: bump TOKENIZER_VERSION in src/knowledge/keyword.js, then update this golden to the new version and tokens',
+    );
+  });
 });
 
 describe('knowledge store — vector search', () => {
@@ -483,7 +495,7 @@ describe('knowledge store — the file', () => {
     });
   }
 
-  /** A store written before its file recorded a tokenizer: Orama's splitter alone, no stop words, no stems. */
+  /** A store written before its file recorded a tokenizer, its terms the words lowercased, accent-folded and split — no stop words dropped, nothing stemmed. */
   const PRE_VERSION_STORE = path.resolve(__dirname, '..', 'fixtures', 'knowledge', 'store-before-tokenizer-version.bin');
 
   /** The chunks the pre-version store holds, stored afresh under this tokenizer. */

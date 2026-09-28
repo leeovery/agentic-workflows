@@ -1,8 +1,8 @@
 'use strict';
 
-// Porter2, the Snowball English stemmer, in its current revision
-// (snowballstem.org/algorithms/english). Each step is the algorithm's step of
-// the same name, and a word arrives lowercase, as the tokenizer gives it.
+// Porter2, the Snowball English stemmer (snowballstem.org/algorithms/english).
+// Each step is the algorithm's step of the same name, and a word arrives
+// lowercase, as the tokenizer gives it.
 
 const VOWEL = /[aeiouy]/;
 const VOWELS = new Set('aeiouy');

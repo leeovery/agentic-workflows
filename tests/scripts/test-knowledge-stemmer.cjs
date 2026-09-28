@@ -22,6 +22,12 @@ describe('knowledge stemmer — Porter2', () => {
     assert.deepStrictEqual(wrong, []);
   });
 
+  it('shortens -ogi to -og after an l and keeps it after any other letter, as Snowball\'s own stemmer does — no word of its vocabulary reaches the second case', () => {
+    assert.strictEqual(stem('analogy'), 'analog');
+    assert.strictEqual(stem('pedagogy'), 'pedagogi');
+    assert.strictEqual(stem('demagogies'), 'demagogi');
+  });
+
   it('stems the words the tokenizer keeps whole — hyphens, digits and underscores — as one word', () => {
     assert.strictEqual(stem('rate-limiting'), 'rate-limit');
     assert.strictEqual(stem('v2_final'), 'v2_final');

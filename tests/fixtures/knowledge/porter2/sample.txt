@@ -83,6 +83,7 @@ conduce	conduc
 conjoin	conjoin
 constancies	constanc
 contradictory	contradictori
+coolly	coolli
 cooms	coom
 corrivals	corriv
 cosmos	cosmos
@@ -90,6 +91,7 @@ coupling	coupl
 cramping	cramp
 cries	cri
 cringed	cring
+cruelly	cruelli
 crusoe	cruso
 cry	cri
 curragh	curragh
@@ -204,6 +206,7 @@ interval	interval
 invigorating	invigor
 isolation	isol
 jeers	jeer
+jolly	jolli
 jordan	jordan
 jutting	jut
 kindnesses	kind

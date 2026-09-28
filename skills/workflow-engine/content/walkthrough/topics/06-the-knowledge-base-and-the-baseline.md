@@ -1,6 +1,6 @@
 # The knowledge base and the baseline
 
-The knowledge base is the system's memory. As each piece of thinking work finishes, its document is added to a searchable store inside the project, and later sessions can find it by meaning rather than by exact words. What comes back is the actual sentence someone reasoned their way to, with a note of which piece of work, which phase and when.
+The knowledge base is the system's memory. As each piece of thinking work finishes, its document is added to a searchable store inside the project, and later sessions can find it by meaning rather than by matching words. What comes back is the actual sentence someone reasoned their way to, with a note of which piece of work, which phase and when.
 
 It remembers the thinking: research, discussions, investigations and specifications, along with the early material a piece of work started from and the product roadmap's own sessions. It never indexes plans, code or review reports, because those describe how the work got done rather than what was learned or decided, and indexing them would bury every search in task numbers. Each remembered piece carries a confidence: a specification is high, an investigation medium, a discussion lower, research lowest. Low confidence is not low value; a research note that killed a bad approach is exactly what stops the next person exploring the same dead end.
 
