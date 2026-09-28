@@ -44,7 +44,7 @@ Read the verdict it returns.
 
 **If it landed the correction** — its record-settled or derivation arm:
 
-Tell the user in one line what landed and what determined it. Set `verdict = landed`.
+From `implementation`, tell the user in one line what landed and what determined it; the planning lanes say nothing here — their caller reports the pass's corrections as one count. Set `verdict = landed`.
 
 → Return to caller.
 
