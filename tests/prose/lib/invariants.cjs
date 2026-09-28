@@ -170,7 +170,7 @@ function bare(s) {
  * its value as the space, so the form can never decide a verdict.
  */
 function unformed(s) {
-  return bare(s).replace(/([\w.\]-])=(?=[^\s=])/g, '$1 ');
+  return bare(s).replace(/([\w.\]-])=(?!=)/g, '$1 ');
 }
 
 function ranMatch(command, needle) {
