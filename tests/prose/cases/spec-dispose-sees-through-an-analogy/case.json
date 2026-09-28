@@ -1,0 +1,77 @@
+{
+  "origin": "A specification review's gap agent can stage a call as `settled` on an analogy — a neighbouring rule read forward onto ground the record never decided. An analogy is consistency with the record, not determination by it, so the call is never the record's own: the dispose step hands it to the bar, where the session either makes it itself — first principles over the record's decisions leaning, the alternative named — or finds the fork irreducible and puts it to the user. Either way the decision is one the owning discussion never made, so it lands there before the specification re-aligns. Walks once kept the staged analogy as the record's own and wrote a cancellation nobody decided straight into the specification. This walks one analogy-staged finding over what becomes of an unconfirmed order and pins that it never lands on the record's authority.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They never hand anything over automatically — being asked is the point of being here — and they ask for nothing to be expanded. On an order the gateway never confirms they are clear whenever it comes up, whether as a call already made on their behalf or as a choice put to them: the checkout should not cancel an order it cannot show failed — hold it, and tell the customer the payment is still confirming. Shown a call made on their behalf that says so, they agree to it as it stands; put to them as a choice, they take the held order. Asked whether to run another review round they proceed to completion, and at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-shared/references/landing-a-resolution.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or input review agent via the Task tool — each returns the content below and writes no file",
+    "spec-gap-analogy-over-a-fork": "when the prose dispatches the gap analysis agent via the Task tool — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay --sweep",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "finding_gate_mode auto",
+      "render incoherence-gate",
+      "topic reopen",
+      "topic triage",
+      "sources stale",
+      "workunit create"
+    ],
+    "calls_in_order": [
+      "tracking.review-gap-analysis-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "tracking.review-gap-analysis-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ]
+  }
+}
