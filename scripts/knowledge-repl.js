@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 'use strict';
 
-// Dev scratchpad for the knowledge base library.
+// Dev scratchpad for the knowledge base's store.
 //
 // NOT shipped by AGNTC — lives at project root, outside skills/. Run:
 //
 //   node scripts/knowledge-repl.js
-//   npm run knowledge:repl
 //
-// Drops you into a Node REPL with the built bundle pre-loaded, a fresh
+// Drops you into a Node REPL with the engine's store module loaded, a fresh
 // in-memory store, a StubProvider, and a handful of helpers.
 
 const os = require('os');
 const path = require('path');
 const repl = require('repl');
 
-const bundle = require('../skills/workflow-knowledge/scripts/knowledge.cjs');
-const { StubProvider, store } = bundle;
+const store = require('../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const DIMS = 128;
 
