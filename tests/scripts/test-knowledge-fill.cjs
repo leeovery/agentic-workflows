@@ -201,6 +201,14 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
       'the vector of its own text');
   });
 
+  it('stops when the store is rebuilt with another model of the same width while it embeds — no vector of the old model lands', async () => {
+    const provider = spy(() => {
+      store.writeMetadata(knowledgeFiles(root).metadata, { ...metadata(root), model: 'another' });
+    });
+    await assert.rejects(fillVectors(knowledgeFiles(root), STUB, provider, () => true), /The store's embedder changed during index/);
+    assert.deepStrictEqual(awaiting(root).sort(), ['alpha', 'beta']);
+  });
+
   it('never tries a text twice in one fill — a refused text waits for the next', async () => {
     const stub = new StubProvider({ dimensions: STUB.dimensions });
     let calls = 0;

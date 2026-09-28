@@ -150,6 +150,34 @@ function storeMetadata(files) {
   return fs.existsSync(files.store) && fs.existsSync(files.metadata) ? store.readMetadata(files.metadata) : null;
 }
 
+/** @type {Array<keyof EmbedderIdentity>} */
+const IDENTITY_FIELDS = ['provider', 'model', 'dimensions'];
+
+/**
+ * Whether a store's recorded embedder is the one named.
+ * @param {Metadata} metadata @param {EmbedderIdentity} identity
+ */
+function sameEmbedder(metadata, identity) {
+  return IDENTITY_FIELDS.every((field) => metadata[field] === identity[field]);
+}
+
+/**
+ * Refuse to write vectors from an embedder the store no longer records — a
+ * concurrent rebuild can change its provider, model or width between the
+ * embedding and the lock. Checked under the lock.
+ * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider|null} embedder
+ */
+function assertStoreEmbedder(files, cfg, embedder) {
+  const metadata = storeMetadata(files);
+  if (!embedder || !metadata || !metadata.provider) return;
+  const produced = embedderIdentity(cfg, embedder);
+  if (sameEmbedder(metadata, produced)) return;
+  throw new Error(
+    "The store's embedder changed during index (concurrent rebuild). " +
+      `Embeddings produced by ${embedderName(produced)}, store now built with ${embedderName(metadata)}.`
+  );
+}
+
 /**
  * What keeps the configured provider from embedding into the store, or null
  * when nothing does — a keyword-only store takes any provider, or none, and
@@ -162,10 +190,7 @@ function storeMetadata(files) {
 function providerConflict(metadata, cfg, provider) {
   if (!metadata.provider) return null;
   if (!provider) return providerKeyUnresolved(cfg) ? 'key' : 'dropped';
-  const configured = embedderIdentity(cfg, provider);
-  const matches = /** @type {Array<keyof EmbedderIdentity>} */ (['provider', 'model', 'dimensions'])
-    .every((field) => metadata[field] === configured[field]);
-  return matches ? null : 'mismatch';
+  return sameEmbedder(metadata, embedderIdentity(cfg, provider)) ? null : 'mismatch';
 }
 
 const REBUILD_MISMATCH_MSG =
@@ -292,6 +317,7 @@ module.exports = {
   storeBuildable,
   embedderIdentity,
   storeMetadata,
+  assertStoreEmbedder,
   indexProvider,
   canEmbed,
   keywordOnlyCause,

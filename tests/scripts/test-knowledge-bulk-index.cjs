@@ -325,13 +325,21 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     assert.ok(!provider.batches.flat().some((text) => text.includes('The old decision.')));
   });
 
-  it('refuses to save vectors into a store whose width changed while they were embedded', async () => {
-    const widen = async () => {
-      const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
-      writeJson(file, { ...JSON.parse(fs.readFileSync(file, 'utf8')), dimensions: 64 });
-    };
-    await assert.rejects(bulk(root, output, CFG, spyProvider({ during: widen })),
-      /^Error: The store's vector width changed during index \(concurrent rebuild\)\. Embeddings produced for dims=128, store now has dims=64\.$/);
+  /** A rebuild landing mid-run: the store's recorded embedder rewritten. @param {Record<string, any>} identity */
+  const rebuiltAs = (identity) => async () => {
+    const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
+    writeJson(file, { ...JSON.parse(fs.readFileSync(file, 'utf8')), ...identity });
+  };
+
+  it('refuses to save vectors into a store rebuilt at another width while they were embedded', async () => {
+    await assert.rejects(bulk(root, output, CFG, spyProvider({ during: rebuiltAs({ dimensions: 64 }) })),
+      /^Error: The store's embedder changed during index \(concurrent rebuild\)\. Embeddings produced by stub \(stub, 128 dimensions\), store now built with stub \(stub, 64 dimensions\)\.$/);
+    assert.deepStrictEqual(awaitingTopics(root), TOPICS);
+  });
+
+  it('refuses to save vectors into a store rebuilt with another model of the same width', async () => {
+    await assert.rejects(bulk(root, output, CFG, spyProvider({ during: rebuiltAs({ model: 'another' }) })),
+      /^Error: The store's embedder changed during index \(concurrent rebuild\)\. Embeddings produced by stub \(stub, 128 dimensions\), store now built with stub \(another, 128 dimensions\)\.$/);
     assert.deepStrictEqual(awaitingTopics(root), TOPICS);
   });
 

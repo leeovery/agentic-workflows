@@ -15,7 +15,7 @@ const chunker = require('../../kernel/knowledge/chunker.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { identityKey, deriveIdentity, workTypeOf, readManifests, discoverArtifacts, retirements } = require('./artifacts.cjs');
-const { indexProvider, embedderIdentity, storeMetadata } = require('./embedder.cjs');
+const { indexProvider, embedderIdentity, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { indexPruning } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -128,22 +128,6 @@ function currentStore(files, snapshot) {
 }
 
 /**
- * Refuse to write vectors of a width the store no longer has — a concurrent
- * rebuild can change it between embedding and the lock.
- * @param {KnowledgeFiles} files @param {EmbeddingProvider|null} embedder
- */
-function assertStoreDimensions(files, embedder) {
-  const metadata = storeMetadata(files);
-  if (!embedder || !metadata) return;
-  if (metadata.provider && metadata.dimensions !== embedder.dimensions()) {
-    throw new Error(
-      "The store's vector width changed during index (concurrent rebuild). " +
-        `Embeddings produced for dims=${embedder.dimensions()}, store now has dims=${metadata.dimensions}.`
-    );
-  }
-}
-
-/**
  * Stamp the metadata with this write's time, keeping the last fill's
  * failure. Once a store records a provider, its provider, model and
  * dimensions never change: a store created by this write, or a keyword-only
@@ -204,7 +188,7 @@ function identityOf(entry) {
 function writeStore(files, { cfg, embedder, built, snapshot = null, retire = () => [] }) {
   fs.mkdirSync(files.dir, { recursive: true });
   return store.withLock(files.lock, () => {
-    assertStoreDimensions(files, embedder);
+    assertStoreEmbedder(files, cfg, embedder);
     const { db, created } = currentStore(files, snapshot);
     for (const { artifact, docs } of built) {
       store.removeByIdentity(db, identityOf(artifact));
@@ -427,7 +411,6 @@ function reconcile(root, { cfg, provider }, scope = null) {
 module.exports = {
   readStore,
   currentStore,
-  assertStoreDimensions,
   recordWrite,
   planIndex,
   indexArtifact,

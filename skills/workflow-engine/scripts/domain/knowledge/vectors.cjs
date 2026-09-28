@@ -24,8 +24,8 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { withRetry, RETRY } = require('../../kernel/knowledge/retry.cjs');
 const { InvalidRequestError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { ownerAlive, processStartTime } = require('../../kernel/process.cjs');
-const { currentStore, assertStoreDimensions, recordWrite, readStore } = require('./indexing.cjs');
-const { loadSettings, indexProvider, canEmbed, storeMetadata } = require('./embedder.cjs');
+const { currentStore, recordWrite, readStore } = require('./indexing.cjs');
+const { loadSettings, indexProvider, canEmbed, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { readManifestsOr } = require('./artifacts.cjs');
 const { indexPruning } = require('./decay.cjs');
 
@@ -186,14 +186,15 @@ function stoppingError(unembedded) {
 /**
  * Save vectors into the store under the lock — each into the chunks without
  * one whose text it embeds, so a chunk re-cut since the embedding takes none
- * — and return the store as it then stands. A store gone since is left gone.
+ * — and return the store as it then stands. A store gone since is left gone;
+ * one rebuilt with another embedder since refuses them.
  * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider} embedder
  * @param {Snapshot} snapshot @param {Map<string, number[]>} vectors  by the hash of the text each embeds
  * @returns {Snapshot}
  */
 function saveVectors(files, cfg, embedder, snapshot, vectors) {
   return store.withLock(files.lock, () => {
-    assertStoreDimensions(files, embedder);
+    assertStoreEmbedder(files, cfg, embedder);
     const { db, created } = currentStore(files, snapshot);
     if (created) return snapshot;
     if (store.attachVectors(db, vectors) > 0) {
