@@ -97,9 +97,11 @@ Drawn from the owner's dex-engineering knowledge base:
   product already supports, so the store never raises the Node floor. It
   still has to earn its place: it ships only if the eval holds or improves
   on today's pinned numbers. Step 2 records why.
-- **The KB becomes an engine module.** It is controlled by the engine and
-  runs in process. It was kept separate only while the engine itself was in
-  flux.
+- **The KB becomes part of the engine.** Its core runs in the engine's
+  process as ordinary engine modules, and the engine's transactions call it
+  directly. Only the work that talks to the embedding provider waits, and
+  it runs at the edge. The KB was kept separate only while the engine
+  itself was in flux.
 - **Decisions come before the work they would force us to redo.** The order
   below follows that rule and may change when it demands.
 
@@ -122,6 +124,8 @@ Drawn from the owner's dex-engineering knowledge base:
    unsupported.
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
+   It waits on step 1 of `design/upgrades-in-migrations.md`, which moves
+   the `store.msp` retirement into a migration.
 5. **The rest of retrieval quality:** printed scores, heading paths and line
    ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
    floor is reassessed here.
@@ -726,22 +730,97 @@ the record.
 
 ## Step 4 — the KB in the engine
 
-The KB runs in process as an engine module. It reads manifests directly,
-with no child process and no parsing of stderr, and each mirrored list
-collapses to one. Step 2 leaves nothing to bundle, so the esbuild bundle is
-retired and the KB becomes plain engine source. The build goes with it:
+Waits on step 1 of `design/upgrades-in-migrations.md`, which moves the
+`store.msp` retirement into a migration and makes the migration commit
+carry everything the workflows own.
+
+### What it starts from
+
+- **Two programmes that start each other.** The engine launches the KB
+  from about fifteen of its commands (boot, topic complete, cancel,
+  postpone, reactivate, and the work-unit transactions) and reads back an
+  exit code. The KB launches the engine to read manifests, so a topic
+  completion runs engine → KB → engine.
+- **Three lists kept in both, pinned equal by a test:** the indexed
+  artifact paths, the retired statuses, and the store's file names.
+- **The KB is 7,500 lines across 13 CommonJS files,** bundled into one.
+  It calls `process.exit` in 14 places, reads the terminal for the
+  wizard, and resolves paths from the working directory. Typechecked, it
+  reports 407 errors.
+- **Only the network waits.** The store, chunking, word search, ranking,
+  decay, removal and checking can all run straight through. The store's
+  lock waits asynchronously only because of how it sleeps, and the engine
+  already has a lock that waits synchronously. What must wait is talking
+  to the embedding provider: a search's embed, filling vectors, and
+  setup's validation embed.
+
+### The shape
+
+- **The KB's core becomes ordinary engine modules, called directly.** No
+  child process either way, no exit code or error text passed back, and
+  no nested engine → KB → engine. The lists and the file names exist
+  once. The store takes the engine's lock.
+- **The network is a small edge.** Only the commands whose job is talking
+  to the provider wait, and they wait at the top: a search, the vector
+  fill, and setup. Nothing in the engine's core changes shape.
+- **A transaction writes a document's word side and returns at once.** It
+  launches a background vector fill (the way `gc --auto` runs behind a
+  command) only when a provider is configured and chunks await vectors,
+  so a keyword-only install and the test suite never launch one. Vectors
+  land seconds after a phase closes, as they do today, and searches stay
+  read-only.
+- **Boot does the same.** It reconciles the word side in-process, checks
+  that the provider's key resolves and warns when it does not, and hands
+  the vector fill to the background, so a start no longer waits on
+  embedding.
+- **An embed failure no longer shows at the transaction.** It surfaces in
+  the next search's note and the next start's warning, and the next start
+  retries it.
+- **Engine tests use a real keyword-only store** in place of the stub KB
+  placed beside a copied engine.
+
+### One door
+
+- **The KB is an engine verb, `engine knowledge <verb>`,** and
+  `knowledge.cjs` goes.
+  - The skills that allow the KB's script drop it: every one already
+    allows the engine.
+  - The prose that runs the KB, its API doc, and the two commands the
+    user types (`setup --key-only`, and the wizard boot's knowledge gate
+    prints) move to the engine form.
+  - The prose cases' recorded-command assertions are rewritten
+    exhaustively, since a "must not call" check that no longer matches
+    anything passes silently.
+- **The `workflow-knowledge` skill retires,** as `workflow-manifest` did
+  when it became `engine manifest`:
+  - its API doc becomes the `knowledge` entry in the engine's command
+    catalogue;
+  - `knowledge-usage.md` and `contextual-query.md` move to
+    `workflow-shared/references/`;
+  - the chunking configs move to the engine's `content/`.
+
+### The build retires
+
 `build/knowledge.build.js`, `npm run build`, its test, and the release's
-pre-tag hook in `.mint.toml` that rebuilds and commits the bundle. The loose ends from the audit
-land here:
-- config keys validated;
-- reconfiguration keeping tuning overrides;
-- `base_url` recorded;
-- the base-stability default reconciled with its documentation, and an
-  invalid `decay_base_stability` refused as its sibling settings are;
-- store creation single-homed, with the store's and metadata's file names
-  held once for the KB and the engine alike;
-- the KB's JSDoc types brought under `npm run typecheck`, which today reads
-  only the engine.
+pre-tag hook in `.mint.toml` that rebuilds and commits the bundle.
+
+### The audit's loose ends
+
+- **A mistake in the knowledge config warns and falls back.** An unknown
+  key or an invalid tuning value is ignored for its default and named in
+  the search note, `status`, and boot's warnings. Only the provider
+  settings (`provider`, `model`, `dimensions`, `base_url`) still refuse,
+  because they decide what the store holds. An invalid
+  `similarity_threshold` stops halting a search.
+- **`decay_base_stability` has one default, 5,** where `ranking.js` uses 3
+  in one path, and an invalid value is treated as its siblings are.
+- **Store creation and the file names live in one place,** the engine.
+- **The KB's JSDoc comes under `npm run typecheck`.**
+
+Open: reconfiguration and tuning overrides (a change of provider drops
+them today, and `similarity_threshold` is set on one model's scale); and
+whether `base_url` is still worth recording, now that a local model is
+unsupported.
 
 ## Step 5 — the rest of retrieval quality
 
