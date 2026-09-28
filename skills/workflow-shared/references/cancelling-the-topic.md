@@ -47,7 +47,7 @@ The topic is the work unit — a feature, bugfix, quick-fix, or cross-cutting un
 
 ## B. Confirm
 
-Write into the document what this sitting discussed and has not yet recorded, as the phase records it, then commit anything this session has written and not yet committed, with the phase's own cadence commit — the cancel transaction writes the manifest alone, so an unrecorded conversation that called the topic off is lost with it. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so. Nothing to commit is fine.
+Write into the document what this sitting discussed and has not yet recorded, as the phase records it — the substance, never the cancel itself, which the transaction records. Then commit anything this session has written and not yet committed, with the phase's own cadence commit: the cancel transaction writes the manifest alone, so an unrecorded conversation that called the topic off is lost with it. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so. Nothing to commit is fine.
 
 Fetch the confirm — its statement names exactly what the cancel takes, which is the whole unit and not only the document in front of the user. The gate is the confirmation: the request is never put back to the user in conversation first.
 
@@ -115,7 +115,7 @@ Invoke `/workflow-bridge {work_unit} {phase} none cancelled`.
 
 ## D. Cancel the Work Unit
 
-Write into the document what this sitting discussed and has not yet recorded, as the phase records it, then commit anything this session has written and not yet committed, with the phase's own cadence commit. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so; nothing to commit is fine. Stop any background task this session launched with the TaskStop tool — the cancel purges the work unit's cache, the agent store with it, so no row is left to close.
+Write into the document what this sitting discussed and has not yet recorded, as the phase records it — the substance, never the cancel itself, which the transaction records. Then commit anything this session has written and not yet committed, with the phase's own cadence commit. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so; nothing to commit is fine. Stop any background task this session launched with the TaskStop tool — the cancel purges the work unit's cache, the agent store with it, so no row is left to close.
 
 Run the cancel — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, hands any roadmap item joined to it back to waiting, and commits:
 
