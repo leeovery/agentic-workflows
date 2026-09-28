@@ -787,13 +787,21 @@ describe('engine boot', () => {
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
+    readyKnowledge(fix.project);
+    completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
+    const knowledge = path.join(fix.project, '.workflows/.knowledge');
+    const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
+
     const err = runEngineFails(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
 
     assert.match(err.error, /migrate\.cjs failed/);
     assert.match(err.error, /never half-run silently/);
     assert.match(err.error, /boom: migration 099 exploded/);
-    // The knowledge legs never ran.
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge')));
+    // The knowledge legs never ran: a ready store with a completed
+    // discussion awaiting its index is left exactly as it stood.
+    const after = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
+    assert.deepStrictEqual(after, before);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), []);
   });
 });
 

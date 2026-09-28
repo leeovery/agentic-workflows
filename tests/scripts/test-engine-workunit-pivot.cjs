@@ -234,11 +234,15 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
 
   it('refuses a corrupt project manifest before flipping anything', () => {
     fix = setupFixture();
+    for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', file]);
+    const storeFile = path.join(fix.project, '.workflows/.knowledge/store.bin');
+    const before = fs.readFileSync(storeFile);
     writeFile(fix.project, '.workflows/manifest.json', '{ corrupt\n');
     const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.deepStrictEqual(fs.readFileSync(storeFile), before, 'the store is as it stood — no chunk cleared or restamped');
+    assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
   });
 
   it('rejects unknown and missing work units, and extra args', () => {

@@ -823,15 +823,17 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
 
   it('closes the crash window: a research file missing on disk leaves both units pristine', () => {
     fix = setupFixture();
+    indexFiles(fix, FEATURE_FILES);
     fs.rmSync(path.join(fix.project, '.workflows/auth-flow/research/auth-flow.md'));
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'drop research file']);
     refusedPristine(ABSORB, /research file missing on disk: \.workflows\/auth-flow\/research\/auth-flow\.md/);
     // Validation refused before ANY move — the discussion is still the
-    // feature's, the epic gained nothing, nothing was indexed.
+    // feature's, the epic gained nothing, and the store holds the feature's
+    // chunks as it did: none removed, none indexed at the epic.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/auth-flow/discussion/auth-flow.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/discussion/auth.md')));
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), FEATURE_FILES);
   });
 
   it('refuses malformed tracked entries — deletion follows, so skipping would lose the file', () => {
