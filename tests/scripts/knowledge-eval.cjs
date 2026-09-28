@@ -13,13 +13,16 @@
 //   node tests/scripts/knowledge-eval.cjs --pin        re-pin the baseline
 //   node tests/scripts/knowledge-eval.cjs --case <id>  one case's ranking against its judgments
 //   node tests/scripts/knowledge-eval.cjs --pool       unjudged top-10 results, for adjudication
+//   node tests/scripts/knowledge-eval.cjs --timings    metrics, and what each project cost this machine
 //
 // `--project <name>` restricts any run to one project, except `--pin`, which
 // pins every project and refuses it. `--hybrid` runs the hybrid mode instead —
 // embedded with this machine's provider at default tuning, against
-// baseline-hybrid.json — outside the gate.
+// baseline-hybrid.json — outside the gate. Every vector it makes is cached by
+// provider identity and text under the gitignored tests/.cache/, so a rerun
+// embeds only text it has not seen. `--timings` adds each project's store
+// size and its index, load and query times, which are never pinned.
 
-const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -28,10 +31,11 @@ const { promisify } = require('util');
 
 const knowledge = require('../../src/knowledge/index');
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const embeddings = require('./knowledge-eval-embeddings.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const EVAL_DIR = path.join(REPO, 'tests', 'fixtures', 'knowledge-eval');
-const CACHE_DIR = path.join(REPO, 'tests', '.cache', 'knowledge-eval');
+const EMBEDDINGS_DIR = path.join(REPO, 'tests', '.cache', 'knowledge-eval', 'embeddings');
 const KNOWLEDGE_SRC = path.join(REPO, 'src', 'knowledge');
 const PROJECTS = ['portal', 'tick', 'fumi'];
 
@@ -48,8 +52,7 @@ const PINNED_CASE_FIELDS = ['first', 'first_primary', 'primary_found', 'primary_
 
 const PROVIDER_IDENTITY_KEYS = ['provider', 'model', 'dimensions', 'base_url'];
 const TUNING_UNSET = Object.fromEntries(Object.keys(knowledge.config.DEFAULTS).map((key) => [key, null]));
-const CHUNK_KEY_FIELDS = ['id', 'work_unit', 'work_type', 'phase', 'topic', 'confidence', 'source_file', 'source_hash', 'content'];
-const STORE_LIBRARIES = ['@orama/orama', '@msgpack/msgpack'];
+const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
 
 const execFileAsync = promisify(execFile);
 
@@ -82,12 +85,16 @@ const execFileAsync = promisify(execFile);
  * @property {string} topic
  */
 
+/** @typedef {import('./knowledge-eval-embeddings.cjs').ProviderIdentity} ProviderIdentity */
+
 /**
- * @typedef {object} ProviderIdentity  what decides the vectors a provider makes
- * @property {string} provider
- * @property {string} model
- * @property {number} dimensions
- * @property {string|null} base_url
+ * @typedef {object} BuiltProject  a project indexed into a fresh copy of its fixture
+ * @property {string} project
+ * @property {string} root
+ * @property {Record<string, any>} cfg
+ * @property {any} provider  embeds each query term — null in the keyword mode
+ * @property {string|null} cacheDir  the embedding cache its knowledge CLI embeds through — null in the keyword mode
+ * @property {number} indexMs  how long its bulk index took
  */
 
 /**
@@ -95,6 +102,17 @@ const execFileAsync = promisify(execFile);
  * @property {EvalCase} evalCase
  * @property {Array<Record<string, any>>} results  ranked, as the CLI would print them
  * @property {number} bytes  the rendered output's size
+ * @property {number} ms  how long the query took
+ */
+
+/**
+ * @typedef {object} ProjectTimings  what a project cost this machine — never pinned
+ * @property {string} project
+ * @property {number} storeBytes  the built store's size on disk
+ * @property {number} indexMs  the bulk index, from nothing
+ * @property {number} singleFileMs  one representative file re-indexed into the built store
+ * @property {number} loadMs  the store's load, as a query loads it
+ * @property {number[]} queryMs  each case's query
  */
 
 // ---------------------------------------------------------------------------
@@ -365,45 +383,64 @@ function resolvedConfig(root) {
 /**
  * A copy of the project's fixture in a fresh directory under `parent`,
  * configured with `settings` as its project config.
- * @param {string} project @param {string} parent @param {string} prefix
- * @param {Record<string, any>} settings
+ * @param {string} project @param {string} parent @param {Record<string, any>} settings
  */
-function stageFixture(project, parent, prefix, settings) {
-  const root = fs.mkdtempSync(path.join(parent, prefix));
+function stageFixture(project, parent, settings) {
+  const root = fs.mkdtempSync(path.join(parent, `${project}-`));
   fs.cpSync(path.join(fixtureRoot(project), '.workflows'), path.join(root, '.workflows'), { recursive: true });
   writeJson(knowledge.config.projectConfigPath(root), { knowledge: settings });
   return root;
 }
 
 /**
- * The real bulk index, through the source CLI, in the project — so a change
- * to chunking or indexing reaches the measurement. A file that fails to index
- * fails the build.
- * @param {string} root
+ * Run `fn`, and time it.
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<{value: T, ms: number}>}
  */
-async function bulkIndex(root) {
+async function stopwatch(fn) {
+  const start = performance.now();
+  const value = await fn();
+  return { value, ms: performance.now() - start };
+}
+
+/**
+ * The knowledge CLI, from source, in the project — embedding through the
+ * cache under `cacheDir`, when one is named. A command that fails throws
+ * with what it printed.
+ * @param {string} root @param {string[]} args @param {string|null} cacheDir
+ */
+async function runKnowledge(root, args, cacheDir) {
+  const { execArgv, env } = cacheDir ? embeddings.preloadFor(cacheDir) : { execArgv: [], env: {} };
   try {
-    await execFileAsync(process.execPath, [path.join(KNOWLEDGE_SRC, 'index.js'), 'index'], {
+    await execFileAsync(process.execPath, [...execArgv, path.join(KNOWLEDGE_SRC, 'index.js'), ...args], {
       cwd: root,
+      env: { ...process.env, ...env },
       maxBuffer: 64 * 1024 * 1024,
     });
   } catch (err) {
-    throw new Error(`the bulk index failed in ${root}:\n${err.stderr || err.message}`);
+    throw new Error(`knowledge ${args.join(' ')} failed in ${root}:\n${err.stderr || err.message}`);
   }
 }
 
 /**
- * A project indexed keyword-only, at default tuning, into a fresh copy under `parent`.
- * @param {string} project @param {string} parent
+ * The project indexed from nothing into a fresh copy of its fixture under
+ * `parent`, configured with `settings` — through the real bulk index, so a
+ * change to chunking or indexing reaches the measurement. A file that fails
+ * to index fails the build.
+ * @param {string} project @param {string} parent @param {Record<string, any>} settings
+ * @param {string|null} cacheDir  the embedding cache the build embeds through
+ * @returns {Promise<BuiltProject>}
  */
-async function buildKeywordProject(project, parent) {
-  const root = stageFixture(project, parent, `${project}-`, { provider: null, ...TUNING_UNSET });
-  await bulkIndex(root);
-  return { root, ...resolvedConfig(root) };
+async function buildProject(project, parent, settings, cacheDir) {
+  const root = stageFixture(project, parent, settings);
+  const { ms: indexMs } = await stopwatch(() => runKnowledge(root, ['index'], cacheDir));
+  return { project, root, ...resolvedConfig(root), cacheDir, indexMs };
 }
 
 /**
- * The keyword mode: each project indexed keyword-only into the run's scratch directory.
+ * The keyword mode: each project indexed keyword-only, at default tuning,
+ * into the run's scratch directory.
  * @param {string} scratch
  */
 function openKeywordMode(scratch) {
@@ -411,15 +448,17 @@ function openKeywordMode(scratch) {
     /** @type {ProviderIdentity|null} */
     identity: null,
     /** @param {string} project */
-    project: (project) => buildKeywordProject(project, scratch),
+    project: (project) => buildProject(project, scratch, KEYWORD_SETTINGS, null),
+    /** @returns {number|null} */
+    embedded: () => null,
   };
 }
 
 /**
- * The hybrid mode: each project embedded with this machine's provider at
- * default tuning into a cached store, and every query term's embedding
- * cached beside it. A rerun over unchanged chunks, store format and provider
- * embeds only the terms it has not seen.
+ * The hybrid mode: each project embedded with this machine's provider, at
+ * default tuning, into the run's scratch directory. Every vector — a
+ * chunk's or a query term's — comes through the embedding cache, so only
+ * text the cache lacks reaches the provider.
  * @param {string} scratch
  */
 function openHybridMode(scratch) {
@@ -429,17 +468,16 @@ function openHybridMode(scratch) {
   const cfg = knowledge.config.loadConfig({ projectPath: settingsFile });
   const provider = knowledge.config.resolveProvider(cfg);
   assertProvider(cfg, provider);
-  const identity = providerIdentity(cfg, provider);
-  const terms = cachedTermEmbeddings(identity, provider);
+  const identity = embeddings.providerIdentity(cfg, provider);
+  const cache = embeddings.embeddingCache(EMBEDDINGS_DIR, identity);
+  const cachedBefore = cache.size();
+  const terms = embeddings.cachingProvider(provider, cache);
   return {
     identity,
     /** @param {string} project */
-    async project(project) {
-      const keyword = await buildKeywordProject(project, scratch);
-      const root = path.join(CACHE_DIR, 'stores', `${project}-${storeKey(await chunksOf(keyword.root), identity)}`);
-      if (!fs.existsSync(knowledge.storePath(root))) await buildCachedStore(project, root, settings);
-      return { root, cfg, provider: terms };
-    },
+    project: async (project) => ({ ...await buildProject(project, scratch, settings, EMBEDDINGS_DIR), provider: terms }),
+    /** How many texts the provider embedded since the mode opened. @returns {number|null} */
+    embedded: () => cache.size() - cachedBefore,
   };
 }
 
@@ -464,87 +502,6 @@ function assertProvider(cfg, provider) {
 }
 
 /**
- * @param {Record<string, any>} cfg @param {any} provider
- * @returns {ProviderIdentity}
- */
-function providerIdentity(cfg, provider) {
-  return { provider: cfg.provider, model: provider.model(), dimensions: provider.dimensions(), base_url: cfg.base_url ?? null };
-}
-
-/** Every chunk a built project's store holds. @param {string} root */
-async function chunksOf(root) {
-  return knowledge.store.searchAllFulltext(await knowledge.store.loadStore(knowledge.storePath(root)));
-}
-
-/** What decides a store's format on disk: the store module, and the pinned libraries it persists through. */
-function storeFormat() {
-  const pinned = readJson(path.join(REPO, 'package.json')).devDependencies;
-  return JSON.stringify([
-    fs.readFileSync(path.join(KNOWLEDGE_SRC, 'store.js'), 'utf8'),
-    ...STORE_LIBRARIES.map((name) => `${name}@${pinned[name]}`),
-  ]);
-}
-
-/**
- * The cache key of a project's embedded store: what decides it, and nothing
- * else — the chunks the current code makes of the fixture (less the
- * timestamp each takes from its file's mtime), the store format, and the
- * provider identity.
- * @param {Array<Record<string, any>>} chunks  the project's keyword-only build
- * @param {ProviderIdentity} identity
- */
-function storeKey(chunks, identity) {
-  const hash = crypto.createHash('sha256').update(JSON.stringify(identity)).update(storeFormat());
-  for (const chunk of [...chunks].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-    hash.update(JSON.stringify(CHUNK_KEY_FIELDS.map((field) => chunk[field])));
-  }
-  return hash.digest('hex').slice(0, 16);
-}
-
-/**
- * Embed the project into `root`, replacing any store cached under an older key.
- * @param {string} project @param {string} root @param {Record<string, any>} settings
- */
-async function buildCachedStore(project, root, settings) {
-  const parent = path.dirname(root);
-  fs.mkdirSync(parent, { recursive: true });
-  const staging = stageFixture(project, parent, `.staging-${project}-`, settings);
-  try {
-    await bulkIndex(staging);
-  } catch (err) {
-    fs.rmSync(staging, { recursive: true, force: true });
-    throw err;
-  }
-  for (const stale of fs.readdirSync(parent).filter((name) => name.startsWith(`${project}-`))) {
-    fs.rmSync(path.join(parent, stale), { recursive: true, force: true });
-  }
-  fs.renameSync(staging, root);
-}
-
-/**
- * The provider, its query-term embeddings cached on disk by identity and text.
- * @param {ProviderIdentity} identity @param {any} provider
- */
-function cachedTermEmbeddings(identity, provider) {
-  const name = crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 16);
-  const file = path.join(CACHE_DIR, 'terms', `${name}.json`);
-  /** @type {Record<string, number[]>} */
-  const vectors = fs.existsSync(file) ? readJson(file) : {};
-  return {
-    model: () => provider.model(),
-    dimensions: () => provider.dimensions(),
-    /** @param {string} text */
-    async embed(text) {
-      if (!Object.hasOwn(vectors, text)) {
-        vectors[text] = await provider.embed(text);
-        writeJson(file, vectors);
-      }
-      return vectors[text];
-    },
-  };
-}
-
-/**
  * Every work unit's manifest, read through the engine's in-process entry.
  * @param {string} root
  */
@@ -555,13 +512,16 @@ function workUnitsOf(root) {
 }
 
 /**
- * A built project, loaded for querying as the CLI loads it.
- * @param {{root: string, cfg: Record<string, any>, provider: any}} built
+ * A built project, loaded for querying as the CLI loads it, and how long
+ * the store's load took.
+ * @param {BuiltProject} built
  */
 async function openStore({ root, cfg, provider }) {
   const metadata = knowledge.store.readMetadata(knowledge.metadataPath(root));
+  const { value: db, ms: loadMs } = await stopwatch(() => knowledge.store.loadStore(knowledge.storePath(root)));
   return {
-    db: await knowledge.store.loadStore(knowledge.storePath(root)),
+    db,
+    loadMs,
     settings: knowledge.querySettings(metadata, cfg, provider),
     workUnits: workUnitsOf(root),
   };
@@ -587,26 +547,60 @@ const MODES = {
  */
 async function runCase(opened, evalCase) {
   const { boosts = [], ...flags } = evalCase.options || {};
-  const results = await knowledge.queryStore(opened.db, opened.settings, {
+  const { value: results, ms } = await stopwatch(() => knowledge.queryStore(opened.db, opened.settings, {
     terms: evalCase.terms,
     options: knowledge.buildOptions(flags, boosts),
     workUnits: opened.workUnits,
-  });
-  return { evalCase, results, bytes: Buffer.byteLength(knowledge.renderQuery(results, opened.settings.mode)) };
+  }));
+  return { evalCase, results, bytes: Buffer.byteLength(knowledge.renderQuery(results, opened.settings.mode)), ms };
 }
 
 /**
- * A built project's cases, once every judgment is known to match a chunk of its store.
- * @param {{root: string, cfg: Record<string, any>, provider: any}} built @param {EvalCase[]} cases
- * @returns {Promise<CaseRun[]>}
+ * The project's median-sized indexed file — the one its single-file index is timed on.
+ * @param {string} root @param {Array<Record<string, any>>} chunks  every chunk of its store
  */
-async function runProject(built, cases) {
+function representativeFile(root, chunks) {
+  const bySize = [...new Set(chunks.map((chunk) => chunk.source_file))]
+    .map((file) => ({ file, bytes: fs.statSync(path.join(root, file)).size }))
+    .sort((a, b) => a.bytes - b.bytes || a.file.localeCompare(b.file));
+  return bySize[Math.floor(bySize.length / 2)].file;
+}
+
+/**
+ * What the project cost this machine: its store measured as built, then a
+ * representative file re-indexed into it through the CLI's single-file index.
+ * @param {BuiltProject} built @param {{loadMs: number}} opened
+ * @param {Array<Record<string, any>>} chunks @param {CaseRun[]} runs
+ * @returns {Promise<ProjectTimings>}
+ */
+async function projectTimings(built, opened, chunks, runs) {
+  const storeBytes = fs.statSync(knowledge.storePath(built.root)).size;
+  const file = representativeFile(built.root, chunks);
+  const { ms: singleFileMs } = await stopwatch(() => runKnowledge(built.root, ['index', file], built.cacheDir));
+  return {
+    project: built.project,
+    storeBytes,
+    indexMs: built.indexMs,
+    singleFileMs,
+    loadMs: opened.loadMs,
+    queryMs: runs.map((run) => run.ms),
+  };
+}
+
+/**
+ * A built project's cases, once every judgment is known to match a chunk of
+ * its store — and, on a timed run, what the project cost.
+ * @param {BuiltProject} built @param {EvalCase[]} cases @param {boolean} timed
+ * @returns {Promise<{runs: CaseRun[], timings: ProjectTimings|null}>}
+ */
+async function runProject(built, cases, timed) {
   const opened = await openStore(built);
-  const unmatched = unmatchedJudgments(cases, await knowledge.store.searchAllFulltext(opened.db));
+  const chunks = await knowledge.store.searchAllFulltext(opened.db);
+  const unmatched = unmatchedJudgments(cases, chunks);
   if (unmatched.length > 0) throw new Error(`judgments no indexed chunk matches:\n  ${unmatched.join('\n  ')}`);
   const runs = [];
   for (const evalCase of cases) runs.push(await runCase(opened, evalCase));
-  return runs;
+  return { runs, timings: timed ? await projectTimings(built, opened, chunks, runs) : null };
 }
 
 /**
@@ -623,25 +617,33 @@ async function settleEach(projects, run, concurrent) {
 }
 
 /**
- * Every case in the mode, and the provider identity it embedded with — null
- * in the keyword mode. Throws naming every project that failed.
- * @param {EvalCase[]} cases @param {Mode} mode
- * @returns {Promise<{runs: CaseRun[], provider: ProviderIdentity|null}>}
+ * Every case in the mode, with the provider identity it embedded with and
+ * how many texts that provider embedded — both null in the keyword mode — and,
+ * on a timed run, what each project cost. Throws naming every project that failed.
+ * @param {EvalCase[]} cases @param {Mode} mode @param {boolean} [timed]
+ * @returns {Promise<{runs: CaseRun[], provider: ProviderIdentity|null, embedded: number|null, timings: ProjectTimings[]}>}
  */
-async function runCases(cases, mode) {
+async function runCases(cases, mode, timed = false) {
   assertValid(cases);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-eval-'));
   try {
     const opened = MODES[mode].open(scratch);
     const projects = [...new Set(cases.map((c) => c.project))];
     /** @param {string} project */
-    const run = async (project) => runProject(await opened.project(project), cases.filter((c) => c.project === project));
-    const settled = await settleEach(projects, run, MODES[mode].concurrent);
+    const run = async (project) =>
+      runProject(await opened.project(project), cases.filter((c) => c.project === project), timed);
+    // A timed project has the machine to itself.
+    const settled = await settleEach(projects, run, MODES[mode].concurrent && !timed);
     const failures = settled.flatMap((outcome, i) =>
       (outcome.status === 'rejected' ? [`${projects[i]}: ${outcome.reason.message}`] : []));
     if (failures.length > 0) throw new Error(failures.join('\n'));
-    const runs = settled.flatMap((outcome) => (outcome.status === 'fulfilled' ? outcome.value : []));
-    return { runs, provider: opened.identity };
+    const done = settled.flatMap((outcome) => (outcome.status === 'fulfilled' ? [outcome.value] : []));
+    return {
+      runs: done.flatMap((project) => project.runs),
+      provider: opened.identity,
+      embedded: opened.embedded(),
+      timings: done.flatMap((project) => (project.timings ? [project.timings] : [])),
+    };
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -835,27 +837,27 @@ function movesMessage(moves, mode) {
 }
 
 /**
- * Run and measure the cases in a mode.
- * @param {{cases?: EvalCase[], mode?: Mode, complete?: boolean}} [options]
+ * Run and measure the cases in a mode — timed, when asked.
+ * @param {{cases?: EvalCase[], mode?: Mode, complete?: boolean, timed?: boolean}} [options]
  */
-async function evaluate({ cases = loadCases(), mode = 'keyword', complete = true } = {}) {
-  const { runs, provider } = await runCases(cases, mode);
+async function evaluate({ cases = loadCases(), mode = 'keyword', complete = true, timed = false } = {}) {
+  const { runs, provider, embedded, timings } = await runCases(cases, mode, timed);
   const measured = runs.map(measureCase);
-  return { measured, summary: summarise(measured, complete, provider) };
+  return { measured, summary: summarise(measured, complete, provider), embedded, timings };
 }
 
 // ---------------------------------------------------------------------------
 // By hand
 // ---------------------------------------------------------------------------
 
-const USAGE = 'Usage: node tests/scripts/knowledge-eval.cjs [--project <name>] [--hybrid] '
+const USAGE = 'Usage: node tests/scripts/knowledge-eval.cjs [--project <name>] [--hybrid] [--timings] '
   + '[--pin | --case <id> | --pool [--out <file>]]';
 
 /** @param {string[]} argv */
 function parseFlags(argv) {
-  const flags = { project: null, hybrid: false, pin: false, case: null, pool: false, out: null };
+  const flags = { project: null, hybrid: false, timings: false, pin: false, case: null, pool: false, out: null };
   const valued = { '--project': 'project', '--case': 'case', '--out': 'out' };
-  const switches = { '--hybrid': 'hybrid', '--pin': 'pin', '--pool': 'pool' };
+  const switches = { '--hybrid': 'hybrid', '--timings': 'timings', '--pin': 'pin', '--pool': 'pool' };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (switches[arg]) flags[switches[arg]] = true;
@@ -870,6 +872,9 @@ function parseFlags(argv) {
   }
   if (flags.pin && flags.project !== null) throw new Error('--pin pins every project');
   if (flags.out !== null && !flags.pool) throw new Error('--out names the --pool file');
+  if (flags.timings && (flags.case !== null || flags.pool)) {
+    throw new Error('--timings times a metrics run, not --case or --pool');
+  }
   return flags;
 }
 
@@ -902,6 +907,45 @@ function caseTable(measured) {
       String(m.bytes),
     ]),
   ]);
+}
+
+/** @param {number[]} values */
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/** @param {number} ms */
+function shownMs(ms) {
+  return `${ms.toFixed(1)} ms`;
+}
+
+/** @type {Array<[string, (t: ProjectTimings) => string]>} */
+const TIMING_ROWS = [
+  ['store size', (t) => `${(t.storeBytes / 1e6).toFixed(1)} MB`],
+  ['full index', (t) => shownMs(t.indexMs)],
+  ['single-file index', (t) => shownMs(t.singleFileMs)],
+  ['load', (t) => shownMs(t.loadMs)],
+  ['query median', (t) => shownMs(median(t.queryMs))],
+  ['query max', (t) => shownMs(Math.max(...t.queryMs))],
+];
+
+/** @param {ProjectTimings[]} timings */
+function timingTable(timings) {
+  return table([
+    ['timing', ...timings.map((t) => t.project)],
+    ...TIMING_ROWS.map(([name, cell]) => [name, ...timings.map(cell)]),
+  ]);
+}
+
+/**
+ * How many texts the hybrid mode's provider embedded — each one the cache lacked.
+ * @param {number} count @param {ProviderIdentity|undefined} identity @param {boolean} timed
+ */
+function embeddedNote(count, identity, timed) {
+  const note = `Embedded ${count} ${count === 1 ? 'text' : 'texts'} the cache lacked, with ${shownProvider(identity)}.`;
+  return timed && count > 0 ? `${note} The timings include those calls; a rerun times local work alone.` : note;
 }
 
 /** The chunk's first heading, else its first line. @param {string} content */
@@ -970,8 +1014,10 @@ async function main(flags) {
   }
 
   const complete = flags.project === null;
-  const { measured, summary } = await evaluate({ cases, mode, complete });
+  const { measured, summary, embedded, timings } = await evaluate({ cases, mode, complete, timed: flags.timings });
   process.stdout.write(`${metricTable(summary)}\n\n${caseTable(measured)}\n\n`);
+  if (flags.timings) process.stdout.write(`${timingTable(timings)}\n\n`);
+  if (embedded !== null) process.stdout.write(`${embeddedNote(embedded, summary.provider, flags.timings)}\n`);
   if (flags.pin) {
     fs.writeFileSync(baselineFile(mode), formatBaseline(summary));
     process.stdout.write(`Pinned ${path.relative(REPO, baselineFile(mode))}.\n`);
@@ -990,6 +1036,7 @@ module.exports = {
   loadCases,
   validateCases,
   unmatchedJudgments,
+  runKnowledge,
   evaluate,
   readBaseline,
   baselineMoves,
