@@ -50,16 +50,18 @@ The first time [implementation](implementation.md) runs, it asks whether there a
 
 The [knowledge base](knowledge-base.md) reads its settings from three layers. Built-in defaults sit at the bottom. A system config at `~/.config/workflows/config.json` applies across every project on your machine. A project config at `.workflows/.knowledge/config.json` applies to one copy of a project — it is written by setup and never committed — and wins over both. A key present in a file overrides the layers beneath it, and a key set to `null` unsets it — which is how a project switches off a machine-level embedding provider and runs keyword-only on its own.
 
-Setup writes provider identity only: which embedding provider, which model, its dimensions, and an endpoint for a compatible service. If a cloud service is involved, its key is stored separately and securely on your machine and never travels through the chat. Setup never writes a tuning value, so a default that improves in a later version reaches you without anything to redo.
+Setup writes provider identity only: which embedding provider, which model, its dimensions, and an endpoint for a compatible service. It changes those four settings and nothing else, leaving every other key in the file as you wrote it, so a change of provider keeps your tuning. If a cloud service is involved, its key is stored separately and securely on your machine and never travels through the chat. Setup never writes a tuning value, so a default that improves in a later version reaches you without anything to redo.
 
 Four tuning keys exist, and the only way one appears in a file is that you put it there. They belong in either file, and a project's value beats the machine's:
 
-- `similarity_threshold` (default `0.3`) — the floor a search-by-meaning match must clear to count. Its one job is returning nothing when nothing is relevant. Too low and an unrelated question returns a few noise results; too high and search-by-meaning silently falls back to keywords.
-- `decay_prune_below` (default `0.05`) — how far a work unit's material must have sunk before it is pruned from the store. `false` disables pruning.
-- `decay_base_stability` (default `5`) — how quickly material sinks as later work completes. Higher is slower.
-- `decay_weights` — how much each kind of completed work counts toward that sinking, per work type.
+- `similarity_threshold` (default `0.3`, a number from 0 to 1) — the floor a search-by-meaning match must clear to count. Its one job is returning nothing when nothing is relevant. Too low and an unrelated question returns a few noise results; too high and search-by-meaning silently falls back to keywords.
+- `decay_prune_below` (default `0.05`, a number from 0 to 1) — how far a work unit's material must have sunk before it is pruned from the store. `false` disables pruning.
+- `decay_base_stability` (default `5`, a number above 0) — how quickly material sinks as later work completes. Higher is slower.
+- `decay_weights` — how much each kind of completed work counts toward that sinking: a number of 0 or more per work type.
 
 Specifications never decay whatever these say. Changing a value takes effect on the next query; nothing needs re-running.
+
+A mistaken setting in either file never stops the knowledge base. A key it does not know, or a tuning value outside what the list above allows, is ignored — the value beneath it, or the default, applies — and named: in a note above a search's results, in `status`, and in the warnings at the start of a session. The provider settings are the exception: they decide what the store holds, so they are used as written, and a wrong one fails where it is used.
 
 ## A local embedding model
 
