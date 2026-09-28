@@ -87,21 +87,23 @@ file commits only a change it made itself.
 
   The list is held once, in the engine. Anything new a migration or the
   engine writes joins the list in the same change.
-- **One reviewed commit lands an upgrade.** After the user's yes at the
+- **The migration commit covers the list.** After the user's yes at the
   migration gate, it stages every path on the list: edits, new files and
-  deletions. Nothing is committed at boot that the user has not seen. The
-  user's own uncommitted edits in a listed file ride along with it.
+  deletions. The user's own uncommitted edits in a listed file ride along
+  with it. A user who leaves the gate unanswered keeps the migrated files
+  in the working tree to commit themselves; discarding them discards the
+  ledger with them, so the migrations run again.
 - **A migration may stage in git, and never commits.** A change to what
   git tracks (`git rm --cached`) is staged by the migration and recorded
-  by the reviewed commit.
+  by the migration commit.
 - **Old migrations are left as they are.** What they wrote outside the
   list, such as migration 011's move out of `docs/workflow/`, stays the
   user's to commit. No code names an old layout to catch it.
 
 ## The order
 
-1. **The foundation.** The rule written down, the reviewed commit, and
-   the two upgrades the knowledge base's next step depends on.
+1. **The foundation.** The rule written down, the migration commit, and
+   the two upgrades the knowledge base's next step depends on. One PR.
 2. **Step 4 of the knowledge-base programme**
    (`design/knowledge-base-programme.md`). It moves the KB into the
    engine, on the foundation.
@@ -120,34 +122,25 @@ Each step ships as its own stack and release.
   new the workflows write;
 - a migration may stage and never commits.
 
-### The reviewed commit
+### The migration commit
 
 - **`engine commit --migrations -m <message>`** stages and commits the
   owned-path list: edits, new files and deletions, confined to those
   paths. It commits the paths as the index records them, from a scratch
   index holding HEAD, so a removal a migration staged lands (a pathspec
   commit would read the file back from disk), and anything else staged
-  stays staged and out. `commit --workflows` stays as it is, the whole
-  `.workflows/` tree for its other callers.
+  stays staged and out. It works in a project nested in a larger
+  repository, refuses rather than build on an empty tree when a git read
+  fails, and skips a path git refuses to stage. `commit --workflows`
+  stays as it is, the whole `.workflows/` tree for its other callers.
 - **workflow-start's migration step reviews and commits with it** after
-  the gate. Boot's response names the owned paths (`migrations.paths`),
-  so the review reads the list rather than repeating it. The migration
+  the gate, its review reading the four owned paths. The migration
   ledger rides in with the rest, as it does today.
 - **Boot's own commit of `.claude/settings.json` and `.gitignore` after a
-  migration run is deleted.** Boot's other commits are not upgrades and
-  stay as they are:
-  - the ledger when no document changed;
-  - the session hooks and the function-hooks flag;
-  - `.worktreeinclude`'s knowledge lines.
-- **An upgrade left at the gate comes back to it.** When a session ends at
-  the migration gate unanswered, the next boot finds the ledger recording
-  a migration HEAD's ledger lacks, from an earlier run, beside other
-  owned-path changes. It commits nothing and reports the migrations
-  changed, so the review and the gate run again. A ledger dirty with
-  every other owned path clean is still committed by boot alone, and
-  owned-path changes beside a clean ledger (a live session's work) offer
-  nothing. The migration runner reports the IDs it recorded, so this
-  run's lines are told from an earlier run's.
+  migration run is deleted.** Boot's other commits stay as they are — the
+  ledger when no document changed, the session hooks and the
+  function-hooks flag, `.worktreeinclude`'s knowledge lines — and one of
+  them may carry a migration's edit to the same file.
 
 ### Migration 063 — the retired store file
 
@@ -172,7 +165,7 @@ The file belongs to one copy of the project, so a second clone that sees
   `.workflows/.knowledge/`, it stages the removal
   (`git rm -r --cached -f`). The files stay on disk; the force covers a
   store whose staged content differs from both HEAD and the disk.
-- The reviewed commit records the removal. Migration 060's ignore rule
+- The migration commit records the removal. Migration 060's ignore rule
   keeps the files from being staged again.
 - Idempotent: nothing tracked, nothing staged.
 
