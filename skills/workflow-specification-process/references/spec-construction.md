@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
+Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way, before the first topic that touches them is written.
 
 → Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 

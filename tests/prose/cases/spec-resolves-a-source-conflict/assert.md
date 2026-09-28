@@ -12,9 +12,11 @@ The prose should have taken this path:
 4. construction runs one topic at a time — extraction re-scans the
    sources, each piece is presented in the form it will take in the
    specification and explicitly approved before any write
-5. at the expansion ground, construction meets the batch-vs-live-stream
-   conflict — via the cache's tension line or its own read of the two
-   decisions — and STOPS: it presents both sides with verbatim quotes
+5. before the first section the batch-vs-live-stream tension touches
+   is written — Signal Ingestion, whose no-live-stream decision is one
+   side of it, or the expansion ground, whichever construction reaches
+   first — construction meets the conflict — via the cache's tension
+   line or its own read of the two decisions — and STOPS: it presents both sides with verbatim quotes
    cited to their documents, says what breaks if extraction proceeds,
    and offers options with a recommendation; it never silently picks a
    side, never writes a chunk that assumes one, and would stop even on
@@ -34,8 +36,8 @@ The prose should have taken this path:
    settlement
 8. synonym-handling's item status stays completed throughout — no
    reopen, no triage landing, no new topic
-9. construction continues against the updated source; the chunk the
-   conflict blocked is extracted from the now-coherent record; both
+9. construction continues against the updated source; the chunks the
+   conflict held are extracted from the now-coherent record; both
    source rows flip to incorporated when their extraction exhausts
 10. review cycle 1 initialises; the claims verification, input review,
     and gap analysis agents run sequentially and return clean through
