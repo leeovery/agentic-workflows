@@ -23,6 +23,7 @@ const config = require('../../kernel/knowledge/config.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { OpenAIProvider } = require('../../kernel/knowledge/providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const setup = require('./setup.cjs');
 
 const { SetupRefusal } = setup;
@@ -147,7 +148,7 @@ async function validateConfiguredProvider(call, cfg) {
   try {
     provider = config.resolveProvider(cfg);
   } catch (err) {
-    refuse(`cannot use the configured provider: ${err instanceof Error ? err.message : String(err)}`);
+    refuse(`cannot use the configured provider: ${messageOf(err)}`);
   }
   if (!provider) refuse(`provider "${cfg.provider}" could not be initialised from the config.`);
   await validateOrRefuse(call, cfg.provider, provider, provider.dimensions(), 'provider validation failed.');
@@ -232,7 +233,7 @@ async function runKeywordOnly(call, root) {
     try {
       knowledge = config.readConfigFile(files.config) || {};
     } catch (err) {
-      refuse(`project config at ${files.config} is invalid: ${err instanceof Error ? err.message : String(err)}`);
+      refuse(`project config at ${files.config} is invalid: ${messageOf(err)}`);
     }
   }
   knowledge.provider = null;

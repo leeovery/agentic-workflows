@@ -14,7 +14,7 @@ const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { readProjectManifest } = require('../../kernel/manifest.cjs');
-const { ExitSignal } = require('../../kernel/call.cjs');
+const { ExitSignal, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { RESERVED_IDENTITIES, deriveIdentity, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
 const { loadSettings, newStoreEmbedder } = require('./embedder.cjs');
@@ -185,7 +185,7 @@ function runIndex(call, { root, files, args, options }) {
   try {
     written = indexArtifact(root, artifact, settings);
   } catch (err) {
-    stop(call, `Failed to index ${file}: ${err instanceof Error ? err.message : String(err)}\nThe next start will retry it.\n`);
+    stop(call, `Failed to index ${file}: ${messageOf(err)}\nThe next start will retry it.\n`);
   }
   call.out(`Indexed ${written.chunks} chunks from ${file}\n`);
   launchFillIfAwaiting(root, written);
@@ -279,7 +279,7 @@ function runRemove(call, { root, options }) {
   try {
     removed = removeChunks(root, scope);
   } catch (err) {
-    stop(call, `Removal of ${desc} failed: ${err instanceof Error ? err.message : String(err)}\nThe next start will remove them.\n`);
+    stop(call, `Removal of ${desc} failed: ${messageOf(err)}\nThe next start will remove them.\n`);
   }
   call.out(`Removed ${removed} chunks for ${desc}\n`);
 }
@@ -409,7 +409,7 @@ async function runRebuild(call, { root, files }) {
       call.err(
         'Rebuild failed and rollback also failed. Previous index is at:\n' +
         `  ${files.store}.bak\n  ${files.metadata}.bak\n` +
-        `Rename them back manually to recover. Rollback error: ${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}\n`
+        `Rename them back manually to recover. Rollback error: ${messageOf(rollbackErr)}\n`
       );
     }
     throw err;
@@ -502,7 +502,7 @@ function knowledgeWaits(argv) {
  */
 function failed(call, err) {
   if (err instanceof ExitSignal) throw err;
-  call.err(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+  call.err(`Error: ${messageOf(err)}\n`);
   throw new ExitSignal(1);
 }
 

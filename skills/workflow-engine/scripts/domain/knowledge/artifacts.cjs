@@ -12,6 +12,7 @@ const path = require('path');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest.cjs');
 const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 
 /**
@@ -304,7 +305,7 @@ function readManifests(root) {
       roadmapSession: activeSession(project.roadmap),
     };
   } catch (err) {
-    throw new Error(`manifest read failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`manifest read failed: ${messageOf(err)}`);
   }
 }
 
@@ -318,7 +319,7 @@ function workUnitsOr(root, warn, context) {
   try {
     return listWorkUnitManifests(root);
   } catch (err) {
-    warn(`Warning: manifest read failed in ${context}: ${err instanceof Error ? err.message : String(err)}\n`);
+    warn(`Warning: manifest read failed in ${context}: ${messageOf(err)}\n`);
     return [];
   }
 }
@@ -333,7 +334,7 @@ function readManifestsOr(root, warn, context) {
   try {
     return readManifests(root);
   } catch (err) {
-    warn(`Warning: ${err instanceof Error ? err.message : String(err)} (${context})\n`);
+    warn(`Warning: ${messageOf(err)} (${context})\n`);
     return NO_MANIFESTS;
   }
 }

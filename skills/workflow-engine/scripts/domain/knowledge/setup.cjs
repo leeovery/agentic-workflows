@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const { QuotaError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { loadSettings } = require('./embedder.cjs');
 const { createStore } = require('./indexing.cjs');
 const { indexBulk } = require('./bulk.cjs');
@@ -146,7 +147,7 @@ function stripProviderOverrides(call, projectConfigFile) {
   try {
     knowledge = config.readConfigFile(projectConfigFile) || {};
   } catch (err) {
-    throw new SetupRefusal(`project config at ${projectConfigFile} is invalid: ${err instanceof Error ? err.message : String(err)}`);
+    throw new SetupRefusal(`project config at ${projectConfigFile} is invalid: ${messageOf(err)}`);
   }
   const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
   if (overrides.length === 0) return;
@@ -268,7 +269,7 @@ async function runInitialIndexStep(call, root, files) {
     }
   } catch (err) {
     call.err(
-      `\nInitial indexing hit an error: ${err instanceof Error ? err.message : String(err)}\n` +
+      `\nInitial indexing hit an error: ${messageOf(err)}\n` +
       'The project is initialised; the next start retries the indexing.\n'
     );
   }

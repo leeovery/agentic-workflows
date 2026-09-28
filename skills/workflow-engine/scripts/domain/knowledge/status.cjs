@@ -10,6 +10,7 @@ const fs = require('fs');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { readManifests } = require('./artifacts.cjs');
 const { loadSettings, storeBuildable, keywordOnlyCause } = require('./embedder.cjs');
 const { planIndex } = require('./indexing.cjs');
@@ -33,7 +34,7 @@ function readiness(root, warn) {
   try {
     config.readConfigFile(files.config);
   } catch (err) {
-    warn(`config error: ${err instanceof Error ? err.message : String(err)}\n`);
+    warn(`config error: ${messageOf(err)}\n`);
     return 'not-ready';
   }
   if (!fs.existsSync(files.store)) return storeBuildable(files) ? 'buildable' : 'not-ready';
@@ -95,7 +96,7 @@ function statusReport(root) {
   out.push(...countLines('By work unit', by.work_unit), ...countLines('By phase', by.phase), ...countLines('By work type', by.work_type));
 
   out.push('', `Store size: ${(fs.statSync(files.store).size / 1024).toFixed(1)} KB`);
-  const warn = (/** @type {unknown} */ err) => out.push('', `WARNING: ${err instanceof Error ? err.message : String(err)}`);
+  const warn = (/** @type {unknown} */ err) => out.push('', `WARNING: ${messageOf(err)}`);
   const settings = reportSettings(files);
   if (fs.existsSync(files.metadata)) {
     const metadata = store.readMetadata(files.metadata);
