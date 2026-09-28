@@ -49,7 +49,7 @@ The topic is the work unit — a feature, bugfix, quick-fix, or cross-cutting un
 
 Commit anything this session has written and not yet committed, with the phase's own cadence commit — the cancel transaction writes the manifest alone, so an uncommitted record of the conversation that called the topic off is lost with it. Nothing to commit is fine.
 
-Fetch the confirm — its statement names exactly what the cancel takes, which is the whole unit and not only the document in front of the user:
+Fetch the confirm — its statement names exactly what the cancel takes, which is the whole unit and not only the document in front of the user. The gate is the confirmation: the request is never put back to the user in conversation first.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_unit}.{stage}.{name}

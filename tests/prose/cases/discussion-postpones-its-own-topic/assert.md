@@ -42,7 +42,9 @@ The prose should have taken this path:
    `search-relevance.discovery.behavioural-ranking` with the horizon,
    and its menu emitted, and the flow STOPs. The statement is the
    engine's — the session never composes what goes or where it lands —
-   and nothing is written before the yes
+   and nothing is written before the yes. The gate is the one
+   confirmation: the request is not put back to the user in
+   conversation first
 10. on yes the background-agent store is scanned for the session's own
     phase and topic; no row is in flight, so no task is stopped and no
     row is incorporated

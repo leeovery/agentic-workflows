@@ -52,7 +52,7 @@ A label already on the map, or a new one in their own words — "under Next", "t
 
 Commit anything this session has written and not yet committed, with the phase's own cadence commit — the postpone transaction writes the manifests alone, so the sitting that sent the topic away is committed with the rest of its record rather than left loose. Nothing to commit is fine.
 
-Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands:
+Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands. The gate is the confirmation: the request is never put back to the user in conversation first.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"
