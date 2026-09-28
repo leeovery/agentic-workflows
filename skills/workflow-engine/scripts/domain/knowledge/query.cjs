@@ -245,7 +245,11 @@ async function queryStore(db, settings, { terms, options, workUnits }) {
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
   return {
     results: rerank(dated, boosts, settings.stability).slice(0, limit),
-    notes: [...(note ? [note] : []), ...vectorNotes(db, settings), ...settings.ignored.map((line) => `[knowledge config — ${line}]`)],
+    notes: [
+      ...(note ? [note] : []),
+      ...vectorNotes(db, settings),
+      ...settings.ignored.map((line) => `[knowledge config — ${line}]`),
+    ],
   };
 }
 

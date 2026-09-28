@@ -72,6 +72,11 @@ function isFraction(value) {
   return isNumber(value) && value >= 0 && value <= 1;
 }
 
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /** @type {Record<keyof typeof DEFAULTS, TuningRule>} */
 const TUNING = {
   similarity_threshold: { expected: 'a number from 0 to 1', valid: isFraction },
@@ -79,8 +84,7 @@ const TUNING = {
   decay_prune_below: { expected: 'false or a number from 0 to 1', valid: (value) => value === false || isFraction(value) },
   decay_weights: {
     expected: 'an object giving work types numbers of 0 or more',
-    valid: (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
-      && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
+    valid: (value) => isRecord(value) && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
   },
 };
 
@@ -461,16 +465,6 @@ function resolveProvider(config, patience = {}) {
 }
 
 /**
- * A JSON object's own record, or an empty one for anything else.
- * @param {unknown} value @returns {Record<string, unknown>}
- */
-function objectOr(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? /** @type {Record<string, unknown>} */ (value)
-    : {};
-}
-
-/**
  * The parsed JSON object at a path — empty where there is no file, or where
  * it does not parse to an object: the caller is committing to a write, and
  * replaces it.
@@ -479,7 +473,8 @@ function objectOr(value) {
 function readWritableObject(filePath) {
   if (!fs.existsSync(filePath)) return {};
   try {
-    return objectOr(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return isRecord(parsed) ? parsed : {};
   } catch (_) {
     return {};
   }
@@ -504,7 +499,7 @@ function writeConfigFile(filePath, payload) {
   }
 
   const existing = readWritableObject(filePath);
-  const kept = Object.entries(objectOr(existing.knowledge)).filter(([key]) => !PROVIDER_FIELDS.includes(key));
+  const kept = Object.entries(isRecord(existing.knowledge) ? existing.knowledge : {}).filter(([key]) => !PROVIDER_FIELDS.includes(key));
   const full = { ...existing, knowledge: { ...payload.knowledge, ...Object.fromEntries(kept) } };
 
   const dir = path.dirname(filePath);
