@@ -97,9 +97,12 @@ it, so an old checkout will look set up and quietly not be.
   `node tests/prose/run.cjs snap <case-id>` and land the snapshot diff in
   the same PR as the change that moved it. Never hand-edit a snapshot.
 - **`CHANGELOG.md` is generated.** Never edit it by hand.
-- **Shipped `.sh` migrations are frozen.** Fix forward with a new
-  numbered `.cjs` migration rather than editing one that has run on real
-  installs.
+- **Released migrations are frozen.** Fix forward with a new numbered
+  `.cjs` migration rather than editing or deleting one that has run on
+  real installs.
+- **Upgrades live in migrations, never in code.** Converting, renaming,
+  deleting or tolerating what an older version left behind is a
+  migration; runtime code never recognises an earlier version's shape.
 
 ## Conventions
 

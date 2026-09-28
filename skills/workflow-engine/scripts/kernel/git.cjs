@@ -39,15 +39,24 @@ function indexBudgetMs() {
   return Number.isFinite(env) && env > 0 ? env : INDEX_BUDGET_MS;
 }
 
+// Whole-history and whole-tree listings (a signal's `git log`, a tree's
+// `ls-tree -r`, an index's `ls-files --stage`) can run past spawnSync's 1 MiB
+// default; a read past the budget is a failure like any other, never a
+// truncated answer.
+const READ_BUDGET_BYTES = 64 * 1024 * 1024;
+
 /**
  * Run git and return stdout. Throws with git's stderr on a non-zero exit.
  * @param {string} cwd
  * @param {string[]} args
  * @param {Record<string, string>} [env] variables layered over the process's own
+ * @param {string} [input] written to git's stdin
  * @returns {string}
  */
-function git(cwd, args, env) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8', env: env && { ...process.env, ...env } });
+function git(cwd, args, env, input) {
+  const res = spawnSync('git', args, {
+    cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES,
+  });
   if (res.error) throw new Error(`git ${args[0]} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();
@@ -55,11 +64,6 @@ function git(cwd, args, env) {
   }
   return res.stdout;
 }
-
-// Whole-history listings (a signal's `git log`, a tree's `ls-tree -r`) can
-// run past spawnSync's 1 MiB default; a read past the budget is a failure
-// like any other, never a truncated answer.
-const TRY_BUDGET_BYTES = 64 * 1024 * 1024;
 
 /**
  * Run git and return stdout, or null on any failure — the tolerant read for
@@ -70,7 +74,7 @@ const TRY_BUDGET_BYTES = 64 * 1024 * 1024;
  * @returns {string|null}
  */
 function tryGit(cwd, args) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: TRY_BUDGET_BYTES });
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
   if (res.error || res.status !== 0) return null;
   return res.stdout;
 }
@@ -298,6 +302,63 @@ function commitWithout(cwd, paths, message) {
 }
 
 /**
+ * Stage everything under `specs` — edits, new files, deletions — and commit
+ * exactly those paths as the index then records them. A removal staged ahead
+ * of the call (`git rm --cached`, the file left on disk) is what lands, where
+ * `git commit -- <paths>` would read the file straight back from the working
+ * tree: the commit is built from a scratch index holding HEAD with the paths'
+ * entries taken from the real one, so whatever else is staged stays staged
+ * and out of the commit. A pathspec git ignores is left to git, never forced
+ * in, and one matching nothing is dropped. Refuses while a merge,
+ * cherry-pick, revert or rebase is in progress, touching nothing.
+ * @param {string} cwd project root
+ * @param {string[]} specs
+ * @param {string} message
+ * @returns {string|null} the short commit sha, or null when the paths are clean
+ */
+function commitStaged(cwd, specs, message) {
+  const open = operationInProgress(cwd);
+  if (open) throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, then commit again`);
+  const addable = stageableSpecs(cwd, specs).filter((p) => !isIgnored(cwd, p));
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...addable]);
+  return commitIndexEntries(cwd, specs, message);
+}
+
+/**
+ * Whether an ignore rule holds the path out of git — untracked and matched,
+ * so `git add` would refuse it by name.
+ * @param {string} cwd @param {string} spec
+ * @returns {boolean}
+ */
+function isIgnored(cwd, spec) {
+  return tryGit(cwd, ['check-ignore', '-q', '--', spec]) !== null;
+}
+
+/**
+ * Commit HEAD's tree with `specs` as the real index records them, from a
+ * scratch index. Null when that is HEAD's tree, or when there is no HEAD and
+ * the index records nothing under them.
+ * @param {string} cwd @param {string[]} specs @param {string} message
+ * @returns {string|null}
+ */
+function commitIndexEntries(cwd, specs, message) {
+  const head = tryGit(cwd, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']);
+  const entries = git(cwd, ['ls-files', '--stage', '-z', '--', ...specs]);
+  if (head === null && entries === '') return null;
+  const env = { GIT_INDEX_FILE: gitPath(cwd, 'workflows-commit.index') };
+  try {
+    git(cwd, head === null ? ['read-tree', '--empty'] : ['read-tree', 'HEAD'], env);
+    git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...specs], env);
+    if (entries !== '') git(cwd, ['update-index', '-z', '--index-info'], env, entries);
+    if (head !== null && git(cwd, ['write-tree'], env).trim() === head.trim()) return null;
+    git(cwd, ['commit', '-q', '-m', message], env);
+  } finally {
+    fs.rmSync(env.GIT_INDEX_FILE, { force: true });
+  }
+  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+}
+
+/**
  * Every path in the working tree that differs from HEAD — tracked
  * modifications and untracked, non-ignored files alike — project-relative.
  * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
@@ -328,4 +389,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, commitUntrack, trackedPaths, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

@@ -5,8 +5,10 @@
 // through here, for two guarantees:
 //
 // - Commits are confined: each one commits exactly the paths its action
-//   wrote (`-- <paths>`), or — for an untracking — HEAD without the paths it
-//   names, built in a scratch index (`commitUntrack`). A peer session's dirty
+//   wrote (`-- <paths>`); the migration commit takes the paths the workflows
+//   own as the index records them, a removal a migration staged included
+//   (`commitStaged`); an untracking commits HEAD without the paths it names
+//   (`commitUntrack`) — both built in a scratch index. A peer session's dirty
 //   or staged files are never swept up under someone else's message, and no
 //   engine commit reaches outside its declared scope.
 //
@@ -16,10 +18,21 @@
 //   git's shared index.
 // ---------------------------------------------------------------------------
 
-const { gitPath, commitPathspec, commitUntrack } = require('../kernel/git.cjs');
+const { gitPath, commitPathspec, commitStaged, commitUntrack } = require('../kernel/git.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
+const { SETTINGS_SPEC } = require('./settings.cjs');
+const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 
 const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
+
+/**
+ * The paths the workflows own in a project — everything a migration or the
+ * engine writes there: the `.workflows` tree (its git-ignored parts left to
+ * git), the project's Claude Code settings, the worktree include, and the
+ * project-root `.gitignore`. The migration commit's scope.
+ * @type {readonly string[]}
+ */
+const OWNED_PATHS = Object.freeze(['.workflows', SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
 /**
  * The discovery scope — what a discovery session writes: its session logs,
@@ -88,6 +101,16 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
 }
 
 /**
+ * `commitStaged` under the commit lock: stage everything under the pathspecs
+ * and commit exactly them as the index records them.
+ * @param {string} cwd @param {readonly string[]} specs @param {string} message
+ * @returns {string|null}
+ */
+function commitStagedScoped(cwd, specs, message) {
+  return withCommitLock(cwd, () => commitStaged(cwd, [...specs], message));
+}
+
+/**
  * `commitUntrack` under the commit lock: stop tracking everything under the
  * pathspecs, the files left on disk, in one commit that carries nothing else.
  * @param {string} cwd @param {string[]} specs @param {string} message
@@ -153,11 +176,13 @@ function noteCommitOutcome(result, outcome, retry) {
 
 module.exports = {
   commitPathspecScoped,
+  commitStagedScoped,
   commitTailPathspec,
   commitUntrackScoped,
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,
   discoveryScope,
+  OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,
 };

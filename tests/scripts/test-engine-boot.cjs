@@ -95,7 +95,7 @@ if (mode === 'update') {
   fs.mkdirSync('.workflows/.state', { recursive: true });
   fs.mkdirSync('.claude', { recursive: true });
   fs.appendFileSync('.workflows/.state/migrations', '046\\n');
-  fs.writeFileSync('.claude/settings.json', '{"permissions":{}}\\n');
+  fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
   fs.appendFileSync('.gitignore', '.DS_Store\\n');
   process.stdout.write(
     '\\n' +
@@ -486,22 +486,25 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
-  it('a migration touching config files commits settings.json and .gitignore, leaving .workflows to the skill', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
+  it('a migration touching config files commits none of them — the reviewed commit takes them with the rest', () => {
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'update-config',
+      STUB_MIGRATE_SETTINGS: hooked(WORKFLOW_HOOKS, { permissions: {} }),
+    });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, true);
-    // Boot commits exactly the two config paths the skill's .workflows-scoped
-    // migration commit would otherwise leave dirty — then, the migration
-    // having rewritten settings.json without the session hooks, puts them
-    // back in a commit of their own.
-    const subjects = git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n');
-    assert.deepStrictEqual(subjects, ['chore: install workflow session hooks', 'chore: apply workflow migration config changes']);
-    assert.strictEqual(res.session_hooks_installed, true);
-    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD~1']).trim().split('\n').sort();
-    assert.deepStrictEqual(show, ['.claude/settings.json', '.gitignore']);
-    // The .workflows changes stay uncommitted — the skill's reviewed commit owns them.
-    assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /\.workflows\/\.state/);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    assert.deepStrictEqual(
+      git(fix.project, ['status', '--porcelain', '--', '.claude', '.gitignore', '.workflows']).split('\n').filter(Boolean).sort(),
+      [' M .claude/settings.json', '?? .gitignore', '?? .workflows/.state/']);
+
+    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+    assert.deepStrictEqual(
+      git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
+      ['.claude/settings.json', '.gitignore', '.workflows/.state/migrations']);
   });
 
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
@@ -565,7 +568,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.ran, 1);
     assert.strictEqual(res.migrations_committed, null);
     // The ledger line waits with the rest of the diff for the skill's
-    // `commit --workflows`, which the review gate runs on the user's yes.
+    // `commit --migrations`, which the review gate runs on the user's yes.
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows/.state/migrations']), /migrations/);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
@@ -703,10 +706,9 @@ describe('engine boot', () => {
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the migration config pass,
-    // the store's untracking, the project settings sync, and the worktree
-    // include — must take their own paths and nothing else, staged peer
-    // content included.
+    // other one on the checkout. Its commits — the store's untracking, the
+    // project settings sync, and the worktree include — must take their own
+    // paths and nothing else, staged peer content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     writeFile(fix.project, '.workflows/.knowledge/store.bin', 'v1\n');
@@ -724,13 +726,13 @@ describe('engine boot', () => {
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.worktree_include_installed, true);
-    const shas = git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 4);
-    assert.deepStrictEqual(shas.map((sha) => git(fix.project, ['log', '-1', '--pretty=%s', sha]).trim()), [
+    assert.deepStrictEqual(git(fix.project, ['log', '-4', '--pretty=%s']).trim().split('\n'), [
       'chore: copy the knowledge store into new worktrees',
       'chore: install workflow session hooks',
       'chore(knowledge): stop tracking the store',
-      'chore: apply workflow migration config changes',
+      'a peer topic',
     ]);
+    const shas = git(fix.project, ['log', '-3', '--format=%H']).trim().split('\n');
     for (const sha of shas) {
       const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
       assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
@@ -903,7 +905,7 @@ describe('engine boot: the store leaves git', () => {
     writeFile(fix.project, '.workflows/.gitignore', '.knowledge/\n');
 
     runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    runEngine(stubbed, fix.project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
+    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
 
     assert.deepStrictEqual(committedChanges(), ['A\t.workflows/.gitignore']);
     assert.deepStrictEqual(tracked(), []);
@@ -1789,9 +1791,9 @@ describe('engine boot (real scripts)', () => {
     assert.ok(fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin')).equals(storeBytes), 'the store stays on disk, byte for byte');
     assert.match(git(project, ['status', '--porcelain', '--', '.workflows/.gitignore']), /\.workflows\/\.gitignore/, 'the rules are not committed yet');
 
-    // The skill's reviewed migration commit takes the whole tree — and the
-    // store stays out of it.
-    const committed = runEngine(real, project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
+    // The skill's reviewed migration commit takes every path the workflows
+    // own — and the store stays out of it.
+    const committed = runEngine(real, project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
     assert.ok(committed.committed);
     const files = git(project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(files.includes('.workflows/.gitignore'));

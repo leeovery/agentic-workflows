@@ -69,7 +69,7 @@ Files were updated, or a migration handed over checks its code could not perform
 
 1. **If `migrations.verify` is non-empty:** each entry is a migration that ran this boot. Its `info` says what the migration does in any project; its `verify` says what to check in this one. Perform each entry's checks with judgment against the actual files — the migration's code is exact-match and may have missed what it could not recognise — and fix what you find. Your fixes are migration changes: they join the diff, the summary, and the commit below.
 
-2. Run `git status --short -- .workflows` and `git diff -- .workflows` to see what changed. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
+2. Run `git status --short -- .workflows .claude/settings.json .worktreeinclude .gitignore` and `git diff -- .workflows .claude/settings.json .worktreeinclude .gitignore` to see what changed — the paths the commit below takes. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
 
    **If nothing changed** (the migrations skipped everything and verification found nothing to fix):
 
@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
 Commit the migration changes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore: apply workflow migrations"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
 ```
 
 → Proceed to **Step 0.2**.

@@ -250,30 +250,10 @@ function boot(cwd) {
     verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
   };
 
-  // Migrations reach past .workflows: some edit .claude/settings.json
-  // (permission/hook plumbing) and the repo-root .gitignore. The skill's
-  // .workflows-scoped migration commit misses those, leaving them dirty after
-  // boot for some later unrelated commit to sweep up. When migrations changed,
-  // commit whichever of the two exist on disk, confined to them — a boot runs
-  // beside live sessions and beside the user's own staged work, and neither
-  // belongs in a migration commit. The migration files are already applied,
-  // so a commit failure is a warning, never a block.
-  if (migrations.changed) {
-    try {
-      const configSpecs = [SETTINGS_SPEC, '.gitignore']
-        .filter((p) => fs.existsSync(path.join(cwd, p)));
-      if (configSpecs.length > 0) {
-        commitPathspecScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
-      }
-    } catch (err) {
-      warnings.push(`migration config commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
   // A migration that ran while changing no document still wrote the ledger,
   // and that write has no other path to a commit: with nothing to review the
   // calling skill says "up to date" and never reaches its `commit
-  // --workflows`. So boot leaves the ledger clean whenever no reviewed commit
+  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
   // will carry it — dirt this run recorded, and dirt an earlier boot left
   // behind the same way, which is the state every install that met this bug
   // is sitting in. When the review gate does fire, its own commit takes the

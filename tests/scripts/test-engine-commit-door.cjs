@@ -575,6 +575,146 @@ describe('engine commit --paths: the code commit', () => {
   });
 });
 
+describe('engine commit --migrations: the paths the workflows own', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(dir, '.claude/settings.json', '{}\n');
+    writeFile(dir, '.gitignore', 'node_modules\n');
+    writeFile(dir, 'src/app.js', 'const x = 1;\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const migrate = (message = 'chore: apply workflow migrations') => engine(dir, ['commit', '--migrations', '-m', message]);
+
+  /** `git show --name-status` of HEAD, sorted. */
+  function headChanges() {
+    return git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
+  }
+
+  it('commits edits, new files and deletions across every owned path — and nothing else', () => {
+    writeFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
+    writeFile(dir, '.worktreeinclude', '.workflows/.knowledge/store.bin\n');
+    fs.unlinkSync(path.join(dir, '.gitignore'));
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.workflows/.state/migrations', '062\n');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'local store\n');
+    writeFile(dir, '.workflows/.cache/payments/state.json', '{}\n');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    writeFile(dir, 'src/new.js', 'const n = 1;\n');
+
+    const res = migrate();
+
+    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    assert.deepStrictEqual(headChanges(), [
+      'A\t.workflows/.state/migrations',
+      'A\t.worktreeinclude',
+      'D\t.gitignore',
+      'M\t.claude/settings.json',
+      'M\t.workflows/payments/manifest.json',
+    ]);
+    assert.deepStrictEqual(statusLines(dir).sort(), [' M src/app.js', '?? src/new.js'],
+      'code stays as it was, and the ignored store and cache stay out of git');
+    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge', '.workflows/.cache']).trim(), '');
+  });
+
+  it('records a removal a migration staged, the file left on disk', () => {
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'tracked store\n');
+    commitAll(dir, 'a store committed before the ignore rule');
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
+    git(dir, ['rm', '-r', '-q', '--cached', '--', '.workflows/.knowledge']);
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['D\t.workflows/.knowledge/store.bin', 'M\t.workflows/.gitignore']);
+    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge']).trim(), '', 'no longer tracked');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.knowledge/store.bin')), 'and still on disk');
+    assert.deepStrictEqual(statusLines(dir), []);
+  });
+
+  it('leaves another process\'s staged work out of the commit, still staged', () => {
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    git(dir, ['add', '--', 'src/app.js']);
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js');
+  });
+
+  it('leaves an owned path the project ignores to git — never forced in', () => {
+    writeFile(dir, '.gitignore', 'node_modules\n.claude/\n');
+    git(dir, ['rm', '-q', '--cached', '--', '.claude/settings.json']);
+    commitAll(dir, 'the project ignores its Claude Code settings');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.strictEqual(git(dir, ['ls-files', '--', '.claude']).trim(), '');
+  });
+
+  it('answers nothing to commit on clean owned paths, and where none of them exists', () => {
+    assert.deepStrictEqual(migrate('noop'), { ok: true, committed: null, note: 'nothing to commit' });
+
+    const bare = harness.setupGitFixture('engine-commit-bare-');
+    try {
+      fs.rmSync(path.join(bare, '.workflows'), { recursive: true });
+      writeFile(bare, 'src/app.js', 'const x = 1;\n');
+      commitAll(bare, 'code only');
+      const before = git(bare, ['rev-parse', 'HEAD']).trim();
+
+      assert.deepStrictEqual(engine(bare, ['commit', '--migrations', '-m', 'noop']),
+        { ok: true, committed: null, note: 'nothing to commit' });
+      assert.strictEqual(git(bare, ['rev-parse', 'HEAD']).trim(), before);
+    } finally {
+      cleanupFixture(bare);
+    }
+  });
+
+  it('makes the first commit on a branch with none yet', () => {
+    const fresh = harness.setupGitFixture('engine-commit-fresh-');
+    try {
+      writeFile(fresh, '.workflows/.state/migrations', '001\n');
+      writeFile(fresh, 'src/app.js', 'const x = 1;\n');
+
+      const res = engine(fresh, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+      assert.strictEqual(res.committed, git(fresh, ['rev-parse', '--short', 'HEAD']).trim());
+      assert.deepStrictEqual(git(fresh, ['ls-files']).trim().split('\n'), ['.workflows/.state/migrations']);
+      assert.deepStrictEqual(statusLines(fresh), ['?? src/'], 'code stays untracked');
+    } finally {
+      cleanupFixture(fresh);
+    }
+  });
+
+  it('refuses while a merge is in progress, staging nothing', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    fs.writeFileSync(path.join(dir, '.git', 'MERGE_HEAD'), git(dir, ['rev-parse', 'HEAD']));
+    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+
+    assert.match(engineFails(dir, ['commit', '--migrations', '-m', 'x']).error, /a merge is in progress \(MERGE_HEAD\)/);
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '');
+  });
+
+  it('refuses beside another scope, and without a message', () => {
+    assert.match(engineFails(dir, ['commit', '--migrations', '--workflows', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',
+      '--for', 'payments', 'implementation/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--migrations']).error, /Usage/);
+  });
+});
+
 describe('mechanical heartbeats: the self-referential rule', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
