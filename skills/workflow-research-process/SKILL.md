@@ -85,9 +85,13 @@ Then check if the research file exists at `.workflows/{work_unit}/research/{topi
 
 A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
 
+Set `resumed` = `false`.
+
 → Proceed to **Step 1**.
 
 #### If no file exists
+
+Set `resumed` = `false`.
 
 → Proceed to **Step 1**.
 
@@ -114,6 +118,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {
 Emit the DISPLAY section verbatim per its marker. An empty response means no thread is registered; nothing is shown.
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file, the manifest's thread register when the item carries one (node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.research.{topic} threads, then manifest delete on true), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — a landed report would otherwise fold into the restarted session as its own`, commit = `research({work_unit}): restart research`.
+
+Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's file still standing; `false` for **Step 1**, its file deleted and rebuilt.
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
@@ -170,7 +176,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Starting the research session. This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage.
+> @if(resumed) Picking the research back up where it left off. @else Starting the research session. @endif This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage.
 ```
 
 Load **[route-session.md](references/route-session.md)** and follow its instructions as written.

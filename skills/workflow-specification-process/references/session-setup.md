@@ -51,7 +51,7 @@ Read the sources map (`node .claude/skills/workflow-engine/scripts/engine.cjs ma
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> A source was re-decided after this spec extracted it. The revision is pulled in now, before construction resumes — each change comes to you as a diff for approval.
+> A source was re-decided after this spec extracted it. The revision is pulled in now, before the specification work carries on — each change comes to you as a diff for approval.
 ```
 
 For each stale row, load **[reconcile-stale-sources.md](reconcile-stale-sources.md)** and follow its instructions as written; after each, re-read the sources map and continue until no workable `stale` row remains. A row whose source discussion is still `in-progress` defers there and stays `stale` — construction can proceed on other topics, but conclusion will wait for it.

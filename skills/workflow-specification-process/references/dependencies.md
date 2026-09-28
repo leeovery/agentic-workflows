@@ -4,9 +4,11 @@
 
 ---
 
-At the end of every specification, add a **Dependencies** section that identifies **prerequisites** — systems that must exist before this feature can be built.
+At the end of every specification, add a **Dependencies** section that identifies **prerequisites** — systems that must exist before this feature can be built. The section is always written: when nothing blocks, it is the `## Dependencies` heading with `(none)` beneath it.
 
 The same workflow applies: present the dependencies section for approval, then log verbatim when approved.
+
+Where the specification already carries the section, re-check it against the content logged this session: a section that still holds stands as written — no write and no approval stop; a section that changes is presented in full and, once approved, replaces the existing one.
 
 ## What Dependencies Are
 
