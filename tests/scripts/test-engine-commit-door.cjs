@@ -10,8 +10,9 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 
@@ -572,6 +573,231 @@ describe('engine commit --paths: the code commit', () => {
     assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/implementation/topic-typo')),
       'no ghost heartbeat is minted');
     assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
+  });
+});
+
+describe('engine commit --migrations: the paths the workflows own', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(dir, '.claude/settings.json', '{}\n');
+    writeFile(dir, '.gitignore', 'node_modules\n');
+    writeFile(dir, 'src/app.js', 'const x = 1;\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const migrate = (message = 'chore: apply workflow migrations') => engine(dir, ['commit', '--migrations', '-m', message]);
+
+  /** `git show --name-status` of HEAD, sorted. */
+  function headChanges() {
+    return git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
+  }
+
+  it('commits edits, new files and deletions across every owned path — and nothing else', () => {
+    writeFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
+    writeFile(dir, '.worktreeinclude', '.workflows/.knowledge/store.bin\n');
+    fs.unlinkSync(path.join(dir, '.gitignore'));
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.workflows/.state/migrations', '062\n');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'local store\n');
+    writeFile(dir, '.workflows/.cache/payments/state.json', '{}\n');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    writeFile(dir, 'src/new.js', 'const n = 1;\n');
+
+    const res = migrate();
+
+    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    assert.deepStrictEqual(headChanges(), [
+      'A\t.workflows/.state/migrations',
+      'A\t.worktreeinclude',
+      'D\t.gitignore',
+      'M\t.claude/settings.json',
+      'M\t.workflows/payments/manifest.json',
+    ]);
+    assert.deepStrictEqual(statusLines(dir).sort(), [' M src/app.js', '?? src/new.js'],
+      'code stays as it was, and the ignored store and cache stay out of git');
+    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge', '.workflows/.cache']).trim(), '');
+  });
+
+  it('records a removal a migration staged, the file left on disk', () => {
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n');
+    writeFile(dir, '.workflows/.knowledge/store.bin', 'tracked store\n');
+    commitAll(dir, 'a store committed before the ignore rule');
+    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
+    git(dir, ['rm', '-r', '-q', '--cached', '--', '.workflows/.knowledge']);
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['D\t.workflows/.knowledge/store.bin', 'M\t.workflows/.gitignore']);
+    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge']).trim(), '', 'no longer tracked');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.knowledge/store.bin')), 'and still on disk');
+    assert.deepStrictEqual(statusLines(dir), []);
+  });
+
+  it('leaves another process\'s staged work out of the commit, still staged', () => {
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    git(dir, ['add', '--', 'src/app.js']);
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js');
+  });
+
+  it('leaves an owned path the project ignores to git — never forced in', () => {
+    writeFile(dir, '.gitignore', 'node_modules\n.claude/\n');
+    git(dir, ['rm', '-q', '--cached', '--', '.claude/settings.json']);
+    commitAll(dir, 'the project ignores its Claude Code settings');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.strictEqual(git(dir, ['ls-files', '--', '.claude']).trim(), '');
+  });
+
+  it('leaves a tracked file whose directory the project ignores as it is — the rest still commit', () => {
+    writeFile(dir, '.gitignore', 'node_modules\n.claude/\n');
+    commitAll(dir, 'the project ignores .claude/ and still tracks its settings');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.deepStrictEqual(statusLines(dir), [' M .claude/settings.json']);
+  });
+
+  it('leaves settings beyond a symbolic link as they are — the rest still commit', () => {
+    git(dir, ['rm', '-r', '-q', '--', '.claude']);
+    writeFile(dir, 'config/claude/settings.json', '{}\n');
+    fs.symlinkSync('config/claude', path.join(dir, '.claude'));
+    commitAll(dir, '.claude links to the shared config');
+    writeFile(dir, 'config/claude/settings.json', '{"hooks":{}}\n');
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+
+    migrate();
+
+    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.deepStrictEqual(statusLines(dir), [' M config/claude/settings.json']);
+  });
+
+  it('never reads another process\'s hold on the index as a refusal', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+
+    const res = engineFails(dir, ['commit', '--migrations', '-m', 'x'], { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+
+    assert.match(res.error, /index\.lock/);
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+  });
+
+  it('commits a project nested in its repository under the project\'s own directory', () => {
+    const repo = harness.setupGitFixture('engine-commit-nested-');
+    try {
+      const project = path.join(repo, 'apps/web');
+      writeFile(repo, 'README.md', '# monorepo\n');
+      writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+      writeFile(project, '.claude/settings.json', '{}\n');
+      commitAll(repo, 'init');
+      writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+      writeFile(project, '.workflows/.state/migrations', '062\n');
+      writeFile(project, '.claude/settings.json', '{"hooks":{}}\n');
+      writeFile(project, '.gitignore', '.DS_Store\n');
+
+      engine(project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+      assert.deepStrictEqual(git(repo, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
+        'A\tapps/web/.gitignore',
+        'A\tapps/web/.workflows/.state/migrations',
+        'M\tapps/web/.claude/settings.json',
+        'M\tapps/web/.workflows/payments/manifest.json',
+      ]);
+      assert.deepStrictEqual(statusLines(repo), []);
+    } finally {
+      cleanupFixture(repo);
+    }
+  });
+
+  it('refuses when HEAD\'s tree cannot be read — never a commit built on an empty tree', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+    // A git that fails the tree read alone, as a branch with no commits
+    // would: exit 1, and every other call goes to the real git.
+    const shim = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-git-shim-'));
+    try {
+      const realGit = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+      fs.writeFileSync(path.join(shim, 'git'),
+        `#!/bin/sh\ncase "$*" in *'HEAD^{tree}'*) echo 'fatal: tree unreadable' >&2; exit 1;; esac\nexec '${realGit}' "$@"\n`,
+        { mode: 0o755 });
+
+      const res = engineFails(dir, ['commit', '--migrations', '-m', 'x'], { PATH: `${shim}:${process.env.PATH}` });
+
+      assert.match(res.error, /tree unreadable/);
+      assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+    } finally {
+      fs.rmSync(shim, { recursive: true, force: true });
+    }
+  });
+
+  it('answers nothing to commit on clean owned paths, and where none of them exists', () => {
+    assert.deepStrictEqual(migrate('noop'), { ok: true, committed: null, note: 'nothing to commit' });
+
+    const bare = harness.setupGitFixture('engine-commit-bare-');
+    try {
+      fs.rmSync(path.join(bare, '.workflows'), { recursive: true });
+      writeFile(bare, 'src/app.js', 'const x = 1;\n');
+      commitAll(bare, 'code only');
+      const before = git(bare, ['rev-parse', 'HEAD']).trim();
+
+      assert.deepStrictEqual(engine(bare, ['commit', '--migrations', '-m', 'noop']),
+        { ok: true, committed: null, note: 'nothing to commit' });
+      assert.strictEqual(git(bare, ['rev-parse', 'HEAD']).trim(), before);
+    } finally {
+      cleanupFixture(bare);
+    }
+  });
+
+  it('makes the first commit on a branch with none yet', () => {
+    const fresh = harness.setupGitFixture('engine-commit-fresh-');
+    try {
+      writeFile(fresh, '.workflows/.state/migrations', '001\n');
+      writeFile(fresh, 'src/app.js', 'const x = 1;\n');
+
+      const res = engine(fresh, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+      assert.strictEqual(res.committed, git(fresh, ['rev-parse', '--short', 'HEAD']).trim());
+      assert.deepStrictEqual(git(fresh, ['ls-files']).trim().split('\n'), ['.workflows/.state/migrations']);
+      assert.deepStrictEqual(statusLines(fresh), ['?? src/'], 'code stays untracked');
+    } finally {
+      cleanupFixture(fresh);
+    }
+  });
+
+  it('refuses while a merge is in progress, staging nothing', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    fs.writeFileSync(path.join(dir, '.git', 'MERGE_HEAD'), git(dir, ['rev-parse', 'HEAD']));
+    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+
+    assert.match(engineFails(dir, ['commit', '--migrations', '-m', 'x']).error, /a merge is in progress \(MERGE_HEAD\)/);
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '');
+  });
+
+  it('refuses beside another scope, and without a message', () => {
+    assert.match(engineFails(dir, ['commit', '--migrations', '--workflows', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',
+      '--for', 'payments', 'implementation/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--migrations']).error, /Usage/);
   });
 });
 
