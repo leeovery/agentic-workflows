@@ -12,7 +12,7 @@ For each topic in the confirmed set — the working-list new topics **plus** any
 
 Note which written topics are existing committed map topics — **B**'s pointer backfill checks their pointers.
 
-The brief is a written artifact, not user output — write the file, do not render it. Word every decision plainly and naturally: softness is conferred by where the brief lives on the gradient, not by hedged wording. Empty sections get `(none)`.
+The brief is a written artifact, not user output — write the file, do not render it. Word every decision plainly and naturally: softness is conferred by where the brief lives on the gradient, not by hedged wording. Every line traces to the record: a soft decision is one the conversation settled, and a point the user left open or a suggestion of yours they never took up goes under **Open questions**, never promoted into a decision. Empty sections get `(none)`.
 
 ```markdown
 # Discovery Brief — {topic:(titlecase)}
