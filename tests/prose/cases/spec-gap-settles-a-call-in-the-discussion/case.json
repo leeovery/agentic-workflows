@@ -39,7 +39,7 @@
   "stubs": {
     "spec-review-clean": "when the prose dispatches the claims verification agent via the Task tool (any cycle), and when it dispatches the input review or gap analysis agent for review cycle 2 or later — each returns the content below and writes no file",
     "spec-input-refund-window": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
-    "spec-gap-settled-and-dressed-fork": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+    "spec-gap-settled-and-session-call": "when the prose dispatches the gap analysis agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
   },
   "invariants": {
     "engine_before_write": true,

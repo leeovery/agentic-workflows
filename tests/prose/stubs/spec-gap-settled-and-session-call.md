@@ -1,10 +1,11 @@
-# stub: spec-gap-settled-and-dressed-fork
+# stub: spec-gap-settled-and-session-call
 
 A gap analysis agent returning two findings: one `settled` call the
 specification's own record determines — two stated rules whose
-consequence follows with no alternative — and one staged `settled`
-whose derivation is an analogy to a neighbouring rule over a fork in
-what the customer gets, which more than one answer fits. An
+consequence follows with no alternative — and one staged `settled` as
+a call the record does not state: first principles over the capture
+rules settle what the customer gets, the alternative that also fits
+named beside it. An
 Observations line sits below them. Write the tracking file to
 `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
@@ -70,15 +71,21 @@ customer who may well have paid cannot tell from either whether their
 goods are coming.
 
 **Proposal**:
-Payment Intent decides that a gateway rejection at creation surfaces as
-a user-visible checkout error. An exhausted delivery is that same
-failure arriving later, so by the same rule the order is cancelled and
-the customer shown the checkout's payment-failed error. I would state
-it in Capture Webhooks.
+Capture is confirmed by gateway webhook, never by polling, and a
+payment is unconfirmed once the re-deliveries are exhausted —
+unconfirmed, not failed: the gateway has stopped telling us, it has not
+told us the payment failed. Cancelling the order and showing the
+payment-failed error would tell a customer who may well have paid that
+they have not. So the order stands as awaiting confirmation and the
+customer is told the payment is still confirming; the checkout cancels
+nothing on its own initiative. Cancelling at the ceiling with the
+payment-failed error Payment Intent defines for a rejection also fits
+the record. I would state it in Capture Webhooks.
 
 **Proposed Text**:
-- When the re-deliveries are exhausted the order is cancelled and the
-  customer is shown the checkout's payment-failed error.
+- When the re-deliveries are exhausted the order stands as awaiting
+  confirmation and the customer is told the payment is still
+  confirming; the checkout cancels nothing on its own initiative.
 
 **Resolution**: Pending
 **Notes**:

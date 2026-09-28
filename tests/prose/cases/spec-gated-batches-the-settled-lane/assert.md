@@ -32,21 +32,17 @@ Expected path:
    staged
 8. **Finding 3 (an order whose payment is never confirmed)** stands
    settled as a call **this session** makes rather than one the
-   record determines: its staged derivation is an analogy to the
-   rejection rule in Payment Intent, which is consistency with the
-   record rather than determination by it, and more than one answer
-   fits — the order cancelled, or the order held. The session makes
-   the call — the order stands as awaiting confirmation and the
-   customer is told the payment is still confirming, with nothing
-   cancelled on the checkout's own initiative — names what leaned
-   (the specification's own decision that capture is confirmed out of
-   band and never polled, so the flow is built for a confirmation
-   that arrives after the customer has gone), and names the
-   alternative that also fits the record (cancel when the
-   re-deliveries are exhausted and show the payment-failed error the
-   rejection rule already defines). The row is rewritten before
-   anything renders: Move `settled`, that Proposal, a Proposed Text
-   carrying the held-order rule
+   record determines: no source says what becomes of the order, and
+   first principles over the specification's own capture rules settle
+   it — capture is confirmed by webhook, never by polling, and an
+   exhausted delivery leaves the payment unconfirmed, not failed — so
+   the order stands as awaiting confirmation and the customer is told
+   the payment is still confirming, with nothing cancelled on the
+   checkout's own initiative. The staged Proposal already carries the
+   call, what leaned, and the alternative that also fits the record
+   (cancel when the re-deliveries are exhausted and show the
+   payment-failed error the rejection rule defines), so the row stands
+   as staged
 9. the settled batch renders once — a three-row payload at the
    specification's address with lane `settled`, each row the call and
    what it rests on, all three fitting one screen with nothing
@@ -61,8 +57,7 @@ Expected path:
     carries it as a diff with an empty current side and the wording
     reads in place; no separate wording section is owed, that shape
     belonging to a finding that proposes a whole section. It carries
-    the held-order rule, not the cancellation the agent staged — the
-    dispose ran before anything rendered
+    the held-order rule
 11. nothing is resolved by expanding, so the batch screen renders
     again, unchanged, and the walk **STOPS** a second time
 12. the user answers `yes`, and the screen's three findings land in
@@ -124,8 +119,8 @@ Also true:
   batch renders. It is the expansion, and it resolves nothing
 - the specification's Capture Webhooks section carries the 25-minute
   wait and the held-order rule, and never says the order is cancelled
-  at the ceiling. A walk that wrote the cancellation in has taken an
-  analogy for a determination and applied a decision nobody made
+  at the ceiling. A walk that wrote the cancellation in has applied a
+  decision nobody made
 - the specification's Refunds section carries the 30-day window and
   the confirmed-capture condition in one rule — the finding replaced
   that line rather than appending a second one beside it
