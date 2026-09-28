@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-09-28
+
+✨ Added
+- Added `query --explain` to print exactly how a result ranked — its score in every framing and the arithmetic behind the final figure.
+- Search now runs on words alone even without a vector — whatever keeps a query from one (missing key, rate limit, provider down or dropped, mismatched store), it still returns results and says why in a one-line note.
+- Configuring an embedding provider over an existing keyword-only store now upgrades it automatically at the next start — no `knowledge rebuild` needed, nothing re-embedded that hasn't changed.
+- The keyword side now stems words and drops common stop words, so a search for "limit" also finds "limiting" and noise words like "the" or "of" no longer skew results.
+
+🔧 Changed
+- The knowledge store moved off Orama and MessagePack to a purpose-built binary format (`store.bin`, replacing `store.msp`) with no external dependencies, cutting reliance on third-party libraries for a core piece of infrastructure.
+- Indexing now writes a document's text immediately, searchable by keyword, and embeds its vector afterward — so a slow or failing embedding call no longer blocks a document from being found.
+- Ranking now blends keyword and vector scores per search term, cut and merged per-query, rather than a single combined hybrid search.
+- `knowledge status` now reports why a query would run keyword-only and how many chunks are still awaiting their vectors.
+- Failed embeddings on a file no longer fail the whole file silently — the CLI now names which file, why, and that its vectors will retry at the next start.
+
+🐛 Fixed
+- Long unbroken runs of characters (base64 blobs, minified code) no longer need artificial splitting to avoid crashing the indexer — removed along with the tokenizer that required it.
+- `.worktreeinclude` now correctly migrates a reference to the old `store.msp` file to the new `store.bin`, so worktrees keep getting a working copy of the index.
+
 ## [0.8.1] - 2026-09-27
 
 ✨ Added
