@@ -17,6 +17,7 @@
     "skills/workflow-planning-entry/references/invoke-skill.md",
     "skills/workflow-planning-process/SKILL.md",
     "skills/workflow-planning-process/references/initialize-plan.md",
+    "skills/workflow-shared/references/format-version-check.md",
     "skills/workflow-planning-process/references/output-formats.md",
     "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
     "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",

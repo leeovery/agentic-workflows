@@ -71,7 +71,7 @@ The prose should have taken this path:
 12. because the entry is settled by the corrigendum route it stages
     nothing: no second task is appended to the staging file and no
     second staging row is written. The pass says only that one
-    correction was recorded — `1 spec correction(s) recorded.` — one
+    correction was recorded — `1 spec correction recorded.` — one
     line, no per-correction recap. The report carries no Comment
     Corrections section, so no source file is edited and no
     corrections commit runs
