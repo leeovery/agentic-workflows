@@ -16,8 +16,10 @@
 // state-branching renders here.
 //
 // Two doors, one dispatch: `main` binds the process (argv, cwd, the real
-// streams) and `run` binds a caller's (the exported in-process entry, for a
-// test harness that wants the CLI's answers without the CLI's start-up).
+// streams) and the exported in-process entry binds a caller's, for a test
+// harness that wants the CLI's answers without the CLI's start-up — `run`,
+// or `runAsync` for the knowledge verbs that wait on the embedding provider,
+// which `run` refuses before running.
 // Nothing below either door reads process state: the directory, the output
 // streams and the stdin text all arrive on the call.
 // ---------------------------------------------------------------------------
