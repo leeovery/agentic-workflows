@@ -8,10 +8,18 @@
 // case can claim any of that. A walker with no way to dispatch never
 // composes one, so nothing recorded what a dispatch would have carried.
 // So the walker makes the real Agent call, exactly as the prose asks, and
-// this hook — a PreToolUse hook on `Agent|Task` in the walker's own
-// frontmatter — records the call whole and refuses it. No agent runs in
-// the world; the walker then applies the case's substitution, or plays
-// the agent, just as it did before it could dispatch at all.
+// this hook — a PreToolUse hook on `Agent|Task|SendMessage` in the
+// walker's own frontmatter — records the call whole and refuses it. No
+// agent runs in the world; the walker then applies the case's
+// substitution, or plays the agent, just as it did before it could
+// dispatch at all.
+//
+// Prose continues an agent it dispatched by sending to the id the dispatch
+// returned, and a held dispatch starts no agent to return one. So the
+// refusal names one — the call's own tool_use_id — and a SendMessage the
+// walker makes is held exactly as a dispatch is: a continuation is then a
+// recorded send to the id of the dispatch it continues, never a second
+// fresh dispatch.
 //
 // The walker's frontmatter hooks see its caller's calls too — the
 // orchestrator dispatching a walker or an asserter — so this acts only on
@@ -20,9 +28,10 @@
 //
 // Recorded into the world: the call as one JSON line in
 // .walk-dispatches.jsonl — tool_use_id, tool name and the whole
-// tool_input, the prompt uncapped — and an ordering row in the action
-// log, `PreToolUse  Agent  <agent> — <description>  held  <tool_use_id>`,
-// so a dispatch sits in sequence with the commands around it.
+// tool_input, the prompt or message uncapped — and an ordering row in the
+// action log, `PreToolUse  Agent  <agent> — <description>  held
+// <tool_use_id>` (a send's `SendMessage  <to> — <summary>`), so a
+// dispatch sits in sequence with the commands around it.
 //
 // It fails closed. A walker's call is refused whether or not its world
 // could be found and its record written: an agent let through would run
@@ -31,14 +40,15 @@
 // finds it in the transcript with no held record and writes an UNHELD
 // row; `run.cjs assert` then refuses the world.
 //
-// The refusal's reason — what the walker reads next — is the
-// `dispatch-held` section of prompts/walker.md, never words composed here.
+// The refusal's reason — what the walker reads next — is a section of
+// prompts/walker.md, `dispatch-held` or `send-held` by the tool, never
+// words composed here.
 
 const fs = require('fs');
 const path = require('path');
 
 const WALKER = 'prose-walker';
-const DISPATCH_TOOLS = new Set(['Agent', 'Task']);
+const HELD = new Map([['Agent', 'dispatch-held'], ['Task', 'dispatch-held'], ['SendMessage', 'send-held']]);
 const DISPATCHES = '.walk-dispatches.jsonl';
 const LOG = '.walk-actions.log';
 
@@ -83,19 +93,16 @@ function record(payload) {
   } catch (e) {
     outcome = `held, unrecorded: ${oneLine(e.message)}`;
   }
-  const row = [
-    'PreToolUse',
-    'Agent',
-    oneLine(`${input.subagent_type || '-'} — ${input.description || ''}`).split(world).join('.'),
-    outcome,
-    payload.tool_use_id || '-',
-  ];
+  const { tool, detail } = transcripts.dispatchRow(payload.tool_name, input);
+  const row = ['PreToolUse', tool, oneLine(detail).split(world).join('.'), outcome, payload.tool_use_id || '-'];
   fs.appendFileSync(path.join(world, LOG), `${row.join('\t')}\n`);
 }
 
-function reason() {
+/** The refusal's reason: the tool's section, naming the held call's id. */
+function reason(payload) {
   try {
-    return require('./prompts.cjs').loadTemplate('walker')['dispatch-held'] || null;
+    const { loadTemplate, fill } = require('./prompts.cjs');
+    return fill(loadTemplate('walker')[HELD.get(payload.tool_name)], { agent_id: payload.tool_use_id }) || null;
   } catch {
     return null;
   }
@@ -103,12 +110,12 @@ function reason() {
 
 function main() {
   const payload = read();
-  if (!payload || payload.agent_type !== WALKER || !DISPATCH_TOOLS.has(payload.tool_name)) return;
+  if (!payload || payload.agent_type !== WALKER || !HELD.has(payload.tool_name)) return;
   try {
     record(payload);
   } catch { /* fail closed: the refusal below goes out whatever happened here */ }
   const decision = { hookEventName: 'PreToolUse', permissionDecision: 'deny' };
-  const text = reason();
+  const text = reason(payload);
   if (text) decision.permissionDecisionReason = text;
   process.stdout.write(`${JSON.stringify({ hookSpecificOutput: decision })}\n`);
 }

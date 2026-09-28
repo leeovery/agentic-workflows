@@ -47,14 +47,19 @@ is under DISPATCHES.
 
 === dispatches ===
 
-DISPATCHES — every agent the walker dispatched, in the order it made the
-calls, recorded whole by a harness hook at the moment of each call: the
-agent, whether it ran in the background, and the prompt it carried,
-uncut. The hook held each one — recorded it and refused it — so no agent
-ran; what stood in for each is in the recorded actions and the walk.
+DISPATCHES — every agent the walker dispatched, and every send that
+continued one, in the order it made the calls, recorded whole by a
+harness hook at the moment of each call. A dispatch shows its agent,
+whether it ran in the background, the agent id its refusal gave the
+walker, and the prompt it carried, uncut. A send shows the id it went
+to, the dispatch that id was given to, and the message it carried,
+uncut. The hook held each one — recorded it and refused it — so no
+agent ran and no message was delivered; what stood in for each is in
+the recorded actions and the walk.
 
 A claim about what a dispatch carried — which inputs, which paths, the
-background flag — is settled here, never by the walker's account of it.
+background flag — or about which agent a later round continued is
+settled here, never by the walker's account of it.
 
 {{dispatches}}
 

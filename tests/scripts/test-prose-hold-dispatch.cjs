@@ -1,8 +1,9 @@
 'use strict';
 
-// Every dispatch a walker makes is held: recorded whole and refused
-// before any agent starts, so a case can claim what a dispatch carried
-// and no real agent ever runs inside a world. Two failures matter above
+// Every dispatch a walker makes is held, and every send continuing one:
+// recorded whole and refused before any agent starts, so a case can claim
+// what a dispatch carried and which agent a later round continued, and no
+// real agent ever runs inside a world. Two failures matter above
 // the rest — a walker's call let through, and an orchestrator's call
 // blocked (which would stop every run before it began) — so both are
 // pinned here, along with how the hold finds a world the payload never
@@ -18,7 +19,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const worlds = require('../prose/lib/worlds.cjs');
-const { loadTemplate } = require('../prose/lib/prompts.cjs');
+const { loadTemplate, fill } = require('../prose/lib/prompts.cjs');
 
 const HOOK = path.join(__dirname, '..', 'prose', 'lib', 'hold-dispatch.cjs');
 
@@ -64,6 +65,22 @@ function dispatch({ id = 'toolu_01', agent = 'workflow-specification-review-inpu
   };
 }
 
+/** A walker's send continuing the agent a held dispatch was given `to`. */
+function send({ id = 'toolu_02', to = 'toolu_01', message, type = 'prose-walker' } = {}) {
+  return {
+    hook_event_name: 'PreToolUse',
+    tool_name: 'SendMessage',
+    agent_type: type,
+    agent_id: 'a1b2c3',
+    tool_use_id: id,
+    tool_input: {
+      to,
+      summary: 'Retry round for pay-1-2',
+      message: message === undefined ? `Retry in ${world}.\nNext attempt: key the guard on the intent` : message,
+    },
+  };
+}
+
 function denial(out) {
   assert.equal(out.status, 0, `the hook exits 0 (stderr: ${out.stderr})`);
   const parsed = JSON.parse(out.stdout);
@@ -99,8 +116,14 @@ describe('the hold — a walker\'s dispatch', () => {
     assert.equal(decision.hookEventName, 'PreToolUse');
     assert.equal(decision.permissionDecision, 'deny');
     const reason = loadTemplate('walker')['dispatch-held'];
-    assert.ok(reason && reason.length > 0, 'the template carries the section');
-    assert.equal(decision.permissionDecisionReason, reason);
+    assert.ok(reason && reason.includes('{{agent_id}}'), 'the template carries the section, with a slot for the id');
+    assert.equal(decision.permissionDecisionReason, fill(reason, { agent_id: 'toolu_01' }));
+  });
+
+  it('names its own tool_use_id as the held agent\'s id, for a later send to address', () => {
+    const decision = denial(fire(dispatch({ id: 'toolu_01AJX9Jn44LMhWCo6UDu8gcF' })));
+    assert.ok(decision.permissionDecisionReason.includes('`toolu_01AJX9Jn44LMhWCo6UDu8gcF`'));
+    assert.ok(!decision.permissionDecisionReason.includes('{{'), 'no slot left unfilled');
   });
 
   it('holds the Task alias the same way', () => {
@@ -171,7 +194,48 @@ describe('the hold — a walker\'s dispatch', () => {
   });
 });
 
+describe('the hold — a walker\'s send', () => {
+  it('is refused with the send-held reason from the walker template', () => {
+    const decision = denial(fire(send()));
+    assert.equal(decision.permissionDecision, 'deny');
+    const reason = loadTemplate('walker')['send-held'];
+    assert.ok(reason && reason.length > 0, 'the template carries the section');
+    assert.equal(decision.permissionDecisionReason, reason);
+  });
+
+  it('records the send whole beside the dispatch it continues, and a held SendMessage row in order', () => {
+    fire(dispatch({ id: 'toolu_01' }));
+    const message = `Retry in ${world}.\n\n${'next attempt '.repeat(2000)}\nlast line`;
+    const payload = send({ id: 'toolu_02', to: 'toolu_01', message });
+    fire(payload);
+    assert.deepEqual(records().map((r) => r.tool_use_id), ['toolu_01', 'toolu_02']);
+    assert.deepEqual(records()[1], { tool_use_id: 'toolu_02', tool_name: 'SendMessage', tool_input: payload.tool_input });
+    const log = fs.readFileSync(path.join(world, worlds.ACTION_LOG), 'utf8').split('\n');
+    assert.equal(log[1], 'PreToolUse\tSendMessage\ttoolu_01 — Retry round for pay-1-2\theld\ttoolu_02');
+  });
+
+  it('resolves the world from the walker\'s transcript when the message names none', () => {
+    writeTranscript('a1b2c3', `Project directory — your cwd for EVERY command: ${world}`);
+    denial(fire(send({ message: 'Next attempt: key the guard on the intent' })));
+    assert.equal(records().length, 1);
+    assert.equal(rows()[0].tool, 'SendMessage');
+  });
+
+  it('still refuses a send whose world it cannot find — fail closed', () => {
+    const decision = denial(fire(send({ message: 'no world here' })));
+    assert.equal(decision.permissionDecision, 'deny');
+    assert.deepEqual(fs.readdirSync(world), []);
+  });
+});
+
 describe('the hold — everyone else\'s calls', () => {
+  it('never touches the orchestrator\'s own send: no output, nothing recorded', () => {
+    const out = fire(send({ type: 'prose-orchestrator', to: 'prose-walker' }));
+    assert.equal(out.status, 0);
+    assert.equal(out.stdout, '');
+    assert.deepEqual(fs.readdirSync(world), []);
+  });
+
   it('never touches the orchestrator dispatching a walker: no output, nothing recorded', () => {
     const out = fire(dispatch({ type: 'prose-orchestrator', agent: 'prose-walker' }));
     assert.equal(out.status, 0);

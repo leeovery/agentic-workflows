@@ -524,12 +524,21 @@ describe('declaration validation', () => {
     assert.deepEqual(invariants.declarationErrors({ calls_in_order: ['boot', 'dispatch:reviewer'] }), []);
   });
 
+  it('rejects send: tokens outside calls_in_order, and one with no agent', () => {
+    for (const key of ['calls_include', 'calls_exclude']) {
+      assert.match(invariants.declarationErrors({ [key]: ['send:executor'] })[0], /cannot carry send: tokens — a send is claimed through dispatches/);
+    }
+    assert.match(invariants.declarationErrors({ calls_in_order: ['boot', 'send:'] })[0], /send: token needs an agent/);
+    assert.deepEqual(invariants.declarationErrors({ calls_in_order: ['dispatch:executor', 'send:executor'] }), []);
+  });
+
   it('accepts a well-formed dispatches declaration', () => {
     assert.deepEqual(invariants.declarationErrors({
       dispatches: [
         { agent: 'a' },
         { agent: 'b', nth: 2, count: 2, carries: ['x'], lacks: ['y'] },
         { agent: 'c', count: 0 },
+        { agent: 'd', send: true, count: 1, carries: ['Next attempt'] },
       ],
     }), []);
   });
@@ -541,6 +550,7 @@ describe('declaration validation', () => {
     assert.match(errorsOf(['a'])[0], /dispatches\[0\] must be an object/);
     assert.match(errorsOf([{}])[0], /dispatches\[0\] needs an agent/);
     assert.match(errorsOf([{ agent: 'a', agnet: 'b' }])[0], /unknown key "agnet"/);
+    assert.match(errorsOf([{ agent: 'a', send: 'yes' }])[0], /dispatches\[0\] send must be true or false/);
     assert.match(errorsOf([{ agent: 'a', nth: 0 }])[0], /nth must be a whole number from 1/);
     assert.match(errorsOf([{ agent: 'a', count: 1.5 }])[0], /count must be a whole number from 0/);
     assert.match(errorsOf([{ agent: 'a', carries: 'x' }])[0], /carries must be a non-empty array/);
@@ -625,6 +635,71 @@ describe('dispatches — what a held dispatch carried', () => {
   });
 });
 
+describe('dispatches — the sends that continued an agent', () => {
+  // A held dispatch's id is its tool_use_id; a send continues the agent
+  // whose dispatch was given the id it went to.
+  const EXECUTOR = 'workflow-implementation-task-executor';
+  const dispatched = (id, agent = EXECUTOR) => ({
+    tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt: 'task content' },
+  });
+  const sent = (id, to, message) => ({
+    tool_use_id: id, tool_name: 'SendMessage', tool_input: { to, summary: 'retry', message },
+  });
+  const run = (records, dispatches) => invariants.check([], { dispatches }, records)[0];
+
+  it('passes one fresh dispatch continued once, by the id it was given', () => {
+    const records = [dispatched('toolu_d1'), sent('toolu_s1', 'toolu_d1', 'Next attempt: key the guard on the intent')];
+    const result = run(records, [
+      { agent: EXECUTOR, count: 1 },
+      { agent: EXECUTOR, send: true, count: 1, carries: ['Next attempt'] },
+    ]);
+    assert.equal(result.ok, true, result.detail);
+    assert.match(result.detail, /sends to workflow-implementation-task-executor \(1 send\)/);
+  });
+
+  it('fails a retry made as a second fresh dispatch — it is no send', () => {
+    const result = run([dispatched('toolu_d1'), dispatched('toolu_d2')], [
+      { agent: EXECUTOR, count: 1 },
+      { agent: EXECUTOR, send: true, count: 1 },
+    ]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /workflow-implementation-task-executor was dispatched 2 times, not 1; workflow-implementation-task-executor was sent to 0 times, not 1/);
+  });
+
+  it('attributes a send to no agent when no dispatch was given the id it went to', () => {
+    const records = [dispatched('toolu_d1'), sent('toolu_s1', EXECUTOR, 'Next attempt')];
+    const result = run(records, [{ agent: EXECUTOR, send: true }]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /workflow-implementation-task-executor was never sent to/);
+  });
+
+  it('attributes a send to the agent its target dispatch named, never another', () => {
+    const records = [dispatched('toolu_d1'), dispatched('toolu_r1', 'reviewer'), sent('toolu_s1', 'toolu_r1', 'x')];
+    assert.equal(run(records, [{ agent: EXECUTOR, send: true, count: 0 }]).ok, true);
+    assert.equal(run(records, [{ agent: 'reviewer', send: true, count: 1 }]).ok, true);
+  });
+
+  it('reads carries and lacks against the message a send carried, nth picking one', () => {
+    const records = [
+      dispatched('toolu_d1'),
+      sent('toolu_s1', 'toolu_d1', 'Next attempt: A'),
+      sent('toolu_s2', 'toolu_d1', 'review notes'),
+    ];
+    const every = run(records, [{ agent: EXECUTOR, send: true, carries: ['Next attempt'] }]);
+    assert.equal(every.ok, false);
+    assert.match(every.detail, /send #2 to workflow-implementation-task-executor does not carry: Next attempt/);
+    assert.equal(run(records, [{ agent: EXECUTOR, send: true, nth: 1, carries: ['Next attempt'] }]).ok, true);
+    const lacking = run(records, [{ agent: EXECUTOR, send: true, nth: 2, lacks: ['review notes'] }]);
+    assert.match(lacking.detail, /send #2 to workflow-implementation-task-executor carries what it must not: review notes/);
+    assert.match(run(records, [{ agent: EXECUTOR, send: true, nth: 3 }]).detail, /sent to 2 times — there is no send #3/);
+  });
+
+  it('never counts a send as a dispatch of the agent it continues', () => {
+    const records = [dispatched('toolu_d1'), sent('toolu_s1', 'toolu_d1', 'task content')];
+    assert.equal(run(records, [{ agent: EXECUTOR, count: 1, carries: ['task content'] }]).ok, true);
+  });
+});
+
 describe('calls_in_order — dispatch: tokens', () => {
   // The hold's ordering row: an Agent row at PreToolUse whose detail is
   // `<subagent_type> — <description>`.
@@ -658,6 +733,43 @@ describe('calls_in_order — dispatch: tokens', () => {
   it('never lets a command naming the agent stand in for its dispatch', () => {
     const rows = [bash('cat .claude/agents/traceability.md'), bash(`${ENGINE} boot`)];
     assert.equal(invariants.check(rows, { calls_in_order: ['dispatch:traceability', 'boot'] })[0].ok, false);
+  });
+});
+
+describe('calls_in_order — send: tokens', () => {
+  // The hold's rows: a dispatch's `<subagent_type> — <description>` and a
+  // send's `<to> — <summary>`, each closing on its own tool_use_id; the
+  // records say which dispatch was given the id a send went to.
+  const dispatchRow = (agent, id) => ({ event: 'PreToolUse', tool: 'Agent', detail: `${agent} — run`, outcome: 'held', output: id });
+  const sendRow = (to, id) => ({ event: 'PreToolUse', tool: 'SendMessage', detail: `${to} — retry`, outcome: 'held', output: id });
+  const records = [
+    { tool_use_id: 'toolu_d1', tool_name: 'Agent', tool_input: { subagent_type: 'executor', prompt: 'p' } },
+    { tool_use_id: 'toolu_s1', tool_name: 'SendMessage', tool_input: { to: 'toolu_d1', message: 'm' } },
+  ];
+  const GATE = `${ENGINE} render executor-block-gate pay.implementation.pay --result failed`;
+
+  it('orders the send continuing an agent against the calls around it', () => {
+    const rows = [dispatchRow('executor', 'toolu_d1'), bash(GATE), sendRow('toolu_d1', 'toolu_s1')];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['dispatch:executor', 'executor-block-gate', 'send:executor'],
+    }, records);
+    assert.equal(result.ok, true, result.detail);
+  });
+
+  it('never lets a fresh dispatch stand in for the send, nor a send for a dispatch', () => {
+    const redispatched = [dispatchRow('executor', 'toolu_d1'), bash(GATE), dispatchRow('executor', 'toolu_d2')];
+    const [result] = invariants.check(redispatched, {
+      calls_in_order: ['executor-block-gate', 'send:executor'],
+    }, records);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /"send:executor" never ran after "executor-block-gate"/);
+    const sentOnly = [bash(GATE), sendRow('toolu_d1', 'toolu_s1')];
+    assert.equal(invariants.check(sentOnly, { calls_in_order: ['executor-block-gate', 'dispatch:executor'] }, records)[0].ok, false);
+  });
+
+  it('matches no agent for a send to an id no dispatch was given', () => {
+    const rows = [bash(GATE), sendRow('executor', 'toolu_s1')];
+    assert.equal(invariants.check(rows, { calls_in_order: ['executor-block-gate', 'send:executor'] }, records)[0].ok, false);
   });
 });
 

@@ -58,18 +58,20 @@ describe('prose-test corpus', () => {
     }
   });
 
-  it('the walker can dispatch, and every dispatch it makes is held', () => {
-    // A walker with the Agent tool and no hold would start real agents
-    // inside a world; a walker without the tool never composes a dispatch
-    // for a case to claim. The definition carries both or neither works.
+  it('the walker can dispatch and continue, and every dispatch and send it makes is held', () => {
+    // A walker with the Agent or SendMessage tool and no hold would start
+    // or resume real agents inside a world; a walker without them never
+    // composes a dispatch or a continuation for a case to claim. The
+    // definition carries both or neither works.
     const walker = fs.readFileSync(path.join(cases.ROOT, '.claude/agents/prose-walker.md'), 'utf8');
     const front = walker.split(/^---$/m)[1] || '';
-    const tools = (front.match(/^tools:\s*(.+)$/m) || [])[1] || '';
-    assert.ok(tools.split(',').map((t) => t.trim()).includes('Agent'), 'prose-walker declares the Agent tool');
+    const tools = ((front.match(/^tools:\s*(.+)$/m) || [])[1] || '').split(',').map((t) => t.trim());
+    assert.ok(tools.includes('Agent'), 'prose-walker declares the Agent tool');
+    assert.ok(tools.includes('SendMessage'), 'prose-walker declares the SendMessage tool');
     const pre = front.slice(front.indexOf('  PreToolUse:'), front.indexOf('  PostToolUse:'));
     assert.match(pre,
-      /- matcher: "Agent\|Task"\n\s+hooks:\n\s+- type: command\n\s+command: "node \\"\$CLAUDE_PROJECT_DIR\/tests\/prose\/lib\/hold-dispatch\.cjs\\""/,
-      'prose-walker holds every Agent|Task call with lib/hold-dispatch.cjs at PreToolUse');
+      /- matcher: "Agent\|Task\|SendMessage"\n\s+hooks:\n\s+- type: command\n\s+command: "node \\"\$CLAUDE_PROJECT_DIR\/tests\/prose\/lib\/hold-dispatch\.cjs\\""/,
+      'prose-walker holds every Agent|Task|SendMessage call with lib/hold-dispatch.cjs at PreToolUse');
   });
 
   it('every state recipe loads and exports build()', () => {

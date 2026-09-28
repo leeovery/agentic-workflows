@@ -66,8 +66,9 @@ const ACTION_LOG = '.walk-actions.log';
 // returns one final message; the walk happens across dozens of turns.
 const WALK_LOG = '.walk-transcript.log';
 // Written by the walker's dispatch hold (lib/hold-dispatch.cjs): every
-// Agent call the walker made, whole, one JSON line each — what each
-// dispatch carried, which the invariants and the asserter read.
+// Agent and SendMessage call the walker made, whole, one JSON line each —
+// what each dispatch and send carried, which the invariants and the
+// asserter read.
 const DISPATCH_LOG = '.walk-dispatches.jsonl';
 // The asserter's prompt, written by `run.cjs assert` into the world so the
 // orchestrator hands over a path, never the text — a 100 KB record relayed
@@ -792,8 +793,8 @@ function readActionLog(worldDir) {
 }
 
 /**
- * Every dispatch the walker made, in the order it made them — each
- * `{tool_use_id, tool_name, tool_input}` exactly as the hold recorded it.
+ * Every dispatch and send the walker made, in the order it made them —
+ * each `{tool_use_id, tool_name, tool_input}` exactly as the hold recorded it.
  * A line that does not parse is a record that cannot be trusted, and it
  * throws rather than reading as a dispatch that never happened.
  */

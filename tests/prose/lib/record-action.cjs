@@ -37,12 +37,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { fromTranscript, worldIn } = require('./transcripts.cjs');
+const { dispatchRow, fromTranscript, worldIn } = require('./transcripts.cjs');
 
 const LOG = '.walk-actions.log';
 const WALK = '.walk-transcript.log';
 // Written by the dispatch hold (lib/hold-dispatch.cjs), one line per
-// Agent call it held — read here to find a dispatch it never saw.
+// Agent or SendMessage call it held — read here to find one it never saw.
 const DISPATCHES = '.walk-dispatches.jsonl';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 // These caps exist to protect the asserter's prompt, never to save disk —
@@ -166,25 +166,29 @@ function heldIds(world) {
 }
 
 /**
- * The backstop behind the dispatch hold. Every Agent call a walker makes
- * is meant to be recorded and refused by lib/hold-dispatch.cjs before it
- * runs; one the transcript holds with no held record is a call that hook
- * never saw — a real agent may have run inside the world — or one it
- * could not record. Either way the walk cannot be judged: one UNHELD row
- * per call says so, and `run.cjs assert` refuses a world carrying any.
- * The row carries what came back for the call, which is where a harness
- * that refused the call before any hook ran says why.
+ * The backstop behind the dispatch hold. Every Agent or SendMessage call
+ * a walker makes is meant to be recorded and refused by
+ * lib/hold-dispatch.cjs before it runs; one the transcript holds with no
+ * held record is a call that hook never saw — a real agent may have run
+ * inside the world — or one it could not record. Either way the walk
+ * cannot be judged: one UNHELD row per call says so, and `run.cjs assert`
+ * refuses a world carrying any. The row carries what came back for the
+ * call, which is where a harness that refused the call before any hook
+ * ran says why.
  */
 function writeUnheld(world, dispatches) {
   if (!dispatches || !dispatches.length) return;
   const held = heldIds(world);
-  const rows = dispatches.filter((d) => !held.has(d.id)).map((d) => [
-    'UNHELD',
-    'Agent',
-    flatten(`${d.input.subagent_type || '-'} — ${d.input.description || ''}`.split(world).join('.'), MAX_DETAIL),
-    d.id,
-    flatten(d.result === null ? 'no result recorded' : d.result, MAX_OUTPUT).split(world).join('.'),
-  ].join('\t'));
+  const rows = dispatches.filter((d) => !held.has(d.id)).map((d) => {
+    const { tool, detail } = dispatchRow(d.name, d.input);
+    return [
+      'UNHELD',
+      tool,
+      flatten(detail.split(world).join('.'), MAX_DETAIL),
+      d.id,
+      flatten(d.result === null ? 'no result recorded' : d.result, MAX_OUTPUT).split(world).join('.'),
+    ].join('\t');
+  });
   if (!rows.length) return;
   try {
     fs.appendFileSync(path.join(world, LOG), `${rows.join('\n')}\n`);

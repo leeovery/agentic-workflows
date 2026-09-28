@@ -21,7 +21,8 @@
 //     "calls_exclude": ["task start"],  // these must not have
 //     "calls_in_order": ["a", "b"],     // and these in this sequence
 //     "dispatches": [                   // what the walker's dispatches carried
-//       { "agent": "x", "nth": 2, "count": 2, "carries": ["p"], "lacks": ["q"] }
+//       { "agent": "x", "nth": 2, "count": 2, "carries": ["p"], "lacks": ["q"] },
+//       { "agent": "x", "send": true, "count": 1 }    // and the sends continuing x
 //     ]
 //   }
 //
@@ -32,6 +33,12 @@
 // `lacks` hold for every one of them, or for the `nth` (1-based) alone
 // when it is given. A declared dispatch that never happened fails: the
 // claim is about the dispatch, so there is always something to examine.
+//
+// With `"send": true` the entry claims the sends that continued the agent
+// instead, and `carries`/`lacks` read each send's message. A send is the
+// agent's when it went to the id a held dispatch of that agent was given
+// (its tool_use_id, which the hold's refusal names) — a send to any other
+// id continues nobody, so it satisfies no claim.
 //
 // A calls_in_order entry starting `write:` is a token, not a command: it
 // stands for the path's FIRST recorded write, which must sit at this
@@ -46,7 +53,10 @@
 // dispatch of the agent it names — a dispatch ordered against the calls
 // around it. Next, not first: an agent dispatched once per review cycle
 // takes one token per cycle. Its presence is claimed through
-// `dispatches`, so it too is rejected outside calls_in_order.
+// `dispatches`, so it too is rejected outside calls_in_order. A `send:`
+// token is its twin for the NEXT held send continuing the agent it names,
+// attributed as a dispatches send claim is — a dispatch never satisfies a
+// send: token, nor a send a dispatch: token.
 //
 // A check that could not have failed reports N/A rather than PASS. A
 // green tick for "there was nothing to examine" is how a corpus comes to
@@ -55,6 +65,8 @@
 // Deliberately not a pinned call sequence. A recorded-and-replayed
 // sequence would freeze whatever the walker happened to do, which is how
 // a test starts certifying broken prose instead of catching it.
+
+const { SEND } = require('./transcripts.cjs');
 
 const ENGINE_CALL = /\/(engine|gateway)\.cjs\b/;
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -256,6 +268,7 @@ function callsExclude(rows, forbidden) {
 
 const WRITE_TOKEN = 'write:';
 const DISPATCH_TOKEN = 'dispatch:';
+const SEND_TOKEN = 'send:';
 
 /**
  * The agent a held dispatch row names. The hold writes its detail as
@@ -266,15 +279,21 @@ function heldAgent(row) {
   return row.tool === 'Agent' ? row.detail.split(' — ')[0] : null;
 }
 
+/** The agent each held dispatch's id was given to, by that id. */
+function agentsById(records) {
+  return new Map(records
+    .filter((r) => r.tool_name !== SEND)
+    .map((r) => [r.tool_use_id, (r.tool_input || {}).subagent_type]));
+}
+
 /**
- * Order carries meaning a presence check cannot: a gate read after the arm
- * it was supposed to select proves the arm was chosen some other way. The
- * declared entries must appear as a subsequence — other actions may fall
- * between them, but never out of sequence. A command entry matches a Bash
- * call. A `write:<path>` token stands for the path's first recorded write:
- * later edits to the same file never satisfy it, so a file created out of
- * order fails however many times it is touched afterwards.
+ * The agent a held send row continues. The hold writes a send's detail as
+ * `<to> — <summary>`, and the id it went to was given to one dispatch.
  */
+function sentAgent(row, agents) {
+  return row.tool === SEND ? agents.get(row.detail.split(' — ')[0]) ?? null : null;
+}
+
 /**
  * The walk's actions as an ordered list of statements. A walker joins two
  * calls the prose prescribes separately with `&&` readily enough, and they
@@ -293,8 +312,20 @@ function statements(rows) {
   return out;
 }
 
-function callsInOrder(rows, sequence) {
+/**
+ * Order carries meaning a presence check cannot: a gate read after the arm
+ * it was supposed to select proves the arm was chosen some other way. The
+ * declared entries must appear as a subsequence — other actions may fall
+ * between them, but never out of sequence. A command entry matches a Bash
+ * call. A `write:<path>` token stands for the path's first recorded write:
+ * later edits to the same file never satisfy it, so a file created out of
+ * order fails however many times it is touched afterwards. A
+ * `dispatch:<agent>` token stands for the agent's next held dispatch, and
+ * a `send:<agent>` token for the next held send continuing it.
+ */
+function callsInOrder(rows, sequence, records) {
   const events = statements(rows);
+  const agents = agentsById(records);
   let at = 0;
   for (const wanted of sequence) {
     let found;
@@ -311,6 +342,9 @@ function callsInOrder(rows, sequence) {
     } else if (wanted.startsWith(DISPATCH_TOKEN)) {
       const agent = wanted.slice(DISPATCH_TOKEN.length).trim();
       found = events.findIndex((r, i) => i >= at && heldAgent(r) === agent);
+    } else if (wanted.startsWith(SEND_TOKEN)) {
+      const agent = wanted.slice(SEND_TOKEN.length).trim();
+      found = events.findIndex((r, i) => i >= at && sentAgent(r, agents) === agent);
     } else {
       found = events.findIndex((r, i) => i >= at && r.tool === 'Bash' && ranMatch(r.detail, wanted));
     }
@@ -330,43 +364,62 @@ function callsInOrder(rows, sequence) {
 
 const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 
+// What a dispatches claim reads, by its kind: the agent's dispatches and
+// their prompts, or the sends continuing it and their messages.
+const KINDS = {
+  dispatch: { verb: 'dispatched', one: 'dispatch', many: 'dispatches', body: 'prompt' },
+  send: { verb: 'sent to', one: 'send', many: 'sends', body: 'message' },
+};
+
+/** A claimed call as the check's detail names it — `x #2`, `send #2 to x`, `sends to x`. */
+function claimed(w, n) {
+  if (w.send) return `send${n ? ` #${n}` : 's'} to ${w.agent}`;
+  return `${w.agent}${n ? ` #${n}` : ''}`;
+}
+
 /**
- * What the walker's dispatches carried, against what the case declares.
- * `records` are the hold's own — each call whole, the prompt uncapped —
- * so a needle absent from one is absent from what the agent was given.
+ * What the walker's dispatches and sends carried, against what the case
+ * declares. `records` are the hold's own — each call whole, the prompt or
+ * message uncapped — so a needle absent from one is absent from what the
+ * agent was given.
  */
 function dispatchesCheck(records, wanted) {
+  const agents = agentsById(records);
   const failures = [];
   const held = [];
   for (const w of wanted) {
-    const mine = records.filter((r) => (r.tool_input || {}).subagent_type === w.agent);
+    const kind = w.send ? KINDS.send : KINDS.dispatch;
+    const mine = records.filter((r) => {
+      const input = r.tool_input || {};
+      return w.send ? r.tool_name === SEND && agents.get(input.to) === w.agent : input.subagent_type === w.agent;
+    });
     if (w.count !== undefined && mine.length !== w.count) {
-      failures.push(`${w.agent} was dispatched ${plural(mine.length, 'time')}, not ${w.count}`);
+      failures.push(`${w.agent} was ${kind.verb} ${plural(mine.length, 'time')}, not ${w.count}`);
       continue;
     }
     if (w.count === 0) {
-      held.push(`${w.agent} never dispatched`);
+      held.push(`${w.agent} never ${kind.verb}`);
       continue;
     }
     if (!mine.length) {
-      failures.push(`${w.agent} was never dispatched`);
+      failures.push(`${w.agent} was never ${kind.verb}`);
       continue;
     }
     if (w.nth && mine.length < w.nth) {
-      failures.push(`${w.agent} was dispatched ${plural(mine.length, 'time')} — there is no dispatch #${w.nth}`);
+      failures.push(`${w.agent} was ${kind.verb} ${plural(mine.length, 'time')} — there is no ${kind.one} #${w.nth}`);
       continue;
     }
     const targets = w.nth ? [[w.nth, mine[w.nth - 1]]] : mine.map((r, i) => [i + 1, r]);
     const before = failures.length;
     for (const [n, r] of targets) {
-      const prompt = String((r.tool_input || {}).prompt || '');
-      const missing = (w.carries || []).filter((s) => !prompt.includes(s));
-      const present = (w.lacks || []).filter((s) => prompt.includes(s));
-      if (missing.length) failures.push(`${w.agent} #${n} does not carry: ${missing.join(', ')}`);
-      if (present.length) failures.push(`${w.agent} #${n} carries what it must not: ${present.join(', ')}`);
+      const body = String((r.tool_input || {})[kind.body] || '');
+      const missing = (w.carries || []).filter((s) => !body.includes(s));
+      const present = (w.lacks || []).filter((s) => body.includes(s));
+      if (missing.length) failures.push(`${claimed(w, n)} does not carry: ${missing.join(', ')}`);
+      if (present.length) failures.push(`${claimed(w, n)} carries what it must not: ${present.join(', ')}`);
     }
     if (failures.length === before) {
-      held.push(`${w.agent}${w.nth ? ` #${w.nth}` : ''} (${plural(mine.length, 'dispatch', 'dispatches')})`);
+      held.push(`${claimed(w, w.nth)} (${plural(mine.length, kind.one, kind.many)})`);
     }
   }
   return failures.length
@@ -392,7 +445,7 @@ function check(rows, declared, dispatches = []) {
     results.push({ name: 'calls_exclude', ...callsExclude(rows, declared.calls_exclude) });
   }
   if (declared.calls_in_order && declared.calls_in_order.length) {
-    results.push({ name: 'calls_in_order', ...callsInOrder(rows, declared.calls_in_order) });
+    results.push({ name: 'calls_in_order', ...callsInOrder(rows, declared.calls_in_order, dispatches) });
   }
   if (declared.dispatches && declared.dispatches.length) {
     results.push({ name: 'dispatches', ...dispatchesCheck(dispatches, declared.dispatches) });
@@ -440,21 +493,24 @@ function declarationErrors(declared) {
     if (key !== 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN))) {
       errors.push(`${key} cannot carry write: tokens — a write is ordered, never merely present; use calls_in_order`);
     }
-    if (key !== 'calls_in_order' && value.some((v) => v.startsWith(DISPATCH_TOKEN))) {
-      errors.push(`${key} cannot carry dispatch: tokens — a dispatch is claimed through dispatches and ordered through calls_in_order`);
-    }
     if (key === 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN) && !v.slice(WRITE_TOKEN.length).trim())) {
       errors.push('a write: token needs a path');
     }
-    if (key === 'calls_in_order' && value.some((v) => v.startsWith(DISPATCH_TOKEN) && !v.slice(DISPATCH_TOKEN.length).trim())) {
-      errors.push('a dispatch: token needs an agent');
+    for (const token of [DISPATCH_TOKEN, SEND_TOKEN]) {
+      const call = token.slice(0, -1);
+      if (key !== 'calls_in_order' && value.some((v) => v.startsWith(token))) {
+        errors.push(`${key} cannot carry ${token} tokens — a ${call} is claimed through dispatches and ordered through calls_in_order`);
+      }
+      if (key === 'calls_in_order' && value.some((v) => v.startsWith(token) && !v.slice(token.length).trim())) {
+        errors.push(`a ${token} token needs an agent`);
+      }
     }
   }
   if ('dispatches' in declared) errors.push(...dispatchesErrors(declared.dispatches));
   return errors;
 }
 
-const DISPATCH_KEYS = ['agent', 'nth', 'count', 'carries', 'lacks'];
+const DISPATCH_KEYS = ['agent', 'send', 'nth', 'count', 'carries', 'lacks'];
 const isCount = (v, min) => Number.isInteger(v) && v >= min;
 const isNeedles = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string' && s.trim());
 
@@ -471,6 +527,7 @@ function dispatchesErrors(value) {
       if (!DISPATCH_KEYS.includes(key)) errors.push(`${at} has unknown key "${key}" (known: ${DISPATCH_KEYS.join(', ')})`);
     }
     if (typeof d.agent !== 'string' || !d.agent.trim()) errors.push(`${at} needs an agent — the subagent_type the prose dispatches`);
+    if ('send' in d && typeof d.send !== 'boolean') errors.push(`${at} send must be true or false`);
     if ('nth' in d && !isCount(d.nth, 1)) errors.push(`${at} nth must be a whole number from 1`);
     if ('count' in d && !isCount(d.count, 0)) errors.push(`${at} count must be a whole number from 0`);
     for (const key of ['carries', 'lacks']) {
