@@ -717,16 +717,18 @@ describe('assert: every dispatch held, and what each carried reaches the asserte
     try {
       const prompt = `Specification: ${dir}/.workflows/pay/specification/pay/specification.md\n\n`
         + `Source material:\n- .workflows/pay/discussion/pay.md\n${'padding '.repeat(2000)}\nfinal line`;
-      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG), `${JSON.stringify({
-        tool_use_id: 'toolu_1',
-        tool_name: 'Agent',
-        tool_input: { subagent_type: 'workflow-x', description: 'review', prompt, run_in_background: true },
-      })}\n`);
+      const dispatch = (id, input) => `${JSON.stringify({ tool_use_id: id, tool_name: 'Agent', tool_input: input })}\n`;
+      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG),
+        dispatch('toolu_1', { subagent_type: 'workflow-x', description: 'review', prompt, run_in_background: true })
+        + dispatch('toolu_2', { subagent_type: 'workflow-y', description: 'grapher', prompt: 'p' })
+        + dispatch('toolu_3', { subagent_type: 'workflow-z', description: 'finder', prompt: 'p', run_in_background: false }));
       assert.ok(!statusLines(dir).some((l) => l.includes(worlds.DISPATCH_LOG)), 'the record is never world state git sees');
       const { prompt_file: file } = JSON.parse(assertOn(dir));
       const text = fs.readFileSync(file, 'utf8');
       assert.match(text, /DISPATCHES — every agent the walker dispatched/);
       assert.match(text, /1\. workflow-x — review \(background: true\)/);
+      assert.match(text, /2\. workflow-y — grapher \(background: true\)/, 'a dispatch naming no mode runs in the background');
+      assert.match(text, /3\. workflow-z — finder \(background: false\)/);
       for (const line of prompt.split(dir).join('.').split('\n').filter(Boolean)) {
         assert.ok(text.includes(line), `the prompt line survives whole: ${line.slice(0, 60)}`);
       }
