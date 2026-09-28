@@ -61,9 +61,9 @@ When you read these, surface the ambient nudge — see [harvest-nudge.md](harves
 
 Discovery makes real decisions — and records them **plainly, as decisions**. They are soft not because of how they are worded but because of **where they live**: firmness is conferred by position on the gradient — discovery (soft) → discussion (hardened) → spec (golden) → plan. Later phases infer this from the artifact's origin; you don't mark it.
 
-So **don't hedge.** Make the call, word it naturally, let position carry the softness. Don't weave "leaning…", "maybe…", "we could…" through the record — that buries the decision you actually reached. The per-topic discussion is where these harden via convergence, so nothing trustworthy is bypassed: discovery explores substance freely, and discussion still ratifies.
+So **don't hedge.** Make the call, word it naturally, let position carry the softness. Don't weave "leaning…", "maybe…", "we could…" through a decision you reached — that buries it. The per-topic discussion is where these harden via convergence, so nothing trustworthy is bypassed: discovery explores substance freely, and discussion still ratifies.
 
-**A decision is what the conversation settled.** Record it unhedged — and record nothing else as one: a point the user left open (*"I suspect…"*, *"I don't know…"*) stays an open question, and a suggestion of yours the user never took up is not a decision.
+**A decision is what the conversation settled.** Record it unhedged — and record nothing else as one. The user's own uncertainty is substance, not hedging to strip: a point they left open (*"I suspect we should…"*, *"I don't know…"*) stays an open question, its lean recorded as theirs, and a suggestion of yours they never took up is not a decision.
 
 ## F. Worked Examples
 
