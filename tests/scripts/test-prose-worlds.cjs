@@ -742,6 +742,13 @@ describe('stop: a finished walk whose stop hook never fired', () => {
         entry('assistant', [{ type: 'text', text: 'done' }], 'end_turn'),
       );
       assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /is not a walk of/);
+
+      s.write(
+        entry('user', 'Walk the prose in /tmp/prose-world-elsewhere.'),
+        entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: `ls ${s.dir}` } }], 'tool_use'),
+        entry('assistant', [{ type: 'text', text: 'done' }], 'end_turn'),
+      );
+      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /is not a walk of/);
       assert.ok(!worlds.readActionRows(s.dir).some((r) => r.event === 'SubagentStop'), 'a refusal wrote a stop');
     } finally {
       s.cleanup();

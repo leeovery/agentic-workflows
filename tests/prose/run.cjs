@@ -245,7 +245,9 @@ function cmdStop(argv) {
   const transcript = flag(argv, '--transcript') || (agent ? findTranscript(agent)
     : die('stop needs the walker: --agent <id> or --transcript <file>'));
   const raw = fs.readFileSync(transcript, 'utf8');
-  if (!raw.includes(dir)) die(`${transcript} is not a walk of ${dir}`);
+  // The walker's prompt names its world before anything else it reads does.
+  const walked = raw.match(/\/[^\s"'`\\]*\/prose-world-[A-Za-z0-9]+/);
+  if (!walked || walked[0] !== path.resolve(dir)) die(`${transcript} is not a walk of ${dir}`);
   const last = raw.split('\n').filter(Boolean).map((line) => {
     try { return JSON.parse(line); } catch { return null; }
   }).filter((e) => e && e.message && e.message.role === 'assistant').pop();
