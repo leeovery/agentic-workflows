@@ -76,7 +76,7 @@ Multiple positional arguments run separate searches in one invocation, merge the
 Two modes, settled per query:
 
 - **Hybrid** (the store was built with the provider, model and dimensions the config names): every term embedded in one request, keyword and vector searches blended, results re-ranked by any `--boost:<field>` directives you pass, plus an always-on confidence-tier boost and a progress-based decay that down-ranks units the project has moved past.
-- **Keyword-only**: full-text search only. Still useful — you lose semantic expansion but exact-term queries work. A supported degraded mode, not a broken state. The output opens with a note naming why, and the fix:
+- **Keyword-only**: full-text search only. Still useful — you lose semantic expansion, but a word still finds its other forms (`limit` finds `limiting`), and the commonest words (`the`, `of`, `is`) match nothing. A supported degraded mode, not a broken state. The output opens with a note naming why, and the fix:
   - no provider configured — `[keyword-only mode — configure embedding provider for semantic search]`;
   - a provider configured over a keyword-only store — the next start embeds the store, no rebuild;
   - whatever keeps the query from a vector the store can compare — a key that does not resolve, a provider down or unreachable, a rate limit that outlasts the query's waiting, an account out of quota, a config that dropped its provider, a store built with another provider, model or dimensions (fixed by `knowledge rebuild`).

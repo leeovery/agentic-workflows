@@ -999,8 +999,8 @@ function identityOf(entry) {
  * Write into the store in one locked load and save: each built identity's
  * chunks replaced by its new documents, then every identity `retire` names
  * over the result removed. A store the checkout lacked is created and saved,
- * empty or not; otherwise nothing is saved when nothing changed. A save
- * deletes the store an earlier version kept.
+ * empty or not, as is a retokenized one; otherwise nothing is saved when
+ * nothing changed. A save deletes the store an earlier version kept.
  * @param {{
  *   cfg: object,
  *   provider: object|null,
@@ -1022,7 +1022,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = () =
     const retired = retire(db);
     for (const entry of retired) store.removeByIdentity(db, identityOf(entry));
     const sp = storePath();
-    if (created || built.length > 0 || retired.length > 0) {
+    if (created || db.retokenized || built.length > 0 || retired.length > 0) {
       store.saveStore(db, sp);
       fs.rmSync(legacyStorePath(), { force: true });
       recordIndexed(cfg, provider, created);
@@ -1826,15 +1826,16 @@ function reportIndex({ built, failures, retired, unchanged, vectoring, missingKe
 
 /**
  * Bring the store in line with the files (see planIndex), creating it first
- * when the checkout has none. Everything new or changed is built first;
- * then, under the lock, the manifests are read again — a topic retired
- * mid-run leaves in the same run — and the documents, each with any vector
- * the store already holds for its text, and the retirements land in one load
- * and one save, searchable by keyword from then on. Then every chunk in
- * scope without a vector is embedded (see fillVectors) — a pruned one
- * excepted — and a keyword-only store takes a configured provider. Every
- * file is attempted; a failure is counted in the returned summary, as is a
- * store whose provider key does not resolve.
+ * when the checkout has none, and saving a retokenized store's terms.
+ * Everything new or changed is built first; then, under the lock, the
+ * manifests are read again — a topic retired mid-run leaves in the same
+ * run — and the documents, each with any vector the store already holds
+ * for its text, and the retirements land in one load and one save,
+ * searchable by keyword from then on. Then every chunk in scope without a
+ * vector is embedded (see fillVectors) — a pruned one excepted — and a
+ * keyword-only store takes a configured provider. Every file is attempted;
+ * a failure is counted in the returned summary, as is a store whose
+ * provider key does not resolve.
  * @returns {Promise<IndexSummary>}
  */
 async function cmdIndexBulk(options, cfg, provider) {
@@ -1858,7 +1859,7 @@ async function cmdIndexBulk(options, cfg, provider) {
     for (const { docs } of built) reuseVectors(docs, known);
   }
 
-  const inLine = snapshot.db !== null && built.length === 0 && plan.retired.length === 0;
+  const inLine = snapshot.db !== null && !snapshot.db.retokenized && built.length === 0 && plan.retired.length === 0;
   const written = inLine ? { retired: [], snapshot } : await writeStore({
     cfg,
     provider: embedder,

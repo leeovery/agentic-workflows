@@ -411,6 +411,18 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     assert.strictEqual(output.saves, 0);
   });
 
+  it('saves a retokenized store with nothing to index, and embeds nothing', async () => {
+    await cmdIndexBulk({}, CFG, spyProvider());
+    const counting = store.loadStore;
+    store.loadStore = (...args) => Object.assign(counting(...args), { retokenized: true });
+    output.saves = 0;
+    const provider = spyProvider();
+    const summary = await cmdIndexBulk({}, CFG, provider);
+    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.strictEqual(provider.batches.length, 0);
+    assert.strictEqual(output.saves, 1);
+  });
+
   it('takes a configured provider into a keyword-only store, and embeds every chunk', async () => {
     fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
     await cmdIndexBulk({}, { provider: null }, null);

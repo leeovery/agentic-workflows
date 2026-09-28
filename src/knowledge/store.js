@@ -56,6 +56,7 @@ const REQUIRED_FIELDS = [
  * @property {number|null} dimensions  the vectors' width — null while the store holds none
  * @property {import('./keyword').Vocabulary} vocabulary
  * @property {import('./keyword').Postings[]|null} index  built by the first keyword search after a write
+ * @property {boolean} retokenized  its terms re-derived on load from a file another tokenizer wrote, and not yet saved
  */
 
 /**
@@ -64,7 +65,7 @@ const REQUIRED_FIELDS = [
 
 /** @returns {Store} */
 function createStore() {
-  return { entries: [], ids: new Set(), dimensions: null, vocabulary: new keyword.Vocabulary(), index: null };
+  return { entries: [], ids: new Set(), dimensions: null, vocabulary: new keyword.Vocabulary(), index: null, retokenized: false };
 }
 
 /** @param {string} text */
@@ -332,8 +333,9 @@ function searchVector(db, { vector, similarity, where, limit = Infinity }) {
 
 // ---------------------------------------------------------------------------
 // The file: a preamble (magic, format version, header length), a JSON header
-// (the vectors' width, each chunk's metadata, the section table), then the
-// sections, each 8-byte aligned so a typed array can view it in place.
+// (the vectors' width, the tokenizer's version, each chunk's metadata, the
+// section table), then the sections, each 8-byte aligned so a typed array can
+// view it in place.
 // ---------------------------------------------------------------------------
 
 const MAGIC = Buffer.from('KBSTORE\0', 'latin1');
@@ -410,6 +412,7 @@ function encodeStore(db) {
   ];
   const header = Buffer.from(JSON.stringify({
     dimensions: db.dimensions,
+    tokenizer: keyword.TOKENIZER_VERSION,
     chunks: db.entries.map(({ chunk, vector }) => {
       const { content, ...metadata } = chunk;
       return { ...metadata, vector: vector !== null };
@@ -482,6 +485,34 @@ function termsReader(buf, section, field, count) {
   };
 }
 
+/**
+ * @typedef {object} ChunkTerms
+ * @property {import('./keyword').Vocabulary} vocabulary  the words the terms number
+ * @property {(chunk: Chunk, position: number) => import('./keyword').FieldTerms[]} of  a chunk's terms, field by field
+ */
+
+/**
+ * Each chunk's terms as a file this tokenizer wrote holds them, read in place.
+ * @param {Buffer} buf @param {(name: string) => {offset: number, bytes: number}} section
+ * @param {number} count  how many chunks the store holds
+ * @returns {ChunkTerms}
+ */
+function storedTerms(buf, section, count) {
+  const words = section('words');
+  const vocabulary = words.bytes === 0 ? [] : buf.toString('utf8', words.offset, words.offset + words.bytes).split('\n');
+  const fields = keyword.FIELDS.map((field) => termsReader(buf, section, field, count));
+  return { vocabulary: new keyword.Vocabulary(vocabulary), of: (chunk, position) => fields.map((field) => field(position)) };
+}
+
+/**
+ * Each chunk's terms derived afresh from its text, as this tokenizer derives them.
+ * @returns {ChunkTerms}
+ */
+function derivedTerms() {
+  const vocabulary = new keyword.Vocabulary();
+  return { vocabulary, of: (chunk) => keyword.termsOf(chunk, vocabulary) };
+}
+
 /** @param {Buffer} buf @returns {Store} */
 function decodeStore(buf) {
   ensure(buf.length >= PREAMBLE_BYTES && buf.subarray(0, MAGIC.length).equals(MAGIC), 'not a knowledge store');
@@ -496,9 +527,8 @@ function decodeStore(buf) {
   const text = section('text');
   const textEnds = typed(buf, section('text_ends'), Uint32Array);
   ensure(textEnds.length === count && (count === 0 || textEnds[count - 1] <= text.bytes), 'chunk text out of step with the chunks');
-  const words = section('words');
-  const vocabulary = words.bytes === 0 ? [] : buf.toString('utf8', words.offset, words.offset + words.bytes).split('\n');
-  const terms = keyword.FIELDS.map((field) => termsReader(buf, section, field, count));
+  const retokenized = header.tokenizer !== keyword.TOKENIZER_VERSION;
+  const terms = retokenized ? derivedTerms() : storedTerms(buf, section, count);
 
   const dimensions = header.dimensions || 0;
   const norms = typed(buf, section('norms'), Float64Array);
@@ -511,7 +541,7 @@ function decodeStore(buf) {
     const chunk = chunkOf(record, buf.toString('utf8', start, text.offset + textEnds[position]), record.content_hash);
     const vector = record.vector ? vectors.subarray(slot * dimensions, (slot + 1) * dimensions) : null;
     const norm = record.vector ? norms[slot++] : 0;
-    return { chunk, vector, norm, terms: terms.map((field) => field(position)) };
+    return { chunk, vector, norm, terms: terms.of(chunk, position) };
   });
   ensure(slot === norms.length, 'vectors out of step with the chunks');
 
@@ -519,8 +549,9 @@ function decodeStore(buf) {
     entries,
     ids: new Set(entries.map((entry) => entry.chunk.id)),
     dimensions: header.dimensions,
-    vocabulary: new keyword.Vocabulary(vocabulary),
+    vocabulary: terms.vocabulary,
     index: null,
+    retokenized,
   };
 }
 
@@ -534,6 +565,7 @@ function saveStore(db, storePath) {
   const tmp = storePath + '.tmp';
   fs.writeFileSync(tmp, encodeStore(db));
   fs.renameSync(tmp, storePath);
+  db.retokenized = false;
 }
 
 /**
@@ -550,7 +582,9 @@ function storeStamp(storePath) {
 
 /**
  * Load a store from disk. A file missing, empty, or not a store this version
- * reads — another format, another format version, or damaged — throws.
+ * reads — another format, another format version, or damaged — throws. A
+ * store another tokenizer wrote loads retokenized: every chunk's terms
+ * re-derived from its text, its vectors as they were.
  * @param {string} storePath
  * @returns {Store}
  */
