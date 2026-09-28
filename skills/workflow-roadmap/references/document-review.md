@@ -8,9 +8,9 @@
 
 The session log is created lazily — if no Exploration write or map operation produced content, no file exists and there is nothing to reconcile.
 
-Check whether the active log exists at `.workflows/.roadmap/sessions/session-{session_number}.md`.
+Check whether a log was opened — `session_number` is set and the log exists at `.workflows/.roadmap/sessions/session-{session_number}.md`.
 
-#### If the file does not exist
+#### If no log exists
 
 Browse-only session — no log to review.
 

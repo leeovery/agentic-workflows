@@ -23,10 +23,14 @@ The prose should have taken this path:
 6. on the user's yes the gate is rendered again — a second fetch of
    the same surface, never the first emission repeated from memory —
    and the prose stops for the answer again
-7. the user picks waiting: a plain `roadmap add` of the item into
-   `mvp`, the horizon quoted, sourced to the product session's log —
-   no pull-forward, no work unit touched — and the add is recorded
-   under the log's Edits, the log conjured on this first state change
+7. the user picks waiting, and the add is this session's first state
+   change: the log is conjured before it runs — `roadmap session open`
+   allocating `session-002` — then a plain `roadmap add` of the item
+   into `mvp`, the horizon quoted, its source that log's path relative
+   to `.workflows/` (`.roadmap/sessions/session-002.md`, never
+   prefixed with `.workflows/`) — no pull-forward, no work unit
+   touched — then the add is recorded under the log's Edits and
+   committed with `commit --roadmap`
 8. the loop turns back to the conversation and the walk stops there
 
 Further claims:
@@ -39,12 +43,14 @@ EXPECTED WORLD — the walk should have produced, from the fixture:
 
 - a new roadmap item for gift cards — a capability-grain kebab name,
   a one-line summary in product terms — in the `mvp` horizon,
-  waiting: no `pulled_to` join
+  waiting: no `pulled_to` join; its origin `harvest`, the engine's
+  default for a direct add (correct — not a park, not a flaw), and its
+  sources naming `.roadmap/sessions/session-002.md`
 - `ordering` still joined to `launch`; `menu-management`,
   `kitchen-display` and `loyalty` unchanged
 - a second roadmap session log (`session-002.md`) under
   `.workflows/.roadmap/sessions/`, still open (the active-session
-  marker naming it), whose Edits record the gift-cards add into `mvp`;
-  session 001 untouched
+  marker naming it) and committed, whose Edits record the gift-cards
+  add into `mvp`; session 001 untouched
 - the `launch` epic untouched: no discovery map items, no topics, no
   research or discussion files

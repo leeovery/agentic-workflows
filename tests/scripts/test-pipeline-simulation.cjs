@@ -3070,13 +3070,45 @@ describe('pipeline simulation', () => {
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
   });
 
+  it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
+    arrive(sim, 'roadmap');
+    const genesis = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
+    sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
+    sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
+    sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: close session 001']);
+
+    // The home's converse over no open session: nothing is predicted. The
+    // user places an item themselves — a direct add, an op recorded under
+    // Edits — so the log opens first and the open's response numbers it.
+    assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);
+    const draft = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
+    const opened = sim.run(['roadmap', 'session', 'open', '--session-log-file', draft]);
+    assert.strictEqual(opened.session, '002');
+    const source = `.roadmap/sessions/session-${opened.session}.md`;
+    sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
+      '--source', `.workflows/${source}`], /drop the leading "\.workflows\/"/);
+    sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--source', source]);
+    const item = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'gift-cards');
+    assert.strictEqual(item.origin, 'harvest', 'a direct add takes the engine\'s default origin');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', item.sources[0])), 'the source resolves under .workflows/ to the open log');
+
+    // The Edits entry lands in the installed log; the cadence commit takes
+    // the log the self-committing add left behind.
+    fs.appendFileSync(path.join(sim.dir, '.workflows', source), '- Added: gift-cards → mvp — placed by the user\n');
+    sim.run(['commit', '--roadmap', '-m', `roadmap: add gift-cards — session-${opened.session}`]);
+    assert.strictEqual(git(sim.dir, ['status', '--porcelain', '--', '.workflows/.roadmap', '.workflows/manifest.json']), '',
+      'the log and the marker are committed');
+  });
+
   it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from a live implementation item', () => {
     const wu = 'orders';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Orders', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkToLiveImplementation(sim, wu, wu);
-    const spec = `.workflows/${wu}/specification/${wu}/specification.md`;
+    // The park's source is the record the session is writing, relative to
+    // `.workflows/` — backlogging's table.
+    const spec = `${wu}/specification/${wu}/specification.md`;
 
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.

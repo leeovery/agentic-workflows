@@ -67,7 +67,7 @@ and rejected paths with why, the threads left open. Not verbatim.}
 
 ## Lazy creation and finalisation
 
-On the `open` path the log is **not created at session start** — it is conjured on the first state change (an Exploration pause, a map operation worth recording). Genesis creates it at Step 2, Exploration backfilled. To create it, draft the complete log at `.workflows/.cache/roadmap/session-draft.md` (header, **Imports**, **Map State at Start**, the first content; other sections `(none)`), then open:
+On the `open` path the log is **not created at session start** — it is conjured on the first state change: an Exploration pause, or an op recorded under **Edits**, conjured before the op runs. Genesis creates it at Step 2, Exploration backfilled. To create it, draft the complete log at `.workflows/.cache/roadmap/session-draft.md` (header, **Imports**, **Map State at Start**, the Exploration so far; other sections `(none)` — an op's **Edits** entry lands after the op runs), then open:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md

@@ -136,10 +136,16 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
 2. **Recognise intent.** The user's message may contain:
    - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect, positions taken on a decision. Continue the conversation: push on the thread the user opened, counter-frame, follow where it leads. See [discovery-guidelines.md](discovery-guidelines.md) → *The Exploration Stance — How* for the register and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, *"postpone X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
-   - **A staged product capability — the park valve.** The user places a surfaced capability beyond this epic (*"that's a v2 thing"*), or confirms your proposed placement. Park it on the roadmap (born at the first park; the verb validates and self-commits), record it under **Edits** (`Parked: {name} → {horizon}` — the lazy-creation rule applies when no log exists yet, [template.md](template.md)), and continue — capture-weight, never shaping:
+   - **A staged product capability — the park valve.** The user places a surfaced capability beyond this epic (*"that's a v2 thing"*), or confirms your proposed placement. When no log is installed yet, conjure it **before the park** ([template.md](template.md) → *Lazy creation and finalisation*), so the `--source` names the log the open allocated (`session_number` set from its response). Park it on the roadmap — born at the first park; the verb validates and self-commits — capture-weight, never shaping:
 
      ```bash
      node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
+     ```
+
+     Record it under **Edits** (`Parked: {name} → {horizon}`), commit, and continue:
+
+     ```bash
+     node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): park {name} — session-{session_number:03d}" --discovery
      ```
 
      A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`). An unplaced tangent stays the inbox's (the scope-down in the detection core). A surfaced capability parks; a topic already on the map postpones instead — the edit operation above.

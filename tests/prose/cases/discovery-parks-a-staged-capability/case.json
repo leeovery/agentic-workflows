@@ -38,13 +38,15 @@
       "manifest get search-relevance.discovery active_session",
       "workflow-discovery/scripts/gateway.cjs search-relevance",
       "roadmap add",
-      "--origin park:search-relevance"
+      "--origin park:search-relevance",
+      "--source search-relevance/discovery/sessions/session-001.md"
     ],
     "calls_exclude": [
       "workunit create",
       "discovery-map add",
       "roadmap pull",
-      "roadmap session open"
+      "roadmap session open",
+      "discovery-session open"
     ]
   }
 }
