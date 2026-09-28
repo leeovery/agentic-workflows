@@ -52,7 +52,7 @@ defaults:
 - the manifest holding planning in progress on local-markdown with
   spec_commit set, both approvals stamped, `task_map` carrying pay-1,
   pay-1-1 and pay-1-2, external_id pay, position at phase 2 with no
-  current task, and NO staging subtree
+  current task, and the `staging.author-p1` subtree gone
 - local-markdown recorded as the project's default plan format
 - no Phase 2 task table or files, no implementation artifacts, the
   specification untouched; no second work unit
