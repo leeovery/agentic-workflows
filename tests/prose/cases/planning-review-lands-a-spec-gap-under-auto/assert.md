@@ -86,8 +86,7 @@ Expected path:
     in plan format for the Create Payment Intent task
 15. the finding is rendered with move `settled` under `auto`: the
     surface answers with its auto-approved display, the fix is applied
-    to that task, the Resolution set to Fixed with Notes naming where
-    the decision landed, and the work committed — **no second stop, no
+    to that task, the Resolution set to Fixed, and the work committed — **no second stop, no
     choice menu, no auto-override line**
 16. both findings are resolved, so the cycle-1 traceability tracking
     entry flips to `complete` and commits; the integrity review is
@@ -115,8 +114,8 @@ Further claims:
   a scripted answer. A walk in which finding 2 was applied without a
   user turn has let auto make the one call auto never makes
 - the traceability tracking file's finding 2 ends with Move `settled`,
-  Resolution `Fixed`, and Notes naming the landing — the decision in
-  the discussion and the specification brought into line. A row still
+  Resolution `Fixed`, and a Proposal carrying the landing — the decision
+  in the discussion and the specification brought into line. A row still
   reading `choice` with Options means the re-dispose never ran; a row
   reading `Routed` means the walk queued the gap instead of landing it
 - finding 1's row ends Move `settled`, Resolution Fixed; neither row
