@@ -38,7 +38,7 @@ Items joined to work units are windows, not material:
   - **Into the delivery** (`d/delivery`) — the item is delivery scope now: `roadmap add` it into the horizon, then `roadmap pull-forward {name} --into {unit} --routing {research|discussion, per the thread's need}`, `{unit}` from the DATA's `work_units` (when it names several, the user names which — ask when the answer does not). Record both under **Edits**.
   - **Waiting beside the uncommitted members** (`w/waiting`, three-way only) — a plain `roadmap add`.
   - **Another horizon** (`h/horizon`) — the user names it (ask when the answer does not); a plain `roadmap add` there.
-  - **Ask** — answer it from what each row commits, as its route above states — delivery scope now, or waiting for a later pull — and talk it through. The question sets the gate aside until the person is ready to move on; to put it back, render the gate again, emit its MENU section verbatim per its marker, and **STOP.** Wait for user response.
+  - **Ask** — answer it from what each row commits, as its route above states, naming both: the delivery row puts the item in that work unit's scope now, beside what it already holds; the others leave it on the roadmap for a later pull. How the work unit orders its own work is not the question the gate asks. Then talk it through. The question sets the gate aside until the person is ready to move on; to put it back, render the gate again, emit its MENU section verbatim per its marker, and **STOP.** Wait for user response.
 
 ## D. Tangents
 
