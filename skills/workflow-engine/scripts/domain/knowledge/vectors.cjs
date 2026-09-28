@@ -196,11 +196,11 @@ function stoppingError(unembedded) {
 function saveVectors(files, cfg, embedder, snapshot, vectors) {
   return store.withLock(files.lock, () => {
     assertStoreEmbedder(files, cfg, embedder);
-    const { db, created } = currentStore(files, snapshot);
-    if (created) return snapshot;
+    const db = currentStore(files, snapshot);
+    if (!db) return snapshot;
     if (store.attachVectors(db, vectors) > 0) {
       store.saveStore(db, files.store);
-      recordWrite(files, cfg, embedder, false);
+      recordWrite(files, cfg, embedder);
     }
     return { db, stamp: store.storeStamp(files.store) };
   });

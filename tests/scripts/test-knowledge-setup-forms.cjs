@@ -361,6 +361,23 @@ describe('the interactive wizard', () => {
     assert.strictEqual(loadSettings(files).cfg.provider, 'openai-compatible');
   });
 
+  it('a store it creates records the model its provider embeds with, where the config names none', async (t) => {
+    const system = config.systemConfigPath();
+    fs.mkdirSync(path.dirname(system), { recursive: true });
+    fs.writeFileSync(system, JSON.stringify({ knowledge: { provider: 'openai' } }));
+    process.env.OPENAI_API_KEY = 'sk-wizard';
+    t.after(() => { delete process.env.OPENAI_API_KEY; });
+
+    const held = heldCall(project);
+    await runWizard(held.call, project, { requireTTY: () => {}, createPrompter: prompter(['n']) });
+    const files = knowledgeFiles(project);
+    const { provider } = loadSettings(files);
+    assert.deepStrictEqual(store.readMetadata(files.metadata), {
+      provider: 'openai', model: provider.model(), dimensions: provider.dimensions(), last_indexed: store.readMetadata(files.metadata).last_indexed, fill_failure: null,
+    });
+    assert.doesNotMatch(held.output.stderr, /Initial indexing hit an error/);
+  });
+
   it('refuses without a terminal, before it asks anything', async () => {
     const held = heldCall(project);
     await assert.rejects(runWizard(held.call, project), (err) => err.code === 1);

@@ -346,16 +346,7 @@ async function runProjectInitStep(call, files, rl) {
     config.writeConfigFile(files.config, setup.buildProjectConfigEmpty());
     call.out(`  ${path.basename(files.config)} written\n`);
   }
-  if (!detected.storeExists || detected.fullyInitialised) {
-    const cfg = config.loadConfig({ projectPath: files.config });
-    const provider = cfg.provider || null;
-    const dimensions = Number.isInteger(cfg.dimensions) && cfg.dimensions > 0 ? cfg.dimensions : setup.OPENAI_DEFAULT_DIMENSIONS;
-    setup.createEmptyStore(call, files, {
-      provider,
-      model: provider && cfg.model ? cfg.model : null,
-      dimensions: provider ? dimensions : null,
-    });
-  }
+  if (!detected.storeExists || detected.fullyInitialised) setup.createEmptyStore(call, files);
 }
 
 /**

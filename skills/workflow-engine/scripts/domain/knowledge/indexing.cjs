@@ -15,7 +15,7 @@ const chunker = require('../../kernel/knowledge/chunker.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { identityKey, deriveIdentity, workTypeOf, readManifests, discoverArtifacts, retirements } = require('./artifacts.cjs');
-const { indexProvider, embedderIdentity, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
+const { indexProvider, newStoreEmbedder, embedderIdentity, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { indexPruning } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -115,27 +115,49 @@ function readStore(files) {
 
 /**
  * The store to write into, inside the lock: the snapshot while the file is
- * still the one it was read from or saved to, else a fresh load, else a new
- * empty store.
+ * still the one it was read from or saved to, else a fresh load — null
+ * where the checkout has none.
  * @param {KnowledgeFiles} files @param {Snapshot|null} snapshot
- * @returns {{db: Store, created: boolean}}
+ * @returns {Store|null}
  */
 function currentStore(files, snapshot) {
   const stamp = store.storeStamp(files.store);
-  if (snapshot && snapshot.db && snapshot.stamp !== null && snapshot.stamp === stamp) return { db: snapshot.db, created: false };
-  if (stamp !== null) return { db: store.loadStore(files.store), created: false };
-  return { db: store.createStore(), created: true };
+  if (snapshot && snapshot.db && snapshot.stamp !== null && snapshot.stamp === stamp) return snapshot.db;
+  return stamp === null ? null : store.loadStore(files.store);
+}
+
+/**
+ * Save `db` as the checkout's store in place of whatever was there, with
+ * metadata naming the embedder its vectors come from — the one place a
+ * store is born. Called inside the lock.
+ * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider|null} embedder
+ * @param {Store} db @param {string|null} lastIndexed
+ */
+function bearStore(files, cfg, embedder, db, lastIndexed) {
+  store.saveStore(db, files.store);
+  store.writeMetadata(files.metadata, { ...embedderIdentity(cfg, embedder), last_indexed: lastIndexed, fill_failure: null });
+}
+
+/**
+ * A new empty store in place of whatever the checkout holds, built with the
+ * embedder this machine's config says — refused where it says none.
+ * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider|null} provider
+ */
+function createStore(files, cfg, provider) {
+  const embedder = newStoreEmbedder(files, cfg, provider);
+  fs.mkdirSync(files.dir, { recursive: true });
+  store.withLock(files.lock, () => bearStore(files, cfg, embedder, store.createStore(), null));
 }
 
 /**
  * Stamp the metadata with this write's time, keeping the last fill's
  * failure. Once a store records a provider, its provider, model and
- * dimensions never change: a store created by this write, or a keyword-only
- * one written with a provider, records its embedder's.
- * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider|null} embedder @param {boolean} created
+ * dimensions never change: a keyword-only one written with a provider
+ * records its embedder's.
+ * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider|null} embedder
  */
-function recordWrite(files, cfg, embedder, created) {
-  const existing = created ? null : storeMetadata(files);
+function recordWrite(files, cfg, embedder) {
+  const existing = storeMetadata(files);
   const identity = existing && (existing.provider || !embedder) ? existing : embedderIdentity(cfg, embedder);
   store.writeMetadata(files.metadata, {
     ...identity,
@@ -189,16 +211,19 @@ function writeStore(files, { cfg, embedder, built, snapshot = null, retire = () 
   fs.mkdirSync(files.dir, { recursive: true });
   return store.withLock(files.lock, () => {
     assertStoreEmbedder(files, cfg, embedder);
-    const { db, created } = currentStore(files, snapshot);
+    const current = currentStore(files, snapshot);
+    const db = current || store.createStore();
     for (const { artifact, docs } of built) {
       store.removeByIdentity(db, identityOf(artifact));
       for (const doc of docs) store.insertDocument(db, doc);
     }
     const retired = retire(db);
     for (const entry of retired) store.removeByIdentity(db, identityOf(entry));
-    if (created || db.retokenized || built.length > 0 || retired.length > 0) {
+    if (!current) {
+      bearStore(files, cfg, embedder, db, new Date().toISOString());
+    } else if (db.retokenized || built.length > 0 || retired.length > 0) {
       store.saveStore(db, files.store);
-      recordWrite(files, cfg, embedder, created);
+      recordWrite(files, cfg, embedder);
     }
     return { retired, snapshot: { db, stamp: store.storeStamp(files.store) } };
   });
@@ -411,6 +436,7 @@ function reconcile(root, { cfg, provider }, scope = null) {
 module.exports = {
   readStore,
   currentStore,
+  createStore,
   recordWrite,
   planIndex,
   indexArtifact,

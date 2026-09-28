@@ -11,15 +11,14 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
-const store = require('../../kernel/knowledge/store.cjs');
 const { QuotaError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { loadSettings } = require('./embedder.cjs');
+const { createStore } = require('./indexing.cjs');
 const { indexBulk } = require('./bulk.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
 /** @typedef {import('./embedder.cjs').EmbeddingProvider} EmbeddingProvider */
-/** @typedef {import('./embedder.cjs').EmbedderIdentity} EmbedderIdentity */
 
 const OPENAI_DEFAULT_MODEL = 'text-embedding-3-small';
 const OPENAI_DEFAULT_DIMENSIONS = 1536;
@@ -124,14 +123,14 @@ function inconsistentStoreMessage(files) {
 }
 
 /**
- * An empty store and the metadata naming the embedder it will be built with
- * — the one place setup creates a store — each file said as it is written.
- * @param {Call} call @param {KnowledgeFiles} files @param {EmbedderIdentity} identity
+ * An empty store and the metadata naming the embedder the project's config
+ * builds it with, each file said once written.
+ * @param {Call} call @param {KnowledgeFiles} files
  */
-function createEmptyStore(call, files, identity) {
-  store.saveStore(store.createStore(), files.store);
+function createEmptyStore(call, files) {
+  const { cfg, provider } = loadSettings(files);
+  createStore(files, cfg, provider);
   call.out(`  ${path.basename(files.store)} written\n`);
-  store.writeMetadata(files.metadata, { ...identity, last_indexed: null });
   call.out(`  ${path.basename(files.metadata)} written\n`);
 }
 

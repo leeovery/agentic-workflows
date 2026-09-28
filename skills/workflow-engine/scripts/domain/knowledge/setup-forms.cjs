@@ -134,14 +134,13 @@ async function validateOrRefuse(call, name, provider, dimensions, refusal) {
 }
 
 /**
- * The provider the merged config names, validated — null for a providerless
- * (keyword-only) config. The openai key must resolve; openai-compatible may
- * go keyless, as local servers usually do.
+ * The provider the merged config names, validated — nothing to validate for
+ * a providerless (keyword-only) config. The openai key must resolve;
+ * openai-compatible may go keyless, as local servers usually do.
  * @param {Call} call @param {Record<string, any>} cfg
- * @returns {Promise<EmbeddingProvider|null>}
  */
-async function resolveValidatedProvider(call, cfg) {
-  if (!cfg.provider) return null;
+async function validateConfiguredProvider(call, cfg) {
+  if (!cfg.provider) return;
   if (cfg.provider === 'openai' && !cfg._api_key) refuse(missingOpenAiKeyMessage());
   /** @type {EmbeddingProvider|null} */
   let provider = null;
@@ -152,7 +151,6 @@ async function resolveValidatedProvider(call, cfg) {
   }
   if (!provider) refuse(`provider "${cfg.provider}" could not be initialised from the config.`);
   await validateOrRefuse(call, cfg.provider, provider, provider.dimensions(), 'provider validation failed.');
-  return provider;
 }
 
 /**
@@ -172,22 +170,15 @@ function consistentProjectInit(files) {
  * The project's knowledge directory set up: missing pieces filled in,
  * existing ones kept.
  * @param {Call} call @param {KnowledgeFiles} files
- * @param {{provider: EmbeddingProvider|null, providerName: string|null}} embedder
  */
-function initProjectStore(call, files, { provider, providerName }) {
+function initProjectStore(call, files) {
   const detected = consistentProjectInit(files);
   fs.mkdirSync(files.dir, { recursive: true });
   if (!detected.configExists) {
     config.writeConfigFile(files.config, setup.buildProjectConfigEmpty());
     call.out(`  ${path.basename(files.config)} written\n`);
   }
-  if (!detected.storeExists) {
-    setup.createEmptyStore(call, files, {
-      provider: provider ? providerName : null,
-      model: provider ? provider.model() : null,
-      dimensions: provider ? provider.dimensions() : null,
-    });
-  }
+  if (!detected.storeExists) setup.createEmptyStore(call, files);
 }
 
 /**
@@ -212,8 +203,8 @@ async function runFromSystem(call, root) {
   setup.stripProviderOverrides(call, files.config);
 
   const cfg = config.loadConfig({ projectPath: files.config });
-  const provider = await resolveValidatedProvider(call, cfg);
-  initProjectStore(call, files, { provider, providerName: cfg.provider || null });
+  await validateConfiguredProvider(call, cfg);
+  initProjectStore(call, files);
   await setup.runInitialIndexStep(call, root, files);
   call.out('\n' + summaryLines({
     provider: cfg.provider || null,
@@ -250,7 +241,7 @@ async function runKeywordOnly(call, root) {
   fs.mkdirSync(files.dir, { recursive: true });
   config.writeConfigFile(files.config, { knowledge });
 
-  initProjectStore(call, files, { provider: null, providerName: null });
+  initProjectStore(call, files);
   await setup.runInitialIndexStep(call, root, files);
   call.out('\n' + summaryLines(null).join('\n') + '\n');
 }
@@ -319,7 +310,7 @@ async function runProviderForm(call, root, flags) {
   call.out(`Wrote system config to ${sysPath}\n`);
 
   setup.stripProviderOverrides(call, files.config);
-  initProjectStore(call, files, { provider, providerName: providerId });
+  initProjectStore(call, files);
   await setup.runInitialIndexStep(call, root, files);
   call.out('\n' + summaryLines({
     provider: providerId,
