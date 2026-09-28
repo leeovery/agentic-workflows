@@ -131,6 +131,28 @@ describe('knowledge store — chunks', () => {
     assert.deepStrictEqual([...vectors.keys()].sort(), [store.contentHash('the same words'), store.contentHash('other words')].sort());
     assert.deepStrictEqual([...vectors.get(store.contentHash('the same words'))], [...Float32Array.from(stub.embed('the same words'))]);
   });
+
+  it('lists the chunks without a vector, and gives each the vector held for its text', () => {
+    const db = store.createStore();
+    store.insertDocument(db, makeDoc({ id: 'a', content: 'the same words' }));
+    store.insertDocument(db, makeDoc({ id: 'b', content: 'the same words', topic: 'elsewhere' }));
+    store.insertDocument(db, makeDoc({ id: 'c', content: 'other words' }));
+    assert.strictEqual(db.dimensions, null);
+    assert.deepStrictEqual(store.chunksWithoutVector(db).map((c) => c.id), ['a', 'b', 'c']);
+
+    const attached = store.attachVectors(db, new Map([[store.contentHash('the same words'), stub.embed('the same words')]]));
+    assert.strictEqual(attached, 2, 'every chunk of the text');
+    assert.strictEqual(db.dimensions, STUB_DIMS);
+    assert.deepStrictEqual(store.chunksWithoutVector(db).map((c) => c.id), ['c']);
+    const [hit] = store.searchVector(db, { vector: stub.embed('the same words'), similarity: 0.99 });
+    assert.strictEqual(hit.id, 'a');
+    assert.ok(Math.abs(hit.score - 1) < 1e-6, 'its norm taken with it');
+
+    assert.strictEqual(store.attachVectors(db, new Map([[store.contentHash('the same words'), stub.embed('other')]])), 0,
+      'a chunk keeps the vector it has');
+    assert.throws(() => store.attachVectors(db, new Map([[store.contentHash('other words'), [1, 0, 0]]])),
+      /attachVectors: embedding is 3 wide, and the store's vectors are 16/);
+  });
 });
 
 describe('knowledge store — keyword search', () => {

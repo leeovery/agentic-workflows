@@ -126,11 +126,11 @@ function seedStore(db, provider) {
   }
 }
 
-/** The blended query the CLI runs over a store built with the stub provider. */
-function hybrid(db, term, provider) {
+/** The blended query the CLI runs over a store built with the stub provider — its results. */
+async function hybrid(db, term, provider) {
   const metadata = { provider: 'stub', model: provider.model(), dimensions: provider.dimensions() };
   const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0 }, provider);
-  return queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [] });
+  return (await queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [] })).results;
 }
 
 function stripForCompare(hits) {

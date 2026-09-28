@@ -107,19 +107,19 @@ function assertAllRequiredFields(doc) {
 
 /**
  * The vector an inserted document carries — null without one.
- * @param {Store} db @param {unknown} embedding
+ * @param {Store} db @param {unknown} embedding @param {string} caller
  * @returns {Float32Array|null}
  */
-function vectorOf(db, embedding) {
+function vectorOf(db, embedding, caller) {
   if (embedding === undefined) return null;
   if (embedding === null) {
-    throw new Error('insertDocument: embedding cannot be null — omit it for a chunk without a vector');
+    throw new Error(`${caller}: embedding cannot be null — omit it for a chunk without a vector`);
   }
   if (!Array.isArray(embedding) && !(embedding instanceof Float32Array)) {
-    throw new Error('insertDocument: embedding must be an array of numbers when present');
+    throw new Error(`${caller}: embedding must be an array of numbers when present`);
   }
   if (db.dimensions !== null && embedding.length !== db.dimensions) {
-    throw new Error(`insertDocument: embedding is ${embedding.length} wide, and the store's vectors are ${db.dimensions}`);
+    throw new Error(`${caller}: embedding is ${embedding.length} wide, and the store's vectors are ${db.dimensions}`);
   }
   return Float32Array.from(embedding);
 }
@@ -152,7 +152,7 @@ function insertDocument(db, doc) {
   if (db.ids.has(doc.id)) {
     throw new Error(`insertDocument: a chunk with id "${doc.id}" already exists`);
   }
-  const vector = vectorOf(db, doc.embedding);
+  const vector = vectorOf(db, doc.embedding, 'insertDocument');
   const chunk = chunkOf(doc, doc.content, contentHash(doc.content));
   db.entries.push({ chunk, vector, norm: vector ? magnitude(vector) : 0, terms: keyword.termsOf(chunk, db.vocabulary) });
   db.ids.add(chunk.id);
@@ -246,6 +246,33 @@ function vectorsByContentHash(db) {
     if (vector) vectors.set(chunk.content_hash, vector);
   }
   return vectors;
+}
+
+/**
+ * Every chunk without a vector, in store order.
+ * @param {Store} db
+ * @returns {Chunk[]}
+ */
+function chunksWithoutVector(db) {
+  return db.entries.filter((entry) => !entry.vector).map((entry) => ({ ...entry.chunk }));
+}
+
+/**
+ * Give each chunk without a vector the one `vectors` holds for its text.
+ * @param {Store} db @param {Map<string, ArrayLike<number>>} vectors  by the hash of the text each embeds
+ * @returns {number} how many chunks took one
+ */
+function attachVectors(db, vectors) {
+  let attached = 0;
+  for (const entry of db.entries) {
+    const vector = entry.vector ? null : vectorOf(db, vectors.get(entry.chunk.content_hash), 'attachVectors');
+    if (!vector) continue;
+    entry.vector = vector;
+    entry.norm = magnitude(vector);
+    db.dimensions = vector.length;
+    attached += 1;
+  }
+  return attached;
 }
 
 /**
@@ -675,6 +702,8 @@ module.exports = {
   countByFilter,
   allChunks,
   vectorsByContentHash,
+  chunksWithoutVector,
+  attachVectors,
   searchKeyword,
   searchVector,
   saveStore,

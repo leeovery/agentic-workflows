@@ -34,6 +34,14 @@ const OPENAI_DEFAULT_DIMENSIONS = 1536;
 // here; runSystemConfigStep stays untouched.
 const PROVIDER_SETUPS = [OPENAI_SETUP, COMPATIBLE_SETUP];
 
+// Marker class for user-facing refusals: message-only output, exit 1.
+class SetupRefusal extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'SetupRefusal';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // TTY guard — abort cleanly on non-interactive invocation
 // ---------------------------------------------------------------------------
@@ -374,7 +382,7 @@ async function runSystemConfigStep(rl) {
     const reconfigure = await askYesNo(rl, 'Reconfigure system settings?', false);
     if (!reconfigure) {
       process.stdout.write('Keeping existing system config.\n');
-      return { provider: k.provider || null, previouslyStub: !k.provider };
+      return { provider: k.provider || null };
     }
   } else if (existing.exists && !existing.valid) {
     process.stdout.write(`\nSystem config at ${sysPath} is not valid: ${existing.reason}\n`);
@@ -386,9 +394,6 @@ async function runSystemConfigStep(rl) {
   } else {
     process.stdout.write(`\nNo system config found at ${sysPath}. Creating a new one.\n`);
   }
-
-  // Detect stub-to-full upgrade scenario (used after provider choice).
-  const previouslyStub = existing.exists && existing.valid && !existing.knowledge.provider;
 
   // Build a numbered menu from the registered driver descriptors, plus a
   // static "skip" entry for stub mode. Widest label sets the column width so
@@ -426,7 +431,7 @@ async function runSystemConfigStep(rl) {
       'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
       'Run `knowledge setup` again later to configure a provider.\n'
     );
-    return { provider: null, previouslyStub };
+    return { provider: null };
   }
 
   // Delegate to the chosen driver's collect(). It owns that provider's
@@ -444,7 +449,7 @@ async function runSystemConfigStep(rl) {
       'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
       'Re-run `knowledge setup` once the provider is reachable.\n'
     );
-    return { provider: null, previouslyStub };
+    return { provider: null };
   }
 
   // Persist a freshly entered key (key === null means env-sourced or already
@@ -456,7 +461,7 @@ async function runSystemConfigStep(rl) {
   }
   config.writeConfigFile(sysPath, result.knowledgeConfig);
   process.stdout.write(`\nWrote system config to ${sysPath}\n`);
-  return { provider: descriptor.id, previouslyStub };
+  return { provider: descriptor.id };
 }
 
 /**
@@ -494,6 +499,29 @@ function createSetupToolkit(rl) {
 // ---------------------------------------------------------------------------
 // Project init step
 // ---------------------------------------------------------------------------
+
+/**
+ * Drop provider-selection overrides (provider, model, dimensions, base_url)
+ * from an existing project config so the project genuinely inherits the
+ * system settings. No-op when the file is absent or carries no overrides.
+ * @param {string} projectConfigFile
+ */
+function stripProviderOverrides(projectConfigFile) {
+  if (!fs.existsSync(projectConfigFile)) return;
+  let knowledge;
+  try {
+    knowledge = config.readConfigFile(projectConfigFile) || {};
+  } catch (err) {
+    throw new SetupRefusal(`project config at ${projectConfigFile} is invalid: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
+  if (overrides.length === 0) return;
+  for (const f of overrides) delete knowledge[f];
+  config.writeConfigFile(projectConfigFile, { knowledge });
+  process.stdout.write(
+    `Project config overrode ${overrides.join(', ')} — reset to inherit the system settings.\n`
+  );
+}
 
 async function runProjectInitStep(rl) {
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
@@ -545,12 +573,6 @@ async function runProjectInitStep(rl) {
 
   // Load merged config for the provider identity the metadata records.
   const cfg = config.loadConfig();
-  // Use the provider NAME from config, NOT config.resolveProvider(cfg). The
-  // resolved provider is null for a keyed provider whose key hasn't been set
-  // yet — recording that null here would write metadata claiming keyword-only
-  // and then mis-fire "provider changed — rebuild" once the key arrives. The
-  // name records declared intent; it matches cleanly when the key resolves,
-  // and index/query surface the key-unresolved remedy in the meantime.
   const provider = cfg.provider || null;
   const dims = Number.isInteger(cfg.dimensions) && cfg.dimensions > 0
     ? cfg.dimensions
@@ -599,6 +621,11 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
         `\n${summary.failed} artifact(s) failed to index — the next start retries them.\n`
       );
     }
+    if (summary.awaiting > 0) {
+      process.stderr.write(
+        `\n${summary.awaiting} chunk(s) await vectors — searchable by keyword; each start retries them.\n`
+      );
+    }
   } catch (err) {
     process.stderr.write(
       `\nInitial indexing hit an error: ${err.message}\n` +
@@ -607,11 +634,15 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
   }
 }
 
-// cmdIndexBulk is injected by the caller (index.js dispatch) to avoid
-// a circular require — esbuild's CJS wrapping breaks `require.main ===
-// module` on the entry when two modules require each other.
-async function cmdSetup(cmdIndexBulk, args, options) {
-  requireTTY();
+/**
+ * @param {Function} cmdIndexBulk  injected by the caller (index.js dispatch)
+ *   to avoid a circular require — esbuild's CJS wrapping breaks
+ *   `require.main === module` on the entry when two modules require each other
+ * @param {string[]} args @param {object} options
+ * @param {{ requireTTY?: Function, createPrompter?: Function }} [deps]  injectable for tests
+ */
+async function cmdSetup(cmdIndexBulk, args, options, deps = {}) {
+  (deps.requireTTY || requireTTY)();
 
   // Guard: .workflows/ must exist somewhere at or above cwd.
   const workflowsDir = path.resolve(config.findProjectRoot(), '.workflows');
@@ -622,7 +653,7 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.exit(1);
   }
 
-  const rl = createPrompter();
+  const rl = (deps.createPrompter || createPrompter)();
   let sysResult;
 
   try {
@@ -630,6 +661,7 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.stdout.write('====================\n');
 
     sysResult = await runSystemConfigStep(rl);
+    if (sysResult.provider) stripProviderOverrides(config.projectConfigPath());
     await runProjectInitStep(rl);
   } finally {
     // Close readline before indexing — indexing is non-interactive and
@@ -645,11 +677,6 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.stdout.write(
       '\nStub mode: no embedding provider configured. The knowledge base will run in keyword-only (BM25) mode. ' +
       'Semantic search is disabled until you configure a provider.\n'
-    );
-  } else if (sysResult.previouslyStub) {
-    process.stdout.write(
-      '\nUpgraded from stub mode to a configured provider. ' +
-      'The existing store was indexed in keyword-only mode — run `knowledge rebuild` to re-index with embeddings for full hybrid search.\n'
     );
   }
 }
@@ -675,6 +702,8 @@ module.exports = {
   runSystemConfigStep,
   runProjectInitStep,
   runInitialIndexStep,
+  stripProviderOverrides,
+  SetupRefusal,
   OPENAI_DEFAULT_MODEL,
   OPENAI_DEFAULT_DIMENSIONS,
 };

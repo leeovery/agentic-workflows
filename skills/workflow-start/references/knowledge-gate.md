@@ -276,6 +276,8 @@ The setup command just ran. Branch on its result. `origin` names the branch that
 
 When its output reports artifacts that failed to index (`N artifact(s) failed to index`) or an initial indexing error, surface it in one sentence — the next start retries them.
 
+When it reports chunks awaiting vectors (`N chunk(s) await vectors`), surface that in one sentence too — the store is ready and searchable by keyword, and each start retries those vectors. It is not a failure.
+
 → Return to **E. Confirm and Continue**.
 
 #### If the command failed with an authentication error (HTTP 401/403), or — for an openai provider — with "no OpenAI API key found"

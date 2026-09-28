@@ -547,12 +547,12 @@ const MODES = {
  */
 async function runCase(opened, evalCase) {
   const { boosts = [], ...flags } = evalCase.options || {};
-  const { value: results, ms } = await stopwatch(() => knowledge.queryStore(opened.db, opened.settings, {
+  const { value: outcome, ms } = await stopwatch(() => knowledge.queryStore(opened.db, opened.settings, {
     terms: evalCase.terms,
     options: knowledge.buildOptions(flags, boosts),
     workUnits: opened.workUnits,
   }));
-  return { evalCase, results, bytes: Buffer.byteLength(knowledge.renderQuery(results, opened.settings.mode)), ms };
+  return { evalCase, results: outcome.results, bytes: Buffer.byteLength(knowledge.renderQuery(outcome)), ms };
 }
 
 /**

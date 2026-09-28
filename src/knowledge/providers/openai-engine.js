@@ -132,6 +132,13 @@ class WaitBudget {
 
 const processWaitBudget = new WaitBudget(RATE_LIMIT_BUDGET_MS);
 
+/**
+ * @typedef {object} Patience  how long a provider waits on its endpoint
+ * @property {number} [timeoutMs]  for each request's answer — REQUEST_TIMEOUT_MS by default
+ * @property {WaitBudget} [waitBudget]  the rate-limit waiting it may spend — by default, the process's
+ * @property {(ms: number) => Promise<void>} [sleep]  how it waits out a rate limit
+ */
+
 class OpenAIEmbeddingsEngine {
   /**
    * @param {{
@@ -140,15 +147,12 @@ class OpenAIEmbeddingsEngine {
    *   model: string,
    *   dimensions: number,
    *   sendDimensionsParam: boolean,
-   *   timeoutMs?: number,
-   *   sleep?: (ms: number) => Promise<void>,
-   *   waitBudget?: WaitBudget,
    *   errorContext: {
    *     label: string,
    *     authHint: string,
    *     permissionHint: string,
    *   },
-   * }} policy
+   * } & Patience} policy
    */
   constructor(policy) {
     if (!policy || typeof policy !== 'object') {
@@ -181,10 +185,9 @@ class OpenAIEmbeddingsEngine {
    * The response-length checks in embedBatch only count vectors, not their
    * width — a model whose native output differs from the configured
    * `dimensions` returns the right COUNT of wrong-WIDTH vectors, which then
-   * surfaces as the store refusing the insert mid-index (or, for embed(), a
-   * query vector the store cannot compare). Catch it here with a clean
-   * provider-level error naming the mismatch. Skipped only when dimensions is
-   * not a positive integer (nothing to validate against).
+   * surfaces as the store refusing them mid-index. Catch it here with a
+   * clean provider-level error naming the mismatch. Skipped only when
+   * dimensions is not a positive integer (nothing to validate against).
    * @param {*} vec
    * @param {string} [where] contextual suffix, e.g. "at index 3"
    */
@@ -245,10 +248,6 @@ class OpenAIEmbeddingsEngine {
     const results = [];
     for (const batch of requestBatches(texts)) {
       const res = await this._fetch(this._body(batch.texts));
-      // Validate response length — a short response silently propagates
-      // undefined embeddings into the store and degrades chunks to keyword-only
-      // with no warning. Also doubles as a "config dims ≠ model native dims"
-      // sanity check for compatible endpoints.
       if (!Array.isArray(res.data) || res.data.length !== batch.texts.length) {
         throw new Error(
           `${this._errorContext.label} embedBatch response length mismatch at offset ${batch.offset}: requested ${batch.texts.length}, received ${res.data ? res.data.length : 0}`
