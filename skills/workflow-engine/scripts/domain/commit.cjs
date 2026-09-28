@@ -7,9 +7,8 @@
 // - Commits are confined: each one commits exactly the paths its action
 //   wrote (`-- <paths>`); the migration commit takes the paths the workflows
 //   own as the index records them, a removal a migration staged included
-//   (`commitStaged`); an untracking commits HEAD without the paths it names
-//   (`commitUntrack`) — both built in a scratch index. A peer session's dirty
-//   or staged files are never swept up under someone else's message, and no
+//   (`commitStaged`, built in a scratch index). A peer session's dirty or
+//   staged files are never swept up under someone else's message, and no
 //   engine commit reaches outside its declared scope.
 //
 // - Commits are serialised: a process-wide lock (`.git/workflows-commit.lock`,
@@ -18,7 +17,7 @@
 //   git's shared index.
 // ---------------------------------------------------------------------------
 
-const { gitPath, commitPathspec, commitStaged, commitUntrack } = require('../kernel/git.cjs');
+const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -111,16 +110,6 @@ function commitStagedScoped(cwd, specs, message) {
 }
 
 /**
- * `commitUntrack` under the commit lock: stop tracking everything under the
- * pathspecs, the files left on disk, in one commit that carries nothing else.
- * @param {string} cwd @param {string[]} specs @param {string} message
- * @returns {string|null}
- */
-function commitUntrackScoped(cwd, specs, message) {
-  return withCommitLock(cwd, () => commitUntrack(cwd, specs, message));
-}
-
-/**
  * Stamp a transaction result when nothing was committed. The commit doors
  * return null on a clean scope; `nothing to commit` is the one note every
  * engine transaction shares for that outcome. Mutates the result in place.
@@ -178,7 +167,6 @@ module.exports = {
   commitPathspecScoped,
   commitStagedScoped,
   commitTailPathspec,
-  commitUntrackScoped,
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,

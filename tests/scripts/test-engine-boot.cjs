@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
@@ -719,12 +719,11 @@ describe('engine boot', () => {
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the store's untracking, the
-    // project settings sync, and the worktree include — must take their own
-    // paths and nothing else, staged peer content included.
+    // other one on the checkout. Its commits — the project settings sync and
+    // the worktree include — must take their own paths and nothing else,
+    // staged peer content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    writeFile(fix.project, '.workflows/.knowledge/store.bin', 'v1\n');
     git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'a peer topic']);
@@ -739,13 +738,12 @@ describe('engine boot', () => {
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.worktree_include_installed, true);
-    assert.deepStrictEqual(git(fix.project, ['log', '-4', '--pretty=%s']).trim().split('\n'), [
+    assert.deepStrictEqual(git(fix.project, ['log', '-3', '--pretty=%s']).trim().split('\n'), [
       'chore: copy the knowledge store into new worktrees',
       'chore: install workflow session hooks',
-      'chore(knowledge): stop tracking the store',
       'a peer topic',
     ]);
-    const shas = git(fix.project, ['log', '-3', '--format=%H']).trim().split('\n');
+    const shas = git(fix.project, ['log', '-2', '--format=%H']).trim().split('\n');
     for (const sha of shas) {
       const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
       assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
@@ -813,186 +811,6 @@ describe('engine boot', () => {
     assert.match(err.error, /boom: migration 099 exploded/);
     // The knowledge legs never ran.
     assert.deepStrictEqual(knowledgeCalls(fix.project), []);
-  });
-});
-
-describe('engine boot: the store leaves git', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  const head = () => git(fix.project, ['rev-parse', 'HEAD']).trim();
-  const tracked = () => git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim().split('\n').filter(Boolean);
-  const committedChanges = () => git(fix.project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
-
-  /** Commit files under the knowledge directory, as a checkout that tracks it does. */
-  function commitStore(files = STORE_FILES) {
-    for (const f of files) writeFile(fix.project, f, `${f} v1\n`);
-    git(fix.project, ['add', '--', ...files]);
-    git(fix.project, ['commit', '-q', '-m', 'chore(knowledge): initialise store']);
-  }
-
-  it('one confined commit records the removal; the files stay on disk, a peer\'s staged work stays staged', () => {
-    commitStore();
-    // The store moved on since its last commit, and a peer staged its own work.
-    writeFile(fix.project, STORE_FILES[0], 'v2 — the index this checkout built since\n');
-    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
-    git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
-
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
-    assert.deepStrictEqual(committedChanges(), STORE_FILES.map((f) => `D\t${f}`).sort());
-    assert.deepStrictEqual(tracked(), []);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, STORE_FILES[0]), 'utf8'), 'v2 — the index this checkout built since\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, STORE_FILES[1]), 'utf8'), `${STORE_FILES[1]} v1\n`);
-    assert.strictEqual(git(fix.project, ['diff', '--cached', '--name-only']).trim(),
-      '.workflows/payments/discussion/topic-a.md', 'the peer\'s file stays staged, and nothing of the store is');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.git/workflows-untrack.index')), 'the scratch index is gone');
-  });
-
-  it('needs its scratch index: git\'s own pathspec commit re-reads a file still on disk and records no removal', () => {
-    commitStore();
-    const before = head();
-    git(fix.project, ['rm', '--cached', '-q', '--', ...STORE_FILES]);
-    const res = spawnSync('git', ['commit', '-q', '-m', 'untrack', '--', ...STORE_FILES], { cwd: fix.project, encoding: 'utf8' });
-
-    assert.notStrictEqual(res.status, 0, 'nothing to commit — the partial commit took the files back from the working tree');
-    assert.strictEqual(head(), before);
-    assert.strictEqual(git(fix.project, ['ls-tree', '-r', '--name-only', 'HEAD', '--', ...STORE_FILES]).trim().split('\n').length, STORE_FILES.length);
-  });
-
-  it('takes everything tracked under the knowledge directory in one commit — the config and a rebuild backup too', () => {
-    const backup = `${KNOWLEDGE_DIR}/store.bin.bak`;
-    commitStore([...STORE_FILES, backup]);
-
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
-    assert.deepStrictEqual(committedChanges(), [...STORE_FILES, backup].map((p) => `D\t${p}`).sort());
-    assert.deepStrictEqual(tracked(), []);
-    for (const p of [...STORE_FILES, backup]) assert.ok(fs.existsSync(path.join(fix.project, p)), `${p} stays on disk`);
-  });
-
-  it('untracks whichever of the files git still tracks', () => {
-    commitStore([STORE_FILES[1]]);
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    assert.deepStrictEqual(committedChanges(), [`D\t${STORE_FILES[1]}`]);
-    assert.deepStrictEqual(tracked(), []);
-  });
-
-  it('is idempotent — nothing tracked, nothing committed', () => {
-    commitStore();
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    const after = head();
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(head(), after);
-
-    const clean = setupFixture();
-    try {
-      const before = git(clean.project, ['rev-parse', 'HEAD']).trim();
-      runEngine(stubbed, clean.project, ['boot'], { STUB_CHECK: 'ready' });
-      assert.strictEqual(git(clean.project, ['rev-parse', 'HEAD']).trim(), before, 'a project that never tracked the store commits nothing');
-    } finally {
-      fs.rmSync(clean.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    }
-  });
-
-  it('a store staged but never committed leaves the index with no commit', () => {
-    for (const f of STORE_FILES) writeFile(fix.project, f, 'staged\n');
-    git(fix.project, ['add', '--', ...STORE_FILES]);
-    const before = head();
-
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.strictEqual(head(), before);
-    assert.deepStrictEqual(tracked(), []);
-    assert.ok(fs.existsSync(path.join(fix.project, STORE_FILES[0])));
-  });
-
-  it('holds while the ignore rules are uncommitted — the reviewed migration commit never takes the store back', () => {
-    commitStore();
-    // What migration 060 leaves in the working tree ahead of the review gate.
-    writeFile(fix.project, '.workflows/.gitignore', '.knowledge/\n');
-
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
-
-    assert.deepStrictEqual(committedChanges(), ['A\t.workflows/.gitignore']);
-    assert.deepStrictEqual(tracked(), []);
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows/.knowledge']).trim(), '');
-  });
-
-  it('works from a linked worktree — the scratch index lives in that worktree\'s git dir', () => {
-    commitStore();
-    const linked = path.join(fix.root, 'linked');
-    git(fix.project, ['worktree', 'add', '-q', '-b', 'linked', linked]);
-
-    const res = runEngine(stubbed, linked, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(git(linked, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
-    assert.strictEqual(git(linked, ['ls-files', '--', ...STORE_FILES]).trim(), '');
-    assert.ok(fs.existsSync(path.join(linked, STORE_FILES[0])));
-    assert.strictEqual(git(fix.project, ['ls-files', '--', ...STORE_FILES]).trim().split('\n').length, STORE_FILES.length, 'the main checkout\'s branch is untouched');
-  });
-
-  it('waits out a conflicted merge — MERGE_HEAD and the index untouched, a warning naming it, and the next boot finishes it', () => {
-    commitStore();
-    // A merge that stops on a conflict: both sides edit the same line.
-    const conflicted = '.workflows/payments/discussion/topic-a.md';
-    writeFile(fix.project, conflicted, 'base\n');
-    git(fix.project, ['add', '--', conflicted]);
-    git(fix.project, ['commit', '-q', '-m', 'base']);
-    git(fix.project, ['checkout', '-q', '-b', 'incoming']);
-    writeFile(fix.project, conflicted, 'incoming\n');
-    git(fix.project, ['commit', '-q', '-am', 'incoming']);
-    git(fix.project, ['checkout', '-q', 'main']);
-    writeFile(fix.project, conflicted, 'ours\n');
-    git(fix.project, ['commit', '-q', '-am', 'ours']);
-    const merge = spawnSync('git', ['merge', '-q', 'incoming'], { cwd: fix.project, encoding: 'utf8' });
-    assert.notStrictEqual(merge.status, 0, 'the merge stops on its conflict');
-    const mergeHead = fs.readFileSync(path.join(fix.project, '.git/MERGE_HEAD'), 'utf8');
-    const index = git(fix.project, ['ls-files', '--stage']);
-    const before = head();
-
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge store untracking failed: a merge is in progress \(MERGE_HEAD\)/);
-    assert.strictEqual(head(), before, 'no commit — none would have recorded the merge');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.git/MERGE_HEAD'), 'utf8'), mergeHead, 'the merge stays in progress');
-    assert.strictEqual(git(fix.project, ['ls-files', '--stage']), index, 'the index, conflict stages included, as it was');
-
-    git(fix.project, ['merge', '--abort']);
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    assert.deepStrictEqual(tracked(), []);
-  });
-
-  it('a failing commit is a warning — still tracked, the index as it was, and the next boot finishes it', () => {
-    commitStore();
-    const hook = path.join(fix.project, '.git/hooks/pre-commit');
-    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(hook, 0o755);
-    const before = head();
-
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.knowledge, 'ready');
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge store untracking failed: /);
-    assert.strictEqual(head(), before);
-    assert.deepStrictEqual(tracked(), [...STORE_FILES].sort());
-    assert.strictEqual(git(fix.project, ['status', '--porcelain']).trim(), '?? knowledge-calls.log', 'nothing staged, nothing moved');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.git/workflows-untrack.index')), 'the scratch index is gone');
-
-    fs.unlinkSync(hook);
-    runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
-    assert.deepStrictEqual(tracked(), []);
   });
 });
 
@@ -1763,7 +1581,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(third.migrations_committed, null);
   });
 
-  it('a checkout that committed its knowledge directory stops tracking it at the first boot — before, and without, the migration commit that ignores it', () => {
+  it('a checkout that committed its knowledge directory has the removal staged by the first boot\'s migrations — boot commits none of it, and the reviewed migration commit records it beside the ignore rule', () => {
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
     const store = require('../../src/knowledge/store.js');
@@ -1771,28 +1589,29 @@ describe('engine boot (real scripts)', () => {
     git(project, ['add', '-A']);
     git(project, ['commit', '-q', '-m', 'chore(knowledge): initialise store']);
     const storeBytes = fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin'));
+    const before = git(project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(real, project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(res.migrations.changed, true, 'the review gate owns the ignore rules\' commit');
-    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): stop tracking the store');
+    assert.strictEqual(res.migrations.changed, true, 'the review gate owns the commit');
+    assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), before, 'boot commits none of it');
     assert.deepStrictEqual(
-      git(project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      STORE_FILES.map((f) => `D\t${f}`).sort());
+      git(project, ['diff', '--cached', '--name-status']).trim().split('\n').sort(),
+      STORE_FILES.map((f) => `D\t${f}`).sort(), 'the removal alone is staged');
     assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
     assert.ok(fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin')).equals(storeBytes), 'the store stays on disk, byte for byte');
-    assert.match(git(project, ['status', '--porcelain', '--', '.workflows/.gitignore']), /\.workflows\/\.gitignore/, 'the rules are not committed yet');
 
     // The skill's reviewed migration commit takes every path the workflows
-    // own — and the store stays out of it.
+    // own — the staged removal with the ignore rule that keeps the files out.
     const committed = runEngine(real, project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
     assert.ok(committed.committed);
-    const files = git(project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(files.includes('.workflows/.gitignore'));
-    assert.ok(!files.some((f) => STORE_FILES.includes(f)), `the store rode the migration commit:\n${files.join('\n')}`);
+    const changes = git(project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(changes.includes('A\t.workflows/.gitignore'), `the ignore rule lands:\n${changes.join('\n')}`);
+    for (const f of STORE_FILES) assert.ok(changes.includes(`D\t${f}`), `${f}'s removal lands:\n${changes.join('\n')}`);
     assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
+    assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(), '');
     assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge/store.bin')));
 
     const head = git(project, ['rev-parse', 'HEAD']).trim();
