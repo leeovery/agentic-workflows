@@ -12,7 +12,7 @@
    - `imports` — from the most recent discovery output (may be empty — treat as "none").
    - `map_state_at_start` — `map_summary` from the most recent discovery output. Write `(empty — first session)` when the map is empty.
 
-**Do not create the session log file here.** For a new epic `session-001.md` is already on disk — written by the confirm-trigger, or by the roadmap pull's backfill; otherwise the file is conjured lazily on the first state change — see [template.md](template.md) → *Lazy creation and finalisation*.
+**Do not create the session log file here.** Two sessions already have theirs on disk, and every later write edits it in place: a new epic's `session-001.md`, written by the confirm-trigger or by the roadmap pull's backfill, and the interrupted session's log a resume picked up at Step 6. Otherwise the file is conjured lazily on the first state change — see [template.md](template.md) → *Lazy creation and finalisation*.
 
 No commit at this step.
 
