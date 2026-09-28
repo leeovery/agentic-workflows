@@ -10,7 +10,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const keyword = require('./keyword.cjs');
-const { acquireLockFile, releaseLockFile } = require('../manifest-io.cjs');
+const { acquireLockFile, releaseLockFile, writeJsonAtomic } = require('../manifest-io.cjs');
 
 const REQUIRED_FIELDS = [
   'id',
@@ -658,9 +658,7 @@ function writeMetadata(metadataPath, data) {
   /** @type {Record<string, unknown>} */
   const full = {};
   for (const f of METADATA_FIELDS) full[f] = data[f] === undefined ? null : data[f];
-  const tmp = metadataPath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, metadataPath);
+  writeJsonAtomic(metadataPath, full);
 }
 
 /**
