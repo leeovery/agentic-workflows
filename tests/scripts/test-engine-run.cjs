@@ -260,6 +260,12 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
+  it('--dry-run is a switch: it never takes the argument after it as its value', () => {
+    const res = engine.run(['knowledge', 'index', '--dry-run', '.workflows/payments/research/payments.md'], { cwd: dir });
+    assert.strictEqual(res.code, 0, res.stderr);
+    assert.match(res.stdout, /^Indexed \d+ chunks from \.workflows\/payments\/research\/payments\.md\n$/);
+  });
+
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
     const { runKnowledge, knowledgeWaits } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [

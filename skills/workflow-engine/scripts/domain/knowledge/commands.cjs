@@ -72,7 +72,7 @@ Other options:
 // Flags
 // ---------------------------------------------------------------------------
 
-const SWITCHES = new Set(['explain']);
+const SWITCHES = new Set(['explain', 'dry-run']);
 
 /** @typedef {{field: string, value: string|null}} Boost */
 
