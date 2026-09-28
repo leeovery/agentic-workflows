@@ -4,8 +4,9 @@ The prose should have taken this path:
    resume; the process finds the specification file and puts the
    resume choice to the user, who continues
 2. session setup resets the gate modes and finds no consult
-   references; construction finds the source incorporated and nothing
-   left to extract — no content is re-presented, no re-extraction runs
+   references; the source already reads incorporated, so construction
+   is skipped — no construction heading is shown, no content is
+   re-presented, no re-extraction runs
 3. review cycle 1 initialises through the engine; the claims
    verification agent is dispatched first, its inputs including the
    work unit's imports read from the manifest alongside its resolved

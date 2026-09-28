@@ -11,11 +11,11 @@ The prose should have taken this path:
    skill
 2. resume detection offers the choice and the user continues; session
    setup resets both gate modes to `gated` and finds no stale rows
-   and no consult references; construction finds the source
-   incorporated and nothing left to extract — no content is
-   re-presented — and the epic's document-dependencies step runs
-   between construction and review, as it does on every epic
-   specification
+   and no consult references; the source already reads incorporated,
+   so construction is skipped — no construction heading is shown and
+   no content is re-presented — and the specification already carries
+   its Dependencies section, so the document-dependencies step is
+   skipped too: the walk goes straight to review
 3. review cycle 1 initialises — `review_cycle` set to 1 with the
    construction baseline word count in the same write, committed.
    Claims verification runs first and returns clean through its stub
@@ -80,8 +80,8 @@ The prose should have taken this path:
     carries the pending sources row the manifest gained after the
     delivery's own commit; the user is told the specification is blocked until
     signal-weighting concludes, and nothing further runs — the
-    remaining review, the conclusion, and any re-run of document
-    dependencies all stop here. The cycle-1 input tracking entry is left
+    remaining review and the conclusion both stop here. The cycle-1
+    input tracking entry is left
     `in-progress`, its finding still Pending: the exit does not
     return, and the remaining work re-processes at the next entry
 15. the session invokes the epic's continue skill with the work unit —
@@ -105,12 +105,10 @@ The end world's claims:
   never completed, never cancelled — with
   `sources.behavioural-ranking.status` still `incorporated` and
   `sources.signal-weighting.status` `pending`
-- the specification's own content is untouched: the 30/70 weighting is
-  still on the page, unchanged and uncorrected. Nothing about this
-  exit edits the specification — the decision is owed elsewhere
-  first. A Dependencies section, which the epic's own step adds
-  between construction and review, is the one addition the pass is
-  allowed to have made
+- the specification file is byte-identical to the fixture's: the 30/70
+  weighting is still on the page, unchanged and uncorrected, and its
+  Dependencies section still reads `(none)`. Nothing about this exit
+  edits the specification — the decision is owed elsewhere first
 - the pending row is load-bearing, not bookkeeping: the specification
   is now shut at its own door. `render entry-gate
   search-relevance.specification.behavioural-ranking` answers with

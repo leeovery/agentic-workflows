@@ -8,7 +8,9 @@
 // score with a 30/70 weighting, which no source decides and no
 // measurement can settle: the epic's relevance-measurement topic is
 // still unexplored, so there is no evaluation set to test a weighting
-// against. Review has not begun; the specification's source row reads
+// against. Construction and the dependencies step both finished — the
+// specification carries its Dependencies section, nothing blocking —
+// and review has not begun; the specification's source row reads
 // incorporated and the item is in progress.
 
 const e = require('../../mainlines/epic.cjs');
@@ -49,6 +51,10 @@ module.exports = {
       '  weighted 30/70 in favour of purchases.',
       '',
       '---',
+      '',
+      '## Dependencies',
+      '',
+      '(none)',
       '',
       '## Working Notes',
       '',

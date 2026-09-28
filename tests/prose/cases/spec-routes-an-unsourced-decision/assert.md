@@ -4,8 +4,9 @@ The prose should have taken this path:
    resume; the process finds the specification file and puts the
    resume choice to the user, who continues
 2. session setup resets the gate modes and finds no consult
-   references; construction finds the source incorporated and nothing
-   left to extract — no content is re-presented
+   references; the source already reads incorporated, so construction
+   is skipped — no construction heading is shown and no content is
+   re-presented
 3. review cycle 1 initialises; claims verification runs first and
    returns clean through its stub with no tracking file; input review
    runs next and returns findings through its stub, having written the
