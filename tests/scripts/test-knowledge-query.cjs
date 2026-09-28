@@ -167,6 +167,23 @@ describe('queryStore', () => {
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
+  it('never decays a specification, however far the clock has moved past its unit', async () => {
+    const specDb = store.createStore();
+    for (const d of [doc('old', 1, 'Token refresh follows the rate window.'), doc('new', 1, 'Token refresh follows the rate window.')]) {
+      store.insertDocument(specDb, { ...d, embedding: stub.embed(d.content) });
+    }
+    const spec = { ...doc('old', 2, 'Token refresh follows the rate window.'), id: 'old-specification-old-001', phase: 'specification' };
+    store.insertDocument(specDb, { ...spec, embedding: stub.embed(spec.content) });
+    const workUnits = [
+      { name: 'old', status: 'completed', completed_at: '2026-01-01', work_type: 'feature' },
+      { name: 'new', status: 'completed', completed_at: '2026-06-01', work_type: 'feature' },
+    ];
+    const results = await query(specDb, { terms: ['token'], workUnits });
+    assert.deepStrictEqual(results.map((r) => [r.work_unit, r.phase, r.scoring.decay === 1]).sort(), [
+      ['new', 'discussion', true], ['old', 'discussion', false], ['old', 'specification', true],
+    ]);
+  });
+
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),

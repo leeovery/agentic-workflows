@@ -164,6 +164,22 @@ describe('buildProgressClock — significance weighting', () => {
   });
 });
 
+describe('progressElapsed', () => {
+  const { progressElapsed } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+  const units = [
+    { name: 'buried', status: 'completed', completed_at: '2024-01-01', work_type: 'feature' },
+    { name: 'frontier', status: 'completed', completed_at: '2024-12-01', work_type: 'feature' },
+  ];
+
+  it('is the unit\'s place on the clock, and 0 for a specification however far behind', () => {
+    const elapsedOf = progressElapsed(units, { feature: 1.0 });
+    assert.strictEqual(elapsedOf('buried', 'discussion'), 1);
+    assert.strictEqual(elapsedOf('buried', 'specification'), 0);
+    assert.strictEqual(elapsedOf('frontier', 'discussion'), 0);
+    assert.strictEqual(elapsedOf('unlisted', 'discussion'), 0);
+  });
+});
+
 // The one prune rule compact removes by and the bulk index skips by.
 describe('pruneTest', () => {
   const { pruneTest } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');

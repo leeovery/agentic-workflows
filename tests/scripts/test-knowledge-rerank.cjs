@@ -52,13 +52,6 @@ describe('rerank — soft down-rank', () => {
     assert.ok(close(out[0].score, 0.8));
   });
 
-  it('never decays specifications, regardless of progressElapsed', () => {
-    const spec = rerank([{ id: 's', score: 0.8, phase: 'specification', progressElapsed: 50 }], [], 3);
-    assert.ok(close(spec[0].score, 0.8)); // R forced to 1
-    const disc = rerank([{ id: 'd', score: 0.8, phase: 'discussion', progressElapsed: 50 }], [], 3);
-    assert.ok(disc[0].score < 0.2); // heavily decayed for comparison
-  });
-
   it('sinks a high-similarity but heavily-decayed chunk below a fresh weaker one', () => {
     const out = rerank(
       [

@@ -123,7 +123,7 @@ function mergeFramings(framings, cut) {
 
 /**
  * Retrievability R = DECAY_BASE^(progressElapsed / stability), in (0, 1].
- * progressElapsed 0 → R = 1 (frontier, undateable unit, or spec). More work
+ * progressElapsed 0 → R = 1 (nothing completed past the chunk). More work
  * completed past a chunk's unit → smaller R. This is the multiplier the soft
  * down-rank applies to a chunk's base relevance.
  * @param {number} progressElapsed @param {number} stability
@@ -139,8 +139,8 @@ function retrievability(progressElapsed, stability) {
  * Application-level re-ranking, best first: each result's score decayed by
  * its retrievability, then its boosts (+0.1 per matching directive) and its
  * confidence tier (+0.01 per step) added — undimmed by the decay. A decayed
- * chunk sinks but is never removed, and specifications never decay. Each
- * result's scoring records what the three did.
+ * chunk sinks but is never removed. Each result's scoring records what the
+ * three did.
  * @param {Array<Record<string, any>>} results  each may carry `progressElapsed`
  *        (attached by the query pipeline; absent → 0 → no decay)
  * @param {Array<{field: string, value: string}>} boosts  normalised boost list
@@ -150,7 +150,7 @@ function retrievability(progressElapsed, stability) {
 function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
   return results
     .map((r) => {
-      const decay = retrievability(r.phase === 'specification' ? 0 : r.progressElapsed || 0, stability);
+      const decay = retrievability(r.progressElapsed || 0, stability);
       const matching = boosts.filter(({ field, value }) => r[field] === value);
       const boosted = matching.reduce((score) => score + BOOST_AMOUNT, (r.score || 0) * decay);
       const tier = (CONFIDENCE_RANK[r.confidence] || 0) * TIER_STEP;

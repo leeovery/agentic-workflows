@@ -15,7 +15,7 @@ const { UserError, isPermanentError, withRetry, DEFAULT_RETRY_BACKOFF } = requir
 const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
-const { progressClockOf, resolveDecayWeights, resolveStability } = require('./decay.cjs');
+const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
@@ -245,8 +245,8 @@ async function queryStore(db, settings, { terms, options, workUnits }) {
   const limit = options.limit || DEFAULT_QUERY_LIMIT;
   const { vectors, note } = await framingVectors(settings, terms);
   const { cut, framings } = searchFramings(db, terms, { where: queryWhere(options), limit, similarity: settings.similarity, vectors });
-  const clock = progressClockOf(workUnits, settings.weights);
-  const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
+  const elapsedOf = progressElapsed(workUnits, settings.weights);
+  const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
   return {
     results: rerank(dated, boosts, settings.stability).slice(0, limit),
     notes: [...(note ? [note] : []), ...vectorNotes(db, settings)],

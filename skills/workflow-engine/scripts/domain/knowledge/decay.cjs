@@ -124,6 +124,19 @@ function progressClockOf(workUnits, weights) {
   return buildProgressClock(completed, weights);
 }
 
+/**
+ * How far the clock has moved past a chunk, by its unit and phase: the
+ * unit's progressElapsed — 0 for a unit the clock has not moved past — and
+ * 0 always for a specification, which never decays.
+ * @param {Array<Record<string, any>>} workUnits  the manifest list the clock is built from
+ * @param {Record<string, number>} weights
+ * @returns {(workUnit: string, phase: string) => number}
+ */
+function progressElapsed(workUnits, weights) {
+  const clock = progressClockOf(workUnits, weights);
+  return (workUnit, phase) => (phase === 'specification' ? 0 : clock.get(workUnit) || 0);
+}
+
 /** @param {Record<string, any>|null} cfg @returns {number} */
 function resolveStability(cfg) {
   return cfg && Number.isFinite(cfg.decay_base_stability)
@@ -153,12 +166,11 @@ function pruneTest(cfg, workUnits) {
     throw new UserError(`Invalid decay_prune_below: ${JSON.stringify(floor)}. Expected false or a number in [0, 1].`);
   }
   const stability = resolveStability(cfg);
-  const clock = progressClockOf(workUnits, resolveDecayWeights(cfg));
+  const elapsedOf = progressElapsed(workUnits, resolveDecayWeights(cfg));
   return {
     floor,
     prunes: (workUnit, phase) => {
-      if (phase === 'specification') return false;
-      const elapsed = clock.get(workUnit) || 0;
+      const elapsed = elapsedOf(workUnit, phase);
       return elapsed > 0 && retrievability(elapsed, stability) < floor;
     },
   };
@@ -181,7 +193,7 @@ function indexPruning(cfg, workUnits) {
 
 module.exports = {
   buildProgressClock,
-  progressClockOf,
+  progressElapsed,
   resolveDecayWeights,
   resolveStability,
   pruneTest,
