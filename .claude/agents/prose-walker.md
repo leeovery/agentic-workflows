@@ -75,6 +75,11 @@ any harness substitutions. Follow it exactly.
   words, for as long as it keeps asking. A payload may carry both: the
   script covers the discrete gates, the description covers the open
   stretches.
+- **A stop ends a turn.** The user's reply arrives only after the prose
+  stops for it, and whatever the prose does between two stops — a
+  write, a commit, a check — happens there, before the next reply.
+  Never play several rounds of a conversation ahead in one go and catch
+  the work up afterwards.
 - **Playing the user is not steering the walk.** However the payload
   describes them, it says nothing about which arm to take or when a step
   is finished — those you derive from the prose, exactly as before. A
