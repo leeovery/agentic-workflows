@@ -1,8 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: one engine invocation — what it acts on, where its answers go, and
-// how a command ends it with an exit code without ending its caller.
+// Kernel: one engine invocation — what it acts on, where its answers go, how
+// a command ends it with an exit code without ending its caller, and what a
+// failure says.
 // ---------------------------------------------------------------------------
 
 /**
@@ -32,4 +33,12 @@ class ExitSignal extends Error {
   }
 }
 
-module.exports = { ExitSignal };
+/**
+ * What a thrown value says: an error's message, anything else as text.
+ * @param {unknown} err @returns {string}
+ */
+function messageOf(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+module.exports = { ExitSignal, messageOf };

@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { listWorkUnitManifests } = require('../../kernel/manifest.cjs');
 const { loadSettings, keyCause, storeMetadata } = require('./embedder.cjs');
 const { indexPath, reconcile, readStore } = require('./indexing.cjs');
@@ -25,11 +26,6 @@ const { readiness } = require('./status.cjs');
  *   removed, or a work unit's artifacts brought back in line — `label`
  *   naming it in a warning
  */
-
-/** @param {unknown} err */
-function messageOf(err) {
-  return err instanceof Error ? err.message : String(err);
-}
 
 /**
  * `fn`'s answer, or null where it throws — the failure a warning under `label`.

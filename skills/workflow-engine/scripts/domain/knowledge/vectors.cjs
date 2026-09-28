@@ -23,10 +23,11 @@ const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { withRetry, RETRY } = require('../../kernel/knowledge/retry.cjs');
 const { InvalidRequestError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
-const { ownerAlive, processStartTime } = require('../../kernel/process.cjs');
+const { tryClaimFile } = require('../../kernel/manifest-io.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { currentStore, recordWrite, readStore } = require('./indexing.cjs');
 const { loadSettings, indexProvider, canEmbed, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
-const { readManifestsOr } = require('./artifacts.cjs');
+const { readManifests } = require('./artifacts.cjs');
 const { indexPruning } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -267,14 +268,20 @@ function recordFillFailure(files, failure) {
 }
 
 /**
+ * @typedef {object} FillOptions
+ * @property {Snapshot} [snapshot]  the store as last written — read afresh when omitted
+ * @property {string|null} [shortfall]  what already fell short before the embedding began, recorded with the outcome
+ */
+
+/**
  * Fill the vectors of every chunk `owed` admits that has none — again over
  * whatever a peer wrote meanwhile, which a save's reload brings in, each
  * text tried once — then record the outcome in the metadata.
  * @param {KnowledgeFiles} files @param {Config} cfg @param {EmbeddingProvider} embedder
- * @param {(chunk: Chunk) => boolean} owed @param {Snapshot} [snapshot]  the store as last written — read afresh when omitted
+ * @param {(chunk: Chunk) => boolean} owed @param {FillOptions} [options]
  * @returns {Promise<Vectoring>}
  */
-async function fillVectors(files, cfg, embedder, owed, snapshot = readStore(files)) {
+async function fillVectors(files, cfg, embedder, owed, { snapshot = readStore(files), shortfall = null } = {}) {
   /** @type {Set<string>} */
   const tried = new Set();
   /** @type {Unembedded[]} */
@@ -291,7 +298,7 @@ async function fillVectors(files, cfg, embedder, owed, snapshot = readStore(file
     current = embedded.snapshot;
     if (stoppingError(embedded.unembedded)) break;
   }
-  recordFillFailure(files, failureOf(unembedded));
+  recordFillFailure(files, [failureOf(unembedded), shortfall].filter(Boolean).join('; ') || null);
   return { unembedded, awaiting: current.db ? store.chunksWithoutVector(current.db).filter(owed).length : 0 };
 }
 
@@ -330,54 +337,32 @@ function launchFillIfAwaiting(root, { embedder, snapshot }) {
 }
 
 /**
- * Claim the fill for this process: the claim file created exclusively, its
- * owner recorded — or taken over from an owner no longer running. Null while
- * a live fill holds it.
- * @param {KnowledgeFiles} files
- * @returns {(() => void)|null} the release
- */
-function claimFill(files) {
-  const record = JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      fs.writeFileSync(files.fill, record, { flag: 'wx' });
-      return () => fs.rmSync(files.fill, { force: true });
-    } catch (err) {
-      if (!(err && typeof err === 'object' && 'code' in err && err.code === 'EEXIST')) throw err;
-    }
-    if (claimHeld(files)) return null;
-    fs.rmSync(files.fill, { force: true });
-  }
-  return null;
-}
-
-/** @param {KnowledgeFiles} files */
-function claimHeld(files) {
-  try {
-    return ownerAlive(JSON.parse(fs.readFileSync(files.fill, 'utf8')));
-  } catch {
-    return false;
-  }
-}
-
-/**
  * The vector fill: every chunk awaiting a vector a provider can give — bar
  * those compact prunes — embedded and saved (see fillVectors). A second fill
- * finds the first's claim and ends at once.
+ * finds the first's claim and ends at once. Manifests that cannot be read
+ * leave it pruning nothing, and are recorded as a shortfall.
  * @param {string} root
  * @returns {Promise<Vectoring|null>} null where no fill ran
  */
 async function fill(root) {
   const files = knowledgeFiles(root);
   if (!fs.existsSync(files.store)) return null;
-  const release = claimFill(files);
+  const release = tryClaimFile(files.fill);
   if (!release) return null;
   try {
     const { cfg, provider } = loadSettings(files);
     const embedder = indexProvider(files, cfg, provider);
     if (!canEmbed(embedder)) return null;
-    const pruning = indexPruning(cfg, readManifestsOr(root, () => {}, 'fill').workUnits);
-    return await fillVectors(files, cfg, embedder, (chunk) => !(pruning && pruning.prunes(chunk.work_unit, chunk.phase)));
+    /** @type {string|null} */
+    let shortfall = null;
+    let workUnits = [];
+    try {
+      workUnits = readManifests(root).workUnits;
+    } catch (err) {
+      shortfall = messageOf(err);
+    }
+    const pruning = indexPruning(cfg, workUnits);
+    return await fillVectors(files, cfg, embedder, (chunk) => !(pruning && pruning.prunes(chunk.work_unit, chunk.phase)), { shortfall });
   } finally {
     release();
   }

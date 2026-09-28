@@ -69,7 +69,7 @@ async function indexBulk(call, root, settings, scope = null) {
   const reconciled = reconcile(root, settings, scope);
   const { embedder } = reconciled;
   const vectoring = embedder
-    ? await fillVectors(knowledgeFiles(root), settings.cfg, embedder, reconciled.pending, reconciled.snapshot)
+    ? await fillVectors(knowledgeFiles(root), settings.cfg, embedder, reconciled.pending, { snapshot: reconciled.snapshot })
     : { unembedded: [], awaiting: 0 };
   const missingKey = embedder && 'missingKey' in embedder ? embedder.missingKey : null;
 

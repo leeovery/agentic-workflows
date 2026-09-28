@@ -261,6 +261,86 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
   });
 });
 
+describe('the claim — one holder at a time, never waited on', () => {
+  const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+  let dir;
+  let claim;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claim-'));
+    claim = path.join(dir, '.fill');
+  });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  const DEAD = JSON.stringify({ pid: 2147483646, pid_start: null });
+
+  it('claims for this process, refuses a second while it holds, and its release frees it', () => {
+    const release = io.tryClaimFile(claim);
+    assert.ok(release);
+    assert.strictEqual(JSON.parse(fs.readFileSync(claim, 'utf8')).pid, process.pid);
+    assert.strictEqual(io.tryClaimFile(claim), null, 'a live owner holds it');
+    release();
+    assert.ok(!fs.existsSync(claim));
+    assert.deepStrictEqual(fs.readdirSync(dir), [], 'no temporary file left beside it');
+  });
+
+  it('takes over the claim of an owner that no longer runs', () => {
+    fs.writeFileSync(claim, DEAD);
+    const release = io.tryClaimFile(claim);
+    assert.ok(release);
+    assert.strictEqual(JSON.parse(fs.readFileSync(claim, 'utf8')).pid, process.pid);
+    release();
+  });
+
+  it('a claim whose owner cannot be read stands until it is stale', () => {
+    fs.writeFileSync(claim, '');
+    assert.strictEqual(io.tryClaimFile(claim), null, 'an owner mid-write may be alive');
+    makeStale(claim);
+    const release = io.tryClaimFile(claim);
+    assert.ok(release, 'a stale unreadable claim is broken');
+    release();
+  });
+
+  it('never takes over while another breaker holds the guard', () => {
+    fs.writeFileSync(claim, DEAD);
+    fs.writeFileSync(`${claim}.breaking`, '1');
+    assert.strictEqual(io.tryClaimFile(claim), null);
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), DEAD, 'the dead owner\'s claim is left to the breaker');
+  });
+
+  it('a release removes only this process\'s own claim', () => {
+    const release = io.tryClaimFile(claim);
+    fs.writeFileSync(claim, JSON.stringify({ pid: 1, pid_start: 'another' }));
+    release();
+    assert.ok(fs.existsSync(claim), 'a claim another took is theirs to release');
+  });
+
+  it('N contenders racing a dead owner\'s claim: exactly one takes it over', async () => {
+    fs.writeFileSync(claim, DEAD);
+    const log = path.join(dir, 'claim.log');
+    const script = [
+      "const fs = require('fs');",
+      'const [ioPath, claim, fenceStr, log] = process.argv.slice(1);',
+      'const io = require(ioPath);',
+      'while (Date.now() < Number(fenceStr)) {}',
+      'const won = io.tryClaimFile(claim) !== null;',
+      "fs.appendFileSync(log, process.pid + ' ' + won + '\\n');",
+      'const hold = Date.now() + 600;',
+      'while (Date.now() < hold) {}',
+    ].join('\n');
+    const fence = Date.now() + 700;
+    const results = await Promise.all(Array.from({ length: 6 }, () => new Promise((resolve) => {
+      const proc = spawn('node', ['-e', script, IO_PATH, claim, String(fence), log]);
+      let stderr = '';
+      proc.stderr.on('data', (chunk) => { stderr += chunk; });
+      proc.on('exit', (code) => resolve({ code, stderr }));
+    })));
+    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n');
+    assert.strictEqual(lines.length, 6);
+    assert.strictEqual(lines.filter((line) => line.endsWith(' true')).length, 1, `exactly one holder:\n${lines.join('\n')}`);
+  });
+});
+
 describe('structurally corrupt manifests refuse writes', () => {
   let dir;
   beforeEach(() => {

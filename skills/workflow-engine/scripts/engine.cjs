@@ -56,14 +56,9 @@ const baseline = require('./domain/baseline.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge } = require('./domain/knowledge/commands.cjs');
-const { ExitSignal } = require('./kernel/call.cjs');
+const { ExitSignal, messageOf } = require('./kernel/call.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
-
-/** @param {unknown} err @returns {string} */
-function messageOf(err) {
-  return err instanceof Error ? err.message : String(err);
-}
 
 /** @param {Call} call @param {string} msg @returns {never} */
 function die(call, msg) {

@@ -263,6 +263,19 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
     assert.ok(!fs.existsSync(knowledgeFiles(root).fill));
   });
 
+  it('releases its claim when it throws', async () => {
+    fs.writeFileSync(knowledgeFiles(root).config, '{ not json');
+    await assert.rejects(fill(root));
+    assert.ok(!fs.existsSync(knowledgeFiles(root).fill));
+  });
+
+  it('a manifest it cannot read is recorded as a shortfall — nothing is pruned on a guess', async () => {
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), '{ not json');
+    assert.deepStrictEqual(await fill(root), { unembedded: [], awaiting: 0 });
+    assert.deepStrictEqual(awaiting(root), []);
+    assert.match(String(metadata(root).fill_failure), /manifest/i);
+  });
+
   it('records why it fell short, the next search says so, and a fill that lands everything clears it', async () => {
     endpoint.mode = 'quota';
     const short = await fill(root);
