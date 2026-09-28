@@ -116,14 +116,15 @@ Drawn from the owner's dex-engineering knowledge base:
    before the engine move because the engine is plain source with only
    Node's built-ins, and carrying Orama into it would give the engine a
    build step.
-3. **Local embeddings, measured.** Run the eval's hybrid mode with a local
-   model in place of OpenAI's. How a local model would ship is designed only
-   if one holds up.
+3. **Local embeddings, measured.** Run the eval's hybrid mode with local
+   models in place of OpenAI's. None matched OpenAI, and nothing ships: a
+   local model stays open through the compatible provider, documented and
+   unsupported.
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
 5. **The rest of retrieval quality:** printed scores, heading paths and line
    ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
-   floor is reassessed here and in step 3.
+   floor is reassessed here.
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -573,11 +574,10 @@ At 0.43 three positive cases already lose answers. The value is also
 specific to the embedding model: `similarity_threshold` is one number, not
 set per provider or model. So the floor is not built.
 
-It is reassessed at two points:
-- **In step 3**, where other models are measured and each would need its
-  own calibration. A floor that returns does so set per provider and model.
-- **After step 5's excerpts**, which cut what a weak result costs and may
-  show the floor is not needed.
+Setting it per provider and model does not rescue it: step 3 measured six
+local models and found the same overlap in every one. It is reassessed after
+step 5's excerpts, which cut what a weak result costs and may show the floor
+is not needed.
 
 ### The keyword side
 
@@ -648,47 +648,81 @@ runs ~46 KB. Step 5's excerpts are the answer to that.
 
 ## Step 3 — local embeddings, measured
 
-Without an API key an install runs keyword-only. Step 1 measured that well
-behind hybrid, but step 2's correct BM25 closed most of the gap: primary
-hit@5 is 0.959 keyword-only against 0.980 hybrid, and recall 0.709 against
-0.785. A local model would still give every install semantic search, and the
-wider recall that comes with it.
+An install without an API key runs keyword-only. After step 2 that ties
+hybrid on primary hit@5 (0.98 each). Hybrid's lead is elsewhere: recall@10
+0.700 → 0.778, MRR 0.944 → 0.954, and output — 53 KB → 46 KB per answer,
+63 KB → 47 KB on an off-topic query. A local model would win that lead back
+for installs with no key.
 
-The measurement needs little or no code of ours. The `openai-compatible`
-provider already points at a local server (Ollama or LM Studio), and the
-eval's hybrid mode takes whatever provider the machine names.
+### How it was measured
 
-The model must read long chunks. The median chunk is ~900 tokens and the 90th
-percentile ~4,000, so a model that stops at 512 tokens embeds only the start
-of most of them.
+- **No code of ours.** llama.cpp's server ran each model on the GPU (Q8
+  GGUF), and the eval's hybrid mode reached it through the
+  `openai-compatible` provider under a scratch config directory, at default
+  tuning.
+- **Six models, each reading at least 8,192 tokens,** so every chunk is judged
+  whole: of the corpus's 1,932 chunks, 58% run past 512 tokens and ~10% past
+  2,000, and the server truncated none. Left out: the 2k-context models
+  (nomic-embed-text, embeddinggemma), the 512-context ones (mxbai-embed-large,
+  nomic-embed-text-v2-moe), and Jina's, under non-commercial licences.
+- **Query prefixes.** Arctic and Qwen3 expect one on queries alone. The
+  provider cannot tell a query from a document, so a scratch preload added it
+  in the process that embeds queries. Arctic was measured with and without.
+- **The similarity threshold** (0.3) was set on OpenAI's scale. Every model's
+  lowest-scoring real answer sat above it, so it cost none of them anything.
 
-Of the small models, `granite-embedding-small-english-r2` publishes scores
-level with `text-embedding-3-small`. It has 48M parameters, is 52 MB at int8,
-reads up to 8,192 tokens, and is licensed Apache-2.0.
+The bar, set before any run:
+- **Level with OpenAI:** recall@10 at least 0.76, primary hit@5 at least 0.98,
+  MRR at least 0.95, off-topic output no worse than OpenAI's.
+- **Between:** recall@10 at least 0.74, and nothing below keyword-only.
+- **Below:** neither.
 
-| | granite-small-r2 | text-embedding-3-small |
-|---|---|---|
-| MTEB English retrieval | 53.9 | 53.5 |
-| long documents (LongEmbed) | 61.9 | 61.5 |
-| technical documentation (FreshStack) | 32.8 | 29.6 |
+### What it measured
 
-Leaderboards often do not carry over to real queries, so the eval decides.
-Whether a local server offers the model is checked when the step is reached;
-Ollama carries only granite's earlier release. Static embeddings (Model2Vec)
-are out, because they score below BM25 on retrieval.
+| | primary hit@5 | MRR | recall@10 | bytes | off-topic bytes | corpus index | download | verdict |
+|---|---|---|---|---|---|---|---|---|
+| keyword-only | 0.98 | 0.944 | 0.700 | 53.4K | 63.1K | | | |
+| OpenAI `text-embedding-3-small` | 0.98 | 0.954 | 0.778 | 45.9K | 47.4K | | | |
+| granite-embedding-small-english-r2 (48M) | 0.96 | 0.972 | 0.732 | 51.8K | 64.0K | 64 s | 52 MB | below |
+| granite-embedding-english-r2 (149M) | 0.98 | 0.963 | 0.743 | 51.7K | 63.0K | 168 s | 160 MB | between |
+| gte-modernbert-base (149M) | 0.98 | 0.963 | 0.752 | 53.6K | 64.2K | 132 s | 160 MB | below |
+| bge-m3 (568M) | 0.98 | 0.932 | 0.735 | 54.5K | 70.0K | 372 s | 635 MB | below |
+| snowflake-arctic-embed-l-v2.0 (568M) | 0.98 | 0.958 | 0.746 | 48.9K | 55.6K | 343 s | 635 MB | between |
+| — with its query prefix | 1.00 | 0.946 | 0.761 | 47.9K | 56.7K | 365 s | | between |
+| Qwen3-Embedding-0.6B, with its instruction | 1.00 | 0.951 | 0.747 | 54.6K | 66.3K | 403 s | 639 MB | below |
 
-What follows the measurement:
-- **If a local model holds,** a later step designs how it ships. One route
-  is in process: transformers.js on its WebAssembly backend, which is ~16 MB
-  of runtime plus a model downloaded on first use, and neither of its
-  published builds bundles cleanly. The other is a guided local server.
-- **If none holds,** it becomes an entry in `ideas/`.
+The corpus index is all three projects embedded from nothing on an M1 Max's
+GPU. A query's embed took 18–47 ms against a warm server.
 
-The vector file takes any width, so step 2 does not wait on this.
+- **No model is level with OpenAI.** Two clear "between":
+  granite-embedding-english-r2, which takes no prefix, and arctic, with its
+  prefix or without. The candidate the step started from, the small granite,
+  loses a primary answer.
+- **Hybrid ranking saves output only when the vectors are sharp enough** to
+  push long, word-heavy sections down. OpenAI's are, arctic's nearly. Four of
+  the six returned more text than keyword-only somewhere.
+- **The floor.** Near-miss questions score as high as real answers in every
+  model, as they do with OpenAI, so a floor set per provider and model buys
+  nothing (see step 2).
+- **In process is out.** On Node, transformers.js runs a native runtime: ~475
+  MB installed, no single-file bundle, and a dependency that needs Node 20.9.
+  That breaks the no-dependencies and Node-floor rulings. What remains is a
+  local server the user runs, which the compatible provider already speaks,
+  and a local server can cut long input without a word.
 
-The relevance floor is reassessed here (see step 2). Each model scores on its
-own scale, so a floor that returns is set per provider and model, calibrated
-by the eval's near-miss negatives.
+### The ruling
+
+Nothing ships. Over keyword-only a local model buys recall of ~0.75 in place
+of 0.70 and a few KB less output, the cost step 5's excerpts address for
+every mode. It asks a keyless user for a server installed and kept running,
+a model downloaded, and minutes of first indexing. OpenAI and keyword-only
+stay the recommended routes.
+
+A local model stays open through the compatible provider, documented as
+unsupported: `docs/configuration.md`, "A local embedding model", names the two
+models that held up and what decides a model — 8k context, no query prefix, a
+first index on the user's own hardware. No entry in `ideas/`: this section is
+the record.
 
 ## Step 4 — the KB in the engine
 
