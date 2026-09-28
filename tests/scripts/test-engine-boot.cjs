@@ -335,9 +335,7 @@ describe('engine boot', () => {
     });
 
     // The workflows land in a third commit: the two commits before it are
-    // the history, and the tree is the one that commit arrived into. (The
-    // stub knowledge CLI logs into the project; that is not project code.)
-    fs.rmSync(path.join(project, 'knowledge-calls.log'), { force: true });
+    // the history, and the tree is the one that commit arrived into.
     commit('add workflows', '2025-09-01');
     res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {

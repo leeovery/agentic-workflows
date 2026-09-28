@@ -90,7 +90,7 @@ function syncKnowledge(cwd, changes, warnings) {
  * @returns {BootKnowledge}
  */
 function bootKnowledge(cwd, warnings) {
-  const state = checkedReadiness(cwd);
+  const state = readiness(cwd, () => {});
   if (state === 'not-ready') return { knowledge: 'not-ready', indexed: false, compacted: false };
 
   const files = knowledgeFiles(cwd);
@@ -101,7 +101,7 @@ function bootKnowledge(cwd, warnings) {
   }
   const indexed = reconciled !== null && reconciled.failures.length === 0;
 
-  const knowledge = state === 'ready' || checkedReadiness(cwd) === 'ready' ? 'ready' : 'not-ready';
+  const knowledge = state === 'ready' || readiness(cwd, () => {}) === 'ready' ? 'ready' : 'not-ready';
   if (knowledge === 'not-ready' || !settings) return { knowledge, indexed, compacted: false };
 
   const compacted = attempt(warnings, 'knowledge compact', () => {
@@ -118,18 +118,6 @@ function bootKnowledge(cwd, warnings) {
     if (reconciled) launchFillIfAwaiting(cwd, { embedder: reconciled.embedder, snapshot });
   });
   return { knowledge, indexed, compacted };
-}
-
-/**
- * The checkout's readiness; a check that cannot run reads not-ready.
- * @param {string} cwd @returns {import('./status.cjs').Readiness}
- */
-function checkedReadiness(cwd) {
-  try {
-    return readiness(cwd, () => {});
-  } catch {
-    return 'not-ready';
-  }
 }
 
 module.exports = { syncKnowledge, bootKnowledge };

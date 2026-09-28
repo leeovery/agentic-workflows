@@ -23,6 +23,7 @@ const readline = require('readline');
 const config = require('../../kernel/knowledge/config.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { ExitSignal } = require('../../kernel/call.cjs');
+const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('../../kernel/knowledge/providers/openai.cjs');
 const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
 const setup = require('./setup.cjs');
@@ -393,7 +394,7 @@ async function runWizard(call, root, deps = {}) {
 async function runKeyOnly(call, flags, deps = {}) {
   const providerId = flags.provider === undefined ? 'openai' : flags.provider;
   if (providerId !== 'openai' && providerId !== 'openai-compatible') {
-    throw new setup.SetupRefusal(`--key-only supports providers openai and openai-compatible (got "${String(flags.provider)}").`);
+    throw new UserError(`--key-only supports providers openai and openai-compatible (got "${String(flags.provider)}").`);
   }
   (deps.requireTTY || requireTTY)(call);
   const rl = (deps.createPrompter || createPrompter)(call);

@@ -21,7 +21,7 @@ const path = require('path');
 const childProcess = require('child_process');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
-const { withRetry, RETRY } = require('../../kernel/knowledge/retry.cjs');
+const { withRetry } = require('../../kernel/knowledge/retry.cjs');
 const { InvalidRequestError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { tryClaimFile } = require('../../kernel/manifest-io.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
@@ -96,7 +96,7 @@ function vectorBatches(chunks) {
  * @returns {Promise<Map<string, number[]>>} by hash
  */
 async function embedTexts(embedder, texts) {
-  const vectors = await withRetry(async () => embedder.embedBatch([...texts.values()]), RETRY);
+  const vectors = await withRetry(async () => embedder.embedBatch([...texts.values()]));
   return new Map([...texts.keys()].map((hash, i) => [hash, vectors[i]]));
 }
 

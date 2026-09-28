@@ -33,12 +33,11 @@ const { UserError } = require('../../kernel/knowledge/retry.cjs');
 /**
  * The knowledge config and the provider it names, for a checkout's files.
  * @param {KnowledgeFiles} files
- * @param {import('../../kernel/knowledge/providers/openai-engine.cjs').Patience} [patience]
  * @returns {{cfg: Config, provider: EmbeddingProvider|null}}
  */
-function loadSettings(files, patience) {
+function loadSettings(files) {
   const cfg = config.loadConfig({ projectPath: files.config });
-  return { cfg, provider: config.resolveProvider(cfg, patience) };
+  return { cfg, provider: config.resolveProvider(cfg) };
 }
 
 /**

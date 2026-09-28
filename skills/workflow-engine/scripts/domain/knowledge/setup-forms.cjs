@@ -23,10 +23,9 @@ const config = require('../../kernel/knowledge/config.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { OpenAIProvider } = require('../../kernel/knowledge/providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
+const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const setup = require('./setup.cjs');
-
-const { SetupRefusal } = setup;
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -35,7 +34,7 @@ const { SetupRefusal } = setup;
 
 /** @param {string} msg @returns {never} */
 function refuse(msg) {
-  throw new SetupRefusal(msg);
+  throw new UserError(msg);
 }
 
 const KEY_FLAG_REFUSAL =

@@ -24,7 +24,6 @@ const { indexBulk, indexFailed, reportUnembedded } = require('./bulk.cjs');
 const { NO_RESULTS, queryProvider, boostProblem, querySettings, queryStore, renderQuery } = require('./query.cjs');
 const { readiness, statusReport } = require('./status.cjs');
 const { countChunks, removeChunks, planCompaction, compact } = require('./maintenance.cjs');
-const { SetupRefusal } = require('./setup.cjs');
 const { parseSetupForm, runFromSystem, runKeywordOnly, runProviderForm } = require('./setup-forms.cjs');
 const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
 
@@ -291,7 +290,7 @@ function runRemove(call, { root, options }) {
 /** @param {Call} call @param {Request} request */
 function runCompact(call, { root, files, options }) {
   const { cfg } = loadSettings(files);
-  const plan = planCompaction(root, cfg, workUnitsOr(root, call.err, 'cmdCompact:list'));
+  const plan = planCompaction(root, cfg, workUnitsOr(root, call.err, 'compact'));
   if (!plan) {
     call.out('Compaction disabled\n');
     return;
@@ -427,7 +426,7 @@ async function runRebuild(call, { root, files }) {
 /** @param {Call} call @param {Request} request */
 async function runSetup(call, { root, flags }) {
   const parsed = parseSetupForm(flags);
-  if (parsed.error) throw new SetupRefusal(parsed.error);
+  if (parsed.error) throw new UserError(parsed.error);
   switch (parsed.form) {
     case 'from-system': return runFromSystem(call, root);
     case 'keyword-only': return runKeywordOnly(call, root);

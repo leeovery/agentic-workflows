@@ -13,6 +13,7 @@ const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const { QuotaError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
+const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { loadSettings } = require('./embedder.cjs');
 const { createStore } = require('./indexing.cjs');
 const { indexBulk } = require('./bulk.cjs');
@@ -24,14 +25,6 @@ const { indexBulk } = require('./bulk.cjs');
 const OPENAI_DEFAULT_MODEL = 'text-embedding-3-small';
 const OPENAI_DEFAULT_DIMENSIONS = 1536;
 
-/** A refusal whose message is all the user needs: said alone, exit 1. */
-class SetupRefusal extends Error {
-  /** @param {string} message */
-  constructor(message) {
-    super(message);
-    this.name = 'SetupRefusal';
-  }
-}
 
 // ---------------------------------------------------------------------------
 // The system config's shape — provider identity alone, never a tuning
@@ -147,7 +140,7 @@ function stripProviderOverrides(call, projectConfigFile) {
   try {
     knowledge = config.readConfigFile(projectConfigFile) || {};
   } catch (err) {
-    throw new SetupRefusal(`project config at ${projectConfigFile} is invalid: ${messageOf(err)}`);
+    throw new UserError(`project config at ${projectConfigFile} is invalid: ${messageOf(err)}`);
   }
   const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
   if (overrides.length === 0) return;
@@ -278,7 +271,6 @@ async function runInitialIndexStep(call, root, files) {
 module.exports = {
   OPENAI_DEFAULT_MODEL,
   OPENAI_DEFAULT_DIMENSIONS,
-  SetupRefusal,
   buildSystemConfig,
   buildSystemConfigOpenAI,
   buildSystemConfigCompatible,

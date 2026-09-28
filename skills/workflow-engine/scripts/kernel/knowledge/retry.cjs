@@ -47,16 +47,14 @@ function isRetryable(err) {
   return !isPermanentError(err) && !(err instanceof RateLimitError);
 }
 
-const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
-
 /**
  * @typedef {object} RetryPolicy
  * @property {number} [maxAttempts]
  * @property {number[]} [backoff]  the wait before each retry, the last repeating
  */
 
-/** @type {Required<RetryPolicy>} */
-const RETRY = { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF };
+/** @type {Required<RetryPolicy>} what a policy leaves out */
+const RETRY = { maxAttempts: 3, backoff: [1000, 2000, 4000] };
 
 /** @param {number} ms */
 function sleep(ms) {
@@ -70,8 +68,7 @@ function sleep(ms) {
  * @returns {Promise<T>}
  */
 async function withRetry(fn, policy = {}) {
-  const maxAttempts = policy.maxAttempts || RETRY.maxAttempts;
-  const backoff = policy.backoff || DEFAULT_RETRY_BACKOFF;
+  const { maxAttempts, backoff } = { ...RETRY, ...policy };
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -85,4 +82,4 @@ async function withRetry(fn, policy = {}) {
   throw lastErr;
 }
 
-module.exports = { UserError, isPermanentError, withRetry, RETRY, DEFAULT_RETRY_BACKOFF };
+module.exports = { UserError, isPermanentError, withRetry };

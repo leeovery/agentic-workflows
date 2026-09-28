@@ -19,6 +19,7 @@ const setup = require('../../skills/workflow-engine/scripts/domain/knowledge/set
 const { runWizard, runKeyOnly } = require('../../skills/workflow-engine/scripts/domain/knowledge/setup-wizard.cjs');
 const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { heldCall } = require('./knowledge-harness.cjs');
@@ -170,7 +171,7 @@ describe('runKeyOnly', () => {
         createPrompter: () => ({ close: () => {} }),
         askSecret: async () => { prompted = true; return 'x'; },
       }),
-      setup.SetupRefusal
+      UserError
     );
     assert.strictEqual(prompted, false);
     assert.ok(!fs.existsSync(config.credentialsPath()));
@@ -198,7 +199,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
 
   it('refuses when no system config exists, naming the remedies', async () => {
     await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
-      assert.ok(err instanceof setup.SetupRefusal);
+      assert.ok(err instanceof UserError);
       assert.match(err.message, /no system config found/);
       assert.match(err.message, /--provider/);
       assert.match(err.message, /--keyword-only/);
@@ -211,7 +212,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
     fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
     fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), '{"knowledge":42}');
     await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
-      assert.ok(err instanceof setup.SetupRefusal);
+      assert.ok(err instanceof UserError);
       assert.match(err.message, /is not valid/);
       return true;
     });
@@ -223,7 +224,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
     for (const [content, reason] of [['{ not json', /not valid JSON/], ['{"knowledge":42}', /invalid "knowledge" key/]]) {
       fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), content);
       await assert.rejects(() => forms.runKeywordOnly(call(), project), (err) => {
-        assert.ok(err instanceof setup.SetupRefusal);
+        assert.ok(err instanceof UserError);
         assert.match(err.message, /^system config at .* is not valid/);
         assert.match(err.message, reason);
         return true;
@@ -241,7 +242,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
       JSON.stringify({ session: { tmux_labels: true } })
     );
     await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
-      assert.ok(err instanceof setup.SetupRefusal);
+      assert.ok(err instanceof UserError);
       assert.match(err.message, /no system config found/);
       return true;
     });
@@ -254,7 +255,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
       JSON.stringify({ knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 } })
     );
     await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
-      assert.ok(err instanceof setup.SetupRefusal);
+      assert.ok(err instanceof UserError);
       assert.match(err.message, /\$OPENAI_API_KEY/);
       assert.match(err.message, /--key-only/);
       assert.match(err.message, /Never paste the key into a chat/);

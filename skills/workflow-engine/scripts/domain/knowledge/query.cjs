@@ -11,7 +11,7 @@
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { searchFramings, mergeFramings, rerank, explanation } = require('../../kernel/knowledge/ranking.cjs');
-const { UserError, isPermanentError, withRetry, DEFAULT_RETRY_BACKOFF } = require('../../kernel/knowledge/retry.cjs');
+const { UserError, isPermanentError, withRetry } = require('../../kernel/knowledge/retry.cjs');
 const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
@@ -26,7 +26,7 @@ const { progressElapsed, resolveDecayWeights, resolveStability } = require('./de
 // minutes: keyword-only answers at once, and a phase's opening query must not
 // stall.
 const QUERY_TIMEOUT_MS = 5000;
-const QUERY_RETRY = { maxAttempts: 2, backoff: DEFAULT_RETRY_BACKOFF };
+const QUERY_RETRY = { maxAttempts: 2 };
 const QUERY_WAIT_BUDGET_MS = 5000;
 
 const DEFAULT_QUERY_LIMIT = 10;
