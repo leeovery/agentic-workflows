@@ -69,12 +69,13 @@ Multiple positional arguments run separate searches in one invocation, merge the
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
 | `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear, just ranked lower |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
+| `--explain` | Print beneath each result how it ranked — for diagnosing retrieval, never needed to use the results |
 
 ### Search modes
 
 Two modes, auto-selected based on project config:
 
-- **Hybrid** (default when an embedding provider is configured): keyword + vector search combined, results re-ranked by any `--boost:<field>` directives you pass, plus an always-on confidence-tier boost and a progress-based decay that down-ranks units the project has moved past.
+- **Hybrid** (default when an embedding provider is configured): keyword and vector searches blended, results re-ranked by any `--boost:<field>` directives you pass, plus an always-on confidence-tier boost and a progress-based decay that down-ranks units the project has moved past.
 - **Keyword-only** (when no provider is configured): full-text search only. Still useful — you lose semantic expansion but exact-term queries work. The output prepends a note: `[keyword-only mode — configure embedding provider for semantic search]`. This is a supported degraded mode, not a broken state.
 
 ### Query construction
@@ -113,6 +114,7 @@ Source: .workflows/payments-overhaul/research/identity.md
 - **Blank line** between chunks.
 - **Empty results**: `[0 results]` — no provenance lines, nothing else. Treat as "no prior context found" — move on.
 - **Stub-mode note** (when applicable): prepended as the first line before the header — `[keyword-only mode — configure embedding provider for semantic search]`.
+- **Explanation** (`--explain` only): beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best (`absent` where that search missed the chunk), and their blend (keyword-only: the raw keyword score). A framing whose hits, cut to twice the limit, lack the chunk reads `not in its top 20` at the default limit, whether or not the term matched it. Then `Score:` names the framing whose score the chunk kept and works it through decay, boosts and confidence tier to the final value.
 
 ### Confidence tiers — how to weigh results
 

@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
+const { searchFramings, mergeFramings, rerank, retrievability, explanation } = require('./ranking');
 const { StubProvider } = require('./embeddings');
 const { OpenAIProvider } = require('./providers/openai');
 const { AuthError, InvalidRequestError, ConfigError, QuotaError, RateLimitError } = require('./providers/openai-engine');
@@ -126,9 +127,12 @@ function isPermanentError(err) {
 // Flag parsing
 // ---------------------------------------------------------------------------
 
+const SWITCHES = new Set(['explain']);
+
 /**
  * Parse argv-style args into { positional, flags, boosts }.
- * Handles --flag value and --flag=value forms for regular flags.
+ * Handles --flag value and --flag=value forms for regular flags; a switch
+ * never takes the argument after it as its value.
  *
  * `--boost:<field> <value>` is special — repeatable, collected into an
  * ordered list. The field name is embedded in the flag name (not the value)
@@ -161,7 +165,7 @@ function parseArgs(argv) {
         flags[key] = arg.slice(eqIdx + 1);
       } else {
         const key = arg.slice(2);
-        if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        if (!SWITCHES.has(key) && i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
           flags[key] = argv[i + 1];
           i++;
         } else {
@@ -190,6 +194,7 @@ function buildOptions(flags, boosts) {
     topic: flags['topic'] || null,
     limit: flags['limit'] ? parseInt(flags['limit'], 10) : null,
     dryRun: flags['dry-run'] === true || flags['dry-run'] === 'true',
+    explain: flags['explain'] === true || flags['explain'] === 'true',
     boosts: boosts || [],
   };
 }
@@ -230,6 +235,7 @@ Re-ranking (query only, additive; repeat for multiple boosts):
 
 Other options:
   --limit <n>               Limit number of results
+  --explain                 Show how each query result ranked
   --dry-run                 Preview without making changes
   --help, -h                Show this usage and exit 0`;
 
@@ -1600,14 +1606,6 @@ async function cmdIndexBulk(options, cfg, provider) {
 // Query command
 // ---------------------------------------------------------------------------
 
-// Confidence tiers for re-ranking — higher number = higher boost.
-const CONFIDENCE_RANK = {
-  'high': 4,
-  'medium': 3,
-  'low-medium': 2,
-  'low': 1,
-};
-
 /**
  * Parse a date-only string "YYYY-MM-DD" as local midnight. Returns null
  * on invalid input. Using `new Date("YYYY-MM-DD")` directly parses as
@@ -1767,22 +1765,6 @@ function progressClockOf(workUnits, weights) {
   return buildProgressClock(completed, weights);
 }
 
-const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
-const DEFAULT_BASE_STABILITY = 3; // S0 fallback when config is absent
-
-/**
- * Retrievability R = DECAY_BASE^(progressElapsed / stability), in (0, 1].
- * progressElapsed 0 → R = 1 (frontier, undateable unit, or spec). More work
- * completed past a chunk's unit → smaller R. This is the multiplier the soft
- * down-rank applies to a chunk's base relevance.
- */
-function retrievability(progressElapsed, stability) {
-  const p = progressElapsed > 0 ? progressElapsed : 0;
-  if (p === 0) return 1;
-  const s = stability > 0 ? stability : DEFAULT_BASE_STABILITY;
-  return Math.pow(DECAY_BASE, p / s);
-}
-
 /** @param {object} cfg */
 function resolveStability(cfg) {
   return cfg && Number.isFinite(cfg.decay_base_stability)
@@ -1827,51 +1809,6 @@ const BOOST_FIELD_MAP = {
   'topic': 'topic',
   'confidence': 'confidence',
 };
-const BOOST_AMOUNT = 0.1;
-
-/**
- * Application-level re-ranking. Applies progress-driven soft down-rank, then
- * user-specified boosts (+0.1 per match) and an always-on confidence tier
- * boost. Returns the array sorted by adjusted score (descending).
- *
- * Soft down-rank: the base relevance is multiplied by retrievability
- * R = 0.9^(progressElapsed / stability), which decays as the project completes
- * work past a chunk's work unit (see the progress clock). A decayed chunk sinks
- * but is never removed. Specs never decay. R attenuates only the similarity
- * score — intentional boosts are added on top, undimmed.
- *
- * @param {Array} results  raw result rows; each may carry `progressElapsed`
- *        (attached by the query pipeline; absent → 0 → no decay)
- * @param {Array<{field: string, value: string}>} boosts  normalised boost list
- * @param {number} stability  S0 for the decay curve
- */
-function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
-  if (results.length === 0) return results;
-
-  return results
-    .map((r) => {
-      // Specs never decay; everything else decays by progressElapsed.
-      const progressElapsed = r.phase === 'specification' ? 0 : (r.progressElapsed || 0);
-      const R = retrievability(progressElapsed, stability);
-      let adjustedScore = (r.score || 0) * R;
-
-      // User-specified boosts — +0.1 per match, additive (undimmed by decay).
-      if (Array.isArray(boosts)) {
-        for (const b of boosts) {
-          if (r[b.field] === b.value) {
-            adjustedScore += BOOST_AMOUNT;
-          }
-        }
-      }
-
-      // Always-on confidence tier boost (0 to 0.04), additive.
-      const confRank = CONFIDENCE_RANK[r.confidence] || 0;
-      adjustedScore += confRank * 0.01;
-
-      return Object.assign({}, r, { score: adjustedScore });
-    })
-    .sort((a, b) => b.score - a.score);
-}
 
 /**
  * What is wrong with a --boost directive, or null when it is valid.
@@ -1998,64 +1935,34 @@ function querySettings(metadata, cfg, provider) {
 const DEFAULT_QUERY_LIMIT = 10;
 
 /**
- * A query's ranked results: one search per term, over-fetched and merged by
- * each chunk's highest score, then decayed by the progress clock, boosted,
- * and cut to the limit. Throws UserError on an invalid --boost directive.
+ * A query's ranked results: every framing's hits merged by each chunk's best
+ * score, dated by the progress clock, re-ranked, and cut to the limit — each
+ * result carrying the scoring `--explain` prints. Throws UserError on an
+ * invalid --boost directive.
  * @param {any} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<Array<Record<string, any>>>}
  */
 async function queryStore(db, settings, { terms, options, workUnits }) {
   const boosts = normaliseBoosts(options.boosts || []);
   const limit = options.limit || DEFAULT_QUERY_LIMIT;
-  const scope = { where: queryWhere(options), limit: limit * 2 };
-  const merged = new Map();
-  for (const term of terms) {
-    for (const r of await searchTerm(db, term, scope, settings)) {
-      const existing = merged.get(r.id);
-      if (!existing || r.score > existing.score) merged.set(r.id, r);
-    }
-  }
+  const { cut, framings } = await searchFramings(db, terms, {
+    where: queryWhere(options),
+    limit,
+    similarity: settings.similarity,
+    embed: settings.mode === 'full' ? termEmbedder(settings.provider) : null,
+  });
   const clock = progressClockOf(workUnits, settings.weights);
-  const dated = Array.from(merged.values())
-    .map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
+  const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: clock.get(r.work_unit) || 0 }));
   return rerank(dated, boosts, settings.stability).slice(0, limit);
 }
 
-const KEYWORD_WEIGHT = 0.4;
-const VECTOR_WEIGHT = 0.6;
-
 /**
- * One term's search — the keyword and vector searches blended when the mode
- * is full, else the keyword search alone.
- * @param {any} db @param {string} term
- * @param {{where: object|undefined, limit: number}} scope @param {QuerySettings} settings
+ * A query term's vector from the provider, a transient failure retried.
+ * @param {any} provider
+ * @returns {(term: string) => Promise<number[]>}
  */
-async function searchTerm(db, term, { where, limit }, { mode, provider, similarity }) {
-  if (mode !== 'full') return store.searchKeyword(db, { term, where, limit });
-  const vector = await withRetry(() => provider.embed(term), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
-  return blend([
-    { hits: store.searchKeyword(db, { term, where }), weight: KEYWORD_WEIGHT },
-    { hits: store.searchVector(db, { vector, similarity, where }), weight: VECTOR_WEIGHT },
-  ]).slice(0, limit);
-}
-
-/**
- * The searches' hits merged, best first: each hit's score divided by its own
- * search's best and weighted, summed per chunk — a search that missed the
- * chunk adds nothing.
- * @param {Array<{hits: Array<Record<string, any>>, weight: number}>} searches
- * @returns {Array<Record<string, any>>}
- */
-function blend(searches) {
-  const blended = new Map();
-  for (const { hits, weight } of searches) {
-    const best = hits.reduce((max, hit) => Math.max(max, hit.score), -Infinity);
-    for (const hit of hits) {
-      const prior = blended.get(hit.id);
-      blended.set(hit.id, { ...hit, score: (prior ? prior.score : 0) + (hit.score / best) * weight });
-    }
-  }
-  return [...blended.values()].sort((a, b) => b.score - a.score);
+function termEmbedder(provider) {
+  return (term) => withRetry(() => provider.embed(term), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
 }
 
 const MODE_NOTES = {
@@ -2065,12 +1972,14 @@ const MODE_NOTES = {
 
 /**
  * The text `query` prints: the mode's note, the count, then each result's
- * header, content and source. Control characters are stripped from the whole
- * at the boundary — \n is exempt, so the joins survive.
+ * header, content and source — and, explained, how it ranked. Control
+ * characters are stripped from the whole at the boundary — \n is exempt, so
+ * the joins survive.
  * @param {Array<Record<string, any>>} results @param {string|null} mode  null when there is no store
+ * @param {{explain?: boolean}} [rendering]
  * @returns {string}
  */
-function renderQuery(results, mode) {
+function renderQuery(results, mode, { explain = false } = {}) {
   const out = [];
   if (MODE_NOTES[mode]) out.push(MODE_NOTES[mode]);
   out.push(`[${results.length} results]`);
@@ -2083,13 +1992,14 @@ function renderQuery(results, mode) {
       r.content,
       `Source: ${r.source_file}`,
     );
+    if (explain) out.push(...explanation(r));
   }
   return stripControlChars(out.join('\n')) + '\n';
 }
 
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
-    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N]\n');
+    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N] [--explain]\n');
     process.exit(1);
   }
 
@@ -2128,7 +2038,7 @@ async function cmdQuery(args, options, cfg, provider) {
 
   const settings = querySettings(store.readMetadata(mp), cfg, provider);
   const results = await queryStore(db, settings, { terms: args, options, workUnits: listWorkUnits('query') });
-  process.stdout.write(renderQuery(results, settings.mode));
+  process.stdout.write(renderQuery(results, settings.mode, { explain: options.explain }));
 }
 
 // ---------------------------------------------------------------------------
