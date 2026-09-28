@@ -88,7 +88,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @typedef {object} BootResult
  * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
  * @property {'ready'|'not-ready'} knowledge
- * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing
+ * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing, no chunk left awaiting its vector, no store provider key left unresolved
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
  * @property {string[]} warnings non-blocking failures (knowledge index, compaction, the store's untracking, ledger commit, the worktree include, an unreadable report block)

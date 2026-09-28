@@ -13,7 +13,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, knowledgeCli } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, knowledgeCli, withoutBackoff } = require('./knowledge-harness.cjs');
 
 const BUNDLE = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
@@ -24,7 +24,10 @@ const {
   AuthError,
   RateLimitError,
   boostProblem,
+  QUERY_TIMEOUT_MS,
+  QUERY_WAIT_BUDGET_MS,
   queryProvider,
+  commandProvider,
   querySettings,
   queryStore,
   renderQuery,
@@ -220,7 +223,7 @@ describe('queryStore', () => {
     store.insertDocument(awaiting, doc('ledger', 2, 'Receipts arrive late.'));
     const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'], settings: full })).notes,
-      ['[1 chunks await vectors — searched by keyword alone until the next start embeds them]']);
+      ['[1 chunks await vectors — searched by keyword alone; each start retries them]']);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'] })).notes, [CHOSEN_NOTE],
       'a keyword-only store awaits nothing');
   });
@@ -295,6 +298,55 @@ describe('queryProvider', () => {
       '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request timed out after 0.05s (network error): the endpoint did not answer; retry once the provider answers]',
     ]);
     assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-discussion-ledger-001']);
+  });
+
+  it('gives each request 5 seconds to answer, and a rate limit 5 seconds of waiting in all', () => {
+    assert.strictEqual(QUERY_TIMEOUT_MS, 5000);
+    assert.strictEqual(QUERY_WAIT_BUDGET_MS, 5000);
+  });
+});
+
+describe('commandProvider', () => {
+  const OPENAI = { provider: 'openai', _api_key: 'sk-test', model: 'text-embedding-3-small', dimensions: 2 };
+  let fetch0;
+
+  beforeEach(() => {
+    fetch0 = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = fetch0;
+  });
+
+  /**
+   * An endpoint that answers the first request with a 429 naming a 20 s wait,
+   * and every later one with a vector per input.
+   * @param {string[]} requests  each request's body, in order
+   */
+  function limitedOnce(requests) {
+    return async (/** @type {string} */ _url, /** @type {any} */ init) => {
+      requests.push(init.body);
+      if (requests.length === 1) {
+        return { ok: false, status: 429, headers: new Headers({ 'retry-after': '20' }), text: async () => 'Rate limit reached' };
+      }
+      const { input } = JSON.parse(init.body);
+      return { ok: true, status: 200, json: async () => ({ data: input.map((_, index) => ({ index, embedding: [0.6, 0.8] })) }) };
+    };
+  }
+
+  it("gives an index the provider's own patience: a 20 s rate limit is waited out", async (t) => {
+    const requests = [];
+    globalThis.fetch = limitedOnce(requests);
+    const vectors = await withoutBackoff(t, () => commandProvider('index', OPENAI).embedBatch(['x']));
+    assert.deepStrictEqual(vectors, [[0.6, 0.8]]);
+    assert.strictEqual(requests.length, 2);
+  });
+
+  it('gives a query its own: a 20 s rate limit is never waited', async () => {
+    const requests = [];
+    globalThis.fetch = limitedOnce(requests);
+    await assert.rejects(commandProvider('query', OPENAI).embedBatch(['x']), RateLimitError);
+    assert.strictEqual(requests.length, 1);
   });
 });
 
@@ -445,6 +497,37 @@ describe('knowledge query — the CLI, without a vector', () => {
     assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
   });
 
+  it("status says the mode a query runs in, naming why it runs keyword-only in the query's own words", async () => {
+    const modeAndNote = async () => [
+      (await knowledgeCli(root, ['status'])).stdout.match(/^Mode: (.*)$/m)[1],
+      (await knowledgeCli(root, ['query', 'token refresh'])).stdout.split('\n')[0],
+    ];
+    const keywordOnly = (cause) => [`Keyword-only — ${cause}`, `[keyword-only mode — ${cause}]`];
+    assert.deepStrictEqual(await modeAndNote(), ['Full (hybrid search)', '[1 results]']);
+
+    configure({ ...endpoint.config, model: 'another' });
+    assert.deepStrictEqual(await modeAndNote(), keywordOnly(
+      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run knowledge rebuild'));
+
+    configure({});
+    assert.deepStrictEqual(await modeAndNote(), keywordOnly(
+      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run knowledge rebuild'));
+
+    rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    assert.deepStrictEqual(await modeAndNote(), keywordOnly(
+      'the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only'));
+  });
+
+  it('status names a knowledge config it cannot load, where a query fails', async () => {
+    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ not json');
+    const status = await knowledgeCli(root, ['status']);
+    assert.strictEqual(status.code, 0);
+    assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
+    assert.match(status.stdout, /^WARNING: Invalid JSON in config file at .*config\.json: /m);
+    assert.strictEqual((await knowledgeCli(root, ['query', 'token refresh'])).code, 1);
+  });
+
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
     const knowledgeDir = path.join(root, '.workflows', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
@@ -461,7 +544,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
 describe('renderQuery', () => {
   const result = doc('auth', 1, 'Tokens refresh hourly.');
-  const awaiting = '[2 chunks await vectors — searched by keyword alone until the next start embeds them]';
+  const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
   it("opens with the query's notes, then each result's header, content and source", () => {
     assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [

@@ -52,7 +52,8 @@ If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not 
 ⚑ Knowledge query failed
   {error output}
 
-  Likely causes: a store that can't be read, or its metadata missing.
+  Likely causes: a knowledge config that can't be read, or a store
+  that can't be read or has lost its metadata.
   Run `knowledge status` to diagnose.
 ```
 

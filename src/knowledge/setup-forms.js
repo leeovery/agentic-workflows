@@ -31,13 +31,7 @@ const setup = require('./setup');
 const { OpenAIProvider } = require('./providers/openai');
 const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 
-// Marker class for user-facing refusals: message-only output, exit 1.
-class SetupRefusal extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'SetupRefusal';
-  }
-}
+const { SetupRefusal, stripProviderOverrides } = setup;
 
 /** @param {string} msg @returns {never} */
 function refuse(msg) {
@@ -129,30 +123,6 @@ function summaryLines(k) {
   if (k.model) lines.push(`  model:    ${k.model}`);
   if (k.provider === 'openai-compatible' && k.base_url) lines.push(`  base URL: ${k.base_url}`);
   return lines;
-}
-
-/**
- * Drop provider-selection overrides (provider, model, dimensions, base_url)
- * from an existing project config so the project genuinely inherits the
- * system settings. No-op when the file is absent or carries no overrides.
- * @param {string} projectConfigFile
- */
-function stripProviderOverrides(projectConfigFile) {
-  if (!fs.existsSync(projectConfigFile)) return;
-  let knowledge;
-  try {
-    knowledge = config.readConfigFile(projectConfigFile) || {};
-  } catch (err) {
-    refuse(`project config at ${projectConfigFile} is invalid: ${err instanceof Error ? err.message : String(err)}`);
-    return;
-  }
-  const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
-  if (overrides.length === 0) return;
-  for (const f of overrides) delete knowledge[f];
-  config.writeConfigFile(projectConfigFile, { knowledge });
-  process.stdout.write(
-    `Project config overrode ${overrides.join(', ')} — reset to inherit the system settings.\n`
-  );
 }
 
 /**

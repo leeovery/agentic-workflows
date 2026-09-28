@@ -65,15 +65,16 @@ async function embeddingEndpoint(dimensions) {
 
 /**
  * Run the knowledge CLI in `root`, the call's environment laid over the
- * process's own.
- * @param {string} root @param {string[]} args @param {Record<string, string>} [env]
+ * process's own, `input` its stdin.
+ * @param {string} root @param {string[]} args @param {Record<string, string>} [env] @param {string} [input]
  * @returns {Promise<{code: number, stdout: string, stderr: string}>}
  */
-function knowledgeCli(root, args, env = {}) {
+function knowledgeCli(root, args, env = {}, input = '') {
   return new Promise((resolve) => {
-    execFile(process.execPath, [BUNDLE, ...args], { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => {
+    const child = execFile(process.execPath, [BUNDLE, ...args], { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => {
       resolve({ code: err ? /** @type {any} */ (err).code : 0, stdout, stderr });
     });
+    if (input) child.stdin.end(input);
   });
 }
 

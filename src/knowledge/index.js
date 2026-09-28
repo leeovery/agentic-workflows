@@ -708,9 +708,10 @@ const CONFLICT_ERRORS = {
 
 /**
  * The store's own provider while its key cannot be resolved: it answers to
- * the store's model and dimensions, and every embed fails naming the key's
- * fix — so an index writes its chunks by keyword, and their vectors wait for
- * a start with the key.
+ * the store's model and dimensions, and every embed fails with `missingKey`,
+ * naming the key's fix — so an index writes its chunks by keyword, their
+ * vectors wait for a start with the key, and a bulk index fails naming it
+ * even with nothing to embed.
  * @param {Record<string, any>} metadata @param {object} cfg
  */
 function keylessProvider(metadata, cfg) {
@@ -721,6 +722,7 @@ function keylessProvider(metadata, cfg) {
     embedBatch: async () => {
       throw missingKey;
     },
+    missingKey,
   };
 }
 
@@ -760,16 +762,27 @@ async function cmdIndex(args, options, cfg, provider) {
 
   process.stdout.write(`Indexed ${indexed.chunks} chunks from ${sourceFile}\n`);
   if (indexed.unembedded.length > 0) {
-    reportUnembedded(indexed.unembedded, 'The file is searchable by keyword; its vectors come at the next start.');
+    reportUnembedded(indexed.unembedded, 'The file');
     process.exitCode = 1;
   }
 }
 
 /**
- * Name each file whose vectors failed on stderr, then what that leaves.
+ * Name each file whose vectors failed on stderr, then what that leaves — the
+ * files the endpoint refused a chunk of apart from the rest.
+ * @param {Unembedded[]} unembedded @param {string} subject  what the consequence speaks of: `The file`, or `Each`
+ */
+function reportUnembedded(unembedded, subject) {
+  const refused = (/** @type {Unembedded} */ { error }) => error instanceof InvalidRequestError;
+  reportFailures(unembedded.filter((u) => !refused(u)), `${subject} is searchable by keyword; its vectors come at the next start.`);
+  reportFailures(unembedded.filter(refused), `${subject} is searchable by keyword; a chunk the endpoint refused goes without a vector.`);
+}
+
+/**
+ * Name each file on stderr, then what its failure leaves.
  * @param {Unembedded[]} unembedded @param {string} consequence
  */
-function reportUnembedded(unembedded, consequence) {
+function reportFailures(unembedded, consequence) {
   for (const { file, error } of unembedded) process.stderr.write(`Failed to embed ${file}: ${error.message}\n`);
   if (unembedded.length > 0) process.stderr.write(`${consequence}\n`);
 }
@@ -928,7 +941,7 @@ function knownVectors(snapshot) {
 /**
  * The store to write into, inside the lock: the snapshot while the file is
  * still the one it was read from or saved to, else a fresh load, else a new
- * empty store — the one place a store is created.
+ * empty store.
  * @param {Snapshot|null} snapshot
  * @returns {{db: any, created: boolean}}
  */
@@ -1023,8 +1036,7 @@ async function writeStore({ cfg, provider, built, snapshot = null, retire = () =
 // ---------------------------------------------------------------------------
 
 // Each batch is one embedBatch call and one whole-store save once it lands:
-// an interrupted run loses at most one batch. Measured at portal's size
-// (1,100 chunks, 11.5 MB), a save takes ~20 ms, about 1% of a batch's embed.
+// an interrupted run loses at most one batch.
 const VECTOR_BATCH_TEXTS = 100;
 
 /**
@@ -1087,6 +1099,42 @@ async function embedTexts(embedder, texts) {
 }
 
 /**
+ * A file's vectors text by text, and the last failure that left a text
+ * without its own. Any failure but the endpoint refusing the text ends it.
+ * @param {object} embedder @param {Map<string, string>} texts  by hash
+ * @returns {Promise<{vectors: Map<string, number[]>, error: Error|null}>}
+ */
+async function embedTextByText(embedder, texts) {
+  const vectors = new Map();
+  let error = null;
+  for (const [hash, text] of texts) {
+    try {
+      vectors.set(hash, (await embedTexts(embedder, new Map([[hash, text]]))).get(hash));
+    } catch (failure) {
+      error = failure;
+      if (!(failure instanceof InvalidRequestError)) break;
+    }
+  }
+  return { vectors, error };
+}
+
+/**
+ * A file's vectors, and the failure that left any text without its own: one
+ * call for them all, or — when the endpoint refuses an input among them —
+ * text by text, so only the refused text goes without.
+ * @param {object} embedder @param {Map<string, string>} texts  by hash
+ * @returns {Promise<{vectors: Map<string, number[]>, error: Error|null}>}
+ */
+async function embedFile(embedder, texts) {
+  try {
+    return { vectors: await embedTexts(embedder, texts), error: null };
+  } catch (error) {
+    if (!(error instanceof InvalidRequestError) || texts.size === 1) return { vectors: new Map(), error };
+    return embedTextByText(embedder, texts);
+  }
+}
+
+/**
  * Each file's vectors embedded on its own, and the files whose vectors failed.
  * @param {object} embedder @param {VectorBatch} batch
  * @returns {Promise<{vectors: Map<string, number[]>, unembedded: Unembedded[]}>}
@@ -1095,20 +1143,18 @@ async function embedFileByFile(embedder, batch) {
   const vectors = new Map();
   const unembedded = [];
   for (const { file, texts } of batch) {
-    try {
-      for (const [hash, vector] of await embedTexts(embedder, texts)) vectors.set(hash, vector);
-    } catch (error) {
-      unembedded.push({ file, error });
-    }
+    const landed = await embedFile(embedder, texts);
+    for (const [hash, vector] of landed.vectors) vectors.set(hash, vector);
+    if (landed.error) unembedded.push({ file, error: landed.error });
   }
   return { vectors, unembedded };
 }
 
 /**
  * A batch's vectors, and the files whose vectors failed. When the endpoint
- * refuses an input in the batch, file by file, so the refused file fails
- * alone; any other failure fails every file in it — each would fail the
- * same way.
+ * refuses an input in the batch, file by file (see embedFile), so only the
+ * refused text goes without; any other failure fails every file in it — each
+ * would fail the same way.
  * @param {object} embedder @param {VectorBatch} batch
  * @returns {Promise<{vectors: Map<string, number[]>, unembedded: Unembedded[]}>}
  */
@@ -1123,7 +1169,7 @@ async function embedBatchOfFiles(embedder, batch) {
 
 /**
  * The failure that stops the embedding, or null — any but the endpoint
- * refusing an input, which fails its own file alone.
+ * refusing an input, which leaves that text alone without its vector.
  * @param {Unembedded[]} unembedded
  * @returns {Error|null}
  */
@@ -1524,6 +1570,7 @@ function identityKey(workUnit, phase, topic) {
  * @property {string} file  the source file the chunks were indexed from
  * @property {Set<string|undefined>} hashes  the source hashes they carry —
  *   undefined for a chunk with no recorded hash
+ * @property {Map<string, string>} texts  the hash of each chunk's text, by chunk id
  * @property {number} chunks
  */
 
@@ -1533,7 +1580,7 @@ function identityKey(workUnit, phase, topic) {
 
 /**
  * Chunks grouped by identity.
- * @param {Array<{work_unit: string, phase: string, topic: string, source_file: string, source_hash?: string}>} chunks
+ * @param {Array<{id: string, work_unit: string, phase: string, topic: string, source_file: string, source_hash?: string, content_hash: string}>} chunks
  * @returns {Map<string, Indexed>}
  */
 function identitiesOf(chunks) {
@@ -1541,32 +1588,62 @@ function identitiesOf(chunks) {
   for (const c of chunks) {
     const key = identityKey(c.work_unit, c.phase, c.topic);
     if (!byKey.has(key)) {
-      byKey.set(key, { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), chunks: 0 });
+      byKey.set(key, { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), texts: new Map(), chunks: 0 });
     }
     const entry = byKey.get(key);
     entry.hashes.add(c.source_hash);
+    entry.texts.set(c.id, c.content_hash);
     entry.chunks += 1;
   }
   return byKey;
 }
 
 /**
+ * The identities with a chunk awaiting its vector — none without an embedder
+ * to give one.
+ * @param {Snapshot} snapshot @param {object|null} embedder
+ * @returns {Set<string>}
+ */
+function awaitingIdentities(snapshot, embedder) {
+  if (!embedder || !snapshot.db) return new Set();
+  return new Set(store.chunksWithoutVector(snapshot.db).map((c) => identityKey(c.work_unit, c.phase, c.topic)));
+}
+
+/**
+ * Whether the file now cuts other chunk texts than the store holds for it —
+ * a file that no longer builds included, so indexing it names the failure.
+ * @param {Artifact} artifact @param {Indexed} entry
+ */
+function cutsOtherTexts(artifact, entry) {
+  let docs;
+  try {
+    docs = buildDocuments(artifact);
+  } catch (_) {
+    return true;
+  }
+  return docs.length !== entry.texts.size || docs.some((doc) => entry.texts.get(doc.id) !== store.contentHash(doc.content));
+}
+
+/**
  * Sort discovered artifacts against the store: `fresh` has no chunks,
  * `changed` has chunks indexed from other content (or from content whose hash
- * was never recorded), `unchanged` matches the file on disk.
+ * was never recorded) — or, with a chunk awaiting its vector, chunks whose
+ * texts the file no longer cuts; `unchanged` matches the file on disk.
  * @param {Artifact[]} artifacts
  * @param {Map<string, Indexed>} indexed
+ * @param {Set<string>} awaiting  the identities with a chunk awaiting its vector
  */
-function classifyArtifacts(artifacts, indexed) {
+function classifyArtifacts(artifacts, indexed, awaiting) {
   const out = { fresh: [], changed: [], unchanged: [] };
   for (const artifact of artifacts) {
-    const entry = indexed.get(identityKey(artifact.workUnit, artifact.phase, artifact.topic));
+    const key = identityKey(artifact.workUnit, artifact.phase, artifact.topic);
+    const entry = indexed.get(key);
     if (!entry) {
       out.fresh.push(artifact);
       continue;
     }
     const hash = store.contentHash(fs.readFileSync(resolveArtifactPath(artifact.file), 'utf8'));
-    const current = entry.hashes.size === 1 && entry.hashes.has(hash);
+    const current = entry.hashes.size === 1 && entry.hashes.has(hash) && !(awaiting.has(key) && cutsOtherTexts(artifact, entry));
     out[current ? 'unchanged' : 'changed'].push(artifact);
   }
   return out;
@@ -1639,17 +1716,18 @@ function retirements(indexed, manifests, scope) {
 
 /**
  * What the bulk index does to the store: the discovered artifacts sorted into
- * fresh, changed and unchanged, with those compact prunes set aside, and the
- * indexed identities to retire. A scope confines all of it to one work unit.
+ * fresh, changed and unchanged (see classifyArtifacts), with those compact
+ * prunes set aside, and the indexed identities to retire. A scope confines
+ * all of it to one work unit.
  * @param {Array<any>} chunks  every chunk in the store
  * @param {Manifests} manifests
- * @param {{scope: string|null, pruning: ReturnType<typeof pruneTest>}} opts
+ * @param {{scope: string|null, pruning: ReturnType<typeof pruneTest>, awaiting?: Set<string>}} opts
  */
-function planIndex(chunks, manifests, { scope, pruning }) {
+function planIndex(chunks, manifests, { scope, pruning, awaiting = new Set() }) {
   const indexed = identitiesOf(chunks);
   const artifacts = discoverArtifacts(manifests).filter((a) => !scope || a.workUnit === scope);
   const { kept, pruned } = splitPruned(artifacts, pruning);
-  return { ...classifyArtifacts(kept, indexed), pruned, retired: retirements(indexed, manifests, scope) };
+  return { ...classifyArtifacts(kept, indexed, awaiting), pruned, retired: retirements(indexed, manifests, scope) };
 }
 
 /**
@@ -1693,25 +1771,26 @@ function buildAll(planned) {
  * @property {number} unchanged
  * @property {number} failed  the files that could not be indexed
  * @property {number} awaiting  the chunks left without the vector they await
+ * @property {boolean} keyUnresolved  the store's provider key did not resolve, so no vector could land
  */
 
 /**
- * Whether a bulk index left work for the next start — a file it could not
- * index, or a chunk it could not embed.
+ * Whether a bulk index fell short — a file it could not index, a chunk it
+ * could not embed, or a store whose provider key does not resolve.
  * @param {IndexSummary} summary
  */
 function indexFailed(summary) {
-  return summary.failed > 0 || summary.awaiting > 0;
+  return summary.failed > 0 || summary.awaiting > 0 || summary.keyUnresolved;
 }
 
 /**
- * Print what a bulk index did — each failure, each removal, each file
- * indexed, then the summary — and return the summary. An identity retired
- * after it was built reads as removed alone.
- * @param {{built: Built[], failures: Array<{artifact: Artifact, error: Error}>, retired: Retirement[], unchanged: Artifact[], vectoring: Vectoring}} outcome
+ * Print what a bulk index did — each failure, the missing key, each removal,
+ * each file indexed, then the summary — and return the summary. An identity
+ * retired after it was built reads as removed alone.
+ * @param {{built: Built[], failures: Array<{artifact: Artifact, error: Error}>, retired: Retirement[], unchanged: Artifact[], vectoring: Vectoring, missingKey: Error|null}} outcome
  * @returns {IndexSummary}
  */
-function reportIndex({ built, failures, retired, unchanged, vectoring }) {
+function reportIndex({ built, failures, retired, unchanged, vectoring, missingKey }) {
   const gone = new Set(retired.map((e) => identityKey(e.workUnit, e.phase, e.topic)));
   const stays = (a) => !gone.has(identityKey(a.workUnit, a.phase, a.topic));
   const indexed = built.filter((b) => stays(b.artifact));
@@ -1719,7 +1798,8 @@ function reportIndex({ built, failures, retired, unchanged, vectoring }) {
   for (const { artifact, error } of failures) {
     process.stderr.write(`Failed to index ${artifact.file}: ${error.message}\n`);
   }
-  reportUnembedded(vectoring.unembedded, 'Each is searchable by keyword; its vectors come at the next start.');
+  reportUnembedded(vectoring.unembedded, 'Each');
+  if (missingKey) process.stderr.write(`Cannot embed: ${missingKey.message}\n`);
   for (const entry of retired) {
     process.stdout.write(`Removed ${entry.file} — ${entry.chunks} chunks (${entry.reason})\n`);
   }
@@ -1734,6 +1814,7 @@ function reportIndex({ built, failures, retired, unchanged, vectoring }) {
     unchanged: unchanged.filter(stays).length,
     failed: failures.length,
     awaiting: vectoring.awaiting,
+    keyUnresolved: missingKey !== null,
   };
   const failed = summary.failed > 0 ? `, ${summary.failed} failed` : '';
   const awaiting = summary.awaiting > 0 ? `, ${summary.awaiting} chunks awaiting vectors` : '';
@@ -1752,7 +1833,8 @@ function reportIndex({ built, failures, retired, unchanged, vectoring }) {
  * and one save, searchable by keyword from then on. Then every chunk in
  * scope without a vector is embedded (see fillVectors) — a pruned one
  * excepted — and a keyword-only store takes a configured provider. Every
- * file is attempted; a failure is counted in the returned summary.
+ * file is attempted; a failure is counted in the returned summary, as is a
+ * store whose provider key does not resolve.
  * @returns {Promise<IndexSummary>}
  */
 async function cmdIndexBulk(options, cfg, provider) {
@@ -1765,7 +1847,7 @@ async function cmdIndexBulk(options, cfg, provider) {
   const snapshot = readStore();
   const chunks = snapshot.db ? store.allChunks(snapshot.db) : [];
   const pruning = indexPruning(cfg, manifests.workUnits);
-  const plan = planIndex(chunks, manifests, { scope, pruning });
+  const plan = planIndex(chunks, manifests, { scope, pruning, awaiting: awaitingIdentities(snapshot, embedder) });
 
   const { built, failures } = buildAll([
     ...plan.fresh.map((artifact) => ({ artifact, state: 'new' })),
@@ -1786,8 +1868,9 @@ async function cmdIndexBulk(options, cfg, provider) {
   });
   const pending = (chunk) => (!scope || chunk.work_unit === scope) && !(pruning && pruning.prunes(chunk.work_unit, chunk.phase));
   const vectoring = embedder ? await fillVectors(cfg, embedder, written.snapshot, pending) : NOTHING_EMBEDDED;
+  const missingKey = (embedder && embedder.missingKey) || null;
 
-  return reportIndex({ built, failures, retired: written.retired, unchanged: plan.unchanged, vectoring });
+  return reportIndex({ built, failures, retired: written.retired, unchanged: plan.unchanged, vectoring, missingKey });
 }
 
 // ---------------------------------------------------------------------------
@@ -2060,19 +2143,29 @@ const CONFLICT_CAUSES = {
 };
 
 /**
+ * Why a query over the store runs keyword-only, and its fix — null when it
+ * embeds its framings. A store built with a provider takes its own alone; a
+ * keyword-only store has no vector to compare one with.
+ * @param {Record<string, any>} metadata @param {object} cfg @param {object|null} provider
+ * @returns {string|null}
+ */
+function keywordOnlyCause(metadata, cfg, provider) {
+  const conflict = providerConflict(metadata, cfg, provider);
+  if (conflict) return CONFLICT_CAUSES[conflict](metadata, cfg, provider);
+  if (metadata.provider) return null;
+  if (provider) return NO_VECTORS_YET;
+  return providerKeyUnresolved(cfg) ? keyCause(cfg) : CHOSEN_KEYWORD_ONLY;
+}
+
+/**
  * The provider a query embeds its framings with — null when it runs
- * keyword-only — and the note that says why it does. A store built with a
- * provider takes its own alone; a keyword-only store has no vector to
- * compare one with.
+ * keyword-only — and the note that says why it does (see keywordOnlyCause).
  * @param {Record<string, any>} metadata @param {object} cfg @param {object|null} provider
  * @returns {{provider: object|null, note: string|null}}
  */
 function queryEmbedder(metadata, cfg, provider) {
-  const conflict = providerConflict(metadata, cfg, provider);
-  if (conflict) return { provider: null, note: keywordOnlyNote(CONFLICT_CAUSES[conflict](metadata, cfg, provider)) };
-  if (metadata.provider) return { provider, note: null };
-  if (provider) return { provider: null, note: keywordOnlyNote(NO_VECTORS_YET) };
-  return { provider: null, note: keywordOnlyNote(providerKeyUnresolved(cfg) ? keyCause(cfg) : CHOSEN_KEYWORD_ONLY) };
+  const cause = keywordOnlyCause(metadata, cfg, provider);
+  return cause ? { provider: null, note: keywordOnlyNote(cause) } : { provider, note: null };
 }
 
 /**
@@ -2110,7 +2203,7 @@ async function framingVectors({ provider, note }, terms) {
  */
 function awaitingNote(db) {
   const awaiting = store.chunksWithoutVector(db).length;
-  return awaiting > 0 ? `[${awaiting} chunks await vectors — searched by keyword alone until the next start embeds them]` : null;
+  return awaiting > 0 ? `[${awaiting} chunks await vectors — searched by keyword alone; each start retries them]` : null;
 }
 
 /**
@@ -2162,8 +2255,7 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 
 // A query's patience with its endpoint is seconds, where an index's is
 // minutes: keyword-only answers at once, and a phase's opening query must not
-// stall. An endpoint that never answers costs a query two timeouts and the
-// backoff between them — about 11 s.
+// stall.
 const QUERY_TIMEOUT_MS = 5000;
 const QUERY_RETRY = { maxAttempts: 2, backoff: DEFAULT_RETRY_BACKOFF };
 const QUERY_WAIT_BUDGET_MS = 5000;
@@ -2187,6 +2279,17 @@ function queryProvider(cfg, patience = {}) {
     dimensions: () => provider.dimensions(),
     embedBatch: (/** @type {string[]} */ texts) => withRetry(() => provider.embedBatch(texts), QUERY_RETRY),
   };
+}
+
+/**
+ * The configured provider as a command embeds with it — a query on its own
+ * patience (see queryProvider), every other command on the provider's — or
+ * null when none is.
+ * @param {string} command @param {object} cfg
+ * @returns {object|null}
+ */
+function commandProvider(command, cfg) {
+  return command === 'query' ? queryProvider(cfg) : config.resolveProvider(cfg);
 }
 
 /**
@@ -2380,6 +2483,30 @@ async function readiness() {
 // Status command
 // ---------------------------------------------------------------------------
 
+/**
+ * The config and provider a command loads, or the error that fails it.
+ * @returns {{cfg: object|null, provider: object|null, error: Error|null}}
+ */
+function statusSettings() {
+  try {
+    const cfg = config.loadConfig();
+    return { cfg, provider: config.resolveProvider(cfg), error: null };
+  } catch (error) {
+    return { cfg: null, provider: null, error };
+  }
+}
+
+/**
+ * What a query over the store runs in — keyword-only naming why and the fix,
+ * in its note's words (see keywordOnlyCause).
+ * @param {Record<string, any>} metadata @param {ReturnType<typeof statusSettings>} settings
+ */
+function queryMode(metadata, { cfg, provider, error }) {
+  if (error) return 'none — a query fails until the knowledge config loads';
+  const cause = keywordOnlyCause(metadata, cfg, provider);
+  return cause ? `Keyword-only — ${cause}` : 'Full (hybrid search)';
+}
+
 async function cmdStatus() {
   const sp = storePath();
   const mp = metadataPath();
@@ -2441,48 +2568,22 @@ async function cmdStatus() {
   const sizeKb = (stat.size / 1024).toFixed(1);
   out.push(`Store size: ${sizeKb} KB`);
 
-  let cfg;
-  try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
-
+  const warn = (err) => out.push('', `WARNING: ${err.message}`);
+  const settings = statusSettings();
   if (fs.existsSync(mp)) {
     const metadata = store.readMetadata(mp);
     out.push(`Last indexed: ${metadata.last_indexed || 'unknown'}`);
-
-    // Provider info.
-    if (metadata.provider) {
-      out.push(`Provider: ${metadata.provider} (model: ${metadata.model}, dimensions: ${metadata.dimensions})`);
-      out.push('Mode: Full (hybrid search)');
-      out.push(`Chunks awaiting vectors: ${store.chunksWithoutVector(db).length}`);
-    } else {
-      out.push('Provider: none');
-      out.push('Mode: Keyword-only');
-    }
-
-    // Provider mismatch warning.
-    if (cfg) {
-      const cfgProvider = config.resolveProvider(cfg);
-      if (metadata.provider && cfgProvider) {
-        if (metadata.provider !== cfg.provider ||
-            metadata.model !== cfgProvider.model() ||
-            metadata.dimensions !== cfgProvider.dimensions()) {
-          out.push('');
-          out.push('WARNING: Config has changed since last index. Run `knowledge rebuild` to reindex.');
-        }
-      }
-
-      if (!metadata.provider && cfgProvider) {
-        out.push('');
-        out.push('NOTE: An embedding provider is configured — the next start embeds every chunk.');
-      }
-    }
+    out.push(metadata.provider ? `Provider: ${metadata.provider} (model: ${metadata.model}, dimensions: ${metadata.dimensions})` : 'Provider: none');
+    out.push(`Mode: ${queryMode(metadata, settings)}`);
+    if (metadata.provider) out.push(`Chunks awaiting vectors: ${store.chunksWithoutVector(db).length}`);
   } else {
     out.push('Metadata: missing (run `knowledge rebuild` to fix)');
   }
+  if (settings.error) warn(settings.error);
 
   // What the next bulk index does: the artifacts it indexes — never indexed,
   // or changed since — those compact prunes below the decay floor, which it
   // skips, and the indexed identities it retires.
-  const warn = (err) => out.push('', `WARNING: ${err.message}`);
   let manifests = null;
   try {
     manifests = readManifests();
@@ -2492,7 +2593,7 @@ async function cmdStatus() {
   if (manifests) {
     let pruning = null;
     try {
-      pruning = pruneTest(cfg, manifests.workUnits);
+      pruning = pruneTest(settings.cfg, manifests.workUnits);
     } catch (err) {
       warn(err);
     }
@@ -2884,7 +2985,7 @@ async function main() {
   let provider = null;
   if (['index', 'query', 'rebuild', 'compact'].includes(command)) {
     cfg = config.loadConfig();
-    provider = command === 'query' ? queryProvider(cfg) : config.resolveProvider(cfg);
+    provider = commandProvider(command, cfg);
   }
 
   switch (command) {
@@ -2939,7 +3040,10 @@ module.exports = {
   resolveSimilarityThreshold,
   boostProblem,
   keyUnresolvedError,
+  QUERY_TIMEOUT_MS,
+  QUERY_WAIT_BUDGET_MS,
   queryProvider,
+  commandProvider,
   querySettings,
   queryStore,
   renderQuery,

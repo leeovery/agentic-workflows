@@ -2,9 +2,10 @@
 
 // The bulk index's write: the keyword side of everything new and changed in
 // one save, then the chunks without a vector embedded batch by batch — across
-// files, with a per-file fallback, only the text the store lacks sent to the
-// provider — each batch saved as it lands; and the run's view of the
-// manifests and the store refreshed under the lock before each save.
+// files, falling back per file and then per text, only the text the store
+// lacks sent to the provider — each batch saved as it lands; and the run's
+// view of the manifests and the store refreshed under the lock before each
+// save.
 
 require('./hermetic-env.cjs');
 
@@ -40,6 +41,24 @@ function setItemStatus(root, topic, status) {
   const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.phases.discussion.items[topic] = { status };
   writeJson(file, manifest);
+}
+
+/**
+ * A feature beside the epic, registered, its discussion completed and on disk.
+ * @param {string} root @param {string} name @param {Record<string, any>} [unit]  over the manifest's own fields
+ */
+function addFeature(root, name, unit = {}) {
+  const registry = path.join(root, '.workflows', 'manifest.json');
+  const project = JSON.parse(fs.readFileSync(registry, 'utf8'));
+  project.work_units[name] = { work_type: 'feature' };
+  writeJson(registry, project);
+  writeJson(path.join(root, '.workflows', name, 'manifest.json'), {
+    name, work_type: 'feature', status: 'in-progress', created: '2026-01-01', ...unit,
+    phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+  });
+  const file = path.join(root, '.workflows', name, 'discussion', `${name}.md`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `# ${name}\n\nThe ${name} decision.\n`);
 }
 
 /** An epic whose three completed discussions are on disk, no store yet. */
@@ -87,6 +106,11 @@ function storeFile(root) {
 
 function chunksFor(root, topic) {
   return store.allChunks(loadStore(storeFile(root))).filter((c) => c.topic === topic);
+}
+
+/** The topics of the chunks awaiting a vector, in store order. */
+function awaitingTopics(root) {
+  return store.chunksWithoutVector(loadStore(storeFile(root))).map((chunk) => chunk.topic);
 }
 
 /** A discussion long enough to chunk by its sections, one chunk per body. */
@@ -160,7 +184,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   it('loads the store once, saves the keyword side once, then once per batch of vectors', async () => {
     await indexThenEditAll();
     const summary = await cmdIndexBulk({}, CFG, spyProvider());
-    assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.strictEqual(output.loads, 1);
     assert.strictEqual(output.saves, 2);
   });
@@ -176,7 +200,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
 
   it('writes the keyword side before any embed: a provider failing its first call leaves every new file searchable by keyword', async () => {
     const summary = await cmdIndexBulk({}, CFG, spyProvider({ answers: 0 }));
-    assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 3 });
+    assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 3, keyUnresolved: false });
     const db = loadStore(storeFile(root));
     for (const topic of TOPICS) {
       assert.deepStrictEqual(store.searchKeyword(db, { term: topic }).map((hit) => hit.topic), [topic]);
@@ -194,7 +218,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     await cmdIndexBulk({}, CFG, spyProvider({ answers: 0 }));
     const provider = spyProvider();
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 1);
     assert.strictEqual(provider.batches[0].length, 1);
     assert.match(provider.batches[0][0], /The alpha decision, revised\./);
@@ -217,7 +241,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   it('falls back to file by file when the endpoint refuses an input, so the refused file awaits its vectors alone', async () => {
     const provider = spyProvider({ refuse: (text) => text.includes('beta') });
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 1 });
+    assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 1, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 1 + TOPICS.length);
     assert.match(output.stderr, /^Failed to embed \.workflows\/payments\/discussion\/beta\.md: HTTP 400: input refused$/m);
     assert.strictEqual(chunksFor(root, 'beta').length, 1, 'written by keyword');
@@ -225,12 +249,110 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     assert.strictEqual(output.saves, 2);
   });
 
+  it('falls back to text by text within a file the endpoint refused, so its other chunks get their vectors', async () => {
+    writeDiscussion(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
+    const summary = await cmdIndexBulk({}, CFG, spyProvider({ refuse: (text) => text.includes('The second ruling.') }));
+    assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 1, keyUnresolved: false });
+    const [refused] = store.chunksWithoutVector(loadStore(storeFile(root)));
+    assert.match(refused.content, /The second ruling\./);
+    assert.strictEqual(chunksFor(root, 'alpha').length, 3);
+    assert.strictEqual(output.stderr, [
+      'Failed to embed .workflows/payments/discussion/alpha.md: HTTP 400: input refused',
+      'Each is searchable by keyword; a chunk the endpoint refused goes without a vector.',
+    ].join('\n') + '\n');
+  });
+
+  it('embeds the batches after one whose input the endpoint refused', async () => {
+    writeDiscussion(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
+    const summary = await cmdIndexBulk({}, CFG, spyProvider({ refuse: (text) => text.includes('Ruling 50.') }));
+    assert.strictEqual(summary.awaiting, 1);
+    assert.deepStrictEqual(awaitingTopics(root), ['alpha']);
+    for (const topic of ['beta', 'gamma']) {
+      assert.ok(store.vectorsByContentHash(loadStore(storeFile(root))).has(chunksFor(root, topic)[0].content_hash), topic);
+    }
+  });
+
+  it('re-indexes a file the chunker now cuts otherwise while a chunk of it awaits its vector', async () => {
+    await cmdIndexBulk({}, CFG, spyProvider({ refuse: (text) => text.includes('beta') }));
+    const db = loadStore(storeFile(root));
+    const [beta] = chunksFor(root, 'beta');
+    store.removeByIdentity(db, beta);
+    store.insertDocument(db, { ...beta, content: 'An earlier cut of the beta decision.' });
+    saveStore(db, storeFile(root));
+    output.stdout = '';
+
+    const summary = await cmdIndexBulk({}, CFG, spyProvider());
+    assert.deepStrictEqual(summary, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.match(output.stdout, /^Indexed \.workflows\/payments\/discussion\/beta\.md — 1 chunks \(changed\)$/m);
+    assert.match(chunksFor(root, 'beta')[0].content, /The beta decision\./);
+  });
+
+  it('leaves unchanged a file the endpoint refused a chunk of, while the chunker cuts it the same', async () => {
+    const refusing = () => spyProvider({ refuse: (text) => text.includes('beta') });
+    await cmdIndexBulk({}, CFG, refusing());
+    output.stdout = '';
+    output.saves = 0;
+    const summary = await cmdIndexBulk({}, CFG, refusing());
+    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 1, keyUnresolved: false });
+    assert.doesNotMatch(output.stdout, /^Indexed /m);
+    assert.strictEqual(output.saves, 0);
+  });
+
+  it('embeds a text two files share once, though the files land in different batches', async () => {
+    writeDiscussion(root, 'alpha', sectioned(Array.from({ length: 101 }, (_, i) => `Ruling ${i}.`)));
+    fs.copyFileSync(discussionPath(root, 'alpha'), discussionPath(root, 'delta'));
+    setItemStatus(root, 'delta', 'completed');
+    const provider = spyProvider();
+    await cmdIndexBulk({}, CFG, provider);
+    const sent = provider.batches.flat();
+    assert.strictEqual(sent.length, new Set(sent).size);
+    assert.deepStrictEqual(awaitingTopics(root), []);
+  });
+
+  it("embeds a scoped bulk index's own work unit alone", async () => {
+    addFeature(root, 'billing');
+    await cmdIndexBulk({}, CFG, spyProvider({ answers: 0 }));
+    const provider = spyProvider();
+    await cmdIndexBulk({ workUnit: 'billing' }, CFG, provider);
+    assert.deepStrictEqual(provider.batches, [[chunksFor(root, 'billing')[0].content]]);
+    assert.deepStrictEqual(awaitingTopics(root), TOPICS);
+  });
+
+  it("embeds a single-file index's own file alone", async () => {
+    await cmdIndexBulk({}, CFG, spyProvider({ answers: 0 }));
+    const provider = spyProvider();
+    const identity = { workUnit: 'payments', phase: 'discussion', topic: 'alpha' };
+    await indexSingleFile('.workflows/payments/discussion/alpha.md', identity, CFG, provider);
+    assert.deepStrictEqual(provider.batches, [[chunksFor(root, 'alpha')[0].content]]);
+    assert.deepStrictEqual(awaitingTopics(root), ['beta', 'gamma']);
+  });
+
+  it('never embeds the chunks of a unit compact prunes', async () => {
+    addFeature(root, 'old', { status: 'completed', completed_at: '2026-01-01' });
+    addFeature(root, 'new', { status: 'completed', completed_at: '2026-06-01' });
+    await cmdIndexBulk({}, CFG, spyProvider({ answers: 0 }));
+    const provider = spyProvider();
+    await cmdIndexBulk({}, { ...CFG, decay_prune_below: 0.99 }, provider);
+    assert.deepStrictEqual(awaitingTopics(root), ['old']);
+    assert.ok(!provider.batches.flat().some((text) => text.includes('The old decision.')));
+  });
+
+  it('refuses to save vectors into a store whose width changed while they were embedded', async () => {
+    const widen = async () => {
+      const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
+      writeJson(file, { ...JSON.parse(fs.readFileSync(file, 'utf8')), dimensions: 64 });
+    };
+    await assert.rejects(cmdIndexBulk({}, CFG, spyProvider({ during: widen })),
+      /^Error: The store's vector width changed during index \(concurrent rebuild\)\. Embeddings produced for dims=128, store now has dims=64\.$/);
+    assert.deepStrictEqual(awaitingTopics(root), TOPICS);
+  });
+
   it('fails every file in a batch that failed transiently, with no per-file calls, and still retires', async (t) => {
     await indexThenEditAll();
     fs.rmSync(discussionPath(root, 'gamma'));
     const provider = spyProvider({ unreachable: true });
     const summary = await withoutBackoff(t, () => cmdIndexBulk({}, CFG, provider));
-    assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 2 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 2, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 3, 'the one batch, retried — never file by file');
     for (const batch of provider.batches) assert.strictEqual(batch.length, 2);
     for (const topic of ['alpha', 'beta']) {
@@ -272,7 +394,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
       return withLock(lockPath, fn);
     };
     const summary = await cmdIndexBulk({}, CFG, spyProvider());
-    assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 1, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.match(output.stdout, /^Removed \.workflows\/payments\/discussion\/beta\.md — 1 chunks \(discussion cancelled\)$/m);
     assert.doesNotMatch(output.stdout, /^Indexed \.workflows\/payments\/discussion\/beta\.md/m);
     assert.strictEqual(chunksFor(root, 'beta').length, 0);
@@ -284,7 +406,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     output.saves = 0;
     const provider = spyProvider();
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 0);
     assert.strictEqual(output.saves, 0);
   });
@@ -296,7 +418,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     assert.strictEqual(metadata().provider, null);
     const provider = spyProvider();
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.deepStrictEqual(provider.batches.map((batch) => batch.length), [3]);
     const { provider: name, model, dimensions } = metadata();
     assert.deepStrictEqual({ name, model, dimensions }, { name: 'stub', model: 'stub', dimensions: CFG.dimensions });
@@ -336,7 +458,7 @@ describe('knowledge index — vectors keyed by their text', () => {
   it('the bulk index embeds only the chunk whose text changed', async () => {
     const provider = spyProvider();
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 1);
     assert.strictEqual(provider.batches[0].length, 1);
     assert.match(provider.batches[0][0], /The second ruling, revised\./);
@@ -359,7 +481,7 @@ describe('knowledge index — vectors keyed by their text', () => {
     writeDiscussion(root, 'alpha', sectioned(['The first ruling.', 'The second ruling.', 'The third ruling.']));
     const provider = spyProvider();
     const summary = await cmdIndexBulk({}, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 1, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(summary, { new: 1, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.strictEqual(provider.batches.length, 0);
     const [delta] = chunksFor(root, 'delta');
     assert.ok(store.vectorsByContentHash(loadStore(storeFile(root))).has(delta.content_hash));
@@ -415,7 +537,7 @@ describe('knowledge index — a key that does not resolve', () => {
   it('writes every changed file by keyword at a bulk index, and the next with the key fills their vectors', async () => {
     for (const topic of ['alpha', 'beta']) writeDiscussion(root, topic, `The ${topic} decision, revised.`);
     const keyless = await cmdIndexBulk({}, OPENAI, null);
-    assert.deepStrictEqual(keyless, { new: 0, changed: 2, removed: 0, unchanged: 1, failed: 0, awaiting: 2 });
+    assert.deepStrictEqual(keyless, { new: 0, changed: 2, removed: 0, unchanged: 1, failed: 0, awaiting: 2, keyUnresolved: true });
     for (const topic of ['alpha', 'beta']) {
       assert.ok(output.stderr.includes(`Failed to embed .workflows/payments/discussion/${topic}.md: ${KEY_FIX}\n`), topic);
     }
@@ -423,7 +545,7 @@ describe('knowledge index — a key that does not resolve', () => {
 
     const provider = keyed();
     const filled = await cmdIndexBulk({}, OPENAI, provider);
-    assert.deepStrictEqual(filled, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0 });
+    assert.deepStrictEqual(filled, { new: 0, changed: 0, removed: 0, unchanged: 3, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.deepStrictEqual(provider.batches.map((batch) => batch.length), [2]);
   });
 
@@ -475,7 +597,7 @@ describe('knowledge index — the CLI, without a vector', () => {
     endpoint.mode = 'ok';
     const queried = await cli('query', 'the alpha decision');
     assert.strictEqual(queried.code, 0);
-    assert.match(queried.stdout, /^\[1 chunks await vectors — searched by keyword alone until the next start embeds them\]\n\[1 results\]\n/);
+    assert.match(queried.stdout, /^\[1 chunks await vectors — searched by keyword alone; each start retries them\]\n\[1 results\]\n/);
     assert.match(queried.stdout, /^\[discussion \| payments\/alpha \|/m);
     assert.match((await cli('status')).stdout, /^Chunks awaiting vectors: 1$/m);
   });
@@ -495,6 +617,27 @@ describe('knowledge index — the CLI, without a vector', () => {
     assert.strictEqual(filled.stdout, '0 new, 0 changed, 0 removed, 3 unchanged.\n');
     assert.deepStrictEqual(endpoint.requests.map((texts) => texts.length), [3]);
     assert.match((await cli('status')).stdout, /^Chunks awaiting vectors: 0$/m);
+  });
+
+  it('a bulk index over a store whose provider key does not resolve exits non-zero naming the key, with nothing awaiting, and check stays ready', async () => {
+    assert.strictEqual((await cli('index')).code, 0);
+    const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
+    writeJson(path.join(root, '.workflows', '.knowledge', 'metadata.json'), { ...metadata(), ...openai });
+    configure(openai);
+    const indexed = await cli('index');
+    assert.strictEqual(indexed.code, 1);
+    assert.strictEqual(indexed.stdout, '0 new, 0 changed, 0 removed, 3 unchanged.\n');
+    assert.strictEqual(indexed.stderr,
+      'Cannot embed: the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\n');
+    assert.strictEqual((await cli('check')).stdout, 'ready\n');
+  });
+
+  it('a rebuild that leaves chunks awaiting vectors exits non-zero', async () => {
+    endpoint.mode = 'quota';
+    const rebuilt = await knowledgeCli(root, ['rebuild'], {}, 'rebuild\n');
+    assert.strictEqual(rebuilt.code, 1);
+    assert.match(rebuilt.stdout, /^3 new, 0 changed, 0 removed, 0 unchanged, 3 chunks awaiting vectors\.$/m);
+    assert.match((await cli('status')).stdout, /^Chunks awaiting vectors: 3$/m);
   });
 
   it('a keyword-only store takes the provider configured over it at the next bulk index, and fills in', async () => {

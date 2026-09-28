@@ -727,7 +727,7 @@ assert_eq "says the next start embeds the store" "[keyword-only mode — the sto
   "$(echo "$output" | head -1)"
 status_out=$(run_kb status 2>&1)
 assert_eq "status says the same, with no rebuild" "true,false" \
-  "$(echo "$status_out" | grep -q '^NOTE: An embedding provider is configured — the next start embeds every chunk\.$' && echo true || echo false),$(echo "$status_out" | grep -q 'rebuild' && echo true || echo false)"
+  "$(echo "$status_out" | grep -q '^Mode: Keyword-only — the store has no vectors yet; the next start embeds them$' && echo true || echo false),$(echo "$status_out" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
 # --- Test 23b: The bulk index takes the configured provider into a keyword-only store ---
@@ -2118,11 +2118,11 @@ assert_eq "still has results" "true" "$(echo "$output" | grep -qE '\[[1-9][0-9]*
 teardown_project
 
 # ============================================================================
-# STUB-TO-FULL UPGRADE NOTE TESTS
+# A KEYWORD-ONLY STORE WITH A PROVIDER CONFIGURED — QUERY NOTE TESTS
 # ============================================================================
 
 echo ""
-echo "=== Stub-to-Full Upgrade Note Tests ==="
+echo "=== A Keyword-Only Store With a Provider Configured — Query Note Tests ==="
 
 # --- Test 67: A query over a keyword-only store with a provider configured names the next start ---
 echo "Test 67: No-vectors-yet note on query"

@@ -34,6 +34,14 @@ const OPENAI_DEFAULT_DIMENSIONS = 1536;
 // here; runSystemConfigStep stays untouched.
 const PROVIDER_SETUPS = [OPENAI_SETUP, COMPATIBLE_SETUP];
 
+// Marker class for user-facing refusals: message-only output, exit 1.
+class SetupRefusal extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'SetupRefusal';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // TTY guard — abort cleanly on non-interactive invocation
 // ---------------------------------------------------------------------------
@@ -492,6 +500,29 @@ function createSetupToolkit(rl) {
 // Project init step
 // ---------------------------------------------------------------------------
 
+/**
+ * Drop provider-selection overrides (provider, model, dimensions, base_url)
+ * from an existing project config so the project genuinely inherits the
+ * system settings. No-op when the file is absent or carries no overrides.
+ * @param {string} projectConfigFile
+ */
+function stripProviderOverrides(projectConfigFile) {
+  if (!fs.existsSync(projectConfigFile)) return;
+  let knowledge;
+  try {
+    knowledge = config.readConfigFile(projectConfigFile) || {};
+  } catch (err) {
+    throw new SetupRefusal(`project config at ${projectConfigFile} is invalid: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const overrides = ['provider', 'model', 'dimensions', 'base_url'].filter((f) => f in knowledge);
+  if (overrides.length === 0) return;
+  for (const f of overrides) delete knowledge[f];
+  config.writeConfigFile(projectConfigFile, { knowledge });
+  process.stdout.write(
+    `Project config overrode ${overrides.join(', ')} — reset to inherit the system settings.\n`
+  );
+}
+
 async function runProjectInitStep(rl) {
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
@@ -542,12 +573,6 @@ async function runProjectInitStep(rl) {
 
   // Load merged config for the provider identity the metadata records.
   const cfg = config.loadConfig();
-  // Use the provider NAME from config, NOT config.resolveProvider(cfg). The
-  // resolved provider is null for a keyed provider whose key hasn't been set
-  // yet — recording that null here would write metadata claiming keyword-only
-  // and then mis-fire "provider changed — rebuild" once the key arrives. The
-  // name records declared intent; it matches cleanly when the key resolves,
-  // and index/query surface the key-unresolved remedy in the meantime.
   const provider = cfg.provider || null;
   const dims = Number.isInteger(cfg.dimensions) && cfg.dimensions > 0
     ? cfg.dimensions
@@ -598,7 +623,7 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
     }
     if (summary.awaiting > 0) {
       process.stderr.write(
-        `\n${summary.awaiting} chunk(s) await vectors — searchable by keyword; the next start embeds them.\n`
+        `\n${summary.awaiting} chunk(s) await vectors — searchable by keyword; each start retries them.\n`
       );
     }
   } catch (err) {
@@ -609,11 +634,15 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
   }
 }
 
-// cmdIndexBulk is injected by the caller (index.js dispatch) to avoid
-// a circular require — esbuild's CJS wrapping breaks `require.main ===
-// module` on the entry when two modules require each other.
-async function cmdSetup(cmdIndexBulk, args, options) {
-  requireTTY();
+/**
+ * @param {Function} cmdIndexBulk  injected by the caller (index.js dispatch)
+ *   to avoid a circular require — esbuild's CJS wrapping breaks
+ *   `require.main === module` on the entry when two modules require each other
+ * @param {string[]} args @param {object} options
+ * @param {{ requireTTY?: Function, createPrompter?: Function }} [deps]  injectable for tests
+ */
+async function cmdSetup(cmdIndexBulk, args, options, deps = {}) {
+  (deps.requireTTY || requireTTY)();
 
   // Guard: .workflows/ must exist somewhere at or above cwd.
   const workflowsDir = path.resolve(config.findProjectRoot(), '.workflows');
@@ -624,7 +653,7 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.exit(1);
   }
 
-  const rl = createPrompter();
+  const rl = (deps.createPrompter || createPrompter)();
   let sysResult;
 
   try {
@@ -632,6 +661,7 @@ async function cmdSetup(cmdIndexBulk, args, options) {
     process.stdout.write('====================\n');
 
     sysResult = await runSystemConfigStep(rl);
+    if (sysResult.provider) stripProviderOverrides(config.projectConfigPath());
     await runProjectInitStep(rl);
   } finally {
     // Close readline before indexing — indexing is non-interactive and
@@ -672,6 +702,8 @@ module.exports = {
   runSystemConfigStep,
   runProjectInitStep,
   runInitialIndexStep,
+  stripProviderOverrides,
+  SetupRefusal,
   OPENAI_DEFAULT_MODEL,
   OPENAI_DEFAULT_DIMENSIONS,
 };

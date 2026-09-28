@@ -31,7 +31,7 @@ const {
   describeValidationError,
 } = require('../../src/knowledge/setup');
 const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
-const { QuotaError, RateLimitError } = require('../../src/knowledge/providers/openai-engine');
+const { QuotaError, RateLimitError, WaitBudget } = require('../../src/knowledge/providers/openai-engine');
 
 let tmpDir;
 
@@ -375,6 +375,36 @@ describe('resolveProvider', () => {
   it('throws when config is not an object', () => {
     assert.throws(() => resolveProvider(null), /config is required/);
     assert.throws(() => resolveProvider(undefined), /config is required/);
+  });
+
+  describe('an openai provider, on the patience it is given', () => {
+    const OPENAI = { provider: 'openai', _api_key: 'sk-test', model: 'text-embedding-3-small', dimensions: 2 };
+    let fetch0;
+
+    beforeEach(() => {
+      fetch0 = globalThis.fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = fetch0;
+    });
+
+    it('gives up on an endpoint that never answers after the timeout it is given', { timeout: 5000 }, async () => {
+      globalThis.fetch = (_url, init) => new Promise((_resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(init.signal.reason));
+      });
+      await assert.rejects(resolveProvider(OPENAI, { timeoutMs: 50 }).embedBatch(['x']), /timed out after 0\.05s/);
+    });
+
+    it('waits out a rate limit no longer than the budget it is given', async () => {
+      let requests = 0;
+      globalThis.fetch = async () => {
+        requests += 1;
+        return { ok: false, status: 429, headers: new Headers({ 'retry-after': '1' }), text: async () => 'Rate limit reached' };
+      };
+      await assert.rejects(resolveProvider(OPENAI, { waitBudget: new WaitBudget(0) }).embedBatch(['x']), RateLimitError);
+      assert.strictEqual(requests, 1);
+    });
   });
 });
 
