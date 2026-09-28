@@ -675,3 +675,86 @@ describe('assert: a walk still running is waited for, never judged', () => {
     }
   });
 });
+
+describe('stop: a finished walk whose stop hook never fired', () => {
+  // The walker's own transcript records how its turn ended, so a stop the
+  // hook never wrote is replayed from it — and only from a turn the walker
+  // finished, into the world that transcript walked.
+  const CASE = 'start-lists-active-work';
+  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
+  const run = (args, env = {}) => execFileSync('node', [RUN, ...args], {
+    encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env },
+  });
+  const refusal = (args, env) => {
+    try { run(args, env); } catch (e) { return String(e.stderr); }
+    return null;
+  };
+  const entry = (role, content, stopReason = null) => JSON.stringify({
+    type: role, message: { role, content, stop_reason: stopReason, model: 'claude-sonnet-5' },
+  });
+
+  function scene() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-world-'));
+    fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls .\n');
+    const config = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-config-'));
+    const subagents = path.join(config, 'projects', 'some-project', 'some-session', 'subagents');
+    fs.mkdirSync(subagents, { recursive: true });
+    const transcript = path.join(subagents, 'agent-a1b2c3.jsonl');
+    const write = (...lines) => fs.writeFileSync(transcript, `${lines.join('\n')}\n`);
+    write(
+      entry('user', `Walk the prose in ${dir}.`),
+      entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: `ls ${dir}` } }], 'tool_use'),
+      entry('assistant', [{ type: 'text', text: 'STOPPED: end of flow' }], 'end_turn'),
+    );
+    const cleanup = () => {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(config, { recursive: true, force: true });
+    };
+    return { dir, config, transcript, write, cleanup };
+  }
+
+  it('records the stop and the walk from the transcript the agent id names, so assert reads a stopped walk', () => {
+    const s = scene();
+    try {
+      const out = run(['stop', CASE, '--world', s.dir, '--agent', 'a1b2c3'], { CLAUDE_CONFIG_DIR: s.config });
+      assert.match(out, /"replayed"/);
+      const stop = worlds.readActionRows(s.dir).find((r) => r.event === 'SubagentStop');
+      assert.ok(stop, 'no SubagentStop row');
+      assert.match(fs.readFileSync(path.join(s.dir, worlds.ACTION_LOG), 'utf8'), /SubagentStop\t-\tclaude-sonnet-5\tSTOPPED: end of flow/);
+      assert.match(worlds.readWalkLog(s.dir), /STOPPED: end of flow/);
+      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /already recorded/);
+    } finally {
+      s.cleanup();
+    }
+  });
+
+  it('refuses a walk whose last turn is not finished, and a transcript of another world', () => {
+    const s = scene();
+    try {
+      s.write(
+        entry('user', `Walk the prose in ${s.dir}.`),
+        entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }], 'tool_use'),
+      );
+      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /the walker has not stopped/);
+
+      s.write(
+        entry('user', 'Walk the prose in /tmp/prose-world-elsewhere.'),
+        entry('assistant', [{ type: 'text', text: 'done' }], 'end_turn'),
+      );
+      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /is not a walk of/);
+      assert.ok(!worlds.readActionRows(s.dir).some((r) => r.event === 'SubagentStop'), 'a refusal wrote a stop');
+    } finally {
+      s.cleanup();
+    }
+  });
+
+  it('names a missing transcript rather than guessing', () => {
+    const s = scene();
+    try {
+      assert.match(refusal(['stop', CASE, '--world', s.dir, '--agent', 'ffffff'], { CLAUDE_CONFIG_DIR: s.config }), /no transcript named agent-ffffff\.jsonl/);
+      assert.match(refusal(['stop', CASE, '--world', s.dir]), /--agent <id> or --transcript <file>/);
+    } finally {
+      s.cleanup();
+    }
+  });
+});

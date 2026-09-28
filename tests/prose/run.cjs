@@ -11,12 +11,15 @@
 //   prompt <case-id> --world <d>  walker prompt (NEVER contains assert.md)
 //   diff <case-id> --world <d>    acted world vs expected world, as facts
 //   assert <case-id> --world <d>  write the asserting agent's prompt into the world, print its path
+//   stop <case-id> --world <d> --agent <id>|--transcript <f>
+//                                 record a finished walker's stop its hook never wrote
 //   snap <case-id>                (re)generate a case's snapshots
 //   verify [case-id]              rebuild-compare snapshot(s)
 //   archive <case-id> --world <d> lift a failed world's evidence out before destroy
 //   destroy --world <dir>         remove a world
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -207,6 +210,68 @@ function cmdAssert(argv) {
   process.stdout.write(`${JSON.stringify({ prompt_file: file, bytes: Buffer.byteLength(prompt), lines: prompt.split('\n').length })}\n`);
 }
 
+// --- stop (a finished walk whose stop hook never fired) -------------------
+
+// Claude Code keeps every subagent's transcript beside its session's, so a
+// walker's own record of how it ended outlives a stop hook that never ran.
+function findTranscript(agentId) {
+  if (!/^[A-Za-z0-9]+$/.test(agentId)) die(`"${agentId}" is not an agent id`);
+  const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
+  const name = `agent-${agentId}.jsonl`;
+  const found = [];
+  for (const project of fs.existsSync(projects) ? fs.readdirSync(projects) : []) {
+    const sessions = path.join(projects, project);
+    if (!fs.statSync(sessions).isDirectory()) continue;
+    for (const session of fs.readdirSync(sessions)) {
+      const file = path.join(sessions, session, 'subagents', name);
+      if (fs.existsSync(file)) found.push(file);
+    }
+  }
+  if (found.length !== 1) die(`${found.length ? 'several transcripts' : 'no transcript'} named ${name} under ${projects}`);
+  return found[0];
+}
+
+// The stop is replayed only from a turn the walker itself ended — the
+// transcript's last assistant message closing on end_turn — and only into
+// the world that transcript walked, so a walk still running is refused
+// here exactly as assert refuses it.
+function cmdStop(argv) {
+  const c = getCase(argv[0]);
+  const dir = requireWorld(argv, c);
+  if (worlds.readActionRows(dir).some((r) => r.event === 'SubagentStop')) {
+    die(`the walker's stop is already recorded in ${path.join(dir, worlds.ACTION_LOG)} — nothing to replay`);
+  }
+  const agent = flag(argv, '--agent');
+  const transcript = flag(argv, '--transcript') || (agent ? findTranscript(agent)
+    : die('stop needs the walker: --agent <id> or --transcript <file>'));
+  const raw = fs.readFileSync(transcript, 'utf8');
+  if (!raw.includes(dir)) die(`${transcript} is not a walk of ${dir}`);
+  const last = raw.split('\n').filter(Boolean).map((line) => {
+    try { return JSON.parse(line); } catch { return null; }
+  }).filter((e) => e && e.message && e.message.role === 'assistant').pop();
+  if (!last || last.message.stop_reason !== 'end_turn') {
+    die(`the walker has not stopped — the last turn in ${transcript} is not a finished one.\n`
+      + 'Wait for the walker to finish, then run stop again.');
+  }
+  const { content } = last.message;
+  const closing = Array.isArray(content)
+    ? content.filter((b) => b.type === 'text').map((b) => b.text).join('\n')
+    : String(content);
+  execFileSync(process.execPath, [path.join(__dirname, 'lib', 'record-action.cjs')], {
+    input: JSON.stringify({
+      cwd: dir,
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: closing,
+    }),
+  });
+  if (!worlds.readActionRows(dir).some((r) => r.event === 'SubagentStop')) {
+    die(`the recorder wrote no stop into ${path.join(dir, worlds.ACTION_LOG)}`);
+  }
+  process.stdout.write(`${JSON.stringify({ replayed: transcript })}\n`);
+}
+
 // --- snap / verify --------------------------------------------------------
 
 function statesOf(c) {
@@ -269,11 +334,11 @@ function cmdList() {
 const [, , command, ...rest] = process.argv;
 const commands = {
   list: cmdList, select: cmdSelect, world: cmdWorld, prompt: cmdPrompt,
-  diff: cmdDiff, assert: cmdAssert, snap: cmdSnap, verify: cmdVerify,
+  diff: cmdDiff, assert: cmdAssert, stop: cmdStop, snap: cmdSnap, verify: cmdVerify,
   destroy: cmdDestroy, archive: cmdArchive,
 };
 if (!commands[command]) {
-  die('usage: run.cjs <list|select|world|prompt|diff|assert|snap|verify|archive|destroy> …');
+  die('usage: run.cjs <list|select|world|prompt|diff|assert|stop|snap|verify|archive|destroy> …');
 }
 // `verify` fans its rebuilds out over threads, so a command may answer a
 // promise; a rejection is the same failure a synchronous throw was.
