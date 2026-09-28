@@ -1057,6 +1057,33 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.deepStrictEqual(launched, [fix.project, fix.project]);
   });
 
+  it('a fill\'s shortfall stays quiet once nothing awaits a vector — its chunks since retired', (t) => {
+    recordStubbedLaunches(t);
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: '.workflows/payments/discussion/payments.md: out of quota' });
+    const unit = path.join(fix.project, '.workflows/payments/manifest.json');
+    fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
+
+    const res = bootWith(null);
+
+    assert.deepStrictEqual(res.warnings, []);
+    assert.doesNotMatch(harness.output(fix.project, ['knowledge', 'status']), /fell short/);
+  });
+
+  it('a metadata file that does not parse is a warning, never a block', () => {
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    writeFile(fix.project, STORE_FILES[1], '{ not json');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.ok(res.warnings.length > 0);
+    for (const warning of res.warnings) assert.match(warning, /^knowledge .* failed: readMetadata: invalid JSON at /);
+  });
+
   it('a keyword-only store launches no fill', (t) => {
     const launched = recordStubbedLaunches(t);
     writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');

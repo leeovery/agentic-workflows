@@ -14,6 +14,7 @@ const { searchFramings, mergeFramings, rerank, explanation } = require('../../ke
 const { UserError, isPermanentError, withRetry, DEFAULT_RETRY_BACKOFF } = require('../../kernel/knowledge/retry.cjs');
 const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { keywordOnlyCause } = require('./embedder.cjs');
+const { fillShortfall } = require('./vectors.cjs');
 const { progressClockOf, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
@@ -170,16 +171,15 @@ async function framingVectors({ provider, note }, terms) {
 /**
  * The lines that say what the store's vectors lack: how many chunks await
  * them — where the store was embedded — and why the last fill fell short.
- * None while no chunk awaits a vector.
  * @param {Store} db @param {QuerySettings} settings
  * @returns {string[]}
  */
 function vectorNotes(db, { storeEmbedded, fillFailure }) {
   const awaiting = store.chunksWithoutVector(db).length;
-  if (awaiting === 0) return [];
+  const shortfall = fillShortfall(fillFailure, db);
   return [
-    ...(storeEmbedded ? [`[${awaiting} chunks await vectors — searched by keyword alone; each start retries them]`] : []),
-    ...(fillFailure ? [`[the last vector fill fell short — ${fillFailure}]`] : []),
+    ...(storeEmbedded && awaiting > 0 ? [`[${awaiting} chunks await vectors — searched by keyword alone; each start retries them]`] : []),
+    ...(shortfall ? [`[the last vector fill fell short — ${shortfall}]`] : []),
   ];
 }
 

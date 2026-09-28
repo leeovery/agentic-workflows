@@ -12,7 +12,7 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { listWorkUnitManifests } = require('../../kernel/manifest.cjs');
 const { loadSettings, keyCause, storeMetadata } = require('./embedder.cjs');
 const { indexPath, reconcile, readStore } = require('./indexing.cjs');
-const { launchFillIfAwaiting } = require('./vectors.cjs');
+const { launchFillIfAwaiting, fillShortfall } = require('./vectors.cjs');
 const { removeChunks, planCompaction, compact } = require('./maintenance.cjs');
 const { readiness } = require('./status.cjs');
 
@@ -32,6 +32,21 @@ function messageOf(err) {
 }
 
 /**
+ * `fn`'s answer, or null where it throws — the failure a warning under `label`.
+ * @template T
+ * @param {string[]} warnings @param {string} label @param {() => T} fn
+ * @returns {T|null}
+ */
+function attempt(warnings, label, fn) {
+  try {
+    return fn();
+  } catch (err) {
+    warnings.push(`${label} failed: ${messageOf(err)}`);
+    return null;
+  }
+}
+
+/**
  * Bring the knowledge base in line with what a transaction changed: each
  * change in turn, a failure a warning, then the vector fill launched once
  * where the writes left chunks awaiting vectors.
@@ -44,22 +59,20 @@ function syncKnowledge(cwd, changes, warnings) {
   let written = null;
   for (const change of changes) {
     const label = change.label || ('remove' in change ? 'knowledge remove' : 'knowledge index');
-    try {
+    attempt(warnings, label, () => {
       if ('remove' in change) {
         removeChunks(cwd, change.remove);
-        continue;
+        return;
       }
       settings = settings || loadSettings(knowledgeFiles(cwd));
       if ('index' in change) {
         written = indexPath(cwd, change.index, settings);
-      } else {
-        const reconciled = reconcile(cwd, settings, change.reindex);
-        for (const { artifact, error } of reconciled.failures) warnings.push(`${label} failed: Failed to index ${artifact.file}: ${error.message}`);
-        written = reconciled;
+        return;
       }
-    } catch (err) {
-      warnings.push(`${label} failed: ${messageOf(err)}`);
-    }
+      const reconciled = reconcile(cwd, settings, change.reindex);
+      for (const { artifact, error } of reconciled.failures) warnings.push(`${label} failed: Failed to index ${artifact.file}: ${error.message}`);
+      written = reconciled;
+    });
   }
   if (written) launchFillIfAwaiting(cwd, written);
 }
@@ -85,34 +98,29 @@ function bootKnowledge(cwd, warnings) {
   if (state === 'not-ready') return { knowledge: 'not-ready', indexed: false, compacted: false };
 
   const files = knowledgeFiles(cwd);
-  /** @type {import('./indexing.cjs').Settings|null} */
-  let settings = null;
-  /** @type {import('./indexing.cjs').Reconciled|null} */
-  let reconciled = null;
-  try {
-    settings = loadSettings(files);
-    reconciled = reconcile(cwd, settings);
-    for (const { artifact, error } of reconciled.failures) warnings.push(`knowledge index failed: Failed to index ${artifact.file}: ${error.message}`);
-  } catch (err) {
-    warnings.push(`knowledge index failed: ${messageOf(err)}`);
+  const settings = attempt(warnings, 'knowledge index', () => loadSettings(files));
+  const reconciled = settings && attempt(warnings, 'knowledge index', () => reconcile(cwd, settings));
+  for (const { artifact, error } of reconciled ? reconciled.failures : []) {
+    warnings.push(`knowledge index failed: Failed to index ${artifact.file}: ${error.message}`);
   }
   const indexed = reconciled !== null && reconciled.failures.length === 0;
 
   const knowledge = state === 'ready' || checkedReadiness(cwd) === 'ready' ? 'ready' : 'not-ready';
   if (knowledge === 'not-ready' || !settings) return { knowledge, indexed, compacted: false };
 
-  let compacted = false;
-  try {
+  const compacted = attempt(warnings, 'knowledge compact', () => {
     const plan = planCompaction(cwd, settings.cfg, listWorkUnitManifests(cwd));
     if (plan) compact(cwd, plan);
-    compacted = true;
-  } catch (err) {
-    warnings.push(`knowledge compact failed: ${messageOf(err)}`);
-  }
+    return true;
+  }) === true;
   if (!settings.provider && settings.cfg.provider) warnings.push(`knowledge vectors wait: ${keyCause(settings.cfg)}`);
-  const metadata = storeMetadata(files);
-  if (metadata && metadata.fill_failure) warnings.push(`knowledge vector fill fell short: ${metadata.fill_failure}`);
-  if (reconciled) launchFillIfAwaiting(cwd, { embedder: reconciled.embedder, snapshot: readStore(files) });
+  attempt(warnings, 'knowledge vectors', () => {
+    const snapshot = readStore(files);
+    const metadata = storeMetadata(files);
+    const shortfall = metadata && snapshot.db ? fillShortfall(metadata.fill_failure, snapshot.db) : null;
+    if (shortfall) warnings.push(`knowledge vector fill fell short: ${shortfall}`);
+    if (reconciled) launchFillIfAwaiting(cwd, { embedder: reconciled.embedder, snapshot });
+  });
   return { knowledge, indexed, compacted };
 }
 

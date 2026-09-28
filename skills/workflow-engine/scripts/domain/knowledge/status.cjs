@@ -13,6 +13,7 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { readManifests } = require('./artifacts.cjs');
 const { loadSettings, storeBuildable, keywordOnlyCause } = require('./embedder.cjs');
 const { planIndex } = require('./indexing.cjs');
+const { fillShortfall } = require('./vectors.cjs');
 const { pruneTest } = require('./decay.cjs');
 
 /** @typedef {'ready'|'buildable'|'not-ready'} Readiness */
@@ -103,7 +104,8 @@ function statusReport(root) {
     const cause = settings.cfg ? keywordOnlyCause(metadata, settings.cfg, settings.provider) : null;
     out.push(`Mode: ${settings.error ? 'none — a query fails until the knowledge config loads' : cause ? `Keyword-only — ${cause}` : 'Full (hybrid search)'}`);
     if (metadata.provider) out.push(`Chunks awaiting vectors: ${store.chunksWithoutVector(db).length}`);
-    if (metadata.fill_failure) out.push(`Last vector fill fell short: ${metadata.fill_failure}`);
+    const shortfall = fillShortfall(metadata.fill_failure, db);
+    if (shortfall) out.push(`Last vector fill fell short: ${shortfall}`);
   } else {
     out.push('Metadata: missing (run `knowledge rebuild` to fix)');
   }

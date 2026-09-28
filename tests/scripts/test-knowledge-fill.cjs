@@ -273,6 +273,16 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
     assert.doesNotMatch((await knowledgeCli(root, ['query', 'the alpha decision'])).stdout, /fell short/);
   });
 
+  it('a shortfall survives the keyword writes after it — only a fill clears it', async () => {
+    endpoint.mode = 'quota';
+    await fill(root);
+    const recorded = metadata(root).fill_failure;
+    assert.ok(recorded);
+    writeDiscussion(root, 'alpha', 'The alpha decision, revised.');
+    indexOne(root, 'alpha');
+    assert.strictEqual(metadata(root).fill_failure, recorded);
+  });
+
   it('a keyword-only store is never filled', async () => {
     writeJson(knowledgeFiles(root).config, { knowledge: { provider: null } });
     fs.rmSync(knowledgeFiles(root).store);

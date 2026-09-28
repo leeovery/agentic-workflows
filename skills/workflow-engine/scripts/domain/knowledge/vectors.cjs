@@ -244,6 +244,16 @@ function failureOf(unembedded) {
 }
 
 /**
+ * The recorded shortfall while it still says something — a chunk awaits its
+ * vector — or null: a shortfall whose chunks have since gone is moot.
+ * @param {string|null} failure  the metadata's `fill_failure` @param {import('../../kernel/knowledge/store.cjs').Store} db
+ * @returns {string|null}
+ */
+function fillShortfall(failure, db) {
+  return failure && store.chunksWithoutVector(db).length > 0 ? failure : null;
+}
+
+/**
  * Record why the fill fell short — null once it landed everything — under
  * the store's lock, beside the metadata's other fields.
  * @param {KnowledgeFiles} files @param {string|null} failure
@@ -373,6 +383,7 @@ async function fill(root) {
 }
 
 module.exports = {
+  fillShortfall,
   launcher,
   launchFillIfAwaiting,
   fillVectors,
