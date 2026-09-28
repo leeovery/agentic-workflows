@@ -28,8 +28,10 @@ Expected path:
    nothing to be expanded
 6. the user pulls the rounding rule out with Discuss. Every other
    finding on the screen lands first as a yes would: the windowed
-   line replaces the bare one in the specification's Refunds section,
-   its Resolution becomes Approved, and the work commits
+   line replaces the bare one in the specification's Refunds section
+   and its Resolution becomes Approved. The screen commits once every
+   finding on it is disposed, so this landing may share the commit
+   that follows the discussed finding
 7. the rounding rule is then raised in conversation. The user pushes
    back: the gateway API only accepts integer minor units, so the
    rule specifies a case the system cannot produce. The exchange
