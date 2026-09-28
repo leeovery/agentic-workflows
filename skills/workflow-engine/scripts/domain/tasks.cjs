@@ -165,11 +165,13 @@ function bankingOpen(workType, item, phase) {
 
 /**
  * Create-or-resume the implementation item. Absent → init-phase semantics
- * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
- * only: the four gate modes back to `gated` — `analysis_cycle_total`,
- * `linters`, `project_skills`, `current_phase`, `current_task`,
- * `completed_tasks`, `completed_phases`, `consolidated_phases`, and `bank`
- * are never touched.
+ * (`{status: 'in-progress'}`) plus session defaults; `linters` and
+ * `project_skills` stay absent — the setup steps record them, and absence is
+ * how they tell a topic never asked from one that confirmed an empty set.
+ * Present → session reset only: the four gate modes back to `gated` —
+ * `analysis_cycle_total`, `linters`, `project_skills`, `current_phase`,
+ * `current_task`, `completed_tasks`, `completed_phases`,
+ * `consolidated_phases`, and `bank` are never touched.
  * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
  * file (a crash-resume mid-task): the counter and file are that task's
  * convergence history and stay in lockstep — zeroing one without the other
@@ -206,8 +208,6 @@ function initTasks(cwd, workUnit, topic) {
         consolidation_gate_mode: 'gated',
         fix_attempts: 0,
         analysis_cycle_total: 0,
-        linters: [],
-        project_skills: [],
         current_phase: 1,
         current_task: null,
       };
