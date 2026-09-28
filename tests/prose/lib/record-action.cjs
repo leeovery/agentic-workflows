@@ -216,7 +216,9 @@ function main() {
   }
 
   // A stop event carries no tool input, so the world path that scopes
-  // every other event is absent from it — resolve it from the transcript.
+  // every other event is absent from it — and a path its payload does name
+  // can be a peer walker's. Resolve it from the transcript, which names the
+  // world it walked.
   const stop = event === 'Stop' || event === 'SubagentStop';
   const traced = stop ? fromTranscript(payload.agent_transcript_path) : null;
   // The world log is the walker's record. The orchestrator shares this
@@ -226,7 +228,7 @@ function main() {
   // padding the record and handing the checks substrings no walk ran.
   if (!agent.includes('walker')) return;
 
-  const world = worldIn(JSON.stringify(payload)) || (traced && traced.world);
+  const world = (traced && traced.world) || worldIn(JSON.stringify(payload));
   if (!world || !fs.existsSync(world)) return;
 
   const parts = [
