@@ -66,7 +66,8 @@ function validateName(kind, name) {
 }
 
 // Source pointers are provenance indexes into session logs — relative paths
-// under `.workflows/`, never absolute, never traversing.
+// under `.workflows/`, never absolute, never traversing, and never carrying
+// the `.workflows/` they are relative to.
 /** @param {*} sources */
 function validateSources(sources) {
   if (!Array.isArray(sources) || sources.some((s) => typeof s !== 'string')) {
@@ -75,6 +76,9 @@ function validateSources(sources) {
   for (const s of sources) {
     if (s === '' || s.startsWith('/') || s.split('/').includes('..')) {
       throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative under .workflows/, never absolute or traversing`);
+    }
+    if (s.startsWith('.workflows/')) {
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to .workflows/, so drop the leading ".workflows/" (${JSON.stringify(s.slice('.workflows/'.length))})`);
     }
   }
 }

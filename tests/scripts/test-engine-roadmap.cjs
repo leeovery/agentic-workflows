@@ -108,6 +108,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--origin', 'park:']).error, /unknown origin/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '/abs/path.md']).error, /never absolute/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '../escape.md']).error, /never absolute or traversing/);
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.workflows/.roadmap/sessions/session-001.md']).error,
+      /relative to \.workflows\/, so drop the leading "\.workflows\/" \("\.roadmap\/sessions\/session-001\.md"\)/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'bad.h', '--summary', 's']).error, /not a legal horizon name/);
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -160,6 +162,12 @@ describe('engine CLI: roadmap add / add-batch', () => {
       { name: 'nope', horizon: 'mvp', summary: '' },
     ]));
     assert.match(runFail(dir, ['add-batch', '--file', 'bad.json']).error, /entry 2/);
+
+    fs.writeFileSync(path.join(dir, 'prefixed.json'), JSON.stringify([
+      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-001.md'] },
+      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.workflows/.roadmap/sessions/session-001.md'] },
+    ]));
+    assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.workflows\/"/);
 
     assert.strictEqual(projectManifestText(dir), before);
   });

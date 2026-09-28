@@ -9,8 +9,9 @@ The prose should have taken this path:
    and confirmed, never assumed
 3. the park is capture-weight — one engine call lands it (the roadmap
    is born at that first park; no ceremony, no session at product
-   level), the session log records it under Edits, and the conversation
-   carries on without derailing
+   level), the resumed session log records it under Edits — edited in
+   place, never a second session opened — and the conversation carries
+   on without derailing
 4. the exploration's running record is written at a natural pause and
    committed
 
