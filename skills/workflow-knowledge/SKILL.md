@@ -1,7 +1,7 @@
 ---
 name: workflow-knowledge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs knowledge)
 ---
 
 # Workflow Knowledge
@@ -34,10 +34,10 @@ A local semantic-search index over every completed research, discussion, investi
 ## Invocation
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs <command> [args]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge <command> [args]
 ```
 
-Every skill that calls this must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in its `allowed-tools` frontmatter.
+Every skill that calls this must declare `Bash(node .claude/skills/workflow-engine/scripts/engine.cjs knowledge)` in its `allowed-tools` frontmatter.
 
 To list commands and options, use `--help` / `-h` / `help` — writes usage to stdout, exits 0. Invoking the CLI with no arguments writes usage to stderr and exits 1.
 
@@ -48,13 +48,13 @@ To list commands and options, use `--help` / `-h` / `help` — writes usage to s
 ### Single query
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<search term>" [flags]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<search term>" [flags]
 ```
 
 ### Batch query
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<term1>" "<term2>" "<termN>" [flags]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<term1>" "<term2>" "<termN>" [flags]
 ```
 
 Multiple positional arguments run separate searches in one invocation, merge the results, deduplicate by chunk ID (highest score wins), then apply `--limit` to the merged set. Efficient — one store load, multiple searches. Encouraged when you want to attack the same topic from different angles.
@@ -154,7 +154,7 @@ Don't read source files for every result. Most queries produce a couple of chunk
 ## `check` — readiness probe
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs check
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge check
 ```
 
 Exit code is always `0` (unless the filesystem itself is unreadable). Output on stdout:
@@ -171,10 +171,10 @@ Skills branch on the stdout string, not the exit code. Used in Step 0 of entry-p
 
 ```bash
 # Single artifact (used by phase-completion steps)
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/artifact.md>
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index <path/to/artifact.md>
 
 # Bulk index (no file — brings the store in line with the files)
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index [--work-unit <wu>]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index [--work-unit <wu>]
 ```
 
 - **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension — a non-markdown import is refused by name. For the gap-analysis cache, the path is `.workflows/{work_unit}/.state/discovery-gap-analysis.md`; the phase is `analysis` and the topic is `gap-analysis`. For baseline docs, the path is `.workflows/.baseline/{topic}.md`; the work unit and phase are both `baseline` (removal is `remove --work-unit baseline [--phase baseline --topic <t>]`). For roadmap material, the paths are `.workflows/.roadmap/sessions/session-NNN.md` (work unit `roadmap`, phase `roadmap`, topic = session basename) and `.workflows/.roadmap/imports/{name}.md` (work unit `roadmap`, phase `imports`); removal is `remove --work-unit roadmap [--phase … --topic …]`.
@@ -190,7 +190,7 @@ Typically invoked by processing skills at phase completion — not queried by Cl
 ## `remove` — remove chunks
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]
 ```
 
 Removes chunks matching the given filter. Granularity:
@@ -208,7 +208,7 @@ Output: `Removed N chunks for {scope}`. Exits non-zero on usage errors and when 
 ## `status` — full health report
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs status
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge status
 ```
 
 Human-readable report of the store's state: chunk counts by work unit, phase, and work type; last-indexed timestamp; provider info; the mode a query runs in — keyword-only naming why and the fix, in its note's words; the chunks awaiting vectors in a store built with a provider; a knowledge config that cannot load, named; and what the next bulk `index` does — completed artifacts not yet indexed, artifacts changed since they were indexed, artifacts pruned below the decay floor (never counted as unindexed or changed), and indexed identities it retires, each with its reason. Not used in skill automation — intended for debugging and user inspection.
@@ -233,11 +233,11 @@ Handles system config (`~/.config/workflows/config.json`), this checkout's init 
 ### Non-interactive forms
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai --model <m> [--dimensions <d>]
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai-compatible --base-url <u> --model <m> --dimensions <d>
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only [--provider <id>]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --from-system
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword-only
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai --model <m> [--dimensions <d>]
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai-compatible --base-url <u> --model <m> --dimensions <d>
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only [--provider <id>]
 ```
 
 - **`--from-system`** — reuse the existing system config: resolve the key (env → credentials; providerless configs need none), validate provider configs with one test embed, create the project store, bulk-index the existing artifacts, print the active-settings summary. Refuses clearly when the system config is missing/invalid or the openai key is unresolvable (the message names the env var and the `--key-only` remedy).

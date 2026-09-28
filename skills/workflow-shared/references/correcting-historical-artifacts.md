@@ -77,7 +77,7 @@ Present the full correction list — each wrong claim, its evidence, and its pro
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks: tell the user in one line that the next start retries it, and continue:
 
    ```bash
-   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
+   node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index {specification path}
    ```
 
 4. **Commit.** Scoped to the corrected topic in the owning unit — one specification file, nothing else of a unit this session is not working in. `--sweep` says the topic is somebody else's:
@@ -134,7 +134,7 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks — continue, and the next start retries it:
 
    ```bash
-   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
+   node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index {specification path}
    ```
 
 4. **Commit.** Scoped to the corrected topic — one specification file. `--sweep` always rides here — the session's working topic sits under its own downstream phase, never under this specification:

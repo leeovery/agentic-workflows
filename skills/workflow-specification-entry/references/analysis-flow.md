@@ -106,7 +106,7 @@ The full read also surfaces places where two documents' decided ground disagrees
 Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
 ```
 
 Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[workflow-knowledge SKILL.md](../../workflow-knowledge/SKILL.md)** → Query construction).

@@ -79,7 +79,7 @@ No cross-cutting context exists to surface. Proceed without it.
 Run a targeted semantic query filtered to completed cross-cutting specs:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "{query_text}" --work-type cross-cutting --phase specification --limit 10
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "{query_text}" --work-type cross-cutting --phase specification --limit 10
 ```
 
 #### If the command exits with a non-zero code

@@ -23,13 +23,13 @@ Invoke the CLI with the constructed query (or queries). Use `--boost:work-unit {
 Single framing:
 
 ```
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<descriptive query>" --boost:work-unit {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<descriptive query>" --boost:work-unit {work_unit}
 ```
 
 Multiple framings (batch — one invocation, one merged result set):
 
 ```
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<framing 1>" "<framing 2>" "<framing 3>" --boost:work-unit {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<framing 1>" "<framing 2>" "<framing 3>" --boost:work-unit {work_unit}
 ```
 
 #### If the command exits with a non-zero code

@@ -46,7 +46,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 Run:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --from-system
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `B`.
@@ -106,7 +106,7 @@ Which OpenAI embedding model?
 Run with the chosen model (`text-embedding-3-small` for "default"):
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai --model {model}
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai --model {model}
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `C-openai`.
@@ -128,7 +128,7 @@ Where is the embeddings endpoint?
 Run with the collected values:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai-compatible --base-url {base_url} --model {model} --dimensions {dimensions}
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai-compatible --base-url {base_url} --model {model} --dimensions {dimensions}
 ```
 
 Keyless endpoints are fine — a key stored in the credentials file is picked up automatically.
@@ -140,7 +140,7 @@ Keyless endpoints are fine — a key stored in the credentials file is picked up
 Run:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword-only
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `keyword`.
@@ -160,7 +160,7 @@ The setup command refused or was rejected because no working API key is availabl
 No OpenAI API key was found. Store one without it touching this
 chat — run ONE of these in your terminal, then come back:
 
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only
+  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only
       Private prompt, input hidden. Stored at
       ~/.config/workflows/credentials.json (mode 0600).
 
@@ -170,7 +170,7 @@ chat — run ONE of these in your terminal, then come back:
 The endpoint requires an API key. Store one without it touching
 this chat — run this in your terminal, then come back:
 
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only --provider openai-compatible
+  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible
       Private prompt, input hidden. Stored at
       ~/.config/workflows/credentials.json (mode 0600).
 @endif
@@ -211,7 +211,7 @@ Re-run the setup command whose key failure routed here — `origin` names it —
 Run:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword-only
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `keyword`.
