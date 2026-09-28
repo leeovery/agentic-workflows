@@ -688,8 +688,12 @@ land here:
 - config keys validated;
 - reconfiguration keeping tuning overrides;
 - `base_url` recorded;
-- the base-stability default reconciled with its documentation;
-- store creation single-homed.
+- the base-stability default reconciled with its documentation, and an
+  invalid `decay_base_stability` refused as its sibling settings are;
+- store creation single-homed, with the store's and metadata's file names
+  held once for the KB and the engine alike;
+- the KB's JSDoc types brought under `npm run typecheck`, which today reads
+  only the engine.
 
 ## Step 5 — the rest of retrieval quality
 
