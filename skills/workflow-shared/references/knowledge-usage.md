@@ -1,12 +1,12 @@
 # Knowledge Usage
 
-*Reference for **[workflow-knowledge](../SKILL.md)** — loaded by processing skills (research, discussion, investigation, scoping, planning, implementation, review).*
+*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills.*
 
 ---
 
 This reference sets expectations for how you use the knowledge base *during* a phase — when to query, how to construct queries, how to interpret results, and what to do if a query fails. Load it early in the phase so the guidance is active from the first substantive step.
 
-For API details (commands, flags, output format, confidence tiers, two-step retrieval), load **[SKILL.md](../SKILL.md)** — the knowledge skill's API documentation.
+For API details (commands, flags, output format, confidence tiers, two-step retrieval), load the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — the engine's command catalogue.
 
 ---
 
@@ -27,11 +27,11 @@ Multiple queries from different angles are expected and encouraged. One query fo
 
 Use **natural language** describing what you're looking for — not topic slugs, which are weak semantic signal. Filter with `--work-unit`, `--work-type`, `--phase`, `--topic` (hard filters — non-matching chunks excluded). Bias results with `--boost:<field> <value>` (re-rank hint; repeatable; valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`). For multiple angles in one invocation, pass multiple positional terms (batch query).
 
-See **[SKILL.md](../SKILL.md)** — query construction examples and the full flag table.
+See the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — query construction examples and the full flag table.
 
 ## C. Two-step retrieval
 
-Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See **[SKILL.md](../SKILL.md)** — two-step retrieval pattern.
+Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — two-step retrieval.
 
 A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
 
@@ -85,7 +85,7 @@ A chunk (or its source file) can carry a claim you have verified is wrong or has
 
 Never leave it standing — the spec is the golden record and its chunks stay live at full confidence, so every future query re-serves the error as validated context.
 
-→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow its instructions.
+→ Load **[correcting-historical-artifacts.md](correcting-historical-artifacts.md)** and follow its instructions.
 
 #### If the source is any other phase
 

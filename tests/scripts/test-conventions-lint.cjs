@@ -417,8 +417,9 @@ function checkLinks(files) {
 
 // ---------------------------------------------------------------------------
 // Check 8 — H1 category rule (scoped to workflow-* SKILL.md backbones).
-// Processing backbones (workflow-*-process, plus engine and knowledge) open
-// with a title H1; entry, navigation, and phase-entry backbones carry none.
+// Processing backbones (workflow-*-process, plus the engine and the
+// project-level skills — baseline, roadmap, help) open with a title H1;
+// entry, navigation, and phase-entry backbones carry none.
 // ---------------------------------------------------------------------------
 
 function skillNameOf(file) {
@@ -431,7 +432,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge', 'workflow-baseline', 'workflow-roadmap', 'workflow-help']);
+  const H1_KNOWN = new Set(['workflow-engine', 'workflow-baseline', 'workflow-roadmap', 'workflow-help']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
@@ -674,7 +675,6 @@ const RATCHET_PINS = {
   'skills/workflow-implementation-process/references/task-loop.md': 2,
   'skills/workflow-investigation-entry/references/gather-context.md': 1,
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 1,
-  'skills/workflow-knowledge/references/knowledge-usage.md': 1,
   'skills/workflow-legacy-research-split/SKILL.md': 3,
   'skills/workflow-legacy-research-split/references/dialog.md': 4,
   'skills/workflow-log-bug/SKILL.md': 1,
@@ -696,6 +696,7 @@ const RATCHET_PINS = {
   'skills/workflow-scoping-process/references/write-specification.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/compliance-check.md': 1,
+  'skills/workflow-shared/references/knowledge-usage.md': 1,
   'skills/workflow-specification-entry/references/display-single.md': 1,
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 3,

@@ -109,7 +109,7 @@ Before finalizing groupings, run one query per grouping to surface sibling discu
 node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
 ```
 
-Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[workflow-knowledge SKILL.md](../../workflow-knowledge/SKILL.md)** → Query construction).
+Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** → Query construction).
 
 Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
 

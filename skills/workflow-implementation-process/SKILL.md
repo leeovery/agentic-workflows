@@ -156,7 +156,7 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 
 ## Step 5: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 6**.
 
@@ -178,7 +178,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
 
 After the loop completes:
 

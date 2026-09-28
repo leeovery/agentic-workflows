@@ -159,7 +159,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **Shared files** — paths offered in conversation land as imports with `discovery` as their origin: → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discovery` and enter its **A. Land It**. Record each landing under **Edits** (`Imported: {filename}` — the lazy-creation rule applies when no log exists yet, [template.md](template.md)).
    - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `gateway.cjs map-view {work_unit}` and emit its TITLE and DISPLAY sections verbatim per their markers. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
-   - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
+   - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-shared/references/contextual-query.md) for the pattern).
    - **A harvest pull** — *"let's pull topics"*, *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Harvest**.
 
 3. **Continue the exploration.** One thread at a time. Follow the conversation. See *The Exploration Stance — How* in the guidelines for the sparring register.

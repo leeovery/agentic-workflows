@@ -1,6 +1,6 @@
 # Contextual Query
 
-*Reference for **[workflow-knowledge](../SKILL.md)** — loaded at phase start in research, discussion, investigation, and scoping processing skills.*
+*Shared reference. Loaded by the research, discussion, investigation, and scoping processing skills at phase start.*
 
 ---
 

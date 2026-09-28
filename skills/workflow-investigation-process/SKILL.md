@@ -140,7 +140,7 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 
 ## Step 2: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 3**.
 
@@ -188,7 +188,7 @@ When symptoms are sufficiently understood to begin code analysis:
 
 ## Step 4: Contextual Query
 
-Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 
@@ -263,7 +263,7 @@ Do not draft fix direction here — it is explored with the user after the findi
 
 Document in the investigation file and commit.
 
-*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
 
 → Proceed to **Step 8**.
 

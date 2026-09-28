@@ -23,8 +23,8 @@
     "skills/workflow-scoping-process/references/write-tasks.md",
     "skills/workflow-scoping-process/references/conclude-scoping.md",
     "skills/workflow-shared/references/seed-context.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
-    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
     "skills/workflow-planning-process/references/output-formats.md",
     "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
     "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md"

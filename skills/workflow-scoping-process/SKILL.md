@@ -242,7 +242,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
 
 ## Step 1: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 2**.
 
@@ -264,7 +264,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
 
 → On return, proceed to **Step 3**.
 
@@ -272,7 +272,7 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 ## Step 3: Contextual Query
 
-Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 

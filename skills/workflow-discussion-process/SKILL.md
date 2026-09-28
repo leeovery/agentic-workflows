@@ -143,7 +143,7 @@ Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and fol
 
 ## Step 3: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 
@@ -151,7 +151,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 4: Contextual Query
 
-Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 
@@ -175,7 +175,7 @@ Both blocks above are emitted before the reference loads.
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — before committing to a direction on a new subtopic, or when a decision might echo one made elsewhere, run a quick query. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — before committing to a direction on a new subtopic, or when a decision might echo one made elsewhere, run a quick query. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
 
 → On return, proceed to **Step 6**.
 
