@@ -7,10 +7,12 @@
 // files — then compact it.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
-// error — migrations must never half-run silently. A run that recorded
-// migrations without changing a document leaves the tracking ledger as the
-// only dirt, and no reviewed commit follows a report of no changes, so boot
-// commits that line itself — this run's, or one an earlier boot stranded.
+// error — migrations must never half-run silently. An upgrade is done only
+// once the reviewed migration commit records it, so boot commits no
+// migration's changes: where an earlier run's changes never reached that
+// commit, boot reports them as changed and the review gate offers them again.
+// A ledger line no document change came with is the one exception — no
+// review follows a report of no changes, so boot commits the ledger alone.
 //
 // The knowledge directory — the store, its metadata, the knowledge config —
 // is local to each checkout and git-ignored: boot keeps its files listed in
@@ -29,7 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git } = require('../kernel/git.cjs');
+const { git, tryGit } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { commitPathspecScoped, OWNED_PATHS } = require('./commit.cjs');
@@ -59,13 +61,14 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 
 // Marker preceding migrate.cjs's one-line JSON report of the run —
-// `{ran, tracking}`: the migrations executed, and the tracking ledger they
-// recorded into. Counting runs is not counting files — a migration that ran
-// and found nothing to do still recorded its ID — so the stop gate cannot
-// speak for the ledger. The path is what the commit needs, and it rides every
-// completed run, a run that recorded nothing included: the runner resolves it
-// itself (migration 011 moves it), and dirt from an earlier boot must be
-// committable by a boot that ran no migrations at all.
+// `{recorded, tracking}`: the IDs of the migrations executed, and the tracking
+// ledger they were recorded into. Recording is not changing files — a
+// migration that ran and found nothing to do still recorded its ID — so the
+// stop gate cannot speak for the ledger, and the IDs tell this run's lines
+// from an earlier run's. The path is what the commit needs, and it rides
+// every completed run, a run that recorded nothing included: the runner
+// resolves it itself (migration 011 moves it), and dirt from an earlier boot
+// must be settled by a boot that ran no migrations at all.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /**
@@ -85,7 +88,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /**
  * @typedef {object} BootResult
- * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], paths: string[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing; `paths` are the paths the reviewed migration commit takes, the workflows' owned paths
+ * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], paths: string[]}} migrations `changed` — this run's migrations updated files, or an earlier run's changes still await the reviewed commit; `ran` counts migrations executed — a migration can run and change nothing; `paths` are the paths the reviewed migration commit takes, the workflows' owned paths
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the bulk `knowledge index` ran clean — no artifact left failing, no chunk left awaiting its vector, no store provider key left unresolved
  * @property {boolean} compacted
@@ -170,30 +173,86 @@ function isProjectRelative(p) {
   return p !== '' && p !== '.' && !path.isAbsolute(p) && !p.split('/').includes('..');
 }
 
+// A migration ID as the ledger records it, one per line.
+const MIGRATION_ID = /^[0-9]+$/;
+
 /**
- * The run report's two fields, read defensively: how many migrations ran, and
- * the ledger they recorded into. An absent block reads zero with no ledger —
- * a runner that predates the marker says nothing about what it recorded, and
- * silence is the safe reading. A malformed one degrades to a warning: `ran`
- * survives when it alone is sound, and an implausible path — one git must
- * never be handed as a pathspec — is dropped, which costs the commit, not the
- * boot.
+ * @param {unknown} value
+ * @returns {value is string[]}
+ */
+function isIdList(value) {
+  return Array.isArray(value) && value.every((id) => typeof id === 'string' && MIGRATION_ID.test(id));
+}
+
+/**
+ * The run report's two fields, read defensively: the IDs this run recorded,
+ * and the ledger it recorded them into. An absent block reads nothing
+ * recorded and no ledger — silence is the safe reading. A malformed one
+ * degrades to a warning: the IDs survive when they alone are sound, and an
+ * implausible path — one git must never be handed as a pathspec — is
+ * dropped, which costs the commit, not the boot.
  * @param {unknown} payload @param {string[]} warnings
- * @returns {{ran: number, tracking: string|null}}
+ * @returns {{recorded: string[], tracking: string|null}}
  */
 function readRunReport(payload, warnings) {
-  if (payload === undefined) return { ran: 0, tracking: null };
+  if (payload === undefined) return { recorded: [], tracking: null };
   const report = payload && typeof payload === 'object'
-    ? /** @type {{ran?: unknown, tracking?: unknown}} */ (payload)
+    ? /** @type {{recorded?: unknown, tracking?: unknown}} */ (payload)
     : {};
-  const rawRan = report.ran;
-  const ran = typeof rawRan === 'number' && Number.isInteger(rawRan) && rawRan >= 0 ? rawRan : null;
+  const recorded = isIdList(report.recorded) ? report.recorded : null;
   const tracking = typeof report.tracking === 'string' && isProjectRelative(report.tracking) ? report.tracking : null;
-  if (ran === null || tracking === null) {
+  if (recorded === null || tracking === null) {
     warnings.push(`migration run report unreadable: ${JSON.stringify(payload)}`);
-    return { ran: ran === null ? 0 : ran, tracking: null };
+    return { recorded: recorded || [], tracking: null };
   }
-  return { ran, tracking };
+  return { recorded, tracking };
+}
+
+/**
+ * The migration IDs a ledger's text records.
+ * @param {string|null} text
+ * @returns {string[]}
+ */
+function ledgerIds(text) {
+  return (text || '').split('\n').filter((line) => MIGRATION_ID.test(line));
+}
+
+/**
+ * Whether an earlier run's upgrade still awaits the reviewed commit: the
+ * ledger records a migration neither HEAD's ledger nor this run recorded,
+ * and an owned path besides the ledger differs from HEAD — staged or not,
+ * an untracked file included, an ignored one never.
+ * @param {string} cwd @param {string} tracking @param {string[]} recorded
+ * @returns {boolean}
+ */
+function earlierUpgradeAwaitsReview(cwd, tracking, recorded) {
+  const known = new Set([...ledgerIds(tryGit(cwd, ['show', `HEAD:./${tracking}`])), ...recorded]);
+  const onDisk = ledgerIds(fs.readFileSync(path.join(cwd, tracking), 'utf8'));
+  if (onDisk.every((id) => known.has(id))) return false;
+  const owned = git(cwd, ['status', '--porcelain', '--untracked-files=all', '--', ...OWNED_PATHS, `:(exclude)${tracking}`]);
+  return owned.trim() !== '';
+}
+
+/**
+ * Settle a dirty ledger no reviewed commit of this run will carry — boot's
+ * run changed no document. Where an earlier run's upgrade still awaits the
+ * reviewed commit, nothing is committed: the ledger waits with the changes
+ * it recorded, for the review gate. Otherwise the ledger is the only dirt a
+ * run left, and boot commits it alone. A clean or ignored ledger needs
+ * nothing. The migrations are already applied, so a failure is a warning.
+ * @param {string} cwd @param {string} tracking @param {string[]} recorded
+ * @param {string[]} warnings
+ * @returns {{awaitsReview: boolean, committed: string|null}}
+ */
+function settleLedger(cwd, tracking, recorded, warnings) {
+  try {
+    if (git(cwd, ['status', '--porcelain', '--', tracking]).trim() === '') return { awaitsReview: false, committed: null };
+    if (earlierUpgradeAwaitsReview(cwd, tracking, recorded)) return { awaitsReview: true, committed: null };
+    return { awaitsReview: false, committed: commitPathspecScoped(cwd, [tracking], 'chore: record workflow migrations') };
+  } catch (err) {
+    warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { awaitsReview: false, committed: null };
+  }
 }
 
 /**
@@ -239,36 +298,25 @@ function boot(cwd) {
   const outLines = (mig.stdout || '').split('\n');
   const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
   if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
-  const { ran, tracking } = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
+  const { recorded, tracking } = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
   const stdout = outLines.join('\n');
 
   const migrations = {
     changed: stdout.includes(STOP_GATE_MARKER),
-    ran,
+    ran: recorded.length,
     output: trimReport(stdout),
     verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
     paths: [...OWNED_PATHS],
   };
 
-  // A migration that ran while changing no document still wrote the ledger,
-  // and that write has no other path to a commit: with nothing to review the
-  // calling skill says "up to date" and never reaches its `commit
-  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
-  // will carry it — dirt this run recorded, and dirt an earlier boot left
-  // behind the same way, which is the state every install that met this bug
-  // is sitting in. When the review gate does fire, its own commit takes the
-  // ledger in with the diff the user approved and boot stays out of the way.
-  // The migrations are already applied, so a commit failure is a warning.
+  // When this run changed documents, the review gate's own commit takes the
+  // ledger in with the diff the user approves, and boot stays out of the way.
   /** @type {string|null} */
   let migrationsCommitted = null;
   if (!migrations.changed && tracking) {
-    try {
-      if (git(cwd, ['status', '--porcelain', '--', tracking]).trim() !== '') {
-        migrationsCommitted = commitPathspecScoped(cwd, [tracking], 'chore: record workflow migrations');
-      }
-    } catch (err) {
-      warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    const ledger = settleLedger(cwd, tracking, recorded, warnings);
+    migrations.changed = ledger.awaitsReview;
+    migrationsCommitted = ledger.committed;
   }
 
   const { knowledge, indexed, compacted } = syncKnowledge(cwd, warnings);

@@ -59,13 +59,14 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 const PENDING_VERIFY = 'pending-verify.json';
 
 // Marker preceding the one-line JSON report of what the run recorded:
-// `{"ran": <migrations executed>, "tracking": "<cwd-relative ledger path>"}`.
-// Distinct from the stop gate, which counts files: a migration that ran and
-// found nothing to do still recorded its ID, so the ledger is dirty on a run
-// that updated nothing. The path travels with the count because migration 011
-// relocates the ledger — the runner is the only party that knows where it
-// ended up, and a caller cleaning up after an earlier run needs that path on a
-// run of its own that recorded nothing. Boot extracts and strips it.
+// `{"recorded": [<IDs executed, in order>], "tracking": "<cwd-relative ledger
+// path>"}`. Distinct from the stop gate, which counts files: a migration that
+// ran and found nothing to do still recorded its ID, so the ledger is dirty on
+// a run that updated nothing, and the IDs tell this run's lines from an
+// earlier run's. The path travels with them because migration 011 relocates
+// the ledger — the runner is the only party that knows where it ended up, and
+// a caller settling an earlier run's ledger needs that path on a run of its
+// own that recorded nothing. Boot extracts and strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
 /** @param {string} cwd @param {string} trackingRel */
@@ -283,7 +284,8 @@ function main() {
   }
 
   let filesUpdated = 0;
-  let migrationsRun = 0;
+  /** @type {string[]} */
+  const recorded = [];
 
   for (const script of scripts) {
     const id = migrationId(script);
@@ -306,7 +308,7 @@ function main() {
     trackingRel = findTrackingFile(cwd);
     fs.mkdirSync(path.dirname(trackingAbs()), { recursive: true });
     fs.appendFileSync(trackingAbs(), id + '\n');
-    migrationsRun += 1;
+    recorded.push(id);
 
     // Journal the addendum durably the moment its migration is recorded —
     // an abort further down the fleet must not lose it.
@@ -320,7 +322,7 @@ function main() {
 
   if (filesUpdated > 0) {
     process.stdout.write('\n');
-    process.stdout.write(`${migrationsRun} migration(s) applied, ${filesUpdated} file(s) updated.\n`);
+    process.stdout.write(`${recorded.length} migration(s) applied, ${filesUpdated} file(s) updated.\n`);
     process.stdout.write('\n');
     process.stdout.write(STOP_GATE_MARKER + '\n');
     process.stdout.write('You MUST now follow the migration skill instructions to STOP and let the user review.\n');
@@ -340,7 +342,7 @@ function main() {
   }
 
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
-  process.stdout.write(JSON.stringify({ ran: migrationsRun, tracking: trackingRel }) + '\n');
+  process.stdout.write(JSON.stringify({ recorded, tracking: trackingRel }) + '\n');
 }
 
 try {

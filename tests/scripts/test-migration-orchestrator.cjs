@@ -168,7 +168,7 @@ describe('migrate.cjs — synthetic fleet', () => {
 
   it('reports the migrations it ran and the ledger it recorded them in — a run that changed no file included', () => {
     // 002 runs and reports nothing changed: it still recorded, and the report
-    // counts runs, not files — the case the stop gate cannot speak for.
+    // names runs, not files — the case the stop gate cannot speak for.
     const { migrate } = synthFleet({
       '001-a.cjs': cjsMig('001'),
       '002-b.cjs':
@@ -178,13 +178,13 @@ describe('migrate.cjs — synthetic fleet', () => {
 
     const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
-    assert.deepStrictEqual(runReport(first.stdout), { ran: 2, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(first.stdout), { recorded: ['001', '002'], tracking: '.workflows/.state/migrations' });
 
     // Fully recorded: nothing ran, and the report says so.
     const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
-    assert.deepStrictEqual(runReport(second.stdout), { ran: 0, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(second.stdout), { recorded: [], tracking: '.workflows/.state/migrations' });
   });
 
   it('reports the ledger where it ended up, not where it was found — a legacy log is stabilised first', () => {
@@ -196,7 +196,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.deepStrictEqual(runReport(res.stdout), { ran: 1, tracking: 'docs/workflow/.state/migrations' });
+    assert.deepStrictEqual(runReport(res.stdout), { recorded: ['001'], tracking: 'docs/workflow/.state/migrations' });
     assert.strictEqual(fs.readFileSync(path.join(project, 'docs/workflow/.state/migrations'), 'utf8'), '001\n');
   });
 
