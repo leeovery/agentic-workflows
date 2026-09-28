@@ -7,9 +7,6 @@
 // one), builds the cloud policy, and delegates the four-method interface to
 // the shared OpenAIEmbeddingsEngine. The wire logic lives in the engine so
 // it stays single-source across this and the openai-compatible driver.
-//
-// Re-exports AuthError, DEFAULT_MODEL and DEFAULT_DIMENSIONS for the tests that
-// import them from this module.
 // ---------------------------------------------------------------------------
 
 const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine.cjs');
@@ -18,8 +15,8 @@ const DEFAULT_MODEL = 'text-embedding-3-small';
 const DEFAULT_DIMENSIONS = 1536;
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
-// Cloud error context — keeps the platform.openai.com remedies and the
-// `knowledge setup` hint that the existing tests assert on.
+// Cloud error context — the platform.openai.com remedies and the
+// `knowledge setup` hint.
 const OPENAI_ERROR_CONTEXT = {
   label: 'OpenAI',
   authHint: 'The API key is invalid or expired. Run `knowledge setup` to fix.',

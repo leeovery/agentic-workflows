@@ -22,11 +22,10 @@
 //     401 doesn't suggest platform.openai.com and ECONNREFUSED reads as
 //     "server not running".
 //
-// Uses Node's built-in fetch (Node 18+) — keeps existing test mocks of
-// globalThis.fetch working. Throws on every failure but a rate limit, which it
-// waits out request by request — the operation-level retry wrapper repeats a
-// whole job, re-sending every request already answered — drawing each wait
-// from a budget every engine in the process shares.
+// Uses Node's built-in fetch (Node 18+). Throws on every failure but a rate
+// limit, which it waits out request by request — the operation-level retry
+// wrapper repeats a whole job, re-sending every request already answered —
+// drawing each wait from a budget every engine in the process shares.
 // ---------------------------------------------------------------------------
 
 const MAX_BATCH_SIZE = 2048;
@@ -35,8 +34,8 @@ const MAX_BATCH_SIZE = 2048;
 // densest likely tokenisation, about 2 characters a token, this stays under.
 const MAX_BATCH_CHARS = 400000;
 
-// A request the endpoint never answers must not hang the caller — the bulk
-// index runs at every start.
+// A request the endpoint never answers must not hang the vector fill or a
+// bulk index.
 const REQUEST_TIMEOUT_MS = 60000;
 
 // HTTP statuses where the endpoint refused the request itself — an input

@@ -77,7 +77,7 @@ describe('readConfigFile', () => {
 
   it('sharedFile: returns null for a config file without a knowledge key', () => {
     const filePath = path.join(tmpDir, 'shared.json');
-    writeJSON(filePath, { session: { tmux_labels: true } });
+    writeJSON(filePath, { editor: { theme: 'dark' } });
     assert.strictEqual(readConfigFile(filePath, { sharedFile: true }), null);
   });
 
@@ -645,10 +645,10 @@ describe('writeConfigFile', () => {
 
   it('preserves sibling subsystem keys on an existing file', () => {
     const filePath = path.join(tmpDir, 'config.json');
-    fs.writeFileSync(filePath, JSON.stringify({ session: { tmux_labels: true }, knowledge: { provider: 'stub' } }), 'utf8');
+    fs.writeFileSync(filePath, JSON.stringify({ editor: { theme: 'dark' }, knowledge: { provider: 'stub' } }), 'utf8');
     writeConfigFile(filePath, { knowledge: { provider: 'openai' } });
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    assert.deepStrictEqual(parsed, { session: { tmux_labels: true }, knowledge: { provider: 'openai' } });
+    assert.deepStrictEqual(parsed, { editor: { theme: 'dark' }, knowledge: { provider: 'openai' } });
   });
 
   it('replaces a corrupt existing file with the payload alone', () => {
@@ -759,9 +759,9 @@ describe('detectSystemConfig', () => {
     assert.ok(result.reason);
   });
 
-  it('treats a knowledge-less shared file as knowledge-absent (session-only config)', () => {
+  it('treats a knowledge-less shared file as knowledge-absent (settings of other tools alone)', () => {
     const filePath = path.join(tmpDir, 'shared.json');
-    writeJSON(filePath, { session: { tmux_labels: true } });
+    writeJSON(filePath, { editor: { theme: 'dark' } });
     const result = detectSystemConfig(filePath);
     assert.strictEqual(result.exists, false);
     assert.strictEqual(result.valid, false);

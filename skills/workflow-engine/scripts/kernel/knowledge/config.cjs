@@ -111,7 +111,7 @@ class ConfigFileError extends Error {
  * Returns null if the file does not exist. A file without a `knowledge` key
  * throws by default — the project config is knowledge-owned, so a missing
  * wrapper there is corruption worth diagnosing. Pass `sharedFile: true` for
- * the system config, which other subsystems (e.g. `session`) share: there a
+ * the system config, which other tools' settings share: there a
  * knowledge-less file simply means no knowledge settings, and reads null.
  * Throws on invalid JSON or a malformed `knowledge` value either way.
  *
@@ -280,8 +280,7 @@ function resolveApiKey(provider, opts) {
   try {
     creds = loadCredentials(credPath);
   } catch (_) {
-    // Bad credentials file — treat as missing for resolution. A future
-    // `knowledge doctor` command could surface the error to the user.
+    // Bad credentials file — treat as missing for resolution.
     return null;
   }
 
@@ -365,12 +364,12 @@ function resolveProvider(config, patience = {}) {
   }
 
   // OpenAI cloud provider — requires a key. Missing key → null (the caller
-  // degrades to keyword-only for THIS command). This null is intentionally
-  // indistinguishable here from "no provider configured"; the two are told
-  // apart at the call sites via cfg.provider (see providerKeyUnresolved in
-  // domain/knowledge/embedder.cjs) so a missing key surfaces "set your key", not the store-
-  // destroying "provider changed — rebuild". Do NOT throw here: many callers
-  // (setup, status) rely on null meaning "run keyword-only".
+  // degrades to keyword-only). This null is intentionally indistinguishable
+  // here from "no provider configured"; the two are told apart at the call
+  // sites via cfg.provider (see providerKeyUnresolved in
+  // domain/knowledge/embedder.cjs) so a missing key surfaces "set your key",
+  // not the store-destroying "provider changed — rebuild". Do NOT throw here:
+  // many callers (setup, status) rely on null meaning "run keyword-only".
   if (providerName === 'openai') {
     if (!config._api_key) {
       return null;
@@ -408,7 +407,7 @@ function resolveProvider(config, patience = {}) {
 /**
  * Atomically write a config file. The payload carries the knowledge
  * subsystem's full view (including the top-level `knowledge` wrapper); any
- * other top-level keys already on disk (e.g. `session`) are preserved —
+ * other top-level keys already on disk are preserved —
  * the file is shared, and a knowledge write must never clobber a sibling
  * subsystem. Writes to `<path>.tmp` then renames — matches the
  * manifest/store convention so a crash mid-write never leaves a truncated

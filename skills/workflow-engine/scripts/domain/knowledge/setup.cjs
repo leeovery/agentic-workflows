@@ -241,7 +241,8 @@ function describeValidationError(err, remedies = {}) {
 
 /**
  * The bulk index every setup form ends with. Its failures never fail setup:
- * the project is set up, and the index at every start retries what fell short.
+ * the project is set up, and each start retries what fell short — the
+ * keyword side at boot, the vectors in the fill boot launches.
  * @param {Call} call @param {string} root @param {KnowledgeFiles} files
  */
 async function runInitialIndexStep(call, root, files) {

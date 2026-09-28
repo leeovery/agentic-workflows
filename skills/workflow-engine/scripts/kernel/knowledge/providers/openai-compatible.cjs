@@ -67,7 +67,7 @@ class OpenAICompatibleProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Setup descriptor — see openai.js for the toolkit contract. Prompts for
+// Setup descriptor — see openai.cjs for the toolkit contract. Prompts for
 // base_url (required), model (required), dimensions (required positive int,
 // must match the local model's native output), then a single optional key
 // (Enter = none). Validates via a test embed against the endpoint.

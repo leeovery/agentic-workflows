@@ -239,7 +239,7 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
     fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
     fs.writeFileSync(
       path.join(home, '.config', 'workflows', 'config.json'),
-      JSON.stringify({ session: { tmux_labels: true } })
+      JSON.stringify({ editor: { theme: 'dark' } })
     );
     await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
       assert.ok(err instanceof UserError);

@@ -1215,7 +1215,7 @@ describe('engine boot system-config detection', () => {
   });
 
   it('not-ready with a knowledge-less shared config file reports absent', () => {
-    writeSystemConfig(JSON.stringify({ session: { tmux_labels: true } }));
+    writeSystemConfig(JSON.stringify({ editor: { theme: 'dark' } }));
     const res = runEngine(stubbed, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
   });
