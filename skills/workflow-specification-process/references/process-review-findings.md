@@ -73,7 +73,7 @@ A `choice` names what was searched and where the record ran out. A `settled` cal
 Three rules govern the evidence:
 
 - The staged `(recommended)` marker is the reviewer's argument, never a ground.
-- A choice that names no search is not a verdict: run the search yourself.
+- A choice that names no search is not a verdict: run the search yourself — the source document it names read, not the row's excerpt of it — before its Move is disposed either way.
 - A finding a gate exchange this sitting revised is disposed as it stands — the exchange was its disposal.
 
 Record the disposal in the tracking file before anything renders. A staged move the bar confirms stands as written; where the disposal moved anything — the move, the derivation, or a search the staged choice never named — rewrite the row. To `settled`: Move rewritten, the Proposal written with the derivation — what determined it, or what leaned and the alternatives that also fit — the Options removed, Proposed Text, and Current where existing content changes, supplied as the format requires. To `choice`: Move rewritten, the Proposal and Proposed Text replaced with Options, the search named. To `route`: Move rewritten, Proposal, Options, and Proposed Text removed.
