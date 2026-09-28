@@ -144,19 +144,31 @@ function cmdDiff(argv) {
 // --- assert (the judging agent) -------------------------------------------
 
 /**
- * The held dispatches as the asserter reads them: each numbered in the
- * order made, its agent, whether it ran in the background, and its prompt
+ * The held dispatches and sends as the asserter reads them, each numbered
+ * in the order made: a dispatch's agent, whether it ran in the background
+ * and the agent id its refusal gave, then its prompt whole; a send's target
+ * id, the dispatch that id was given to, and its summary, then its message
  * whole — the world's path collapsed to `.`, as in the action log. A walk
  * that dispatched nothing carries no section at all.
  */
 function formatDispatches(records, dir) {
   if (!records.length) return null;
   const world = path.resolve(dir);
+  const given = new Map();
+  records.forEach((r, i) => {
+    if (r.tool_name !== transcripts.SEND) given.set(r.tool_use_id, `dispatch ${i + 1}, ${(r.tool_input || {}).subagent_type || '-'}`);
+  });
   return records.map((r, i) => {
     const input = r.tool_input || {};
-    const head = `${i + 1}. ${input.subagent_type || '-'} — ${input.description || ''}`
-      + ` (background: ${input.run_in_background !== false})`;
-    return `${head}\n${prompts.indent(String(input.prompt || '').split(world).join('.'))}`;
+    const send = r.tool_name === transcripts.SEND;
+    const head = send
+      ? `${i + 1}. send to ${input.to || '-'}`
+        + ` (${given.has(input.to) ? `continuing ${given.get(input.to)}` : 'no dispatch was given this id'})`
+        + ` — ${input.summary || ''}`
+      : `${i + 1}. ${input.subagent_type || '-'} — ${input.description || ''}`
+        + ` (background: ${input.run_in_background !== false}, agent id: ${r.tool_use_id})`;
+    const body = send ? input.message : input.prompt;
+    return `${head}\n${prompts.indent(String(body || '').split(world).join('.'))}`;
   }).join('\n\n');
 }
 
@@ -204,19 +216,19 @@ function cmdAssert(argv) {
       + 'the walk.\nCheck the hooks block in .claude/agents/prose-walker.md and '
       + 'that the agent registry has reloaded since it changed. Do not judge this run.');
   }
-  // Every dispatch a walker makes is held — recorded and refused before
-  // any agent starts. One the stop found in the transcript with no held
-  // record got past the hold, so a real agent may have run in this world
-  // and nothing in it can be judged. Each row names the call and what came
-  // back for it: a harness that refused the call before any hook ran says
-  // why there.
+  // Every dispatch and send a walker makes is held — recorded and refused
+  // before any agent starts. One the stop found in the transcript with no
+  // held record got past the hold, so a real agent may have run in this
+  // world and nothing in it can be judged. Each row names the call and what
+  // came back for it: a harness that refused the call before any hook ran
+  // says why there.
   const unheld = rows.filter((r) => r.event === 'UNHELD');
   if (unheld.length) {
-    die(`the walker made ${unheld.length} Agent call${unheld.length === 1 ? '' : 's'} the dispatch hold never `
+    die(`the walker made ${unheld.length} call${unheld.length === 1 ? '' : 's'} the dispatch hold never `
       + `recorded (UNHELD in ${path.join(dir, worlds.ACTION_LOG)}):\n`
-      + unheld.map((r) => `  - ${r.detail} [${r.outcome}] → ${r.output}`).join('\n')
-      + '\nA dispatch that was not held may have run a real agent in this world. Check the '
-      + '`Agent|Task` PreToolUse hook in .claude/agents/prose-walker.md (lib/hold-dispatch.cjs), '
+      + unheld.map((r) => `  - ${r.tool} ${r.detail} [${r.outcome}] → ${r.output}`).join('\n')
+      + '\nA call that was not held may have run a real agent in this world. Check the '
+      + '`Agent|Task|SendMessage` PreToolUse hook in .claude/agents/prose-walker.md (lib/hold-dispatch.cjs), '
       + 'that the agent registry has reloaded since it changed, and the held rows beside these. '
       + 'Do not judge this run.');
   }

@@ -71,8 +71,11 @@
       "render entry-gate pay.implementation.pay",
       "task start pay pay pay-1-2",
       "render task-brief pay.implementation.pay",
+      "dispatch:workflow-implementation-task-executor",
       "task-result.json --result failed",
       "render executor-block-gate pay.implementation.pay --result failed",
+      "send:workflow-implementation-task-executor",
+      "dispatch:workflow-implementation-task-reviewer",
       "task-result.json --result approved",
       "render task-gate pay.implementation.pay",
       "task complete pay pay pay-1-2"
@@ -98,6 +101,21 @@
       "task_gate_mode auto",
       "git add -A",
       "git add --all"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-implementation-task-executor",
+        "count": 1
+      },
+      {
+        "agent": "workflow-implementation-task-executor",
+        "send": true,
+        "count": 1
+      },
+      {
+        "agent": "workflow-implementation-task-reviewer",
+        "count": 1
+      }
     ]
   }
 }

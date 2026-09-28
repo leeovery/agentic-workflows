@@ -7,11 +7,12 @@
 // nested subagents flat beside the rest — and the runtime writes it, not
 // the agent. So it is the authority on what a payload does not state:
 // which world a walk ran in, which model it ran on, the turns it told,
-// and every agent it tried to dispatch.
+// and every agent it tried to dispatch or continue.
 //
 // Shared by the recorder (a stop names no world), the dispatch hold (a
 // dispatch's payload may name none), and `run.cjs stop` (a stop whose hook
-// never fired), so the three read the same file the same way.
+// never fired), so the three read the same file the same way — and the
+// hold and the recorder name a dispatch's action-log row the same way.
 
 const fs = require('fs');
 const os = require('os');
@@ -22,9 +23,23 @@ const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 // that tells its walk through it leaves no text turn to lift, so the
 // message it hands back is a turn of the walk like any other.
 const HANDBACK = 'SubagentHandback';
-// The dispatch tool, under its current name and the one it replaced.
-const DISPATCH_TOOLS = new Set(['Agent', 'Task']);
+// The dispatch tool, under its current name and the one it replaced, and
+// the send that continues an agent a dispatch started.
+const SEND = 'SendMessage';
+const DISPATCH_TOOLS = new Set(['Agent', 'Task', SEND]);
 const AGENT_ID = /^[A-Za-z0-9]+$/;
+
+/**
+ * A dispatch as its action-log row names it: the tool column — `Agent`
+ * whatever the dispatch tool is called, `SendMessage` for a send — and the
+ * detail, `<subagent_type> — <description>` for a dispatch and
+ * `<to> — <summary>` for a send.
+ */
+function dispatchRow(toolName, input = {}) {
+  return toolName === SEND
+    ? { tool: SEND, detail: `${input.to || '-'} — ${input.summary || ''}` }
+    : { tool: 'Agent', detail: `${input.subagent_type || '-'} — ${input.description || ''}` };
+}
 
 /** The world a text names, or null. A JSON-escaped path loses its escapes. */
 function worldIn(text) {
@@ -128,4 +143,6 @@ function findAgentTranscript(agentId, { near = null } = {}) {
   return { error: `${found.length ? 'several transcripts' : 'no transcript'} named ${name} under ${projects}` };
 }
 
-module.exports = { WORLD, HANDBACK, DISPATCH_TOOLS, worldIn, turnText, fromTranscript, findAgentTranscript };
+module.exports = {
+  WORLD, HANDBACK, SEND, DISPATCH_TOOLS, dispatchRow, worldIn, turnText, fromTranscript, findAgentTranscript,
+};

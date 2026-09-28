@@ -1,7 +1,7 @@
 ---
 name: prose-walker
 description: Executes workflow prose exactly as a live session would, against a disposable test world, and returns a transcript of what it did. Dispatched by prose-orchestrator during a prose-test run.
-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent, SendMessage
 model: sonnet
 hooks:
   PreToolUse:
@@ -9,7 +9,7 @@ hooks:
       hooks:
         - type: command
           command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
-    - matcher: "Agent|Task"
+    - matcher: "Agent|Task|SendMessage"
       hooks:
         - type: command
           command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/hold-dispatch.cjs\""
@@ -129,6 +129,16 @@ any harness substitutions. Follow it exactly.
   the prose runs in the background returns there and then: where the
   prose ends the turn after it, record that line and carry on — never
   end your own turn to wait. Expected, not a `DEVIATION`, no marker.
+- **Continue an agent exactly as the prose says, and the harness holds
+  that too.** The refusal of a held dispatch names the agent's id. Where
+  the prose continues that agent — a round sent to its recorded id —
+  make one SendMessage call to that id, carrying the round's material as
+  the prose lists it. The harness records the send and refuses it. A
+  held send is not a failed send: never take the prose's arm for a send
+  that fails over it, and never dispatch a fresh agent in its place.
+  Then the armed substitution that names the continuation fires, or you
+  go on playing that agent from where it left off, with what you sent.
+  Expected, not a `DEVIATION`, no marker.
 - **A report-shaped `.md` write may be refused.** The harness blocks
   subagents writing report-looking `.md` files. Where the prose or an
   armed substitution calls for one, write the same path with a `.txt`

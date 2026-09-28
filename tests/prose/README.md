@@ -166,8 +166,12 @@ carried is claimed in `case.json`'s `dispatches` invariant — entries of
 recorded call, `carries`/`lacks` holding for every dispatch of the agent
 or for the `nth` alone — and ordered by a `dispatch:<agent>` token in
 `calls_in_order`, which stands for that agent's next held dispatch. A
-dispatch the walker's transcript shows with no held record is written
-`UNHELD` at its stop, and `run.cjs assert` refuses to judge that world.
+held dispatch's refusal names its id; where the prose continues that
+agent, the walker sends to the id with SendMessage and the same hook
+holds the send — claimed by a `dispatches` entry carrying `send: true`
+and ordered by a `send:<agent>` token. A dispatch or send the walker's
+transcript shows with no held record is written `UNHELD` at its stop,
+and `run.cjs assert` refuses to judge that world.
 
 **A trigger names an observable event, not a narrative moment.** An
 engine call with its arguments, a specific menu appearing, a named file

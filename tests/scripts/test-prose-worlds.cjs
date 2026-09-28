@@ -677,8 +677,8 @@ describe('assert: a walk still running is waited for, never judged', () => {
   });
 });
 
-describe('assert: every dispatch held, and what each carried reaches the asserter whole', () => {
-  // The hold records each walker dispatch in the world; the stop's
+describe('assert: every dispatch and send held, and what each carried reaches the asserter whole', () => {
+  // The hold records each walker dispatch and send in the world; the stop's
   // backstop marks any it never saw UNHELD — a real agent may have run —
   // and assert refuses to judge such a world at all.
   const CASE = 'start-lists-active-work';
@@ -697,13 +697,15 @@ describe('assert: every dispatch held, and what each carried reaches the asserte
     return dir;
   }
 
-  it('refuses a world carrying an UNHELD dispatch, naming it and what came back for it', function () {
+  it('refuses a world carrying an UNHELD dispatch or send, naming each and what came back for it', function () {
     if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = stoppedWorld('UNHELD\tAgent\tworkflow-y — sneak\ttoolu_2\tAgent type workflow-y not found\n');
+    const dir = stoppedWorld('UNHELD\tAgent\tworkflow-y — sneak\ttoolu_2\tAgent type workflow-y not found\n'
+      + 'UNHELD\tSendMessage\ttoolu_1 — retry\ttoolu_3\tno result recorded\n');
     try {
       const out = refusal(dir);
-      assert.match(out, /1 Agent call the dispatch hold never recorded/);
-      assert.match(out, /workflow-y — sneak \[toolu_2\] → Agent type workflow-y not found/);
+      assert.match(out, /2 calls the dispatch hold never recorded/);
+      assert.match(out, /- Agent workflow-y — sneak \[toolu_2\] → Agent type workflow-y not found/);
+      assert.match(out, /- SendMessage toolu_1 — retry \[toolu_3\] → no result recorded/);
       assert.match(out, /Do not judge this run/);
       assert.equal(fs.existsSync(path.join(dir, worlds.ASSERT_PROMPT)), false, 'no prompt was written to judge from');
     } finally {
@@ -711,7 +713,7 @@ describe('assert: every dispatch held, and what each carried reaches the asserte
     }
   });
 
-  it('carries every dispatch into the prompt whole — agent, background flag, the prompt uncut — and never into a commit', function () {
+  it('carries every dispatch into the prompt whole — agent, background flag, agent id, the prompt uncut — and never into a commit', function () {
     if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
     const dir = stoppedWorld();
     try {
@@ -726,13 +728,38 @@ describe('assert: every dispatch held, and what each carried reaches the asserte
       const { prompt_file: file } = JSON.parse(assertOn(dir));
       const text = fs.readFileSync(file, 'utf8');
       assert.match(text, /DISPATCHES — every agent the walker dispatched/);
-      assert.match(text, /1\. workflow-x — review \(background: true\)/);
-      assert.match(text, /2\. workflow-y — grapher \(background: true\)/, 'a dispatch naming no mode runs in the background');
-      assert.match(text, /3\. workflow-z — finder \(background: false\)/);
+      assert.match(text, /1\. workflow-x — review \(background: true, agent id: toolu_1\)/);
+      assert.match(text, /2\. workflow-y — grapher \(background: true, agent id: toolu_2\)/, 'a dispatch naming no mode runs in the background');
+      assert.match(text, /3\. workflow-z — finder \(background: false, agent id: toolu_3\)/);
       for (const line of prompt.split(dir).join('.').split('\n').filter(Boolean)) {
         assert.ok(text.includes(line), `the prompt line survives whole: ${line.slice(0, 60)}`);
       }
       assert.ok(!text.includes(dir), 'the world path collapses to `.`, as in the action log');
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+
+  it('carries every send in order with the dispatches — its target, the dispatch it continues, the message uncut', function () {
+    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
+    const dir = stoppedWorld();
+    try {
+      const message = `Retry pay-1-2 in ${dir}/src/checkout.\nNext attempt: key the guard on the intent\n${'padding '.repeat(2000)}\nfinal line`;
+      const record = (id, name, input) => `${JSON.stringify({ tool_use_id: id, tool_name: name, tool_input: input })}\n`;
+      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG),
+        record('toolu_1', 'Agent', { subagent_type: 'workflow-x', description: 'execute', prompt: 'task', run_in_background: true })
+        + record('toolu_2', 'SendMessage', { to: 'toolu_1', summary: 'retry pay-1-2', message })
+        + record('toolu_3', 'Agent', { subagent_type: 'workflow-r', description: 'review', prompt: 'p' })
+        + record('toolu_4', 'SendMessage', { to: 'workflow-x', summary: 'by name', message: 'm' }));
+      const text = fs.readFileSync(JSON.parse(assertOn(dir)).prompt_file, 'utf8');
+      assert.match(text, /1\. workflow-x — execute \(background: true, agent id: toolu_1\)\n/);
+      assert.match(text, /2\. send to toolu_1 \(continuing dispatch 1, workflow-x\) — retry pay-1-2\n/);
+      assert.match(text, /3\. workflow-r — review \(background: true, agent id: toolu_3\)\n/);
+      assert.match(text, /4\. send to workflow-x \(no dispatch was given this id\) — by name\n/);
+      for (const line of message.split(dir).join('.').split('\n').filter(Boolean)) {
+        assert.ok(text.includes(line), `the message line survives whole: ${line.slice(0, 60)}`);
+      }
+      assert.ok(!text.includes(dir), 'the world path collapses to `.` in a message too');
     } finally {
       worlds.destroyWorld(dir);
     }
