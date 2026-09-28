@@ -390,9 +390,10 @@ function loadConfig(paths) {
  *
  * Returns:
  *   - StubProvider instance when config.provider === 'stub'
- *   - null when no provider is configured OR api_key_env resolves to empty
+ *   - null when no provider is configured, or openai's key does not resolve
  *     (keyword-only mode)
- *   - Throws for unimplemented provider names
+ *   - Throws for unimplemented provider names, and for openai-compatible
+ *     without a base_url
  *
  * @param {Record<string, any>} config  Merged config from loadConfig()
  * @param {import('./providers/openai-engine.cjs').Patience} [patience]  how long an endpoint provider waits on its endpoint
