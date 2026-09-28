@@ -69,12 +69,13 @@ function readProjectManifest(cwd) {
  * is missing or unreadable is passed over. Loud on a corrupt project
  * manifest, as its read is.
  * @param {string} cwd
+ * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
  * @returns {Array<Record<string, any>>}
  */
-function listWorkUnitManifests(cwd) {
+function listWorkUnitManifests(cwd, project) {
   const wfDir = workflowsDir(cwd);
   if (!fs.existsSync(wfDir)) return [];
-  const registered = Object.keys(io.readProjectManifest(wfDir).work_units || {});
+  const registered = Object.keys((project || io.readProjectManifest(wfDir)).work_units || {});
   const names = registered.length > 0
     ? registered
     : fs.readdirSync(wfDir, { withFileTypes: true })

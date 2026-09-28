@@ -243,14 +243,17 @@ function deriveIdentity(filePath) {
 }
 
 /**
- * The work type a chunk of the artifact carries: the work unit's, or the
- * project-level place's own name.
- * @param {string} root @param {Identity} identity
+ * The work type a chunk of the artifact carries: the work unit's — from the
+ * manifests already read where they hold it — or the project-level place's
+ * own name.
+ * @param {string} root @param {Identity} identity @param {Array<Record<string, any>>} [workUnits]
  * @returns {string}
  */
-function workTypeOf(root, { workUnit, phase }) {
+function workTypeOf(root, { workUnit, phase }, workUnits = []) {
   if (phase === 'baseline') return BASELINE_IDENTITY;
   if (workUnit === ROADMAP_IDENTITY) return ROADMAP_IDENTITY;
+  const read = workUnits.find((unit) => unit.name === workUnit);
+  if (read && read.work_type) return read.work_type;
   const manifestFile = path.join(root, '.workflows', workUnit, 'manifest.json');
   if (!fs.existsSync(manifestFile)) throw new UserError(`Work unit manifest not found: ${manifestFile}`);
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
@@ -295,7 +298,7 @@ function readManifests(root) {
     const project = readProjectManifest(root);
     const registered = Object.keys(project.work_units || {});
     return {
-      workUnits: listWorkUnitManifests(root),
+      workUnits: listWorkUnitManifests(root, project),
       registry: registered.length > 0 ? new Set(registered) : null,
       roadmapSession: activeSession(project.roadmap),
     };

@@ -50,11 +50,11 @@ function readChunkConfig(phase) {
  * An artifact's chunks as store documents, not yet embedded. Refuses a file
  * that yields no chunks: indexing it would silently wipe the identity's
  * existing chunks.
- * @param {string} root @param {Artifact} artifact
+ * @param {string} root @param {Artifact} artifact @param {Array<Record<string, any>>} [workUnits]  the manifests already read
  * @returns {Array<Record<string, any>>}
  */
-function buildDocuments(root, artifact) {
-  const workType = workTypeOf(root, artifact);
+function buildDocuments(root, artifact, workUnits) {
+  const workType = workTypeOf(root, artifact, workUnits);
   const chunkConfig = readChunkConfig(artifact.phase);
   const absSource = path.resolve(root, artifact.file);
   const content = fs.readFileSync(absSource, 'utf8');
@@ -301,12 +301,12 @@ function awaitingIdentities(snapshot, embedder) {
 /**
  * Whether the file now cuts other chunk texts than the store holds for it —
  * a file that no longer builds included, so indexing it names the failure.
- * @param {string} root @param {Artifact} artifact @param {Indexed} entry
+ * @param {string} root @param {Artifact} artifact @param {Indexed} entry @param {Array<Record<string, any>>} workUnits
  */
-function cutsOtherTexts(root, artifact, entry) {
+function cutsOtherTexts(root, artifact, entry, workUnits) {
   let docs;
   try {
-    docs = buildDocuments(root, artifact);
+    docs = buildDocuments(root, artifact, workUnits);
   } catch {
     return true;
   }
@@ -347,7 +347,7 @@ function planIndex(root, chunks, manifests, { scope, pruning, awaiting = new Set
       continue;
     }
     const hash = store.contentHash(fs.readFileSync(path.resolve(root, artifact.file), 'utf8'));
-    const current = entry.hashes.size === 1 && entry.hashes.has(hash) && !(awaiting.has(key) && cutsOtherTexts(root, artifact, entry));
+    const current = entry.hashes.size === 1 && entry.hashes.has(hash) && !(awaiting.has(key) && cutsOtherTexts(root, artifact, entry, manifests.workUnits));
     plan[current ? 'unchanged' : 'changed'].push(artifact);
   }
   return plan;
@@ -357,16 +357,17 @@ function planIndex(root, chunks, manifests, { scope, pruning, awaiting = new Set
  * Build each planned artifact's documents. A failure fails its own artifact
  * alone.
  * @param {string} root @param {Array<{artifact: Artifact, state: 'new'|'changed'}>} planned
+ * @param {Array<Record<string, any>>} workUnits
  * @returns {{built: Built[], failures: Array<{artifact: Artifact, error: Error}>}}
  */
-function buildAll(root, planned) {
+function buildAll(root, planned, workUnits) {
   /** @type {Built[]} */
   const built = [];
   /** @type {Array<{artifact: Artifact, error: Error}>} */
   const failures = [];
   for (const { artifact, state } of planned) {
     try {
-      built.push({ artifact, state, docs: buildDocuments(root, artifact) });
+      built.push({ artifact, state, docs: buildDocuments(root, artifact, workUnits) });
     } catch (error) {
       failures.push({ artifact, error: /** @type {Error} */ (error) });
     }
@@ -414,7 +415,7 @@ function reconcile(root, { cfg, provider }, scope = null) {
   const { built, failures } = buildAll(root, [
     ...plan.fresh.map((artifact) => ({ artifact, state: /** @type {const} */ ('new') })),
     ...plan.changed.map((artifact) => ({ artifact, state: /** @type {const} */ ('changed') })),
-  ]);
+  ], manifests.workUnits);
   if (embedder && snapshot.db) {
     const known = store.vectorsByContentHash(snapshot.db);
     for (const { docs } of built) reuseVectors(docs, known);

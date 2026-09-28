@@ -186,6 +186,18 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     }
   });
 
+  it('reads each manifest once to plan and once to retire — never once per artifact', async (t) => {
+    const reads = new Map();
+    const readFileSync = fs.readFileSync;
+    t.mock.method(fs, 'readFileSync', (file, ...rest) => {
+      if (String(file).endsWith('manifest.json')) reads.set(path.relative(root, String(file)), (reads.get(path.relative(root, String(file))) || 0) + 1);
+      return readFileSync(file, ...rest);
+    });
+    await bulk(root, output, CFG, spyProvider());
+    t.mock.restoreAll();
+    assert.deepStrictEqual(Object.fromEntries(reads), { '.workflows/manifest.json': 2, '.workflows/payments/manifest.json': 2 });
+  });
+
   it('writes the keyword side before any embed: a provider failing its first call leaves every new file searchable by keyword', async () => {
     const summary = await bulk(root, output, CFG, spyProvider({ answers: 0 }));
     assert.deepStrictEqual(summary, { new: 3, changed: 0, removed: 0, unchanged: 0, failed: 0, awaiting: 3, keyUnresolved: false });
