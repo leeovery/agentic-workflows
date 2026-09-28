@@ -7,8 +7,8 @@ The prose should have taken this path:
 2. the process renders the thread register, then resume detection — the
    triage queue read (empty, so no triage warning), then the
    continue-or-restart gate — and the user continues
-3. initialisation and file strategy are skipped: the walk lands at the
-   research guidelines, addresses the knowledge base once as a
+3. initialisation is skipped; the walk passes through file strategy and
+   the research guidelines, addresses the knowledge base once as a
    contextual query — the store holds the epic's discovery session log,
    so results come back and one line acknowledges the surfaced context —
    and enters the session step, which routes an epic to its own session
