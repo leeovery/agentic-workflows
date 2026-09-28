@@ -19,8 +19,19 @@
 //     "engine_before_write": true,      // no .workflows write out of nowhere
 //     "calls_include": ["task init"],   // these commands must have run
 //     "calls_exclude": ["task start"],  // these must not have
-//     "calls_in_order": ["a", "b"]      // and these in this sequence
+//     "calls_in_order": ["a", "b"],     // and these in this sequence
+//     "dispatches": [                   // what the walker's dispatches carried
+//       { "agent": "x", "nth": 2, "count": 2, "carries": ["p"], "lacks": ["q"] }
+//     ]
 //   }
+//
+// A dispatches entry names an agent by its subagent_type and claims what
+// its dispatches carried in their prompts, read from the hold's whole
+// record (lib/hold-dispatch.cjs) — never the capped action log. `count`
+// pins how many dispatches of that agent the walk made; `carries` and
+// `lacks` hold for every one of them, or for the `nth` (1-based) alone
+// when it is given. A declared dispatch that never happened fails: the
+// claim is about the dispatch, so there is always something to examine.
 //
 // A calls_in_order entry starting `write:` is a token, not a command: it
 // stands for the path's FIRST recorded write, which must sit at this
@@ -30,6 +41,12 @@
 // before its artifact exists, and the inverse). Tokens are
 // calls_in_order-only; in the presence checks a `write:` entry could
 // only mislead, so declaration validation rejects it there.
+//
+// A calls_in_order entry starting `dispatch:` stands for the NEXT held
+// dispatch of the agent it names — a dispatch ordered against the calls
+// around it. Next, not first: an agent dispatched once per review cycle
+// takes one token per cycle. Its presence is claimed through
+// `dispatches`, so it too is rejected outside calls_in_order.
 //
 // A check that could not have failed reports N/A rather than PASS. A
 // green tick for "there was nothing to examine" is how a corpus comes to
@@ -81,7 +98,7 @@ function isWrite(row) {
   return writeTargets(row).length > 0;
 }
 
-const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_in_order'];
+const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_in_order', 'dispatches'];
 
 /**
  * Prose the walk actually opened, as repo-relative paths.
@@ -238,6 +255,16 @@ function callsExclude(rows, forbidden) {
 }
 
 const WRITE_TOKEN = 'write:';
+const DISPATCH_TOKEN = 'dispatch:';
+
+/**
+ * The agent a held dispatch row names. The hold writes its detail as
+ * `<subagent_type> — <description>`, and it is the only thing that
+ * writes an Agent row at PreToolUse.
+ */
+function heldAgent(row) {
+  return row.tool === 'Agent' ? row.detail.split(' — ')[0] : null;
+}
 
 /**
  * Order carries meaning a presence check cannot: a gate read after the arm
@@ -281,6 +308,9 @@ function callsInOrder(rows, sequence) {
           detail: `"${wanted}" — the path's first write landed before ${prefix.map((s) => `"${s}"`).join(' → ')}`,
         };
       }
+    } else if (wanted.startsWith(DISPATCH_TOKEN)) {
+      const agent = wanted.slice(DISPATCH_TOKEN.length).trim();
+      found = events.findIndex((r, i) => i >= at && heldAgent(r) === agent);
     } else {
       found = events.findIndex((r, i) => i >= at && r.tool === 'Bash' && ranMatch(r.detail, wanted));
     }
@@ -298,11 +328,58 @@ function callsInOrder(rows, sequence) {
   return { ok: true, detail: `ran in order: ${sequence.join(' → ')}` };
 }
 
+const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
+
 /**
- * Run a case's declared invariants against its recorded actions.
- * Returns one result per declared check, in declaration order.
+ * What the walker's dispatches carried, against what the case declares.
+ * `records` are the hold's own — each call whole, the prompt uncapped —
+ * so a needle absent from one is absent from what the agent was given.
  */
-function check(rows, declared) {
+function dispatchesCheck(records, wanted) {
+  const failures = [];
+  const held = [];
+  for (const w of wanted) {
+    const mine = records.filter((r) => (r.tool_input || {}).subagent_type === w.agent);
+    if (w.count !== undefined && mine.length !== w.count) {
+      failures.push(`${w.agent} was dispatched ${plural(mine.length, 'time')}, not ${w.count}`);
+      continue;
+    }
+    if (w.count === 0) {
+      held.push(`${w.agent} never dispatched`);
+      continue;
+    }
+    if (!mine.length) {
+      failures.push(`${w.agent} was never dispatched`);
+      continue;
+    }
+    if (w.nth && mine.length < w.nth) {
+      failures.push(`${w.agent} was dispatched ${plural(mine.length, 'time')} — there is no dispatch #${w.nth}`);
+      continue;
+    }
+    const targets = w.nth ? [[w.nth, mine[w.nth - 1]]] : mine.map((r, i) => [i + 1, r]);
+    const before = failures.length;
+    for (const [n, r] of targets) {
+      const prompt = String((r.tool_input || {}).prompt || '');
+      const missing = (w.carries || []).filter((s) => !prompt.includes(s));
+      const present = (w.lacks || []).filter((s) => prompt.includes(s));
+      if (missing.length) failures.push(`${w.agent} #${n} does not carry: ${missing.join(', ')}`);
+      if (present.length) failures.push(`${w.agent} #${n} carries what it must not: ${present.join(', ')}`);
+    }
+    if (failures.length === before) {
+      held.push(`${w.agent}${w.nth ? ` #${w.nth}` : ''} (${plural(mine.length, 'dispatch', 'dispatches')})`);
+    }
+  }
+  return failures.length
+    ? { ok: false, detail: failures.join('; ') }
+    : { ok: true, detail: `every declared dispatch held as declared: ${held.join(', ')}` };
+}
+
+/**
+ * Run a case's declared invariants against its recorded actions and the
+ * dispatches the hold recorded. Returns one result per declared check, in
+ * declaration order.
+ */
+function check(rows, declared, dispatches = []) {
   if (!declared) return [];
   const results = [];
   if (declared.engine_before_write) {
@@ -316,6 +393,9 @@ function check(rows, declared) {
   }
   if (declared.calls_in_order && declared.calls_in_order.length) {
     results.push({ name: 'calls_in_order', ...callsInOrder(rows, declared.calls_in_order) });
+  }
+  if (declared.dispatches && declared.dispatches.length) {
+    results.push({ name: 'dispatches', ...dispatchesCheck(dispatches, declared.dispatches) });
   }
   return results;
 }
@@ -360,10 +440,49 @@ function declarationErrors(declared) {
     if (key !== 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN))) {
       errors.push(`${key} cannot carry write: tokens — a write is ordered, never merely present; use calls_in_order`);
     }
+    if (key !== 'calls_in_order' && value.some((v) => v.startsWith(DISPATCH_TOKEN))) {
+      errors.push(`${key} cannot carry dispatch: tokens — a dispatch is claimed through dispatches and ordered through calls_in_order`);
+    }
     if (key === 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN) && !v.slice(WRITE_TOKEN.length).trim())) {
       errors.push('a write: token needs a path');
     }
+    if (key === 'calls_in_order' && value.some((v) => v.startsWith(DISPATCH_TOKEN) && !v.slice(DISPATCH_TOKEN.length).trim())) {
+      errors.push('a dispatch: token needs an agent');
+    }
   }
+  if ('dispatches' in declared) errors.push(...dispatchesErrors(declared.dispatches));
+  return errors;
+}
+
+const DISPATCH_KEYS = ['agent', 'nth', 'count', 'carries', 'lacks'];
+const isCount = (v, min) => Number.isInteger(v) && v >= min;
+const isNeedles = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string' && s.trim());
+
+function dispatchesErrors(value) {
+  if (!Array.isArray(value) || !value.length) return ['dispatches must be a non-empty array of dispatch claims'];
+  const errors = [];
+  value.forEach((d, i) => {
+    const at = `dispatches[${i}]`;
+    if (!d || typeof d !== 'object' || Array.isArray(d)) {
+      errors.push(`${at} must be an object`);
+      return;
+    }
+    for (const key of Object.keys(d)) {
+      if (!DISPATCH_KEYS.includes(key)) errors.push(`${at} has unknown key "${key}" (known: ${DISPATCH_KEYS.join(', ')})`);
+    }
+    if (typeof d.agent !== 'string' || !d.agent.trim()) errors.push(`${at} needs an agent — the subagent_type the prose dispatches`);
+    if ('nth' in d && !isCount(d.nth, 1)) errors.push(`${at} nth must be a whole number from 1`);
+    if ('count' in d && !isCount(d.count, 0)) errors.push(`${at} count must be a whole number from 0`);
+    for (const key of ['carries', 'lacks']) {
+      if (key in d && !isNeedles(d[key])) errors.push(`${at} ${key} must be a non-empty array of non-empty strings`);
+    }
+    if (d.count === 0 && ['nth', 'carries', 'lacks'].some((k) => k in d)) {
+      errors.push(`${at} claims no dispatch (count 0), so it can claim nothing a dispatch carried`);
+    }
+    if (isCount(d.nth, 1) && isCount(d.count, 1) && d.nth > d.count) {
+      errors.push(`${at} nth ${d.nth} is past its own count ${d.count}`);
+    }
+  });
   return errors;
 }
 

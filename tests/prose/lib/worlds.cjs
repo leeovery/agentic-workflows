@@ -65,11 +65,19 @@ const ACTION_LOG = '.walk-actions.log';
 // turn by turn, lifted from the runtime's own transcript. An agent
 // returns one final message; the walk happens across dozens of turns.
 const WALK_LOG = '.walk-transcript.log';
+// Written by the walker's dispatch hold (lib/hold-dispatch.cjs): every
+// Agent call the walker made, whole, one JSON line each — what each
+// dispatch carried, which the invariants and the asserter read.
+const DISPATCH_LOG = '.walk-dispatches.jsonl';
 // The asserter's prompt, written by `run.cjs assert` into the world so the
 // orchestrator hands over a path, never the text — a 100 KB record relayed
 // by hand arrives cut, and an asserter judging a cut record rules on
 // absence. Harness material like the logs: never world state, lifted with them.
 const ASSERT_PROMPT = '.assert-prompt.md';
+// What the harness writes into a world that is not the world's own state:
+// out of every tree the differ reads, out of every commit, and lifted
+// whole by archive.
+const HARNESS_FILES = [ACTION_LOG, WALK_LOG, DISPATCH_LOG, ASSERT_PROMPT];
 
 // A recipe's git history dies at the world's fresh init, so a fixture
 // that needs one (implementation commits the review scope-grep reads)
@@ -210,7 +218,7 @@ function runRecipe(caseId, which) {
 function excluded(rel) {
   const parts = rel.split(path.sep);
   if (parts.includes('.git')) return true;
-  if (rel === ACTION_LOG || rel === WALK_LOG || rel === ASSERT_PROMPT) return true;
+  if (HARNESS_FILES.includes(rel)) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
@@ -660,7 +668,7 @@ function buildWorld(caseId) {
   // whole, and a fixture whose recipe never booted carries no ignore rules
   // of its own.
   fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'),
-    [ACTION_LOG, WALK_LOG, ASSERT_PROMPT, `${KNOWLEDGE_DIR}/`].map((p) => `${p}\n`).join(''));
+    [...HARNESS_FILES, `${KNOWLEDGE_DIR}/`].map((p) => `${p}\n`).join(''));
   git('add', '-A');
   git('commit', '-q', '-m', 'Initial commit');
 
@@ -734,8 +742,8 @@ function destroyWorld(dir) {
 }
 
 // Worlds die with their logs — and a failed run's logs are exactly the
-// evidence a human wants afterwards. Archiving copies the record (both
-// logs) and the workflow state out of a world before it is destroyed,
+// evidence a human wants afterwards. Archiving copies the record (every
+// harness file) and the workflow state out of a world before it is destroyed,
 // to a directory that outlives the run. Never the skills layer — that
 // is the repo's copy, not the walk's.
 const ARCHIVE_PREFIX = 'prose-failed-';
@@ -745,7 +753,7 @@ function archiveWorld(dir, caseId) {
     throw new Error(`refusing to archive non-world directory: ${dir}`);
   }
   const dest = fs.mkdtempSync(path.join(os.tmpdir(), `${ARCHIVE_PREFIX}${caseId}-`));
-  for (const name of [ACTION_LOG, WALK_LOG, ASSERT_PROMPT]) {
+  for (const name of HARNESS_FILES) {
     const src = path.join(dir, name);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dest, name));
   }
@@ -783,6 +791,24 @@ function readActionLog(worldDir) {
     .join('\n');
 }
 
+/**
+ * Every dispatch the walker made, in the order it made them — each
+ * `{tool_use_id, tool_name, tool_input}` exactly as the hold recorded it.
+ * A line that does not parse is a record that cannot be trusted, and it
+ * throws rather than reading as a dispatch that never happened.
+ */
+function readDispatches(worldDir) {
+  const file = path.join(worldDir, DISPATCH_LOG);
+  if (!fs.existsSync(file)) return [];
+  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line, i) => {
+    try {
+      return JSON.parse(line);
+    } catch {
+      throw new Error(`${file}: line ${i + 1} is not a dispatch record — the hold wrote it torn`);
+    }
+  });
+}
+
 /** The walk as it was told, turn by turn — not the summary it returned. */
 function readWalkLog(worldDir) {
   const file = path.join(worldDir, WALK_LOG);
@@ -793,6 +819,7 @@ function readWalkLog(worldDir) {
 module.exports = {
   ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
+  DISPATCH_LOG, readDispatches,
   runRecipe, collectTree, hasSnapshot, readSnapshot, snapshotDir,
   hashPaths, SHARED_INPUTS, sharedInputsHash, recipeHash,
   hashCacheFile, cachedHash, recordHash,

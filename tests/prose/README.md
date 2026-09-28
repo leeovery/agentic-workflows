@@ -154,6 +154,21 @@ The trigger belongs to the case, not the stub, so one stub serves many
 moments — first dispatch versus re-dispatch, happy path versus recovery.
 A stub with no trigger is a fixture in disguise, and validation rejects it.
 
+**Every dispatch is held.** The walker makes the Agent call the prose
+composes — the agent, the inputs in its prompt, the background flag —
+and a PreToolUse hook in its definition (`lib/hold-dispatch.cjs`)
+records the call whole into the world (`.walk-dispatches.jsonl`, plus a
+`held` row in the action log) and refuses it, so no agent ever runs in a
+world. The walker then applies the stub whose trigger names that moment,
+or reads the agent's file and plays it where none does. What a dispatch
+carried is claimed in `case.json`'s `dispatches` invariant — entries of
+`{agent, nth?, count?, carries?, lacks?}` matched against the whole
+recorded call, `carries`/`lacks` holding for every dispatch of the agent
+or for the `nth` alone — and ordered by a `dispatch:<agent>` token in
+`calls_in_order`, which stands for that agent's next held dispatch. A
+dispatch the walker's transcript shows with no held record is written
+`UNHELD` at its stop, and `run.cjs assert` refuses to judge that world.
+
 **A trigger names an observable event, not a narrative moment.** An
 engine call with its arguments, a specific menu appearing, a named file
 being created — something the walker can match with certainty and that

@@ -515,6 +515,150 @@ describe('declaration validation', () => {
     const errors = invariants.declarationErrors({ calls_in_order: ['topic start', 'write:'] });
     assert.match(errors[0], /write: token needs a path/);
   });
+
+  it('rejects dispatch: tokens outside calls_in_order, and one with no agent', () => {
+    for (const key of ['calls_include', 'calls_exclude']) {
+      assert.match(invariants.declarationErrors({ [key]: ['dispatch:reviewer'] })[0], /cannot carry dispatch: tokens/);
+    }
+    assert.match(invariants.declarationErrors({ calls_in_order: ['boot', 'dispatch:'] })[0], /dispatch: token needs an agent/);
+    assert.deepEqual(invariants.declarationErrors({ calls_in_order: ['boot', 'dispatch:reviewer'] }), []);
+  });
+
+  it('accepts a well-formed dispatches declaration', () => {
+    assert.deepEqual(invariants.declarationErrors({
+      dispatches: [
+        { agent: 'a' },
+        { agent: 'b', nth: 2, count: 2, carries: ['x'], lacks: ['y'] },
+        { agent: 'c', count: 0 },
+      ],
+    }), []);
+  });
+
+  it('rejects a malformed dispatches declaration, naming the entry', () => {
+    const errorsOf = (dispatches) => invariants.declarationErrors({ dispatches });
+    assert.match(errorsOf([])[0], /non-empty array/);
+    assert.match(errorsOf({ agent: 'a' })[0], /non-empty array/);
+    assert.match(errorsOf(['a'])[0], /dispatches\[0\] must be an object/);
+    assert.match(errorsOf([{}])[0], /dispatches\[0\] needs an agent/);
+    assert.match(errorsOf([{ agent: 'a', agnet: 'b' }])[0], /unknown key "agnet"/);
+    assert.match(errorsOf([{ agent: 'a', nth: 0 }])[0], /nth must be a whole number from 1/);
+    assert.match(errorsOf([{ agent: 'a', count: 1.5 }])[0], /count must be a whole number from 0/);
+    assert.match(errorsOf([{ agent: 'a', carries: 'x' }])[0], /carries must be a non-empty array/);
+    assert.match(errorsOf([{ agent: 'a', lacks: [''] }])[0], /lacks must be a non-empty array/);
+    assert.match(errorsOf([{ agent: 'a', count: 0, carries: ['x'] }])[0], /claims no dispatch/);
+    assert.match(errorsOf([{ agent: 'a', count: 1, nth: 2 }])[0], /nth 2 is past its own count 1/);
+  });
+});
+
+describe('dispatches — what a held dispatch carried', () => {
+  // Records in the shape worlds.readDispatches returns: the hold's whole
+  // record of each Agent call, the prompt uncapped.
+  const call = (agent, prompt, id = agent) => ({
+    tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt },
+  });
+  const run = (records, dispatches) => invariants.check([], { dispatches }, records)[0];
+  const FLOOR = '.claude/skills/workflow-implementation-process/references/finding-floor.md';
+
+  it('passes a dispatch that carried every declared input', () => {
+    const result = run([call('input-review', 'Source: .workflows/pay/discussion/pay.md\nCycle: 1')],
+      [{ agent: 'input-review', carries: ['.workflows/pay/discussion/pay.md'] }]);
+    assert.equal(result.name, 'dispatches');
+    assert.equal(result.ok, true);
+    assert.ok(!result.vacuous, 'a declared dispatch always has something to examine');
+  });
+
+  it('fails a dispatch missing a declared input, naming it', () => {
+    const result = run([call('input-review', 'Source: .workflows/pay/specification/pay/specification.md')],
+      [{ agent: 'input-review', carries: ['.workflows/pay/discussion/pay.md'] }]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /input-review #1 does not carry: \.workflows\/pay\/discussion\/pay\.md/);
+  });
+
+  it('fails a declared dispatch that never happened — never N/A', () => {
+    const result = run([call('other', 'x')], [{ agent: 'input-review', carries: ['x'] }]);
+    assert.equal(result.ok, false);
+    assert.ok(!result.vacuous);
+    assert.match(result.detail, /input-review was never dispatched/);
+    assert.equal(run([], [{ agent: 'input-review' }]).ok, false, 'no record at all fails the same way');
+  });
+
+  it('holds carries for every dispatch of the agent unless nth picks one', () => {
+    const records = [call('reviewer', 'cycle 1', 't1'), call('reviewer', 'cycle 2, settled: review-traceability-tracking-c1.md', 't2')];
+    const every = run(records, [{ agent: 'reviewer', carries: ['review-traceability-tracking-c1.md'] }]);
+    assert.equal(every.ok, false);
+    assert.match(every.detail, /reviewer #1 does not carry/);
+    assert.equal(run(records, [{ agent: 'reviewer', nth: 2, carries: ['review-traceability-tracking-c1.md'] }]).ok, true);
+    assert.equal(run(records, [{ agent: 'reviewer', nth: 1, lacks: ['review-traceability-tracking-c1.md'] }]).ok, true);
+  });
+
+  it('fails an nth past the dispatches made', () => {
+    const result = run([call('reviewer', 'x')], [{ agent: 'reviewer', nth: 2, carries: ['x'] }]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /dispatched 1 time — there is no dispatch #2/);
+  });
+
+  it('pins how many times an agent was dispatched', () => {
+    const records = [call('dup', FLOOR, 'a'), call('dup', FLOOR, 'b')];
+    const result = run(records, [{ agent: 'dup', count: 1, carries: [FLOOR] }]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /dup was dispatched 2 times, not 1/);
+    const pinned = run(records, [{ agent: 'dup', count: 2, carries: [FLOOR] }]);
+    assert.equal(pinned.ok, true);
+    assert.match(pinned.detail, /dup \(2 dispatches\)/);
+    assert.equal(run(records, [{ agent: 'standards', count: 0 }]).ok, true, 'count 0 claims the agent was never dispatched');
+    assert.equal(run(records, [{ agent: 'dup', count: 0 }]).ok, false);
+  });
+
+  it('fails a dispatch carrying what it must not', () => {
+    const result = run([call('analysis', 'prior cycle findings: …')], [{ agent: 'analysis', lacks: ['prior cycle findings'] }]);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /analysis #1 carries what it must not: prior cycle findings/);
+  });
+
+  it('reports every failing claim, not just the first', () => {
+    const result = run([call('a', 'x')], [{ agent: 'a', carries: ['y'] }, { agent: 'b' }]);
+    assert.match(result.detail, /a #1 does not carry: y; b was never dispatched/);
+  });
+
+  it('matches an agent by its subagent_type exactly', () => {
+    assert.equal(run([call('workflow-planning-review-traceability', 'x')], [{ agent: 'workflow-planning-review' }]).ok, false);
+  });
+});
+
+describe('calls_in_order — dispatch: tokens', () => {
+  // The hold's ordering row: an Agent row at PreToolUse whose detail is
+  // `<subagent_type> — <description>`.
+  const heldRow = (agent) => ({ event: 'PreToolUse', tool: 'Agent', detail: `${agent} — review`, outcome: 'held', output: 'toolu_x' });
+
+  it('orders a dispatch against the calls around it', () => {
+    const rows = [bash(`${ENGINE} manifest set pay.planning.pay review_cycle 2`), heldRow('traceability'), heldRow('integrity')];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['review_cycle 2', 'dispatch:traceability', 'dispatch:integrity'],
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it('fails a dispatch made before the call it must follow', () => {
+    const rows = [heldRow('traceability'), bash(`${ENGINE} manifest set pay.planning.pay review_cycle 2`)];
+    const [result] = invariants.check(rows, { calls_in_order: ['review_cycle 2', 'dispatch:traceability'] });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /"dispatch:traceability" never ran after "review_cycle 2"/);
+  });
+
+  it('matches the NEXT dispatch of the agent, so each cycle takes its own token', () => {
+    const rows = [heldRow('traceability'), bash(`${ENGINE} manifest set pay.planning.pay review_cycle 2`), heldRow('traceability')];
+    assert.equal(invariants.check(rows, {
+      calls_in_order: ['dispatch:traceability', 'review_cycle 2', 'dispatch:traceability'],
+    })[0].ok, true);
+    assert.equal(invariants.check(rows.slice(0, 2), {
+      calls_in_order: ['dispatch:traceability', 'review_cycle 2', 'dispatch:traceability'],
+    })[0].ok, false, 'one dispatch never satisfies two tokens');
+  });
+
+  it('never lets a command naming the agent stand in for its dispatch', () => {
+    const rows = [bash('cat .claude/agents/traceability.md'), bash(`${ENGINE} boot`)];
+    assert.equal(invariants.check(rows, { calls_in_order: ['dispatch:traceability', 'boot'] })[0].ok, false);
+  });
 });
 
 describe('entry points — where a walk may begin', () => {

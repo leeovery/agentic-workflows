@@ -610,18 +610,19 @@ describe('the asserter prompt file: harness material, never world state', () => 
     fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\n');
     fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'walk\n');
     fs.writeFileSync(path.join(dir, worlds.ASSERT_PROMPT), 'PROMPT\n');
+    fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG), '{"tool_use_id":"t1","tool_name":"Agent","tool_input":{}}\n');
     fs.mkdirSync(path.join(dir, '.workflows'));
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), '{}\n');
     return dir;
   }
 
-  it('is excluded from the collected tree alongside the two logs', () => {
+  it('is excluded from the collected tree alongside the logs and the dispatch record', () => {
     const dir = worldDir();
     try {
       const tree = worlds.collectTree(dir);
       const rels = [...tree.keys()];
       assert.ok(rels.includes(path.join('.workflows', 'manifest.json')));
-      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT]) {
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG]) {
         assert.ok(!rels.includes(name), `${name} leaked into the tree`);
       }
     } finally {
@@ -634,7 +635,7 @@ describe('the asserter prompt file: harness material, never world state', () => 
     let dest;
     try {
       dest = worlds.archiveWorld(dir, 'some-case');
-      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT]) {
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG]) {
         assert.ok(fs.existsSync(path.join(dest, name)), `${name} missing from the archive`);
       }
       assert.strictEqual(fs.readFileSync(path.join(dest, worlds.ASSERT_PROMPT), 'utf8'), 'PROMPT\n');
@@ -670,6 +671,79 @@ describe('assert: a walk still running is waited for, never judged', () => {
 
       fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
       assert.match(assertOn(dir), /"prompt_file"/);
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+});
+
+describe('assert: every dispatch held, and what each carried reaches the asserter whole', () => {
+  // The hold records each walker dispatch in the world; the stop's
+  // backstop marks any it never saw UNHELD — a real agent may have run —
+  // and assert refuses to judge such a world at all.
+  const CASE = 'start-lists-active-work';
+  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
+  const assertOn = (dir) => execFileSync('node', [RUN, 'assert', CASE, '--world', dir], { encoding: 'utf8', stdio: 'pipe' });
+  const refusal = (dir) => {
+    try { assertOn(dir); } catch (e) { return String(e.stderr); }
+    return null;
+  };
+
+  function stoppedWorld(extraRows = '') {
+    const dir = worlds.buildWorld(CASE);
+    fs.writeFileSync(path.join(dir, worlds.ACTION_LOG),
+      `PreToolUse\tAgent\tworkflow-x — review\theld\ttoolu_1\n${extraRows}SubagentStop\t-\tclaude-sonnet-5\tdone\n`);
+    fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
+    return dir;
+  }
+
+  it('refuses a world carrying an UNHELD dispatch, naming it and what came back for it', function () {
+    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
+    const dir = stoppedWorld('UNHELD\tAgent\tworkflow-y — sneak\ttoolu_2\tAgent type workflow-y not found\n');
+    try {
+      const out = refusal(dir);
+      assert.match(out, /1 Agent call the dispatch hold never recorded/);
+      assert.match(out, /workflow-y — sneak \[toolu_2\] → Agent type workflow-y not found/);
+      assert.match(out, /Do not judge this run/);
+      assert.equal(fs.existsSync(path.join(dir, worlds.ASSERT_PROMPT)), false, 'no prompt was written to judge from');
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+
+  it('carries every dispatch into the prompt whole — agent, background flag, the prompt uncut — and never into a commit', function () {
+    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
+    const dir = stoppedWorld();
+    try {
+      const prompt = `Specification: ${dir}/.workflows/pay/specification/pay/specification.md\n\n`
+        + `Source material:\n- .workflows/pay/discussion/pay.md\n${'padding '.repeat(2000)}\nfinal line`;
+      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG), `${JSON.stringify({
+        tool_use_id: 'toolu_1',
+        tool_name: 'Agent',
+        tool_input: { subagent_type: 'workflow-x', description: 'review', prompt, run_in_background: true },
+      })}\n`);
+      assert.ok(!statusLines(dir).some((l) => l.includes(worlds.DISPATCH_LOG)), 'the record is never world state git sees');
+      const { prompt_file: file } = JSON.parse(assertOn(dir));
+      const text = fs.readFileSync(file, 'utf8');
+      assert.match(text, /DISPATCHES — every agent the walker dispatched/);
+      assert.match(text, /1\. workflow-x — review \(background: true\)/);
+      for (const line of prompt.split(dir).join('.').split('\n').filter(Boolean)) {
+        assert.ok(text.includes(line), `the prompt line survives whole: ${line.slice(0, 60)}`);
+      }
+      assert.ok(!text.includes(dir), 'the world path collapses to `.`, as in the action log');
+    } finally {
+      worlds.destroyWorld(dir);
+    }
+  });
+
+  it('carries no DISPATCHES section for a walk that dispatched nothing', function () {
+    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
+    const dir = worlds.buildWorld(CASE);
+    try {
+      fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\nSubagentStop\t-\tclaude-sonnet-5\tdone\n');
+      fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
+      const text = fs.readFileSync(JSON.parse(assertOn(dir)).prompt_file, 'utf8');
+      assert.ok(!text.includes('DISPATCHES —'));
     } finally {
       worlds.destroyWorld(dir);
     }

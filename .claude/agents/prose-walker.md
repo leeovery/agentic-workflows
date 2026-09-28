@@ -1,7 +1,7 @@
 ---
 name: prose-walker
 description: Executes workflow prose exactly as a live session would, against a disposable test world, and returns a transcript of what it did. Dispatched by prose-orchestrator during a prose-test run.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 model: sonnet
 hooks:
   PreToolUse:
@@ -9,6 +9,10 @@ hooks:
       hooks:
         - type: command
           command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
+    - matcher: "Agent|Task"
+      hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/hold-dispatch.cjs\""
   PostToolUse:
     - matcher: "Bash|Write|Edit|Read|Glob|Grep"
       hooks:
@@ -105,13 +109,21 @@ any harness substitutions. Follow it exactly.
   as a live invocation would have loaded it. Expected, not a
   `DEVIATION`, no marker. Where the task says to stop at the handoff,
   stop there.
-- **Crossing an agent boundary is the same, when nothing substitutes.**
-  Where the prose dispatches an agent and an armed substitution names
-  that moment, the stub fires — `SUBSTITUTED:`, as ever. Where none
-  does, there is no Task tool here either: read the named agent's file
-  under `.claude/agents/` and follow it with the inputs the prose
-  passes, exactly as the dispatched agent would have received them.
-  Expected, not a `DEVIATION`, no marker.
+- **Dispatch every agent exactly as the prose says, and the harness
+  holds it.** One Agent call per agent the prose dispatches:
+  `subagent_type` the agent's name, every input the prose lists carried
+  in the prompt as the prose gives it, the background flag it states,
+  and the calls made together where it says parallel. The harness
+  records each call and refuses it before any agent starts — the
+  refusal says so. A held dispatch is not the agent failing: never take
+  the prose's arm for an agent that fails, errors or times out over it.
+  Then, where an armed substitution names that moment, the stub fires —
+  `SUBSTITUTED:`, as ever; where none does, read the named agent's file
+  under `.claude/agents/` and follow it with the inputs you just passed,
+  exactly as the dispatched agent would have received them. A dispatch
+  the prose runs in the background returns there and then: where the
+  prose ends the turn after it, record that line and carry on — never
+  end your own turn to wait. Expected, not a `DEVIATION`, no marker.
 - **A report-shaped `.md` write may be refused.** The harness blocks
   subagents writing report-looking `.md` files. Where the prose or an
   armed substitution calls for one, write the same path with a `.txt`
