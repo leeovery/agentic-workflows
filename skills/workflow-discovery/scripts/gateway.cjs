@@ -152,9 +152,10 @@ function format(result) {
 
 /**
  * Parse and validate the harvest's proposed-topics JSON: a non-empty array of
- * `{name, routing, summary}`. Model-authored judgment; shape errors are loud.
+ * `{name, routing, summary, description}`. Model-authored judgment; shape
+ * errors are loud.
  * @param {string} cwd @param {string} file
- * @returns {{name: string, routing: string, summary: string}[]}
+ * @returns {{name: string, routing: string, summary: string, description: string}[]}
  */
 function readProposedFile(cwd, file) {
   let raw;
@@ -170,12 +171,12 @@ function readProposedFile(cwd, file) {
     throw new Error(`proposed-topics file is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('proposed-topics file must be a non-empty JSON array of {name, routing, summary}');
+    throw new Error('proposed-topics file must be a non-empty JSON array of {name, routing, summary, description}');
   }
   for (const [i, t] of parsed.entries()) {
-    for (const field of ['name', 'routing', 'summary']) {
+    for (const field of ['name', 'routing', 'summary', 'description']) {
       if (!t || typeof t[field] !== 'string' || t[field].trim() === '') {
-        throw new Error(`proposed topic ${i} is missing "${field}" (each entry needs name, routing, summary)`);
+        throw new Error(`proposed topic ${i} is missing "${field}" (each entry needs name, routing, summary, description)`);
       }
     }
   }

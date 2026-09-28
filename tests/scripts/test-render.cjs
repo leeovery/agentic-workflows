@@ -245,6 +245,24 @@ describe('render shape: renderTree (discovery map)', () => {
     }
   });
 
+  it('draws an empty body paragraph as a blank line — the gutter kept, no trailing spaces', () => {
+    const out = renderTree([
+      { title: '○ First', body: ['one', '', 'two'] },
+      { title: '○ Last', body: ['three', '', 'four'] },
+    ], { width: 49 });
+    assert.strictEqual(out, [
+      '  ├─ ○ First',
+      '  │     one',
+      '  │',
+      '  │     two',
+      '  └─ ○ Last',
+      '        three',
+      '',
+      '        four',
+      '',
+    ].join('\n'));
+  });
+
   it('single node uses a sole └─', () => {
     const out = renderTree([{ title: '○ Only One [fresh]' }], { width: 49 });
     assert.ok(out.startsWith('  └─ ○ Only One [fresh]'));

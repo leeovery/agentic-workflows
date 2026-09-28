@@ -28,9 +28,10 @@ The prose should have taken this path:
    itself wrote this session — either satisfies this step, since the
    bytes are identical; step 9's document-review re-read is always
    from disk), applies the granularity rules, infers routing from the
-   user's framing, writes the proposal file, and renders it through
-   the map-view overlay before the confirmation gate; on acceptance a
-   brief is written per confirmed topic
+   user's framing, writes the proposal file — each topic with its
+   summary and description — and renders it through the map-view
+   overlay before the confirmation gate; on acceptance a brief is
+   written per confirmed topic
 9. document review re-reads the log and reconciles it against the
    conversation before anything persists
 10. the persist is one engine batch; Topics Identified is filled, the
@@ -57,8 +58,9 @@ EXPECTED WORLD — from an epic holding only its interrupted first
 sketch:
 
 - the discovery map holding one item per concern the user raised —
-  three — each with `source: discovery`, a summary, and a routing;
-  none with any per-phase work
+  three — each with `source: discovery`, a summary, a description, and
+  a routing, the summary and description those the proposal showed at
+  the gate; none with any per-phase work
 - session-001 carrying an Exploration extended beyond the fixture's
   shaping record with the resumed conversation's substance; Topics
   Identified holding one section per persisted topic with routing and

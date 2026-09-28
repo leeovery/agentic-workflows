@@ -46,6 +46,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {string} name
  * @property {string} routing   research|discussion
  * @property {string} summary   one line, from the exploration
+ * @property {string} description  a short paragraph, from the exploration — what the topic covers and why it surfaced
  */
 
 // Breakdown categories in display order. The whole breakdown is omitted when
@@ -77,11 +78,11 @@ function mapNodes(rows) {
   }));
 }
 
-/** Proposed rows: ○ (fresh-to-be) + name, summary beneath, routing on the `↳ state` line. @param {ProposedTopic[] } proposed */
+/** Proposed rows: ○ (fresh-to-be) + name, the summary and — a blank line on — the description beneath, routing on the `↳ state` line. @param {ProposedTopic[] } proposed */
 function proposedNodes(proposed) {
   return proposed.map((t) => ({
     title: title({ glyph: '○', label: titlecase(t.name) }),
-    body: [t.summary, stateNote(`routed to ${t.routing}`)],
+    body: [t.summary, '', t.description, stateNote(`routed to ${t.routing}`)],
   }));
 }
 
@@ -103,9 +104,9 @@ function discoveryMapView(workUnit, map) {
 
 /**
  * The synthesised-map display block — the harvest proposal: the proposed
- * topics (routing as the row tag, summary wrapped beneath), the existing map
- * unchanged below it, and the framing footer. No box — the session's phase
- * title already rendered at the opener.
+ * topics (summary and description wrapped beneath, routing on the state
+ * line), the existing map unchanged below it, and the framing footer. No
+ * box — the session's phase title already rendered at the opener.
  * @param {string} workUnit
  * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
  * @param {ProposedTopic[]} proposed
@@ -128,7 +129,7 @@ function discoverySynthesisView(workUnit, map, proposed) {
 
   // A closing sentence, not a detail of the tree above it — column 0.
   const footer = `${proposed.length} topic${proposed.length === 1 ? '' : 's'}. `
-    + 'Summaries come from the exploration; routing is my read of where each one goes next.';
+    + 'Summaries and descriptions come from the exploration; routing is my read of where each one goes next.';
   parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '' }).join('\n') + '\n');
 
   return parts.join('\n');

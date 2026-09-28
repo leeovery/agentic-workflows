@@ -23,10 +23,10 @@ No new topics — this is an edits-only, parks-only, or browse-only session.
 Write the whole topic set to `.workflows/.cache/{work_unit}/discovery/topics.json` with the Write tool — one entry per topic, in synthesised order:
 
 ```json
-[{"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{paragraphs}", "brief_path": "discovery/briefs/{topic}.md"}]
+[{"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{two or three sentences}", "brief_path": "discovery/briefs/{topic}.md"}]
 ```
 
-Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Omit `description` for a topic whose synthesis produced none (the field is optional; never invent one).
+Name, routing, summary, and description are each topic's entry in `proposed-topics.json` as the user confirmed it at the synthesis gate — copied, never re-derived.
 
 Set `"force_dismissed": true` on an entry whose name the synthesis DATA flagged `matches_dismissed=true` — the user's confirmation at the synthesis gate is the re-add decision; the engine clears the dismissed entry as part of the add.
 
@@ -41,7 +41,6 @@ The batch is atomic — a failing entry means nothing was persisted; fix the pay
 Notes:
 
 - Each entry's `name` becomes the manifest dict key (the `{topic}` path segment).
-- `routing` is the value confirmed by the user at the synthesis gate.
 - Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `gap-analysis`, `reroute:{origin}`).
 - The response's `map_total` is `{T}` for the Conclusion line in **C**, and `added` lists every persisted topic — no re-read needed.
 - `brief_path` records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
