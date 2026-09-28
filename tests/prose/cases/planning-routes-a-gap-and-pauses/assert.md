@@ -40,8 +40,9 @@ Expected path:
    not press for a pick, does not re-present the fork, and does not
    settle it on its own: the point goes to the owning document's triage
    queue
-9. the work type is `feature`, so the epic triage-landing reference is
-   never loaded and no map topic is created or resolved. The concern is
+9. the work type is `feature`, so the epic landing never runs — no map
+   topic is created or resolved (the triage-landing reference may be read
+   for the entry shape the prose cites, nothing more). The concern is
    written in the triage entry shape — a short title, a `*From: pay ·
    planning · {date}*` line, then what the plan needs, the evidence,
    and what was explored — to
