@@ -21,8 +21,10 @@ The prose should have taken this path:
    tree pins the mechanism or the tolerance — so this is the exchange,
    not a gate: the session STOPS conversationally, putting the unmade
    decision to the user (what the spec asserts, what was searched and
-   where the record ran out) and taking a stance; the incoherence
-   conflict surface is never rendered
+   where the record ran out) and taking a stance at the firmness the
+   record has earned — its lean and the one reason it rests on, or,
+   where nothing leans, that plainly and what an answer would need;
+   the incoherence conflict surface is never rendered
 6. on the user's settlement (verify signatures with the gateway SDK's
    built-in verification and its default tolerance — no custom
    window), the walk checks presence, then lands the decision in the
