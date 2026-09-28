@@ -15,8 +15,6 @@
     "test:cli": "export WORKFLOWS_DISPLAY_WIDTH=65 WORKFLOWS_CONFIG_DIR=$(mktemp -d); unset OPENAI_API_KEY WORKFLOWS_GATE_SURFACE CLAUDE_CODE_SESSION_ID; trap 'rm -rf \"$WORKFLOWS_CONFIG_DIR\"' EXIT; for t in tests/scripts/test-engine-manifest.sh tests/scripts/test-inbox-promotion.sh tests/scripts/test-knowledge-cli.sh tests/scripts/test-knowledge-build.sh; do bash $t || exit 1; done"
   },
   "devDependencies": {
-    "@msgpack/msgpack": "3.1.3",
-    "@orama/orama": "3.1.18",
     "@types/node": "^25.9.3",
     "esbuild": "0.28.0",
     "typescript": "^6.0.3"

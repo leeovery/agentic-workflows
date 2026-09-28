@@ -22,8 +22,9 @@ const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowle
  * paths the knowledge CLI's own helpers resolve.
  */
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
+const STORE_FILE = `${KNOWLEDGE_DIR}/store.bin`;
 const METADATA_FILE = `${KNOWLEDGE_DIR}/metadata.json`;
-const STORE_FILES = [`${KNOWLEDGE_DIR}/store.msp`, METADATA_FILE, `${KNOWLEDGE_DIR}/config.json`];
+const STORE_FILES = [STORE_FILE, METADATA_FILE, `${KNOWLEDGE_DIR}/config.json`];
 
 /**
  * Phases whose completed artifact is knowledge-base indexed, with the artifact
@@ -64,4 +65,4 @@ function knowledge(cwd, args, label, warnings) {
   return !failed;
 }
 
-module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, METADATA_FILE, STORE_FILES };
+module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS, KNOWLEDGE_DIR, STORE_FILE, METADATA_FILE, STORE_FILES };

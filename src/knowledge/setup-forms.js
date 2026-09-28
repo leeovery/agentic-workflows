@@ -98,6 +98,20 @@ function missingOpenAiKeyMessage() {
 }
 
 /**
+ * Refuse a system config that is present but unreadable. Every knowledge
+ * command merges it in, so a form refuses it before writing anything.
+ * @param {string} sysPath
+ * @param {{ exists: boolean, valid: boolean, reason?: string }} detected
+ */
+function refuseInvalidSystemConfig(sysPath, detected) {
+  if (!detected.exists || detected.valid) return;
+  refuse(
+    `system config at ${sysPath} is not valid: ${detected.reason}.\n` +
+    '  Re-create it with `knowledge setup --provider ...` or the interactive `knowledge setup`.'
+  );
+}
+
+/**
  * Summary of the ACTIVE settings only — provider and model (plus the base
  * URL for openai-compatible). Never the key, never internal defaults.
  * @param {{ provider?: string|null, model?: string|null, base_url?: string|null }} k
@@ -185,20 +199,19 @@ async function resolveValidatedProvider(cfg) {
  * (same reasoning as the wizard: fresh metadata against an unknown store
  * would hide a provider/dimensions mismatch).
  *
- * @param {{ provider: object|null, providerName: string|null, cfg: object,
- *           projectConfigPayload?: object }} args
+ * @param {{ provider: object|null, providerName: string|null, projectConfigPayload?: object }} args
  */
-async function initProjectStore({ provider, providerName, cfg, projectConfigPayload }) {
+async function initProjectStore({ provider, providerName, projectConfigPayload }) {
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
-  const storeFile = path.join(projectDir, 'store.msp');
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const storeFile = path.join(projectDir, store.STORE_FILE);
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
   const detected = setup.detectProjectInit(projectDir);
 
   if (detected.storeExists && !detected.metadataExists) {
     refuse(
       `project knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      '  store.msp is present but metadata.json is missing.\n' +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       '  Run `knowledge rebuild` to re-create the store with matching metadata.'
     );
   }
@@ -210,15 +223,10 @@ async function initProjectStore({ provider, providerName, cfg, projectConfigPayl
     process.stdout.write('  config.json written\n');
   }
 
-  const dims = provider
-    ? provider.dimensions()
-    : (Number.isInteger(cfg.dimensions) && cfg.dimensions > 0 ? cfg.dimensions : setup.KEYWORD_ONLY_DIMENSIONS);
-
   const wroteStore = !detected.storeExists;
   if (wroteStore) {
-    const db = await store.createStore(dims);
-    await store.saveStore(db, storeFile);
-    process.stdout.write(`  store.msp written (${dims} dimensions)\n`);
+    store.saveStore(store.createStore(), storeFile);
+    process.stdout.write(`  ${store.STORE_FILE} written\n`);
   }
 
   // Rewrite metadata whenever a fresh store was just created — stale
@@ -231,7 +239,7 @@ async function initProjectStore({ provider, providerName, cfg, projectConfigPayl
       dimensions: provider ? provider.dimensions() : null,
       last_indexed: null,
     });
-    process.stdout.write('  metadata.json written\n');
+    process.stdout.write(`  ${store.METADATA_FILE} written\n`);
   }
 }
 
@@ -256,19 +264,14 @@ async function runFromSystem(cmdIndexBulk, options) {
       '  --keyword-only` for keyword-only search, or run the interactive `knowledge setup`.'
     );
   }
-  if (!detected.valid) {
-    refuse(
-      `system config at ${sysPath} is not valid: ${detected.reason}.\n` +
-      '  Re-create it with `knowledge setup --provider ...` or the interactive `knowledge setup`.'
-    );
-  }
+  refuseInvalidSystemConfig(sysPath, detected);
 
   stripProviderOverrides(config.projectConfigPath());
 
   const cfg = config.loadConfig();
   const provider = await resolveValidatedProvider(cfg);
 
-  await initProjectStore({ provider, providerName: cfg.provider || null, cfg });
+  await initProjectStore({ provider, providerName: cfg.provider || null });
   await setup.runInitialIndexStep(cmdIndexBulk, options);
   process.stdout.write('\n' + summaryLines({
     provider: cfg.provider || null,
@@ -286,6 +289,8 @@ async function runFromSystem(cmdIndexBulk, options) {
  */
 async function runKeywordOnly(cmdIndexBulk, options) {
   requireWorkflowsDir();
+  const sysPath = config.systemConfigPath();
+  refuseInvalidSystemConfig(sysPath, setup.detectSystemConfig(sysPath));
   const projectConfigFile = config.projectConfigPath();
 
   let knowledge = {};
@@ -304,7 +309,7 @@ async function runKeywordOnly(cmdIndexBulk, options) {
   if (detected.storeExists && !detected.metadataExists) {
     refuse(
       `project knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      '  store.msp is present but metadata.json is missing.\n' +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       '  Run `knowledge rebuild` to re-create the store with matching metadata.'
     );
   }
@@ -312,8 +317,7 @@ async function runKeywordOnly(cmdIndexBulk, options) {
   fs.mkdirSync(projectDir, { recursive: true });
   config.writeConfigFile(projectConfigFile, { knowledge });
 
-  const cfg = config.loadConfig();
-  await initProjectStore({ provider: null, providerName: null, cfg });
+  await initProjectStore({ provider: null, providerName: null });
   await setup.runInitialIndexStep(cmdIndexBulk, options);
   process.stdout.write('\n' + summaryLines(null).join('\n') + '\n');
 }
@@ -388,8 +392,7 @@ async function runProviderForm(cmdIndexBulk, flags, options) {
   process.stdout.write(`Wrote system config to ${sysPath}\n`);
 
   stripProviderOverrides(config.projectConfigPath());
-  const cfg = config.loadConfig();
-  await initProjectStore({ provider, providerName: providerId, cfg });
+  await initProjectStore({ provider, providerName: providerId });
   await setup.runInitialIndexStep(cmdIndexBulk, options);
   process.stdout.write('\n' + summaryLines({
     provider: providerId,

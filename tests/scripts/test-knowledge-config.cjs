@@ -843,7 +843,7 @@ describe('detectProjectInit', () => {
     const dir = path.join(tmpDir, '.workflows', '.knowledge');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
-    fs.writeFileSync(path.join(dir, 'store.msp'), '', 'utf8');
+    fs.writeFileSync(path.join(dir, 'store.bin'), '', 'utf8');
     fs.writeFileSync(path.join(dir, 'metadata.json'), '{}', 'utf8');
     const result = detectProjectInit(dir);
     assert.strictEqual(result.fullyInitialised, true);

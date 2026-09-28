@@ -272,11 +272,10 @@ chunk_hashes() {
   node -e '
     const store = require(process.argv[1]);
     const [sp, wu, phase, topic] = process.argv.slice(2);
-    store.loadStore(sp).then((db) => store.searchAllFulltext(db)).then((chunks) => {
-      const mine = chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic);
-      process.stdout.write([...new Set(mine.map((c) => String(c.source_hash)))].join(","));
-    });
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp" "$@"
+    const chunks = store.allChunks(store.loadStore(sp));
+    const mine = chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic);
+    process.stdout.write([...new Set(mine.map((c) => String(c.source_hash)))].join(","));
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin" "$@"
 }
 
 # The number of chunks an identity holds.
@@ -284,10 +283,9 @@ chunk_count() {
   node -e '
     const store = require(process.argv[1]);
     const [sp, wu, phase, topic] = process.argv.slice(2);
-    store.loadStore(sp).then((db) => store.searchAllFulltext(db)).then((chunks) => {
-      process.stdout.write(String(chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic).length));
-    });
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp" "$@"
+    const chunks = store.allChunks(store.loadStore(sp));
+    process.stdout.write(String(chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic).length));
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin" "$@"
 }
 
 file_sha256() {
@@ -300,13 +298,10 @@ strip_source_hashes() {
   node -e '
     const store = require(process.argv[1]);
     const sp = process.argv[2];
-    (async () => {
-      const chunks = await store.searchAllFulltext(await store.loadStore(sp));
-      const fresh = await store.createStore(1536);
-      for (const c of chunks) await store.insertDocument(fresh, { ...c, source_hash: undefined });
-      await store.saveStore(fresh, sp);
-    })();
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.msp"
+    const fresh = store.createStore();
+    for (const c of store.allChunks(store.loadStore(sp))) store.insertDocument(fresh, { ...c, source_hash: undefined });
+    store.saveStore(fresh, sp);
+  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin"
 }
 
 # Set a manifest item's status by writing the work-unit manifest directly —
@@ -386,7 +381,7 @@ create_discussion_file "auth-flow" "auth-flow"
 output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
 assert_eq "reports indexed chunks" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 assert_eq "metadata.json created" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ] && echo true || echo false)"
-assert_eq "store.msp created" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "store.bin created" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 6: Index a specification file (nested path) ---
@@ -744,11 +739,10 @@ output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
 assert_eq "shows upgrade note on index" "true" "$(echo "$output" | grep -q 'Run .knowledge rebuild.' && echo true || echo false)"
 teardown_project
 
-# --- Test 23c: Empty-string query rejected (no "match everything") ---
-# Orama treats empty term as wildcard and returns up to `limit` chunks.
-# That's almost always a caller bug (unsubstituted template variable,
-# accidental empty positional) — surface it as an error rather than
-# returning arbitrary hits.
+# --- Test 23c: Empty-string query rejected ---
+# An empty term is almost always a caller bug (unsubstituted template
+# variable, accidental empty positional) — surface it as an error rather
+# than answering it with nothing.
 echo "Test 23c: Empty query term rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
@@ -1025,7 +1019,7 @@ teardown_project
 echo "Test 36: Check buildable (missing store, provider resolves)"
 setup_project
 write_stub_config
-# Config exists but no store.msp.
+# Config exists but no store.bin.
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
@@ -1049,7 +1043,7 @@ exit_code=0
 bout=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "bulk index refuses" "1" "$exit_code"
 assert_eq "bulk index says the same" "true" "$(echo "$bout" | grep -q 'keyword-only was never chosen' && echo true || echo false)"
-assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 assert_eq "no metadata written" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ] && echo true || echo false)"
 teardown_project
 
@@ -1088,7 +1082,7 @@ assert_eq "names the unresolved key" "true" "$(echo "$iout" | grep -q 'no store 
 exit_code=0
 run_kb index >/dev/null 2>&1 || exit_code=$?
 assert_eq "bulk index refuses" "1" "$exit_code"
-assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 rm -rf "$HOME/.config/workflows"
 teardown_project
 
@@ -1097,7 +1091,7 @@ echo "Test 36f: Bulk index builds the missing store"
 setup_project
 write_stub_config
 run_kb index >/dev/null 2>&1
-assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 assert_eq "metadata names the provider" "stub" \
   "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
 assert_eq "check reads ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
@@ -1138,7 +1132,7 @@ teardown_project
 echo "Test 37: Check not-ready (corrupted store)"
 setup_project
 write_stub_config
-echo "this is garbage data not msgpack" > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+echo "this is garbage data, not a store" > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
@@ -1388,6 +1382,26 @@ assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -qE '^Indexed 
 assert_eq "shows summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 teardown_project
 
+# --- Test 45b: A checkout holding only the retired store builds its own from the files ---
+echo "Test 45b: Retired store.msp is replaced by a store.bin built from the files"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+printf 'an earlier version of the store' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+cat > "$TEST_ROOT/.workflows/.knowledge/metadata.json" <<'META'
+{ "provider": "stub", "model": "stub", "dimensions": 128, "last_indexed": "2026-09-01T00:00:00.000Z" }
+META
+assert_eq "the retired store is no store" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
+output=$(run_kb index 2>&1)
+assert_eq "builds from the files" "1 new, 0 changed, 0 removed, 0 unchanged." "$(echo "$output" | tail -1)"
+assert_eq "store.bin written" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
+assert_eq "store.msp deleted" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+assert_eq "the new store is ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
+assert_eq "its chunks are there" "true" "$([ "$(chunk_count auth-flow discussion auth-flow)" -gt 0 ] && echo true || echo false)"
+teardown_project
+
 # --- Test 46: Bulk index skips already-indexed artifacts ---
 echo "Test 46: Bulk index skips already indexed"
 setup_project
@@ -1621,9 +1635,9 @@ write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
-before="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+before="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
 run_kb index >/dev/null 2>&1
-after="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+after="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
 assert_eq "store and metadata byte-identical" "$before" "$after"
 teardown_project
 
@@ -2038,13 +2052,13 @@ teardown_project
 echo "Test 63c: Rebuild refuses over an unresolved key"
 setup_project
 echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$TEST_ROOT/.workflows/.knowledge/config.json"
-echo 'store bytes' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+echo 'store bytes' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
 assert_eq "rebuild refuses" "1" "$exit_code"
 assert_eq "names the unresolved key" "true" "$(echo "$output" | grep -q 'could not be resolved' && echo true || echo false)"
 assert_eq "never reaches the prompt" "false" "$(echo "$output" | grep -q "Type 'rebuild' to confirm" && echo true || echo false)"
-assert_eq "store untouched" "store bytes" "$(cat "$TEST_ROOT/.workflows/.knowledge/store.msp")"
+assert_eq "store untouched" "store bytes" "$(cat "$TEST_ROOT/.workflows/.knowledge/store.bin")"
 teardown_project
 
 # ============================================================================
@@ -2310,7 +2324,7 @@ create_work_unit "drop-me" "feature" "Drop"
 write_stub_config
 create_discussion_file "drop-me" "drop-me"
 run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
-printf 'corrupt-msgpack-bytes' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+printf 'corrupt-store-bytes' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 exit_code=0
 output=$(run_kb remove --work-unit drop-me 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
@@ -2328,13 +2342,13 @@ cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status in
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status completed >/dev/null 2>&1
 run_kb index .workflows/wu-a/discussion/wu-a.md >/dev/null 2>&1
 # Simulate a leftover .bak from a prior aborted rebuild.
-touch "$TEST_ROOT/.workflows/.knowledge/store.msp.bak"
+touch "$TEST_ROOT/.workflows/.knowledge/store.bin.bak"
 touch "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak"
 echo "rebuild" | run_kb rebuild >/dev/null 2>&1
 assert_eq "leftover .bak cleaned after successful rebuild" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 assert_eq "store still present after rebuild" "true" \
-  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 82b: A file that fails a rebuild fails it, and the rebuilt store stands ---
@@ -2354,7 +2368,7 @@ assert_eq "names the failed file" "true" \
   "$(echo "$output" | grep -q '^Failed to index .workflows/wu-a/discussion/empty.md: No chunks produced' && echo true || echo false)"
 assert_eq "the rebuilt store holds the good file" "true" "$([ "$(chunk_count wu-a discussion good)" -gt 0 ] && echo true || echo false)"
 assert_eq "no backup left behind" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 82c: A manifest read failure mid-rebuild restores the backup ---
@@ -2368,16 +2382,16 @@ create_discussion_file "wu-a" "wu-a"
 create_baseline_file "overview"
 init_phase_topic "wu-a" "discussion" "wu-a" "completed"
 run_kb index >/dev/null 2>&1
-before=$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")
+before=$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")
 printf '{ not json' > "$TEST_ROOT/.workflows/manifest.json"
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
 assert_eq "says it restored the backup" "true" \
   "$(echo "$output" | grep -q '^Rebuild failed; restored previous index from backup.$' && echo true || echo false)"
-assert_eq "the previous store is back, byte for byte" "$before" "$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.msp")"
+assert_eq "the previous store is back, byte for byte" "$before" "$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")"
 assert_eq "no backup left behind" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 84: Stranded-chunks orphan cleanup ---
@@ -2416,7 +2430,7 @@ assert_eq "subsequent error mentions no matching chunks" "true" \
 teardown_project
 
 # --- Test 85: Setup aborts on store-without-metadata partial state ---
-# The inverse of #7 — when store.msp exists but metadata.json is missing,
+# The inverse of #7 — when store.bin exists but metadata.json is missing,
 # writing fresh metadata against an unknown store would create a
 # provider/dimensions mismatch we cannot detect from the store alone.
 # Setup must abort with rebuild advice instead.
@@ -3063,7 +3077,7 @@ assert_eq "metadata provider is null" "null" \
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 # Another checkout of the project: the committed config alone, no store,
 # and still no system config — the pinned choice rebuilds it keyword-only.
-rm -f "$TEST_ROOT/.workflows/.knowledge/store.msp" "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+rm -f "$TEST_ROOT/.workflows/.knowledge/store.bin" "$TEST_ROOT/.workflows/.knowledge/metadata.json"
 assert_eq "a pinned project with no system config is buildable" "buildable" "$(run_kb check)"
 run_kb index >/dev/null 2>&1
 assert_eq "the rebuild is keyword-only" "null" \
@@ -3344,12 +3358,9 @@ teardown_project
 echo ""
 echo "=== Robustness Tests ==="
 
-# --- Test R1: A ~200k-char unbroken token indexes cleanly (no stack overflow) ---
-# Orama's tokenizer normalises each token via String.fromCharCode(...codes),
-# spreading one argument per character — pre-fix, a single 200k-char token
-# (base64 blob, minified JS) crashed indexing with an uncaught RangeError
-# and a full stack trace. The chunker now splits whitespace-free runs at
-# 2048 chars, and the CLI's top-level catch never prints raw stacks.
+# --- Test R1: A ~200k-char unbroken token indexes cleanly ---
+# A single 200k-char token (base64 blob, minified JS) indexes like any other
+# text, and the CLI's top-level catch never prints a raw stack.
 echo "Test R1: 200k unbroken token indexes cleanly"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
@@ -3428,7 +3439,7 @@ exit_code=0
 output=$(node "$STANDALONE/scripts/knowledge.cjs" setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "setup --keyword-only exits 0 without engine" "0" "$exit_code"
 assert_eq "keyword-only store initialised" "true" \
-  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
 # A command that needs manifest reads still fails with the clear use-time error.
 exit_code=0
 output=$(node "$STANDALONE/scripts/knowledge.cjs" remove --work-unit ghost 2>&1) || exit_code=$?
@@ -3494,7 +3505,7 @@ setup_project
 create_work_unit "fail-wu" "feature" "Fail"
 write_stub_config
 create_discussion_file "fail-wu" "fail-wu"
-printf 'garbage-not-msgpack' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+printf 'garbage-not-a-store' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 set +e
 out=$(run_kb index .workflows/fail-wu/discussion/fail-wu.md 2>&1)
 exit_code=$?

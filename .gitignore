@@ -8,6 +8,6 @@
 .tick/lock
 node_modules/
 .npm-cache/
-.workflows/.knowledge/store.msp
+.workflows/.knowledge/store.bin
 tests/.cache/
 skills/workflow-gates/types/

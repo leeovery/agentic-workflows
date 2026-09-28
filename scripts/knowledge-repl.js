@@ -9,9 +9,7 @@
 //   npm run knowledge:repl
 //
 // Drops you into a Node REPL with the built bundle pre-loaded, a fresh
-// in-memory store, a StubProvider, and a handful of helpers. Top-level
-// await works in the REPL on Node 18+, so you can type `await ...`
-// directly at the prompt.
+// in-memory store, a StubProvider, and a handful of helpers.
 
 const os = require('os');
 const path = require('path');
@@ -23,7 +21,7 @@ const { StubProvider, store } = bundle;
 const DIMS = 128;
 
 // Same fixture corpus the integration test uses — realistic enough to
-// exercise BM25 ranking, enum filtering, and vector search.
+// exercise BM25 ranking, filtering, and vector search.
 const FIXTURE_DOCS = [
   {
     id: 'auth-discussion-1',
@@ -69,10 +67,10 @@ const FIXTURE_DOCS = [
 
 const TMP = os.tmpdir();
 
-async function seed(targetDb) {
+function seed(targetDb) {
   if (!targetDb) throw new Error('seed(db): pass the store as the first argument');
   for (const doc of FIXTURE_DOCS) {
-    await store.insertDocument(targetDb, {
+    store.insertDocument(targetDb, {
       ...doc,
       embedding: provider.embed(doc.content),
     });
@@ -80,18 +78,18 @@ async function seed(targetDb) {
   return `seeded ${FIXTURE_DOCS.length} documents`;
 }
 
-async function fresh() {
-  return store.createStore(DIMS);
+function fresh() {
+  return store.createStore();
 }
 
 const BANNER = `
 knowledge-base dev REPL — in-memory store, StubProvider(${DIMS})
 
 Context:
-  db                     fresh Orama store (reassignable: db = await fresh())
+  db                     fresh store (reassignable: db = fresh())
   provider               StubProvider(${DIMS})
-  store                  { createStore, insertDocument, removeByIdentity,
-                           searchFulltext, searchVector, searchHybrid,
+  store                  { createStore, insertDocument, removeByIdentity, allChunks,
+                           searchKeyword, searchVector,
                            saveStore, loadStore, writeMetadata, readMetadata, ... }
   StubProvider           class — build other providers
   FIXTURE_DOCS           the 5-doc sample corpus
@@ -99,15 +97,14 @@ Context:
   seed(db)               insert the fixture corpus into db
   fresh()                returns a new empty store
 
-Top-level await works. Try:
+Try:
 
-  > await seed(db)
-  > (await store.searchFulltext(db, { term: 'rate' })).map(h => h.id)
-  > await store.searchVector(db, { vector: provider.embed('rate limiting'), similarity: 0 })
-  > await store.searchHybrid(db, { term: 'rate', vector: provider.embed('rate'), similarity: 0 })
-  > await store.saveStore(db, path.join(TMP, 'dev.msp'))
-  > db = await store.loadStore(path.join(TMP, 'dev.msp'))
-  > await store.removeByIdentity(db, { work_unit: 'auth-flow', phase: 'specification', topic: 'auth-flow' })
+  > seed(db)
+  > store.searchKeyword(db, { term: 'rate' }).map(h => h.id)
+  > store.searchVector(db, { vector: provider.embed('rate limiting'), similarity: 0 })
+  > store.saveStore(db, path.join(TMP, 'dev.bin'))
+  > db = store.loadStore(path.join(TMP, 'dev.bin'))
+  > store.removeByIdentity(db, { work_unit: 'auth-flow', phase: 'specification', topic: 'auth-flow' })
 
 .exit or Ctrl-D to quit.
 `;
@@ -117,7 +114,7 @@ let provider;
 
 (async () => {
   provider = new StubProvider({ dimensions: DIMS });
-  db = await store.createStore(DIMS);
+  db = store.createStore();
 
   process.stdout.write(BANNER + '\n');
 

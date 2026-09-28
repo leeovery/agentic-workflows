@@ -5,7 +5,6 @@
 
 'use strict';
 
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
@@ -82,11 +81,6 @@ function resolveEngineJs() {
 }
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
-
-// Default dimensions when creating a store in keyword-only mode.
-// The store schema requires a dimension parameter, but keyword-only docs
-// omit the embedding field entirely — this value just satisfies the schema.
-const KEYWORD_ONLY_DIMENSIONS = 1536;
 
 // Emit the stub-to-full upgrade note at most once per process — a retried
 // index resolves the mode again.
@@ -250,12 +244,20 @@ function knowledgeDir(root = config.findProjectRoot()) {
 
 /** @param {string} [root]  the project root — by default, the one the working directory sits in */
 function storePath(root) {
+  return path.join(knowledgeDir(root), store.STORE_FILE);
+}
+
+/**
+ * The store file an earlier version kept — deleted once the current one is written.
+ * @param {string} [root]  the project root — by default, the one the working directory sits in
+ */
+function legacyStorePath(root) {
   return path.join(knowledgeDir(root), 'store.msp');
 }
 
 /** @param {string} [root]  the project root — by default, the one the working directory sits in */
 function metadataPath(root) {
-  return path.join(knowledgeDir(root), 'metadata.json');
+  return path.join(knowledgeDir(root), store.METADATA_FILE);
 }
 
 function lockFilePath() {
@@ -752,15 +754,6 @@ async function cmdIndex(args, options, cfg, provider) {
 }
 
 /**
- * The sha256 of an artifact's content — what a chunk records as its
- * `source_hash`, and what the bulk index compares against the file on disk.
- * @param {string} content
- */
-function contentHash(content) {
-  return crypto.createHash('sha256').update(content).digest('hex');
-}
-
-/**
  * @typedef {object} Artifact
  * @property {string} file  the source path, relative to the project root
  * @property {string} workUnit
@@ -824,7 +817,7 @@ function buildDocuments(artifact) {
   // query headers show when the work was written, and a fresh index of old
   // documents would otherwise read as today's.
   const timestamp = fs.statSync(absSource).mtimeMs;
-  const sourceHash = contentHash(content);
+  const sourceHash = store.contentHash(content);
   const confidence = chunkConfig.confidence || 'medium';
   return chunks.map((chunk, idx) => ({
     id: `${artifact.workUnit}-${artifact.phase}-${artifact.topic}-${String(idx + 1).padStart(3, '0')}`,
@@ -864,14 +857,19 @@ function indexProvider(cfg, provider) {
 }
 
 /**
- * Embed documents in one embedBatch call — the provider splits the texts
- * into requests by its own count and size budgets.
+ * Give each document its vector: the one the store holds for its text, else
+ * one embedded now — each text the store lacks once, in one embedBatch call
+ * the provider splits into requests by its own count and size budgets.
  * @param {Array<Record<string, any>>} docs @param {object} provider
+ * @param {Map<string, Float32Array>} known  the store's vectors, by the hash of the text each embeds
  */
-async function embedDocuments(docs, provider) {
-  const vectors = await provider.embedBatch(docs.map((doc) => doc.content));
+async function embedDocuments(docs, provider, known) {
+  const hashes = docs.map((doc) => store.contentHash(doc.content));
+  const missing = [...new Set(docs.filter((_, i) => !known.has(hashes[i])).map((doc) => doc.content))];
+  const vectors = missing.length > 0 ? await provider.embedBatch(missing) : [];
+  const embedded = new Map(missing.map((text, i) => [text, vectors[i]]));
   docs.forEach((doc, i) => {
-    doc.embedding = vectors[i];
+    doc.embedding = known.get(hashes[i]) || embedded.get(doc.content);
   });
 }
 
@@ -881,10 +879,11 @@ async function embedDocuments(docs, provider) {
  * other failure fails every file in the batch — each would fail the same way.
  * Returns the artifacts that could not be embedded, each with its error.
  * @param {Built[]} built @param {object} provider
+ * @param {Map<string, Float32Array>} known  the store's vectors, by the hash of the text each embeds
  * @returns {Promise<Array<{artifact: Artifact, error: Error}>>}
  */
-async function embedAll(built, provider) {
-  const retried = (docs) => withRetry(() => embedDocuments(docs, provider), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
+async function embedAll(built, provider, known) {
+  const retried = (docs) => withRetry(() => embedDocuments(docs, provider, known), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
   try {
     await retried(built.flatMap((b) => b.docs));
     return [];
@@ -905,21 +904,45 @@ async function embedAll(built, provider) {
 }
 
 /**
+ * @typedef {object} Snapshot  the store as read before embedding
+ * @property {any} db  null when the checkout has no store
+ * @property {string|null} stamp  the stamp of the file it was read from
+ */
+
+/**
+ * The store as an index plans and embeds from, and the stamp of the file it
+ * was read from — taken before the load, so a write that lands between the
+ * two reads as a change.
+ * @returns {Snapshot}
+ */
+function readStore() {
+  const sp = storePath();
+  const stamp = store.storeStamp(sp);
+  return { db: stamp === null ? null : store.loadStore(sp), stamp };
+}
+
+/**
+ * The vectors the store holds, by the hash of the text each embeds.
+ * @param {Snapshot} snapshot
+ * @returns {Map<string, Float32Array>}
+ */
+function knownVectors(snapshot) {
+  return snapshot.db ? store.vectorsByContentHash(snapshot.db) : new Map();
+}
+
+/**
  * The store to write into, inside the lock: the snapshot read before
  * embedding while the file is still the one it was read from, else a fresh
- * load, else a new empty store — the one place a store is created, as wide
- * as its embedder's vectors (keyword-only stores take a placeholder width).
- * @param {{db: any, stamp: string|null}|null} snapshot
- * @param {object} cfg @param {object|null} provider
- * @returns {Promise<{db: any, created: boolean}>}
+ * load, else a new empty store — the one place a store is created.
+ * @param {Snapshot|null} snapshot
+ * @returns {{db: any, created: boolean}}
  */
-async function currentStore(snapshot, cfg, provider) {
+function currentStore(snapshot) {
   const sp = storePath();
   const stamp = store.storeStamp(sp);
   if (snapshot && snapshot.stamp !== null && snapshot.stamp === stamp) return { db: snapshot.db, created: false };
-  if (stamp !== null) return { db: await store.loadStore(sp), created: false };
-  const dims = provider ? provider.dimensions() : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
-  return { db: await store.createStore(dims), created: true };
+  if (stamp !== null) return { db: store.loadStore(sp), created: false };
+  return { db: store.createStore(), created: true };
 }
 
 /**
@@ -932,7 +955,7 @@ function assertStoreDimensions(provider) {
   if (!provider || !metadata) return;
   if (metadata.provider && metadata.dimensions !== provider.dimensions()) {
     throw new Error(
-      'Store schema changed during index (concurrent rebuild). ' +
+      "The store's vector width changed during index (concurrent rebuild). " +
         `Embeddings produced for dims=${provider.dimensions()}, store now has dims=${metadata.dimensions}.`
     );
   }
@@ -965,29 +988,31 @@ function identityOf(entry) {
  * Write into the store in one locked load and save: each built identity's
  * chunks replaced by its new documents, then every identity `retire` names
  * over the result removed. A store the checkout lacked is created and saved,
- * empty or not; otherwise nothing is saved when nothing changed.
+ * empty or not; otherwise nothing is saved when nothing changed. A save
+ * deletes the store an earlier version kept.
  * @param {{
  *   cfg: object,
  *   provider: object|null,
  *   built: Built[],
- *   snapshot?: {db: any, stamp: string|null}|null,
- *   retire?: (db: any) => Promise<Retirement[]>,
+ *   snapshot?: Snapshot|null,
+ *   retire?: (db: any) => Retirement[],
  * }} write
  * @returns {Promise<Retirement[]>} what was retired
  */
-async function writeStore({ cfg, provider, built, snapshot = null, retire = async () => [] }) {
+async function writeStore({ cfg, provider, built, snapshot = null, retire = () => [] }) {
   fs.mkdirSync(knowledgeDir(), { recursive: true });
   return store.withLock(lockFilePath(), async () => {
     assertStoreDimensions(provider);
-    const { db, created } = await currentStore(snapshot, cfg, provider);
+    const { db, created } = currentStore(snapshot);
     for (const { artifact, docs } of built) {
-      await store.removeByIdentity(db, identityOf(artifact));
-      for (const doc of docs) await store.insertDocument(db, doc);
+      store.removeByIdentity(db, identityOf(artifact));
+      for (const doc of docs) store.insertDocument(db, doc);
     }
-    const retired = await retire(db);
-    for (const entry of retired) await store.removeByIdentity(db, identityOf(entry));
+    const retired = retire(db);
+    for (const entry of retired) store.removeByIdentity(db, identityOf(entry));
     if (created || built.length > 0 || retired.length > 0) {
-      await store.saveStore(db, storePath());
+      store.saveStore(db, storePath());
+      fs.rmSync(legacyStorePath(), { force: true });
       recordIndexed(cfg, provider, created);
     }
     return retired;
@@ -1003,8 +1028,9 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   const artifact = { file: sourceFile, ...identity };
   const docs = buildDocuments(artifact);
   const embedder = indexProvider(cfg, provider);
-  if (embedder) await embedDocuments(docs, embedder);
-  await writeStore({ cfg, provider: embedder, built: [{ artifact, docs }] });
+  const snapshot = readStore();
+  if (embedder) await embedDocuments(docs, embedder, knownVectors(snapshot));
+  await writeStore({ cfg, provider: embedder, built: [{ artifact, docs }], snapshot });
   return docs.length;
 }
 
@@ -1373,7 +1399,7 @@ function classifyArtifacts(artifacts, indexed) {
       out.fresh.push(artifact);
       continue;
     }
-    const hash = contentHash(fs.readFileSync(resolveArtifactPath(artifact.file), 'utf8'));
+    const hash = store.contentHash(fs.readFileSync(resolveArtifactPath(artifact.file), 'utf8'));
     const current = entry.hashes.size === 1 && entry.hashes.has(hash);
     out[current ? 'unchanged' : 'changed'].push(artifact);
   }
@@ -1475,25 +1501,14 @@ function indexPruning(cfg, workUnits) {
 }
 
 /**
- * The store as the bulk index plans from, and the stamp of the file it was
- * read from — taken before the load, so a write that lands between the two
- * reads as a change.
- * @returns {Promise<{db: any, stamp: string|null}>}
- */
-async function readStore() {
-  const sp = storePath();
-  const stamp = store.storeStamp(sp);
-  return { db: stamp === null ? null : await store.loadStore(sp), stamp };
-}
-
-/**
  * Build and embed each planned artifact's documents. A failure fails its own
  * artifact alone.
  * @param {Array<{artifact: Artifact, state: 'new'|'changed'}>} planned
  * @param {object|null} provider  null indexes keyword-only
+ * @param {Map<string, Float32Array>} known  the store's vectors, by the hash of the text each embeds
  * @returns {Promise<{built: Built[], failures: Array<{artifact: Artifact, error: Error}>}>}
  */
-async function buildAll(planned, provider) {
+async function buildAll(planned, provider, known) {
   const built = [];
   const failures = [];
   for (const { artifact, state } of planned) {
@@ -1503,7 +1518,7 @@ async function buildAll(planned, provider) {
       failures.push({ artifact, error });
     }
   }
-  const unembedded = provider && built.length > 0 ? await embedAll(built, provider) : [];
+  const unembedded = provider && built.length > 0 ? await embedAll(built, provider, known) : [];
   const failed = new Set(unembedded.map((f) => f.artifact));
   return { built: built.filter((b) => !failed.has(b.artifact)), failures: [...failures, ...unembedded] };
 }
@@ -1560,14 +1575,14 @@ async function cmdIndexBulk(options, cfg, provider) {
   // since the store was built must surface here, not read as a store in line,
   // and a store this machine may not create must never be started.
   const embedder = indexProvider(cfg, provider);
-  const snapshot = await readStore();
-  const chunks = snapshot.db ? await store.searchAllFulltext(snapshot.db) : [];
+  const snapshot = readStore();
+  const chunks = snapshot.db ? store.allChunks(snapshot.db) : [];
   const plan = planIndex(chunks, manifests, { scope, pruning: indexPruning(cfg, manifests.workUnits) });
 
   const { built, failures } = await buildAll([
     ...plan.fresh.map((artifact) => ({ artifact, state: 'new' })),
     ...plan.changed.map((artifact) => ({ artifact, state: 'changed' })),
-  ], embedder);
+  ], embedder, knownVectors(snapshot));
 
   const inLine = snapshot.db !== null && built.length === 0 && plan.retired.length === 0;
   const retired = inLine ? [] : await writeStore({
@@ -1575,7 +1590,7 @@ async function cmdIndexBulk(options, cfg, provider) {
     provider: embedder,
     built,
     snapshot,
-    retire: async (db) => retirements(identitiesOf(await store.searchAllFulltext(db)), readManifests(), scope),
+    retire: (db) => retirements(identitiesOf(store.allChunks(db)), readManifests(), scope),
   });
 
   return reportIndex({ built, failures, retired, unchanged: plan.unchanged });
@@ -1897,8 +1912,8 @@ function resolveQueryMode(metadata, cfg, provider) {
 }
 
 /**
- * Turn a CLI filter value into an Orama where-clause term: a single value →
- * { eq }, a comma-separated list → { in }. Every --flag that names a filterable
+ * Turn a CLI filter value into a where-clause term: a single value → { eq },
+ * a comma-separated list → { in }. Every --flag that names a filterable
  * dimension (phase, work-type, work-unit, topic) runs through this.
  * @param {string} value
  */
@@ -1909,8 +1924,7 @@ function csv(value) {
 
 // ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
 // "accept all vector matches, no filtering" setting — isn't silently
-// rewritten to the default. Anything but a number in [0, 1] is refused here:
-// the store drops a wrong-typed value and Orama's own default takes over.
+// rewritten to the default.
 function resolveSimilarityThreshold(cfg) {
   const similarity = cfg.similarity_threshold ?? config.DEFAULTS.similarity_threshold;
   if (typeof similarity !== 'number' || !Number.isFinite(similarity) || similarity < 0 || similarity > 1) {
@@ -2007,15 +2021,41 @@ async function queryStore(db, settings, { terms, options, workUnits }) {
   return rerank(dated, boosts, settings.stability).slice(0, limit);
 }
 
+const KEYWORD_WEIGHT = 0.4;
+const VECTOR_WEIGHT = 0.6;
+
 /**
- * One term's search — hybrid when the mode is full, else full-text.
+ * One term's search — the keyword and vector searches blended when the mode
+ * is full, else the keyword search alone.
  * @param {any} db @param {string} term
  * @param {{where: object|undefined, limit: number}} scope @param {QuerySettings} settings
  */
 async function searchTerm(db, term, { where, limit }, { mode, provider, similarity }) {
-  if (mode !== 'full') return store.searchFulltext(db, { term, where, limit });
+  if (mode !== 'full') return store.searchKeyword(db, { term, where, limit });
   const vector = await withRetry(() => provider.embed(term), { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF });
-  return store.searchHybrid(db, { term, vector, where, limit, similarity });
+  return blend([
+    { hits: store.searchKeyword(db, { term, where }), weight: KEYWORD_WEIGHT },
+    { hits: store.searchVector(db, { vector, similarity, where }), weight: VECTOR_WEIGHT },
+  ]).slice(0, limit);
+}
+
+/**
+ * The searches' hits merged, best first: each hit's score divided by its own
+ * search's best and weighted, summed per chunk — a search that missed the
+ * chunk adds nothing.
+ * @param {Array<{hits: Array<Record<string, any>>, weight: number}>} searches
+ * @returns {Array<Record<string, any>>}
+ */
+function blend(searches) {
+  const blended = new Map();
+  for (const { hits, weight } of searches) {
+    const best = hits.reduce((max, hit) => Math.max(max, hit.score), -Infinity);
+    for (const hit of hits) {
+      const prior = blended.get(hit.id);
+      blended.set(hit.id, { ...hit, score: (prior ? prior.score : 0) + (hit.score / best) * weight });
+    }
+  }
+  return [...blended.values()].sort((a, b) => b.score - a.score);
 }
 
 const MODE_NOTES = {
@@ -2053,10 +2093,9 @@ async function cmdQuery(args, options, cfg, provider) {
     process.exit(1);
   }
 
-  // Reject empty/whitespace-only terms. Orama treats an empty term as
-  // "match everything" and returns up to `limit` arbitrary chunks — almost
-  // certainly a caller mistake (fat-finger, variable template that wasn't
-  // substituted) rather than an intentional "give me anything" request.
+  // An empty or whitespace-only term is almost certainly a caller mistake
+  // (fat-finger, variable template that wasn't substituted) — refused, not
+  // answered with nothing.
   for (const t of args) {
     if (typeof t !== 'string' || t.trim() === '') {
       throw new UserError(
@@ -2080,10 +2119,10 @@ async function cmdQuery(args, options, cfg, provider) {
     return;
   }
 
-  const db = await store.loadStore(sp);
+  const db = store.loadStore(sp);
 
   if (!fs.existsSync(mp)) {
-    process.stderr.write('metadata.json missing but store exists. Run `knowledge rebuild` to fix.\n');
+    process.stderr.write(`${store.METADATA_FILE} missing but store exists. Run \`knowledge rebuild\` to fix.\n`);
     process.exit(1);
   }
 
@@ -2126,7 +2165,7 @@ async function readiness() {
   if (!fs.existsSync(sp)) return storeBuildable() ? 'buildable' : 'not-ready';
 
   try {
-    await store.loadStore(sp);
+    store.loadStore(sp);
   } catch (_) {
     return 'not-ready';
   }
@@ -2161,8 +2200,8 @@ async function cmdStatus() {
     return;
   }
 
-  const db = await store.loadStore(sp);
-  const allChunks = await store.searchAllFulltext(db);
+  const db = store.loadStore(sp);
+  const allChunks = store.allChunks(db);
 
   // Index summary.
   out.push(`Total chunks: ${allChunks.length}`);
@@ -2451,8 +2490,8 @@ async function cmdRemove(_args, options) {
     const sp = storePath();
     let storeMatch = 0;
     if (fs.existsSync(sp)) {
-      const db = await store.loadStore(sp);
-      storeMatch = await store.countByFilter(db, removeFilter(options));
+      const db = store.loadStore(sp);
+      storeMatch = store.countByFilter(db, removeFilter(options));
     }
     if (storeMatch === 0) {
       throw new UserError(
@@ -2479,8 +2518,8 @@ async function cmdRemove(_args, options) {
       process.stdout.write(`Would remove 0 chunks for ${desc} (store not initialised)\n`);
       return;
     }
-    const db = await store.loadStore(sp);
-    const count = await store.countByFilter(db, removeFilter(options));
+    const db = store.loadStore(sp);
+    const count = store.countByFilter(db, removeFilter(options));
     process.stdout.write(`Would remove ${count} chunks for ${desc}\n`);
     return;
   }
@@ -2522,10 +2561,10 @@ async function performRemoval(opts) {
   if (!fs.existsSync(sp)) return 0;
 
   let removed = 0;
-  await store.withLock(lockFilePath(), async () => {
-    const db = await store.loadStore(sp);
-    removed = await store.removeByFilter(db, removeFilter(opts));
-    await store.saveStore(db, sp);
+  await store.withLock(lockFilePath(), () => {
+    const db = store.loadStore(sp);
+    removed = store.removeByFilter(db, removeFilter(opts));
+    store.saveStore(db, sp);
   });
   return removed;
 }
@@ -2551,25 +2590,24 @@ async function cmdCompact(_args, options, cfg) {
 
   if (!fs.existsSync(sp)) return;
 
-  const db = await store.loadStore(sp);
+  const db = store.loadStore(sp);
 
-  // Discover unique work units in the store by searching for all docs.
-  const allResults = await store.searchAllFulltext(db);
-  if (allResults.length === 0) return;
+  const chunks = store.allChunks(db);
+  if (chunks.length === 0) return;
 
   // Group by work unit.
   const byWorkUnit = {};
-  for (const r of allResults) {
-    if (!byWorkUnit[r.work_unit]) byWorkUnit[r.work_unit] = [];
-    byWorkUnit[r.work_unit].push(r);
+  for (const chunk of chunks) {
+    if (!byWorkUnit[chunk.work_unit]) byWorkUnit[chunk.work_unit] = [];
+    byWorkUnit[chunk.work_unit].push(chunk);
   }
 
   // Evaluate each work unit against the prune floor.
   const removals = []; // { workUnit, count, phases: Set }
   const toRemoveIds = [];
 
-  for (const [wu, chunks] of Object.entries(byWorkUnit)) {
-    const candidates = chunks.filter((c) => pruning.prunes(wu, c.phase));
+  for (const [wu, unitChunks] of Object.entries(byWorkUnit)) {
+    const candidates = unitChunks.filter((c) => pruning.prunes(wu, c.phase));
     if (candidates.length === 0) continue;
 
     const phases = new Set(candidates.map((c) => c.phase));
@@ -2595,8 +2633,8 @@ async function cmdCompact(_args, options, cfg) {
   }
 
   // Actual removal — acquire lock.
-  await store.withLock(lp, async () => {
-    const freshDb = await store.loadStore(sp);
+  await store.withLock(lp, () => {
+    const freshDb = store.loadStore(sp);
 
     // Deduplicate removal keys.
     const seen = new Set();
@@ -2604,10 +2642,10 @@ async function cmdCompact(_args, options, cfg) {
       const k = `${key.work_unit}|${key.phase}|${key.topic}`;
       if (seen.has(k)) continue;
       seen.add(k);
-      await store.removeByIdentity(freshDb, key);
+      store.removeByIdentity(freshDb, key);
     }
 
-    await store.saveStore(freshDb, sp);
+    store.saveStore(freshDb, sp);
   });
 
   const out = [];
@@ -2681,6 +2719,7 @@ module.exports = {
   ConfigError,
   main,
   cmdIndexBulk,
+  indexSingleFile,
   discoverArtifacts,
   StubProvider,
   OpenAIProvider,
@@ -2696,7 +2735,6 @@ module.exports = {
   INDEXED_PHASES,
   ARTIFACT_PATHS,
   RETIRED_ITEM_STATUSES,
-  KEYWORD_ONLY_DIMENSIONS,
   buildProgressClock,
   retrievability,
   pruneTest,

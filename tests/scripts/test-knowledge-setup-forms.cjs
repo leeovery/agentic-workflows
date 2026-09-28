@@ -170,7 +170,7 @@ describe('runKeyOnly', () => {
   });
 });
 
-describe('runFromSystem refusals', () => {
+describe('runFromSystem and runKeywordOnly refusals', () => {
   let home;
   let project;
   let configHome;
@@ -212,6 +212,23 @@ describe('runFromSystem refusals', () => {
       assert.match(err.message, /is not valid/);
       return true;
     });
+  });
+
+  it('keyword-only refuses an unreadable system config before it writes anything', async () => {
+    const knowledgeDir = path.join(project, '.workflows', '.knowledge');
+    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    for (const [content, reason] of [['{ not json', /not valid JSON/], ['{"knowledge":42}', /invalid "knowledge" key/]]) {
+      fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), content);
+      await assert.rejects(() => forms.runKeywordOnly(noBulk, {}), (err) => {
+        assert.ok(err instanceof forms.SetupRefusal);
+        assert.match(err.message, /^system config at .* is not valid/);
+        assert.match(err.message, reason);
+        return true;
+      });
+      assert.ok(!fs.existsSync(path.join(knowledgeDir, 'store.bin')), 'no store written');
+      assert.ok(!fs.existsSync(path.join(knowledgeDir, 'metadata.json')), 'no metadata written');
+      assert.ok(!fs.existsSync(knowledgeDir), 'nothing written at all');
+    }
   });
 
   it('treats a knowledge-less shared config (session settings only) as no system config', async () => {

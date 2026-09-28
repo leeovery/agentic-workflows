@@ -11,7 +11,7 @@
 //      credentials.json (mode 0600), else prompt inline and store to that
 //      file. Env wins over file.
 //   3. Project init at .workflows/.knowledge/ (directory, config.json,
-//      empty store.msp, metadata.json).
+//      empty store.bin, metadata.json).
 //   4. Initial bulk indexing via cmdIndexBulk (injected by caller).
 
 'use strict';
@@ -33,11 +33,6 @@ const OPENAI_DEFAULT_DIMENSIONS = 1536;
 // provider = a new driver module exporting a SETUP_DESCRIPTOR + one entry
 // here; runSystemConfigStep stays untouched.
 const PROVIDER_SETUPS = [OPENAI_SETUP, COMPATIBLE_SETUP];
-
-// Used when creating the initial store in stub / keyword-only mode —
-// Orama's schema requires a dimension parameter even when docs omit
-// the embedding field. Matches KEYWORD_ONLY_DIMENSIONS in index.js.
-const KEYWORD_ONLY_DIMENSIONS = 1536;
 
 // ---------------------------------------------------------------------------
 // TTY guard — abort cleanly on non-interactive invocation
@@ -264,8 +259,8 @@ function detectSystemConfig(sysPath) {
 
 function detectProjectInit(projectDir) {
   const configFile = path.join(projectDir, 'config.json');
-  const storeFile = path.join(projectDir, 'store.msp');
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const storeFile = path.join(projectDir, store.STORE_FILE);
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
   const dirExists = fs.existsSync(projectDir);
   const configExists = fs.existsSync(configFile);
   const storeExists = fs.existsSync(storeFile);
@@ -503,8 +498,8 @@ function createSetupToolkit(rl) {
 async function runProjectInitStep(rl) {
   const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
-  const storeFile = path.join(projectDir, 'store.msp');
-  const metadataFile = path.join(projectDir, 'metadata.json');
+  const storeFile = path.join(projectDir, store.STORE_FILE);
+  const metadataFile = path.join(projectDir, store.METADATA_FILE);
 
   const detected = detectProjectInit(projectDir);
 
@@ -517,7 +512,7 @@ async function runProjectInitStep(rl) {
   if (detected.storeExists && !detected.metadataExists) {
     process.stderr.write(
       `\nProject knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      `  store.msp is present but metadata.json is missing.\n` +
+      `  ${store.STORE_FILE} is present but ${store.METADATA_FILE} is missing.\n` +
       `  Setup cannot recover this safely — run \`knowledge rebuild\` (which\n` +
       `  re-creates the store from scratch and writes matching metadata) and\n` +
       `  then re-run \`knowledge setup\` if needed.\n`
@@ -548,7 +543,7 @@ async function runProjectInitStep(rl) {
     process.stdout.write(`  config.json written\n`);
   }
 
-  // Load merged config to resolve dimensions for the store.
+  // Load merged config for the provider identity the metadata records.
   const cfg = config.loadConfig();
   // Use the provider NAME from config, NOT config.resolveProvider(cfg). The
   // resolved provider is null for a keyed provider whose key hasn't been set
@@ -559,14 +554,13 @@ async function runProjectInitStep(rl) {
   const provider = cfg.provider || null;
   const dims = Number.isInteger(cfg.dimensions) && cfg.dimensions > 0
     ? cfg.dimensions
-    : KEYWORD_ONLY_DIMENSIONS;
+    : OPENAI_DEFAULT_DIMENSIONS;
 
   // Create empty store and save.
   const wroteStore = !detected.storeExists || detected.fullyInitialised;
   if (wroteStore) {
-    const db = await store.createStore(dims);
-    await store.saveStore(db, storeFile);
-    process.stdout.write(`  store.msp written (${dims} dimensions)\n`);
+    store.saveStore(store.createStore(), storeFile);
+    process.stdout.write(`  ${store.STORE_FILE} written\n`);
   }
 
   // Write initial metadata. Also rewrite whenever a new store was just
@@ -580,7 +574,7 @@ async function runProjectInitStep(rl) {
       dimensions: provider ? dims : null,
       last_indexed: null,
     });
-    process.stdout.write(`  metadata.json written\n`);
+    process.stdout.write(`  ${store.METADATA_FILE} written\n`);
   }
 
   return { created: true, provider, dimensions: dims };
@@ -681,7 +675,6 @@ module.exports = {
   runSystemConfigStep,
   runProjectInitStep,
   runInitialIndexStep,
-  KEYWORD_ONLY_DIMENSIONS,
   OPENAI_DEFAULT_MODEL,
   OPENAI_DEFAULT_DIMENSIONS,
 };

@@ -1,17 +1,20 @@
-// Knowledge base store — thin wrapper around Orama: create, insert,
-// remove, fulltext/vector/hybrid search, and save/load via MsgPack.
-//
-// All search functions return results in a normalised shape (see
-// `normaliseHit` below) so callers (CLI, tests) never touch Orama's
-// native result format directly.
+// The knowledge store: every chunk with its text, its metadata and — when it
+// has one — its vector, searched by keyword (keyword.js) and by vector
+// (cosine similarity), and kept in one file of its own format.
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
-const orama = require('@orama/orama');
-const { encode, decode } = require('@msgpack/msgpack');
+const keyword = require('./keyword');
 
-const SCHEMA_FIELDS = [
+/** The store's file in the knowledge directory. */
+const STORE_FILE = 'store.bin';
+
+/** The metadata's file in the knowledge directory. */
+const METADATA_FILE = 'metadata.json';
+
+const REQUIRED_FIELDS = [
   'id',
   'content',
   'work_unit',
@@ -23,50 +26,76 @@ const SCHEMA_FIELDS = [
   'timestamp',
 ];
 
-// Carried on a document and persisted with it, but outside the schema — a
-// schema string field is full-text indexed, and a hash must never match a
-// search term.
-const STORED_FIELDS = ['source_hash'];
+/**
+ * @typedef {object} Chunk
+ * @property {string} id
+ * @property {string} content
+ * @property {string} work_unit
+ * @property {string} work_type
+ * @property {string} phase
+ * @property {string} topic
+ * @property {string} confidence
+ * @property {string} source_file
+ * @property {string} [source_hash]  the sha256 of the source file the chunk was cut from
+ * @property {string} content_hash  the sha256 of `content` — the text its vector embeds
+ * @property {number} timestamp
+ */
 
 /**
- * Build the Orama schema. The vector dimensionality comes from the
- * embedding provider's dimensions() at store creation time — 128 for
- * the StubProvider default, 1536 for OpenAI text-embedding-3-small,
- * etc. In keyword-only production mode (no provider) callers should
- * still supply a sensible default (e.g., 1536) so the schema exists;
- * documents simply omit the embedding field instead of passing null.
+ * @typedef {object} Entry
+ * @property {Chunk} chunk
+ * @property {Float32Array|null} vector
+ * @property {number} norm  the vector's length — 0 without one
+ * @property {import('./keyword').FieldTerms[]} terms  field by field
  */
-function buildSchema(dimensions) {
-  if (!Number.isInteger(dimensions) || dimensions <= 0) {
-    throw new Error(`createStore: dimensions must be a positive integer, got ${dimensions}`);
-  }
+
+/**
+ * @typedef {object} Store
+ * @property {Entry[]} entries  in insertion order, a removal closing the gap
+ * @property {Set<string>} ids
+ * @property {number|null} dimensions  the vectors' width — null while the store holds none
+ * @property {import('./keyword').Vocabulary} vocabulary
+ * @property {import('./keyword').Postings[]|null} index  built by the first keyword search after a write
+ */
+
+/**
+ * @typedef {Record<string, {eq: string} | {in: string[]}>} Where  a value, or one of several, per chunk field
+ */
+
+/** @returns {Store} */
+function createStore() {
+  return { entries: [], ids: new Set(), dimensions: null, vocabulary: new keyword.Vocabulary(), index: null };
+}
+
+/** @param {string} text */
+function contentHash(text) {
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+/**
+ * A chunk's fields in one order, whichever path builds it.
+ * @param {Record<string, any>} fields @param {string} content @param {string} hash
+ * @returns {Chunk}
+ */
+function chunkOf(fields, content, hash) {
   return {
-    id: 'string',
-    content: 'string',
-    work_unit: 'enum',
-    work_type: 'enum',
-    phase: 'enum',
-    topic: 'enum',
-    confidence: 'enum',
-    source_file: 'string',
-    timestamp: 'number',
-    embedding: `vector[${dimensions}]`,
+    id: fields.id,
+    content,
+    work_unit: fields.work_unit,
+    work_type: fields.work_type,
+    phase: fields.phase,
+    topic: fields.topic,
+    confidence: fields.confidence,
+    source_file: fields.source_file,
+    source_hash: fields.source_hash,
+    content_hash: hash,
+    timestamp: fields.timestamp,
   };
 }
 
-/**
- * Create a new Orama database instance for the knowledge store.
- *
- * @param {number} dimensions vector dimensionality from the provider
- * @returns {Promise<object>} Orama database instance
- */
-async function createStore(dimensions) {
-  const schema = buildSchema(dimensions);
-  return orama.create({ schema });
-}
-
+/** @param {Record<string, any>} doc */
 function assertAllRequiredFields(doc) {
-  for (const f of SCHEMA_FIELDS) {
+  for (const f of REQUIRED_FIELDS) {
     if (doc[f] === undefined || doc[f] === null) {
       throw new Error(`insertDocument: missing required field "${f}"`);
     }
@@ -77,96 +106,106 @@ function assertAllRequiredFields(doc) {
 }
 
 /**
- * Insert a single document. The `embedding` field is OPTIONAL — include
- * an array for providers that produce vectors, omit it entirely for
- * keyword-only mode. NEVER pass null for `embedding`: Orama crashes on
- * null vectors. This function actively guards against that.
- *
- * @param {object} db   Orama database instance
- * @param {object} doc  document with non-vector fields; embedding is optional
- * @returns {Promise<string>} the inserted document's internal id
+ * The vector an inserted document carries — null without one.
+ * @param {Store} db @param {unknown} embedding
+ * @returns {Float32Array|null}
  */
-async function insertDocument(db, doc) {
+function vectorOf(db, embedding) {
+  if (embedding === undefined) return null;
+  if (embedding === null) {
+    throw new Error('insertDocument: embedding cannot be null — omit it for a chunk without a vector');
+  }
+  if (!Array.isArray(embedding) && !(embedding instanceof Float32Array)) {
+    throw new Error('insertDocument: embedding must be an array of numbers when present');
+  }
+  if (db.dimensions !== null && embedding.length !== db.dimensions) {
+    throw new Error(`insertDocument: embedding is ${embedding.length} wide, and the store's vectors are ${db.dimensions}`);
+  }
+  return Float32Array.from(embedding);
+}
+
+/** @param {ArrayLike<number>} vector */
+function magnitude(vector) {
+  let sum = 0;
+  for (let i = 0; i < vector.length; i++) sum += vector[i] * vector[i];
+  return Math.sqrt(sum);
+}
+
+/** @param {ArrayLike<number>} a @param {ArrayLike<number>} b */
+function dot(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+  return sum;
+}
+
+/**
+ * Insert a chunk — `embedding`, its vector, omitted for a chunk without one.
+ * A chunk id already in the store is refused: a re-index removes an
+ * identity's chunks before it inserts their replacements.
+ * @param {Store} db @param {Record<string, any>} doc
+ */
+function insertDocument(db, doc) {
   if (doc == null || typeof doc !== 'object') {
     throw new Error('insertDocument: doc must be an object');
   }
   assertAllRequiredFields(doc);
-
-  const payload = {};
-  for (const f of SCHEMA_FIELDS) payload[f] = doc[f];
-  for (const f of STORED_FIELDS) {
-    if (doc[f] !== undefined) payload[f] = doc[f];
+  if (db.ids.has(doc.id)) {
+    throw new Error(`insertDocument: a chunk with id "${doc.id}" already exists`);
   }
-
-  if ('embedding' in doc) {
-    if (doc.embedding === null) {
-      throw new Error(
-        'insertDocument: embedding cannot be null (Orama crashes on null vectors). ' +
-          'Omit the field for keyword-only mode, or pass a real vector.'
-      );
-    }
-    if (doc.embedding !== undefined) {
-      if (!Array.isArray(doc.embedding)) {
-        throw new Error('insertDocument: embedding must be an array of numbers when present');
-      }
-      payload.embedding = doc.embedding;
-    }
-  }
-
-  return orama.insert(db, payload);
-}
-
-// Page size for whole-store enumeration. Paged iteration replaces a
-// previous fixed `limit: 100000` so very large stores are not silently
-// truncated. 1000 keeps round-trip overhead negligible for in-process
-// Orama while bounding peak memory per page.
-const ENUMERATION_PAGE_SIZE = 1000;
-
-/**
- * Every hit matching `where`, in one search. Orama's `where` clause is an
- * indexed lookup, so a single read is the right shape; pagination is
- * reserved for unfiltered whole-store enumeration because Orama 3.1.x's
- * offset+where combination drops pages. Orama pre-allocates a results
- * array of size `limit`, so the read asks for exactly the store's size —
- * every match fits and nothing is allocated past it.
- */
-async function filteredHits(db, where) {
-  const size = await orama.count(db);
-  if (size === 0) return [];
-  const res = await orama.search(db, { term: '', where, limit: size });
-  return res.hits;
+  const vector = vectorOf(db, doc.embedding);
+  const chunk = chunkOf(doc, doc.content, contentHash(doc.content));
+  db.entries.push({ chunk, vector, norm: vector ? magnitude(vector) : 0, terms: keyword.termsOf(chunk, db.vocabulary) });
+  db.ids.add(chunk.id);
+  if (vector) db.dimensions = vector.length;
+  db.index = null;
 }
 
 /**
- * Enumerate every document in the store, paged via offset+limit until
- * exhausted. Used by status, the bulk index, and any caller that needs a
- * complete unfiltered view. Filtered reads go through filteredHits.
+ * Whether a chunk passes every field's filter.
+ * @param {Where} [where]
+ * @returns {(chunk: Chunk) => boolean}
  */
-async function searchAllFulltext(db) {
-  const all = [];
-  let offset = 0;
-  while (true) {
-    const res = await orama.search(db, {
-      term: '',
-      limit: ENUMERATION_PAGE_SIZE,
-      offset,
-    });
-    if (res.hits.length === 0) break;
-    all.push(...res.hits.map(normaliseHit));
-    if (res.hits.length < ENUMERATION_PAGE_SIZE) break;
-    offset += ENUMERATION_PAGE_SIZE;
+function admitter(where) {
+  const clauses = Object.entries(where || {}).map(([field, clause]) => ({
+    field,
+    values: 'in' in clause ? clause.in : [clause.eq],
+  }));
+  return (chunk) => clauses.every(({ field, values }) => values.includes(chunk[field]));
+}
+
+/** @param {string} caller @param {Where} where */
+function requireWhere(caller, where) {
+  if (!where || Object.keys(where).length === 0) {
+    throw new Error(`${caller}: where clause is required`);
   }
-  return all;
 }
 
 /**
- * Remove every document matching the identity key (work_unit + phase +
- * topic). This is the re-index primitive: remove existing chunks for an
- * identity, then insert fresh ones. No-op if nothing matches.
- *
- * @returns {Promise<number>} number of documents removed
+ * Remove every chunk matching a where-clause filter.
+ * @param {Store} db @param {Where} where
+ * @returns {number} how many were removed
  */
-async function removeByIdentity(db, identity) {
+function removeByFilter(db, where) {
+  requireWhere('removeByFilter', where);
+  const admits = admitter(where);
+  const kept = db.entries.filter((entry) => !admits(entry.chunk));
+  const removed = db.entries.length - kept.length;
+  if (removed > 0) {
+    db.entries = kept;
+    db.ids = new Set(kept.map((entry) => entry.chunk.id));
+    if (!kept.some((entry) => entry.vector)) db.dimensions = null;
+    db.index = null;
+  }
+  return removed;
+}
+
+/**
+ * Remove every chunk of an identity (work_unit + phase + topic) — the
+ * re-index primitive.
+ * @param {Store} db @param {{work_unit: string, phase: string, topic: string}} identity
+ * @returns {number} how many were removed
+ */
+function removeByIdentity(db, identity) {
   if (!identity || !identity.work_unit || !identity.phase || !identity.topic) {
     throw new Error('removeByIdentity: work_unit, phase, and topic are all required');
   }
@@ -178,167 +217,295 @@ async function removeByIdentity(db, identity) {
 }
 
 /**
- * Remove every document matching a where-clause filter. Generalises
- * removal by any combination of enum fields. Used by the remove command
- * for work-unit-level, phase-level, or topic-level granularity.
- *
- * @param {object} db       Orama database instance
- * @param {object} where    Orama where clause (e.g., { work_unit: { eq: 'x' } })
- * @returns {Promise<number>} number of documents removed
+ * How many chunks match a where-clause filter — what removeByFilter would remove.
+ * @param {Store} db @param {Where} where
  */
-async function removeByFilter(db, where) {
-  if (!where || Object.keys(where).length === 0) {
-    throw new Error('removeByFilter: where clause is required');
-  }
-  const ids = (await filteredHits(db, where)).map((h) => h.id);
-  if (ids.length === 0) return 0;
-  // Orama's sync removeMultiple chains batches via setTimeout but
-  // returns the result count after only the first batch — pass
-  // batchSize == ids.length to force a single batch and get an
-  // accurate total when removing > 1000 chunks.
-  const removed = await orama.removeMultiple(db, ids, ids.length);
-  return removed;
+function countByFilter(db, where) {
+  requireWhere('countByFilter', where);
+  const admits = admitter(where);
+  return db.entries.filter((entry) => admits(entry.chunk)).length;
 }
 
 /**
- * Count chunks matching `where` without deleting. Used by `remove --dry-run`.
- * Same query shape as removeByFilter so the count is guaranteed to match
- * what a non-dry-run invocation would actually remove.
+ * Every chunk, in store order.
+ * @param {Store} db
+ * @returns {Chunk[]}
  */
-async function countByFilter(db, where) {
-  if (!where || Object.keys(where).length === 0) {
-    throw new Error('countByFilter: where clause is required');
-  }
-  return (await filteredHits(db, where)).length;
-}
-
-function normaliseHit(hit) {
-  const d = hit.document || {};
-  return {
-    id: d.id,
-    content: d.content,
-    work_unit: d.work_unit,
-    work_type: d.work_type,
-    phase: d.phase,
-    topic: d.topic,
-    confidence: d.confidence,
-    source_file: d.source_file,
-    source_hash: d.source_hash,
-    timestamp: d.timestamp,
-    score: hit.score,
-  };
+function allChunks(db) {
+  return db.entries.map((entry) => ({ ...entry.chunk }));
 }
 
 /**
- * Full-text (BM25) search with optional metadata filtering. Returns
- * results in the normalised shape that every search variant will use.
- *
- * @param {object} db
- * @param {{ term?: string, where?: object, limit?: number }} params
- * @returns {Promise<Array<object>>}
+ * Every vector the store holds, by the hash of the text it embeds.
+ * @param {Store} db
+ * @returns {Map<string, Float32Array>}
  */
-async function searchFulltext(db, { term = '', where, limit = 10 } = {}) {
-  const query = { term, limit };
-  if (where && Object.keys(where).length > 0) {
-    query.where = where;
+function vectorsByContentHash(db) {
+  const vectors = new Map();
+  for (const { chunk, vector } of db.entries) {
+    if (vector) vectors.set(chunk.content_hash, vector);
   }
-  const res = await orama.search(db, query);
-  return res.hits.map(normaliseHit);
+  return vectors;
 }
 
 /**
- * Vector similarity search (cosine, Orama default).
- *
- * @param {object} db
- * @param {{ vector: number[], where?: object, limit?: number, similarity?: number }} params
- * @returns {Promise<Array<object>>}
+ * The scored chunks as hits, best first — a tie in store order — cut to the limit.
+ * @param {Store} db @param {Map<number, number>} scores  store position → score @param {number} limit
  */
-async function searchVector(db, { vector, where, limit = 10, similarity } = {}) {
-  if (!Array.isArray(vector)) {
+function ranked(db, scores, limit) {
+  return [...scores]
+    .sort(([a, scoreA], [b, scoreB]) => scoreB - scoreA || a - b)
+    .slice(0, limit)
+    .map(([position, score]) => ({ ...db.entries[position].chunk, score }));
+}
+
+/** @param {Store} db */
+function keywordIndex(db) {
+  if (!db.index) db.index = keyword.indexOf(db.entries.map((entry) => entry.terms), db.vocabulary.words.length);
+  return db.index;
+}
+
+/**
+ * Every admitted chunk matching a word of the term, by BM25 score.
+ * @param {Store} db @param {{term: string, where?: Where, limit?: number}} search
+ */
+function searchKeyword(db, { term, where, limit = Infinity }) {
+  if (typeof term !== 'string') throw new Error('searchKeyword: term (string) is required');
+  const admits = admitter(where);
+  const scores = keyword.score(keywordIndex(db), db.vocabulary, term, (position) => admits(db.entries[position].chunk));
+  return ranked(db, scores, limit);
+}
+
+/**
+ * Every admitted chunk with a vector, by its cosine similarity to `vector` —
+ * those under `similarity` left out.
+ * @param {Store} db
+ * @param {{vector: ArrayLike<number>, similarity: number, where?: Where, limit?: number}} search
+ */
+function searchVector(db, { vector, similarity, where, limit = Infinity }) {
+  if (!Array.isArray(vector) && !(vector instanceof Float32Array)) {
     throw new Error('searchVector: vector (number[]) is required');
   }
-  const query = {
-    mode: 'vector',
-    vector: { value: vector, property: 'embedding' },
-    limit,
-  };
-  if (typeof similarity === 'number') query.similarity = similarity;
-  if (where && Object.keys(where).length > 0) query.where = where;
-  const res = await orama.search(db, query);
-  return res.hits.map(normaliseHit);
-}
-
-/**
- * Hybrid search — combines BM25 text scoring with vector similarity.
- * Defaults: textWeight 0.4, vectorWeight 0.6 (from design doc).
- *
- * @param {object} db
- * @param {{
- *   term: string,
- *   vector: number[],
- *   where?: object,
- *   limit?: number,
- *   textWeight?: number,
- *   vectorWeight?: number,
- *   similarity?: number
- * }} params
- * @returns {Promise<Array<object>>}
- */
-async function searchHybrid(
-  db,
-  {
-    term,
-    vector,
-    where,
-    limit = 10,
-    textWeight = 0.4,
-    vectorWeight = 0.6,
-    similarity,
-  } = {}
-) {
-  if (typeof term !== 'string') {
-    throw new Error('searchHybrid: term (string) is required');
+  if (typeof similarity !== 'number') throw new Error('searchVector: similarity (number) is required');
+  if (db.dimensions !== null && vector.length !== db.dimensions) {
+    throw new Error(`searchVector: vector is ${vector.length} wide, and the store's vectors are ${db.dimensions}`);
   }
-  if (!Array.isArray(vector)) {
-    throw new Error('searchHybrid: vector (number[]) is required');
-  }
-  const query = {
-    mode: 'hybrid',
-    term,
-    vector: { value: vector, property: 'embedding' },
-    hybridWeights: { text: textWeight, vector: vectorWeight },
-    limit,
-  };
-  if (typeof similarity === 'number') query.similarity = similarity;
-  if (where && Object.keys(where).length > 0) query.where = where;
-  const res = await orama.search(db, query);
-  return res.hits.map(normaliseHit);
+  const query = Float32Array.from(vector);
+  const queryNorm = magnitude(query);
+  const admits = admitter(where);
+  /** @type {Map<number, number>} */
+  const scores = new Map();
+  db.entries.forEach((entry, position) => {
+    if (!entry.vector || !admits(entry.chunk)) return;
+    const cosine = dot(query, entry.vector) / (queryNorm * entry.norm);
+    if (cosine >= similarity) scores.set(position, cosine);
+  });
+  return ranked(db, scores, limit);
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — MsgPack on disk via Orama save()/load()
+// The file: a preamble (magic, format version, header length), a JSON header
+// (the vectors' width, each chunk's metadata, the section table), then the
+// sections, each 8-byte aligned so a typed array can view it in place.
 // ---------------------------------------------------------------------------
 
+const MAGIC = Buffer.from('KBSTORE\0', 'latin1');
+const FORMAT_VERSION = 1;
+const PREAMBLE_BYTES = MAGIC.length + 8;
+const ALIGNMENT = 8;
+
+/** @param {number} offset */
+function aligned(offset) {
+  return Math.ceil(offset / ALIGNMENT) * ALIGNMENT;
+}
+
+/** @param {number[]} lengths @returns {Uint32Array} where each ends, counted from the first's start */
+function runningEnds(lengths) {
+  const ends = new Uint32Array(lengths.length);
+  let total = 0;
+  lengths.forEach((length, i) => {
+    total += length;
+    ends[i] = total;
+  });
+  return ends;
+}
+
+/** @param {Uint32Array[]} arrays */
+function joined(arrays) {
+  const out = new Uint32Array(arrays.reduce((sum, array) => sum + array.length, 0));
+  let at = 0;
+  for (const array of arrays) {
+    out.set(array, at);
+    at += array.length;
+  }
+  return out;
+}
+
+/** @param {Buffer|ArrayBufferView} data */
+function bytesOf(data) {
+  return Buffer.isBuffer(data) ? data : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+}
+
 /**
- * Persist a store to disk as a MsgPack binary. The schema is stashed
- * alongside the raw Orama data so loadStore can reconstruct a fresh
- * store with matching dimensionality before calling Orama's load().
- *
- * Atomic write: write to `<path>.tmp`, then rename — same pattern as the
- * engine's atomic manifest writes (kernel/manifest-io.cjs) so a crash
- * mid-save never leaves a truncated .msp file where the real one used to be.
+ * One field's terms as sections: where each chunk's words end, then every
+ * chunk's word ids and counts, chunk after chunk.
+ * @param {string} field @param {import('./keyword').FieldTerms[]} terms
+ * @returns {Array<[string, Uint32Array]>}
  */
-async function saveStore(db, storePath) {
+function termSections(field, terms) {
+  return [
+    [`${field}.ends`, runningEnds(terms.map((t) => t.words.length))],
+    [`${field}.words`, joined(terms.map((t) => t.words))],
+    [`${field}.counts`, joined(terms.map((t) => t.counts))],
+  ];
+}
+
+/** @param {Entry[]} vectored  the entries with a vector @param {number} width */
+function packedVectors(vectored, width) {
+  const out = new Float32Array(vectored.length * width);
+  vectored.forEach((entry, slot) => out.set(/** @type {Float32Array} */ (entry.vector), slot * width));
+  return out;
+}
+
+/** @param {Store} db @returns {Buffer} */
+function encodeStore(db) {
+  const { words, chunks: terms } = keyword.compact(db.entries.map((entry) => entry.terms), db.vocabulary);
+  const vectored = db.entries.filter((entry) => entry.vector);
+  const texts = db.entries.map((entry) => Buffer.from(entry.chunk.content, 'utf8'));
+  /** @type {Array<[string, Buffer|ArrayBufferView]>} */
+  const sections = [
+    ['text', Buffer.concat(texts)],
+    ['text_ends', runningEnds(texts.map((text) => text.length))],
+    ['words', Buffer.from(words.join('\n'), 'utf8')],
+    ...keyword.FIELDS.flatMap((field, f) => termSections(field, terms.map((fields) => fields[f]))),
+    ['norms', Float64Array.from(vectored, (entry) => entry.norm)],
+    ['vectors', packedVectors(vectored, db.dimensions || 0)],
+  ];
+  const header = Buffer.from(JSON.stringify({
+    dimensions: db.dimensions,
+    chunks: db.entries.map(({ chunk, vector }) => {
+      const { content, ...metadata } = chunk;
+      return { ...metadata, vector: vector !== null };
+    }),
+    sections: sections.map(([name, data]) => [name, data.byteLength]),
+  }), 'utf8');
+  const preamble = Buffer.alloc(PREAMBLE_BYTES);
+  MAGIC.copy(preamble);
+  preamble.writeUInt32LE(FORMAT_VERSION, MAGIC.length);
+  preamble.writeUInt32LE(header.length, MAGIC.length + 4);
+  const parts = [preamble, header, ...sections.map(([, data]) => bytesOf(data))];
+  return Buffer.concat(parts.flatMap((part) => [part, Buffer.alloc(aligned(part.length) - part.length)]));
+}
+
+/** @param {boolean} holds @param {string} problem */
+function ensure(holds, problem) {
+  if (!holds) throw new Error(problem);
+}
+
+/**
+ * The file's sections by name, each bounds-checked.
+ * @param {Buffer} buf @param {Array<[string, number]>} table @param {number} start
+ * @returns {(name: string) => {offset: number, bytes: number}}
+ */
+function sectionReader(buf, table, start) {
+  const sections = new Map();
+  let offset = start;
+  for (const [name, bytes] of table) {
+    ensure(Number.isInteger(bytes) && bytes >= 0 && offset + bytes <= buf.length, `section ${name} runs past the end`);
+    sections.set(name, { offset, bytes });
+    offset = aligned(offset + bytes);
+  }
+  return (name) => {
+    ensure(sections.has(name), `section ${name} is missing`);
+    return sections.get(name);
+  };
+}
+
+/**
+ * A section as a typed array — a view in place, a copy where the buffer
+ * leaves it unaligned.
+ * @template {Uint32ArrayConstructor|Float32ArrayConstructor|Float64ArrayConstructor} T
+ * @param {Buffer} buf @param {{offset: number, bytes: number}} section @param {T} Type
+ * @returns {InstanceType<T>}
+ */
+function typed(buf, section, Type) {
+  ensure(section.bytes % Type.BYTES_PER_ELEMENT === 0, 'a section splits an element');
+  const at = buf.byteOffset + section.offset;
+  const view = at % Type.BYTES_PER_ELEMENT === 0
+    ? new Type(buf.buffer, at, section.bytes / Type.BYTES_PER_ELEMENT)
+    : new Type(buf.buffer.slice(at, at + section.bytes));
+  return /** @type {InstanceType<T>} */ (view);
+}
+
+/**
+ * A chunk's terms for one field, read in place.
+ * @param {Buffer} buf @param {(name: string) => {offset: number, bytes: number}} section
+ * @param {string} field @param {number} count  how many chunks the store holds
+ * @returns {(position: number) => import('./keyword').FieldTerms}
+ */
+function termsReader(buf, section, field, count) {
+  const ends = typed(buf, section(`${field}.ends`), Uint32Array);
+  const words = typed(buf, section(`${field}.words`), Uint32Array);
+  const counts = typed(buf, section(`${field}.counts`), Uint32Array);
+  ensure(ends.length === count && counts.length === words.length && (count === 0 ? words.length : ends[count - 1]) === words.length,
+    `${field} terms out of step with the chunks`);
+  return (position) => {
+    const start = position === 0 ? 0 : ends[position - 1];
+    return { words: words.subarray(start, ends[position]), counts: counts.subarray(start, ends[position]) };
+  };
+}
+
+/** @param {Buffer} buf @returns {Store} */
+function decodeStore(buf) {
+  ensure(buf.length >= PREAMBLE_BYTES && buf.subarray(0, MAGIC.length).equals(MAGIC), 'not a knowledge store');
+  const version = buf.readUInt32LE(MAGIC.length);
+  ensure(version === FORMAT_VERSION, `format version ${version}, and this version reads ${FORMAT_VERSION}`);
+  const headerEnd = PREAMBLE_BYTES + buf.readUInt32LE(MAGIC.length + 4);
+  ensure(headerEnd <= buf.length, 'the header runs past the end');
+  const header = JSON.parse(buf.toString('utf8', PREAMBLE_BYTES, headerEnd));
+  const section = sectionReader(buf, header.sections, aligned(headerEnd));
+  const count = header.chunks.length;
+
+  const text = section('text');
+  const textEnds = typed(buf, section('text_ends'), Uint32Array);
+  ensure(textEnds.length === count && (count === 0 || textEnds[count - 1] <= text.bytes), 'chunk text out of step with the chunks');
+  const words = section('words');
+  const vocabulary = words.bytes === 0 ? [] : buf.toString('utf8', words.offset, words.offset + words.bytes).split('\n');
+  const terms = keyword.FIELDS.map((field) => termsReader(buf, section, field, count));
+
+  const dimensions = header.dimensions || 0;
+  const norms = typed(buf, section('norms'), Float64Array);
+  const vectors = typed(buf, section('vectors'), Float32Array);
+  ensure(vectors.length === norms.length * dimensions, 'vectors out of step with their norms');
+
+  let slot = 0;
+  const entries = header.chunks.map((record, position) => {
+    const start = text.offset + (position === 0 ? 0 : textEnds[position - 1]);
+    const chunk = chunkOf(record, buf.toString('utf8', start, text.offset + textEnds[position]), record.content_hash);
+    const vector = record.vector ? vectors.subarray(slot * dimensions, (slot + 1) * dimensions) : null;
+    const norm = record.vector ? norms[slot++] : 0;
+    return { chunk, vector, norm, terms: terms.map((field) => field(position)) };
+  });
+  ensure(slot === norms.length, 'vectors out of step with the chunks');
+
+  return {
+    entries,
+    ids: new Set(entries.map((entry) => entry.chunk.id)),
+    dimensions: header.dimensions,
+    vocabulary: new keyword.Vocabulary(vocabulary),
+    index: null,
+  };
+}
+
+/**
+ * Write the store to disk: to `<path>.tmp`, then renamed into place, so a
+ * crash mid-write never leaves a truncated store where the real one was.
+ * @param {Store} db @param {string} storePath
+ */
+function saveStore(db, storePath) {
   if (!storePath) throw new Error('saveStore: storePath is required');
-  const raw = orama.save(db);
-  const envelope = {
-    v: 1,
-    schema: db.schema,
-    raw,
-  };
-  const buf = encode(envelope);
   const tmp = storePath + '.tmp';
-  fs.writeFileSync(tmp, buf);
+  fs.writeFileSync(tmp, encodeStore(db));
   fs.renameSync(tmp, storePath);
 }
 
@@ -355,13 +522,12 @@ function storeStamp(storePath) {
 }
 
 /**
- * Load a store from disk. Reads the MsgPack envelope, creates a fresh
- * Orama instance with the stashed schema, then calls Orama load() to
- * populate it.
- *
- * Throws a clear error if the file is missing, empty, or corrupted.
+ * Load a store from disk. A file missing, empty, or not a store this version
+ * reads — another format, another format version, or damaged — throws.
+ * @param {string} storePath
+ * @returns {Store}
  */
-async function loadStore(storePath) {
+function loadStore(storePath) {
   if (!storePath) throw new Error('loadStore: storePath is required');
   if (!fs.existsSync(storePath)) {
     throw new Error(`loadStore: store file not found at ${storePath}`);
@@ -375,20 +541,11 @@ async function loadStore(storePath) {
   if (buf.length === 0) {
     throw new Error(`loadStore: store file is empty at ${storePath}`);
   }
-
-  let envelope;
   try {
-    envelope = decode(buf);
+    return decodeStore(buf);
   } catch (e) {
     throw new Error(`loadStore: corrupted store file at ${storePath}: ${e.message}`);
   }
-  if (!envelope || typeof envelope !== 'object' || !envelope.schema || !envelope.raw) {
-    throw new Error(`loadStore: malformed envelope at ${storePath}`);
-  }
-
-  const db = await orama.create({ schema: envelope.schema });
-  orama.load(db, envelope.raw);
-  return db;
 }
 
 // ---------------------------------------------------------------------------
@@ -507,18 +664,19 @@ function readMetadata(metadataPath) {
 }
 
 module.exports = {
-  SCHEMA_FIELDS,
+  STORE_FILE,
+  METADATA_FILE,
   METADATA_FIELDS,
-  buildSchema,
+  contentHash,
   createStore,
   insertDocument,
   removeByIdentity,
   removeByFilter,
   countByFilter,
-  searchFulltext,
-  searchAllFulltext,
+  allChunks,
+  vectorsByContentHash,
+  searchKeyword,
   searchVector,
-  searchHybrid,
   saveStore,
   loadStore,
   storeStamp,

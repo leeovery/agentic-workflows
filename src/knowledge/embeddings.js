@@ -8,12 +8,8 @@
 //   dimensions()        -> number     vector dimensionality
 //   model()             -> string     stable, non-empty model identifier
 //
-// Providers MUST never return null/undefined from embed/embedBatch. Orama
-// crashes when a vector field is null. Production keyword-only mode
-// (design doc "stub mode") is a DIFFERENT concept, triggered by the
-// absence of any configured provider — it is handled at the calling
-// layer by omitting the vector field from documents, and is NOT a
-// provider implementation.
+// Providers never return null or undefined from embed/embedBatch: the store
+// refuses a null vector, and stores a chunk given undefined without one.
 //
 // StubProvider below is a first-class provider used in tests only. It
 // returns deterministic fake vectors derived from a hash of the input
