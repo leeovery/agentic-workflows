@@ -64,7 +64,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If ask
 
-Answer from the record the session already holds — the plan and the specification. The question sets the gate aside until the person is ready to move on; to put it back:
+Answer from the record the session already holds — the plan and the specification. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **A. Conclude Gate**.
 

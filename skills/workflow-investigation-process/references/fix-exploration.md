@@ -56,7 +56,7 @@ Engage collaboratively. Stay bounded — focus on:
 
 Do not go into implementation detail — that belongs in the specification.
 
-Rewrite the payload as the option space shifts — new options, killed options, changed trade-offs — so a crash never loses the discussion and the next render shows where it actually stands. The discussion sets the gate aside until the person is ready to move on; to put it back:
+Rewrite the payload as the option space shifts — new options, killed options, changed trade-offs — so a crash never loses the discussion and the next render shows where it actually stands. The discussion sets the gate aside; once it looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **B. Present & Discuss**.
 

@@ -219,7 +219,7 @@ Land what the user named the same way, and say the same line.
 
 **If the comment is a question back or feedback:**
 
-Answer it. Where the feedback moves the Options, revise them, re-emit the revised Options, and rewrite the payload. The exchange sets the gate aside until the person is ready to move on; to put it back, re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.
+Answer it. Where the feedback moves the Options, revise them, re-emit the revised Options, and rewrite the payload. The exchange sets the gate aside; once it looks settled, ask in conversation whether they are ready to move on, and on yes put it back — re-fetch the gate and emit its MENU section verbatim per its marker; the reply takes these branches again.
 
 **STOP.** Wait for user response.
 
@@ -247,7 +247,7 @@ Carry the block's **Next attempt** and anything the user added into the re-invoc
 
 **If the comment is a question or steers the attempt:**
 
-Answer it. Where it moves the **Next attempt** — a cause you read wrong, an environment the user has just fixed — revise it and re-emit that line. The exchange sets the gate aside until the person is ready to move on; to put it back, re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.
+Answer it. Where it moves the **Next attempt** — a cause you read wrong, an environment the user has just fixed — revise it and re-emit that line. The exchange sets the gate aside; once it looks settled, ask in conversation whether they are ready to move on, and on yes put it back — re-fetch the gate and emit its MENU section verbatim per its marker; the reply takes these branches again.
 
 **STOP.** Wait for user response.
 
@@ -395,7 +395,7 @@ Render the show-me explanation as an interactive browser page with the publishin
 
 #### If ask
 
-Answer the user's questions about the review. The question sets the gate aside until the person is ready to move on; to put it back:
+Answer the user's questions about the review. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **F. Fix Approval Gate**.
 
@@ -509,7 +509,7 @@ Render the show-me explanation as an interactive browser page with the publishin
 
 **If ask:**
 
-Answer the user's questions about the implementation. The question sets the gate aside until the person is ready to move on; to put it back:
+Answer the user's questions about the implementation. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **G. Task Gate**.
 

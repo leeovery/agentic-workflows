@@ -72,6 +72,6 @@ The failures become tasks and implementation reopens.
 
 #### If ask
 
-Answer the question using the review file, the per-task reports, this cycle's change-set files, the specification, and the plan as context. The question sets the gate aside until the person is ready to move on; to put it back:
+Answer the question using the review file, the per-task reports, this cycle's change-set files, the specification, and the plan as context. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
 
 → Return to **B. Review Gate**.

@@ -70,7 +70,7 @@ A resolution the exchange settles, confirmed with the person, lands like a picke
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the yielding document's topic}`.
 
-An exchange that left the choice open has set the gate aside, and re-presents it once the person is ready to move on (rewrite the payload where the ground moved, re-fetch):
+An exchange that left the choice open has set the gate aside; once it looks settled, ask in conversation whether the person is ready to move on, and on yes re-present it (rewrite the payload where the ground moved, re-fetch):
 
 → Return to **A. Classify** (the gate above).
 

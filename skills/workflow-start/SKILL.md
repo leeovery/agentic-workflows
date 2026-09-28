@@ -116,7 +116,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --migrations -m "c
 
 **If ask:**
 
-Answer the user's question. The question sets the gate aside until the person is ready to move on; to put it back, fetch the confirm gate again and emit it as above.
+Answer the user's question. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back — fetch the confirm gate again and emit it as above.
 
 **STOP.** Wait for user response.
 
