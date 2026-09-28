@@ -247,7 +247,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause
 Work the point through in conversation — the comment sets the gate aside.
 
 - **The exchange settles on a side**: confirm it with the person, then land it as the numbered pick lands one. → Return to **D. The Choices**.
-- **The choice stands**: once the person is ready to move on, re-present it. → Return to **D. The Choices**.
+- **The choice stands**: once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes re-present it. → Return to **D. The Choices**.
 - **The exchange concludes it should not land**: Resolution `Declined` with the reason in Notes, announced in a line, committed. → Return to **D. The Choices**.
 - **The exchange shows the gap needs work this specification cannot do in place**: → Proceed to **The Gap Door**.
 

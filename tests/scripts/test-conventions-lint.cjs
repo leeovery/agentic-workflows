@@ -909,7 +909,10 @@ function checkQuotedFreeTextFlags(files) {
 // then "ask … ready to move on" in one clause), or delegates the answer to
 // the shared answering-how-it-works.md, whose put-back carries the same rule.
 // A heading branch runs to the next heading, bold conditional, or rule; a
-// list item runs to the next item or blank line.
+// list item runs to the next item or blank line. A standing section's return
+// into the flow it interrupted (`→ On return, resume the interrupted flow`)
+// leaves a pending gate set aside the same way, so that line carries the same
+// ask ("set aside", then "ask … ready to move on" in one clause).
 // ---------------------------------------------------------------------------
 
 const QUESTION_BRANCH = /^(?:#### If |\*\*If )(?:ask\b|the user asks (?:a question|about a number)|user asked a question|the comment is a question)/;
@@ -918,6 +921,8 @@ const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
 const ROUTE_END = /^\s*(?:[-*] |$)/;
 const SETS_ASIDE = /sets the gate aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
 const DELEGATES_ANSWER = /\((?:\.\.\/)+workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
+const INTERRUPTED_RETURN = /^→ On return, resume the interrupted flow\b/;
+const RETURN_ASKS = /\bset aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
 
 function checkQuestionsSetGatesAside(files) {
   const out = [];
@@ -925,6 +930,16 @@ function checkQuestionsSetGatesAside(files) {
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
     lines.forEach((line, i) => {
+      if (!inFence[i] && INTERRUPTED_RETURN.test(line)) {
+        if (!RETURN_ASKS.test(line)) {
+          out.push({
+            file,
+            line: i + 1,
+            message: 'a return into the interrupted flow leaves its pending gate aside without the ask — say "a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back"',
+          });
+        }
+        return;
+      }
       const route = QUESTION_ROUTE.test(line);
       if (inFence[i] || !(route || QUESTION_BRANCH.test(line))) return;
       const ends = route ? ROUTE_END : BRANCH_END;
@@ -1889,6 +1904,36 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
     const v = checkQuestionsSetGatesAside([blind]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 7, 13, 19, 23, 27, 35, 41, 48, 50], `each question branch that puts its gate straight back is caught, got ${report(v)}`);
     assert.ok(v.every((x) => /without the set-aside rule/.test(x.message)), `the fault is named, got ${report(v)}`);
+  });
+});
+
+test('check 23 (a return into the interrupted flow asks) — catches a return that leaves its pending gate aside without asking whether the person is ready to move on, permits the return with the ask and a fenced example', () => {
+  withTemp((dir) => {
+    const asking = write(dir, 'skills/x/asking.md', [
+      '## Backlogging',
+      '',
+      'Load **[backlogging.md](../workflow-shared/references/backlogging.md)** from any point in the phase.',
+      '',
+      '→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.',
+      '',
+      '```',
+      '→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.',
+      '```',
+      '',
+    ].join('\n'));
+    assert.strictEqual(checkQuestionsSetGatesAside([asking]).length, 0, `the return with the ask and a fenced example are clean, got ${report(checkQuestionsSetGatesAside([asking]))}`);
+
+    const silent = write(dir, 'skills/x/silent.md', [
+      '→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.',
+      '',
+      '→ On return, resume the interrupted flow — a gate that was pending was set aside; ask what they meant. Once the person is ready to move on, put it back — never fall through to Step 0.',
+      '',
+      '→ On return, resume the interrupted flow — never fall through to Step 0.',
+      '',
+    ].join('\n'));
+    const v = checkQuestionsSetGatesAside([silent]);
+    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5], `each return without the ask is caught, got ${report(v)}`);
+    assert.ok(v.every((x) => /without the ask/.test(x.message)), `the fault is named, got ${report(v)}`);
   });
 });
 
