@@ -532,7 +532,13 @@ moved:
     once.
   - The vectors follow in batches, saved as each lands, so a failure keeps
     what landed. The next start embeds every chunk still waiting.
-  - A missing key is a waiting vector, not a refusal.
+  - A missing key is a waiting vector, not a refusal. Over a store whose key
+    does not resolve, the bulk index still exits non-zero naming the fix, so
+    boot warns at every start until it resolves.
+  - A file the endpoint refuses is embedded text by text, so only the
+    refused chunk waits. A file with waiting chunks is re-chunked at each
+    bulk index, and counts as changed only when its chunk texts differ, so a
+    chunker fix reaches it.
   - The command still exits non-zero, naming the failure, so every caller's
     warning path carries it as it does today.
   - `status` counts the chunks waiting, and a query over a store with any
@@ -609,30 +615,36 @@ A tokenizer change rebuilds the keyword side alone, locally, in seconds.
    unchanged.
 4. **Without a vector** (#1322).
 5. **The hard eval cases** (#1326).
-6. **The zero-results branches.** `contextual-query.md` and
+6. **The zero-results branches** (#1338). `contextual-query.md` and
    `cross-cutting-context.md` read the count line: a note can now precede
    `[0 results]`.
-7. **The keyword side,** one layer per change.
-8. **Tuning:**
-   - the blend's weights and its over-fetch;
-   - the boost's strength against the counter-cases. A boost only reorders
-     a framing's candidate pool, and in keyword-only mode it is inert against
-     raw BM25 scores;
-   - a tail cut that drops results scoring far below the query's best, kept
-     only if the eval shows it cuts noise without losing answers.
+7. **The keyword side** (#1342). All eight combinations were measured:
+   - stemming (Porter2) and stop words (Lucene's 33) stay, the pair lifting
+     keyword primary hit@5 to 0.981 and hybrid recall to 0.778;
+   - searching content alone changed nothing and was dropped;
+   - the store header records a tokenizer version, so a tokenizer change
+     re-derives the keyword side from stored text and never re-embeds.
+8. **Tuning** (#1343). Each open value was measured, and today's values
+   stand:
+   - keyword weight 0.4 and over-fetch 2;
+   - boost +0.1, the only strength that helps the in-unit cases without
+     costing a counter-case. In keyword-only mode a boost and the tier only
+     break near-ties;
+   - scaling keyword-only scores so a boost acts there cost an answer, and
+     scaled, the boost added nothing;
+   - the tail cut's largest safe setting trimmed 0–2% of output, short of
+     the 10% it had to earn.
 
 Docs move in the layer that changes what they describe: the KB section of
 `CLAUDE.md`, the knowledge skill's `SKILL.md` and references, and
 `docs/knowledge-base.md`. A layer that touches skill prose names the prose
 cases it intersects. The stack ships as one release.
 
-### Open
+### Where it ends
 
-The eval settles these inside the stack:
-- the blend's weights and over-fetch;
-- which keyword changes stay;
-- how strongly a boost counts, and whether it acts in keyword-only mode;
-- whether the tail cut stays.
+Every value the stack left open was settled by the eval inside it. Output
+size did not fall: correct BM25 favours long sections, so a hybrid answer
+runs ~46 KB. Step 5's excerpts are the answer to that.
 
 ## Step 3 — local embeddings, measured
 
