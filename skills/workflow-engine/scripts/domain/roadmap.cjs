@@ -83,6 +83,17 @@ function validateSources(sources) {
   }
 }
 
+// Every pointer names a file already on disk: an item never records a
+// session log its session has not opened yet.
+/** @param {string} cwd @param {string[]} sources */
+function requireSourcesOnDisk(cwd, sources) {
+  const missing = [...new Set(sources)].filter((s) => !fs.existsSync(path.join(cwd, '.workflows', s)));
+  if (missing.length === 0) return;
+  const named = missing.map((s) => JSON.stringify(s)).join(', ');
+  const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
+  throw new Error(`${what} ${named} ${verb} not exist under .workflows/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
+}
+
 /** @param {*} summary */
 function validateSummary(summary) {
   if (typeof summary !== 'string' || summary.trim() === '') {
@@ -409,6 +420,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sourc
   validateSummary(summary);
   validateOrigin(origin);
   validateSources(sources);
+  requireSourcesOnDisk(cwd, sources);
 
   const result = transactProject(cwd, (manifest) => {
     const roadmap = ensureRoadmap(manifest);
@@ -458,6 +470,11 @@ function addRoadmapItemsBatch(cwd, entries) {
   const names = entries.map((e) => e.name);
   const dupe = names.find((n, i) => names.indexOf(n) !== i);
   if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
+  try {
+    requireSourcesOnDisk(cwd, entries.flatMap((e) => e.sources ?? []));
+  } catch (err) {
+    throw new Error(`add-batch: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   const result = transactProject(cwd, (manifest) => {
     const roadmap = ensureRoadmap(manifest);
