@@ -112,6 +112,23 @@
       "topic start pay review",
       "git add -A",
       "git add --all"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-implementation-analysis-duplication",
+        "count": 1,
+        "carries": [".claude/skills/workflow-implementation-process/references/finding-floor.md"]
+      },
+      {
+        "agent": "workflow-implementation-analysis-standards",
+        "count": 1,
+        "carries": [".claude/skills/workflow-implementation-process/references/finding-floor.md"]
+      },
+      {
+        "agent": "workflow-implementation-analysis-architecture",
+        "count": 1,
+        "carries": [".claude/skills/workflow-implementation-process/references/finding-floor.md"]
+      }
     ]
   }
 }

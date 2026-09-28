@@ -65,6 +65,12 @@
       "finding_gate_mode auto",
       "knowledge.cjs",
       "workunit create"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-specification-review-input",
+        "carries": [".workflows/pay/discussion/pay.md"]
+      }
     ]
   }
 }
