@@ -117,7 +117,7 @@ Source: .workflows/payments-overhaul/research/identity.md
 - **Content**: the chunk text verbatim. No summarisation, no truncation.
 - **Source line**: the path to the source artifact. Use this with the two-step retrieval pattern below.
 - **Blank line** between chunks.
-- **Empty results**: `[0 results]` — no provenance lines, nothing beneath it. Treat as "no prior context found" — move on.
+- **Empty results**: a `[0 results]` header — no provenance lines, nothing beneath it. Treat as "no prior context found" — move on.
 - **Notes** (when applicable): one line each, above the header — why the query ran keyword-only (see Search modes), and, over a store with chunks awaiting vectors, `[N chunks await vectors — searched by keyword alone; each start retries them]`.
 - **Explanation** (`--explain` only): beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best (`absent` where that search missed the chunk), and their blend (keyword-only: the raw keyword score). A framing whose hits, cut to twice the limit, lack the chunk reads `not in its top 20` at the default limit, whether or not the term matched it. Then `Score:` names the framing whose score the chunk kept and works it through decay, boosts and confidence tier to the final value.
 
@@ -258,4 +258,4 @@ The provider menu offers `openai` (cloud, requires an API key), `openai-compatib
 - `0` — success, `check` reporting any state, or a `query` run keyword-only for want of a vector
 - Non-zero — usage error, a knowledge config that cannot be read or names a provider that cannot be built, file not found, unparseable path, lock contention exceeded, an index refusing a provider the store was not built with, an index or remove that failed (an index also when any chunk's vectors failed, and a bulk index over a store whose provider key does not resolve), or a `query` over a store that cannot be read or whose metadata is missing
 
-`query` with zero results exits `0` and prints `[0 results]`. `check` exits `0` for `ready`, `buildable`, and `not-ready` alike. Both semantics are intentional — skills branch on output, not on the exit code.
+`query` with zero results exits `0` and prints a `[0 results]` header. `check` exits `0` for `ready`, `buildable`, and `not-ready` alike. Both semantics are intentional — skills branch on output, not on the exit code.
