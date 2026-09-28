@@ -2424,5 +2424,50 @@
       "limit": 10
     },
     "relevant": []
+  },
+  {
+    "id": "fumi-near-miss-spell-check",
+    "origin": "near-miss",
+    "need": "Spell checking, autocorrect, smart quotes and text replacements while typing in a note; Fumi never decided the editor's spelling or text-substitution behaviour.",
+    "terms": [
+      "spell checking and autocorrect while typing in a note, underlining misspelled words",
+      "smart quotes and system text replacements applied while typing in the Markdown note editor"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "fumi-near-miss-note-templates",
+    "origin": "near-miss",
+    "need": "Starting a new fumi from a template of pre-written content, such as a checklist or a meeting-notes skeleton; Fumi's presets are geometry alone, and it never decided content templates.",
+    "terms": [
+      "create a new note from a template with prefilled content like a checklist or meeting notes",
+      "user-defined note templates chosen when making a new fumi, kept in a template library in Settings"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "fumi-near-miss-timed-reminders",
+    "origin": "near-miss",
+    "need": "A reminder or due date set on a fumi, so it resurfaces or notifies at a chosen time; Fumi never decided user-scheduled reminders.",
+    "terms": [
+      "set a reminder on a note so it pops up or sends a notification at a chosen date and time",
+      "due date on a fumi and snoozing a note until tomorrow",
+      "recurring reminder notes that reappear on a schedule"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "fumi-near-miss-localisation",
+    "origin": "near-miss",
+    "need": "Translating Fumi's interface, menus and onboarding into other languages; Fumi never decided localisation.",
+    "terms": [
+      "localising the app into other languages, translated menus, settings and onboarding screens",
+      "which languages Fumi ships in and how localized strings are managed"
+    ],
+    "options": {},
+    "relevant": []
   }
 ]

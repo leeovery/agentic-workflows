@@ -3,33 +3,39 @@
   "metrics": {
     "overall": {
       "hit@5": 1,
-      "primary_hit@5": 0.9796,
-      "mrr@10": 0.9694,
-      "recall@10": 0.7853,
+      "primary_hit@5": 0.9815,
+      "mrr@10": 0.963,
+      "recall@10": 0.7593,
       "file_hit@5": 1,
-      "bytes": 47156.8276,
+      "bytes": 45556.6667,
       "negative_results": 9.4444,
-      "negative_bytes": 46689.3333
+      "negative_bytes": 46689.3333,
+      "near_miss_results": 10,
+      "near_miss_bytes": 45071.5
     },
     "portal": {
       "hit@5": 1,
       "primary_hit@5": 1,
-      "mrr@10": 0.975,
-      "recall@10": 0.848,
+      "mrr@10": 0.9565,
+      "recall@10": 0.8044,
       "file_hit@5": 1,
-      "bytes": 44800.0435,
+      "bytes": 43069.6667,
       "negative_results": 10,
-      "negative_bytes": 47902.3333
+      "negative_bytes": 47902.3333,
+      "near_miss_results": 10,
+      "near_miss_bytes": 44868.25
     },
     "tick": {
       "hit@5": 1,
       "primary_hit@5": 1,
       "mrr@10": 1,
-      "recall@10": 0.744,
+      "recall@10": 0.6982,
       "file_hit@5": 1,
-      "bytes": 23648.3333,
+      "bytes": 26527.1111,
       "negative_results": 7.6667,
-      "negative_bytes": 25529.3333
+      "negative_bytes": 25529.3333,
+      "near_miss_results": 10,
+      "near_miss_bytes": 33782
     },
     "fumi": {
       "hit@5": 1,
@@ -37,9 +43,11 @@
       "mrr@10": 0.95,
       "recall@10": 0.7411,
       "file_hit@5": 1,
-      "bytes": 61778.913,
+      "bytes": 61006.3704,
       "negative_results": 10.6667,
-      "negative_bytes": 66636.3333
+      "negative_bytes": 66636.3333,
+      "near_miss_results": 10,
+      "near_miss_bytes": 56564.25
     }
   },
   "cases": {
@@ -63,9 +71,16 @@
     "portal-open-forced-filter-context": {"first":1,"first_primary":1,"primary_found":6,"primary_total":9,"results":10,"bytes":41114},
     "portal-lazy-resume-context": {"first":1,"first_primary":1,"primary_found":6,"primary_total":10,"results":10,"bytes":61531},
     "portal-hooks-json-removal-paths": {"first":1,"first_primary":5,"primary_found":4,"primary_total":4,"results":10,"bytes":63577},
+    "portal-agent-state-host-plane-wrong-boost": {"first":1,"first_primary":1,"primary_found":10,"primary_total":11,"results":10,"bytes":35713},
+    "portal-spawned-window-dead-end-wrong-boost": {"first":2,"first_primary":2,"primary_found":4,"primary_total":10,"results":10,"bytes":25289},
+    "portal-theming-system-context-wrong-boost": {"first":1,"first_primary":1,"primary_found":3,"primary_total":13,"results":10,"bytes":21214},
     "portal-neg-fumi-preset-binding": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":35430},
     "portal-neg-fumi-icloud-first-run": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":52112},
     "portal-neg-tick-same-second-sequence": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":56165},
+    "portal-near-miss-mouse-picker": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":57011},
+    "portal-near-miss-clipboard-copy": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":42797},
+    "portal-near-miss-idle-session-expiry": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":37822},
+    "portal-near-miss-lock-session": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":41843},
     "tick-free-text-toon-context": {"first":1,"first_primary":1,"primary_found":6,"primary_total":11,"results":10,"bytes":37845},
     "tick-same-second-ordering-context": {"first":1,"first_primary":1,"primary_found":5,"primary_total":9,"results":10,"bytes":40647},
     "tick-random-ids-locking": {"first":1,"first_primary":2,"primary_found":3,"primary_total":7,"results":10,"bytes":19507},
@@ -75,9 +90,15 @@
     "tick-cache-schema-version": {"first":1,"first_primary":1,"primary_found":1,"primary_total":1,"results":5,"bytes":7772},
     "tick-partial-id-matching": {"first":1,"first_primary":1,"primary_found":2,"primary_total":2,"results":5,"bytes":10032},
     "tick-install-script-macos": {"first":1,"first_primary":1,"primary_found":1,"primary_total":1,"results":3,"bytes":2655},
+    "tick-same-second-ordering-context-wrong-boost": {"first":1,"first_primary":1,"primary_found":5,"primary_total":9,"results":10,"bytes":39073},
+    "tick-random-ids-locking-wrong-boost": {"first":1,"first_primary":2,"primary_found":3,"primary_total":7,"results":10,"bytes":19507},
     "tick-neg-fumi-glass-controls": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":14766},
     "tick-neg-fumi-launch-at-login": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":55084},
     "tick-neg-portal-palette-contrast": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":3,"bytes":6738},
+    "tick-near-miss-due-dates": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":30293},
+    "tick-near-miss-text-search": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":41120},
+    "tick-near-miss-effort-estimates": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":27158},
+    "tick-near-miss-secrets-in-tasks": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":36557},
     "fumi-note-data-model": {"first":1,"first_primary":4,"primary_found":5,"primary_total":15,"results":10,"bytes":54605},
     "fumi-chip-label-original-filename": {"first":1,"first_primary":2,"primary_found":5,"primary_total":5,"results":10,"bytes":65901},
     "fumi-bundle-store-gc-read-model": {"first":1,"first_primary":4,"primary_found":6,"primary_total":12,"results":10,"bytes":54011},
@@ -100,6 +121,10 @@
     "fumi-management-window-organiser": {"first":1,"first_primary":2,"primary_found":8,"primary_total":9,"results":10,"bytes":40980},
     "fumi-neg-portal-go-file-organisation": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":74314},
     "fumi-neg-portal-tmux-resume-hooks": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":12,"bytes":63222},
-    "fumi-neg-tick-same-second-ordering": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":62373}
+    "fumi-neg-tick-same-second-ordering": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":62373},
+    "fumi-near-miss-spell-check": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":26142},
+    "fumi-near-miss-note-templates": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":56297},
+    "fumi-near-miss-timed-reminders": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":70080},
+    "fumi-near-miss-localisation": {"first":null,"first_primary":null,"primary_found":0,"primary_total":0,"results":10,"bytes":73738}
   }
 }

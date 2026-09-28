@@ -40,7 +40,9 @@ const KNOWLEDGE_SRC = path.join(REPO, 'src', 'knowledge');
 const PROJECTS = ['portal', 'tick', 'fumi'];
 
 const CASE_KEYS = new Set(['id', 'project', 'origin', 'asked', 'from', 'need', 'terms', 'options', 'relevant']);
-const ORIGINS = ['harvested', 'written', 'negative'];
+const ORIGINS = ['harvested', 'written', 'negative', 'near-miss'];
+/** The origins whose right answer in the store is nothing. */
+const NEGATIVE_ORIGINS = ['negative', 'near-miss'];
 const GRADES = ['primary', 'supporting'];
 /** Each hard-filter flag, and the chunk field it filters on. */
 const FILTERS = { 'work-unit': 'work_unit', 'work-type': 'work_type', phase: 'phase', topic: 'topic' };
@@ -68,9 +70,9 @@ const execFileAsync = promisify(execFile);
  * @typedef {object} EvalCase
  * @property {string} id
  * @property {string} project  the case file it is in
- * @property {'harvested'|'written'|'negative'} origin
+ * @property {'harvested'|'written'|'negative'|'near-miss'} origin
  * @property {string} [asked]  the day the query was asked, YYYY-MM-DD
- * @property {string} [from]  a negative's source — the project its query was asked in
+ * @property {string} [from]  an off-topic negative's source — the project its query was asked in
  * @property {string} need
  * @property {string[]} terms
  * @property {Record<string, any>} [options]  the CLI's flag names: boosts, filters, limit
@@ -274,7 +276,7 @@ function optionProblems(c, fixture) {
     ...Object.keys(options).filter((key) => !OPTION_KEYS.has(key)).map((key) => `unknown option "${key}"`),
     ...filters.filter((flag) => !isSet(options[flag])).map((flag) => `${flag} must be a non-empty string`),
     ...('limit' in options && !(Number.isInteger(options.limit) && options.limit > 0) ? ['limit must be a positive integer'] : []),
-    ...(c.origin === 'negative' && filters.length > 0 ? ['a negative case carries no hard filter'] : []),
+    ...(NEGATIVE_ORIGINS.includes(c.origin) && filters.length > 0 ? ['a negative case carries no hard filter'] : []),
   ];
   const boosts = options.boosts || [];
   if (!Array.isArray(boosts)) return [...problems, 'boosts must be a list'];
@@ -317,7 +319,7 @@ function occurrences(text, anchor) {
  */
 function judgmentProblems(c, fixture) {
   if (!Array.isArray(c.relevant)) return ['relevant must be a list'];
-  if (c.origin === 'negative') return c.relevant.length === 0 ? [] : ['a negative case judges nothing relevant'];
+  if (NEGATIVE_ORIGINS.includes(c.origin)) return c.relevant.length === 0 ? [] : ['a negative case judges nothing relevant'];
   const framings = Array.isArray(c.terms) ? c.terms.length : 0;
   const judged = new Set();
   const problems = c.relevant.flatMap((j, i) => {
@@ -677,7 +679,7 @@ function measureCase({ evalCase, results, bytes }) {
   return {
     id: evalCase.id,
     project: evalCase.project,
-    negative: evalCase.origin === 'negative',
+    origin: evalCase.origin,
     first: rankOf(results, (r) => judged.some((j) => matches(r, j))),
     first_primary: rankOf(results, (r) => primaries.some((j) => matches(r, j))),
     primary_found: primaries.filter((j) => topTen.some((r) => matches(r, j))).length,
@@ -706,8 +708,9 @@ function within(rank, depth) {
 
 /** @param {Measured[]} measured */
 function metricsOf(measured) {
-  const positive = measured.filter((m) => !m.negative);
-  const negative = measured.filter((m) => m.negative);
+  const positive = measured.filter((m) => !NEGATIVE_ORIGINS.includes(m.origin));
+  const negative = measured.filter((m) => m.origin === 'negative');
+  const nearMiss = measured.filter((m) => m.origin === 'near-miss');
   return {
     'hit@5': mean(positive, (m) => Number(within(m.first, 5))),
     'primary_hit@5': mean(positive, (m) => Number(within(m.first_primary, 5))),
@@ -717,6 +720,8 @@ function metricsOf(measured) {
     bytes: mean(measured, (m) => m.bytes),
     negative_results: mean(negative, (m) => m.results),
     negative_bytes: mean(negative, (m) => m.bytes),
+    near_miss_results: mean(nearMiss, (m) => m.results),
+    near_miss_bytes: mean(nearMiss, (m) => m.bytes),
   };
 }
 

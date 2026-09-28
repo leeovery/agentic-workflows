@@ -891,6 +891,274 @@
     ]
   },
   {
+    "id": "tick-same-second-ordering-context-wrong-boost",
+    "origin": "written",
+    "need": "Why tasks created in one second come back in random ID order, how creation timestamps are stored (their precision) and used for ordering, and the list/ready/blocked ORDER BY clauses and SQLite cache schema behind it. Boosted toward free-text-round-trip, which holds none of it: tests that a boost toward a work unit without the answer does not bury the answer.",
+    "terms": [
+      "tasks created in the same second sort by random task ID instead of creation order",
+      "creation timestamp precision and ordering of task lists",
+      "ORDER BY clauses on list ready blocked queries and the SQLite cache schema"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "free-text-round-trip"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/seeds/2026-09-21-same-second-tasks-sort-by-id.md",
+        "anchor": "All five had been created inside the same wall-clock second, so the creation-date sort tied on every row",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "Two independent defects compound. Neither alone produces the reported symptom",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**Record an explicit creation sequence on every task, and sort on it beneath priority and creation date.**",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "Every task carries an explicit creation sequence — a monotonic number assigned when the task is created",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "All timestamps (`created`, `updated`, `closed`) use ISO 8601 format in UTC:",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "Creation timestamps are truncated to whole-second granularity before storage",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**C — Sub-second creation timestamps, with or without a tiebreak (agreed, then reversed). Ruled out by measurement.**",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "A naive precision increase introduces a *new* ordering defect on mixed-precision data",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "**The sort has no deterministic final term.** Both list-family clauses end at `t.created ASC`",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "ORDER BY t.priority ASC, t.created ASC;",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ready-includes-in-progress/specification/ready-includes-in-progress/specification.md",
+        "anchor": "The `ORDER BY` becomes conditional on the ready filter.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "The list-family `ORDER BY` terminates at `t.created ASC` with no deterministic tiebreak",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/data-schema-design.md",
+        "anchor": "Indexes on `status`, `priority`, `parent` cover common filters",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "`tasks` table mirrors JSONL fields (minus `blocked_by` which is normalized)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/ready-includes-in-progress/discussion/ready-includes-in-progress.md",
+        "anchor": "**Option 2, `ready`-only.** In the `ready` query, `in_progress` floats to the top as a band",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
+        "anchor": "Both clauses in `buildListQuery` gain two terms, ending on the sequence and then the task ID:",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/cache-schema-versioning/specification/cache-schema-versioning/specification.md",
+        "anchor": "Add a hard-coded schema version constant. Store it in the existing `metadata` table.",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "every row ties on both, so the incoming primary-key order survives to the output",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "The creation-date sort ties on every row in the batch and falls through to the secondary key.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "one distinct millisecond for 100 in-process stamps means imports get nothing",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "then ruled out by measurement (100 in-process stamps share one millisecond; already-stored tasks never gain precision)",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "**Timestamp precision is one knob for storage and display.**",
+        "grade": "supporting",
+        "framing": 1
+      }
+    ]
+  },
+  {
+    "id": "tick-random-ids-locking-wrong-boost",
+    "origin": "written",
+    "need": "Why tick task IDs are random bytes rather than sequential numbers, how ID collisions are handled at creation, and how tick protects the task file when two processes write at once (file locking). Boosted toward ready-includes-in-progress, which holds none of it: tests that a boost toward a work unit without the answer does not bury the answer.",
+    "terms": [
+      "why task IDs are random bytes rather than sequential or incrementing",
+      "ID generation design decision collision concurrent creation",
+      "concurrent access file locking two processes writing tasks at once"
+    ],
+    "options": {
+      "boosts": [
+        {
+          "field": "work-unit",
+          "value": "ready-includes-in-progress"
+        }
+      ]
+    },
+    "relevant": [
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "No merge conflicts - IDs are globally unique without coordination",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "rejecting sequential IDs (`TICK-001`) to avoid merge conflicts",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "Timestamp-based rejected - leaks creation time, adds ordering semantics we don't want.",
+        "grade": "primary",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "Use `crypto/rand` from Go stdlib (3 random bytes → 6 hex characters)",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "two branches each numbering from the same maximum merge into duplicates",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/research/exploration.md",
+        "anchor": "**Merge conflicts** → Minimized by hash-based IDs. When they occur, Git handles it.",
+        "grade": "supporting",
+        "framing": 0
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "**Retry up to 5 times, silent to caller**. On exhaustion, error with actionable message",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/id-format-implementation.md",
+        "anchor": "**6 hex characters**. ~16.7M combinations, negligible collision risk at project scale.",
+        "grade": "primary",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "On collision: retry silently up to 5 times",
+        "grade": "supporting",
+        "framing": 1
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "**Atomic rename + file locking.**",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "Corruption issues stem from concurrent access without file locking",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "**Write operations**: Exclusive lock (blocks other readers and writers)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "**Read operations**: Shared lock (allows other readers, blocks writers)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/specification/tick-core/specification.md",
+        "anchor": "Error: Could not acquire lock on .tick/lock - another process may be using tick",
+        "grade": "primary",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md",
+        "anchor": "writes are serialised by the exclusive file lock (`store.go` `acquireExclusive`)",
+        "grade": "supporting",
+        "framing": 2
+      },
+      {
+        "source": ".workflows/v1/discussion/freshness-dual-write.md",
+        "anchor": "**File locking prevents concurrent access bugs** - Learned from Taskwarrior's pain.",
+        "grade": "supporting",
+        "framing": 2
+      }
+    ]
+  },
+  {
     "id": "tick-neg-fumi-glass-controls",
     "origin": "negative",
     "from": "fumi",
@@ -925,6 +1193,50 @@
     "options": {
       "limit": 3
     },
+    "relevant": []
+  },
+  {
+    "id": "tick-near-miss-due-dates",
+    "origin": "near-miss",
+    "need": "Due dates, deadlines and recurring tasks: whether a task can carry a due date, how an overdue task is flagged, and whether a task repeats on a schedule; tick has no due dates, deadlines or recurring tasks.",
+    "terms": [
+      "due date or deadline field on a task, and flagging tasks that are overdue",
+      "recurring tasks that repeat on a schedule, recreated automatically when closed"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "tick-near-miss-text-search",
+    "origin": "near-miss",
+    "need": "Finding tasks by the words in their title, description or notes — a search command and how its matches rank; tick never decided a text search over task content.",
+    "terms": [
+      "full-text search over task titles, descriptions and notes",
+      "tick search command matching a keyword or phrase and how matches are ranked"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "tick-near-miss-effort-estimates",
+    "origin": "near-miss",
+    "need": "An effort estimate, story points or size recorded on a task; tick has no estimate field and never discussed sizing tasks.",
+    "terms": [
+      "effort estimate or story points recorded on a task",
+      "t-shirt size or complexity rating on a task, small medium or large"
+    ],
+    "options": {},
+    "relevant": []
+  },
+  {
+    "id": "tick-near-miss-secrets-in-tasks",
+    "origin": "near-miss",
+    "need": "Keeping credentials and other secrets out of task descriptions and notes before tasks.jsonl is committed, by redaction or encryption; tick never decided how sensitive task content is handled.",
+    "terms": [
+      "secrets or API keys pasted into a task description ending up committed to git in tasks.jsonl",
+      "encrypting or redacting sensitive task content before it is stored"
+    ],
+    "options": {},
     "relevant": []
   }
 ]
