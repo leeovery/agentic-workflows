@@ -98,7 +98,7 @@ You MUST NOT choose on the user's behalf.
 
 Dispatch the `workflow-specification-review-claims` agent via the Task tool:
 
-- **Agent file**: `../../../agents/workflow-specification-review-claims.md`
+- **Agent file**: `.claude/agents/workflow-specification-review-claims.md`
 - **Work unit**: the current work unit
 - **Specification path**: the specification file path
 - **Source material paths**: resolve source names to file paths. Read source names and work type from the manifest:
@@ -121,7 +121,7 @@ Dispatch the `workflow-specification-review-claims` agent via the Task tool:
   Each entry's `path` is relative to `.workflows/{work_unit}/`. Resolve them and pass them all; empty means the unit holds none.
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
-- **Review tracking format path**: `review-tracking-format.md` (in this references directory)
+- **Review tracking format path**: `.claude/skills/workflow-specification-process/references/review-tracking-format.md`
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The claims review agent has been dispatched for review cycle {N}.`
 
@@ -145,13 +145,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
-- **Agent file**: `../../../agents/workflow-specification-review-input.md`
+- **Agent file**: `.claude/agents/workflow-specification-review-input.md`
 - **Work unit**: the current work unit
 - **Specification path**: the specification file path
 - **Source material paths**: the paths resolved in **C** — re-resolve via the ladder there when they are no longer in context
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
-- **Review tracking format path**: `review-tracking-format.md` (in this references directory)
+- **Review tracking format path**: `.claude/skills/workflow-specification-process/references/review-tracking-format.md`
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The input review agent has been dispatched for review cycle {N}.`
 
@@ -177,12 +177,12 @@ List the earlier cycles' gap-analysis tracking files beside the specification �
 
 Dispatch the `workflow-specification-review-gap-analysis` agent via the Task tool:
 
-- **Agent file**: `../../../agents/workflow-specification-review-gap-analysis.md`
+- **Agent file**: `.claude/agents/workflow-specification-review-gap-analysis.md`
 - **Work unit**: the current work unit
 - **Specification path**: the specification file path
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
-- **Review tracking format path**: `review-tracking-format.md` (in this references directory)
+- **Review tracking format path**: `.claude/skills/workflow-specification-process/references/review-tracking-format.md`
 - **Earlier cycles' gap-analysis tracking files**: the paths listed above — the settled directions a finding may not reverse. None at cycle 1.
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The gap analysis agent has been dispatched for review cycle {N}.`

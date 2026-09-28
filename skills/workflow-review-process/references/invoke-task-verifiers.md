@@ -72,7 +72,7 @@ mkdir -p .workflows/{work_unit}/review/{topic}
 
 Dispatch verifiers in **batches of 5** via the Task tool.
 
-- **Agent path**: `../../../agents/workflow-review-task-verifier.md`
+- **Agent path**: `.claude/agents/workflow-review-task-verifier.md`
 
 Before the first batch, read the recorded coverage once and hold it as a local set — `push` appends unconditionally, so a crash-resume re-run must never double-record (empty stdout means none):
 

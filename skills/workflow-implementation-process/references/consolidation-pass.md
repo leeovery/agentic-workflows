@@ -277,16 +277,16 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 
 Invoke the task-writer agent.
 
-**Agent path**: `../../../agents/workflow-implementation-task-writer.md`
+**Agent path**: `.claude/agents/workflow-implementation-task-writer.md`
 
 Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
-3. **Staging file path** — the `consolidation-tasks-p{N}.md` file: proposals folded at **B**, bodies authored above
+3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`: proposals folded at **B**, bodies authored above
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+5. **Plan format reading adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/reading.md`
+6. **Plan format authoring adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/authoring.md`
 7. **Phase placement** — `per-task` (every staged task carries `placement: phase {N}`), declared as a **consolidation-boundary placement**: phase {N}'s completion is deferred by the caller — the writer treats the phase as open
 8. **Approved task numbers** — the task numbers whose `staging.p{N}` rows are `approved`
 

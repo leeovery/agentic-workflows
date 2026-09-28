@@ -63,7 +63,7 @@ Every agent receives the same change-set and the same project conventions.
 
 Dispatch one agent per missing section, all in parallel via the Task tool.
 
-- **Agent path**: `../../../agents/workflow-review-change-set-verifier.md`
+- **Agent path**: `.claude/agents/workflow-review-change-set-verifier.md`
 
 Each agent receives:
 

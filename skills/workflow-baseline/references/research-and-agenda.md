@@ -16,7 +16,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 
 Dispatch **one agent per pending area, all in parallel** via the Task tool.
 
-- **Agent path**: `../../../agents/workflow-baseline-researcher.md`
+- **Agent path**: `.claude/agents/workflow-baseline-researcher.md`
 
 Each agent receives:
 

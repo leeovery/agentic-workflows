@@ -41,14 +41,14 @@ Dispatch all three agents in parallel — they are independent and none writes t
 
 Split the findings across assessor and guards invocations in batches of roughly 100, each batch its own payload file and its own output path. **Relationships is never split** — it exists to see the whole set at once, and a partial view cannot find a collision.
 
-- **Agent path**: `../../../agents/workflow-review-finding-assessor.md` — one per batch
-  1. Findings path (its batch) · 2. Code standard path: `.claude/skills/workflow-implementation-process/references/code-quality.md` · 3. Output path: `…/cache/assess-{n}.jsonl` · 4. Work unit and topic
+- **Agent path**: `.claude/agents/workflow-review-finding-assessor.md` — one per batch
+  1. Findings path (its batch) · 2. Code standard path: `.claude/skills/workflow-implementation-process/references/code-quality.md` · 3. Output path: `.workflows/.cache/{work_unit}/review/{topic}/assess-{n}.jsonl` · 4. Work unit and topic
 
-- **Agent path**: `../../../agents/workflow-review-finding-guards.md` — one per batch
-  1. Findings path (its batch) · 2. Output path: `…/cache/guards-{n}.jsonl` · 3. Work unit and topic
+- **Agent path**: `.claude/agents/workflow-review-finding-guards.md` — one per batch
+  1. Findings path (its batch) · 2. Output path: `.workflows/.cache/{work_unit}/review/{topic}/guards-{n}.jsonl` · 3. Work unit and topic
 
-- **Agent path**: `../../../agents/workflow-review-finding-relationships.md` — exactly one
-  1. Index path: `findings-index.txt` · 2. Output path: `…/cache/relationships.json` · 3. Work unit and topic
+- **Agent path**: `.claude/agents/workflow-review-finding-relationships.md` — exactly one
+  1. Index path: `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` · 2. Output path: `.workflows/.cache/{work_unit}/review/{topic}/relationships.json` · 3. Work unit and topic
 
 Keep the guard inventory each guards agent returns in its status — the synthesis stage receives it, and the do-now apply works against it.
 
@@ -66,10 +66,10 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 
 Dispatch the synthesis agent once.
 
-- **Agent path**: `../../../agents/workflow-review-finding-synthesis.md`
+- **Agent path**: `.claude/agents/workflow-review-finding-synthesis.md`
 
-1. **Findings path** — `findings.txt`
-2. **Assessment paths** — every `assess-*.jsonl`, every `guards-*.jsonl`, and `relationships.json`
+1. **Findings path** — `.workflows/.cache/{work_unit}/review/{topic}/findings.txt`
+2. **Assessment paths** — every `assess-*.jsonl`, every `guards-*.jsonl`, and `relationships.json` in `.workflows/.cache/{work_unit}/review/{topic}/`
 3. **Guard inventory** — the inventories returned in **B**
 4. **Output path** — `.workflows/.cache/{work_unit}/review/{topic}/actions.json`
 5. **Work unit** and **topic**

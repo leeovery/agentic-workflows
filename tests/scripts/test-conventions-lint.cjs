@@ -1024,7 +1024,7 @@ const CARRIED_PAST_AGENTS = new Set([
   'workflow-research-deep-dive',
 ]);
 const DISPATCH_NAMES = [
-  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `[./]*agents\/(workflow-[a-z-]+)\.md`/,
+  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(workflow-[a-z-]+)\.md`/,
   /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(workflow-[a-z-]+)`/,
   /\b((?:ad-hoc )?sub-agents?) \(Agent tool\)/,
 ];
@@ -1094,6 +1094,48 @@ function checkDispatchLines(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 26 — a path a dispatch hands an agent is written as installed, from
+// the project root (CONVENTIONS' Dispatch Lines): `.claude/skills/…`,
+// `.claude/agents/…`, or a work artifact under `.workflows/…` — never
+// relative to the instruction file, which the session composes wrong. In a
+// file holding a dispatch (check 25's units), two shapes are decidable: an
+// input line — a bold label naming a path or a file (`… path`, `… file`, or
+// a `.md` file name) whose value opens on a backticked path or a markdown
+// link — and a backticked agent file anywhere outside a fence. A value that
+// is a bare placeholder (`{…}`) is a path the flow resolved, and passes.
+// ---------------------------------------------------------------------------
+
+const PATH_INPUT = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([^*]+)\*\*\s*(?::|—)\s*(?:`([^`]+)`|\*{0,2}\[[^\]]*\]\(([^)]+)\))/;
+const PATH_LABEL = /(?:\bpath|\bfile|\.md)$/i;
+const AGENT_FILE = /`(?!\.claude\/)([^`\s]*agents\/[a-z0-9-]+\.md)`/g;
+const INSTALLED = /^(?:\.claude\/|\.workflows\/)|^\{[^{}]+\}$/;
+const INSTALLED_FORMS = '`.claude/skills/…`, `.claude/agents/…`, or `.workflows/…`';
+
+function checkInstalledDispatchPaths(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    if (!dispatchUnits(lines, inFence).length) continue;
+    lines.forEach((line, i) => {
+      if (inFence[i] || FENCE.test(line)) return;
+      const input = line.match(PATH_INPUT);
+      if (input && PATH_LABEL.test(input[1].trim())) {
+        const value = input[2] !== undefined ? input[2] : input[3];
+        if (!INSTALLED.test(value)) {
+          out.push({ file, line: i + 1, message: `**${input[1]}** names \`${value}\` — write it as installed, from the project root (${INSTALLED_FORMS})` });
+        }
+        return;
+      }
+      for (const m of line.matchAll(AGENT_FILE)) {
+        out.push({ file, line: i + 1, message: `agent file \`${m[1]}\` — write it as installed, \`.claude/agents/…\`` });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1120,6 +1162,7 @@ const CHECKS = [
   ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
   ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
   ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
+  ['26: a path a dispatch hands an agent is written as installed', checkInstalledDispatchPaths],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1575,7 +1618,7 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
     const good = write(dir, 'skills/y/SKILL.md', step('Load **[interactive.md](../x/references/interactive.md)** and follow its instructions as written.\n'));
     assert.strictEqual(checkInertLoadChrome([good]).length, 0, 'interactive reference keeps its marker');
 
-    write(dir, 'skills/x/references/dispatching.md', '# Dispatching\n\n- **Agent path**: `../../../agents/some-agent.md`\n');
+    write(dir, 'skills/x/references/dispatching.md', '# Dispatching\n\n- **Agent path**: `.claude/agents/some-agent.md`\n');
     const dispatches = write(dir, 'skills/v/SKILL.md', step('Load **[dispatching.md](../x/references/dispatching.md)** and follow its instructions as written.\n'));
     assert.strictEqual(checkInertLoadChrome([dispatches]).length, 0, 'a step dispatching sub-agents keeps its marker — the fan-out is the wait');
 
@@ -2034,7 +2077,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-worker.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
@@ -2042,23 +2085,23 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '### Agent 1',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-left.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-left.md`',
       '',
       '### Agent 2',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-right.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-right.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The left and right agents have been dispatched for review cycle {N}.`',
       '',
       '## C. Check in the Foreground',
       '',
-      '**Agent path**: `../../../agents/workflow-x-checker.md`',
+      '**Agent path**: `.claude/agents/workflow-x-checker.md`',
       '',
       'Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).',
       '',
       '## D. Dive',
       '',
-      '**Agent path**: `../../../agents/workflow-research-deep-dive.md`',
+      '**Agent path**: `.claude/agents/workflow-research-deep-dive.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
       '',
@@ -2105,31 +2148,31 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## D. Off Shape',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-d.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-d.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `Dispatched the d agent.`',
       '',
       '## E. Names the Topic',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-e.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-e.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The e agent has been dispatched for {topic}.`',
       '',
       '## F. Names the Internal Id',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-f.md`',
+      '- **Agent path**: `.claude/agents/workflow-x-f.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The f agents have been dispatched for {internal_id}.`',
       '',
       '## G. Foreground With a Sentence',
       '',
-      '**Agent path**: `../../../agents/workflow-x-g.md`',
+      '**Agent path**: `.claude/agents/workflow-x-g.md`',
       '',
       'Dispatch **one agent** (pass `run_in_background: false`) — the dispatch ends the turn on exactly `The g agent has been dispatched for the record.`',
       '',
       '## H. Carried Past With a Sentence',
       '',
-      '**Agent path**: `../../../agents/workflow-discussion-review.md`',
+      '**Agent path**: `.claude/agents/workflow-discussion-review.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
       '',
@@ -2150,6 +2193,75 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
     assert.match(messages[6], /foreground dispatch .* carries no closing sentence/);
     assert.match(messages[7], /carries on past carries no closing sentence/);
     assert.match(messages[8], /^ad-hoc sub-agents: a dispatch names its mode/);
+  });
+});
+
+test('check 26 (installed dispatch paths) — catches an agent file or a labelled input path written relative to the instruction file, a bare repo path, or a markdown link; permits the installed forms, a work artifact, a bare placeholder, a value that opens on prose, the session\'s own load, fenced content, and a file holding no dispatch', () => {
+  withTemp((dir) => {
+    const clean = write(dir, 'skills/x/references/clean.md', [
+      '# Clean',
+      '',
+      'This step invokes the `workflow-x-worker` agent (`.claude/agents/workflow-x-worker.md`).',
+      '',
+      '## A. Dispatch the Worker',
+      '',
+      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
+      '',
+      '1. **Review criteria path**: `.claude/skills/workflow-x/references/criteria.md`',
+      '2. **read-specification.md**: `.claude/skills/workflow-x/references/read-specification.md`',
+      '3. **Format reading.md path**: `.claude/skills/workflow-x/references/output-formats/{format}/reading.md` — `format` is in session context',
+      '4. **Output path** — `.workflows/{work_unit}/x/{topic}/out.md`',
+      '5. **Output file path** — the `file` from the dispatch response',
+      '6. **Resolved path**: `{resolved_path}`',
+      '7. **Work type**: `work_type` from session context',
+      '',
+      'Load **[criteria.md](criteria.md)** and follow its instructions as written.',
+      '',
+      '```',
+      '- **Agent path**: `../../../agents/workflow-x-fenced.md`',
+      '```',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
+      '',
+    ].join('\n'));
+    const agentDefinition = write(dir, 'agents/workflow-x-worker.md', [
+      '# Worker',
+      '',
+      '## Your Input',
+      '',
+      '1. **Review criteria path** — `criteria.md` with the review criteria',
+      '',
+    ].join('\n'));
+    const ok = checkInstalledDispatchPaths([clean, agentDefinition]);
+    assert.strictEqual(ok.length, 0, `installed paths, work artifacts, placeholders, prose values and a file holding no dispatch are clean, got ${report(ok)}`);
+
+    const broken = write(dir, 'skills/x/references/broken.md', [
+      '# Broken',
+      '',
+      'This step invokes the `workflow-x-worker` agent (`../../../agents/workflow-x-worker.md`).',
+      '',
+      '## A. Dispatch the Worker',
+      '',
+      '- **Agent path**: `../../../agents/workflow-x-worker.md`',
+      '- **Agent file**: `agents/workflow-x-worker.md`',
+      '',
+      '1. **Review tracking format path**: `review-tracking-format.md` (in this references directory)',
+      '2. **task-design.md**: `task-design.md`',
+      '3. **Format reading.md path**: **[output-formats/{format}/reading.md](output-formats/{format}/reading.md)** — `format` is in session context',
+      '4. **Plan format reading adapter path** — `../../workflow-y/references/output-formats/{format}/reading.md`',
+      '5. **Findings path** — `findings.txt`',
+      '6. **Criteria path**: `skills/workflow-x/references/criteria.md`',
+      '',
+      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
+      '',
+    ].join('\n'));
+    const v = checkInstalledDispatchPaths([broken]);
+    assert.deepStrictEqual(v.map((x) => x.line), [3, 7, 8, 10, 11, 12, 13, 14, 15], `each relative path is caught once, at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
+    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, from the project root/);
+    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/workflow-x-worker\.md`/);
+    assert.match(v[5].message, /names `output-formats\/\{format\}\/reading\.md`/);
+    assert.match(v[8].message, /names `skills\/workflow-x\/references\/criteria\.md`/);
   });
 });
 

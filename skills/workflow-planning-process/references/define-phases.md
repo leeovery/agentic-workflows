@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `workflow-planning-phase-designer` agent (`../../../agents/workflow-planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
+This step uses the `workflow-planning-phase-designer` agent (`.claude/agents/workflow-planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
 
 ---
 
@@ -31,12 +31,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Invoke `workflow-planning-phase-designer` with these file paths:
 
-1. **read-specification.md**: `read-specification.md`
+1. **read-specification.md**: `.claude/skills/workflow-planning-process/references/read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: cross-cutting spec paths if any
-4. **phase-design.md**: `phase-design.md`
-5. **Context guidance**: `phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
-6. **task-design.md**: `task-design.md` *(for granularity awareness only — helps the agent judge whether a phase is too thin or too thick. The agent must NOT produce task tables or task lists.)*
+4. **phase-design.md**: `.claude/skills/workflow-planning-process/references/phase-design.md`
+5. **Context guidance**: `.claude/skills/workflow-planning-process/references/phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
+6. **task-design.md**: `.claude/skills/workflow-planning-process/references/task-design.md` *(for granularity awareness only — helps the agent judge whether a phase is too thin or too thick. The agent must NOT produce task tables or task lists.)*
 
 The agent returns phases only — goals, ordering rationale, and acceptance criteria. **Task lists are designed separately in a later step; do not request or include them.**
 

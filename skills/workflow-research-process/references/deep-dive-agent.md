@@ -100,7 +100,7 @@ Mark the thread:
 node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} digging
 ```
 
-**Agent path**: `../../../agents/workflow-research-deep-dive.md`
+**Agent path**: `.claude/agents/workflow-research-deep-dive.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
 

@@ -66,7 +66,7 @@ Record the pair in one dispatch — the engine allocates a shared set number and
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens-a:(kebabcase)} --label {lens-b:(kebabcase)}
 ```
 
-**Agent path**: `../../../agents/workflow-discussion-perspective.md`
+**Agent path**: `.claude/agents/workflow-discussion-perspective.md`
 
 Dispatch **all perspective agents in parallel** via the Task tool with `run_in_background: true`.
 
@@ -119,7 +119,7 @@ Read the topic's dismissed grounds — the user's standing rulings on what not t
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
 ```
 
-**Agent path**: `../../../agents/workflow-discussion-synthesis.md`
+**Agent path**: `.claude/agents/workflow-discussion-synthesis.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
 

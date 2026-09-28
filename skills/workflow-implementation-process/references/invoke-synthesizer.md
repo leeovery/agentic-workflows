@@ -10,7 +10,7 @@ This step invokes the synthesis agent to read analysis findings, deduplicate, an
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/workflow-implementation-analysis-synthesizer.md`
+**Agent path**: `.claude/agents/workflow-implementation-analysis-synthesizer.md`
 
 Read the implementation and review items' `staging` — every earlier walk's approval rows; each prints empty when absent:
 

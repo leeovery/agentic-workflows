@@ -10,7 +10,7 @@ This step invokes the task author agent to expand the approved proposals into fu
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/workflow-implementation-task-author.md`
+**Agent path**: `.claude/agents/workflow-implementation-task-author.md`
 
 Pass via the orchestrator's prompt:
 
@@ -20,7 +20,7 @@ Pass via the orchestrator's prompt:
 4. **Approved task numbers** — the task numbers whose staging rows are `approved`
 5. **Findings file path(s)** — the findings the proposals were judged from
 6. **Specification path** — `.workflows/{work_unit}/specification/{topic}/specification.md` (if the unit has one)
-7. **task-design.md path** — `../../workflow-planning-process/references/task-design.md`
+7. **task-design.md path** — `.claude/skills/workflow-planning-process/references/task-design.md`
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for the approved proposals.`
 

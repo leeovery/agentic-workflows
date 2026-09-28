@@ -46,7 +46,7 @@ A batch is one or more whole sets. Bundle small sets together — many single-fi
 
 Dispatch appliers **one batch at a time, in sequence**. Never in parallel: concurrent appliers see each other's half-finished edits, and a build check taken mid-flight proves nothing about the tree.
 
-- **Agent path**: `../../../agents/workflow-review-fix-applier.md`
+- **Agent path**: `.claude/agents/workflow-review-fix-applier.md`
 
 Each applier receives:
 
@@ -68,7 +68,7 @@ Record each applier's status — a skip or a revert is a result, carried forward
 
 The corrections were each made alone; nobody has yet seen them together. Dispatch the verifier over the whole uncommitted body of work.
 
-- **Agent path**: `../../../agents/workflow-review-fix-verifier.md`
+- **Agent path**: `.claude/agents/workflow-review-fix-verifier.md`
 
 It receives the action list and the guard inventory, reads the complete diff itself, repairs damage, normalises the artefacts of piecemeal editing, and runs the project's suite. It never commits; anything it cannot repair it reverts and reports, and a reverted action returns to the record as still owed.
 
