@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------------
 
 const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine.cjs');
+const { ENGINE_COMMAND } = require('../../call.cjs');
 
 class OpenAICompatibleProvider {
   /**
@@ -43,7 +44,7 @@ class OpenAICompatibleProvider {
       sleep: options.sleep,
       errorContext: {
         label: 'Embeddings endpoint',
-        authHint: 'The server requires an API key, or the provided key was rejected. Re-run `knowledge setup` to set one.',
+        authHint: `The server requires an API key, or the provided key was rejected. Re-run \`${ENGINE_COMMAND} knowledge setup\` to set one.`,
         permissionHint: 'The provided API key lacks permission for this request.',
       },
     });

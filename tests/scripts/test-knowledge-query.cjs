@@ -105,14 +105,14 @@ describe('querySettings', () => {
   });
 
   it('never throws for want of a vector: each conflict runs keyword-only, its note naming the cause and fix', () => {
-    const keyNote = '[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only]';
+    const keyNote = '[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only]';
     const cases = [
       [OPENAI_BUILT, { provider: 'openai' }, null, keyNote],
       [KEYWORD_ONLY, { provider: 'openai' }, null, keyNote],
       [OPENAI_BUILT, {}, null,
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run knowledge rebuild]'],
+        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
       [OPENAI_BUILT, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }),
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run knowledge rebuild]'],
+        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
     ];
     for (const [metadata, cfg, provider, note] of cases) {
       const settings = querySettings(metadata, cfg, provider);
@@ -498,7 +498,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
   });
 
@@ -506,7 +506,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ ...endpoint.config, model: 'another' });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run knowledge rebuild\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
     assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
   });
@@ -521,16 +521,16 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
     configure({ ...endpoint.config, model: 'another' });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run knowledge rebuild'));
+      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
 
     configure({});
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run knowledge rebuild'));
+      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
 
     rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only'));
+      'the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only'));
   });
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
@@ -547,7 +547,8 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
     const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
-    assert.match(missing.stderr, /^metadata\.json missing but store exists/);
+    assert.strictEqual(missing.stderr,
+      'metadata.json missing but store exists. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild` to fix.\n');
 
     fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
     const corrupt = await engineKnowledge(root, ['query', 'token refresh']);

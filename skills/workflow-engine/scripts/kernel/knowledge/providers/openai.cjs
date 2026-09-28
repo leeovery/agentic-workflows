@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine.cjs');
+const { ENGINE_COMMAND } = require('../../call.cjs');
 
 const DEFAULT_MODEL = 'text-embedding-3-small';
 const DEFAULT_DIMENSIONS = 1536;
@@ -19,8 +20,8 @@ const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 // `knowledge setup` hint.
 const OPENAI_ERROR_CONTEXT = {
   label: 'OpenAI',
-  authHint: 'The API key is invalid or expired. Run `knowledge setup` to fix.',
-  permissionHint: 'The API key lacks permission for this request. Run `knowledge setup` to fix.',
+  authHint: `The API key is invalid or expired. Run \`${ENGINE_COMMAND} knowledge setup\` to fix.`,
+  permissionHint: `The API key lacks permission for this request. Run \`${ENGINE_COMMAND} knowledge setup\` to fix.`,
 };
 
 class OpenAIProvider {
@@ -82,13 +83,13 @@ const OPENAI_REMEDIES = {
     'Create a key with Embeddings access enabled.',
   quota:
     'Add credit or raise the usage limit at https://platform.openai.com/account, ' +
-    'then re-run `knowledge setup`.',
+    `then re-run \`${ENGINE_COMMAND} knowledge setup\`.`,
   rateLimit:
     "The limit held through setup's own waits — try again later, or check your plan's " +
     'rate limits at https://platform.openai.com/account.',
   network:
     'Check your internet connection, VPN, or corporate proxy. No key was written — ' +
-    'you can re-run `knowledge setup` once the connection is stable.',
+    `you can re-run \`${ENGINE_COMMAND} knowledge setup\` once the connection is stable.`,
   server5xx: 'Transient on their side. Retry in a minute.',
 };
 
@@ -116,7 +117,7 @@ const SETUP_DESCRIPTOR = {
         const { message, hint } = tk.describeError(err, OPENAI_REMEDIES);
         tk.fail(
           `\n${message}\n  ${hint}\n` +
-          `The failing key came from $${envVar}. Fix or unset it in your shell, then re-run \`knowledge setup\`.\n`
+          `The failing key came from $${envVar}. Fix or unset it in your shell, then re-run \`${ENGINE_COMMAND} knowledge setup\`.\n`
         );
       }
     }
@@ -136,7 +137,7 @@ const SETUP_DESCRIPTOR = {
         if (!replace) {
           tk.fail(
             '\nKeeping the existing stored key would leave setup in an inconsistent state.\n' +
-            'Re-run `knowledge setup` when you have a new key.\n'
+            `Re-run \`${ENGINE_COMMAND} knowledge setup\` when you have a new key.\n`
           );
         }
         // Fall through to the prompt path to collect a replacement.
@@ -175,7 +176,7 @@ const SETUP_DESCRIPTOR = {
         if (!retry) {
           tk.out(
             'No key stored. Falling back to stub mode — semantic search disabled.\n' +
-            `Set $${envVar} in your shell or re-run \`knowledge setup\` once you have a working key.\n`
+            `Set $${envVar} in your shell or re-run \`${ENGINE_COMMAND} knowledge setup\` once you have a working key.\n`
           );
           return { stub: true };
         }

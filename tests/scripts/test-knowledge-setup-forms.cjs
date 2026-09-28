@@ -92,10 +92,12 @@ describe('parseSetupForm', () => {
 });
 
 describe('summaryLines', () => {
-  it('keyword-only names the mode and the upgrade path', () => {
+  it('keyword-only names the mode and the upgrade path, as the command a person types', () => {
     const lines = forms.summaryLines(null);
     assert.match(lines[0], /keyword-only \(BM25\)/);
-    assert.match(lines.join('\n'), /Upgrade anytime/);
+    assert.strictEqual(lines[2],
+      'Upgrade anytime: `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider ...` '
+      + 'or the interactive `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup`.');
   });
 
   it('openai shows provider and model only', () => {
@@ -383,6 +385,6 @@ describe('the interactive wizard', () => {
     const held = heldCall(project);
     await assert.rejects(runWizard(held.call, project), (err) => err.code === 1);
     assert.strictEqual(held.output.stderr,
-      'knowledge setup requires an interactive terminal. Run it directly, not through Claude or a pipe.\n');
+      'engine knowledge setup requires an interactive terminal. Run it directly, not through Claude or a pipe.\n');
   });
 });

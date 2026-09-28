@@ -1046,7 +1046,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
     assert.deepStrictEqual(res.warnings, [
-      'knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only',
+      'knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only',
     ]);
     assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md'], 'the keyword side still lands');
     assert.deepStrictEqual(launched, []);

@@ -10,6 +10,7 @@ const { validate } = require('./validate.cjs');
 const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
 const { commitPathspecScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
 const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
+const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'call.cjs'));
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -225,7 +226,7 @@ function apply(cwd, workUnit, currentSource) {
   // The split writes across several research topics at once, so no --topic
   // scope covers it: the work-unit form is the confined retry, and it takes
   // the commit lock the raw pair never did.
-  const retry = `node .claude/skills/workflow-engine/scripts/engine.cjs commit ${workUnit} `
+  const retry = `${ENGINE_COMMAND} commit ${workUnit} `
     + `-m "discovery(${workUnit}): legacy-split ${currentSource}"`;
   try {
     // Through the commit door: the split runs beside live research and

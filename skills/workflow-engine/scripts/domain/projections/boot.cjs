@@ -11,10 +11,11 @@
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
+const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 
 const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
-const WIZARD_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup';
+const WIZARD_COMMAND = `${ENGINE_COMMAND} knowledge setup`;
 
 /**
  * The migration confirm gate — after the summary of what the migrations did.

@@ -14,6 +14,7 @@ const store = require('../../kernel/knowledge/store.cjs');
 const chunker = require('../../kernel/knowledge/chunker.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
+const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const { identityKey, deriveIdentity, workTypeOf, readManifests, discoverArtifacts, retirements } = require('./artifacts.cjs');
 const { indexProvider, newStoreEmbedder, embedderIdentity, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { indexPruning } = require('./decay.cjs');
@@ -63,7 +64,7 @@ function buildDocuments(root, artifact, workUnits) {
     throw new UserError(
       `No chunks produced from ${artifact.file}. Refusing to index an empty file — ` +
         'this would silently wipe any existing indexed chunks for this topic. ' +
-        'Use `knowledge remove` explicitly if that is what you want.'
+        `Use \`${ENGINE_COMMAND} knowledge remove\` explicitly if that is what you want.`
     );
   }
   // A chunk is dated by its source document (its mtime), never by the index:

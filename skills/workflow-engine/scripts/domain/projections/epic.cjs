@@ -12,6 +12,7 @@
 
 const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
+const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
@@ -1068,7 +1069,7 @@ function epicInSessionGate(workUnit, entry) {
   const fact = `"${titlecase(topic)}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago.`;
   const consequence = `Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`;
   const hold = entryHoldClause(phase, topic, entry.blocked_by);
-  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${workUnit} ${phase} ${topic}`;
+  const release = `${ENGINE_COMMAND} presence clear ${workUnit} ${phase} ${topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
     MENU_INSTRUCTION,

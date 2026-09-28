@@ -37,7 +37,7 @@ const {
 const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
-const { messageOf } = require('../kernel/call.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -4839,7 +4839,7 @@ function codeGate(cwd, { dotpath }) {
       MENU_INSTRUCTION,
       menuFrame([
         'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
-          + `\`node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
+          + `\`${ENGINE_COMMAND} presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
         '',
         '**`◆ Proceed anyway?`**',
         '',
