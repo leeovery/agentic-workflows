@@ -5560,7 +5560,7 @@ function queryFailureGateSurface(cwd, { file }) {
     '⚑ Knowledge query failed',
     ...errorOutputLines(p.error),
     '',
-    ...indentedBody(["Likely causes: a knowledge config that can't be read, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
+    ...indentedBody(["Likely causes: a knowledge config that can't be read or names a provider it can't use, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
     '',
     `    ${ENGINE_COMMAND} knowledge status`,
   ].join('\n'));

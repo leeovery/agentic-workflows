@@ -3053,8 +3053,9 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
     assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
-    // A failed query's error output rides the failure gate's payload, verbatim.
-    const queryFailure = sim.write('.workflows/.cache/query-failure.json',
+    // A failed query's error output rides the failure gate's payload,
+    // verbatim, written to the roadmap session's own cache.
+    const queryFailure = sim.write('.workflows/.cache/roadmap/query-failure.json',
       { error: 'Error: loadStore: corrupted store file at .workflows/.knowledge/store.bin\n' });
     const failureGate = sim.render(['query-failure-gate', '--file', queryFailure], { expect: 'content' });
     assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);

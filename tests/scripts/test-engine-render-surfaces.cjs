@@ -6251,7 +6251,7 @@ describe('render — the adopted cross-flow static gates', () => {
   });
 
   it('query-failure-gate: the error output and its diagnosis above retry or proceed without context', () => {
-    const file = writePayload(dir, '.workflows/.cache/query-failure.json', {
+    const file = writePayload(dir, '.workflows/.cache/pay/discussion/pay/query-failure.json', {
       error: 'Error: metadata.json missing but store exists. Run the rebuild to fix it before the next query.\n  Provide the key and retry:\n\n    • export OPENAI_API_KEY=...\n',
     });
     assert.strictEqual(renderSurface(dir, 'query-failure-gate', { file }), [
@@ -6263,9 +6263,9 @@ describe('render — the adopted cross-flow static gates', () => {
       '',
       '      • export OPENAI_API_KEY=...',
       '',
-      "  Likely causes: a knowledge config that can't be read, or a",
-      "  store that can't be read or has lost its metadata. Run this to",
-      '  diagnose:',
+      "  Likely causes: a knowledge config that can't be read or names a",
+      "  provider it can't use, or a store that can't be read or has",
+      '  lost its metadata. Run this to diagnose:',
       '',
       '    node .claude/skills/workflow-engine/scripts/engine.cjs knowledge status',
       '',
@@ -6281,7 +6281,7 @@ describe('render — the adopted cross-flow static gates', () => {
 
   it('query-failure-gate: refuses without the error output it shows', () => {
     assert.throws(() => renderSurface(dir, 'query-failure-gate', {}), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, '.workflows/.cache/query-failure.json', { error: '  ' });
+    const blank = writePayload(dir, '.workflows/.cache/pay/discussion/pay/query-failure.json', { error: '  ' });
     assert.throws(() => renderSurface(dir, 'query-failure-gate', { file: blank }), /"error" must be the query's error output, a non-empty string/);
   });
 

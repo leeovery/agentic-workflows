@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills.*
+*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B** and **D**, and planning entry's `cross-cutting-context.md` for **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by specification entry's `analysis-flow.md`.*
 
 ---
 
@@ -36,7 +36,7 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. A note above the count says when the query ran keyword-only, and why, or that chunks still await vectors; either way the results stand and the query exits `0`.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, or why the last vector fill fell short. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
 Chunks land in context; read a source file only when a chunk looks load-bearing. Most queries return a couple of mildly relevant chunks and one directly relevant — read that one, and skim the rest from the chunk text alone.
 
@@ -55,17 +55,25 @@ A `[roadmap | …]` hit is the product-level record — a roadmap session's expl
 
 ## D. Query failure handling
 
-If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `.workflows/.cache/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — and fetch the gate, emitting each section verbatim per its marker:
+If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `{session_cache}/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — where `{session_cache}` is the calling session's cache: `.workflows/.cache/{work_unit}/{phase}/{topic}` in a phase session, `.workflows/.cache/{work_unit}/discovery` in a discovery session, `.workflows/.cache/roadmap` in a roadmap session. Then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate --file .workflows/.cache/query-failure.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate --file {session_cache}/query-failure.json
 ```
 
 **STOP.** Wait for user response.
 
 #### If `retry`
 
-Re-run the query. If it fails again, write its error output and fetch the gate again (same choice). If it succeeds, the caller will interpret the fresh results.
+Re-run the query.
+
+**If it fails again:**
+
+→ Return to **D. Query failure handling**.
+
+**If it succeeds:**
+
+The caller interprets the fresh results.
 
 → Return to caller.
 
