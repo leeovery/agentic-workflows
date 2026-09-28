@@ -39,7 +39,24 @@ command: it settles what appears before the cut and nothing about what
 followed it. Never read absence into a truncated output — a row missing
 from a cut JSON list is unrecorded, not absent.
 
+An `Agent` row is a dispatch the harness held (`→ held`, with the call's
+id): it sits in sequence with the calls around it, and what it carried
+is under DISPATCHES.
+
 {{actions}}
+
+=== dispatches ===
+
+DISPATCHES — every agent the walker dispatched, in the order it made the
+calls, recorded whole by a harness hook at the moment of each call: the
+agent, whether it ran in the background, and the prompt it carried,
+uncut. The hook held each one — recorded it and refused it — so no agent
+ran; what stood in for each is in the recorded actions and the walk.
+
+A claim about what a dispatch carried — which inputs, which paths, the
+background flag — is settled here, never by the walker's account of it.
+
+{{dispatches}}
 
 === checks ===
 
@@ -76,8 +93,7 @@ nothing else.
 HARNESS SUBSTITUTIONS the case armed for this walk. Where the recorded
 actions show the walker doing one of these itself — writing a report an
 agent would have produced, for instance — that IS the substitution, and
-it is expected. The absence of a real agent dispatch alongside it is not
-a missing step.
+it is expected, following the held dispatch it stands in for.
 
 {{substitutions}}
 

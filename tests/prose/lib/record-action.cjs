@@ -37,15 +37,14 @@
 
 const fs = require('fs');
 const path = require('path');
+const { fromTranscript, worldIn } = require('./transcripts.cjs');
 
 const LOG = '.walk-actions.log';
 const WALK = '.walk-transcript.log';
+// Written by the dispatch hold (lib/hold-dispatch.cjs), one line per
+// Agent call it held — read here to find a dispatch it never saw.
+const DISPATCHES = '.walk-dispatches.jsonl';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
-const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
-// The runtime's tool for a subagent to hand its report back. A walker
-// that tells its walk through it leaves no text turn to lift, so the
-// message it hands back is a turn of the walk like any other.
-const HANDBACK = 'SubagentHandback';
 // These caps exist to protect the asserter's prompt, never to save disk —
 // every recorded action is read into it, and a walk makes twenty-odd file
 // reads whose bodies are whole skill files.
@@ -110,53 +109,6 @@ function responseText(response, limit) {
   return flatten(response, limit);
 }
 
-/** What a transcript block told, or null for a block that told nothing. */
-function turnText(block) {
-  if (!block) return null;
-  const told = block.type === 'text' ? block.text
-    : block.type === 'tool_use' && block.name === HANDBACK && block.input ? block.input.message
-      : null;
-  return typeof told === 'string' && told.trim() ? told.trim() : null;
-}
-
-/**
- * The agent's own harness transcript — written by the runtime, not the
- * agent. Authority on the model it ran on, and on which world it walked,
- * neither of which a stop payload states.
- */
-function fromTranscript(transcriptPath) {
-  const blank = { world: null, model: '', turns: [] };
-  if (!transcriptPath) return blank;
-  let raw;
-  try {
-    raw = fs.readFileSync(transcriptPath, 'utf8');
-  } catch {
-    return blank;
-  }
-  const models = new Set();
-  const turns = [];
-  for (const line of raw.split('\n')) {
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch { continue; /* a partial line is not worth failing the record over */ }
-    const message = entry && entry.message;
-    if (!message) continue;
-    if (message.model) models.add(message.model);
-    if (!Array.isArray(message.content)) continue;
-    for (const block of message.content) {
-      const text = turnText(block);
-      if (text) turns.push(text);
-    }
-  }
-  const found = raw.match(WORLD);
-  return {
-    world: found ? found[2].replace(/\\+/g, '') : null,
-    model: [...models].join(',') || '',
-    turns,
-  };
-}
-
 /**
  * The walk as it was actually told, turn by turn.
  *
@@ -195,6 +147,50 @@ function writeWalk(world, turns, closing) {
   } catch { /* a hook must never break what it observes */ }
 }
 
+/** The ids of every dispatch the hold recorded in this world. */
+function heldIds(world) {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.join(world, DISPATCHES), 'utf8');
+  } catch {
+    return new Set();
+  }
+  const ids = new Set();
+  for (const line of raw.split('\n')) {
+    try {
+      const { tool_use_id: id } = JSON.parse(line);
+      if (id) ids.add(id);
+    } catch { /* an unreadable line holds no id — its dispatch reads unheld */ }
+  }
+  return ids;
+}
+
+/**
+ * The backstop behind the dispatch hold. Every Agent call a walker makes
+ * is meant to be recorded and refused by lib/hold-dispatch.cjs before it
+ * runs; one the transcript holds with no held record is a call that hook
+ * never saw — a real agent may have run inside the world — or one it
+ * could not record. Either way the walk cannot be judged: one UNHELD row
+ * per call says so, and `run.cjs assert` refuses a world carrying any.
+ * The row carries what came back for the call, which is where a harness
+ * that refused the call before any hook ran says why.
+ */
+function writeUnheld(world, dispatches) {
+  if (!dispatches || !dispatches.length) return;
+  const held = heldIds(world);
+  const rows = dispatches.filter((d) => !held.has(d.id)).map((d) => [
+    'UNHELD',
+    'Agent',
+    flatten(`${d.input.subagent_type || '-'} — ${d.input.description || ''}`.split(world).join('.'), MAX_DETAIL),
+    d.id,
+    flatten(d.result === null ? 'no result recorded' : d.result, MAX_OUTPUT).split(world).join('.'),
+  ].join('\t'));
+  if (!rows.length) return;
+  try {
+    fs.appendFileSync(path.join(world, LOG), `${rows.join('\n')}\n`);
+  } catch { /* a hook must never break what it observes */ }
+}
+
 function main() {
   const payload = read();
   if (!payload) return;
@@ -230,8 +226,7 @@ function main() {
   // padding the record and handing the checks substrings no walk ran.
   if (!agent.includes('walker')) return;
 
-  const found = JSON.stringify(payload).match(WORLD);
-  const world = found ? found[2].replace(/\\+/g, '') : traced && traced.world;
+  const world = worldIn(JSON.stringify(payload)) || (traced && traced.world);
   if (!world || !fs.existsSync(world)) return;
 
   const parts = [
@@ -261,6 +256,7 @@ function main() {
   } else if (stop) {
     parts.push(flatten(payload.last_assistant_message, MAX_OUTPUT).split(world).join('.'));
     writeWalk(world, traced.turns, payload.last_assistant_message);
+    writeUnheld(world, traced.dispatches);
   }
 
   try {

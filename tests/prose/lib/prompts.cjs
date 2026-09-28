@@ -74,11 +74,12 @@ function walkerPrompt({ worldDir, situation, task, scope, stubs, answers, conduc
   return `${parts.join('\n\n')}\n`;
 }
 
-function asserterPrompt({ expected, world, actions, checks, walk, substitutions, scope }) {
+function asserterPrompt({ expected, world, actions, dispatches, checks, walk, substitutions, scope }) {
   const t = loadTemplate('asserter');
   const parts = [fill(t.main, { expected })];
   if (world) parts.push(fill(t.world, { expecting: world.expecting, delta: world.delta }));
   if (actions) parts.push(fill(t.actions, { actions }));
+  if (dispatches) parts.push(fill(t.dispatches, { dispatches }));
   if (checks) parts.push(fill(t.checks, { checks }));
   if (scope) parts.push(fill(t.scope, { scope }));
   if (substitutions) parts.push(fill(t.substitutions, { substitutions }));
@@ -86,4 +87,4 @@ function asserterPrompt({ expected, world, actions, checks, walk, substitutions,
   return `${parts.join('\n\n')}\n`;
 }
 
-module.exports = { PROMPTS_DIR, loadTemplate, fill, walkerPrompt, asserterPrompt };
+module.exports = { PROMPTS_DIR, loadTemplate, fill, indent, walkerPrompt, asserterPrompt };

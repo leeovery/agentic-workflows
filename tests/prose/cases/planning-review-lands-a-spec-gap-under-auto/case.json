@@ -124,6 +124,20 @@
       "discussion-map add",
       "restart planning",
       "workunit create"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-planning-review-traceability",
+        "count": 2,
+        "nth": 2,
+        "carries": ["review-traceability-tracking-c1.md"]
+      },
+      {
+        "agent": "workflow-planning-review-integrity",
+        "count": 2,
+        "nth": 2,
+        "carries": ["review-traceability-tracking-c1.md"]
+      }
     ]
   }
 }

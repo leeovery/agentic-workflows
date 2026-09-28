@@ -77,6 +77,16 @@
       "restart planning",
       "workunit create",
       "knowledge.cjs index"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-planning-review-traceability",
+        "carries": ["review-traceability-tracking-c1.md"]
+      },
+      {
+        "agent": "workflow-planning-review-integrity",
+        "carries": ["review-traceability-tracking-c1.md"]
+      }
     ]
   }
 }

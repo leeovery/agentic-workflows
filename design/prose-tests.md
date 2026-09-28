@@ -93,26 +93,50 @@ testing.
   to run. There the delta is taken against the fixture and judged
   against the case's claims. It is the weakest of the three and is
   reached for last: a world a recipe can build must be built.
-- **P4b — the asserter is told which substitutions were armed.** The
-  recorded actions show a stub as the walker writing a file an agent
-  would have produced; without knowing the stub exists, an asserter
-  reads that as a missing dispatch and fails a walk that behaved
-  correctly. Measured: it did exactly that on the first round with
-  recording live. Armed stubs now reach the asserter with their
-  triggers.
+- **P4b — the asserter is told which substitutions were armed, and
+  sees every dispatch whole.** The recorded actions show a stub as the
+  walker writing a file an agent would have produced; without knowing
+  the stub exists, an asserter reads that as a failed agent and fails a
+  walk that behaved correctly. Measured: it did exactly that on the
+  first round with recording live. Armed stubs reach the asserter with
+  their triggers, and every held dispatch (P4a) with its agent, its
+  background flag and its prompt uncut — so a held `Agent` row followed
+  by its substitution is the expected shape, and a dispatch the prose
+  calls for that is absent from the record is a missing step. What a
+  dispatch carried is decided in code where a case claims it: the
+  `dispatches` invariant matches the whole recorded call — `{agent,
+  nth?, count?, carries?, lacks?}`, a declared dispatch that never
+  happened failing — and a `dispatch:<agent>` token orders the next
+  held dispatch of that agent within `calls_in_order`.
 - **P4c — assert what actions and state can prove.** A claim about
   something *displayed* cannot be evidenced by the action log, because
   emitting text is not a tool call — it rests on the walker's
   narrative, the one piece of evidence it authors itself. Most display
   claims have a consequence that can be asserted instead: the answer
   consumed, the arm taken, the state produced. Prefer the consequence.
-- **P4a — substitutions are declared and marked.** A stub is named
-  content; the case arming it owns the trigger, so one stub serves
-  many moments. The walker records `SUBSTITUTED:` for each, and the
-  prompt labels them as harness mechanics, so the asserter never
-  credits the walk for what the framework supplied. Whatever a stub
-  covers is not under test in that case — some other case must walk it
-  unstubbed.
+- **P4a — substitutions are declared and marked, and every dispatch is
+  held.** A stub is named content; the case arming it owns the trigger,
+  so one stub serves many moments. The walker records `SUBSTITUTED:`
+  for each, and the prompt labels them as harness mechanics, so the
+  asserter never credits the walk for what the framework supplied.
+  Whatever a stub covers is not under test in that case — some other
+  case must walk it unstubbed. What a stub never replaces is the
+  dispatch itself: the prose composes it — which agent, which inputs,
+  the background flag, parallel or not — and cases claim exactly that.
+  So the walker makes the real Agent call, one per agent, as the prose
+  composes it, and a PreToolUse hook on `Agent|Task` in the walker's
+  own definition (`lib/hold-dispatch.cjs`) records the call whole into
+  the world and refuses it with a reason drawn from the walker's prompt
+  templates; the walker then applies the stub whose trigger names that
+  moment, or plays the agent from its file where none does. No agent
+  ever runs in a world, and the hold is never the prose's agent-failure
+  arm. The hook acts on the walker's calls alone — its frontmatter hooks
+  also see the orchestrator dispatching walkers and asserters — and
+  fails closed: a walker's call is refused even where no world could be
+  resolved to record it. The walker's stop is the backstop: any
+  dispatch its transcript holds with no held record is written
+  `UNHELD`, and the run is not judged, because a dispatch that got past
+  the hold may have run a real agent in the world.
 - **P5 — run on command, never in the test suite.** Walks cost tokens,
   so they never ride `npm test` — only the perimeter of P3 does. The runner
   is invoked deliberately: scoped by diff-intersection (the same

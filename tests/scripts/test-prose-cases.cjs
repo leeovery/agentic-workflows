@@ -58,6 +58,20 @@ describe('prose-test corpus', () => {
     }
   });
 
+  it('the walker can dispatch, and every dispatch it makes is held', () => {
+    // A walker with the Agent tool and no hold would start real agents
+    // inside a world; a walker without the tool never composes a dispatch
+    // for a case to claim. The definition carries both or neither works.
+    const walker = fs.readFileSync(path.join(cases.ROOT, '.claude/agents/prose-walker.md'), 'utf8');
+    const front = walker.split(/^---$/m)[1] || '';
+    const tools = (front.match(/^tools:\s*(.+)$/m) || [])[1] || '';
+    assert.ok(tools.split(',').map((t) => t.trim()).includes('Agent'), 'prose-walker declares the Agent tool');
+    const pre = front.slice(front.indexOf('  PreToolUse:'), front.indexOf('  PostToolUse:'));
+    assert.match(pre,
+      /- matcher: "Agent\|Task"\n\s+hooks:\n\s+- type: command\n\s+command: "node \\"\$CLAUDE_PROJECT_DIR\/tests\/prose\/lib\/hold-dispatch\.cjs\\""/,
+      'prose-walker holds every Agent|Task call with lib/hold-dispatch.cjs at PreToolUse');
+  });
+
   it('every state recipe loads and exports build()', () => {
     for (const c of all) {
       for (const which of ['fixtureState', 'assertionState']) {

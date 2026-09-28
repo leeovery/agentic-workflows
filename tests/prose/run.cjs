@@ -19,7 +19,6 @@
 //   destroy --world <dir>         remove a world
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -27,6 +26,7 @@ const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
 const prompts = require('./lib/prompts.cjs');
 const invariants = require('./lib/invariants.cjs');
+const transcripts = require('./lib/transcripts.cjs');
 const { verifyAll } = require('./lib/verify-pool.cjs');
 
 const ROOT = cases.ROOT;
@@ -143,6 +143,23 @@ function cmdDiff(argv) {
 
 // --- assert (the judging agent) -------------------------------------------
 
+/**
+ * The held dispatches as the asserter reads them: each numbered in the
+ * order made, its agent, whether it ran in the background, and its prompt
+ * whole — the world's path collapsed to `.`, as in the action log. A walk
+ * that dispatched nothing carries no section at all.
+ */
+function formatDispatches(records, dir) {
+  if (!records.length) return null;
+  const world = path.resolve(dir);
+  return records.map((r, i) => {
+    const input = r.tool_input || {};
+    const head = `${i + 1}. ${input.subagent_type || '-'} — ${input.description || ''}`
+      + ` (background: ${input.run_in_background === true})`;
+    return `${head}\n${prompts.indent(String(input.prompt || '').split(world).join('.'))}`;
+  }).join('\n\n');
+}
+
 function cmdAssert(argv) {
   const c = getCase(argv[0]);
   const dir = requireWorld(argv, c);
@@ -167,8 +184,6 @@ function cmdAssert(argv) {
       + '(hasTrustDialogAccepted). Do not judge this run.');
   }
   const rows = worlds.readActionRows(dir);
-  const checks = invariants.format(invariants.check(rows, c.invariants));
-  const undeclared = invariants.undeclaredProse(rows, c.files.map((f) => f.path));
   const walk = worlds.readWalkLog(dir);
   // Same stance as the action log: the walk is harness-captured, so its
   // absence is a broken hook, not a quiet walk. Judging without it would
@@ -189,7 +204,26 @@ function cmdAssert(argv) {
       + 'the walk.\nCheck the hooks block in .claude/agents/prose-walker.md and '
       + 'that the agent registry has reloaded since it changed. Do not judge this run.');
   }
+  // Every dispatch a walker makes is held — recorded and refused before
+  // any agent starts. One the stop found in the transcript with no held
+  // record got past the hold, so a real agent may have run in this world
+  // and nothing in it can be judged. Each row names the call and what came
+  // back for it: a harness that refused the call before any hook ran says
+  // why there.
+  const unheld = rows.filter((r) => r.event === 'UNHELD');
+  if (unheld.length) {
+    die(`the walker made ${unheld.length} Agent call${unheld.length === 1 ? '' : 's'} the dispatch hold never `
+      + `recorded (UNHELD in ${path.join(dir, worlds.ACTION_LOG)}):\n`
+      + unheld.map((r) => `  - ${r.detail} [${r.outcome}] → ${r.output}`).join('\n')
+      + '\nA dispatch that was not held may have run a real agent in this world. Check the '
+      + '`Agent|Task` PreToolUse hook in .claude/agents/prose-walker.md (lib/hold-dispatch.cjs), '
+      + 'that the agent registry has reloaded since it changed, and the held rows beside these. '
+      + 'Do not judge this run.');
+  }
 
+  const dispatches = worlds.readDispatches(dir);
+  const checks = invariants.format(invariants.check(rows, c.invariants, dispatches));
+  const undeclared = invariants.undeclaredProse(rows, c.files.map((f) => f.path));
   const substitutions = c.stubs.length
     ? c.stubs.map((s) => {
       const stub = cases.readStub(s.name);
@@ -198,6 +232,7 @@ function cmdAssert(argv) {
     : null;
   const prompt = prompts.asserterPrompt({
     expected: c.assert, world, actions, checks, walk, substitutions,
+    dispatches: formatDispatches(dispatches, dir),
     scope: undeclared.length ? undeclared.map((f) => `- ${f}`).join('\n') : null,
   });
   // The prompt carries the whole record and runs to 100 KB+ on a long walk
@@ -215,20 +250,8 @@ function cmdAssert(argv) {
 // Claude Code keeps every subagent's transcript beside its session's, so a
 // walker's own record of how it ended outlives a stop hook that never ran.
 function findTranscript(agentId) {
-  if (!/^[A-Za-z0-9]+$/.test(agentId)) die(`"${agentId}" is not an agent id`);
-  const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
-  const name = `agent-${agentId}.jsonl`;
-  const found = [];
-  for (const project of fs.existsSync(projects) ? fs.readdirSync(projects) : []) {
-    const sessions = path.join(projects, project);
-    if (!fs.statSync(sessions).isDirectory()) continue;
-    for (const session of fs.readdirSync(sessions)) {
-      const file = path.join(sessions, session, 'subagents', name);
-      if (fs.existsSync(file)) found.push(file);
-    }
-  }
-  if (found.length !== 1) die(`${found.length ? 'several transcripts' : 'no transcript'} named ${name} under ${projects}`);
-  return found[0];
+  const found = transcripts.findAgentTranscript(agentId);
+  return found.file || die(found.error);
 }
 
 // The stop is replayed only from a turn the walker itself ended — the

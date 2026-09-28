@@ -458,6 +458,54 @@ describe('prose recorder — the stop event', () => {
   });
 });
 
+describe('prose recorder — the dispatch backstop', () => {
+  // Every walker dispatch is meant to be held (lib/hold-dispatch.cjs). One
+  // the transcript holds with no held record got past the hold — a real
+  // agent may have run in the world — so the stop names it.
+  const agentCall = (id, agent) => ({
+    type: 'tool_use', id, name: 'Agent', input: { subagent_type: agent, description: `run ${agent}`, prompt: 'p' },
+  });
+  const held = (id) => fs.appendFileSync(path.join(world, '.walk-dispatches.jsonl'),
+    `${JSON.stringify({ tool_use_id: id, tool_name: 'Agent', tool_input: {} })}\n`);
+
+  it('writes an UNHELD row, before the stop, for a transcript dispatch the hold never recorded', () => {
+    held('toolu_held');
+    const transcript = writeTranscript([
+      { message: { model: 'claude-sonnet-5', content: [{ type: 'text', text: `walking ${world}` }] } },
+      { message: { content: [agentCall('toolu_held', 'agent-a'), agentCall('toolu_loose', 'agent-b')] } },
+      { message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_loose', content: [{ type: 'text', text: 'Agent type agent-b not found' }] }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'STOPPED: done',
+    });
+    const lines = logLines();
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0], 'UNHELD\tAgent\tagent-b — run agent-b\ttoolu_loose\tAgent type agent-b not found');
+    assert.match(lines[1], /^SubagentStop\t/);
+  });
+
+  it('writes nothing more when every dispatch was held', () => {
+    held('toolu_a');
+    held('toolu_b');
+    const transcript = writeTranscript([
+      { message: { model: 'x', content: [agentCall('toolu_a', 'a'), agentCall('toolu_b', 'b')] }, cwd: world },
+    ]);
+    fire({ hook_event_name: 'SubagentStop', agent_type: 'prose-walker', agent_transcript_path: transcript });
+    assert.deepEqual(logLines().map((l) => l.split('\t')[0]), ['SubagentStop']);
+  });
+
+  it('counts a Task call and one with no result as unheld all the same', () => {
+    const transcript = writeTranscript([
+      { message: { model: 'x', content: [{ ...agentCall('toolu_t', 'c'), name: 'Task' }] }, cwd: world },
+    ]);
+    fire({ hook_event_name: 'SubagentStop', agent_type: 'prose-walker', agent_transcript_path: transcript });
+    assert.equal(logLines()[0], 'UNHELD\tAgent\tc — run c\ttoolu_t\tno result recorded');
+  });
+});
+
 describe('prose recorder — the asserter contract', () => {
   it('logs an asserter tool call as a violation, away from any world', () => {
     fire({

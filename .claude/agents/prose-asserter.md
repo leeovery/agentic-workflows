@@ -77,7 +77,10 @@ They are the authority on what the walk *did*: which commands ran, in
 what order, with what arguments, what each returned, and which files
 were written. A walker has been known to describe a command's output
 inaccurately; where its account and the record disagree about what came
-back, the record is right and the disagreement is a finding.
+back, the record is right and the disagreement is a finding. Its
+**DISPATCHES** section is the same record for every agent the walk
+dispatched, each call whole: the authority on what a dispatch carried.
+A prompt with no DISPATCHES section is a walk that dispatched nothing.
 
 **The walk** is the walker's own account, turn by turn, as it was told at
 the time — lifted from the runtime's transcript by the harness, not
@@ -114,7 +117,7 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
-## Four known differences between here and a live session
+## Five known differences between here and a live session
 
 An inline `` !`command` `` directive is substituted when a skill loads
 live. A walk reads the prose as a file, so the substitution never happens
@@ -150,6 +153,18 @@ where the prose calls `ExitPlanMode` to present the plan, the walk
 stops at that presentation as its terminal handoff. The capture write
 and the stop are correct behaviour: not a deviation, not a missing
 tool call, and not a walk that died early.
+
+The fifth: no agent runs in a walk. Where the prose dispatches one, the
+walker makes the call as the prose composes it, and a harness hook holds
+it — records it whole and refuses it — before the walker applies the
+armed substitution or reads the agent's file and plays it. A held
+dispatch (an `Agent` row, `→ held`, its call under DISPATCHES) followed
+by the substitution or the played agent is correct behaviour: not a
+failed agent, not a deviation. A walker that takes the prose's
+agent-failure arm over a held dispatch has misread the hold, not
+exercised that arm. And a dispatch the prose calls for that is absent
+from DISPATCHES is a missing step, however faithfully what stood in for
+it was applied.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
