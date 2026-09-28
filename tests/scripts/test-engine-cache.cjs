@@ -116,7 +116,7 @@ describe('engine cache stamp: gap-analysis', () => {
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge index \(\.state\/discovery-gap-analysis\.md\) failed/);
+    assert.match(res.warnings[0], /^knowledge index \(\.state\/discovery-gap-analysis\.md\) failed: File not found: /);
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 });

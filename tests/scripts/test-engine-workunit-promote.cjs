@@ -8,9 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -66,6 +64,9 @@ function setupFixture({ epic = epicManifest() } = {}) {
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
 
+  // The knowledge directory is checkout-local, never committed.
+  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  keywordOnlyKnowledge(project);
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
     work_units: { payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
@@ -84,14 +85,19 @@ function setupFixture({ epic = epicManifest() } = {}) {
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(fix, args, env = {}) {
-  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  const { res, sections } = okSections(fix.project, args, { env });
   engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
+
+/** Index each file as it stands, so the store holds chunks a transaction can remove. */
+function indexFiles(fix, files) {
+  for (const file of files) output(fix.project, ['knowledge', 'index', file]);
+}
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -132,6 +138,12 @@ describe('engine workunit promote — happy path', () => {
 
   it('moves the spec and source discussions, completes the cc unit, marks promoted, commits all three pathspecs once', () => {
     fix = setupFixture();
+    indexFiles(fix, [
+      '.workflows/payments/discussion/cache-invalidation.md',
+      '.workflows/payments/discussion/ttl-policy.md',
+      '.workflows/payments/discussion/fee-model.md',
+      '.workflows/payments/specification/caching-strategy/specification.md',
+    ]);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     const res = engine(fix, PROMOTE);
 
@@ -153,7 +165,7 @@ describe('engine workunit promote — happy path', () => {
       warnings: [],
     });
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = stubbed.output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching']);
+    const receipt = output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching']);
     assert.match(receipt, new RegExp([
       'Promoted to Cross-Cutting',
       '',
@@ -237,14 +249,12 @@ describe('engine workunit promote — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // KB: moved artifacts indexed at their cc identities, the epic's old
-    // chunks removed — per discussion, then the spec.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'index .workflows/caching/discussion/cache-invalidation.md',
-      'remove --work-unit payments --phase discussion --topic cache-invalidation',
-      'index .workflows/caching/discussion/ttl-policy.md',
-      'remove --work-unit payments --phase discussion --topic ttl-policy',
-      'index .workflows/caching/specification/caching/specification.md',
-      'remove --work-unit payments --phase specification --topic caching-strategy',
+    // chunks of each removed — the unmoved discussion's stay.
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/caching/discussion/cache-invalidation.md',
+      '.workflows/caching/discussion/ttl-policy.md',
+      '.workflows/caching/specification/caching/specification.md',
+      '.workflows/payments/discussion/fee-model.md',
     ]);
   });
 
@@ -252,6 +262,10 @@ describe('engine workunit promote — happy path', () => {
     const epic = epicManifest();
     delete epic.phases.specification.items['caching-strategy'].sources;
     fix = setupFixture({ epic });
+    indexFiles(fix, [
+      '.workflows/payments/discussion/cache-invalidation.md',
+      '.workflows/payments/specification/caching-strategy/specification.md',
+    ]);
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.discussions, []);
@@ -260,9 +274,9 @@ describe('engine workunit promote — happy path', () => {
     assert.deepStrictEqual(readManifest(fix, 'caching').phases, {
       specification: { items: { caching: { status: 'completed', date: today() } } },
     });
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'index .workflows/caching/specification/caching/specification.md',
-      'remove --work-unit payments --phase specification --topic caching-strategy',
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/caching/specification/caching/specification.md',
+      '.workflows/payments/discussion/cache-invalidation.md',
     ]);
   });
 
@@ -280,11 +294,12 @@ describe('engine workunit promote — happy path', () => {
 
   it('KB failures are warnings, never blocks — the promotion still lands and commits', () => {
     fix = setupFixture();
-    const res = engine(fix, PROMOTE, { STUB_KNOWLEDGE_EXIT: '1' });
+    unreadableKnowledge(fix.project);
+    const res = engine(fix, PROMOTE);
 
     assert.strictEqual(res.warnings.length, 6, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(discussion\/cache-invalidation\) failed/);
-    assert.match(res.warnings[5], /knowledge remove \(specification\/caching-strategy\) failed/);
+    assert.match(res.warnings[0], /^knowledge index \(discussion\/cache-invalidation\) failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[5], /^knowledge remove \(specification\/caching-strategy\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
     assert.strictEqual(readManifest(fix, 'payments').phases.specification.items['caching-strategy'].status, 'promoted');
@@ -295,13 +310,13 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no cc unit. */
+  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no cc unit, nothing indexed. */
   function refusedPristine(args, pattern) {
     const before = treeSnapshot(fix);
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 
@@ -461,10 +476,10 @@ describe('engine workunit promote — the import carry', () => {
     }
 
     // The markdown copies are indexed at the cc identity; the binary is not.
-    const indexed = knowledgeCalls(fix.project).filter((c) => c.includes('/imports/'));
+    const indexed = indexedFiles(fix.project).filter((file) => file.includes('/imports/'));
     assert.deepStrictEqual(indexed, [
-      'index .workflows/caching/imports/spec-linked.md',
-      'index .workflows/caching/imports/attached.md',
+      '.workflows/caching/imports/attached.md',
+      '.workflows/caching/imports/spec-linked.md',
     ]);
     // The copies ride the transaction's own commit.
     const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
@@ -485,7 +500,7 @@ describe('engine workunit promote — the import carry', () => {
   it('the receipt names the carried count beside its sibling facts, and omits the row without one', () => {
     setupCarrying();
     engine(fix, PROMOTE);
-    const receipt = (args) => stubbed.output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', ...args]);
+    const receipt = (args) => output(fix.project, ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', ...args]);
 
     assert.ok(receipt(['--imports', '3']).includes([
       '  • Specification: moved',
@@ -495,7 +510,7 @@ describe('engine workunit promote — the import carry', () => {
     assert.ok(receipt(['--imports', '0']).includes('  • Specification: moved\n  • Epic status: promoted'));
     assert.ok(receipt([]).includes('  • Specification: moved\n  • Epic status: promoted'));
 
-    assert.strictEqual(stubbed.refuses(fix.project,
+    assert.strictEqual(refuses(fix.project,
       ['render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching', '--imports', 'abc']).error,
       'render promote-receipt: --imports must be a carried import count, got "abc"');
   });

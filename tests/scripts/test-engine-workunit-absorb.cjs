@@ -8,9 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -64,6 +62,9 @@ function setupFixture({ feature = featureManifest(), epic = epicManifest() } = {
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
 
+  // The knowledge directory is checkout-local, never committed.
+  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  keywordOnlyKnowledge(project);
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
@@ -85,14 +86,27 @@ function setupFixture({ feature = featureManifest(), epic = epicManifest() } = {
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(fix, args, env = {}) {
-  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  const { res, sections } = okSections(fix.project, args, { env });
   engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
+
+/** Index each file as it stands, so the store holds chunks a transaction can remove. */
+function indexFiles(fix, files) {
+  for (const file of files) output(fix.project, ['knowledge', 'index', file]);
+}
+
+/** The feature's own artifacts, indexed where it stands before the absorb. */
+const FEATURE_FILES = [
+  '.workflows/auth-flow/discussion/auth-flow.md',
+  '.workflows/auth-flow/imports/notes.md',
+  '.workflows/auth-flow/research/auth-flow.md',
+  '.workflows/auth-flow/seeds/seed.md',
+];
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -135,7 +149,7 @@ describe('engine workunit absorb — happy path', () => {
       E2: { slug: 'z', status: 'running' },
     } } } };
     fix = setupFixture({ feature });
-    const out = stubbed.output(fix.project, ['render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
+    const out = output(fix.project, ['render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
     assert.match(out, /DISPLAY: absorb summary/);
     assert.match(out, /Feature: {6}Auth Flow/);
     assert.match(out, /Target: {7}Payments/);
@@ -153,6 +167,7 @@ describe('engine workunit absorb — happy path', () => {
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
     fix = setupFixture();
+    indexFiles(fix, FEATURE_FILES);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.workflows/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     const res = engine(fix, ABSORB);
@@ -176,7 +191,7 @@ describe('engine workunit absorb — happy path', () => {
       warnings: [],
     });
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = stubbed.output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports']);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports']);
     assert.match(receipt, new RegExp([
       'Absorbed into Epic',
       '',
@@ -236,12 +251,11 @@ describe('engine workunit absorb — happy path', () => {
 
     // KB: feature chunks removed, moved artifacts indexed at epic identities —
     // completed phase artifacts only, imports and seeds always.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'remove --work-unit auth-flow',
-      'index .workflows/payments/discussion/auth.md',
-      'index .workflows/payments/research/auth.md',
-      'index .workflows/payments/imports/notes-2.md',
-      'index .workflows/payments/seeds/seed.md',
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/payments/discussion/auth.md',
+      '.workflows/payments/imports/notes-2.md',
+      '.workflows/payments/research/auth.md',
+      '.workflows/payments/seeds/seed.md',
     ]);
   });
 
@@ -254,6 +268,7 @@ describe('engine workunit absorb — happy path', () => {
     delete feature.imports;
     delete feature.seeds;
     fix = setupFixture({ feature });
+    indexFiles(fix, ['.workflows/auth-flow/discussion/auth-flow.md']);
     const res = engine(fix, ABSORB);
 
     assert.strictEqual(res.routing, 'discussion');
@@ -266,7 +281,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'in-progress' } });
     assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'discussion', source: 'discovery' });
     // In-progress discussion is not indexed — only the feature removal runs.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['remove --work-unit auth-flow']);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 
   it('a live reconcile flag travels with the absorbed discussion — research moves with it, so the flag stays true', () => {
@@ -398,25 +413,24 @@ describe('engine workunit absorb — happy path', () => {
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
 
-    // The store calls are exactly the indexed-phase moves.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'remove --work-unit auth-flow',
-      'index .workflows/payments/discussion/auth.md',
-      'index .workflows/payments/research/auth.md',
-      'index .workflows/payments/imports/notes-2.md',
-      'index .workflows/payments/seeds/seed.md',
+    // The store holds exactly the indexed-phase moves — no experiment file.
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/payments/discussion/auth.md',
+      '.workflows/payments/imports/notes-2.md',
+      '.workflows/payments/research/auth.md',
+      '.workflows/payments/seeds/seed.md',
     ]);
 
     // The receipt names the moved series by its top-level count — E1, E1.1,
     // E2 is two experiments, never three; a non-count refuses.
-    const receipt = stubbed.output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '2']);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '2']);
     assert.match(receipt, /• Research: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
       /--experiments must be a positive experiment count/);
 
     // The continuation menu renders from the post-absorb state; the
     // feature's name travels as a flag — the unit itself is gone.
-    const continuation = stubbed.output(fix.project, ['render', 'absorb-continuation', 'payments', '--feature', 'auth-flow']);
+    const continuation = output(fix.project, ['render', 'absorb-continuation', 'payments', '--feature', 'auth-flow']);
     assert.match(continuation, /MENU: absorb continuation/);
     assert.match(continuation, /\*\*Auth Flow\*\* absorbed into \*\*Payments\*\*\./);
     assert.match(continuation, /\*\*`c\/continue`\*\* → Continue Payments as epic/);
@@ -473,16 +487,17 @@ describe('engine workunit absorb — happy path', () => {
 
   it('KB failures are warnings, never blocks — the absorb still lands and commits', () => {
     fix = setupFixture();
-    const res = engine(fix, ABSORB, { STUB_KNOWLEDGE_EXIT: '1' });
+    unreadableKnowledge(fix.project);
+    const res = engine(fix, ABSORB);
 
     assert.strictEqual(res.warnings.length, 5, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge remove failed/);
-    assert.match(res.warnings[4], /knowledge index \(seeds\/seed\.md\) failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[4], /^knowledge index \(seeds\/seed\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
 
     // The absorb both removes and indexes, so its advisory names neither.
-    const receipt = stubbed.output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--warn']);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--warn']);
     assert.match(receipt, /  ⚑ Knowledge warning\n    The feature is absorbed\. The next start brings the knowledge base up to date\./);
   });
 });
@@ -561,15 +576,14 @@ describe('engine workunit absorb — imports follow the material', () => {
     setupImporting();
     engine(fix, ABSORB);
 
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'remove --work-unit auth-flow',
-      'index .workflows/payments/discussion/auth.md',
-      'index .workflows/payments/research/auth.md',
-      'index .workflows/payments/imports/notes-2.md',
-      'index .workflows/payments/imports/brief.md',
-      'index .workflows/payments/seeds/seed.md',
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/payments/discussion/auth.md',
+      '.workflows/payments/imports/brief.md',
+      '.workflows/payments/imports/notes-2.md',
+      '.workflows/payments/research/auth.md',
+      '.workflows/payments/seeds/seed.md',
     ]);
-    const render = (renamed) => stubbed.output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth',
+    const render = (renamed) => output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth',
         '--moved', 'research,seeds,imports', '--renamed', renamed]);
     assert.match(render('notes.md:notes-2.md'),
       /• Imports: moved\n {2}• Renamed: notes\.md → notes-2\.md \(links rewritten\)/);
@@ -812,10 +826,10 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     git(fix.project, ['commit', '-q', '-m', 'drop research file']);
     refusedPristine(ABSORB, /research file missing on disk: \.workflows\/auth-flow\/research\/auth-flow\.md/);
     // Validation refused before ANY move — the discussion is still the
-    // feature's, the epic gained nothing, no KB call ran.
+    // feature's, the epic gained nothing, nothing was indexed.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/auth-flow/discussion/auth-flow.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/discussion/auth.md')));
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 
   it('refuses malformed tracked entries — deletion follows, so skipping would lose the file', () => {

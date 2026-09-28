@@ -144,6 +144,12 @@ describe('engine harness — a keyword-only checkout', () => {
     assert.deepStrictEqual(harness.indexedFiles(dir), []);
   });
 
+  it('is one whose index fails, deterministically, where the store cannot be loaded', () => {
+    harness.unreadableKnowledge(dir);
+    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
+  });
+
   it('answers a command that waits on the embedding provider through callAsync', async () => {
     harness.keywordOnlyKnowledge(dir);
     ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);

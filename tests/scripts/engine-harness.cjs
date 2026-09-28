@@ -130,6 +130,18 @@ function keywordOnlyKnowledge(dir) {
 }
 
 /**
+ * The checkout set up keyword-only over a store that cannot be loaded: every
+ * index into it and every removal from it fails, deterministically.
+ * @param {string} dir
+ */
+function unreadableKnowledge(dir) {
+  keywordOnlyKnowledge(dir);
+  const files = knowledgeFiles(dir);
+  store.writeMetadata(files.metadata, {});
+  fs.writeFileSync(files.store, 'not a store');
+}
+
+/**
  * The files the store holds chunks of, sorted — none without a store.
  * @param {string} dir @returns {string[]}
  */
@@ -165,6 +177,6 @@ const { call, callAsync, ok, okSections, refuses, output } = harness();
 module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output,
-  keywordOnlyKnowledge, indexedFiles,
+  keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
   git, setupGitFixture, cleanupFixture,
 };

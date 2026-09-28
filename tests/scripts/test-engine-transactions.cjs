@@ -133,6 +133,7 @@ describe('engine topic cancel — the discovery unit', () => {
   });
 
   it('a started topic takes every conversation, releasing the waits before the holders close, abandoning the records, discarding the proposed grouping', () => {
+    harness.unreadableKnowledge(dir);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.deepStrictEqual(res.cancelled, [
       { phase: 'research', previous_status: 'completed' },
@@ -141,10 +142,10 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(res.discarded, ['grouping']);
     assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'every open record ends abandoned, the split with its parent');
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
-    // No KB configured in the fixture — warn-don't-block, one warning per
+    // A store that cannot be loaded — warn-don't-block, one warning per
     // indexed item the cancel took.
     assert.strictEqual(res.warnings.length, 2);
-    assert.match(res.warnings[0], /knowledge remove failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'cancelled', previous_status: 'completed' });
@@ -298,6 +299,7 @@ describe('engine topic cancel — the specification unit', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('takes the specification and its plan, stashing statuses and the build order, and leaves the sources alone', () => {
+    harness.unreadableKnowledge(dir);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'session-model', phase: 'specification', status: 'cancelled', discarded: [], abandoned: [], released_waits: [],
@@ -307,7 +309,7 @@ describe('engine topic cancel — the specification unit', () => {
       ],
       committed: shortHead(dir), warnings: [res.warnings[0]],
     });
-    assert.match(res.warnings[0], /knowledge remove failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.specification.items['session-model'],
       { status: 'cancelled', previous_status: 'in-progress', previous_order: 1, sources: { 'session-model': { status: 'incorporated' } } });
@@ -478,8 +480,8 @@ describe('engine topic reactivate', () => {
       { phase: 'discussion', status: 'in-progress' },
     ]);
     assert.strictEqual(res.status, 'reactivated');
-    // The completed research is re-indexed (no KB — a warning); the
-    // in-progress discussion is not.
+    // The completed research is re-indexed (its file is absent — a warning);
+    // the in-progress discussion is not.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
 
@@ -1187,7 +1189,7 @@ describe('engine topic complete', () => {
     assert.strictEqual(res.topic, 'auth-flow');
     assert.strictEqual(res.phase, 'research');
     assert.strictEqual(res.status, 'completed');
-    // No KB configured in the fixture — warn-don't-block.
+    // The fixture holds no research file — warn-don't-block.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
@@ -1207,20 +1209,15 @@ describe('engine topic complete', () => {
     assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
   });
 
-  it('an index that still fails after its retries lands in the transaction\'s warnings', () => {
+  it('an index that fails over a store it cannot load lands in the transaction\'s warnings', () => {
     writeFile(dir, '.workflows/payments/research/auth-flow.md', '# Auth Flow\n\nResearch findings.\n');
-    writeFile(dir, '.workflows/.knowledge/config.json', '{ "knowledge": {} }\n');
-    writeFile(dir, '.workflows/.knowledge/metadata.json',
-      JSON.stringify({ provider: null, model: null, dimensions: null, last_indexed: null }) + '\n');
-    // A store the CLI cannot load — the failure outlasts every retry.
-    writeFile(dir, '.workflows/.knowledge/store.bin', 'not a store');
+    harness.unreadableKnowledge(dir);
 
     const res = engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
 
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/research\/auth-flow\.md: loadStore: /);
-    assert.match(res.warnings[0], /The next start will retry it\.$/);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at .*\/\.workflows\/\.knowledge\/store\.bin: /);
   });
 
   it('completes a non-indexed phase with no KB attempt — empty warnings', () => {
@@ -1664,6 +1661,7 @@ describe('engine topic supersede', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('marks a spec source superseded with superseded_by the TOPIC, removes KB chunks, no commit', () => {
+    harness.unreadableKnowledge(dir);
     const res = engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']);
 
     assert.strictEqual(res.ok, true);
@@ -1671,9 +1669,9 @@ describe('engine topic supersede', () => {
     assert.strictEqual(res.phase, 'specification');
     assert.strictEqual(res.status, 'superseded');
     assert.strictEqual(res.superseded_by, 'unified');
-    // No KB configured in the fixture — warn-don't-block.
+    // A store that cannot be loaded — warn-don't-block.
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge remove failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.specification.items['auth-flow'], {
@@ -1762,7 +1760,7 @@ function featureManifest() {
 function setupFeatureFixture() {
   const dir = setupGitFixture();
   writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
-  // The completed phase artifacts (bulk re-index discovers only files that
+  // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
   writeFile(dir, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
   writeFile(dir, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
@@ -1772,10 +1770,11 @@ function setupFeatureFixture() {
   // Present but never indexed for a feature — discovery's session leg is
   // epic-only.
   writeFile(dir, '.workflows/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
-  // A plain file where the knowledge store's directory belongs: the re-index
-  // spawn fails deterministically (stub mode would otherwise index the existing
-  // files successfully), so warn-don't-block is provable as a warning.
-  writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
+  // A store that cannot be loaded, checkout-local and never committed: a
+  // removal or re-index fails deterministically, so warn-don't-block is
+  // provable as a warning.
+  writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
+  harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
   return dir;
 }
@@ -1792,12 +1791,13 @@ function setupFinishedCrossCuttingFixture() {
       specification: { items: { caching: { status: 'completed' } } },
     },
   }, null, 2) + '\n');
-  // The completed phase artifacts on disk, so the re-index bulk walk discovers
-  // them (it skips artifacts whose files are absent).
+  // The completed phase artifacts on disk, so the re-index discovers them (it
+  // skips artifacts whose files are absent).
   writeFile(dir, '.workflows/caching/discussion/caching.md', '# Discussion\n');
   writeFile(dir, '.workflows/caching/specification/caching/specification.md', '# Spec\n');
-  // Deterministic KB failure: a plain file where the store directory belongs.
-  writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
+  // Deterministic KB failure: a store that cannot be loaded.
+  writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
+  harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
   return dir;
 }
@@ -1899,10 +1899,10 @@ describe('engine workunit complete', () => {
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.committed, shortHead(ccDir));
     // Cancellation removed the unit's chunks; completion re-indexes them in ONE
-    // scoped bulk spawn. No KB in the fixture, so that spawn fails → a single
-    // warn-don't-block warning.
+    // scoped bulk pass. The store cannot be loaded, so that pass fails → a
+    // single warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
 
     const m = readManifest(ccDir, 'caching');
     assert.strictEqual(m.status, 'completed');
@@ -1930,10 +1930,10 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'cancelled');
     assert.strictEqual(res.committed, shortHead(dir));
-    // No KB configured in the fixture — warn-don't-block: the cancellation
-    // still landed and the failure is reported, not thrown.
+    // The store cannot be loaded — warn-don't-block: the cancellation still
+    // landed and the failure is reported, not thrown.
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge remove failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
 
     const m = readManifest(dir, 'auth-flow');
     assert.strictEqual(m.status, 'cancelled');
@@ -1987,23 +1987,22 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('re-indexes after a cancel in one scoped bulk spawn — failure is a warning', () => {
+  it('re-indexes after a cancel in one scoped bulk pass — failure is a warning', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
 
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
     // Cancellation removed the unit's chunks; reactivation re-indexes them in a
-    // SINGLE `knowledge index --work-unit` spawn (formerly one spawn per
-    // artifact). The bulk walk covers the same set — completed phase artifacts,
-    // shape-valid imports/seeds, analysis caches. No KB in the fixture, so the
-    // spawn fails → one warn-don't-block warning.
+    // SINGLE scoped bulk pass over the unit — completed phase artifacts,
+    // shape-valid imports/seeds, analysis caches. The store cannot be loaded,
+    // so the pass fails → one warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('epic reactivate re-indexes in one scoped bulk spawn (session logs in scope) — failure is a warning', () => {
+  it('epic reactivate re-indexes in one scoped bulk pass (session logs in scope) — failure is a warning', () => {
     const epicDir = setupGitFixture();
     writeFile(epicDir, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -2016,8 +2015,9 @@ describe('engine workunit reactivate', () => {
     writeFile(epicDir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
     writeFile(epicDir, '.workflows/payments/discovery/sessions/session-002.md', '# Session 002\n');
     writeFile(epicDir, '.workflows/payments/discovery/sessions/notes.txt', 'not a session log\n');
-    // Deterministic KB failure: a plain file where the store directory belongs.
-    writeFile(epicDir, '.workflows/.knowledge', 'not a directory\n');
+    // Deterministic KB failure: a store that cannot be loaded.
+    writeFile(epicDir, '.workflows/.gitignore', '.knowledge/\n');
+    harness.unreadableKnowledge(epicDir);
     commitAll(epicDir, 'init');
 
     engine(epicDir, ['workunit', 'cancel', 'payments']);
@@ -2025,11 +2025,11 @@ describe('engine workunit reactivate', () => {
 
     assert.strictEqual(res.status, 'in-progress');
     // The epic's re-index (completed discussion + the two session logs; the
-    // non-matching file is excluded by discovery) collapses to one scoped bulk
-    // spawn. Session-scoping itself is pinned by the discovery snapshot test;
-    // here the barrier makes the single spawn fail → one warning.
+    // non-matching file is excluded by discovery) is one scoped bulk pass.
+    // Session-scoping itself is pinned by the discovery snapshot test; here
+    // the unloadable store makes the single pass fail → one warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     cleanupFixture(epicDir);
   });
 
@@ -2061,10 +2061,10 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
     // Cancellation removed the unit's chunks — the cancelled reactivation
-    // re-index runs as one scoped bulk spawn (no KB in the fixture: it fails,
-    // one warn-don't-block warning).
+    // re-index runs as one scoped bulk pass (the store cannot be loaded: it
+    // fails, one warn-don't-block warning).
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(readManifest(ccDir, 'caching').status, 'in-progress');
     cleanupFixture(ccDir);
   });
@@ -2287,7 +2287,7 @@ describe('the knowledge store never rides an engine commit', () => {
   beforeEach(() => {
     dir = setupEpicFixture();
     // Store dirt beside the work — what a transaction's index or remove
-    // leaves; simulated here since the fixture has no real knowledge CLI.
+    // leaves.
     writeFile(dir, '.workflows/.knowledge/store.bin', 'v1\n');
   });
   afterEach(() => { cleanupFixture(dir); });
