@@ -50,7 +50,7 @@ A label already on the map, or a new one in their own words — "under Next", "t
 
 **If `own`:**
 
-Write into the document what this sitting discussed and has not yet recorded, as the phase records it, then commit anything this session has written and not yet committed, with the phase's own cadence commit — the postpone transaction writes the manifests alone, so the sitting that sent the topic away is recorded and committed with the rest of its record rather than left in the conversation. Nothing to write or commit is fine.
+Write into the document what this sitting discussed and has not yet recorded, as the phase records it, then commit anything this session has written and not yet committed, with the phase's own cadence commit — the postpone transaction writes the manifests alone, so the sitting that sent the topic away is recorded and committed with the rest of its record rather than left in the conversation. Nothing to write means the document already holds what the sitting discussed — a clean working tree does not say so. Nothing to commit is fine.
 
 Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands. The gate is the confirmation: the request is never put back to the user in conversation first.
 
