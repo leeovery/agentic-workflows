@@ -4,7 +4,7 @@
 
 ---
 
-Read cues from the user's framing, propose `research` or `discussion` tentatively, let them flip. Routing is mutable for fresh items, so the initial proposal is low-stakes.
+Read each topic's cues from how the user framed it across the exploration and infer `research` or `discussion`. The inference rides the proposal to the synthesis gate, where the user sees it and can flip it. Routing is mutable for fresh items, so the read is low-stakes.
 
 ## A. Cue Lists
 
@@ -24,7 +24,7 @@ Read cues from the user's framing, propose `research` or `discussion` tentativel
 
 **Neutral / unclear**
 
-Topic mentioned in passing, no elaboration. Ask explicitly with the soft framing — *"do you have a sense of how this works, or would we need to look into it?"* — never force a binary research/discussion pick.
+Topic mentioned in passing, no elaboration — usually not a topic yet ([topic-synthesis.md](topic-synthesis.md) **B**). When it is one, take the nearest cue in the exploration — did the user describe how it should work, or wonder what's possible? — and let the gate check the read.
 
 ## B. Worked Examples
 
@@ -34,10 +34,9 @@ Topic mentioned in passing, no elaboration. Ask explicitly with the soft framing
 User: "Kitchen printers — I don't know what protocols are
        available cheaply, or how reliable network vs USB
        printers are."
-
-Claude: "Kitchen-printers — sounds like investigation territory.
-        I'd put it as research. Yes?"
 ```
+
+Reads `research` — open capability and reliability questions the user hasn't worked through.
 
 **Discussion-shaped**
 
@@ -45,30 +44,25 @@ Claude: "Kitchen-printers — sounds like investigation territory.
 User: "Menu management — operators add items, set prices,
        control availability windows, mark items unavailable
        when they run out."
-
-Claude: "Menu-management — you've got a clear shape in mind.
-        Discussion sounds right. OK?"
 ```
+
+Reads `discussion` — the user already holds the shape: actors, flows, rules.
 
 **Neutral / unclear**
 
 ```
 User: "We'll need analytics for the operator."
-
-Claude: "For analytics — do you have a sense of what views and
-        data you need, or is the question more about what's
-        possible to track? First would be discussion territory,
-        second research."
 ```
 
-## C. How to Propose
+A passing mention. Later turns describing the views the operator needs read `discussion`; wondering what is possible to track reads `research`; neither, and it is not a topic yet.
 
-Propose routing inline when reflecting the topic back. Keep it tentative — *"I'd put it as research"*, *"discussion sounds right"*. The user flips with a single word; treat that flip as authoritative without re-asking.
+## C. At the Gate
+
+The inferred routing rides each topic's entry in the proposal file and shows on its row at the synthesis gate — the one place it is put to the user. Nothing is proposed mid-conversation: topics are never named in the loop. A flip arrives as `adjust` (*"Y should be research"*) — apply it as authoritative, never re-asked.
 
 Avoid:
 
-- Forcing a binary on an unclear topic. Use the soft framing instead.
-- Long routing rationales. One short clause per topic.
-- Re-litigating routing once the user has flipped. Move on.
+- Long routing rationales. The **Topics Identified** `Why` line is one short clause naming the cue.
+- Re-litigating routing once the user has flipped it.
 
 → Return to caller.

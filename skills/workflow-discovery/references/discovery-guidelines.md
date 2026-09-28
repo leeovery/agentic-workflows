@@ -63,6 +63,8 @@ Discovery makes real decisions — and records them **plainly, as decisions**. T
 
 So **don't hedge.** Make the call, word it naturally, let position carry the softness. Don't weave "leaning…", "maybe…", "we could…" through the record — that buries the decision you actually reached. The per-topic discussion is where these harden via convergence, so nothing trustworthy is bypassed: discovery explores substance freely, and discussion still ratifies.
 
+**A decision is what the conversation settled.** Record it unhedged — and record nothing else as one: a point the user left open (*"I suspect…"*, *"I don't know…"*) stays an open question, and a suggestion of yours the user never took up is not a decision.
+
 ## F. Worked Examples
 
 Reference dialogues showing the register. Read them as context for your own moves — they are **not** output templates to render verbatim.
