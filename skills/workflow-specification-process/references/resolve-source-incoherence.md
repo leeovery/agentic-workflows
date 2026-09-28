@@ -82,7 +82,7 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here when a direct answer fills it: the specification decided something its sources never did, and the question is what the sources should have said.
 
-Attempt the derivation first — constraints, sibling artifacts, measurement.
+Attempt the derivation first, yourself — the constraints, the sibling artifacts, a measurement — each read, never taken from a review finding's account of its own search.
 
 **If a defensible derivation settles it** — the record yields the answer (a technical parameter the sources never pinned, derived from the rationale they did record), or first principles over the decisions the record made whittle the fork to one answer you stand behind:
 
