@@ -85,9 +85,13 @@ Then check if the discussion file exists at `.workflows/{work_unit}/discussion/{
 
 A first start, not a resume — no session has ever run and no subtopics exist, so there is no map to render. Parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
 
+Set `resumed` = `false`.
+
 → Proceed to **Step 1**.
 
 #### If no file exists
+
+Set `resumed` = `false`.
 
 → Proceed to **Step 1**.
 
@@ -114,6 +118,8 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 Emit the DISPLAY section verbatim per its marker.
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file, the manifest's map state (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discussion.{topic} subtopics), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/discussion/{topic}/ — content and agent state together) — stale agent results would poison the restarted session's review gates`, commit = `discussion({work_unit}): restart discussion`.
+
+Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's map still standing; `false` for **Step 1**, its file and map deleted and rebuilt.
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
@@ -162,7 +168,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
+> @if(resumed) Picking the discussion back up where the map leaves it. @else Discussion starting. I'll track our conversation on a Discussion Map. @endif You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
 ```
 
 Both blocks above are emitted before the reference loads.

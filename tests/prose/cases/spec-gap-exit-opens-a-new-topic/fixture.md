@@ -6,8 +6,8 @@ Behavioural-ranking's discussion settled how click and purchase
 signals reach ranking: a nightly batch aggregation over the events
 pipeline, real-time streaming rejected. It settled nothing beyond
 that. Its specification was constructed over that one discussion in an
-earlier sitting — the source row reads incorporated, review has not
-begun — and it goes one step further than the record does: it writes a
+earlier sitting — the source row reads incorporated, its Dependencies
+section records nothing blocking, review has not begun — and it goes one step further than the record does: it writes a
 single behavioural score per catalogue item, combining click-through
 rate and purchase rate weighted 30/70 in favour of purchases. Nothing
 in the record chose that weighting, and nothing in the epic can

@@ -156,6 +156,23 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 
 ## Step 5: Spec Construction
 
+Read the sources map and the consult references:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references
+```
+
+#### If no source row and no consult reference reads `pending`
+
+Set `constructed` = `false`.
+
+→ Proceed to **Step 6**.
+
+#### Otherwise
+
+Set `constructed` = `true`.
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -177,6 +194,10 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 ## Step 6: Document Dependencies
 
 #### If work_type is not `epic`
+
+→ Proceed to **Step 7**.
+
+#### If `constructed` is `false` and the specification carries a `## Dependencies` section
 
 → Proceed to **Step 7**.
 
