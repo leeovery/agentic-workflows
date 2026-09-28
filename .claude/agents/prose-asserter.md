@@ -79,8 +79,9 @@ were written. A walker has been known to describe a command's output
 inaccurately; where its account and the record disagree about what came
 back, the record is right and the disagreement is a finding. Its
 **DISPATCHES** section is the same record for every agent the walk
-dispatched, each call whole: the authority on what a dispatch carried.
-A prompt with no DISPATCHES section is a walk that dispatched nothing.
+dispatched and every send that continued one, each call whole: the
+authority on what a dispatch or a send carried. A prompt with no
+DISPATCHES section is a walk that dispatched nothing.
 
 **The walk** is the walker's own account, turn by turn, as it was told at
 the time — lifted from the runtime's transcript by the harness, not
@@ -162,9 +163,12 @@ dispatch (an `Agent` row, `→ held`, its call under DISPATCHES) followed
 by the substitution or the played agent is correct behaviour: not a
 failed agent, not a deviation. A walker that takes the prose's
 agent-failure arm over a held dispatch has misread the hold, not
-exercised that arm. And a dispatch the prose calls for that is absent
-from DISPATCHES is a missing step, however faithfully what stood in for
-it was applied.
+exercised that arm. A continuation is held the same way: a
+`SendMessage` row, `→ held`, its send under DISPATCHES naming the held
+dispatch it continues, is the prose's send made and correct behaviour —
+never a failed send, and never a reason for a fresh dispatch. And a
+dispatch or send the prose calls for that is absent from DISPATCHES is a
+missing step, however faithfully what stood in for it was applied.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
