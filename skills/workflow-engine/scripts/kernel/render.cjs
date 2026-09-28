@@ -23,7 +23,7 @@
  * @typedef {object} TreeNode
  * @property {string} title          one-line header row (glyph/label already composed)
  * @property {string} [tag]          trailing annotation, aligned into a column across the tree
- * @property {(string|TreeBody)[]} [body] paragraphs beneath the row; each wraps independently
+ * @property {(string|TreeBody)[]} [body] paragraphs beneath the row; each wraps independently, and an empty one is a blank line between them
  * @property {TreeNode[]} [children] nested nodes, same shape, recursively
  */
 
@@ -238,6 +238,10 @@ function renderSiblings(nodes, prefix, width, out, gap = false, childIndent = 0,
     const bodyPrefix = childPrefix + (hasChildren ? '│  ' : ' '.repeat(bodyIndent));
     for (const para of node.body || []) {
       const text = typeof para === 'string' ? para : para.text;
+      if (text === '') {
+        out.push({ text: bodyPrefix.trimEnd(), tag: null });
+        continue;
+      }
       const hang = typeof para === 'string' ? 0 : (para.hang || 0);
       for (const wl of wrapWithPrefix(text, { width, prefix: bodyPrefix, hang })) {
         out.push({ text: wl, tag: null });

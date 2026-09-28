@@ -187,13 +187,15 @@ describe('discoverySynthesisView', () => {
       name: 'kitchen-printers',
       routing: 'discussion',
       summary: 'Print routing by station, failure handling, and offline queueing for kitchen ticket printers across multiple sites',
+      description: 'Tickets must keep printing through a network drop, and each station only wants its own lines.',
     },
     {
       name: 'operator-analytics',
       routing: 'research',
       summary: 'Daily service dashboards for shift leads — covers order throughput, voids, and prep-time drift with per-branch comparison',
+      description: 'Shift leads read these after service; what can be measured cheaply is still unknown.',
     },
-    { name: 'loyalty', routing: 'discussion', summary: 'Points and rewards' },
+    { name: 'loyalty', routing: 'discussion', summary: 'Points and rewards', description: 'Repeat diners earn points toward rewards.' },
   ];
 
   it('wraps long summaries under aligned rows and keeps the existing map below — continuing session', () => {
@@ -218,16 +220,24 @@ describe('discoverySynthesisView', () => {
       '  │     Print routing by station, failure handling, and offline',
       '  │     queueing for kitchen ticket printers across multiple',
       '  │     sites',
+      '  │',
+      '  │     Tickets must keep printing through a network drop, and',
+      '  │     each station only wants its own lines.',
       '  │     ↳ Routed to discussion',
       '  │',
       '  ├─ ○ Operator Analytics',
       '  │     Daily service dashboards for shift leads — covers order',
       '  │     throughput, voids, and prep-time drift with per-branch',
       '  │     comparison',
+      '  │',
+      '  │     Shift leads read these after service; what can be',
+      '  │     measured cheaply is still unknown.',
       '  │     ↳ Routed to research',
       '  │',
       '  └─ ○ Loyalty',
       '        Points and rewards',
+      '',
+      '        Repeat diners earn points toward rewards.',
       '        ↳ Routed to discussion',
       '',
       'Already on the map (2)',
@@ -237,8 +247,8 @@ describe('discoverySynthesisView', () => {
       '  └─ ◐ Payments Core',
       '        ↳ Researching',
       '',
-      '3 topics. Summaries come from the exploration; routing is my read',
-      'of where each one goes next.',
+      '3 topics. Summaries and descriptions come from the exploration;',
+      'routing is my read of where each one goes next.',
       '',
     ].join('\n'));
   });
@@ -251,10 +261,12 @@ describe('discoverySynthesisView', () => {
       'Proposed topics (1)',
       '  └─ ○ Loyalty',
       '        Points and rewards',
+      '',
+      '        Repeat diners earn points toward rewards.',
       '        ↳ Routed to discussion',
       '',
-      '1 topic. Summaries come from the exploration; routing is my read',
-      'of where each one goes next.',
+      '1 topic. Summaries and descriptions come from the exploration;',
+      'routing is my read of where each one goes next.',
       '',
     ].join('\n'));
   });
@@ -305,10 +317,10 @@ describe('gateway.cjs adapter: map-view', () => {
       },
     }, null, 2));
     createFile(dir, 'proposed.json', JSON.stringify([
-      { name: 'kitchen-printers', routing: 'discussion', summary: 'Print routing by station' },
-      { name: 'menu-management', routing: 'research', summary: 'collides with an active item' },
-      { name: 'old-idea', routing: 'research', summary: 'previously dismissed' },
-      { name: 'bad.name', routing: 'research', summary: 'dots break addressing' },
+      { name: 'kitchen-printers', routing: 'discussion', summary: 'Print routing by station', description: 'd' },
+      { name: 'menu-management', routing: 'research', summary: 'collides with an active item', description: 'd' },
+      { name: 'old-idea', routing: 'research', summary: 'previously dismissed', description: 'd' },
+      { name: 'bad.name', routing: 'research', summary: 'dots break addressing', description: 'd' },
     ]));
     const res = run(['map-view', 'payments', '--proposed-file', 'proposed.json']);
     assert.strictEqual(res.status, 0);
@@ -343,6 +355,11 @@ describe('gateway.cjs adapter: map-view', () => {
     const shape = run(['map-view', 'payments', '--proposed-file', 'shape.json']);
     assert.strictEqual(shape.status, 1);
     assert.match(shape.stderr, /missing "summary"/);
+
+    createFile(dir, 'undescribed.json', JSON.stringify([{ name: 'x', routing: 'research', summary: 's', description: '  ' }]));
+    const undescribed = run(['map-view', 'payments', '--proposed-file', 'undescribed.json']);
+    assert.strictEqual(undescribed.status, 1);
+    assert.match(undescribed.stderr, /missing "description"/);
   });
 
   it('fails loudly on a missing work unit, unknown flags, and a bad work-unit name', () => {

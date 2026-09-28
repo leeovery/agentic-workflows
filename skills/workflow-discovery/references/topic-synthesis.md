@@ -66,11 +66,11 @@ For each topic in the synthesised set, propose `research` or `discussion` based 
 
 ## E. Render Proposal
 
-Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); routing is the value inferred in **D**:
+Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); descriptions are two or three sentences drawn from the exploration — what the topic covers and why it surfaced; routing is the value inferred in **D**:
 
 ```json
 [
-  {"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}"}
+  {"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{two or three sentences}"}
 ]
 ```
 
@@ -111,7 +111,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render synthesis-gate
 
 #### If `yes`
 
-The sort is confirmed. Hold in conversation memory for Step 12 confirm-and-persist: the **working list** (topics, with any `matches_dismissed` names from the DATA flags — Step 12 passes `--force-dismissed` for those), the **park set**, and the **pull-forward set**. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
+The sort is confirmed. Hold in conversation memory for Step 12 confirm-and-persist: the **working list** (the topics as last written to `proposed-topics.json`, with any `matches_dismissed` names from the DATA flags — Step 12 passes `--force-dismissed` for those), the **park set**, and the **pull-forward set**. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
 
 → Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written.
 
@@ -131,7 +131,7 @@ Apply the named adjustments to the working set:
 - **Merge** *"X and Y are one"* — combine into one topic; propose a unifying name
 - **Rename** *"X should be called Z"* — swap the name
 - **Re-route** *"Y should be research"* — flip routing
-- **Edit summary** *"Y's summary should be ..."* — replace the summary line
+- **Edit summary or description** *"Y's summary should be ..."* — replace the summary line or the description
 - **Re-sort** *"X is this epic after all"* / *"actually Y can wait — v2"* — move between the working list and the park set (a parked item gains its horizon, an unparked one its routing)
 - **Drop** *"Forget Z entirely"* — remove from set (note: this means Claude misread the exploration; reflect on what was overweighted)
 
