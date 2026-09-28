@@ -38,10 +38,16 @@ The prose should have taken this path:
    set behind it
 7. so the session **STOPS** conversationally and puts the question to
    the user — what the specification asserts, what was searched and
-   where the record ran out, what the answer unlocks — taking a
-   stance. No engine surface renders for this: it is an exchange, not
-   a gate, and the gate mode is `gated`, so no auto-override
-   announcement is owed either
+   where the record ran out, what the answer unlocks — and takes a
+   stance at the firmness the record has earned: here it gives nothing
+   to lean a weighting on, so the session says so plainly and says
+   what an answer would need (a relevance objective to score against),
+   rather than picking a number or listing options with no footing.
+   What was searched is what the session searched; the search the
+   finding records is credited to the finding, never told as the
+   session's own. No engine surface renders for this: it is an
+   exchange, not a gate, and the gate mode is `gated`, so no
+   auto-override announcement is owed either
 8. the user's answer shows the question needs more than this session
    can give — a relevance objective is a capability of its own, and
    the epic has nothing to score one against — so the session takes
