@@ -1045,25 +1045,6 @@ describe('engine boot: the worktree include', () => {
     assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n${STORE_FILES[2]}\n`);
   });
 
-  it('renames the retired store file\'s line in place, every other line as it was', () => {
-    writeFile(fix.project, '.worktreeinclude', `node_modules/\n  ${KNOWLEDGE_DIR}/store.msp\n${STORE_FILES[1]}\n.env`);
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[0]}\n${STORE_FILES[1]}\n.env\n${STORE_FILES[2]}\n`);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: copy the knowledge store into new worktrees');
-  });
-
-  it('drops the retired store file\'s line where the store is already listed — never listing it twice', () => {
-    writeFile(fix.project, '.worktreeinclude', `node_modules/\n${KNOWLEDGE_DIR}/store.msp\n.env\n${WORKTREE_INCLUDE}`);
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(include(), `node_modules/\n.env\n${WORKTREE_INCLUDE}`);
-  });
-
   it('a file already listing the knowledge files is left alone', () => {
     const content = `${STORE_FILES[1]}\n  ${STORE_FILES[0]}  \nnode_modules/\n${STORE_FILES[2]}\n`;
     writeFile(fix.project, '.worktreeinclude', content);

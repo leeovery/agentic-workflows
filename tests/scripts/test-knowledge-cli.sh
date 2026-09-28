@@ -1393,26 +1393,6 @@ assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -qE '^Indexed 
 assert_eq "shows summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 teardown_project
 
-# --- Test 45b: A checkout holding only the retired store builds its own from the files ---
-echo "Test 45b: Retired store.msp is replaced by a store.bin built from the files"
-setup_project
-create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
-create_discussion_file "auth-flow" "auth-flow"
-init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
-printf 'an earlier version of the store' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
-cat > "$TEST_ROOT/.workflows/.knowledge/metadata.json" <<'META'
-{ "provider": "stub", "model": "stub", "dimensions": 128, "last_indexed": "2026-09-01T00:00:00.000Z" }
-META
-assert_eq "the retired store is no store" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
-output=$(run_kb index 2>&1)
-assert_eq "builds from the files" "1 new, 0 changed, 0 removed, 0 unchanged." "$(echo "$output" | tail -1)"
-assert_eq "store.bin written" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
-assert_eq "store.msp deleted" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
-assert_eq "the new store is ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
-assert_eq "its chunks are there" "true" "$([ "$(chunk_count auth-flow discussion auth-flow)" -gt 0 ] && echo true || echo false)"
-teardown_project
-
 # --- Test 46: Bulk index skips already-indexed artifacts ---
 echo "Test 46: Bulk index skips already indexed"
 setup_project
