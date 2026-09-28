@@ -1,0 +1,67 @@
+{
+  "origin": "the harvest had no focused coverage — topics synthesised from a worked Exploration route by the user's framing, carry to the map the description the gate showed (#1398), and brief only what the conversation settled (#1399)",
+  "entry": "workflow-discovery",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-discovery/references/resume-detection.md",
+    "skills/workflow-discovery/references/initialize-discovery.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-discovery/references/session-loop.md",
+    "skills/workflow-discovery/references/continuity-load.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-discovery/references/topic-synthesis.md",
+    "skills/workflow-shared/references/topic-granularity.md",
+    "skills/workflow-discovery/references/routing-inference.md",
+    "skills/workflow-discovery/references/brief-synthesis.md",
+    "skills/workflow-discovery/references/document-review.md",
+    "skills/workflow-discovery/references/confirm-and-persist.md"
+  ],
+  "answers": [
+    "c — pick up where we left off",
+    "That covers it — we've worked it all through. Pull the topics together and save them.",
+    "y — that's the set"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discovery active_session",
+      "render resume-gate search-relevance --variant session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "map-view search-relevance --proposed-file",
+      "render synthesis-gate",
+      "discovery-map add-batch search-relevance",
+      "discovery-session close search-relevance"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discovery active_session",
+      "render resume-gate search-relevance --variant session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "write:.workflows/.cache/search-relevance/discovery/proposed-topics.json",
+      "map-view search-relevance --proposed-file",
+      "render synthesis-gate",
+      "write:.workflows/search-relevance/discovery/briefs/",
+      "discovery-map add-batch search-relevance",
+      "discovery-session close search-relevance"
+    ],
+    "calls_exclude": [
+      "discovery-session open",
+      "restart interrupted session",
+      "rm .workflows/search-relevance/discovery/sessions",
+      "manifest delete search-relevance.discovery active_session",
+      "discovery(search-relevance): exploration notes",
+      "roadmap add",
+      "roadmap pull-forward",
+      "workunit create",
+      "topic start",
+      "knowledge.cjs index"
+    ]
+  }
+}

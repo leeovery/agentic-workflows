@@ -1,0 +1,67 @@
+{
+  "origin": "a resumed discovery session had no focused coverage — an interrupted first sketch, picked up from the dashboard, is briefed from its log and edits that log in place rather than opening a second session (#1397)",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/resume-detection.md",
+    "skills/workflow-discovery/references/initialize-discovery.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-discovery/references/session-loop.md",
+    "skills/workflow-discovery/references/continuity-load.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-continue-epic/references/select-epic.md"
+  ],
+  "answers": [
+    "1 — continue the search relevance epic",
+    "i — resume the in-progress discovery session",
+    "c — pick up where we left off"
+  ],
+  "conduct": "The user is coming back to an epic they shaped recently: overhauling search relevance across the catalogue. They want to start with the behavioural-signals concern, because it is the one they have the clearest picture of. The events pipeline exists and is reliable — clicks and purchases already land there. What they want is click-through and purchase rates per query–product pair fed to the ranker as a boost. The one thing they have not settled is whether that boost is recomputed in a nightly batch or kept current by a streaming update; they know both patterns and see it as a straight choice between the two. The search stack is Elasticsearch, and two engineers own search part-time. They answer one follow-up on this concretely from what they know, then consider that thread pinned down for now and say they want to turn to the hand-maintained synonym list next. If the conversation carries on into the synonym list, they say it is a list nobody trusts and they suspect it should be replaced rather than cleaned up, but they do not know what with.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs",
+      "manifest get search-relevance.discovery active_session",
+      "render resume-gate search-relevance --variant session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "discovery(search-relevance): exploration notes",
+      "--discovery"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs",
+      "manifest get search-relevance.discovery active_session",
+      "render resume-gate search-relevance --variant session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "write:.workflows/search-relevance/discovery/sessions/session-001.md",
+      "discovery(search-relevance): exploration notes"
+    ],
+    "calls_exclude": [
+      "discovery-session open",
+      "restart interrupted session",
+      "rm .workflows/search-relevance/discovery/sessions",
+      "manifest delete search-relevance.discovery active_session",
+      "discovery-session close",
+      "--proposed-file",
+      "add-batch",
+      "workunit create",
+      "topic start",
+      "roadmap add"
+    ]
+  }
+}
