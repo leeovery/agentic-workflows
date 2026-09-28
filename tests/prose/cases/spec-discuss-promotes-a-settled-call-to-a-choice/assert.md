@@ -48,7 +48,9 @@ Expected path:
     other finding on the screen lands first as a yes would: the
     waiting-window rule goes into Capture Webhooks, re-derived
     against the live document rather than the tracking file's copy,
-    Resolution `Approved`, and the work commits
+    and Resolution `Approved`. The screen commits once every finding
+    on it is disposed, so this landing may share the commit that
+    follows the discussed finding
 11. finding 2 is then raised in conversation, and the exchange ends
     in neither of the two outcomes a discuss usually reaches: the
     user does not accept it and does not decline it. They show that
