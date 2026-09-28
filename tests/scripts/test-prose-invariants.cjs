@@ -217,6 +217,34 @@ describe('calls_include / calls_exclude', () => {
   });
 });
 
+describe('manifest set — a field and its value, either form', () => {
+  it('a positional needle matches the batch form a walk ran, and the reverse', () => {
+    const rows = [
+      bash(`${ENGINE} manifest set pay.planning.pay review_cycle=2`),
+      bash(`${ENGINE} manifest set pay.planning.pay finding_gate_mode auto`),
+      bash(`${ENGINE} manifest set pay.planning.pay "tracking.review-integrity-tracking-c1"=in-progress`),
+    ];
+    const declared = {
+      calls_include: [
+        'manifest set pay.planning.pay review_cycle 2',
+        'finding_gate_mode=auto',
+        'tracking.review-integrity-tracking-c1 in-progress',
+      ],
+    };
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('neither form hides a forbidden write from exclude', () => {
+    const rows = [bash(`${ENGINE} manifest set pay.planning.pay review_cycle=1 review_baseline_words=412`)];
+    assert.equal(invariants.check(rows, { calls_exclude: ['manifest set pay.planning.pay review_cycle 1'] })[0].ok, false);
+  });
+
+  it('still tells one value from another', () => {
+    const rows = [bash(`${ENGINE} manifest set pay.planning.pay review_cycle=1`)];
+    assert.equal(invariants.check(rows, { calls_include: ['manifest set pay.planning.pay review_cycle 2'] })[0].ok, false);
+  });
+});
+
 describe('calls_in_order — presence is not sequence', () => {
   it('passes when the declared calls appear in sequence', () => {
     const rows = [

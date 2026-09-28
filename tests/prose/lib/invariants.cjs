@@ -162,8 +162,19 @@ function bare(s) {
   return s.replace(/['"]/g, '');
 }
 
+/**
+ * `manifest set` takes a field and its value positionally or as
+ * `field=value`, and both are one write. Walkers reach for either, so a
+ * needle spelled one way met a walk that ran the other and failed calls
+ * the engine treats as the same. Both sides read `=` between a name and
+ * its value as the space, so the form can never decide a verdict.
+ */
+function unformed(s) {
+  return bare(s).replace(/([\w.\]-])=(?=[^\s=])/g, '$1 ');
+}
+
 function ranMatch(command, needle) {
-  return bare(command).includes(bare(needle));
+  return unformed(command).includes(unformed(needle));
 }
 
 /**
