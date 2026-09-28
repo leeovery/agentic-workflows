@@ -28,7 +28,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 
 → Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for the task brief in **A**, the executor block in **C**, the findings summaries and their lenses in **E** and **F**, and the result summary and its lenses in **G**.
 
-Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
+Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) and the reviewer's criteria for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** consume it from session context rather than re-reading it per invocation:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type

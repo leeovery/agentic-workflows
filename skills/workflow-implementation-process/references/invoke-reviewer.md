@@ -17,7 +17,7 @@ Invoke `workflow-implementation-task-reviewer` with:
 1. **Specification path**: same path given to the executor
 2. **Task content**: same normalised task content the executor received
 3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
-4. **Work type**: from the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type`) — `quick-fix` switches the reviewer to completeness-based criteria and verification-workflow checks
+4. **Work type**: `work_type` from session context, read once at the task loop's entry — `quick-fix` switches the reviewer to completeness-based criteria and verification-workflow checks
 5. **code-quality.md path**: `.claude/skills/workflow-implementation-process/references/code-quality.md` — the standards the executor worked to, including the comment discipline
 6. **finding-floor.md path**: `.claude/skills/workflow-implementation-process/references/finding-floor.md` — the floor every BANK entry clears
 7. **Executor's report**: the structured result the executor returned for this attempt — the claims under review, to be verified against the code, never trusted
