@@ -46,7 +46,7 @@ The register is what this topic set out to learn — typed state in the manifest
   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin "{origin}" [--parent {slug}]
   ```
 
-- **A thread reframes** when its answer reshapes the question — the normal case, not a correction: one row goes on under the reshaped question, never a `learned` row for the part answered beside a new thread for the part that remains. The file carries the history; the register carries the question as it now stands:
+- **A thread reframes** when its answer reshapes the question — the normal case, not a correction: one row goes on under the reshaped question, never a `learned` row for the part answered beside a new thread for the part that remains. The file carries the history — why the question changed is written with the move, and the cadence commit carries both; the register carries the question as it now stands:
 
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads reframe {work_unit} {topic} {slug} --question "{the question, as it now stands}"
