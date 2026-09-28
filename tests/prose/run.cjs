@@ -88,7 +88,7 @@ function cmdSelect(argv) {
     cases: selected.map((c) => ({
       id: c.id,
       dir: c.rel,
-      expects: c.hasAssertionState ? 'assertion state' : 'fixture state unchanged',
+      expects: expectedWorld(c, 'fixture state unchanged'),
     })),
   }, null, 2)}\n`);
 }
@@ -315,6 +315,16 @@ async function cmdVerify(argv) {
   process.exit(failed ? 1 : 0);
 }
 
+/**
+ * What a case's world is judged against, for the listings.
+ * @param {{hasAssertionState: boolean, worldMode: string|null}} c
+ * @param {string} unchanged
+ */
+function expectedWorld(c, unchanged) {
+  if (c.hasAssertionState) return 'assertion state';
+  return c.worldMode === 'claims' ? 'the stated claims' : unchanged;
+}
+
 // --- list -----------------------------------------------------------------
 
 function cmdList() {
@@ -322,7 +332,7 @@ function cmdList() {
   const errors = cases.validateCorpus(all);
   for (const c of all) {
     const stubs = c.stubs.length ? `  stubs=${c.stubs.map((s) => s.name).join(',')}` : '';
-    const expects = c.hasAssertionState ? 'assertion state' : 'no change';
+    const expects = expectedWorld(c, 'no change');
     process.stdout.write(`${c.id}\n    fixture → ${expects}${stubs}\n`);
   }
   process.stdout.write(`\n${all.length} cases, ${cases.listStubs().length} stubs`);
