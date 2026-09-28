@@ -229,7 +229,7 @@ The executor could not finish — tests it could not make pass, or an environmen
 
 → Load **[display-task-result.md](display-task-result.md)** with result = `failed`.
 
-Beneath it, compose and emit the block as the register's executor failure (**[report-register.md](report-register.md)** → Executor Failure) — **What failed**, **What the executor tried**, **Why**, and **Next attempt**, or **What is needed** where the environment is the cause — from the executor's ISSUES and your own read of the failure and the code, never the ISSUES verbatim.
+Read the code the failure names — the files and lines the ISSUES cite, and the test that fails — before composing. Beneath the header, compose and emit the block as the register's executor failure (**[report-register.md](report-register.md)** → Executor Failure) — **What failed**, **What the executor tried**, **Why**, and **Next attempt**, or **What is needed** where the environment is the cause — from the executor's ISSUES and your own read of the failure and the code, never the ISSUES verbatim: **Why** is what that read shows, not the executor's diagnosis restated.
 
 Fetch the gate and emit its MENU section verbatim per its marker:
 
