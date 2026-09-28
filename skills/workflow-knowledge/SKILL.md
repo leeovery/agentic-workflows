@@ -67,7 +67,7 @@ Multiple positional arguments run separate searches in one invocation, merge the
 | `--work-type <type>` | Filter results to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter |
 | `--phase <phase>` | Filter to one or more phases. Same comma-separated syntax. Hard filter |
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
-| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive — keyword-only, that only breaks near-ties. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear, just ranked lower |
+| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive — keyword-only, that only breaks near-ties. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
 | `--explain` | Print beneath each result how it ranked — for diagnosing retrieval, never needed to use the results |
 
@@ -147,7 +147,7 @@ Don't read source files for every result. Most queries produce a couple of chunk
 - **Do not use topic slugs as search terms.** `"auth-flow"` is a weak semantic signal. Describe the thing, don't name it.
 - **Do not query while authoring the spec.** Spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the spec away from its own source material. The lone exception is the grouping/consolidation analysis at specification *entry*, which may run one advisory `--phase discussion` query to surface candidate consult references — that is intake (choosing inputs), not authoring, and never injects content into the spec body.
 - **Do not prepend metadata to the query string.** The CLI already filters by `work-unit`, `work-type`, `phase`, `topic` via flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
-- **Reach for `--boost:<field>` before `--work-unit`.** Filtering by work unit excludes cross-work-unit context — usually the opposite of what you want. `--boost:work-unit <current>` nudges results toward your current work unit while keeping prior work from other units in the pool. Stack multiple boosts (`--boost:work-unit X --boost:phase specification`) when your query wants multi-dimensional preference, not exclusion.
+- **Reach for `--boost:<field>` before `--work-unit`.** Filtering by work unit excludes cross-work-unit context — usually the opposite of what you want. `--boost:work-unit <current>` nudges results toward your current work unit — keyword-only, only on near-ties — while keeping prior work from other units in the pool. Stack multiple boosts (`--boost:work-unit X --boost:phase specification`) when your query wants multi-dimensional preference, not exclusion.
 
 ---
 
