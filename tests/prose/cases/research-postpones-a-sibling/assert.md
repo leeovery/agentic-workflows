@@ -2,8 +2,9 @@ The prose should have taken this path:
 
 1. the entry ensures the discovery item (already on the map — nothing
    written), reads the research status, finds it in progress, validates
-   the phase, reads the map item's source and finds it shaped on the map
-   rather than direct-started, so nothing is gathered, and hands off
+   the phase, and hands off — context gathering is the fresh path's, and
+   a resumed topic already has its carrier, so no source is read and
+   nothing is gathered
 2. the process renders the thread register, then resume detection — the
    triage queue read (empty, so no triage warning), then the
    continue-or-restart gate — and the user continues
