@@ -130,7 +130,7 @@ Land the screen's findings per **Landing a Settled Finding**, in the order they 
 
 **If `auto`:**
 
-Record the mode, then land the screen as `yes` does — every remaining screen documents itself:
+Record the mode, then land the screen and confirm it in one line as `yes` does — every remaining screen documents itself:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto
