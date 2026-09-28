@@ -91,7 +91,7 @@ engine knowledge rebuild                                 # human-only — asks f
 engine knowledge setup [--from-system | --keyword-only | --provider <id> … | --key-only [--provider <id>]]   # no flag: the interactive wizard, human-only
 ```
 
-`query` searches the store. Several positional terms run as separate searches in one invocation — one store load — merged, deduplicated by chunk ID (highest score wins), then cut to `--limit`; attacking the same topic from several angles at once is encouraged. Flags:
+`query` searches the store. Several positional terms run as separate searches in one invocation — one store load — merged, deduplicated by chunk ID (highest score wins), then cut to `--limit`. How a phase constructs its terms and weighs what comes back — natural-language terms, boosts before filters, confidence tiers, two-step retrieval — is `skills/workflow-shared/references/knowledge-usage.md`. Flags:
 
 | Flag | Behaviour |
 |------|-----------|
@@ -99,7 +99,7 @@ engine knowledge setup [--from-system | --keyword-only | --provider <id> … | -
 | `--work-type <type>` | Filter to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter |
 | `--phase <phase>` | Filter to one or more phases. Same comma-separated syntax. Hard filter |
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
-| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive — keyword-only, that only breaks near-ties. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear |
+| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive — keyword-only, that only breaks near-ties. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence` |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
 | `--explain` | Print beneath each result how it ranked — for diagnosing retrieval, never needed to use the results |
 
@@ -111,62 +111,7 @@ engine knowledge setup [--from-system | --keyword-only | --provider <id> … | -
 
 A query never fails for want of a vector: whatever its note says, it exits `0` with its results. Nor does it stall on the provider: each request gets 5 seconds to answer and a second try, and a rate limit only the waiting a query is allowed (see `index`), before the query runs keyword-only.
 
-**Query construction.** Use **natural language**, not topic slugs — a short description of what you're looking for, framed the way the original author would have written about it.
-
-- Good: `"OAuth2 PKCE flow for mobile clients"`
-- Good: `"why we ruled out email as a primary identity field"`
-- Poor: `"auth-flow"` (topic slug — weak semantic signal)
-- Poor: `"auth"` (too broad — matches everything auth-related)
-
-Descriptive, specific, phrased in the language likely to appear in the source material. Multiple queries from different angles are encouraged — one for the decision, one for the constraint, one for the rejected alternative.
-
-**Output format:**
-
-```
-[3 results]
-
-[specification | auth-flow/auth-flow | high | 2026-03-15]
-User identity uses UUID v7. Email is a profile attribute, not an identifier.
-Source: .workflows/auth-flow/specification/auth-flow/specification.md
-
-[discussion | payments-overhaul/data-model | low-medium | 2026-03-10]
-Debated UUID vs email for identity. UUID won because email changes are common.
-Source: .workflows/payments-overhaul/discussion/data-model.md
-
-[research | payments-overhaul/identity | low | 2026-02-28]
-Explored identity approaches. Email-based ruled out due to GDPR right-to-erasure.
-Source: .workflows/payments-overhaul/research/identity.md
-```
-
-- **Header line**: `[N results]` where N is the merged, deduplicated, re-ranked count after `--limit`.
-- **Provenance line** (per chunk): `[phase | work_unit/topic | confidence | YYYY-MM-DD]`. Date is the source document's date (file mtime).
-- **Content**: the chunk text verbatim. No summarisation, no truncation.
-- **Source line**: the path to the source artifact — the second step of the two-step retrieval pattern below.
-- **Blank line** between chunks.
-- **Empty results**: a `[0 results]` header — no provenance lines, nothing beneath it. Treat as "no prior context found" — move on.
-- **Notes** (when applicable): one line each, above the header — why the query ran keyword-only (see Search modes), and, over a store with chunks awaiting vectors, `[N chunks await vectors — searched by keyword alone; each start retries them]`, followed, where the last vector fill fell short, by `[the last vector fill fell short — …]` naming the first file it failed and why.
-- **Explanation** (`--explain` only): beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best (`absent` where that search missed the chunk), and their blend (keyword-only: the raw keyword score). A framing whose hits, cut to twice the limit, lack the chunk reads `not in its top 20` at the default limit, whether or not the term matched it. Then `Score:` names the framing whose score the chunk kept and works it through decay, boosts and confidence tier to the final value.
-
-**Confidence tiers** — how to weigh results. Confidence is intrinsic to the source phase: it tells you how much weight to give the content, not whether to use it.
-
-| Tier | Meaning |
-|------|---------|
-| `high` | Specification — a decision that was validated and written down. Trust the *what*, verify the *why* against the source if it matters |
-| `medium` | Investigation — diagnostic work tied to specific symptoms. Trust the diagnosis, but check whether the symptom is still current |
-| `low-medium` | Discussion — conversational, may contain assumptions that were corrected later in the same file. Read for context, not conclusions |
-| `low` | Research, Imports, Seeds, Analysis, Discovery, Roadmap, or Baseline — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied reference material (often loose, may cover multiple topics surface-level); seeds are raw inbox captures (the work unit's origin, unrefined); analysis caches are meta-summaries derived from research/discussion (themes and gaps surfaced, not validated decisions); discovery logs are the running exploration record; roadmap session logs are the product-altitude exploration record, the same grade one level up; baseline docs are observed/stated context about the pre-existing codebase, reference never record. Disambiguate via the provenance line's phase field |
-
-**Low confidence is not low value.** A research chunk that rejected an approach prevents the next work unit from re-exploring the same dead end. A discussion chunk showing a corrected assumption explains *why* the spec says what it says. Don't filter out low-confidence results — weigh them.
-
-**Two-step retrieval.** A query returns chunks with provenance — lightweight, landing in your context window; read the source file (from the `Source:` line) only if a chunk looks load-bearing for what you're doing. Don't read source files for every result: most queries produce a couple of chunks that are mildly relevant and one that's directly relevant — read the one, skim the rest from the chunk text alone. This keeps context lean while preserving full-fidelity access on demand.
-
-**What not to do:**
-
-- **Do not dump large result sets speculatively.** `--limit 50` with a vague query produces noise. Prefer a focused query with the default limit.
-- **Do not use topic slugs as search terms.** `"auth-flow"` is a weak semantic signal. Describe the thing, don't name it.
-- **Do not query while authoring the spec.** Spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the spec away from its own source material. The lone exception is the grouping/consolidation analysis at specification *entry*, which may run one advisory `--phase discussion` query to surface candidate consult references — that is intake (choosing inputs), not authoring, and never injects content into the spec body.
-- **Do not prepend metadata to the query string.** The filters take `work-unit`, `work-type`, `phase`, `topic` as flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
-- **Reach for `--boost:<field>` before `--work-unit`.** Filtering by work unit excludes cross-work-unit context — usually the opposite of what you want. `--boost:work-unit <current>` nudges results toward your current work unit — keyword-only, only on near-ties — while keeping prior work from other units in the pool. Stack multiple boosts (`--boost:work-unit X --boost:phase specification`) when your query wants multi-dimensional preference, not exclusion.
+**Output.** A `[N results]` header — the merged, deduplicated, re-ranked count after `--limit`; `[0 results]` with nothing beneath it when nothing matched — then per chunk a provenance line, `[phase | work_unit/topic | confidence | YYYY-MM-DD]` (the source document's date, its mtime), the chunk text verbatim, and a `Source:` line naming the source artifact, a blank line between chunks. Notes sit above the header, one line each: why the query ran keyword-only (see Search modes), and, over a store with chunks awaiting vectors, `[N chunks await vectors — searched by keyword alone; each start retries them]`, followed, where the last vector fill fell short, by `[the last vector fill fell short — …]` naming the first file it failed and why. `--explain` adds, beneath each source line, a `Framing N:` line per term — its keyword score and vector similarity, each raw → over its search's best (`absent` where that search missed the chunk), and their blend (keyword-only: the raw keyword score). A framing whose hits, cut to twice the limit, lack the chunk reads `not in its top 20` at the default limit, whether or not the term matched it. Then `Score:` names the framing whose score the chunk kept and works it through decay, boosts and confidence tier to the final value.
 
 `check` is the readiness probe. It always exits `0` (unless the filesystem itself is unreadable) and prints one state: `ready` — the knowledge base is initialised and the store is loadable; `buildable` — this checkout is set up (its local `.workflows/.knowledge/config.json`) but has no store, and this machine's config says how to build one: a provider whose key resolves, or keyword-only chosen outright — a system config holding knowledge settings that name no provider, or a project config unsetting the provider. No system config, an invalid one, or a provider whose key cannot be resolved is never read as a keyword-only choice; `not-ready` — missing directory, missing config, unloadable store, or a missing store this machine cannot build. `boot` runs it at every start: `buildable` has boot build the store; `not-ready` routes into workflow-start's knowledge gate, which drives `setup` through its non-interactive forms.
 
@@ -600,7 +545,7 @@ engine render roadmap-parks-gate                                  # the epic syn
 engine render roadmap-shape-gate                                  # the pull's shape confirm (y/Adjust)
 engine render shape-gate                                          # discovery's work-type commit confirm (y/o/keep shaping) — the read stays above the gate in prose
 engine render synthesis-gate                                      # the epic synthesis' topic sort confirm (y/e/Adjust)
-engine render query-failure-gate                                  # the knowledge query-failure gate (r/retry, s/skip)
+engine render query-failure-gate --file <payload.json>           # the knowledge query-failure gate: payload {error} — the failed query's error output, verbatim — rendered beneath a `⚑ Knowledge query failed` callout, each line keeping its own indentation, with the likely causes and the `knowledge status` command that diagnoses them, above the r/retry, s/skip menu
 engine render roadmap-session-receipt [--warn]                    # roadmap session-close advisory — empty without --warn
 engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses while no assessment has been started (`none`/`native`) or with no areas
 engine render baseline-area-gate --area <name>                    # the between-areas yes/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)

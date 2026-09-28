@@ -696,7 +696,6 @@ const RATCHET_PINS = {
   'skills/workflow-scoping-process/references/write-specification.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/compliance-check.md': 1,
-  'skills/workflow-shared/references/knowledge-usage.md': 1,
   'skills/workflow-specification-entry/references/display-single.md': 1,
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 3,

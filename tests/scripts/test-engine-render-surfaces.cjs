@@ -6250,11 +6250,39 @@ describe('render — the adopted cross-flow static gates', () => {
     assert.match(out, /\*\*Adjust\*\*.*split, merge, rename,/);
   });
 
-  it('query-failure-gate: retry or proceed without context', () => {
-    const out = renderSurface(dir, 'query-failure-gate', {});
-    assert.match(out, /`◆ How should I proceed\?`/);
-    assert.match(out, /`r\/retry`.*I'll fix the issue; retry the query/);
-    assert.match(out, /`s\/skip`.*Proceed without knowledge context for this phase/);
+  it('query-failure-gate: the error output and its diagnosis above retry or proceed without context', () => {
+    const file = writePayload(dir, '.workflows/.cache/query-failure.json', {
+      error: 'Error: metadata.json missing but store exists. Run the rebuild to fix it before the next query.\n  Provide the key and retry:\n\n    • export OPENAI_API_KEY=...\n',
+    });
+    assert.strictEqual(renderSurface(dir, 'query-failure-gate', { file }), [
+      '=== DISPLAY: query failure (emit verbatim as a text code block (```text fence), directly above the menu) ===',
+      '⚑ Knowledge query failed',
+      '  Error: metadata.json missing but store exists. Run the rebuild',
+      '  to fix it before the next query.',
+      '    Provide the key and retry:',
+      '',
+      '      • export OPENAI_API_KEY=...',
+      '',
+      "  Likely causes: a knowledge config that can't be read, or a",
+      "  store that can't be read or has lost its metadata. Run this to",
+      '  diagnose:',
+      '',
+      '    node .claude/skills/workflow-engine/scripts/engine.cjs knowledge status',
+      '',
+      "=== MENU: query failure gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ How should I proceed?`**',
+      '',
+      "**`r/retry`** → I'll fix the issue; retry the query",
+      '**`s/skip`**  → Proceed without knowledge context for this phase',
+      '',
+    ].join('\n'));
+  });
+
+  it('query-failure-gate: refuses without the error output it shows', () => {
+    assert.throws(() => renderSurface(dir, 'query-failure-gate', {}), /--file <payload\.json> is required/);
+    const blank = writePayload(dir, '.workflows/.cache/query-failure.json', { error: '  ' });
+    assert.throws(() => renderSurface(dir, 'query-failure-gate', { file: blank }), /"error" must be the query's error output, a non-empty string/);
   });
 
   it('legacy-split-gate: three dialog gates keyed by what each asks; the remove confirm asks on its diamond line', () => {

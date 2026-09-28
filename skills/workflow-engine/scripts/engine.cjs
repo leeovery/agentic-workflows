@@ -364,7 +364,7 @@ Commands:
   render roadmap-shape-gate
   render shape-gate
   render synthesis-gate
-  render query-failure-gate
+  render query-failure-gate --file <payload.json>
   render baseline-progress
   render baseline-area-gate --area <name>
   render baseline-paused

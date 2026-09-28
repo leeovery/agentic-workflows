@@ -4,9 +4,7 @@
 
 ---
 
-This reference sets expectations for how you use the knowledge base *during* a phase — when to query, how to construct queries, how to interpret results, and what to do if a query fails. Load it early in the phase so the guidance is active from the first substantive step.
-
-For API details (commands, flags, output format, confidence tiers, two-step retrieval), load the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — the engine's command catalogue.
+This reference sets expectations for how you use the knowledge base *during* a phase — when to query, how to construct queries, how to read results, and what to do if a query fails. Load it early in the phase so the guidance is active from the first substantive step.
 
 ---
 
@@ -25,13 +23,31 @@ Multiple queries from different angles are expected and encouraged. One query fo
 
 ## B. How to construct queries
 
-Use **natural language** describing what you're looking for — not topic slugs, which are weak semantic signal. Filter with `--work-unit`, `--work-type`, `--phase`, `--topic` (hard filters — non-matching chunks excluded). Bias results with `--boost:<field> <value>` (re-rank hint; repeatable; valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`). For multiple angles in one invocation, pass multiple positional terms (batch query).
+A query is `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<term>" ["<term>" …]` with any of the flags below. Each term is **natural language** describing what you're looking for, phrased the way the original author would have written about it — descriptive and specific. Not topic slugs, which are weak semantic signal, and nothing so broad it matches the whole area:
 
-See the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — query construction examples and the full flag table.
+- Good: `"OAuth2 PKCE flow for mobile clients"`, `"why we ruled out email as a primary identity field"`
+- Poor: `"auth-flow"` (a slug), `"auth"` (too broad)
 
-## C. Two-step retrieval
+Several terms run as separate searches in one invocation, merged and deduplicated — batch your angles into one call. Never prepend metadata to a term: `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
 
-Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See the `knowledge` entry in **[commands.md](../../workflow-engine/references/commands.md)** — two-step retrieval.
+- `--boost:<field> <value>` — a re-ranking hint, not a filter: `+0.1` per match, repeatable, fields `work-unit`, `work-type`, `phase`, `topic`, `confidence` (keyword-only, a boost only breaks near-ties). Reach for it before `--work-unit`: `--boost:work-unit {work_unit}` prefers this unit's context while keeping other units' prior work in the pool; stack boosts for a preference on several dimensions.
+- `--work-unit`, `--work-type`, `--phase`, `--topic` — hard filters (comma-separated lists accepted); non-matching chunks are excluded, so filtering by work unit drops the cross-unit context you usually want.
+- `--limit <n>` — the merged result count, default 10. Don't dump large result sets speculatively: `--limit 50` with a vague query is noise.
+
+## C. Reading the results
+
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. A note above the count says when the query ran keyword-only, and why, or that chunks still await vectors; either way the results stand and the query exits `0`.
+
+Chunks land in context; read a source file only when a chunk looks load-bearing. Most queries return a couple of mildly relevant chunks and one directly relevant — read that one, and skim the rest from the chunk text alone.
+
+Confidence is intrinsic to the source phase — how much weight to give the content, never whether to use it:
+
+- `high` — specification: a decision validated and written down. Trust the *what*; verify the *why* against the source when it matters.
+- `medium` — investigation: diagnostic work tied to specific symptoms. Trust the diagnosis; check the symptom is still current.
+- `low-medium` — discussion: conversational, may carry assumptions corrected later in the same file. Read for context, not conclusions.
+- `low` — research, imports, seeds, analysis, discovery, roadmap, baseline: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
+
+Low confidence is not low value. A research chunk that rejected an approach stops the next work unit re-exploring the same dead end; a discussion chunk showing a corrected assumption explains *why* the spec says what it says. Weigh them, never filter them out.
 
 A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
 
@@ -39,41 +55,23 @@ A `[roadmap | …]` hit is the product-level record — a roadmap session's expl
 
 ## D. Query failure handling
 
-If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption.
-
-1. Capture the error output.
-2. Surface it to the user using the display block below.
-3. Offer two options — fix and retry, or explicitly proceed without knowledge.
-4. If the user chooses to proceed, continue the phase but record that knowledge retrieval was skipped so the user knows context may be missing.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-⚑ Knowledge query failed
-  {error output}
-
-  Likely causes: a knowledge config that can't be read, or a store
-  that can't be read or has lost its metadata.
-  Run `knowledge status` to diagnose.
-```
-
-Fetch the gate and emit its section verbatim per its marker:
+If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `.workflows/.cache/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — and fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate
+node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate --file .workflows/.cache/query-failure.json
 ```
 
 **STOP.** Wait for user response.
 
 #### If `retry`
 
-Re-run the query. If it fails again, surface again (same choice). If it succeeds, the caller will interpret the fresh results.
+Re-run the query. If it fails again, write its error output and fetch the gate again (same choice). If it succeeds, the caller will interpret the fresh results.
 
 → Return to caller.
 
 #### If `skip`
 
-Note in the current phase's working file that the knowledge query was skipped. Example: append a short note under a relevant section — *"Knowledge base query skipped ({YYYY-MM-DD}) — prior context may be missing."* — so the user can audit later.
+Continue the phase, recording that knowledge retrieval was skipped so the user knows context may be missing: note it in the current phase's working file. Example: append a short note under a relevant section — *"Knowledge base query skipped ({YYYY-MM-DD}) — prior context may be missing."* — so the user can audit later.
 
 → Return to caller.
 

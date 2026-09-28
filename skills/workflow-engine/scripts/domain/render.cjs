@@ -5532,12 +5532,43 @@ function synthesisGateSurface(_cwd, _args) {
   ], { question: 'Commit these topics?' }));
 }
 
-/** The knowledge query-failure gate — retry or proceed without context. @param {string} _cwd @param {object} _args @returns {string} */
-function queryFailureGateSurface(_cwd, _args) {
-  return section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
+/**
+ * A command's error output beneath a callout heading: each line two columns
+ * in, keeping its own indentation, wrapped at the display width.
+ * @param {string} output @returns {string[]}
+ */
+function errorOutputLines(output) {
+  const lines = output.replace(/\s+$/, '').split('\n').map((l) => l.trimEnd());
+  while (lines.length > 0 && lines[0] === '') lines.shift();
+  return lines.flatMap((line) => {
+    if (line === '') return [''];
+    const own = /** @type {RegExpMatchArray} */ (line.match(/^\s*/))[0];
+    return indentedBody([line.slice(own.length)], { indent: `  ${own}` });
+  });
+}
+
+/**
+ * The knowledge query-failure gate — the failed query's error output and how
+ * to diagnose it, then retry or proceed without context.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function queryFailureGateSurface(cwd, { file }) {
+  if (!file) throw new Error('render query-failure-gate: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'query-failure-gate');
+  if (!isFilled(p.error)) throw new Error('render query-failure-gate: "error" must be the query\'s error output, a non-empty string');
+  const display = section('DISPLAY: query failure', emitAs('text', ', directly above the menu'), [
+    '⚑ Knowledge query failed',
+    ...errorOutputLines(p.error),
+    '',
+    ...indentedBody(["Likely causes: a knowledge config that can't be read, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
+    '',
+    `    ${ENGINE_COMMAND} knowledge status`,
+  ].join('\n'));
+  const gate = section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
     cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
     cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
   ], { question: 'How should I proceed?' }));
+  return [display, gate].join('\n');
 }
 
 // The legacy research split's dialog gates, keyed by what each asks: themes
