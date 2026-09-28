@@ -737,11 +737,10 @@ describe('writeConfigFile', () => {
     assert.ok(fs.existsSync(filePath));
   });
 
-  it('uses atomic write (no .tmp left behind on success)', () => {
+  it('uses atomic write (no temp file left behind on success)', () => {
     const filePath = path.join(tmpDir, 'config.json');
     writeConfigFile(filePath, { knowledge: {} });
-    assert.ok(fs.existsSync(filePath));
-    assert.ok(!fs.existsSync(filePath + '.tmp'));
+    assert.deepStrictEqual(fs.readdirSync(tmpDir), ['config.json']);
   });
 
   it('rejects payloads missing the knowledge wrapper', () => {

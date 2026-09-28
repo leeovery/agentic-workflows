@@ -67,7 +67,8 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../kernel/manifest-schema.
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { SETTINGS_SPEC, isObject, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { SETTINGS_SPEC, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { conversationDir } = require('./conversation.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';

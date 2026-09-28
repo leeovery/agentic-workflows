@@ -18,6 +18,7 @@ const path = require('path');
 
 const { systemConfigDir } = require('../system-config.cjs');
 const { ENGINE_COMMAND } = require('../call.cjs');
+const { isObject, writeJsonAtomic } = require('../manifest-io.cjs');
 const { StubProvider } = require('./embeddings.cjs');
 const { OpenAIProvider } = require('./providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('./providers/openai-compatible.cjs');
@@ -72,11 +73,6 @@ function isFraction(value) {
   return isNumber(value) && value >= 0 && value <= 1;
 }
 
-/** @param {unknown} value @returns {value is Record<string, unknown>} */
-function isRecord(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 /** @type {Record<keyof typeof DEFAULTS, TuningRule>} */
 const TUNING = {
   similarity_threshold: { expected: 'a number from 0 to 1', valid: isFraction },
@@ -84,7 +80,7 @@ const TUNING = {
   decay_prune_below: { expected: 'false or a number from 0 to 1', valid: (value) => value === false || isFraction(value) },
   decay_weights: {
     expected: 'an object giving work types numbers of 0 or more',
-    valid: (value) => isRecord(value) && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
+    valid: (value) => isObject(value) && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
   },
 };
 
@@ -469,26 +465,24 @@ function resolveProvider(config, patience = {}) {
  * The parsed JSON object at a path — empty where there is no file, or where
  * it does not parse to an object: the caller is committing to a write, and
  * replaces it.
- * @param {string} filePath @returns {Record<string, unknown>}
+ * @param {string} filePath @returns {Record<string, any>}
  */
 function readWritableObject(filePath) {
   if (!fs.existsSync(filePath)) return {};
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return isRecord(parsed) ? parsed : {};
+    return isObject(parsed) ? parsed : {};
   } catch (_) {
     return {};
   }
 }
 
 /**
- * Atomically write a config file's provider settings — the payload's
- * `knowledge` object, as setup builds it. They replace the provider fields
- * the file holds as a set; every other key of its `knowledge` object, and
- * every other top-level key (another subsystem's), stays as the file has
- * it. Writes to `<path>.tmp` then renames — matches the
- * manifest/store convention so a crash mid-write never leaves a truncated
- * JSON file.
+ * Write a config file's provider settings — the payload's `knowledge`
+ * object, as setup builds it — through the kernel's atomic JSON write. They
+ * replace the provider fields the file holds as a set; every other key of
+ * its `knowledge` object, and every other top-level key (another
+ * subsystem's), stays as the file has it.
  *
  * @param {string} filePath  Absolute path to write
  * @param {{knowledge: Record<string, unknown>}} payload  the provider settings under the `knowledge` wrapper
@@ -500,17 +494,9 @@ function writeConfigFile(filePath, payload) {
   }
 
   const existing = readWritableObject(filePath);
-  const kept = Object.entries(isRecord(existing.knowledge) ? existing.knowledge : {}).filter(([key]) => !PROVIDER_FIELDS.includes(key));
-  const full = { ...existing, knowledge: { ...payload.knowledge, ...Object.fromEntries(kept) } };
-
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const tmp = filePath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, filePath);
+  const kept = Object.entries(isObject(existing.knowledge) ? existing.knowledge : {}).filter(([key]) => !PROVIDER_FIELDS.includes(key));
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  writeJsonAtomic(filePath, { ...existing, knowledge: { ...payload.knowledge, ...Object.fromEntries(kept) } });
 }
 
 module.exports = {
