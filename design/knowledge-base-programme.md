@@ -695,7 +695,9 @@ by the eval's near-miss negatives.
 The KB runs in process as an engine module. It reads manifests directly,
 with no child process and no parsing of stderr, and each mirrored list
 collapses to one. Step 2 leaves nothing to bundle, so the esbuild bundle is
-retired and the KB becomes plain engine source. The loose ends from the audit
+retired and the KB becomes plain engine source. The build goes with it:
+`build/knowledge.build.js`, `npm run build`, its test, and the release's
+pre-tag hook in `.mint.toml` that rebuilds and commits the bundle. The loose ends from the audit
 land here:
 - config keys validated;
 - reconfiguration keeping tuning overrides;
