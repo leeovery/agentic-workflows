@@ -32,10 +32,16 @@ Read the file at `brief_path` in full — the *discovery brief* — and use it a
 
 **Otherwise:**
 
-No brief — an un-harvested, migration-seeded, or legacy topic. Fall back to the discovery item `description` and seed this phase from it (it may be empty, in which case the session gathers context naturally):
+No brief — an un-harvested, migration-seeded, or legacy topic. Fall back to the discovery item and seed this phase from its `description`, or from its `summary` where the description is empty (both may be empty, in which case the session gathers context naturally):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
+```
+
+Where that read is empty:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} summary
 ```
 
 → Proceed to **B. Track the Read**.
