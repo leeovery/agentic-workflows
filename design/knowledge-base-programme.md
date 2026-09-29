@@ -125,7 +125,8 @@ Drawn from the owner's dex-engineering knowledge base:
 4. **KB into the engine.** With nothing to bundle, the KB becomes plain
    engine source. The retrieval work that follows lands in its final home.
    Its prerequisite, step 1 of `design/upgrades-in-migrations.md`, is
-   merged: the `store.msp` retirement is a migration.
+   merged: the `store.msp` retirement is a migration. Merged as stack
+   #1432.
 5. **The rest of retrieval quality:** printed scores, heading paths and line
    ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
    floor is reassessed here.
@@ -735,10 +736,12 @@ merged (#1424): migration 063 retires `store.msp`, migration 064 untracks
 the knowledge directory, and the migration commit carries every path the
 workflows own. The KB carries no upgrade code into the engine.
 
-Built as stack #1432, in review:
+Merged 2026-09-29 as stack #1432:
 - #1429, the move and the door;
 - #1430, every caller on the door, with the skill retired;
 - #1431, the config loose ends.
+
+A follow-up, #1440, lets the migration review run `git status`.
 
 Settled in the build:
 - The verbs a person runs to embed (a bulk `index`, `rebuild`, `setup`) still embed while they wait. Only a single-file index, a transaction's sync and boot hand the vectors to the background fill.
