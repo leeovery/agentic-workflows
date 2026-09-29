@@ -1071,34 +1071,66 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
 }
 
 /**
- * Re-aim every join naming `fromUnit` at `{work_unit: into, topic}` —
- * absorb's hop: an absorbed feature's material continues as an epic topic,
- * so its items' delivery follows it there (the un-pull is cancel's move,
- * never absorb's — the work did not stop, it moved). Runs under the project
- * lock, **no commit** — the calling transaction stages the project manifest
- * alongside its own write. Returns the re-aimed names (empty when nothing
- * was joined — a no-op writes nothing).
- * @param {string} cwd @param {string} fromUnit @param {{into: string, topic: string}} opts
- * @returns {string[]}
+ * @typedef {object} AbsorbedRoadmap
+ * @property {string[]} reaimed  items whose joins now name the epic topic
+ * @property {{item: string, from: string, to: string}[]} rewritten  sources that followed the material
+ * @property {{item: string, source: string}[]} dropped  sources deleted with the feature
  */
-function reaimJoins(cwd, fromUnit, { into, topic }) {
+
+/**
+ * Absorb's hop: an absorbed feature's material continues as an epic topic,
+ * so the roadmap follows it there. Every join naming `fromUnit` is re-aimed
+ * at `{work_unit: into, topic}` (the un-pull is cancel's move, never
+ * absorb's — the work did not stop, it moved), and every source under
+ * `fromUnit/` takes the path `relocate` answers — dropped where it answers
+ * null, the `sources` field with it once none is left. Runs under the
+ * project lock, **no commit** — the calling transaction stages the project
+ * manifest alongside its own write. A no-op writes nothing.
+ * @param {string} cwd @param {string} fromUnit
+ * @param {{into: string, topic: string, relocate: (source: string) => string|null}} opts
+ * @returns {AbsorbedRoadmap}
+ */
+function reaimAbsorbed(cwd, fromUnit, { into, topic, relocate }) {
   return withProjectLock(cwd, () => {
+    /** @type {AbsorbedRoadmap} */
+    const out = { reaimed: [], rewritten: [], dropped: [] };
     const manifest = readProjectManifest(cwd);
     const rm = manifest.roadmap;
     if (!rm || typeof rm !== 'object' || Array.isArray(rm) || !rm.items || typeof rm.items !== 'object') {
-      return [];
+      return out;
     }
-    /** @type {string[]} */
-    const reaimed = [];
-    for (const [name, item] of Object.entries(rm.items)) {
-      if (!item || typeof item !== 'object') continue;
-      const join = itemJoin(/** @type {Record<string, any>} */ (item));
-      if (!join || join.work_unit !== fromUnit) continue;
-      /** @type {Record<string, any>} */ (item).pulled_to = { work_unit: into, topic };
-      reaimed.push(name);
+    const underUnit = (/** @type {unknown} */ source) => typeof source === 'string' && source.startsWith(`${fromUnit}/`);
+    for (const [name, raw] of Object.entries(rm.items)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const item = /** @type {Record<string, any>} */ (raw);
+      const join = itemJoin(item);
+      if (join && join.work_unit === fromUnit) {
+        item.pulled_to = { work_unit: into, topic };
+        out.reaimed.push(name);
+      }
+      if (!Array.isArray(item.sources) || !item.sources.some(underUnit)) continue;
+      /** @type {unknown[]} */
+      const kept = [];
+      for (const source of item.sources) {
+        if (!underUnit(source)) {
+          kept.push(source);
+          continue;
+        }
+        const to = relocate(source);
+        if (to === null) {
+          out.dropped.push({ item: name, source });
+        } else {
+          kept.push(to);
+          out.rewritten.push({ item: name, from: source, to });
+        }
+      }
+      if (kept.length > 0) item.sources = kept;
+      else delete item.sources;
     }
-    if (reaimed.length > 0) writeProjectManifestAtomic(cwd, manifest);
-    return reaimed;
+    if (out.reaimed.length + out.rewritten.length + out.dropped.length > 0) {
+      writeProjectManifestAtomic(cwd, manifest);
+    }
+    return out;
   });
 }
 
@@ -1176,6 +1208,6 @@ module.exports = {
   bindItem,
   pullForwardItem,
   revertJoins,
-  reaimJoins,
+  reaimAbsorbed,
   flagJoined,
 };

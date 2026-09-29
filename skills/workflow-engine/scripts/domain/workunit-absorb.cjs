@@ -38,7 +38,7 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { IMPORT_PHASES, isPlainName } = require('../kernel/manifest-schema.cjs');
 const { addItem } = require('./discovery-map.cjs');
-const { reaimJoins } = require('./roadmap.cjs');
+const { reaimAbsorbed } = require('./roadmap.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
 // would orphan the downstream artifacts, so the guard refuses.
@@ -57,6 +57,8 @@ const SPEC_OR_BEYOND = ['specification', 'planning', 'implementation', 'review']
  * @property {{path: string, source: string}[]} seeds  moved seed entries (epic-relative)
  * @property {string} routing   the map item's routing (research when the feature did research, else discussion)
  * @property {string[]} [roadmap_reaimed]  roadmap items whose joins now name the epic topic
+ * @property {{item: string, from: string, to: string}[]} [roadmap_sources_rewritten]  roadmap sources that followed a moved file
+ * @property {{item: string, source: string}[]} [roadmap_sources_dropped]  roadmap sources deleted with the feature
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]    set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
@@ -141,6 +143,23 @@ function rewriteImportLinks(file, renames) {
 }
 
 /**
+ * Where this absorb took a `.workflows/`-relative path, or null for one it
+ * deleted with the feature directory. A path beneath a moved directory keeps
+ * its place beneath the landing.
+ * @param {[string, string][]} relocations
+ * @returns {(source: string) => string|null}
+ */
+function relocator(relocations) {
+  return (source) => {
+    for (const [from, to] of relocations) {
+      if (source === from) return to;
+      if (source.startsWith(`${from}/`)) return to + source.slice(from.length);
+    }
+    return null;
+  };
+}
+
+/**
  * Absorb a feature into an in-progress epic as `topic`: move the discussion
  * (and any research, experiment series, imports, and seeds) into the epic —
  * manifest entries carry their original timestamps, imports/seeds filename
@@ -170,7 +189,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (featureManifest.work_type !== 'feature') {
     throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
   }
-  const { discussionStatus, researchMoves, importMoves, renamedImports, seedMoves, experimentMove, routing } = withWorkUnitLock(cwd, into, () => {
+  const { discussionStatus, researchMoves, importMoves, renamedImports, seedMoves, experimentMove, routing, relocations } = withWorkUnitLock(cwd, into, () => {
     const epicManifest = loadWorkUnitManifest(cwd, into);
     if (epicManifest.work_type !== 'epic') {
       throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
@@ -318,12 +337,22 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // The series directory moves whole — record dirs, data extracts, harness
     // scripts, nested sub-experiments. A series whose spawn crashed before
     // the problem statement landed may have no directory yet.
-    if (experimentItem && fs.existsSync(path.join(cwd, '.workflows', feature, 'experiment', feature))) {
+    const seriesMoved = Boolean(experimentItem) && fs.existsSync(path.join(cwd, '.workflows', feature, 'experiment', feature));
+    if (seriesMoved) {
       fs.mkdirSync(path.join(cwd, '.workflows', into, 'experiment'), { recursive: true });
       fs.renameSync(
         path.join(cwd, '.workflows', feature, 'experiment', feature),
         path.join(cwd, '.workflows', into, 'experiment', topic));
     }
+
+    // Every move above, as `.workflows/`-relative `[from, to]` — the series
+    // pair a directory, the rest files.
+    /** @type {[string, string][]} */
+    const relocations = [[`${feature}/discussion/${feature}.md`, `${into}/discussion/${topic}.md`]];
+    for (const move of researchPlan) relocations.push([`${feature}/research/${move.from}.md`, `${into}/research/${move.target}.md`]);
+    for (const move of importPlan) relocations.push([`${feature}/imports/${move.basename}`, `${into}/imports/${move.dest}`]);
+    for (const move of seedPlan) relocations.push([`${feature}/seeds/${move.basename}`, `${into}/seeds/${move.dest}`]);
+    if (seriesMoved) relocations.push([`${feature}/experiment/${feature}`, `${into}/experiment/${topic}`]);
 
     // Epic manifest: phase items mirror the feature's statuses; tracked
     // entries carry their original timestamps (and seed provenance) with new
@@ -374,6 +403,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         ? { status: experimentItem.status, ids: Object.keys(experimentItem.experiments || {}) }
         : null,
       routing: researchPlan.length > 0 ? 'research' : 'discussion',
+      relocations,
     };
   });
 
@@ -391,11 +421,13 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     writeProjectManifestAtomic(cwd, projectManifest);
   });
 
-  // Roadmap joins follow the material: an item pulled into the feature is
-  // now delivered by the epic topic it became — re-aim, never orphan (the
-  // un-pull is cancel's move; this work did not stop, it moved). Its own
-  // lock hold; the project manifest already rides this transaction's commit.
-  const reaimed = reaimJoins(cwd, feature, { into, topic });
+  // The roadmap follows the material: an item pulled into the feature is now
+  // delivered by the epic topic it became — re-aim, never orphan (the
+  // un-pull is cancel's move; this work did not stop, it moved) — and a
+  // source into the feature names where its file landed, or goes with the
+  // feature where nothing moved it. Its own lock hold; the project manifest
+  // already rides this transaction's commit.
+  const roadmap = reaimAbsorbed(cwd, feature, { into, topic, relocate: relocator(relocations) });
 
   fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
 
@@ -438,7 +470,9 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (experimentMove) {
     result.experiment = { path: `experiment/${topic}`, status: experimentMove.status, experiments: experimentMove.ids };
   }
-  if (reaimed.length > 0) result.roadmap_reaimed = reaimed;
+  if (roadmap.reaimed.length > 0) result.roadmap_reaimed = roadmap.reaimed;
+  if (roadmap.rewritten.length > 0) result.roadmap_sources_rewritten = roadmap.rewritten;
+  if (roadmap.dropped.length > 0) result.roadmap_sources_dropped = roadmap.dropped;
   noteCommitOutcome(result, outcome);
   return result;
 }

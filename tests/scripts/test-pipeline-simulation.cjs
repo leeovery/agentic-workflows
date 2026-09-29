@@ -105,6 +105,12 @@ function auditState(dir, label) {
   for (const row of rm.items) {
     assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
       ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
+    // A source is recorded only once it is on disk, and whatever moves the
+    // file carries the pointer with it.
+    for (const source of row.sources) {
+      assert.ok(fs.existsSync(path.join(dir, '.workflows', source)),
+        ctx(`roadmap item ${row.name}: source ${source} is not on disk`));
+    }
   }
 
   // Every import entry, wherever it lives, keeps the one shape the schema
@@ -3213,19 +3219,27 @@ describe('pipeline simulation', () => {
     sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
   });
 
-  it('roadmap: absorb re-aims a feature-held join at the epic topic — never an orphan', () => {
+  it('roadmap: absorb re-aims a feature-held join at the epic topic — never an orphan — and its sources follow the files', () => {
     sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards']);
     const flog = sessionLog(sim, 'loyalty-feat');
     sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty', '--session-log-file', flog]);
     sim.run(['roadmap', 'pull', 'loyalty', '--into', 'loyalty-feat']);
     sim.run(['topic', 'start', 'loyalty-feat', 'discussion', 'loyalty-feat']);
     sim.write('.workflows/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
+    // The feature discussion parks a tangent off its own record — the
+    // off-topic valve's call, its source the discussion file.
+    sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'v2', '--summary', 'shoppers gift store credit',
+      '--origin', 'park:loyalty-feat', '--source', 'loyalty-feat/discussion/loyalty-feat.md']);
     const elog = sessionLog(sim, 'platform');
     sim.run(['workunit', 'create', 'platform', 'epic', '--description', 'Platform', '--session-log-file', elog]);
 
     const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty']);
     assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);
+    assert.deepStrictEqual(res.roadmap_sources_rewritten, [
+      { item: 'gift-cards', from: 'loyalty-feat/discussion/loyalty-feat.md', to: 'platform/discussion/loyalty.md' },
+    ]);
     let state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.items.find((i) => i.name === 'gift-cards').sources, ['platform/discussion/loyalty.md']);
     const row = state.items.find((i) => i.name === 'loyalty');
     assert.strictEqual(row.state, 'in-flight');
     assert.strictEqual(row.work_unit, 'platform');
