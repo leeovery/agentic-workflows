@@ -9,14 +9,14 @@
 const { stem } = require('./stemmer.cjs');
 
 /** The fields a keyword search scores, each with its own length statistics. */
-const FIELDS = ['content', 'source_file', 'id'];
+const FIELDS = ['content', 'heading_path', 'source_file', 'id'];
 
 /**
  * The version of the terms a chunk carries, recorded in the store's file. A
  * change to the tokenizer or the fields takes the next, and a store recording
- * another re-derives every chunk's terms from its text.
+ * another re-derives every chunk's terms from the fields it records.
  */
-const TOKENIZER_VERSION = 2;
+const TOKENIZER_VERSION = 3;
 
 const K1 = 1.2;
 const B = 0.75;
@@ -100,7 +100,8 @@ class Vocabulary {
  */
 
 /**
- * A chunk's term counts, field by field — each new word added to the vocabulary.
+ * A chunk's term counts, field by field — each new word added to the
+ * vocabulary, and none for a field the chunk does not record.
  * @param {Record<string, any>} chunk @param {Vocabulary} vocabulary
  * @returns {FieldTerms[]}
  */
@@ -108,7 +109,7 @@ function termsOf(chunk, vocabulary) {
   return FIELDS.map((field) => {
     /** @type {Map<string, number>} */
     const counts = new Map();
-    for (const token of tokenize(chunk[field])) counts.set(token, (counts.get(token) || 0) + 1);
+    for (const token of tokenize(chunk[field] ?? '')) counts.set(token, (counts.get(token) || 0) + 1);
     return {
       words: Uint32Array.from(counts.keys(), (word) => vocabulary.add(word)),
       counts: Uint32Array.from(counts.values()),

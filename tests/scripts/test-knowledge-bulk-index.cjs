@@ -17,6 +17,7 @@ const { describe, it, before, after, beforeEach, afterEach } = require('node:tes
 const assert = require('node:assert');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const keyword = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { InvalidRequestError, QuotaError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const { indexBulk } = require('../../skills/workflow-engine/scripts/domain/knowledge/bulk.cjs');
@@ -379,7 +380,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
       setItemStatus(root, 'peer', 'completed');
       const db = loadStore(storeFile(root));
       store.insertDocument(db, {
-        id: 'payments-discussion-peer-001', content: 'A peer indexed this.', work_unit: 'payments', work_type: 'epic',
+        id: 'payments-discussion-peer-001', content: 'A peer indexed this.', heading_path: 'peer', work_unit: 'payments', work_type: 'epic',
         phase: 'discussion', topic: 'peer', confidence: 'medium', source_file: '.workflows/payments/discussion/peer.md',
         timestamp: Date.now(), embedding: new StubProvider({ dimensions: CFG.dimensions }).embed('peer'),
       });
@@ -500,6 +501,68 @@ describe('knowledge index — vectors keyed by their text', () => {
     assert.strictEqual(provider.batches.length, 0);
     const [delta] = chunksFor(root, 'delta');
     assert.ok(store.vectorsByContentHash(loadStore(storeFile(root))).has(delta.content_hash));
+  });
+});
+
+describe('knowledge index — a store cut before chunks recorded their heading path', () => {
+  let root;
+  let output;
+  let vectors;
+
+  /** The store as an install before heading paths left it: the tokenizer before this one, no chunk recording its heading path. */
+  function asCutBeforeHeadingPaths() {
+    const db = loadStore(storeFile(root));
+    for (const entry of db.entries) delete entry.chunk.heading_path;
+    const current = keyword.TOKENIZER_VERSION;
+    keyword.TOKENIZER_VERSION = current - 1;
+    try {
+      saveStore(db, storeFile(root));
+    } finally {
+      keyword.TOKENIZER_VERSION = current;
+    }
+  }
+
+  beforeEach(async () => {
+    root = buildProject();
+    output = { stdout: '', stderr: '' };
+    for (const topic of TOPICS) writeDiscussion(root, topic, sectioned([`The ${topic} ruling.`, `The ${topic} caveat.`, `The ${topic} follow-up.`]));
+    await bulk(root, output, CFG, spyProvider());
+    vectors = store.vectorsByContentHash(loadStore(storeFile(root)));
+    asCutBeforeHeadingPaths();
+    const old = loadStore(storeFile(root));
+    assert.strictEqual(old.retokenized, true);
+    assert.ok(store.allChunks(old).every((chunk) => chunk.heading_path === undefined));
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  /** Every chunk of the store records its heading path, and carries the vector it had before. */
+  function assertRecutKeepingVectors() {
+    const db = loadStore(storeFile(root));
+    assert.strictEqual(db.retokenized, false);
+    for (const chunk of store.allChunks(db)) assert.match(chunk.heading_path, new RegExp(`^${chunk.topic} › Section \\d$`), chunk.id);
+    assert.deepStrictEqual(store.chunksWithoutVector(db), []);
+    assert.deepStrictEqual(store.vectorsByContentHash(db), vectors);
+  }
+
+  it('the next keyword pass re-cuts every file, and embeds nothing', async () => {
+    const provider = spyProvider();
+    const summary = await bulk(root, output, CFG, provider);
+    assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.deepStrictEqual(provider.batches, []);
+    assertRecutKeepingVectors();
+  });
+
+  it('a write before the keyword pass re-cuts its own file, and leaves every other to the pass', async () => {
+    const provider = spyProvider();
+    indexOne(root, 'alpha', CFG, provider);
+    assert.strictEqual(loadStore(storeFile(root)).retokenized, false);
+    const summary = await bulk(root, output, CFG, provider);
+    assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 0, unchanged: 1, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.deepStrictEqual(provider.batches, []);
+    assertRecutKeepingVectors();
   });
 });
 

@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('../../kernel/knowledge/store.cjs');
 const chunker = require('../../kernel/knowledge/chunker.cjs');
+const { headingPath } = require('../../kernel/knowledge/outline.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
@@ -75,6 +76,7 @@ function buildDocuments(root, artifact, workUnits) {
   return chunks.map((chunk, idx) => ({
     id: `${artifact.workUnit}-${artifact.phase}-${artifact.topic}-${String(idx + 1).padStart(3, '0')}`,
     content: chunk.content,
+    heading_path: headingPath(chunk.headings),
     work_unit: artifact.workUnit,
     work_type: workType,
     phase: artifact.phase,
@@ -186,6 +188,7 @@ function identityOf(entry) {
  * @property {string} topic
  * @property {string} file  the source file the chunks were indexed from
  * @property {Set<string|undefined>} hashes  the source hashes they carry — undefined for a chunk with no recorded hash
+ * @property {boolean} headingPaths  whether every chunk records its heading path
  * @property {Map<string, string>} texts  the hash of each chunk's text, by chunk id
  * @property {number} chunks
  */
@@ -289,10 +292,11 @@ function identitiesOf(chunks) {
     const key = identityKey(c.work_unit, c.phase, c.topic);
     let entry = byKey.get(key);
     if (!entry) {
-      entry = { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), texts: new Map(), chunks: 0 };
+      entry = { workUnit: c.work_unit, phase: c.phase, topic: c.topic, file: c.source_file, hashes: new Set(), headingPaths: true, texts: new Map(), chunks: 0 };
       byKey.set(key, entry);
     }
     entry.hashes.add(c.source_hash);
+    if (c.heading_path === undefined) entry.headingPaths = false;
     entry.texts.set(c.id, c.content_hash);
     entry.chunks += 1;
   }
@@ -328,7 +332,7 @@ function cutsOtherTexts(root, artifact, entry, workUnits) {
 /**
  * @typedef {object} Plan  what the bulk pass does to the store
  * @property {Artifact[]} fresh  no chunks yet
- * @property {Artifact[]} changed  chunks indexed from other content, content with no recorded hash, or — with a chunk awaiting its vector — texts the file no longer cuts
+ * @property {Artifact[]} changed  chunks indexed from other content, content with no recorded hash, a chunk with no recorded heading path, or — with a chunk awaiting its vector — texts the file no longer cuts
  * @property {Artifact[]} unchanged
  * @property {Artifact[]} pruned  what compact prunes — never indexed again
  * @property {Retirement[]} retired
@@ -359,7 +363,8 @@ function planIndex(root, chunks, manifests, { scope, pruning, awaiting = new Set
       continue;
     }
     const hash = store.contentHash(fs.readFileSync(path.resolve(root, artifact.file), 'utf8'));
-    const current = entry.hashes.size === 1 && entry.hashes.has(hash) && !(awaiting.has(key) && cutsOtherTexts(root, artifact, entry, manifests.workUnits));
+    const current = entry.headingPaths && entry.hashes.size === 1 && entry.hashes.has(hash)
+      && !(awaiting.has(key) && cutsOtherTexts(root, artifact, entry, manifests.workUnits));
     plan[current ? 'unchanged' : 'changed'].push(artifact);
   }
   return plan;

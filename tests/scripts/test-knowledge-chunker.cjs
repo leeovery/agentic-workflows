@@ -73,16 +73,13 @@ describe('knowledge chunker', () => {
     assert.match(result[3].content, /## Section C/);
   });
 
-  it('returns { content } objects, not bare strings', () => {
+  it('returns { content, headings } objects, not bare strings', () => {
     const md = '## A\nbody a\n\n## B\nbody b';
     const result = chunk(md, baseConfig());
     for (const c of result) {
-      assert.strictEqual(typeof c, 'object');
+      assert.deepStrictEqual(Object.keys(c), ['content', 'headings']);
       assert.strictEqual(typeof c.content, 'string');
-      assert.strictEqual(
-        Object.prototype.hasOwnProperty.call(c, 'content'),
-        true
-      );
+      assert.ok(Array.isArray(c.headings));
     }
   });
 
@@ -1238,6 +1235,65 @@ describe('knowledge chunker — real fixtures', () => {
         'chunk must be a verbatim substring of the source'
       );
     }
+  });
+});
+
+describe('knowledge chunker — heading paths', () => {
+  /** Each chunk's first line and its heading path. */
+  function paths(chunks) {
+    return chunks.map((c) => [c.content.trim().split('\n')[0], c.headings]);
+  }
+
+  it('gives each chunk the headings its text starts under, from the title down', () => {
+    const md = ['# Auth', '', 'Intro.', '', '## Tokens', '', '### Refresh', '', 'Hourly.', '', '## Rotation', '', 'Weekly.'].join('\n');
+    assert.deepStrictEqual(paths(chunk(md, baseConfig())), [
+      ['# Auth', ['Auth']],
+      ['## Tokens', ['Auth', 'Tokens']],
+      ['## Rotation', ['Auth', 'Rotation']],
+    ]);
+  });
+
+  it('carries every enclosing level into a chunk cut at a deeper heading', () => {
+    const md = ['# Auth', '', '## Tokens', '', '### Refresh', '', 'Hourly.', '', '### Expiry', '', 'Daily.'].join('\n');
+    assert.deepStrictEqual(paths(chunk(md, baseConfig({ primary_level: 3 }))), [
+      ['# Auth', ['Auth']],
+      ['### Refresh', ['Auth', 'Tokens', 'Refresh']],
+      ['### Expiry', ['Auth', 'Tokens', 'Expiry']],
+    ]);
+  });
+
+  it('never reads a heading-shaped line inside a fence as a heading', () => {
+    const md = ['# Auth', '', '## Tokens', '', '```md', '# not a heading', '## nor this', '```', '', 'Hourly.', '', '## Rotation', '', 'Weekly.'].join('\n');
+    assert.deepStrictEqual(paths(chunk(md, baseConfig())).map(([, headings]) => headings), [['Auth', 'Tokens'], ['Auth', 'Rotation']]);
+  });
+
+  it('gives a piece cut from the middle of a section the headings of the section it sits in', () => {
+    const paragraphs = Array.from({ length: 4 }, (_, i) => `Paragraph ${i} ${'words '.repeat(1000)}`.trimEnd());
+    const md = ['# Auth', '', '## Tokens', '', '### Refresh', '', ...paragraphs.flatMap((p) => [p, '']), '### Expiry', '', 'Daily.'].join('\n');
+    const result = chunk(md, baseConfig());
+    const mid = result.filter((c) => c.content.startsWith('Paragraph'));
+    assert.ok(mid.length > 0, 'the section splits mid-way');
+    for (const c of mid) assert.deepStrictEqual(c.headings, ['Auth', 'Tokens', 'Refresh']);
+  });
+
+  it('gives a slice of an over-long line the headings of the line it is cut from', () => {
+    const md = ['# Auth', '', '## Tokens', '', 'x'.repeat(MAX_CHUNK_CHARS * 2)].join('\n');
+    const slices = chunk(md, baseConfig()).filter((c) => c.content.startsWith('x'));
+    assert.strictEqual(slices.length, 2);
+    for (const c of slices) assert.deepStrictEqual(c.headings, ['Auth', 'Tokens']);
+  });
+
+  it('reads the path past the frontmatter, never a heading-shaped line inside it', () => {
+    const md = ['---', 'topic: auth', '# yaml comment', '---', '', '## Tokens', '', 'Hourly.'].join('\n');
+    assert.deepStrictEqual(paths(chunk(md, baseConfig())), [['## Tokens', ['Tokens']]]);
+  });
+
+  it('takes the path at the first line of text, past blank lines the chunk opens on', () => {
+    assert.deepStrictEqual(paths(chunk('\n\n# Auth\n\nIntro.', baseConfig({ keep_whole_below: 50 }))), [['# Auth', ['Auth']]]);
+  });
+
+  it('gives a chunk of a file without headings an empty path', () => {
+    assert.deepStrictEqual(chunk('Plain text.\n\nMore text.', baseConfig()).map((c) => c.headings), [[]]);
   });
 });
 

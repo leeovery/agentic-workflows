@@ -17,6 +17,7 @@ function doc(n, content, embedding) {
   return {
     id: `unit-discussion-unit-${String(n).padStart(3, '0')}`,
     content,
+    heading_path: '',
     work_unit: 'unit',
     work_type: 'feature',
     phase: 'discussion',

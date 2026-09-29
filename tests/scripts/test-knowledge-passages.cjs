@@ -43,6 +43,7 @@ function chunkDoc(content) {
   return {
     id: 'auth-discussion-auth-001',
     content,
+    heading_path: '',
     work_unit: 'auth',
     work_type: 'feature',
     phase: 'discussion',
