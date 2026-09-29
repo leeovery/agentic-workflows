@@ -143,23 +143,6 @@ function rewriteImportLinks(file, renames) {
 }
 
 /**
- * Where this absorb took a `.workflows/`-relative path, or null for one it
- * deleted with the feature directory. A path beneath a moved directory keeps
- * its place beneath the landing.
- * @param {[string, string][]} relocations
- * @returns {(source: string) => string|null}
- */
-function relocator(relocations) {
-  return (source) => {
-    for (const [from, to] of relocations) {
-      if (source === from) return to;
-      if (source.startsWith(`${from}/`)) return to + source.slice(from.length);
-    }
-    return null;
-  };
-}
-
-/**
  * Absorb a feature into an in-progress epic as `topic`: move the discussion
  * (and any research, experiment series, imports, and seeds) into the epic —
  * manifest entries carry their original timestamps, imports/seeds filename
@@ -427,7 +410,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   // source into the feature names where its file landed, or goes with the
   // feature where nothing moved it. Its own lock hold; the project manifest
   // already rides this transaction's commit.
-  const roadmap = reaimAbsorbed(cwd, feature, { into, topic, relocate: relocator(relocations) });
+  const roadmap = reaimAbsorbed(cwd, feature, { into, topic, relocations });
 
   fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
 
