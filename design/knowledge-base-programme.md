@@ -127,9 +127,10 @@ Drawn from the owner's dex-engineering knowledge base:
    Its prerequisite, step 1 of `design/upgrades-in-migrations.md`, is
    merged: the `store.msp` retirement is a migration. Merged as stack
    #1432.
-5. **The rest of retrieval quality:** printed scores, heading paths and line
-   ranges, a per-file cap, excerpts, and lifecycle markers. The relevance
-   floor is reassessed here.
+5. **The rest of retrieval quality:** excerpts, heading paths and line
+   ranges, a marker on reopened topics, and contextual chunk headers
+   measured. A per-file cap and printed scores were measured and dropped,
+   and the relevance floor is closed.
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -580,9 +581,8 @@ specific to the embedding model: `similarity_threshold` is one number, not
 set per provider or model. So the floor is not built.
 
 Setting it per provider and model does not rescue it: step 3 measured six
-local models and found the same overlap in every one. It is reassessed after
-step 5's excerpts, which cut what a weak result costs and may show the floor
-is not needed.
+local models and found the same overlap in every one. Step 5 closes it:
+excerpts cut what a weak result costs, and nothing moves the overlap.
 
 ### The keyword side
 
@@ -840,28 +840,155 @@ pre-tag hook in `.mint.toml` that rebuilds and commits the bundle.
 
 ## Step 5 — the rest of retrieval quality
 
-Planned:
-- printed scores;
-- a heading path on every chunk, indexed and shown with a line range
-  (`path:L120-188`);
-- a per-file cap;
-- excerpts by default, with `--full`;
-- a marker on a reopened or in-progress topic's chunks.
+A query hands an agent the passage that matched and where it sits, not
+whole chunks. Each result shows:
 
-Contextual chunk headers are measured here. A change to chunk text
-re-embeds only the chunks whose text it changes, because step 2 keys every
-vector by its text.
+```text
+[discussion | lazy-resume-on-attach/lazy-resume-on-attach | low-medium | 2026-09-29]
+Discussion: Lazy Resume On Attach › Context
+The feature holds the hook behind an in-pane confirmation prompt instead of firing it at boot. Everything else about restore is unchanged — skeleton, geometry and scrollback all replay as today, so the pane still reads as restored; what changes is that the live process behind it starts when the user says so.
+Source: .workflows/lazy-resume-on-attach/discussion/lazy-resume-on-attach.md:L3-39
+```
 
-Excerpts cut what a weak result costs an agent, which is most of what a
-relevance floor would have bought. Once they land, the floor is reassessed:
-closed if the eval shows it is not needed, built per provider and model if it
-is.
+### What it starts from
+
+A real one-framing phase-start query over the portal fixture ("holding a
+restored tmux pane's resume hook behind a confirmation prompt instead of
+firing it at boot"), keyword-only, returned 10 results and 61 KB, each
+result 2.2–11 KB. The top result was a 3.8 KB `## Context` chunk, with the
+sentence the query was after in its third paragraph.
+
+### Excerpts
+
+- **Each result prints the passage inside its chunk that best matches the
+  query**, not the whole chunk.
+- **Picked by keyword.**
+  - The lines sharing the most of the query's words win, rarer words
+    weighing more. The words are those of the framing the result ranked on,
+    tokenized as the search tokenizes them.
+  - A chunk where no line shares a word (a match on meaning alone) shows
+    its opening lines.
+  - Picking by meaning would embed every paragraph separately, many times
+    the embedding. The opening lines alone miss the answer: in the example
+    it sat two paragraphs below them.
+- **Reading more.** An agent that finds a result load-bearing reads the rest
+  from the file at the result's line range. Every caller's prose already
+  says to read the source file when a result looks load-bearing; its wording
+  moves from chunk to excerpt.
+- **No `--full`.** Every caller reads the file instead, and a flag no caller
+  uses is a second output to keep tested. `--explain` stays.
+- **Measured.** The eval gains **excerpt hit@5**: the share of positive
+  cases with a judged anchor inside a top-five excerpt, so the answer shows
+  without reading further. The excerpt's length is chosen from it against
+  bytes per query, and pinned.
+
+### Heading path and line range
+
+- Each result shows its **heading path**, from the document's title down to
+  its section, above the excerpt, and the **chunk's line range** on its
+  source line.
+- **Both are found at query time from the file as it stands.**
+  - A chunk's text is a verbatim slice of its file, the chunker's invariant.
+  - The query finds that text in the file and reads off its line numbers and
+    the headings above it: one read per result file, ten at most.
+  - Nothing is stored. The store does not change, no file is re-chunked, and
+    the range is always the file's current lines.
+- A chunk whose text the file no longer holds (edited since its last index,
+  as a reopened topic mid-revision is) shows its excerpt with the bare path.
+- **Rejected: recording both at index time.** Every store would re-chunk
+  every file once, and a range would go stale as soon as its file was
+  edited before the next index.
+- The heading path is shown, not searched. Searching it is the contextual
+  headers' measurement.
+
+### The reopened marker
+
+- A result whose topic is in progress again carries `reopened` on its
+  provenance line:
+  `[discussion | wu/topic | low-medium | 2026-09-29 | reopened]`.
+- **Read from the manifests at query time**, which the query already reads
+  for decay, and never stored. It appears when a topic reopens and goes when
+  it concludes again.
+- **Only the reopened item itself.** Its specification's results stay
+  unmarked: the specification is still the concluded record, and the
+  staleness hop flags it for reconciliation.
+- **Ranking is unchanged.** Whether a reopened topic's results rank lower is
+  step 6's.
+- `knowledge-usage.md` §C gains the line: a `reopened` result is the topic's
+  last concluded position, now being revisited, and it may change.
+- **Rejected: dropping a reopened topic's results until it concludes
+  again.** They are the only record of the decision in the meantime.
+
+### Contextual chunk headers, measured
+
+The heading path searched with each chunk, in two halves, each kept only if
+the eval improves:
+
+- **Keyword:** the heading path is its own searched field, beside the
+  content, the source path and the chunk id, each scored on its own and
+  summed. The stored text stays verbatim, so the line range still finds it.
+  Kept, every install re-chunks each file once at its next start; no chunk's
+  text changes, so nothing re-embeds.
+- **Vector:** each chunk is embedded with its heading path in front. Kept,
+  every chunk re-embeds once through the background fill (about 0.9M tokens
+  for portal's corpus), and keyword search covers the chunks meanwhile.
+  Measured with the eval's hybrid mode, by hand.
+
+The literature's gain (Anthropic: 35% fewer retrieval failures, 49% with the
+keyword side) is for a model-written context sentence per chunk. Ours is the
+heading path alone, with no model call, and its gain is unknown until
+measured.
+
+**Rejected: the model-written sentence.** It is a model call for every
+chunk at every index: a new dependency, a cost on every completion, and a
+slower index.
+
+### Measured and dropped
+
+- **A per-file cap.** The keyword eval, the cap applied after ranking:
+
+  | cap per file | primary hit@5 | recall@10 | files in the top 10 |
+  |---|---|---|---|
+  | none | 0.98 | 0.70 | 3.6 |
+  | 3 | 0.94 | 0.63 | 4.6 |
+  | 2 | 0.93 | 0.56 | 5.4 |
+  | 1 | 0.78 | 0.38 | 7.2 |
+
+  - Uncapped, the right file is already in the top five in every case (file
+    hit@5 1.0).
+  - An answer lives in one document: a decision, its context and its
+    options are each their own chunk. A cap throws them away for files
+    nobody needed. 36 of 75 cases take five or more results from one file,
+    and those are the right results.
+  - With excerpts, five results from one file are five short passages, each
+    pointing at its own section.
+- **Printed scores.** Neither mode's score says "this is an answer".
+  - Hybrid divides each search by its best score before blending, so the top
+    result nears 1.0 on every query, an unanswered one included.
+  - Keyword-only prints raw BM25, whose scale moves with the query and the
+    project. The top result's score overlaps across cases:
+
+    | cases | lowest | median | highest |
+    |---|---|---|---|
+    | with an answer (54) | 15.4 | 25.4 | 53.8 |
+    | near-miss (12) | 8.5 | 12.6 | 18.4 |
+    | off-topic (9) | 4.7 | 13.4 | 21.3 |
+
+  - The order already carries the ranking, and the excerpt is the better
+    signal. `--explain` keeps the scores for a person diagnosing a ranking.
+- **The relevance floor.** Closed.
+  - Excerpts change what noise costs, not whether the scores tell noise from
+    an answer. Nothing in this step moves that: step 2's near-miss overlap,
+    step 3's six models, and the keyword scores above.
+  - The eval records near-miss and off-topic bytes once excerpts land.
+  - `similarity_threshold`, each vector hit's minimum, is unchanged at 0.3.
 
 ## Step 6 — lifecycle ranking within a topic
 
 Within one topic, the later record outranks the earlier: specification
-over discussion over research, with a reopened topic marked. This sits
-alongside progress decay across work units and never replaces it.
+over discussion over research, and whether a reopened topic's results rank
+lower than they do today (step 5 marks them). This sits alongside progress
+decay across work units and never replaces it.
 
 Open: supersession inside a single document. The eval found decisions
 amended in place, old text beside new, in all three projects; ranking one
