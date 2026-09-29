@@ -34,6 +34,8 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
+const { roadmapItems } = require('./derivations.cjs');
+const { carrySources } = require('./roadmap.cjs');
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -46,6 +48,7 @@ const { todayStamp } = require('./dates.cjs');
  * @property {{path: string, origin?: string}[]} imports  imports copied into the cc unit (entries unchanged)
  * @property {string} status      the epic spec item's status after the transition — always `promoted`
  * @property {string} promoted_to the cc work unit recorded on the epic spec item
+ * @property {{item: string, from: string, to: string}[]} [roadmap_sources_rewritten]  roadmap sources that followed a moved file
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]      set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base sync)
@@ -124,10 +127,11 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
  * completed spec were incorporated), copy in every import the moved
  * documents link or a moved source attached (entries unchanged, the epic
  * keeping its own), mark the epic's spec item
- * `status: promoted` + `promoted_to`, sync the knowledge base (moved
- * artifacts indexed at their cc identities, the epic's old chunks removed —
- * warn-don't-block), and land ONE commit staging the epic, the cc unit, and
- * the project manifest.
+ * `status: promoted` + `promoted_to`, carry every roadmap source at the moved
+ * material to its cc path, sync the knowledge base (moved artifacts indexed
+ * at their cc identities, the epic's old chunks removed — warn-don't-block),
+ * and land ONE commit staging the epic, the cc unit, and the project
+ * manifest.
  * @param {string} cwd project root
  * @param {string} workUnit  the source epic
  * @param {string} topic     the specification topic to promote
@@ -256,11 +260,18 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     saveWorkUnitManifest(cwd, to, ccManifest);
   });
 
-  // Registration — a fresh read under the project lock.
-  withProjectLock(cwd, () => {
+  // Registration — a fresh read under the project lock — and, in the same
+  // write, the roadmap's sources carried to where the moved material landed.
+  // The epic stays, so every other source still names a file on disk.
+  /** @type {[string, string][]} */
+  const relocations = [[`${workUnit}/specification/${topic}`, `${to}/specification/${to}`]];
+  for (const name of discussionMoves) relocations.push([`${workUnit}/discussion/${name}.md`, `${to}/discussion/${name}.md`]);
+  const roadmapRewritten = withProjectLock(cwd, () => {
     const projectManifest = readProjectManifest(cwd);
     ensureContainer(projectManifest, 'work_units', 'work_units')[to] = { work_type: 'cross-cutting' };
+    const { rewritten } = carrySources(roadmapItems(projectManifest), relocations);
     writeProjectManifestAtomic(cwd, projectManifest);
+    return rewritten;
   });
 
   // KB: index the moved artifacts at their cc identities, drop the epic's old
@@ -300,6 +311,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     committed: outcome.committed,
     warnings,
   };
+  if (roadmapRewritten.length > 0) result.roadmap_sources_rewritten = roadmapRewritten;
   noteCommitOutcome(result, outcome);
   return result;
 }

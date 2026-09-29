@@ -523,6 +523,113 @@ describe('engine workunit promote — the import carry', () => {
   });
 });
 
+describe('engine workunit promote — roadmap sources follow the material', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  const readProject = () => JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+
+  /** The fixture plus a roadmap holding `items`, and the files their sources name that promote leaves alone. */
+  function setupRoadmap(items, { epic } = {}) {
+    fix = setupFixture(epic ? { epic } : {});
+    writeFile(fix.project, '.workflows/payments/imports/notes.md', '# Notes\n');
+    writeFile(fix.project, '.workflows/payments/specification/caching-strategy-v2/specification.md', '# Next caching spec\n');
+    writeFile(fix.project, '.workflows/.roadmap/sessions/session-001.md', '# Roadmap session\n');
+    const project = readProject();
+    project.roadmap = { horizons: ['v1'], items };
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify(project, null, 2) + '\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'roadmap']);
+  }
+
+  /** Every source the roadmap records names a file on disk. */
+  function assertSourcesOnDisk() {
+    for (const [name, item] of Object.entries(readProject().roadmap.items)) {
+      for (const source of item.sources || []) {
+        assert.ok(fs.existsSync(path.join(fix.project, '.workflows', source)), `${name}: ${source} is on disk`);
+      }
+    }
+  }
+
+  it('a source at the promoted specification names its cc path — a file beneath it keeps its place', () => {
+    setupRoadmap({ retention: { horizon: 'v1', summary: 'cache retention', origin: 'park:payments', sources: [
+      'payments/specification/caching-strategy/specification.md',
+      'payments/specification/caching-strategy/review-input-tracking-c1.md',
+    ] } });
+    const res = engine(fix, PROMOTE);
+
+    assert.deepStrictEqual(res.roadmap_sources_rewritten, [
+      { item: 'retention', from: 'payments/specification/caching-strategy/specification.md', to: 'caching/specification/caching/specification.md' },
+      { item: 'retention', from: 'payments/specification/caching-strategy/review-input-tracking-c1.md', to: 'caching/specification/caching/review-input-tracking-c1.md' },
+    ]);
+    assert.strictEqual('roadmap_sources_dropped' in res, false, 'promote deletes nothing, so nothing drops');
+    assert.deepStrictEqual(readProject().roadmap.items.retention, { horizon: 'v1', summary: 'cache retention', origin: 'park:payments', sources: [
+      'caching/specification/caching/specification.md',
+      'caching/specification/caching/review-input-tracking-c1.md',
+    ] });
+    assertSourcesOnDisk();
+  });
+
+  it("a moved source discussion's source follows it, beside one promote leaves — a join stays where it was", () => {
+    setupRoadmap({ warming: {
+      horizon: 'v1', summary: 'cache warming', origin: 'harvest',
+      sources: ['.roadmap/sessions/session-001.md', 'payments/discussion/cache-invalidation.md', 'payments/discussion/fee-model.md'],
+      pulled_to: { work_unit: 'payments', topic: 'cache-invalidation' },
+    } });
+    const res = engine(fix, PROMOTE);
+
+    assert.deepStrictEqual(res.roadmap_sources_rewritten, [
+      { item: 'warming', from: 'payments/discussion/cache-invalidation.md', to: 'caching/discussion/cache-invalidation.md' },
+    ]);
+    const item = readProject().roadmap.items.warming;
+    assert.deepStrictEqual(item.sources,
+      ['.roadmap/sessions/session-001.md', 'caching/discussion/cache-invalidation.md', 'payments/discussion/fee-model.md'], 'order kept');
+    assert.deepStrictEqual(item.pulled_to, { work_unit: 'payments', topic: 'cache-invalidation' },
+      'the epic and its map row stay, so the join still names the unit delivering the item');
+    assertSourcesOnDisk();
+  });
+
+  it('a source at what promote leaves is untouched — an unmoved discussion, a copied import, a sibling spec sharing the prefix', () => {
+    const epic = epicManifest();
+    epic.imports = [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/cache-invalidation' }];
+    setupRoadmap({ other: { horizon: 'v1', summary: 'other', origin: 'harvest', sources: [
+      'payments/discussion/fee-model.md',
+      'payments/imports/notes.md',
+      'payments/specification/caching-strategy-v2/specification.md',
+      'payments/specification/old-spec/specification.md',
+    ] } }, { epic });
+    const before = readProject().roadmap;
+    const res = engine(fix, PROMOTE);
+
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/notes.md', origin: 'discussion/cache-invalidation' }],
+      'the import was carried — as a copy, so the epic keeps the file its source names');
+    assert.deepStrictEqual(readProject().roadmap, before, 'the roadmap node is exactly as it was');
+    assert.strictEqual('roadmap_sources_rewritten' in res, false);
+    assertSourcesOnDisk();
+  });
+
+  it('no roadmap: nothing is written for one, and no roadmap field rides the response', () => {
+    fix = setupFixture();
+    const res = engine(fix, PROMOTE);
+
+    assert.strictEqual('roadmap' in readProject(), false, 'no node is born');
+    assert.strictEqual('roadmap_sources_rewritten' in res, false);
+  });
+
+  it("the rewrite rides promote's one commit — the project manifest committed, nothing left dirty", () => {
+    setupRoadmap({ retention: { horizon: 'v1', summary: 'cache retention', origin: 'park:payments',
+      sources: ['payments/specification/caching-strategy/specification.md'] } });
+    const commits = Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim());
+    engine(fix, PROMOTE);
+
+    assert.strictEqual(Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
+    const committed = JSON.parse(git(fix.project, ['show', 'HEAD:.workflows/manifest.json']));
+    assert.deepStrictEqual(committed.roadmap.items.retention.sources, ['caching/specification/caching/specification.md']);
+    assert.deepStrictEqual(committed.work_units.caching, { work_type: 'cross-cutting' }, 'one write carries the registration and the rewrite');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']), '');
+  });
+});
+
 describe('engine workunit promote — source shape guard', () => {
   it('refuses array-shaped sources — silent no-move is never an option', () => {
     const epic = epicManifest();

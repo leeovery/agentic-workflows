@@ -3353,7 +3353,7 @@ describe('pipeline simulation', () => {
       'the moved holder is flagged for its next entry when the evidence lands');
   });
 
-  it('spec promotion: a cross-cutting concern leaves the epic and the spec item goes terminal', () => {
+  it('spec promotion: a cross-cutting concern leaves the epic, the spec item goes terminal, and roadmap sources follow the files', () => {
     const wu = 'host';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc concern', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
@@ -3362,13 +3362,28 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): one topic`]);
     sim.run(['topic', 'start', wu, 'discussion', 'logging']);
     sim.write(`.workflows/${wu}/discussion/logging.md`, '# Discussion — Logging\n');
+    // The discussion parks a tangent off its own record — the off-topic
+    // valve's call, its source the discussion file.
+    sim.run(['roadmap', 'add', 'log-shipping', '--horizon', 'v2', '--summary', 'ship logs to a vendor',
+      '--origin', `park:${wu}`, '--source', `${wu}/discussion/logging.md`]);
     sim.run(['topic', 'complete', wu, 'discussion', 'logging']);
     sim.run(['topic', 'start', wu, 'specification', 'logging']);
+    sim.run(['manifest', 'set', `${wu}.specification.logging`, 'sources.logging.status', 'incorporated']);
     sim.write(`.workflows/${wu}/specification/logging/specification.md`, '# Spec — Logging\n');
     sim.run(['commit', wu, '-m', `spec(${wu}): logging`, '--topic', 'specification/logging']);
+    // A gap beyond this specification's scope parks off the spec — the gap
+    // exit's roadmap home.
+    sim.run(['roadmap', 'add', 'log-retention', '--horizon', 'v2', '--summary', 'keep logs for a year',
+      '--origin', `park:${wu}`, '--source', `${wu}/specification/logging/specification.md`]);
     sim.run(['topic', 'complete', wu, 'specification', 'logging']);
 
-    sim.run(['workunit', 'promote', wu, 'logging', '--to', 'logging-cc', '--description', 'Logging, project-wide']);
+    const res = sim.run(['workunit', 'promote', wu, 'logging', '--to', 'logging-cc', '--description', 'Logging, project-wide']);
+    assert.deepStrictEqual(res.roadmap_sources_rewritten, [
+      { item: 'log-shipping', from: `${wu}/discussion/logging.md`, to: 'logging-cc/discussion/logging.md' },
+      { item: 'log-retention', from: `${wu}/specification/logging/specification.md`, to: 'logging-cc/specification/logging-cc/specification.md' },
+    ]);
+    const parked = sim.run(['roadmap', 'state']).items;
+    assert.deepStrictEqual(parked.find((i) => i.name === 'log-retention').sources, ['logging-cc/specification/logging-cc/specification.md']);
     assert.strictEqual(sim.manifest('logging-cc').work_type, 'cross-cutting');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.logging.status, 'promoted');
     assert.match(sim.render(['promote-receipt', `${wu}.specification.logging`, '--to', 'logging-cc'], { expect: 'content' }),

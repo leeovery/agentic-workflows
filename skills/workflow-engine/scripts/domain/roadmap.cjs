@@ -1071,6 +1071,61 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
 }
 
 /**
+ * @typedef {object} CarriedSources
+ * @property {{item: string, from: string, to: string}[]} rewritten  sources that followed a moved file
+ * @property {{item: string, source: string}[]} dropped  sources whose file went with a deleted unit
+ */
+
+/**
+ * Carry the roadmap's sources across a transaction's moves — `relocations`,
+ * `.workflows/`-relative `[from, to]` pairs: a source at a moved path takes
+ * its landing, and one beneath a moved directory keeps its place beneath the
+ * landing; a source under `deleted/` that nothing moved goes with that unit,
+ * the item's `sources` field with the last of them; every other source
+ * stays. Mutates `items` — the caller holds the project lock and writes.
+ * @param {Record<string, unknown>} items
+ * @param {[string, string][]} relocations
+ * @param {{deleted?: string}} [opts]
+ * @returns {CarriedSources}
+ */
+function carrySources(items, relocations, { deleted } = {}) {
+  /** @type {CarriedSources} */
+  const out = { rewritten: [], dropped: [] };
+  const landing = (/** @type {string} */ source) => {
+    for (const [from, to] of relocations) {
+      if (source === from) return to;
+      if (source.startsWith(`${from}/`)) return to + source.slice(from.length);
+    }
+    return null;
+  };
+  for (const [name, raw] of Object.entries(items)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = /** @type {Record<string, any>} */ (raw);
+    if (!Array.isArray(item.sources)) continue;
+    /** @type {unknown[]} */
+    const kept = [];
+    let carried = false;
+    for (const source of item.sources) {
+      const to = typeof source === 'string' ? landing(source) : null;
+      if (to !== null) {
+        kept.push(to);
+        out.rewritten.push({ item: name, from: source, to });
+        carried = true;
+      } else if (deleted !== undefined && typeof source === 'string' && source.startsWith(`${deleted}/`)) {
+        out.dropped.push({ item: name, source });
+        carried = true;
+      } else {
+        kept.push(source);
+      }
+    }
+    if (!carried) continue;
+    if (kept.length > 0) item.sources = kept;
+    else delete item.sources;
+  }
+  return out;
+}
+
+/**
  * @typedef {object} AbsorbedRoadmap
  * @property {string[]} reaimed  items whose joins now name the epic topic
  * @property {{item: string, from: string, to: string}[]} rewritten  sources that followed the material
@@ -1081,52 +1136,35 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
  * Absorb's hop: an absorbed feature's material continues as an epic topic,
  * so the roadmap follows it there. Every join naming `fromUnit` is re-aimed
  * at `{work_unit: into, topic}` (the un-pull is cancel's move, never
- * absorb's — the work did not stop, it moved), and every source under
- * `fromUnit/` takes the path `relocate` answers — dropped where it answers
- * null, the `sources` field with it once none is left. Runs under the
- * project lock, **no commit** — the calling transaction stages the project
- * manifest alongside its own write. A no-op writes nothing.
+ * absorb's — the work did not stop, it moved), and every source is carried
+ * across the absorb's `relocations` — one under `fromUnit/` that nothing
+ * moved going with the feature. Runs under the project lock, **no commit** —
+ * the calling transaction stages the project manifest alongside its own
+ * write. A no-op writes nothing.
  * @param {string} cwd @param {string} fromUnit
- * @param {{into: string, topic: string, relocate: (source: string) => string|null}} opts
+ * @param {{into: string, topic: string, relocations: [string, string][]}} opts
  * @returns {AbsorbedRoadmap}
  */
-function reaimAbsorbed(cwd, fromUnit, { into, topic, relocate }) {
+function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
   return withProjectLock(cwd, () => {
-    /** @type {AbsorbedRoadmap} */
-    const out = { reaimed: [], rewritten: [], dropped: [] };
     const manifest = readProjectManifest(cwd);
     const rm = manifest.roadmap;
     if (!rm || typeof rm !== 'object' || Array.isArray(rm) || !rm.items || typeof rm.items !== 'object') {
-      return out;
+      return { reaimed: [], rewritten: [], dropped: [] };
     }
-    const underUnit = (/** @type {unknown} */ source) => typeof source === 'string' && source.startsWith(`${fromUnit}/`);
+    /** @type {string[]} */
+    const reaimed = [];
     for (const [name, raw] of Object.entries(rm.items)) {
       if (!raw || typeof raw !== 'object') continue;
       const item = /** @type {Record<string, any>} */ (raw);
       const join = itemJoin(item);
       if (join && join.work_unit === fromUnit) {
         item.pulled_to = { work_unit: into, topic };
-        out.reaimed.push(name);
+        reaimed.push(name);
       }
-      if (!Array.isArray(item.sources) || !item.sources.some(underUnit)) continue;
-      /** @type {unknown[]} */
-      const kept = [];
-      for (const source of item.sources) {
-        if (!underUnit(source)) {
-          kept.push(source);
-          continue;
-        }
-        const to = relocate(source);
-        if (to === null) {
-          out.dropped.push({ item: name, source });
-        } else {
-          kept.push(to);
-          out.rewritten.push({ item: name, from: source, to });
-        }
-      }
-      if (kept.length > 0) item.sources = kept;
-      else delete item.sources;
     }
+    /** @type {AbsorbedRoadmap} */
+    const out = { reaimed, ...carrySources(rm.items, relocations, { deleted: fromUnit }) };
     if (out.reaimed.length + out.rewritten.length + out.dropped.length > 0) {
       writeProjectManifestAtomic(cwd, manifest);
     }
@@ -1208,6 +1246,7 @@ module.exports = {
   bindItem,
   pullForwardItem,
   revertJoins,
+  carrySources,
   reaimAbsorbed,
   flagJoined,
 };
