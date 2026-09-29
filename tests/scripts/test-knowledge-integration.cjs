@@ -123,11 +123,15 @@ function seedStore(db, provider) {
   }
 }
 
-/** The blended query `engine knowledge query` runs over a store built with the stub provider — its results. */
-async function hybrid(db, term, provider) {
+/**
+ * The blended query `engine knowledge query` runs over a store built with the
+ * stub provider — its results, placed in `root`, a project holding none of
+ * the fixture's files.
+ */
+async function hybrid(db, term, provider, root) {
   const metadata = { provider: 'stub', model: provider.model(), dimensions: provider.dimensions() };
   const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0, _api_key: null, _ignored: [] }, provider);
-  return (await queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [] })).results;
+  return (await queryStore(db, settings, { terms: [term], options: { limit: 20 }, workUnits: [], root })).results;
 }
 
 function stripForCompare(hits) {
@@ -189,7 +193,7 @@ describe('knowledge store — end-to-end integration', () => {
   it('returns correct hybrid search results', async () => {
     const db = createStore();
     seedStore(db, provider);
-    const hits = await hybrid(db, 'rate limiting', provider);
+    const hits = await hybrid(db, 'rate limiting', provider, tmpDir);
     const ids = hits.map((h) => h.id);
     assert.ok(ids.includes('auth-discussion-1'));
     assert.ok(ids.includes('data-disc-1'));
@@ -361,7 +365,7 @@ describe('knowledge store — end-to-end integration', () => {
 
     const beforeFull = searchKeyword(db, { term: termQuery, limit: 20 });
     const beforeVector = searchVector(db, { vector: vectorQuery, similarity: 0, limit: 20 });
-    const beforeHybrid = await hybrid(db, termQuery, provider);
+    const beforeHybrid = await hybrid(db, termQuery, provider, tmpDir);
     const beforeFiltered = searchKeyword(db, {
       term: termQuery,
       where: { work_type: { eq: 'epic' } },
@@ -384,7 +388,7 @@ describe('knowledge store — end-to-end integration', () => {
 
     const afterFull = searchKeyword(loaded, { term: termQuery, limit: 20 });
     const afterVector = searchVector(loaded, { vector: vectorQuery, similarity: 0, limit: 20 });
-    const afterHybrid = await hybrid(loaded, termQuery, provider);
+    const afterHybrid = await hybrid(loaded, termQuery, provider, tmpDir);
     const afterFiltered = searchKeyword(loaded, {
       term: termQuery,
       where: { work_type: { eq: 'epic' } },

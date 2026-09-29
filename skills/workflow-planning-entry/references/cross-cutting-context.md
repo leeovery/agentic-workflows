@@ -103,9 +103,9 @@ No cross-cutting specs are semantically relevant to this plan. Proceed without c
 
 #### If results are returned
 
-Read the returned chunks. Group by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec. For each, if the chunks alone are not enough to judge relevance, read the source file (`Source:` line) for full detail.
+Read the returned excerpts. Group by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec. For each, if the excerpts alone are not enough to judge relevance, read the source file at the `Source:` line's range for full detail.
 
-Keep only the specs that are genuinely relevant to the plan being built. A chunk matching on generic vocabulary (e.g., both mention "authentication") but addressing unrelated concerns should be dropped.
+Keep only the specs that are genuinely relevant to the plan being built. A result matching on generic vocabulary (e.g., both mention "authentication") but addressing unrelated concerns should be dropped.
 
 **If none are relevant:**
 

@@ -7,7 +7,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
+const { chunk, sourceLines, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
 const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
@@ -1248,5 +1248,24 @@ describe('knowledge chunker — real fixtures', () => {
         'chunk must be a verbatim substring of the source'
       );
     }
+  });
+});
+
+describe('sourceLines', () => {
+  it('starts the body past the opening frontmatter and the empty lines after it', () => {
+    assert.deepStrictEqual(sourceLines('---\na: b\n---\n\n\n# Title'), { lines: ['---', 'a: b', '---', '', '', '# Title'], bodyStart: 5 });
+  });
+
+  it('starts the body at the first line without frontmatter, a later `---` a rule', () => {
+    assert.strictEqual(sourceLines('# Title\n---\nbody').bodyStart, 0);
+    assert.strictEqual(sourceLines('\n---\na: b\n---').bodyStart, 0);
+  });
+
+  it('reads an unclosed frontmatter block as running to the end', () => {
+    assert.strictEqual(sourceLines('---\na: b\nbody').bodyStart, 3);
+  });
+
+  it('normalises CRLF and lone CR line endings', () => {
+    assert.deepStrictEqual(sourceLines('---\r\na: b\r\n---\r\nbody\rmore').lines, ['---', 'a: b', '---', 'body', 'more']);
   });
 });

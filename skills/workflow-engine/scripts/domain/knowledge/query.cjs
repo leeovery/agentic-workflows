@@ -5,7 +5,8 @@
 // whatever keeps it from a vector the store can compare, none, the query then
 // running keyword-only with a note naming why; the framings searched, merged
 // by each chunk's best score, dated by the progress clock and re-ranked; and
-// the text `query` prints. A query never writes.
+// each result's passage (passages.cjs); and the text `query` prints. A query
+// never writes.
 // ---------------------------------------------------------------------------
 
 const config = require('../../kernel/knowledge/config.cjs');
@@ -16,11 +17,13 @@ const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowled
 const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
+const { withPassages } = require('./passages.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
 /** @typedef {import('./embedder.cjs').Config} Config */
 /** @typedef {import('./embedder.cjs').EmbeddingProvider} EmbeddingProvider */
+/** @typedef {import('./passages.cjs').Placed} Placed */
 
 // A query's patience with its endpoint is seconds, where an index's is
 // minutes: keyword-only answers at once, and a phase's opening query must not
@@ -220,11 +223,12 @@ function queryWhere({ phase, workType, workUnit, topic }) {
  * @property {string[]} terms
  * @property {QueryOptions} options
  * @property {Array<Record<string, any>>} workUnits  the manifests the progress clock is built from
+ * @property {string} root  the project the results' source files are in
  */
 
 /**
  * @typedef {object} QueryOutcome
- * @property {Array<import('../../kernel/knowledge/ranking.cjs').Ranked>} results  ranked, cut to the limit
+ * @property {Placed[]} results  ranked, cut to the limit
  * @property {string[]} notes  the lines above the count
  */
 
@@ -232,11 +236,12 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 const NO_RESULTS = { results: [], notes: [] };
 
 /**
- * A query's ranked results, each carrying the scoring `--explain` prints.
+ * A query's ranked results, each carrying its passage and the scoring
+ * `--explain` prints.
  * @param {Store} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<QueryOutcome>}
  */
-async function queryStore(db, settings, { terms, options, workUnits }) {
+async function queryStore(db, settings, { terms, options, workUnits, root }) {
   const boosts = normaliseBoosts(options.boosts || []);
   const limit = options.limit || DEFAULT_QUERY_LIMIT;
   const { vectors, note } = await framingVectors(settings, terms);
@@ -244,7 +249,7 @@ async function queryStore(db, settings, { terms, options, workUnits }) {
   const elapsedOf = progressElapsed(workUnits, settings.weights);
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
   return {
-    results: rerank(dated, boosts, settings.stability).slice(0, limit),
+    results: withPassages(db, rerank(dated, boosts, settings.stability).slice(0, limit), terms, root),
     notes: [
       ...(note ? [note] : []),
       ...vectorNotes(db, settings),
@@ -267,10 +272,19 @@ function formatDate(ts) {
 }
 
 /**
+ * A result's source, at its chunk's lines where the file still holds it.
+ * @param {Placed} result
+ */
+function sourceLine({ source_file, lines }) {
+  if (!lines) return `Source: ${source_file}`;
+  return `Source: ${source_file}:L${lines.first}${lines.last === lines.first ? '' : `-${lines.last}`}`;
+}
+
+/**
  * The text `query` prints: its notes, the count, then each result's header
- * (dated by its source document), content and source — and, explained, how
- * it ranked. Control characters are stripped from the whole, never from the
- * store.
+ * (dated by its source document), the headings above its excerpt, the
+ * excerpt and its source — and, explained, how it ranked. Control characters
+ * are stripped from the whole, never from the store.
  * @param {QueryOutcome} outcome @param {{explain?: boolean}} [rendering]
  * @returns {string}
  */
@@ -280,8 +294,8 @@ function renderQuery({ results, notes }, { explain = false } = {}) {
     out.push(
       '',
       `[${r.phase} | ${r.work_unit}/${r.topic} | ${r.confidence} | ${formatDate(r.timestamp)}]`,
-      r.content,
-      `Source: ${r.source_file}`,
+      ...[r.headings.join(' › '), r.excerpt].filter(Boolean),
+      sourceLine(r),
     );
     if (explain) out.push(...explanation(r));
   }

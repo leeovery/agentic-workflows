@@ -1,7 +1,8 @@
 'use strict';
 
 // The query pipeline's parts: the settings a store's metadata and the config
-// resolve to, the search that ranks, and the render that prints. The engine's
+// resolve to, the search that ranks and places each result's passage, and the
+// render that prints. The engine's
 // `knowledge query` composes the three; the eval harness calls them in
 // process.
 
@@ -37,6 +38,10 @@ const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for sem
 // A chunk and a query term sharing no word, embedded alike — only the vector
 // search can join them.
 const PARAPHRASE = { content: 'Receipts reconcile after close.', term: 'when is the ledger balanced' };
+
+/** A project holding none of the chunks' source files: each result carries its excerpt alone. */
+const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
+after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
 
 /** A chunk of `unit`'s discussion, `n` its ordinal. */
 function doc(unit, n, content) {
@@ -80,7 +85,7 @@ async function query(db, request) {
  * @param {{terms: string[], options?: object, workUnits?: object[], settings?: object}} request
  */
 function outcomeOf(db, { terms, options = {}, workUnits = [], settings = keywordSettings() }) {
-  return queryStore(db, settings, { terms, options, workUnits });
+  return queryStore(db, settings, { terms, options, workUnits, root: NO_FILES });
 }
 
 /** A stub-dimensioned provider whose every embedBatch throws `error`. @param {Error} error */
@@ -157,6 +162,15 @@ describe('queryStore', () => {
       'old-discussion-old-001',
     ]);
     assert.strictEqual((await query(db, { terms, options: { limit: 2 } })).length, 2);
+  });
+
+  it("gives each result its passage: the excerpt its kept framing picks, and no place where the file is not there", async () => {
+    const [refunds] = await query(db, { terms: ['refunds'] });
+    assert.deepStrictEqual({ excerpt: refunds.excerpt, headings: refunds.headings, lines: refunds.lines }, {
+      excerpt: 'Refunds reverse the invoice.',
+      headings: [],
+      lines: null,
+    });
   });
 
   it('filters by a comma list of values', async () => {
@@ -411,12 +425,36 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
 
+  it("prints each result's excerpt beneath the headings enclosing it, and its source at the chunk's lines", async () => {
+    const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
+    assert.deepStrictEqual(beta.split('\n').slice(1), [
+      'Discussion',
+      'Token refresh follows the rate window.',
+      'Source: .workflows/beta/discussion/beta.md:L1-3',
+    ]);
+  });
+
+  it('prints the bare path, and no headings, for a chunk its file no longer holds', async () => {
+    const file = path.join(root, '.workflows', 'beta', 'discussion', 'beta.md');
+    const written = fs.readFileSync(file, 'utf8');
+    fs.writeFileSync(file, written.replace('rate window', 'burst window'));
+    try {
+      const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
+      assert.deepStrictEqual(beta.split('\n').slice(1), [
+        'Token refresh follows the rate window.',
+        'Source: .workflows/beta/discussion/beta.md',
+      ]);
+    } finally {
+      fs.writeFileSync(file, written);
+    }
+  });
+
   it('explains beneath each source line how the result ranked, and prints nothing else differently', async () => {
     const explained = await knowledge('query', 'token refresh', 'rate window', '--explain');
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
-        `^Source: \\.workflows/${unit}/discussion/${unit}\\.md`,
+        `^Source: \\.workflows/${unit}/discussion/${unit}\\.md:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
         `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0200 tier = ${score}$`,
@@ -661,19 +699,34 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
 });
 
 describe('renderQuery', () => {
-  const result = doc('auth', 1, 'Tokens refresh hourly.');
+  const result = {
+    ...doc('auth', 1, '## Refresh\n\nTokens refresh hourly.\nSessions end at logout.'),
+    excerpt: 'Tokens refresh hourly.',
+    headings: ['Discussion: Auth', 'Refresh'],
+    lines: { first: 3, last: 6 },
+  };
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
-  it("opens with the query's notes, then each result's header, content and source", () => {
+  it("opens with the query's notes, then each result's header, the headings above its excerpt, the excerpt and its source at the chunk's lines", () => {
     assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [
       CHOSEN_NOTE,
       awaiting,
       '[1 results]',
       '',
       '[discussion | auth/auth | medium | 2026-01-02]',
+      'Discussion: Auth › Refresh',
       'Tokens refresh hourly.',
-      'Source: .workflows/auth/discussion/auth.md',
+      'Source: .workflows/auth/discussion/auth.md:L3-6',
     ].join('\n') + '\n');
+  });
+
+  it('names a one-line chunk by its line, and leaves out the headings and an excerpt where there are none', () => {
+    const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }).split('\n').slice(3, -1);
+    assert.deepStrictEqual(lines({ lines: { first: 9, last: 9 } }), [
+      'Discussion: Auth › Refresh', 'Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md:L9',
+    ]);
+    assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md']);
+    assert.deepStrictEqual(lines({ excerpt: '' }), ['Discussion: Auth › Refresh', 'Source: .workflows/auth/discussion/auth.md:L3-6']);
   });
 
   it('prints no note where there is none, and a bare count where there are no results', () => {
@@ -682,7 +735,7 @@ describe('renderQuery', () => {
   });
 
   it('strips control characters, keeping newlines and tabs', () => {
-    const text = renderQuery({ results: [{ ...result, content: 'a\x1b[31mred\x00\tb\nc' }], notes: [] });
+    const text = renderQuery({ results: [{ ...result, excerpt: 'a\x1b[31mred\x00\tb\nc' }], notes: [] });
     assert.ok(text.includes('a[31mred\tb\nc'));
   });
 });
