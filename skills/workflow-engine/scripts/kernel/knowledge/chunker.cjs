@@ -34,6 +34,14 @@ const HEADING_RE = /^(#{1,6})\s+(.*)$/;
 const MAX_CHUNK_CHARS = 16000;
 
 /**
+ * The version of what a chunk records — its text and its heading path. A
+ * change to either takes the next: each chunk records the version that cut
+ * it, and the next keyword pass cuts again the file of a chunk recording
+ * another (indexing.cjs).
+ */
+const CHUNKER_VERSION = 1;
+
+/**
  * Chunk a markdown string according to the given config.
  *
  * @param {string} markdown
@@ -625,4 +633,4 @@ function sliceLine(doc, line) {
   return chunks;
 }
 
-module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, enclosingHeadings, MAX_CHUNK_CHARS };
+module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, enclosingHeadings, MAX_CHUNK_CHARS, CHUNKER_VERSION };

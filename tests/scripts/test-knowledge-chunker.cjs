@@ -7,7 +7,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
+const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS, CHUNKER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
 const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
@@ -1294,6 +1294,24 @@ describe('knowledge chunker — heading paths', () => {
 
   it('gives a chunk of a file without headings an empty path', () => {
     assert.deepStrictEqual(chunk('Plain text.\n\nMore text.', baseConfig()).map((c) => c.headings), [[]]);
+  });
+});
+
+describe('knowledge chunker — version', () => {
+  it('pins what a chunk records to CHUNKER_VERSION — a change to it takes the next version', () => {
+    const md = ['---', 'a: b', '---', '', '# Auth', '', 'Intro.', '', '## Tokens', '', '### Refresh', '', 'Hourly.', '', '## Rotation', '', 'Weekly.'].join('\n');
+    assert.deepStrictEqual(
+      { version: CHUNKER_VERSION, chunks: chunk(md, baseConfig()) },
+      {
+        version: 1,
+        chunks: [
+          { content: '# Auth\n\nIntro.', headings: ['Auth'] },
+          { content: '## Tokens\n\n### Refresh\n\nHourly.', headings: ['Auth', 'Tokens'] },
+          { content: '## Rotation\n\nWeekly.', headings: ['Auth', 'Rotation'] },
+        ],
+      },
+      'what a chunk records changed: bump CHUNKER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs, then update this golden to the new version and chunks',
+    );
   });
 });
 

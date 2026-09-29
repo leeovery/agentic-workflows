@@ -10,7 +10,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { tokenize, TOKENIZER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
+const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const STUB_DIMS = 16;
@@ -196,7 +196,7 @@ describe('knowledge store — keyword search', () => {
     const [hit] = store.searchKeyword(db, { term: 'alpha' });
     assert.deepStrictEqual(Object.keys(hit), [
       'id', 'content', 'heading_path', 'work_unit', 'work_type', 'phase', 'topic', 'confidence',
-      'source_file', 'source_hash', 'content_hash', 'timestamp', 'score',
+      'source_file', 'source_hash', 'chunker_version', 'content_hash', 'timestamp', 'score',
     ]);
     assert.strictEqual(typeof hit.score, 'number');
   });
@@ -319,15 +319,16 @@ describe('knowledge store — tokenizer', () => {
     assert.deepStrictEqual(tokenize('theirs'), ['their'], 'a stop word is a whole word, matched before the stem');
   });
 
-  it('pins its output to TOKENIZER_VERSION — a changed output takes the next version', () => {
+  it('pins its output and the fields it searches to TOKENIZER_VERSION — a change to either takes the next version', () => {
     const text = "The Rate-Limiters' queues are NOT draining: naïve café refreshes, it's tokens_v2 in 2026 — generously ORGANISED!";
     assert.deepStrictEqual(
-      { version: TOKENIZER_VERSION, tokens: tokenize(text) },
+      { version: TOKENIZER_VERSION, fields: FIELDS, tokens: tokenize(text) },
       {
         version: 3,
+        fields: ['content', 'heading_path', 'source_file', 'id'],
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
-      'the tokenizer\'s output changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version and tokens',
+      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
     );
   });
 });
@@ -536,7 +537,7 @@ describe('knowledge store — the file', () => {
   /** Chunks or hits as the pre-version store holds them — recording no heading path. */
   const pathless = (items) => items.map((item) => ({ ...item, heading_path: undefined }));
 
-  it('loads a store another tokenizer wrote retokenized — its terms re-derived from its text, its vectors as they were', () => {
+  it('loads a store another tokenizer wrote retokenized — its terms re-derived from the fields it records, its vectors as they were', () => {
     fs.copyFileSync(PRE_VERSION_STORE, file);
     const loaded = store.loadStore(file);
     const fresh = preVersionChunks();

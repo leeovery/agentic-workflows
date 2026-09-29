@@ -29,8 +29,7 @@ const REQUIRED_FIELDS = [
  * @typedef {object} Chunk
  * @property {string} id
  * @property {string} content
- * @property {string} [heading_path]  the headings enclosing the line its text starts on, outermost first —
- *   absent on a chunk cut before chunks recorded one, whose file the next keyword pass re-cuts
+ * @property {string} [heading_path]  the headings enclosing the line its text starts on, outermost first
  * @property {string} work_unit
  * @property {string} work_type
  * @property {string} phase
@@ -38,6 +37,7 @@ const REQUIRED_FIELDS = [
  * @property {string} confidence
  * @property {string} source_file
  * @property {string} [source_hash]  the sha256 of the source file the chunk was cut from
+ * @property {number} [chunker_version]  the version of the chunker that cut it (chunker.cjs CHUNKER_VERSION)
  * @property {string} content_hash  the sha256 of `content` — the text its vector embeds
  * @property {number} timestamp
  */
@@ -91,6 +91,7 @@ function chunkOf(fields, content, hash) {
     confidence: fields.confidence,
     source_file: fields.source_file,
     source_hash: fields.source_hash,
+    chunker_version: fields.chunker_version,
     content_hash: hash,
     timestamp: fields.timestamp,
   };

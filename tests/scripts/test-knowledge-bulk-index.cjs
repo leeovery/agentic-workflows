@@ -17,7 +17,7 @@ const { describe, it, before, after, beforeEach, afterEach } = require('node:tes
 const assert = require('node:assert');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const keyword = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
+const { CHUNKER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { InvalidRequestError, QuotaError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const { indexBulk } = require('../../skills/workflow-engine/scripts/domain/knowledge/bulk.cjs');
@@ -504,65 +504,97 @@ describe('knowledge index — vectors keyed by their text', () => {
   });
 });
 
-describe('knowledge index — a store cut before chunks recorded their heading path', () => {
+describe('knowledge index — chunks another chunker version cut', () => {
+  const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: CFG.dimensions };
   let root;
   let output;
   let vectors;
 
-  /** The store as an install before heading paths left it: the tokenizer before this one, no chunk recording its heading path. */
-  function asCutBeforeHeadingPaths() {
+  /**
+   * Index the epic's discussions under `cfg`, then leave every chunk recording
+   * chunker `version` — none where undefined — and no heading path, so a
+   * re-cut shows in what the chunk records.
+   * @param {number|undefined} version
+   */
+  async function cutBy(version, cfg = CFG, provider = spyProvider()) {
+    await bulk(root, output, cfg, provider);
     const db = loadStore(storeFile(root));
-    for (const entry of db.entries) delete entry.chunk.heading_path;
-    const current = keyword.TOKENIZER_VERSION;
-    keyword.TOKENIZER_VERSION = current - 1;
-    try {
-      saveStore(db, storeFile(root));
-    } finally {
-      keyword.TOKENIZER_VERSION = current;
+    vectors = store.vectorsByContentHash(db);
+    for (const { chunk } of db.entries) {
+      chunk.chunker_version = version;
+      chunk.heading_path = undefined;
     }
+    saveStore(db, storeFile(root));
   }
 
-  beforeEach(async () => {
+  /** What each chunk of a topic records of its cut: its chunker version and its heading path. @param {string} topic */
+  function cutOf(topic) {
+    return chunksFor(root, topic).map((chunk) => [chunk.chunker_version, chunk.heading_path]);
+  }
+
+  /** Every chunk records this chunker's version and its heading path, and carries the vector it had. */
+  function assertCutByThisChunker() {
+    const db = loadStore(storeFile(root));
+    for (const chunk of store.allChunks(db)) {
+      assert.strictEqual(chunk.chunker_version, CHUNKER_VERSION, chunk.id);
+      assert.match(chunk.heading_path, new RegExp(`^${chunk.topic} › Section \\d$`), chunk.id);
+    }
+    assert.deepStrictEqual(store.chunksWithoutVector(db), []);
+    assert.deepStrictEqual(store.vectorsByContentHash(db), vectors);
+  }
+
+  beforeEach(() => {
     root = buildProject();
     output = { stdout: '', stderr: '' };
     for (const topic of TOPICS) writeDiscussion(root, topic, sectioned([`The ${topic} ruling.`, `The ${topic} caveat.`, `The ${topic} follow-up.`]));
-    await bulk(root, output, CFG, spyProvider());
-    vectors = store.vectorsByContentHash(loadStore(storeFile(root)));
-    asCutBeforeHeadingPaths();
-    const old = loadStore(storeFile(root));
-    assert.strictEqual(old.retokenized, true);
-    assert.ok(store.allChunks(old).every((chunk) => chunk.heading_path === undefined));
   });
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  /** Every chunk of the store records its heading path, and carries the vector it had before. */
-  function assertRecutKeepingVectors() {
-    const db = loadStore(storeFile(root));
-    assert.strictEqual(db.retokenized, false);
-    for (const chunk of store.allChunks(db)) assert.match(chunk.heading_path, new RegExp(`^${chunk.topic} › Section \\d$`), chunk.id);
-    assert.deepStrictEqual(store.chunksWithoutVector(db), []);
-    assert.deepStrictEqual(store.vectorsByContentHash(db), vectors);
+  for (const [recorded, version] of [['none', undefined], ['another', CHUNKER_VERSION + 1]]) {
+    it(`the next keyword pass re-cuts every file whose chunks record ${recorded}, and embeds nothing`, async () => {
+      await cutBy(version);
+      const provider = spyProvider();
+      const summary = await bulk(root, output, CFG, provider);
+      assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
+      assert.deepStrictEqual(provider.batches, []);
+      assertCutByThisChunker();
+    });
   }
 
-  it('the next keyword pass re-cuts every file, and embeds nothing', async () => {
-    const provider = spyProvider();
-    const summary = await bulk(root, output, CFG, provider);
-    assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
-    assert.deepStrictEqual(provider.batches, []);
-    assertRecutKeepingVectors();
-  });
-
-  it('a write before the keyword pass re-cuts its own file, and leaves every other to the pass', async () => {
+  it('a single-file index before the pass re-cuts its own file, and leaves every other to the pass', async () => {
+    await cutBy(undefined);
     const provider = spyProvider();
     indexOne(root, 'alpha', CFG, provider);
-    assert.strictEqual(loadStore(storeFile(root)).retokenized, false);
+    assert.deepStrictEqual(cutOf('beta'), [[undefined, undefined], [undefined, undefined], [undefined, undefined]]);
     const summary = await bulk(root, output, CFG, provider);
     assert.deepStrictEqual(summary, { new: 0, changed: 2, removed: 0, unchanged: 1, failed: 0, awaiting: 0, keyUnresolved: false });
     assert.deepStrictEqual(provider.batches, []);
-    assertRecutKeepingVectors();
+    assertCutByThisChunker();
+  });
+
+  it('re-cuts every file under a key that does not resolve, every vector kept and none awaiting', async () => {
+    await cutBy(undefined, OPENAI, spyProvider({ model: OPENAI.model }));
+    const summary = await bulk(root, output, OPENAI, null);
+    assert.deepStrictEqual(summary, { new: 0, changed: 3, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: true });
+    assertCutByThisChunker();
+  });
+
+  it('leaves a topic in progress again as it is, and re-cuts it once it concludes', async () => {
+    await cutBy(undefined);
+    setItemStatus(root, 'alpha', 'in-progress');
+    const provider = spyProvider();
+    const reopened = await bulk(root, output, CFG, provider);
+    assert.deepStrictEqual(reopened, { new: 0, changed: 2, removed: 0, unchanged: 0, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.deepStrictEqual(cutOf('alpha'), [[undefined, undefined], [undefined, undefined], [undefined, undefined]]);
+
+    setItemStatus(root, 'alpha', 'completed');
+    const concluded = await bulk(root, output, CFG, provider);
+    assert.deepStrictEqual(concluded, { new: 0, changed: 1, removed: 0, unchanged: 2, failed: 0, awaiting: 0, keyUnresolved: false });
+    assert.deepStrictEqual(provider.batches, []);
+    assertCutByThisChunker();
   });
 });
 
