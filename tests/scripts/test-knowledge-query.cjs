@@ -2,9 +2,8 @@
 
 // The query pipeline's parts: the settings a store's metadata and the config
 // resolve to, the search that ranks and places each result's passage, and the
-// render that prints. The engine's
-// `knowledge query` composes the three; the eval harness calls them in
-// process.
+// render that prints. The engine's `knowledge query` composes the three; the
+// eval harness calls them in process.
 
 require('./hermetic-env.cjs');
 

@@ -56,8 +56,8 @@ function chunk(markdown, config) {
     skip_empty_sections: skipEmptySections = true,
   } = config;
 
-  // 0–1. Normalise line endings so CRLF fixtures chunk identically to LF,
-  //      and strip YAML frontmatter if configured.
+  // 1. Normalise line endings so CRLF fixtures chunk identically to LF, and
+  //    strip YAML frontmatter if configured.
   const { lines, bodyStart } = sourceLines(markdown);
   const body = lines.slice(stripFrontmatter ? bodyStart : 0).join('\n');
 
@@ -189,13 +189,43 @@ function scanStructure(lines) {
 }
 
 /**
+ * The offset each line starts at in the lines joined by newlines, then the
+ * offset one past the last line's end.
+ *
+ * @param {string[]} lines
+ * @returns {number[]}
+ */
+function lineStarts(lines) {
+  const starts = [0];
+  for (const line of lines) starts.push(starts[starts.length - 1] + line.length + 1);
+  return starts;
+}
+
+/**
+ * The line an offset falls on, given the offset each line starts at.
+ *
+ * @param {number[]} starts  as `lineStarts` gives them
+ * @param {number} offset
+ * @returns {number}
+ */
+function lineHolding(starts, offset) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (starts[middle] <= offset) low = middle;
+    else high = middle - 1;
+  }
+  return low;
+}
+
+/**
  * The body as lines plus the offsets that turn any line range — or any
  * character span — back into a verbatim, right-trimmed slice of the body.
  */
 function parseDocument(body) {
   const lines = body.split('\n');
-  const offsets = [0];
-  for (const line of lines) offsets.push(offsets[offsets.length - 1] + line.length + 1);
+  const offsets = lineStarts(lines);
   const { headings, fenceClose } = scanStructure(lines);
 
   const trimmedEnd = (from, to) => {
@@ -570,4 +600,4 @@ function sliceLine(doc, line) {
   return chunks;
 }
 
-module.exports = { chunk, sourceLines, scanStructure, MAX_CHUNK_CHARS };
+module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, MAX_CHUNK_CHARS };

@@ -814,7 +814,7 @@ output=$(run_kb query "anything" 2>&1)
 assert_eq "0 results on empty store" "true" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
 teardown_project
 
-# --- Test 25: Output format has provenance, content, source ---
+# --- Test 25: Output format has provenance, excerpt, source ---
 echo "Test 25: Output format"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"

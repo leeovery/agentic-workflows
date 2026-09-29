@@ -53,7 +53,7 @@ No prior context found. Proceed to the next step silently — no delay, no user 
 
 #### If results are returned
 
-Read each excerpt and weigh it against the current topic. For a result that looks load-bearing, read its source file at the `Source:` line's range for full detail. Most results are context — one or two may be directly relevant.
+→ Load **[knowledge-usage.md](knowledge-usage.md)** for **C. Reading the results** and follow its instructions, weighing each result against the current topic. Most results are context — one or two may be directly relevant.
 
 Briefly acknowledge surfaced context to the user before the main session starts:
 

@@ -3,11 +3,12 @@
 // ---------------------------------------------------------------------------
 // Kernel: a markdown file's outline, as a query places a chunk in it — the
 // lines the chunk's text sits on in the file as it stands, and the headings
-// enclosing any line. A chunk is a verbatim slice of its file's body
-// (chunker.cjs), so finding its text there finds the chunk.
+// enclosing any line. A chunk is a verbatim slice of its file (chunker.cjs),
+// found at the first line that starts with its text; the headings are the
+// body's, never the frontmatter's.
 // ---------------------------------------------------------------------------
 
-const { sourceLines, scanStructure } = require('./chunker.cjs');
+const { sourceLines, scanStructure, lineStarts, lineHolding } = require('./chunker.cjs');
 
 /**
  * @typedef {object} Lines  a stretch of a file's lines, counted from 1 with its frontmatter
@@ -17,13 +18,18 @@ const { sourceLines, scanStructure } = require('./chunker.cjs');
 
 /**
  * @typedef {object} Outline
- * @property {(content: string) => Lines|null} locate  a chunk's lines — null where the file no longer holds its text
+ * @property {(content: string) => Lines|null} locate  a chunk's lines — null where no line of the file starts with its text
  * @property {(line: number) => string[]} headingsAt  the headings enclosing a line, outermost first
  */
 
-/** @param {string} text */
-function lineBreaks(text) {
-  return text.split('\n').length - 1;
+/**
+ * The first offset at which `content` starts a line of `text` — -1 where it starts none.
+ * @param {string} text @param {string} content
+ */
+function lineStartOf(text, content) {
+  let at = text.indexOf(content);
+  while (at > 0 && text[at - 1] !== '\n') at = text.indexOf(content, at + 1);
+  return at;
 }
 
 /**
@@ -32,15 +38,14 @@ function lineBreaks(text) {
  */
 function outline(markdown) {
   const { lines, bodyStart } = sourceLines(markdown);
-  const bodyLines = lines.slice(bodyStart);
-  const body = bodyLines.join('\n');
-  const headings = scanStructure(bodyLines).headings.map((heading) => ({ ...heading, line: bodyStart + heading.line + 1 }));
+  const text = lines.join('\n');
+  const starts = lineStarts(lines);
+  const headings = scanStructure(lines.slice(bodyStart)).headings.map((heading) => ({ ...heading, line: bodyStart + heading.line + 1 }));
   return {
     locate(content) {
-      const at = body.indexOf(content);
+      const at = lineStartOf(text, content);
       if (at === -1) return null;
-      const first = bodyStart + lineBreaks(body.slice(0, at)) + 1;
-      return { first, last: first + lineBreaks(content) };
+      return { first: lineHolding(starts, at) + 1, last: lineHolding(starts, at + content.length - 1) + 1 };
     },
     headingsAt(line) {
       /** @type {typeof headings} */

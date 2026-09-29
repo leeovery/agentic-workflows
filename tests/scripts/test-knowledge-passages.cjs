@@ -108,14 +108,24 @@ describe('withPassages', () => {
     });
   });
 
-  it('gives no headings and no lines where the file is gone', () => {
+  it('gives no headings and no lines where the file is gone, or a directory on its path is no longer one', () => {
+    const unplaced = { excerpt: 'A session ends at logout.', headings: [], lines: null };
+    const placedOf = () => {
+      const [placed] = withPassages(db, [result(content, 1)], ['session logout'], root);
+      return { excerpt: placed.excerpt, headings: placed.headings, lines: placed.lines };
+    };
     fs.rmSync(path.join(root, SOURCE));
-    const [placed] = withPassages(db, [result(content, 1)], ['session logout'], root);
-    assert.deepStrictEqual({ excerpt: placed.excerpt, headings: placed.headings, lines: placed.lines }, {
-      excerpt: 'A session ends at logout.',
-      headings: [],
-      lines: null,
-    });
+    assert.deepStrictEqual(placedOf(), unplaced);
+    const directory = path.join(root, path.dirname(SOURCE));
+    fs.rmSync(directory, { recursive: true });
+    fs.writeFileSync(directory, '');
+    assert.deepStrictEqual(placedOf(), unplaced);
+  });
+
+  it('lets any other failure to read the file through', () => {
+    fs.rmSync(path.join(root, SOURCE));
+    fs.mkdirSync(path.join(root, SOURCE));
+    assert.throws(() => withPassages(db, [result(content, 1)], ['session logout'], root), { code: 'EISDIR' });
   });
 
   it('reads each result file once, however many results it holds', () => {

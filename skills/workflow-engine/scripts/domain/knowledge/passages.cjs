@@ -32,17 +32,23 @@ const EXCERPT_CHARS = 1000;
 
 /** @typedef {Ranked & Passage} Placed  a ranked result with the passage `query` prints */
 
+// What a read throws where the file is gone — ENOTDIR where a directory on its path is no longer one.
+const GONE = new Set(['ENOENT', 'ENOTDIR']);
+
 /** @param {string} file @returns {Outline|null} */
 function readOutline(file) {
+  let markdown;
   try {
-    return outline(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return null;
+    markdown = fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    if (GONE.has(/** @type {NodeJS.ErrnoException} */ (err).code ?? '')) return null;
+    throw err;
   }
+  return outline(markdown);
 }
 
 /**
- * Each file's outline, read at its first asking — null where it cannot be read.
+ * Each file's outline, read at its first asking — null where the file is gone.
  * @param {string} root
  * @returns {(file: string) => Outline|null}
  */

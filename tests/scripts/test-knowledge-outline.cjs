@@ -53,9 +53,35 @@ describe('outline — locate', () => {
     assert.deepStrictEqual(file.locate('## Context\n\nTokens refresh hourly.'), { first: 9, last: 11 });
   });
 
-  it('never finds a chunk in the frontmatter', () => {
-    const file = outline(fileOf(['---', 'summary: Tokens refresh hourly.', '---', '', 'Tokens refresh hourly.']));
-    assert.deepStrictEqual(file.locate('Tokens refresh hourly.'), { first: 5, last: 5 });
+  it('finds a chunk only where its text starts a line, never inside a longer one', () => {
+    const file = outline(fileOf([
+      '# Discussion: Auth',       // 1
+      '',                          // 2
+      '## Context',                // 3
+      '',                          // 4
+      '### Notes',                 // 5
+      '',                          // 6
+      'Tokens refresh hourly.',    // 7
+      '',                          // 8
+      '## Notes',                  // 9
+      '',                          // 10
+      'Tokens refresh hourly.',    // 11
+    ]));
+    const where = /** @type {{first: number, last: number}} */ (file.locate('## Notes\n\nTokens refresh hourly.'));
+    assert.deepStrictEqual(where, { first: 9, last: 11 });
+    assert.deepStrictEqual(file.headingsAt(where.last), ['Discussion: Auth', 'Notes']);
+
+    const summarised = outline(fileOf(['---', 'summary: Tokens refresh hourly.', '---', '', 'Tokens refresh hourly.']));
+    assert.deepStrictEqual(summarised.locate('Tokens refresh hourly.'), { first: 5, last: 5 });
+  });
+
+  it('finds a chunk cut with its frontmatter, and reads no heading there', () => {
+    const markdown = fileOf(['---', '# yaml comment', '---', '', '# Title', '', 'Body.']);
+    const [{ content }] = chunk(markdown, { strip_frontmatter: false, keep_whole_below: 50 });
+    const file = outline(markdown);
+    assert.deepStrictEqual(file.locate(content), { first: 1, last: 7 });
+    assert.deepStrictEqual(file.headingsAt(2), []);
+    assert.deepStrictEqual(file.headingsAt(7), ['Title']);
   });
 
   it('reads a CRLF file as the chunker does', () => {

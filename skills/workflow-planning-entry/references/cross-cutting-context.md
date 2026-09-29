@@ -103,7 +103,7 @@ No cross-cutting specs are semantically relevant to this plan. Proceed without c
 
 #### If results are returned
 
-Read the returned excerpts. Group by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec. For each, if the excerpts alone are not enough to judge relevance, read the source file at the `Source:` line's range for full detail.
+→ Load **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** for **C. Reading the results** and follow its instructions, grouping the results by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec.
 
 Keep only the specs that are genuinely relevant to the plan being built. A result matching on generic vocabulary (e.g., both mention "authentication") but addressing unrelated concerns should be dropped.
 
@@ -125,6 +125,6 @@ Emit the call's DISPLAY section verbatim per its marker.
 
 These specifications contain validated architectural decisions that should inform the plan. The planning skill will incorporate them as a "Cross-Cutting References" section in the plan.
 
-Store the confirmed cross-cutting specs (work unit name and source file path) for handoff to the planning process.
+Store the confirmed cross-cutting specs (work unit name and source file path — the path alone, without the `Source:` line's range) for handoff to the planning process.
 
 → Return to caller.
