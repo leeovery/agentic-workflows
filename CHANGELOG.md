@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5] - 2026-09-29
+
+✨ Added
+- Query results now show the passage that best matches the question, with the headings it sits under and its line range in the source file (`path:L3-39`) — instead of the whole chunk.
+- Results whose topic has been reopened are marked `| reopened`, so a stale conclusion is visible at a glance.
+
+🔧 Changed
+- Keyword search now also matches on a chunk's headings, so a passage deep in a section is found by the words its headings name.
+- Existing indexes re-cut themselves on the next start to record heading paths, reusing stored vectors so nothing is re-embedded.
+- Knowledge-usage guidance and cross-cutting context lookup now read results as excerpts with line ranges, following up in the source file only when a passage looks load-bearing.
+- Local embedding model guidance in the docs is simplified to name the best and worst performers.
+
 ## [0.8.4] - 2026-09-29
 
 🐛 Fixed
