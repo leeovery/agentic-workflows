@@ -18,6 +18,7 @@ const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
+const { unitsByName } = require('./artifacts.cjs');
 const { itemOf } = require('../derivations.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
@@ -245,7 +246,7 @@ const NO_RESULTS = { results: [], notes: [] };
  * @returns {(workUnit: string, phase: string, topic: string) => boolean}
  */
 function reopenedTest(workUnits) {
-  const units = new Map(workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+  const units = unitsByName(workUnits);
   return (workUnit, phase, topic) => {
     const unit = units.get(workUnit);
     return unit !== undefined && (itemOf(unit, phase, topic) || {}).status === 'in-progress';

@@ -280,6 +280,15 @@ function workTypeOf(root, { workUnit, phase }, workUnits = []) {
 const NO_MANIFESTS = { workUnits: [], registry: null, roadmapSession: null };
 
 /**
+ * Work-unit manifests by name — one without a name left out.
+ * @param {Array<Record<string, any>>} workUnits
+ * @returns {Map<string, Record<string, any>>}
+ */
+function unitsByName(workUnits) {
+  return new Map(workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+}
+
+/**
  * The session number a manifest node marks live, or null.
  * @param {any} node  an epic's `phases.discovery`, or the project's `roadmap`
  * @returns {string|null}
@@ -517,7 +526,7 @@ function retiredReason(root, entry, units, registry) {
  * @returns {Array<T & {reason: string}>}
  */
 function retirements(root, entries, manifests, scope) {
-  const units = new Map(manifests.workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+  const units = unitsByName(manifests.workUnits);
   /** @type {Array<T & {reason: string}>} */
   const retired = [];
   for (const entry of entries) {
@@ -538,6 +547,7 @@ module.exports = {
   readManifests,
   readManifestsOr,
   workUnitsOr,
+  unitsByName,
   discoverArtifacts,
   retirements,
 };

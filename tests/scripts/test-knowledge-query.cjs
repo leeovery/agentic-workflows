@@ -792,7 +792,7 @@ describe('renderQuery', () => {
   };
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
-  it("opens with the query's notes, then each result's header, the headings above its excerpt, the excerpt and its source at the chunk's lines", () => {
+  it("opens with the query's notes, then each result's provenance, the headings above its excerpt, the excerpt and its source at the chunk's lines", () => {
     assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [
       CHOSEN_NOTE,
       awaiting,
