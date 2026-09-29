@@ -20,8 +20,7 @@ const { outline } = require('../../kernel/knowledge/outline.cjs');
 /** @typedef {import('../../kernel/knowledge/outline.cjs').Outline} Outline */
 /** @typedef {import('../../kernel/knowledge/outline.cjs').Lines} Lines */
 
-// Chosen by the eval: the judged answer shows in a top-five excerpt for 94%
-// of its cases keyword-only and 98% hybrid, at a fifth of whole chunks' bytes.
+// Chosen by the eval's excerpt hit@5 against bytes per query.
 const EXCERPT_CHARS = 1000;
 
 /**
