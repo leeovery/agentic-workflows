@@ -34,6 +34,8 @@
     ],
     "calls_in_order": [
       "engine.cjs boot",
+      "git status --short -- .workflows",
+      "git diff HEAD -- .workflows",
       "render migrations-applied --file .workflows/.cache/migrations-applied.json",
       "chore: apply workflow migrations",
       "workflow-start/scripts/gateway.cjs"
