@@ -130,7 +130,7 @@ Drawn from the owner's dex-engineering knowledge base:
 5. **The rest of retrieval quality:** excerpts, heading paths and line
    ranges, a marker on reopened topics, and contextual chunk headers
    measured. A per-file cap and printed scores were measured and dropped,
-   and the relevance floor is closed.
+   and the relevance floor is closed. Built as stack #1448.
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
@@ -881,6 +881,19 @@ sentence the query was after in its third paragraph.
   cases with a judged anchor inside a top-five excerpt, so the answer shows
   without reading further. The excerpt's length is chosen from it against
   bytes per query, and pinned.
+- **1000 characters.** Ranking moves at no length; excerpt hit@5 and bytes
+  per query:
+
+  | length | keyword | keyword bytes | hybrid | hybrid bytes |
+  |---|---|---|---|---|
+  | whole chunk | — | 53.4 KB | — | 45.9 KB |
+  | 600 | 0.889 | 7.5 KB | 0.926 | 7.3 KB |
+  | 800 | 0.907 | 8.9 KB | 0.963 | 8.6 KB |
+  | 1000 | 0.944 | 10.3 KB | 0.981 | 10.0 KB |
+
+  A result whose answer sits outside its excerpt is the failure that
+  matters, since an agent may not read further. At 1000 the answer shows in
+  98% of hybrid cases and 94% keyword-only, at about a fifth of the bytes.
 
 ### Heading path and line range
 
@@ -891,15 +904,17 @@ sentence the query was after in its third paragraph.
   - A chunk's text is a verbatim slice of its file, the chunker's invariant.
   - The query finds that text in the file and reads off its line numbers and
     the headings above it: one read per result file, ten at most.
-  - Nothing is stored. The store does not change, no file is re-chunked, and
-    the range is always the file's current lines.
+  - The text is found where it starts a line; a slice cut from inside an
+    over-long line is found where it sits.
+  - Nothing is stored for them, so the range is always the file's current
+    lines.
 - A chunk whose text the file no longer holds (edited since its last index,
   as a reopened topic mid-revision is) shows its excerpt with the bare path.
-- **Rejected: recording both at index time.** Every store would re-chunk
-  every file once, and a range would go stale as soon as its file was
-  edited before the next index.
-- The heading path is shown, not searched. Searching it is the contextual
-  headers' measurement.
+- **Rejected: printing what the index recorded.** A range would go stale
+  as soon as its file was edited before the next index.
+- The heading path shown is read from the file. The one searched is
+  recorded by the chunker at index (the contextual headers below), and never
+  printed.
 
 ### The reopened marker
 
@@ -922,22 +937,39 @@ sentence the query was after in its third paragraph.
 ### Contextual chunk headers, measured
 
 The heading path searched with each chunk, in two halves, each kept only if
-the eval improves:
+the eval improves.
 
-- **Keyword:** the heading path is its own searched field, beside the
-  content, the source path and the chunk id, each scored on its own and
-  summed. The stored text stays verbatim, so the line range still finds it.
-  Kept, every install re-chunks each file once at its next start; no chunk's
-  text changes, so nothing re-embeds.
-- **Vector:** each chunk is embedded with its heading path in front. Kept,
-  every chunk re-embeds once through the background fill (about 0.9M tokens
-  for portal's corpus), and keyword search covers the chunks meanwhile.
-  Measured with the eval's hybrid mode, by hand.
+**The keyword half is kept.** The chunker records each chunk's heading path
+(the headings enclosing the line its text starts on), searched as its own
+field beside the content, the source path and the chunk id, each scored on
+its own and summed. The stored text stays verbatim, so the line range still
+finds it. Both modes improve:
+
+| | keyword before | keyword after | hybrid before | hybrid after |
+|---|---|---|---|---|
+| primary hit@5 | 0.9815 | 1 | 0.9815 | 0.9815 |
+| MRR@10 | 0.944 | 0.968 | 0.954 | 0.978 |
+| recall@10 | 0.700 | 0.762 | 0.778 | 0.787 |
+| excerpt hit@5 | 0.944 | 0.963 | 0.981 | 1 |
+
+- The searched fields change, so the tokenizer version moves to 3 and an
+  existing store loads retokenized.
+- Each chunk records the version of the chunker that cut it
+  (`CHUNKER_VERSION`), and the next keyword pass re-cuts the file of every
+  concluded artifact whose chunks record another. A per-chunk version
+  survives any save before that pass. A topic in progress again is re-cut
+  when it concludes, since its file is mid-revision. No chunk's text
+  changes, so nothing re-embeds.
+
+**The vector half is dropped.** Each chunk embedded with its heading path in
+front of its text, on top of the keyword half, moved hybrid primary hit@5
+from 0.9815 to 0.963 and MRR@10 from 0.978 to 0.968, for a recall@10 gain of
+0.006. Kept, it would also have re-embedded every store.
 
 The literature's gain (Anthropic: 35% fewer retrieval failures, 49% with the
 keyword side) is for a model-written context sentence per chunk. Ours is the
 heading path alone, with no model call, and its gain is unknown until
-measured.
+measured, and ours gained in keyword search alone.
 
 **Rejected: the model-written sentence.** It is a model call for every
 chunk at every index: a new dependency, a cost on every completion, and a
@@ -982,6 +1014,14 @@ slower index.
     step 3's six models, and the keyword scores above.
   - The eval records near-miss and off-topic bytes once excerpts land.
   - `similarity_threshold`, each vector hit's minimum, is unchanged at 0.3.
+
+### The stack
+
+1. **What a result shows** (#1445): the excerpt, the heading path and the
+   line range, with the eval's excerpt hit@5.
+2. **The reopened marker** (#1446).
+3. **Contextual chunk headers** (#1447): the keyword half, and the chunker
+   version that re-cuts existing stores.
 
 ## Step 6 — lifecycle ranking within a topic
 
