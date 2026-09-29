@@ -1076,7 +1076,7 @@ describe('pipeline simulation', () => {
       /review skipped/, 'skipped-review completion renders its banner');
   });
 
-  it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', () => {
+  it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
     const wu = 'crash-fix';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
@@ -1120,8 +1120,17 @@ describe('pipeline simulation', () => {
     const bugSpec = sim.manifest(wu).phases.specification.items[wu];
     assert.strictEqual(bugSpec.sources[wu].status, 'stale');
     assert.strictEqual(bugSpec.reconcile_needed, 'investigation');
+    // The reopened investigation's chunks stay live, a query marking them
+    // reopened; the spec's stay unmarked — still the concluded record.
+    const provenance = async () => (await sim.engineAsync(['knowledge', 'query', 'investigation', 'spec'])).stdout;
+    const reopenedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2} \| reopened\]$/m;
+    const concludedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2}\]$/m;
+    const whileReopened = await provenance();
+    assert.match(whileReopened, reopenedLine);
+    assert.match(whileReopened, /^\[specification \| crash-fix\/crash-fix \| high \| \d{4}-\d{2}-\d{2}\]$/m);
     sim.refuses(['topic', 'complete', wu, 'specification', wu], /unresolved source rows|completed/);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    assert.match(await provenance(), concludedLine, 'the marker goes as the topic concludes again');
     sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
     sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
@@ -1134,6 +1143,7 @@ describe('pipeline simulation', () => {
       '--concern', '.workflows/.cache/scratch/gap-concern.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
+    assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
     // The reopened investigation's rows say what waits — the start menu
     // entry and the bugfix pipeline row — and the drain retires the cue.
     const startRow = () => startMenu(GATEWAYS.start.discover(sim.dir)).keys

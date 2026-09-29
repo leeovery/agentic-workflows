@@ -206,6 +206,73 @@ describe('queryStore', () => {
     ]);
   });
 
+  describe('the reopened marker', () => {
+    const DISCUSSION = 'ledger-discussion-ledger-001';
+    const SPECIFICATION = 'ledger-specification-ledger-001';
+    const IMPORT = 'ledger-imports-notes-001';
+    const UNLISTED = 'orphan-discussion-orphan-001';
+    let ledgerDb;
+
+    /**
+     * The ledger unit's manifest, its discussion at `status` and the
+     * specification sourcing it concluded — staled by a reopen's hop.
+     * @param {string} status
+     */
+    function ledger(status) {
+      const stale = status === 'in-progress';
+      return [{
+        name: 'ledger', work_type: 'feature', status: 'in-progress',
+        phases: {
+          discussion: { items: { ledger: { status } } },
+          specification: { items: { ledger: {
+            status: 'completed',
+            sources: { ledger: { status: stale ? 'stale' : 'incorporated' } },
+            ...(stale ? { reconcile_needed: 'discussion' } : {}),
+          } } },
+        },
+      }];
+    }
+
+    /** Each result's marker by chunk id, and the ranking, the discussion at `status`. @param {string} status */
+    async function queried(status) {
+      const results = await query(ledgerDb, { terms: ['receipts'], workUnits: ledger(status) });
+      return { reopened: Object.fromEntries(results.map((r) => [r.id, r.reopened])), ranking: results.map((r) => [r.id, r.score]) };
+    }
+
+    before(() => {
+      ledgerDb = store.createStore();
+      const discussion = doc('ledger', 1, 'Receipts reconcile nightly.');
+      for (const d of [
+        discussion,
+        { ...discussion, id: SPECIFICATION, phase: 'specification', source_file: '.workflows/ledger/specification/ledger/specification.md' },
+        { ...discussion, id: IMPORT, phase: 'imports', topic: 'notes', source_file: '.workflows/ledger/imports/notes.md' },
+        doc('orphan', 1, 'Receipts reconcile nightly.'),
+      ]) {
+        store.insertDocument(ledgerDb, d);
+      }
+    });
+
+    it('marks a result whose own topic is in progress again', async () => {
+      assert.strictEqual((await queried('in-progress')).reopened[DISCUSSION], true);
+    });
+
+    it('leaves the specification sourced from the reopened discussion unmarked: its own item is still concluded', async () => {
+      assert.strictEqual((await queried('in-progress')).reopened[SPECIFICATION], false);
+    });
+
+    it('never marks a result with no item of its own: an import, or a unit no manifest names', async () => {
+      const { reopened } = await queried('in-progress');
+      assert.deepStrictEqual([reopened[IMPORT], reopened[UNLISTED]], [false, false]);
+    });
+
+    it('drops the marker once the topic completes again, and ranks alike either way', async () => {
+      const reopened = await queried('in-progress');
+      const concluded = await queried('completed');
+      assert.deepStrictEqual(concluded.reopened, { [DISCUSSION]: false, [SPECIFICATION]: false, [IMPORT]: false, [UNLISTED]: false });
+      assert.deepStrictEqual(reopened.ranking, concluded.ranking);
+    });
+  });
+
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
@@ -462,6 +529,24 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), await knowledge('query', 'token refresh', 'rate window'));
   });
 
+  it("closes a reopened topic's provenance line on reopened, and only that topic's", async () => {
+    const manifest = path.join(root, '.workflows', 'beta', 'manifest.json');
+    const written = fs.readFileSync(manifest, 'utf8');
+    const reopened = JSON.parse(written);
+    reopened.phases.discussion.items.beta.status = 'in-progress';
+    fs.writeFileSync(manifest, JSON.stringify(reopened));
+    try {
+      const provenance = (await knowledge('query', 'token refresh')).match(/^\[discussion \|.*$/gm)
+        .map((line) => line.replace(/\d{4}-\d{2}-\d{2}/, 'YYYY-MM-DD'));
+      assert.deepStrictEqual(provenance, [
+        '[discussion | beta/beta | low-medium | YYYY-MM-DD | reopened]',
+        '[discussion | alpha/alpha | low-medium | YYYY-MM-DD]',
+      ]);
+    } finally {
+      fs.writeFileSync(manifest, written);
+    }
+  });
+
   it('never reads the term after --explain as its value', async () => {
     assert.strictEqual(await knowledge('query', '--explain', 'token refresh'), await knowledge('query', 'token refresh', '--explain'));
   });
@@ -703,6 +788,7 @@ describe('renderQuery', () => {
     excerpt: 'Tokens refresh hourly.',
     headings: ['Discussion: Auth', 'Refresh'],
     lines: { first: 3, last: 6 },
+    reopened: false,
   };
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
@@ -726,6 +812,11 @@ describe('renderQuery', () => {
     ]);
     assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md']);
     assert.deepStrictEqual(lines({ excerpt: '' }), ['Discussion: Auth › Refresh', 'Source: .workflows/auth/discussion/auth.md:L3-6']);
+  });
+
+  it('closes the provenance line on reopened where the topic is in progress again', () => {
+    assert.strictEqual(renderQuery({ results: [{ ...result, reopened: true }], notes: [] }).split('\n')[2],
+      '[discussion | auth/auth | medium | 2026-01-02 | reopened]');
   });
 
   it('prints no note where there is none, and a bare count where there are no results', () => {

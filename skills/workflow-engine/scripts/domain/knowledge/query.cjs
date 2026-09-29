@@ -5,8 +5,8 @@
 // whatever keeps it from a vector the store can compare, none, the query then
 // running keyword-only with a note naming why; the framings searched, merged
 // by each chunk's best score, dated by the progress clock and re-ranked; and
-// each result's passage (passages.cjs); and the text `query` prints. A query
-// never writes.
+// each result's passage (passages.cjs) and whether its topic is in progress
+// again; and the text `query` prints. A query never writes.
 // ---------------------------------------------------------------------------
 
 const config = require('../../kernel/knowledge/config.cjs');
@@ -18,12 +18,14 @@ const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
+const { itemOf } = require('../derivations.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
 /** @typedef {import('./embedder.cjs').Config} Config */
 /** @typedef {import('./embedder.cjs').EmbeddingProvider} EmbeddingProvider */
 /** @typedef {import('./passages.cjs').Placed} Placed */
+/** @typedef {Placed & {reopened: boolean}} Result  a placed result, and whether its topic is in progress again */
 
 // A query's patience with its endpoint is seconds, where an index's is
 // minutes: keyword-only answers at once, and a phase's opening query must not
@@ -228,7 +230,7 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 
 /**
  * @typedef {object} QueryOutcome
- * @property {Placed[]} results  ranked, cut to the limit
+ * @property {Result[]} results  ranked, cut to the limit
  * @property {string[]} notes  the lines above the count
  */
 
@@ -236,8 +238,23 @@ function queryWhere({ phase, workType, workUnit, topic }) {
 const NO_RESULTS = { results: [], notes: [] };
 
 /**
- * A query's ranked results, each carrying its passage and the scoring
- * `--explain` prints.
+ * Whether a chunk's own topic is in progress again: its phase item reads
+ * `in-progress` in its unit's manifest. Only a completed item is indexed, so
+ * one in progress that holds chunks has been reopened.
+ * @param {Array<Record<string, any>>} workUnits
+ * @returns {(workUnit: string, phase: string, topic: string) => boolean}
+ */
+function reopenedTest(workUnits) {
+  const units = new Map(workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
+  return (workUnit, phase, topic) => {
+    const unit = units.get(workUnit);
+    return unit !== undefined && (itemOf(unit, phase, topic) || {}).status === 'in-progress';
+  };
+}
+
+/**
+ * A query's ranked results, each carrying its passage, whether its topic is
+ * in progress again, and the scoring `--explain` prints.
  * @param {Store} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<QueryOutcome>}
  */
@@ -247,9 +264,11 @@ async function queryStore(db, settings, { terms, options, workUnits, root }) {
   const { vectors, note } = await framingVectors(settings, terms);
   const { cut, framings } = searchFramings(db, terms, { where: queryWhere(options), limit, similarity: settings.similarity, vectors });
   const elapsedOf = progressElapsed(workUnits, settings.weights);
+  const reopened = reopenedTest(workUnits);
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
+  const ranked = rerank(dated, boosts, settings.stability).slice(0, limit);
   return {
-    results: withPassages(db, rerank(dated, boosts, settings.stability).slice(0, limit), terms, root),
+    results: withPassages(db, ranked, terms, root).map((r) => ({ ...r, reopened: reopened(r.work_unit, r.phase, r.topic) })),
     notes: [
       ...(note ? [note] : []),
       ...vectorNotes(db, settings),
@@ -272,6 +291,17 @@ function formatDate(ts) {
 }
 
 /**
+ * A result's provenance: its phase, identity, confidence and its source
+ * document's date, and `reopened` last where its topic is in progress again.
+ * @param {Result} result
+ */
+function provenanceLine({ phase, work_unit, topic, confidence, timestamp, reopened }) {
+  const fields = [phase, `${work_unit}/${topic}`, confidence, formatDate(timestamp)];
+  if (reopened) fields.push('reopened');
+  return `[${fields.join(' | ')}]`;
+}
+
+/**
  * A result's source, at its chunk's lines where the file still holds it.
  * @param {Placed} result
  */
@@ -281,10 +311,10 @@ function sourceLine({ source_file, lines }) {
 }
 
 /**
- * The text `query` prints: its notes, the count, then each result's header
- * (dated by its source document), the headings above its excerpt, the
- * excerpt and its source — and, explained, how it ranked. Control characters
- * are stripped from the whole, never from the store.
+ * The text `query` prints: its notes, the count, then each result's
+ * provenance, the headings above its excerpt, the excerpt and its source —
+ * and, explained, how it ranked. Control characters are stripped from the
+ * whole, never from the store.
  * @param {QueryOutcome} outcome @param {{explain?: boolean}} [rendering]
  * @returns {string}
  */
@@ -293,7 +323,7 @@ function renderQuery({ results, notes }, { explain = false } = {}) {
   for (const r of results) {
     out.push(
       '',
-      `[${r.phase} | ${r.work_unit}/${r.topic} | ${r.confidence} | ${formatDate(r.timestamp)}]`,
+      provenanceLine(r),
       ...[r.headings.join(' › '), r.excerpt].filter(Boolean),
       sourceLine(r),
     );
