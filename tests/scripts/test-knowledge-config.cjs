@@ -20,8 +20,8 @@ const {
   credentialsPath,
   DEFAULTS,
   PROVIDER_ENV_VARS,
-} = require('../../src/knowledge/config');
-const { StubProvider } = require('../../src/knowledge/embeddings');
+} = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const {
   buildSystemConfigOpenAI,
   buildSystemConfigStub,
@@ -29,9 +29,10 @@ const {
   detectSystemConfig,
   detectProjectInit,
   describeValidationError,
-} = require('../../src/knowledge/setup');
-const { resolveSimilarityThreshold } = require('../../src/knowledge/index');
-const { QuotaError, RateLimitError, WaitBudget } = require('../../src/knowledge/providers/openai-engine');
+} = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
+const { resolveSimilarityThreshold } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 
 let tmpDir;
 
@@ -76,7 +77,7 @@ describe('readConfigFile', () => {
 
   it('sharedFile: returns null for a config file without a knowledge key', () => {
     const filePath = path.join(tmpDir, 'shared.json');
-    writeJSON(filePath, { session: { tmux_labels: true } });
+    writeJSON(filePath, { editor: { theme: 'dark' } });
     assert.strictEqual(readConfigFile(filePath, { sharedFile: true }), null);
   });
 
@@ -362,12 +363,7 @@ describe('resolveProvider', () => {
     );
   });
 
-  it('returns null when api_key_env resolves to empty (keyword-only mode)', () => {
-    // This only applies to known but unimplemented providers. In Phase 3,
-    // only stub is available and stub doesn't need a key. But the function
-    // must handle the pattern: provider is known + key is absent = null.
-    // Since openai is not in AVAILABLE_PROVIDERS yet, this will throw.
-    // We test the null-provider path instead.
+  it('returns null for a config naming no provider (keyword-only mode)', () => {
     const provider = resolveProvider({ _api_key: null });
     assert.strictEqual(provider, null);
   });
@@ -644,10 +640,10 @@ describe('writeConfigFile', () => {
 
   it('preserves sibling subsystem keys on an existing file', () => {
     const filePath = path.join(tmpDir, 'config.json');
-    fs.writeFileSync(filePath, JSON.stringify({ session: { tmux_labels: true }, knowledge: { provider: 'stub' } }), 'utf8');
+    fs.writeFileSync(filePath, JSON.stringify({ editor: { theme: 'dark' }, knowledge: { provider: 'stub' } }), 'utf8');
     writeConfigFile(filePath, { knowledge: { provider: 'openai' } });
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    assert.deepStrictEqual(parsed, { session: { tmux_labels: true }, knowledge: { provider: 'openai' } });
+    assert.deepStrictEqual(parsed, { editor: { theme: 'dark' }, knowledge: { provider: 'openai' } });
   });
 
   it('replaces a corrupt existing file with the payload alone', () => {
@@ -758,9 +754,9 @@ describe('detectSystemConfig', () => {
     assert.ok(result.reason);
   });
 
-  it('treats a knowledge-less shared file as knowledge-absent (session-only config)', () => {
+  it('treats a knowledge-less shared file as knowledge-absent (settings of other tools alone)', () => {
     const filePath = path.join(tmpDir, 'shared.json');
-    writeJSON(filePath, { session: { tmux_labels: true } });
+    writeJSON(filePath, { editor: { theme: 'dark' } });
     const result = detectSystemConfig(filePath);
     assert.strictEqual(result.exists, false);
     assert.strictEqual(result.valid, false);
@@ -835,16 +831,51 @@ describe('describeValidationError', () => {
   });
 });
 
+describe('metadataMissing — the store left without its metadata', () => {
+  const { metadataMissing } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('is the store present and its metadata absent — nothing else', () => {
+    const files = knowledgeFiles(tmpDir);
+    fs.mkdirSync(files.dir, { recursive: true });
+    assert.strictEqual(metadataMissing(files), false, 'neither');
+    fs.writeFileSync(files.metadata, '{}');
+    assert.strictEqual(metadataMissing(files), false, 'metadata alone describes nothing');
+    fs.writeFileSync(files.store, '');
+    assert.strictEqual(metadataMissing(files), false, 'both');
+    fs.rmSync(files.metadata);
+    assert.strictEqual(metadataMissing(files), true, 'the store alone');
+  });
+});
+
+describe('detectSystemConfig — why a file does not read, quoting nothing from it', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('names each shape readConfigFile refuses', () => {
+    const cases = [
+      ['{not json', 'not valid JSON'],
+      ['[1]', 'not a JSON object'],
+      ['{"knowledge": [1]}', 'invalid "knowledge" key'],
+    ];
+    for (const [text, reason] of cases) {
+      const filePath = path.join(tmpDir, 'sys.json');
+      fs.writeFileSync(filePath, text);
+      assert.deepStrictEqual(detectSystemConfig(filePath), { exists: true, valid: false, knowledge: null, reason }, text);
+    }
+  });
+});
+
 describe('detectProjectInit', () => {
   beforeEach(setup);
   afterEach(teardown);
 
   it('reports all-absent when the directory does not exist', () => {
-    const result = detectProjectInit(path.join(tmpDir, '.workflows', '.knowledge'));
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.dirExists, false);
     assert.strictEqual(result.configExists, false);
     assert.strictEqual(result.storeExists, false);
-    assert.strictEqual(result.metadataExists, false);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, false);
   });
@@ -852,7 +883,7 @@ describe('detectProjectInit', () => {
   it('reports partiallyInitialised when the directory exists but files are missing', () => {
     const dir = path.join(tmpDir, '.workflows', '.knowledge');
     fs.mkdirSync(dir, { recursive: true });
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.dirExists, true);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, true);
@@ -862,7 +893,7 @@ describe('detectProjectInit', () => {
     const dir = path.join(tmpDir, '.workflows', '.knowledge');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.configExists, true);
     assert.strictEqual(result.storeExists, false);
     assert.strictEqual(result.fullyInitialised, false);
@@ -875,7 +906,7 @@ describe('detectProjectInit', () => {
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     fs.writeFileSync(path.join(dir, 'store.bin'), '', 'utf8');
     fs.writeFileSync(path.join(dir, 'metadata.json'), '{}', 'utf8');
-    const result = detectProjectInit(dir);
+    const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.fullyInitialised, true);
     assert.strictEqual(result.partiallyInitialised, false);
   });

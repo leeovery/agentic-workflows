@@ -10,7 +10,7 @@ const {
   AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
-} = require('../../src/knowledge/providers/openai');
+} = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai.cjs');
 const {
   OpenAIEmbeddingsEngine,
   InvalidRequestError,
@@ -21,8 +21,8 @@ const {
   MAX_BATCH_SIZE,
   MAX_BATCH_CHARS,
   REQUEST_TIMEOUT_MS,
-} = require('../../src/knowledge/providers/openai-engine');
-const { isPermanentError, withRetry } = require('../../src/knowledge/index');
+} = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { isPermanentError, withRetry } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
 
 // ---------------------------------------------------------------------------
 // Constructor
@@ -241,7 +241,7 @@ describe('OpenAIEmbeddingsEngine rate limits (mocked)', () => {
 
   /** The engine module loaded afresh — a process of its own, its budget untouched. */
   function freshEngineModule() {
-    const id = require.resolve('../../src/knowledge/providers/openai-engine');
+    const id = require.resolve('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
     const loaded = require.cache[id];
     delete require.cache[id];
     try {
@@ -638,7 +638,7 @@ describe('OpenAIProvider vector-width validation', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveProvider with openai', () => {
-  const { resolveProvider } = require('../../src/knowledge/config');
+  const { resolveProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
 
   it('creates OpenAIProvider when provider is openai and key is present', () => {
     const provider = resolveProvider({

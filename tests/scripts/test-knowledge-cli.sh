@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# CLI dispatch and command tests for the knowledge base bundle.
-# Tests against the built bundle (knowledge.cjs).
+# CLI dispatch and command tests for the knowledge base's door,
+# `engine knowledge <verb>`.
+#
+# No test may launch the background vector fill: a detached process would race
+# the assertions and the temp dir's teardown. A single-file index launches it
+# where the store's provider can embed and chunks await vectors, so a test runs
+# keyword-only unless its subject is the vectors, and those tests reach vectors
+# through the foreground verbs alone — the bulk index, rebuild, setup and fill.
 
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUNDLE="$SCRIPT_DIR/../../skills/workflow-knowledge/scripts/knowledge.cjs"
 ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
-STORE_JS="$SCRIPT_DIR/../../src/knowledge/store.js"
+STORE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs"
+WIZARD_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/domain/knowledge/setup-wizard.cjs"
 
 PASS=0
 FAIL=0
@@ -27,7 +33,7 @@ assert_eq() {
 
 # Isolate tests from the developer's real system config (~/.config/workflows/).
 # Without this, a real OpenAI config leaks into keyword-only tests and breaks
-# Test 11 onward. The knowledge CLI resolves the system path via os.homedir(),
+# Test 11 onward. The knowledge verbs resolve the system path via os.homedir(),
 # which honours $HOME — and, ahead of it, $WORKFLOWS_CONFIG_DIR, which the
 # test:cli tier exports: the system-config tests below write under this fake
 # home and must be read from there, so the override comes off.
@@ -75,7 +81,8 @@ create_work_unit() {
   ' "$name" "$type" "$desc" >/dev/null 2>&1
 }
 
-# Write a stub config for the knowledge base.
+# Write a stub-provider config — a provider that embeds, so a single-file index
+# under it launches the vector fill (see the header).
 write_stub_config() {
   mkdir -p "$TEST_ROOT/.workflows/.knowledge"
   cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
@@ -260,10 +267,10 @@ create_analysis_cache() {
 MD
 }
 
-# Run the knowledge CLI from the test project root.
+# Run the knowledge verbs from the test project root.
 run_kb() {
   cd "$TEST_ROOT"
-  node "$BUNDLE" "$@"
+  node "$ENGINE_JS" knowledge "$@"
 }
 
 # The distinct source hashes an identity's chunks carry, comma-joined — empty
@@ -322,48 +329,62 @@ write_item_status() {
   ' "$TEST_ROOT/.workflows/$wu/manifest.json" "$phase" "$topic" "$status"
 }
 
+# Initialise a phase topic in the manifest, then give it a status.
+init_phase_topic() {
+  local wu="$1" phase="$2" topic="$3" status="$4"
+  cd "$TEST_ROOT"
+  node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status in-progress >/dev/null 2>&1
+  if [ -n "$status" ]; then
+    node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status "$status" >/dev/null 2>&1
+  fi
+}
+
 # ============================================================================
 # DISPATCH TESTS
 # ============================================================================
 
 echo "=== Dispatch Tests ==="
 
+setup_project
+
 # --- Test 1: No command prints usage and exits 1 ---
 echo "Test 1: No command prints usage"
-output=$(node "$BUNDLE" 2>&1 || true)
+output=$(run_kb 2>&1 || true)
 exit_code=0
-node "$BUNDLE" 2>/dev/null || exit_code=$?
+run_kb 2>/dev/null || exit_code=$?
 assert_eq "exits with code 1" "1" "$exit_code"
 assert_eq "prints usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
 
 # --- Test 2: Unknown command prints error and exits 1 ---
 echo "Test 2: Unknown command"
-output=$(node "$BUNDLE" foobar 2>&1 || true)
+output=$(run_kb foobar 2>&1 || true)
 exit_code=0
-node "$BUNDLE" foobar 2>/dev/null || exit_code=$?
+run_kb foobar 2>/dev/null || exit_code=$?
 assert_eq "exits with code 1" "1" "$exit_code"
 assert_eq "mentions unknown command" "true" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 
 # --- Test 3: setup aborts when stdin is not a TTY ---
 echo "Test 3: setup requires an interactive terminal"
 exit_code=0
-output=$(echo '' | node "$BUNDLE" setup 2>&1 || true)
-echo '' | node "$BUNDLE" setup 2>/dev/null || exit_code=$?
+output=$(echo '' | run_kb setup 2>&1 || true)
+echo '' | run_kb setup 2>/dev/null || exit_code=$?
 assert_eq "setup exits non-zero without a TTY" "1" "$exit_code"
 assert_eq "setup mentions interactive terminal" "true" "$(echo "$output" | grep -q 'interactive terminal' && echo true || echo false)"
 
 # --- Test 4: Known Phase 3 commands dispatch without unknown-command error ---
 echo "Test 4: Phase 3 commands dispatch correctly"
 for cmd in index query check; do
-  output=$(node "$BUNDLE" "$cmd" 2>&1 || true)
+  output=$(run_kb "$cmd" 2>&1 || true)
   assert_eq "$cmd does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 done
 
 # --- Test 4b: setup dispatches (not an unknown command) ---
 echo "Test 4b: setup routes to the wizard handler"
-output=$(echo '' | node "$BUNDLE" setup 2>&1 || true)
+output=$(echo '' | run_kb setup 2>&1 || true)
 assert_eq "setup does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 assert_eq "setup does not say not yet implemented" "false" "$(echo "$output" | grep -q 'not yet implemented' && echo true || echo false)"
+
+teardown_project
 
 # ============================================================================
 # INDEX COMMAND TESTS
@@ -376,7 +397,7 @@ echo "=== Index Command Tests ==="
 echo "Test 5: Index a discussion file"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
 assert_eq "reports indexed chunks" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -388,7 +409,7 @@ teardown_project
 echo "Test 6: Index a specification file"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_spec_file "auth-flow" "auth-flow"
 output=$(run_kb index .workflows/auth-flow/specification/auth-flow/specification.md 2>&1)
 assert_eq "indexes spec file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -398,7 +419,7 @@ teardown_project
 echo "Test 7: Index a research file"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_research_file "payments" "exploration"
 output=$(run_kb index .workflows/payments/research/exploration.md 2>&1)
 assert_eq "indexes research file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -408,7 +429,7 @@ teardown_project
 echo "Test 8: Re-index replaces previous chunks"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 output1=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
 count1=$(echo "$output1" | grep -oE 'Indexed [0-9]+' | grep -oE '[0-9]+')
@@ -421,7 +442,7 @@ teardown_project
 echo "Test 8b: Chunk timestamp derives from source mtime, not index time"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 # Backdate the source file so its mtime is sharply distinct from "today".
 touch -t 202006150000 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
@@ -438,11 +459,12 @@ teardown_project
 echo "Test 9: Provider mismatch refused"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-# Index with stub provider to populate metadata.
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Now change the metadata to simulate a different provider.
+# Configure the stub provider over a store the metadata says openai built.
+# The refusal lands before any write, so no fill is launched.
+write_stub_config
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
@@ -465,7 +487,9 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+# The bulk index embeds the store in the foreground.
+run_kb index >/dev/null 2>&1
 # Switch to keyword-only config.
 write_keyword_config
 exit_code=0
@@ -475,8 +499,8 @@ assert_eq "exits non-zero on downgrade" "true" "$([ "$exit_code" -ne 0 ] && echo
 assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
-# --- Test 11: A keyword-only store takes the configured provider at its next index ---
-echo "Test 11: Keyword-only store takes a provider configured over it"
+# --- Test 11: The vector fill gives a keyword-only store the provider configured over it ---
+echo "Test 11: Fill embeds a keyword-only store with a provider configured over it"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
@@ -486,14 +510,14 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Verify metadata has null provider.
 meta_provider=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
 assert_eq "metadata.provider is null" "null" "$meta_provider"
-# Now switch to stub config and re-index — the store takes the provider.
+# Now switch to stub config and run the fill in the foreground — the store takes the provider.
 write_stub_config
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+output=$(run_kb fill 2>&1) || exit_code=$?
 assert_eq "succeeds" "0" "$exit_code"
-assert_eq "asks for no rebuild" "false" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
-meta_provider2=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
-assert_eq "metadata.provider takes the configured provider" "stub" "$meta_provider2"
+assert_eq "says nothing" "" "$output"
+meta=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write([m.provider, String(m.fill_failure)].join(','))")
+assert_eq "metadata.provider takes the configured provider, no shortfall recorded" "stub,null" "$meta"
 assert_eq "every chunk has its vector" "true" "$(run_kb status 2>&1 | grep -q '^Chunks awaiting vectors: 0$' && echo true || echo false)"
 teardown_project
 
@@ -516,7 +540,7 @@ setup_project
 echo "hello" > "$TEST_ROOT/random.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index random.md 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index random.md 2>/dev/null || exit_code=$?
 assert_eq "rejects non-workflow file" "1" "$exit_code"
 teardown_project
 
@@ -524,13 +548,13 @@ teardown_project
 echo "Test 14: Error for non-indexed phase"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/planning/auth-flow"
 echo "# Plan" > "$TEST_ROOT/.workflows/auth-flow/planning/auth-flow/planning.md"
 exit_code=0
 cd "$TEST_ROOT"
-output=$(node "$BUNDLE" index .workflows/auth-flow/planning/auth-flow/planning.md 2>&1 || true)
-node "$BUNDLE" index .workflows/auth-flow/planning/auth-flow/planning.md 2>/dev/null || exit_code=$?
+output=$(node "$ENGINE_JS" knowledge index .workflows/auth-flow/planning/auth-flow/planning.md 2>&1 || true)
+node "$ENGINE_JS" knowledge index .workflows/auth-flow/planning/auth-flow/planning.md 2>/dev/null || exit_code=$?
 assert_eq "rejects non-indexed phase" "1" "$exit_code"
 # User-visible validation error should be a clean message — no stack
 # trace noise. UserError class handles this centrally. Note: for
@@ -545,25 +569,25 @@ teardown_project
 # --- Test 14b: Non-.workflows path also produces clean user-facing error ---
 echo "Test 14b: Non-.workflows path — clean error, no stack"
 setup_project
-write_stub_config
+write_keyword_config
 echo "hello" > "$TEST_ROOT/outside.md"
 cd "$TEST_ROOT"
-output=$(node "$BUNDLE" index outside.md 2>&1 || true)
+output=$(node "$ENGINE_JS" knowledge index outside.md 2>&1 || true)
 assert_eq "no stack frames" "false" \
   "$(echo "$output" | grep -qE '^    at [A-Za-z_]+ \(' && echo true || echo false)"
 assert_eq "error message surfaces" "true" \
   "$(echo "$output" | grep -q 'Cannot derive identity' && echo true || echo false)"
 teardown_project
 
-# --- Test 15: first index writes exactly the four metadata fields ---
-echo "Test 15: metadata.json holds provider, model, dimensions, last_indexed"
+# --- Test 15: first index writes exactly the five metadata fields ---
+echo "Test 15: metadata.json holds provider, model, dimensions, last_indexed, fill_failure"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 keys=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(Object.keys(m).join(','))")
-assert_eq "metadata keys" "provider,model,dimensions,last_indexed" "$keys"
+assert_eq "metadata keys" "provider,model,dimensions,last_indexed,fill_failure" "$keys"
 assert_eq "every chunk carries its source's sha256" \
   "$(file_sha256 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md")" \
   "$(chunk_hashes auth-flow discussion auth-flow)"
@@ -573,7 +597,7 @@ teardown_project
 echo "Test 16: last_indexed updated, retired queues dropped"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # A metadata.json from a store that still carried the retry queues.
@@ -602,7 +626,7 @@ echo "=== Query Command Tests ==="
 echo "Test 17: Query returns formatted results"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
@@ -615,7 +639,7 @@ teardown_project
 echo "Test 18: Zero results"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "xyznonexistent123" 2>&1)
@@ -626,7 +650,7 @@ teardown_project
 echo "Test 19: Filter by --phase"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
@@ -639,7 +663,7 @@ teardown_project
 echo "Test 20: Respects --limit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" --limit 1 2>&1)
@@ -661,10 +685,12 @@ teardown_project
 echo "Test 22: Provider mismatch runs keyword-only"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Modify metadata to simulate different provider.
+# Configure the stub provider, and modify metadata to simulate a store another
+# provider built.
+write_stub_config
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
@@ -689,10 +715,12 @@ teardown_project
 echo "Test 22b: Bulk index refuses provider mismatch"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Simulate a provider/dimension change by editing metadata.
+# Configure the stub provider, and simulate a provider/dimension change by
+# editing metadata.
+write_stub_config
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
@@ -757,7 +785,7 @@ teardown_project
 echo "Test 23c: Empty query term rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
@@ -778,7 +806,7 @@ teardown_project
 # --- Test 24: Query on empty store returns [0 results] ---
 echo "Test 24: Empty store"
 setup_project
-write_stub_config
+write_keyword_config
 output=$(run_kb query "anything" 2>&1)
 assert_eq "0 results on empty store" "true" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
 teardown_project
@@ -787,7 +815,7 @@ teardown_project
 echo "Test 25: Output format"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" --limit 1 2>&1)
@@ -799,12 +827,12 @@ teardown_project
 echo "Test 26: Nested discussion path rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion/sub"
 echo "# Nested" > "$TEST_ROOT/.workflows/auth-flow/discussion/sub/topic.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index .workflows/auth-flow/discussion/sub/topic.md 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index .workflows/auth-flow/discussion/sub/topic.md 2>/dev/null || exit_code=$?
 assert_eq "rejects nested discussion path" "1" "$exit_code"
 teardown_project
 
@@ -812,17 +840,17 @@ teardown_project
 echo "Test 27: File not found for valid workflow path"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index .workflows/auth-flow/discussion/auth-flow.md 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index .workflows/auth-flow/discussion/auth-flow.md 2>/dev/null || exit_code=$?
 assert_eq "rejects missing file" "1" "$exit_code"
 teardown_project
 
 # --- Test 28: Index no-args runs bulk mode ---
 echo "Test 28: Index no-args runs bulk mode"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(run_kb index 2>&1 || true)
 run_kb index 2>/dev/null || exit_code=$?
@@ -833,7 +861,7 @@ teardown_project
 # --- Test 29: Query no-args prints usage ---
 echo "Test 29: Query no-args prints usage"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(run_kb query 2>&1 || true)
 run_kb query 2>/dev/null || exit_code=$?
@@ -846,7 +874,7 @@ echo "Test 30: Query filters by --work-type comma-separated"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_research_file "payments" "exploration"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
@@ -863,7 +891,7 @@ echo "Test 31: Work-unit proximity re-ranking"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "data-model" "feature" "Data"
-write_stub_config
+write_keyword_config
 # Create two discussions with similar content so they both match the same query.
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
@@ -916,7 +944,7 @@ echo "Test 31b: --work-unit filters on query"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "data-model" "feature" "Data"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
 cat > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md" <<'MD'
@@ -944,7 +972,7 @@ teardown_project
 echo "Test 31c: Unknown --boost field errors"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
@@ -958,7 +986,7 @@ teardown_project
 echo "Test 31d: Missing --boost value errors"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
@@ -972,7 +1000,7 @@ teardown_project
 echo "Test 32: Query errors on missing metadata"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
@@ -994,7 +1022,7 @@ echo "=== Check Command Tests ==="
 echo "Test 33: Check ready"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb check 2>&1)
@@ -1142,7 +1170,7 @@ teardown_project
 # --- Test 37: Check outputs not-ready when store is corrupted ---
 echo "Test 37: Check not-ready (corrupted store)"
 setup_project
-write_stub_config
+write_keyword_config
 echo "this is garbage data, not a store" > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 output=$(run_kb check 2>&1)
 exit_code=0
@@ -1178,13 +1206,12 @@ teardown_project
 
 # --- Test 37d: Corrupt config overrides otherwise-ready state ---
 # Strongest guard: an otherwise-healthy KB (valid store, valid metadata)
-# whose config gets corrupted. Pre-fix, cmdCheck only checked file
-# existence for config — so this reported 'ready' and deferred the
-# parse error to the next index/query. Now: not-ready.
+# whose config gets corrupted reads not-ready — the config is parsed, not
+# only found, so its error never waits for the next index or query.
 echo "Test 37d: Check not-ready (corrupt config overrides ready state)"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Sanity: with valid config, check reports ready.
@@ -1211,7 +1238,7 @@ echo "Test 38: Remove all chunks for a work unit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "data-model" "feature" "Data"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 create_discussion_file "data-model" "data-model"
@@ -1230,7 +1257,7 @@ teardown_project
 echo "Test 38b: remove --dry-run is observational"
 setup_project
 create_work_unit "preview-wu" "feature" "Preview"
-write_stub_config
+write_keyword_config
 create_discussion_file "preview-wu" "preview-wu"
 run_kb index .workflows/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
 # Use a term that appears in the fixture ('content') to count chunks —
@@ -1256,7 +1283,7 @@ teardown_project
 # regression that drops the arm surfaces here as a "no work unit" error.
 echo "Test 38c: remove --work-unit roadmap (reserved identity, no registry row)"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/.roadmap/sessions"
 cat > "$TEST_ROOT/.workflows/.roadmap/sessions/session-001.md" <<'MD'
 # Roadmap Session 001
@@ -1277,7 +1304,7 @@ teardown_project
 echo "Test 39: Remove chunks for work unit + phase"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
@@ -1293,7 +1320,7 @@ teardown_project
 echo "Test 40: Remove specific identity"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_spec_file "payments" "billing"
 create_spec_file "payments" "invoicing"
 run_kb index .workflows/payments/specification/billing/specification.md >/dev/null 2>&1
@@ -1314,7 +1341,7 @@ teardown_project
 echo "Test 41: Remove rejects unknown work unit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
@@ -1335,7 +1362,7 @@ teardown_project
 # --- Test 42: Remove errors when --topic given without --phase ---
 echo "Test 42: Error --topic without --phase"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(run_kb remove --work-unit auth-flow --topic auth-flow 2>&1 || true)
 run_kb remove --work-unit auth-flow --topic auth-flow 2>/dev/null || exit_code=$?
@@ -1346,7 +1373,7 @@ teardown_project
 # --- Test 43: Remove errors when --work-unit missing ---
 echo "Test 43: Error missing --work-unit"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(run_kb remove 2>&1 || true)
 run_kb remove 2>/dev/null || exit_code=$?
@@ -1358,7 +1385,7 @@ teardown_project
 echo "Test 44: Remove from empty/nonexistent store"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 # WU exists in registry but no store yet — should cleanly no-op.
 output=$(run_kb remove --work-unit auth-flow 2>&1)
 assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
@@ -1371,21 +1398,11 @@ teardown_project
 echo ""
 echo "=== Bulk Index Tests ==="
 
-# Helper: initialize a phase topic in the manifest.
-init_phase_topic() {
-  local wu="$1" phase="$2" topic="$3" status="$4"
-  cd "$TEST_ROOT"
-  node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status in-progress >/dev/null 2>&1
-  if [ -n "$status" ]; then
-    node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status "$status" >/dev/null 2>&1
-  fi
-}
-
 # --- Test 45: Bulk index discovers and indexes completed artifacts ---
 echo "Test 45: Bulk index discovers completed artifacts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 output=$(run_kb index 2>&1)
@@ -1397,7 +1414,7 @@ teardown_project
 echo "Test 46: Bulk index skips already indexed"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 # Index once.
@@ -1411,7 +1428,7 @@ teardown_project
 echo "Test 47: Bulk index no completed artifacts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "in-progress"
 output=$(run_kb index 2>&1)
@@ -1426,7 +1443,7 @@ echo "Test 47b: Bulk index --work-unit scopes to one unit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_research_file "payments" "exploration"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
@@ -1451,7 +1468,7 @@ echo "=== Bulk Index Reconcile Tests ==="
 echo "Test RC1: Bulk index re-indexes a changed artifact"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
@@ -1487,7 +1504,7 @@ teardown_project
 echo "Test RC3: Bulk index removes chunks of a deleted source"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
@@ -1505,7 +1522,7 @@ setup_project
 create_work_unit "dropped" "feature" "Dropped"
 create_work_unit "orphaned" "feature" "Orphaned"
 create_work_unit "kept" "feature" "Kept"
-write_stub_config
+write_keyword_config
 for wu in dropped orphaned kept; do
   create_discussion_file "$wu" "$wu"
   init_phase_topic "$wu" "discussion" "$wu" "completed"
@@ -1534,7 +1551,7 @@ teardown_project
 echo "Test RC5: Bulk index removes retired items, keeps a reopened one"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 for topic in superseded-t cancelled-t postponed-t missing-t reopened-t; do
   create_discussion_file "payments" "$topic"
   run_kb index ".workflows/payments/discussion/$topic.md" >/dev/null 2>&1
@@ -1563,7 +1580,7 @@ teardown_project
 echo "Test RC6: Bulk index keeps baseline chunks until the doc is deleted"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_baseline_file "overview"
 run_kb index >/dev/null 2>&1
 output=$(run_kb index 2>&1)
@@ -1581,7 +1598,7 @@ teardown_project
 echo "Test RC6b: Bulk index keeps an outside source's chunks until its unit retires"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 init_phase_topic "auth-flow" "discussion" "elsewhere" "completed"
 OTHER_ROOT=$(mktemp -d)
 mkdir -p "$OTHER_ROOT/.workflows/auth-flow/discussion"
@@ -1604,7 +1621,7 @@ echo "Test RC7: Scoped bulk index removes within its unit only"
 setup_project
 create_work_unit "alpha" "feature" "Alpha"
 create_work_unit "beta" "feature" "Beta"
-write_stub_config
+write_keyword_config
 for wu in alpha beta; do
   create_discussion_file "$wu" "$wu"
   init_phase_topic "$wu" "discussion" "$wu" "completed"
@@ -1622,7 +1639,7 @@ teardown_project
 echo "Test RC8: Bulk index with nothing to do leaves the store untouched"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
@@ -1636,7 +1653,7 @@ teardown_project
 echo "Test RC9: Bulk index attempts every file"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/payments/discussion"
 echo "" > "$TEST_ROOT/.workflows/payments/discussion/empty.md"
 create_discussion_file "payments" "good"
@@ -1655,7 +1672,7 @@ teardown_project
 echo "Test RC10: Bulk index aborts on an unreadable manifest"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
@@ -1673,7 +1690,7 @@ teardown_project
 echo "Test RC11: Empty registry keeps scanned units"
 setup_project
 create_work_unit "legacy-wu" "feature" "Legacy"
-write_stub_config
+write_keyword_config
 create_discussion_file "legacy-wu" "legacy-wu"
 init_phase_topic "legacy-wu" "discussion" "legacy-wu" "completed"
 run_kb index >/dev/null 2>&1
@@ -1688,7 +1705,7 @@ teardown_project
 echo "Test RC12: Bulk index skips a pruned unit's non-spec artifacts"
 setup_project
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": 0.95, "decay_base_stability": 3 } }
+{ "knowledge": { "provider": null, "decay_prune_below": 0.95, "decay_base_stability": 3 } }
 CONF
 create_work_unit "buried" "feature" "Buried"
 create_discussion_file "buried" "buried"
@@ -1733,7 +1750,7 @@ teardown_project
 echo "Test RC13: Bulk index proceeds past an invalid prune floor"
 setup_project
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": "high" } }
+{ "knowledge": { "provider": null, "decay_prune_below": "high" } }
 CONF
 create_work_unit "auth-flow" "feature" "Auth"
 create_discussion_file "auth-flow" "auth-flow"
@@ -1754,7 +1771,7 @@ teardown_project
 echo "Test RC14: Bulk index keeps the chunks of a unit it cannot read"
 setup_project
 create_work_unit "garbled" "feature" "Garbled"
-write_stub_config
+write_keyword_config
 create_discussion_file "garbled" "garbled"
 init_phase_topic "garbled" "discussion" "garbled" "completed"
 run_kb index >/dev/null 2>&1
@@ -1786,7 +1803,7 @@ write_config_with_prune() {
   local prune="$1" stability="${2:-3}"
   mkdir -p "$TEST_ROOT/.workflows/.knowledge"
   cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<CONF
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": $prune, "decay_base_stability": $stability } }
+{ "knowledge": { "provider": null, "decay_prune_below": $prune, "decay_base_stability": $stability } }
 CONF
 }
 
@@ -1872,7 +1889,7 @@ setup_project
 create_work_unit "disabled" "feature" "Disabled"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": false } }
+{ "knowledge": { "provider": null, "decay_prune_below": false } }
 CONF
 create_discussion_file "disabled" "disabled"
 run_kb index .workflows/disabled/discussion/disabled.md >/dev/null 2>&1
@@ -1908,7 +1925,7 @@ echo "=== Status Command Tests ==="
 echo "Test 55: Status reports chunk counts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb status 2>&1)
@@ -1921,7 +1938,7 @@ teardown_project
 echo "Test 56: Status reports changed artifacts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
@@ -1936,7 +1953,7 @@ teardown_project
 # --- Test 57: Status on empty store ---
 echo "Test 57: Status on empty store"
 setup_project
-write_stub_config
+write_keyword_config
 output=$(run_kb status 2>&1)
 assert_eq "shows not initialized" "true" "$(echo "$output" | grep -q 'not initialized' && echo true || echo false)"
 teardown_project
@@ -1945,7 +1962,7 @@ teardown_project
 echo "Test 58: Status reports a deleted source's chunks"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Delete the source file.
@@ -1960,7 +1977,7 @@ teardown_project
 echo "Test 59: Status detects unindexed artifacts"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
@@ -1975,7 +1992,7 @@ teardown_project
 echo "Test 60: Status reports a cancelled unit's chunks"
 setup_project
 create_work_unit "cancelled-wu" "feature" "Cancelled"
-write_stub_config
+write_keyword_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
 run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
@@ -2005,7 +2022,7 @@ echo "=== Rebuild Command Tests ==="
 # --- Test 62: Rebuild aborts on wrong confirmation ---
 echo "Test 62: Rebuild aborts on wrong confirmation"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(echo "no" | run_kb rebuild 2>&1 || true)
 echo "no" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
@@ -2016,7 +2033,7 @@ teardown_project
 # --- Test 63: Rebuild aborts on empty input ---
 echo "Test 63: Rebuild aborts on empty stdin"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(echo "" | run_kb rebuild 2>&1 || true)
 echo "" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
@@ -2030,7 +2047,7 @@ teardown_project
 # is caught.
 echo "Test 63b: Rebuild empty-project wording is current"
 setup_project
-write_stub_config
+write_keyword_config
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1 || true)
 echo "rebuild" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
@@ -2063,7 +2080,7 @@ echo "=== Batch Query Tests ==="
 echo "Test 64: Batch query merges results"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
@@ -2076,7 +2093,7 @@ teardown_project
 echo "Test 65: Batch query respects limit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
@@ -2089,7 +2106,7 @@ teardown_project
 echo "Test 66: Batch query one term no results"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" "xyznonexistent123" --limit 10 2>&1)
@@ -2123,7 +2140,9 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+# The bulk index embeds the store in the foreground.
+run_kb index >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "opens on the count" "true" "$(echo "$output" | head -1 | grep -qE '^\[[0-9]+ results\]$' && echo true || echo false)"
 teardown_project
@@ -2150,7 +2169,7 @@ echo "=== Review-Driven Fix Tests ==="
 echo "Test 70: Query --topic filters"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_spec_file "payments" "billing"
 create_spec_file "payments" "invoicing"
 run_kb index .workflows/payments/specification/billing/specification.md >/dev/null 2>&1
@@ -2164,7 +2183,7 @@ teardown_project
 echo "Test 71: Empty file rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 echo "" > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
 exit_code=0
@@ -2178,7 +2197,7 @@ teardown_project
 echo "Test 72: Bulk index failure exits non-zero and names the file"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 echo "" > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
@@ -2195,7 +2214,7 @@ setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": -0.5 } }
+{ "knowledge": { "provider": null, "decay_prune_below": -0.5 } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
@@ -2212,7 +2231,7 @@ setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": "0.5" } }
+{ "knowledge": { "provider": null, "decay_prune_below": "0.5" } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
@@ -2228,7 +2247,7 @@ setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": 1.5 } }
+{ "knowledge": { "provider": null, "decay_prune_below": 1.5 } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
@@ -2240,32 +2259,32 @@ teardown_project
 # --- Test 77: Path-traversal via .. rejected ---
 echo "Test 77: Path-traversal rejected"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/valid/discussion"
 echo "content" > "$TEST_ROOT/.workflows/valid/discussion/valid.md"
 # Crafted path with .. — deriveIdentity should reject it.
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/../etc/discussion/foo.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".workflows/../etc/discussion/foo.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects traversal" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
 # --- Test 78: Hidden work unit name rejected ---
 echo "Test 78: Hidden work unit rejected"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/.hidden/discussion"
 echo "content" > "$TEST_ROOT/.workflows/.hidden/discussion/foo.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/.hidden/discussion/foo.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".workflows/.hidden/discussion/foo.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
 # --- Test 79: Rebuild handles multi-chunk stdin correctly ---
 echo "Test 79: Rebuild multi-chunk stdin"
 setup_project
-write_stub_config
+write_keyword_config
 # Pipe "rebuild\n" — a single chunk is fine, but the new impl waits for newline.
 # Verify the happy path still works via piped input.
 # NOTE: This test verifies the abort path for partial input still works.
@@ -2281,7 +2300,7 @@ teardown_project
 echo "Test 80: Bulk index skips cancelled work units"
 setup_project
 create_work_unit "cancelled-wu" "feature" "Cancelled"
-write_stub_config
+write_keyword_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status in-progress >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status completed >/dev/null 2>&1
@@ -2298,7 +2317,7 @@ teardown_project
 echo "Test 80b: Bulk index skips proposed spec items"
 setup_project
 create_work_unit "prop-wu" "epic" "Proposed groupings"
-write_stub_config
+write_keyword_config
 # Spec file present on disk to prove it is the STATUS filter that skips it,
 # not the missing-file guard.
 create_spec_file "prop-wu" "auth-grouping"
@@ -2312,7 +2331,7 @@ teardown_project
 echo "Test 81: Remove failure exits non-zero"
 setup_project
 create_work_unit "drop-me" "feature" "Drop"
-write_stub_config
+write_keyword_config
 create_discussion_file "drop-me" "drop-me"
 run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
 printf 'corrupt-store-bytes' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
@@ -2327,7 +2346,7 @@ teardown_project
 echo "Test 82: Rebuild backup handling"
 setup_project
 create_work_unit "wu-a" "feature" "A"
-write_stub_config
+write_keyword_config
 create_discussion_file "wu-a" "wu-a"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status in-progress >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status completed >/dev/null 2>&1
@@ -2346,7 +2365,7 @@ teardown_project
 echo "Test 82b: Rebuild keeps the rebuilt store when a file fails"
 setup_project
 create_work_unit "wu-a" "epic" "A"
-write_stub_config
+write_keyword_config
 create_discussion_file "wu-a" "good"
 mkdir -p "$TEST_ROOT/.workflows/wu-a/discussion"
 echo "" > "$TEST_ROOT/.workflows/wu-a/discussion/empty.md"
@@ -2368,7 +2387,7 @@ teardown_project
 echo "Test 82c: Rebuild restores the backup when the manifest cannot be read"
 setup_project
 create_work_unit "wu-a" "feature" "A"
-write_stub_config
+write_keyword_config
 create_discussion_file "wu-a" "wu-a"
 create_baseline_file "overview"
 init_phase_topic "wu-a" "discussion" "wu-a" "completed"
@@ -2393,7 +2412,7 @@ teardown_project
 echo "Test 84: Stranded-chunks orphan cleanup"
 setup_project
 create_work_unit "absorbed-wu" "feature" "Absorbed"
-write_stub_config
+write_keyword_config
 create_discussion_file "absorbed-wu" "absorbed-wu"
 run_kb index .workflows/absorbed-wu/discussion/absorbed-wu.md >/dev/null 2>&1
 # Simulate post-absorption state: registry entry deleted, chunks linger.
@@ -2427,35 +2446,35 @@ teardown_project
 # Setup must abort with rebuild advice instead.
 echo "Test 85: Setup aborts on store-without-metadata"
 setup_project
-write_stub_config
+write_keyword_config
 # Seed a store but not metadata.
 create_work_unit "seed-wu" "feature" "Seed"
 create_discussion_file "seed-wu" "seed-wu"
 run_kb index .workflows/seed-wu/discussion/seed-wu.md >/dev/null 2>&1
 rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
-exit_code=0
-# Pipe input "n" so reconfigure prompt (if reached) declines — but we expect
-# abort before that. setup is a TTY wizard, but here we just need the project
-# init step to surface the partial-state guard. Run via a wrapper that fakes
-# a TTY by redirecting stdin from /dev/tty is overkill; instead invoke the
-# wrapper script that runs runProjectInitStep directly via node -e.
-# The setup CLI requires a TTY; invoke runProjectInitStep directly so
-# the partial-state guard fires without needing the readline wizard.
-output=$(cd "$TEST_ROOT" && node -e "
-const setup = require('$BUNDLE').setup;
-(async () => {
-  try {
-    await setup.runProjectInitStep({ question: () => '', close: () => {} });
-    console.log('UNEXPECTED_SUCCESS');
-  } catch (e) {
-    console.log('THREW:', e.message);
-  }
-})();
-" 2>&1) || true
+mkdir -p "$HOME/.config/workflows"
+echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
+# The wizard requires a terminal: drive it in process with the terminal's
+# parts replaced. It keeps the system config ("n"), then meets the partial
+# state at the project step.
+output=$(cd "$TEST_ROOT" && node -e '
+const { runWizard } = require(process.argv[1]);
+let said = "";
+const call = { cwd: process.cwd(), out: (t) => { said += t; }, err: (t) => { said += t; }, stdin: () => "" };
+const answers = ["n"];
+const createPrompter = () => ({ question: (_prompt, answer) => answer(answers.shift()), close: () => {} });
+runWizard(call, process.cwd(), { requireTTY: () => {}, createPrompter }).then(
+  () => console.log(said + "UNEXPECTED_SUCCESS"),
+  (err) => console.log(said + "EXIT " + err.code),
+);
+' "$WIZARD_JS" 2>&1) || true
+assert_eq "setup refuses with exit 1" "true" \
+  "$(echo "$output" | grep -qx 'EXIT 1' && echo true || echo false)"
 assert_eq "setup partial-state guard surfaces inconsistent-state error" "true" \
   "$(echo "$output" | grep -q 'inconsistent state' && echo true || echo false)"
 assert_eq "setup partial-state guard mentions knowledge rebuild" "true" \
   "$(echo "$output" | grep -q 'knowledge rebuild' && echo true || echo false)"
+rm -rf "$HOME/.config/workflows"
 teardown_project
 
 # --- Test 83: Subdirectory invocation finds project root ---
@@ -2465,14 +2484,14 @@ teardown_project
 echo "Test 83: Subdirectory invocation"
 setup_project
 create_work_unit "subdir-wu" "feature" "Subdir"
-write_stub_config
+write_keyword_config
 create_discussion_file "subdir-wu" "subdir-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set subdir-wu.discussion.subdir-wu status in-progress >/dev/null 2>&1
 run_kb index .workflows/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
 # Now invoke status from a deeply nested subdirectory of the project.
 mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
 cd "$TEST_ROOT/.workflows/subdir-wu/discussion"
-status_from_subdir=$(node "$BUNDLE" status 2>&1)
+status_from_subdir=$(node "$ENGINE_JS" knowledge status 2>&1)
 cd "$TEST_ROOT"
 assert_eq "status from subdir reports nothing retired" "true" \
   "$(echo "$status_from_subdir" | grep -q 'Retired since indexing' && echo false || echo true)"
@@ -2484,7 +2503,7 @@ teardown_project
 echo "Test 84: Index an imports file"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
 assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -2494,7 +2513,7 @@ teardown_project
 echo "Test 84b: Index refuses a non-markdown import"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 create_binary_import_file "seeded-wu" "diagram.png"
 run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
@@ -2511,7 +2530,7 @@ teardown_project
 echo "Test 85: Query an imports file shows [imports | wu/topic]"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 output=$(run_kb query "OAuth" 2>&1)
@@ -2525,7 +2544,7 @@ teardown_project
 echo "Test 86: Remove imports chunks via --phase imports --topic"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit seeded-wu --phase imports --topic seed-conversation 2>&1)
@@ -2539,7 +2558,7 @@ teardown_project
 echo "Test 87a: Bulk index picks up imports from manifest.imports[]"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 # Track the import on the manifest the way the landers do.
 node "$ENGINE_JS" manifest push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
@@ -2557,7 +2576,7 @@ teardown_project
 echo "Test 87d: remove --work-unit (no --phase) clears imports too"
 setup_project
 create_work_unit "mixed-wu" "epic" "Mixed"
-write_stub_config
+write_keyword_config
 # Index a discussion file and an imports file under the same work unit.
 create_discussion_file "mixed-wu" "mixed-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set mixed-wu.discussion.mixed-wu status in-progress >/dev/null 2>&1
@@ -2582,7 +2601,7 @@ teardown_project
 echo "Test 87b: Bulk index ignores tampered import paths"
 setup_project
 create_work_unit "guarded-wu" "epic" "Guarded"
-write_stub_config
+write_keyword_config
 create_import_file "guarded-wu" "legit-seed"
 # Push one legitimate entry plus three malformed ones (path-traversal, dotfile, subdir).
 node "$ENGINE_JS" manifest push guarded-wu imports '{"path":"imports/legit-seed.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
@@ -2604,7 +2623,7 @@ teardown_project
 echo "Test 87e: Bulk index skips non-markdown imports"
 setup_project
 create_work_unit "mixed-imports-wu" "epic" "Mixed imports"
-write_stub_config
+write_keyword_config
 create_import_file "mixed-imports-wu" "seed-conversation"
 create_binary_import_file "mixed-imports-wu" "diagram.png"
 # Both tracked on the manifest; only the markdown one is an index candidate.
@@ -2621,7 +2640,7 @@ teardown_project
 echo "Test 87c: Bulk index dedupes duplicate manifest entries"
 setup_project
 create_work_unit "dup-wu" "epic" "Dup"
-write_stub_config
+write_keyword_config
 create_import_file "dup-wu" "seed-conversation"
 # Two pushes of the same path — re-import noise.
 node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
@@ -2635,7 +2654,7 @@ teardown_project
 echo "Test 87: Re-indexing imports replaces chunks"
 setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
-write_stub_config
+write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 first_status=$(run_kb status 2>&1)
@@ -2656,7 +2675,7 @@ echo "=== Analysis Cache Indexing Tests ==="
 echo "Test 88: Retired research-analysis cache rejected"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "research-analysis"
 exit_code=0
 output=$(run_kb index .workflows/auth-flow/.state/research-analysis.md 2>&1 || true)
@@ -2669,7 +2688,7 @@ teardown_project
 echo "Test 89: Index gap-analysis cache"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 output=$(run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md 2>&1)
 exit_code=0
@@ -2682,7 +2701,7 @@ teardown_project
 echo "Test 90: Analysis chunks queryable with phase=analysis"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 output=$(run_kb query "caching" 2>&1)
@@ -2694,7 +2713,7 @@ teardown_project
 echo "Test 91: remove --work-unit drops analysis chunks"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 before_query=$(run_kb query "caching" 2>&1)
@@ -2708,7 +2727,7 @@ teardown_project
 echo "Test 92: Unknown .state file rejected"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/.state"
 echo "# secret operational data" > "$TEST_ROOT/.workflows/auth-flow/.state/migrations.md"
 exit_code=0
@@ -2721,12 +2740,12 @@ teardown_project
 # --- Test 93: Hidden work unit name still rejected for .state paths ---
 echo "Test 93: Hidden wu rejected for .state path"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/.hidden/.state"
 echo "content" > "$TEST_ROOT/.workflows/.hidden/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/.hidden/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".workflows/.hidden/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2734,7 +2753,7 @@ teardown_project
 echo "Test 94: Re-indexing analysis cache idempotent"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 first_status=$(run_kb status 2>&1)
@@ -2749,7 +2768,7 @@ teardown_project
 echo "Test 95: Bulk index discovers the gap-analysis cache only"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "research-analysis"
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 output=$(run_kb index 2>&1)
@@ -2762,7 +2781,7 @@ teardown_project
 echo "Test 96: Bulk index skips cancelled wu analysis caches"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow status cancelled >/dev/null 2>&1
 output=$(run_kb index 2>&1)
@@ -2773,7 +2792,7 @@ teardown_project
 echo "Test 97: Bulk index ignores non-whitelisted .state files"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/.state"
 echo "# operational" > "$TEST_ROOT/.workflows/auth-flow/.state/migrations.md"
 output=$(run_kb index 2>&1)
@@ -2784,7 +2803,7 @@ teardown_project
 echo "Test 98: Missing analysis cache skipped silently"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
-write_stub_config
+write_keyword_config
 create_discussion_file "auth-flow" "session-mgmt"
 # No analysis cache on disk — the walk must skip it without failing.
 output=$(run_kb index 2>&1)
@@ -2797,12 +2816,12 @@ teardown_project
 # --- Test 99: Path-traversal via .. on .state path rejected ---
 echo "Test 99: Path-traversal on .state rejected"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/valid/.state"
 echo "content" > "$TEST_ROOT/.workflows/valid/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/../etc/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".workflows/../etc/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects traversal on .state" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2814,7 +2833,7 @@ echo "Test 100: Absorption preserves imports in KB under target identity"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth source"
 create_work_unit "payments-overhaul" "epic" "Payments target"
-write_stub_config
+write_keyword_config
 create_import_file "auth-flow" "seed-conversation"
 create_import_file "auth-flow" "early-thoughts"
 # Index under source identity.
@@ -2843,7 +2862,7 @@ teardown_project
 echo "Test 87: Index a seed file"
 setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
-write_stub_config
+write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
 output=$(run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md 2>&1)
 assert_eq "indexes seed file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -2853,7 +2872,7 @@ teardown_project
 echo "Test 88: Query a seed file shows [seeds | wu/topic | low]"
 setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
-write_stub_config
+write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
 run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
 output=$(run_kb query "auth callback request timeout" 2>&1)
@@ -2867,7 +2886,7 @@ teardown_project
 echo "Test 89: Bulk index picks up manifest.seeds[]"
 setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
-write_stub_config
+write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest push login-timeout seeds \
   '{"path":"seeds/2026-05-30-login-timeout.md","source":"inbox:bug","seeded_at":"2026-06-02T00:00:00Z"}' >/dev/null 2>&1
@@ -2883,7 +2902,7 @@ teardown_project
 echo "Test 90: Remove seed chunks via --phase seeds --topic"
 setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
-write_stub_config
+write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
 run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit login-timeout --phase seeds --topic 2026-05-30-login-timeout 2>&1)
@@ -2921,7 +2940,7 @@ MD
 echo "Test D1: Index a discovery session log"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_discovery_session "payments" "001" "Explored the kitchen printer as the source of truth for order state."
 output=$(run_kb index .workflows/payments/discovery/sessions/session-001.md 2>&1)
 assert_eq "indexes discovery session" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -2934,7 +2953,7 @@ teardown_project
 echo "Test D2: Multiple discovery sessions coexist"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_discovery_session "payments" "001" "Session one explored the offline mode surface for ordering."
 create_discovery_session "payments" "002" "Session two explored the analytics dashboard tempo."
 run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
@@ -2951,7 +2970,7 @@ teardown_project
 echo "Test D3: remove --work-unit clears discovery chunks"
 setup_project
 create_work_unit "payments" "epic" "Payments"
-write_stub_config
+write_keyword_config
 create_discovery_session "payments" "001" "Explored the refund flow boundary and its handoffs."
 run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
 before=$(run_kb query "refund flow" --phase discovery 2>&1)
@@ -3355,7 +3374,7 @@ echo "=== Robustness Tests ==="
 echo "Test R1: 200k unbroken token indexes cleanly"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 node -e "
   const fs = require('fs');
@@ -3385,7 +3404,7 @@ teardown_project
 echo "Test R2: ANSI escapes and NUL stripped from query output"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
 printf '# Discussion\n\n## Styled Section\n\nBefore \033[31mpainted\033[0m after and a nul\000byte survives storage.\n' \
   > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
@@ -3405,44 +3424,6 @@ assert_eq "text around the NUL remains" "true" \
   "$(grep -qF 'nulbyte survives storage' "$TEST_ROOT/query-out.txt" && echo true || echo false)"
 teardown_project
 
-# --- Test R3: engine resolution is lazy — keyless commands work without it ---
-# Pre-fix, index.js resolved engine.cjs at module load and threw when
-# absent, so even `check` and `setup --keyword-only` (which never read a
-# manifest) died with a stack trace. Resolution now happens at first
-# manifest use, with the same clear installation error.
-echo "Test R3: knowledge CLI works without the engine for keyless commands"
-setup_project
-# Copy the bundle to a standalone location where neither engine candidate
-# path (../../skills/workflow-engine/... or ../../workflow-engine/...) exists.
-STANDALONE=$(mktemp -d)
-mkdir -p "$STANDALONE/scripts"
-cp "$BUNDLE" "$STANDALONE/scripts/knowledge.cjs"
-cd "$TEST_ROOT"
-# check: never touches the engine.
-exit_code=0
-output=$(node "$STANDALONE/scripts/knowledge.cjs" check 2>&1) || exit_code=$?
-assert_eq "check exits 0 without engine" "0" "$exit_code"
-assert_eq "check answers ready/not-ready" "true" \
-  "$(echo "$output" | grep -qE 'ready|not-ready' && echo true || echo false)"
-# setup --keyword-only: initialises the store; the bulk-index step fails on
-# the missing engine and is reported, not a crash.
-exit_code=0
-output=$(node "$STANDALONE/scripts/knowledge.cjs" setup --keyword-only 2>&1) || exit_code=$?
-assert_eq "setup --keyword-only exits 0 without engine" "0" "$exit_code"
-assert_eq "keyword-only store initialised" "true" \
-  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
-# A command that needs manifest reads still fails with the clear use-time error.
-exit_code=0
-output=$(node "$STANDALONE/scripts/knowledge.cjs" remove --work-unit ghost 2>&1) || exit_code=$?
-assert_eq "manifest-dependent command exits non-zero" "true" \
-  "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "clear engine error surfaces" "true" \
-  "$(echo "$output" | grep -q 'Could not locate engine.cjs' && echo true || echo false)"
-assert_eq "no stack frames in error" "false" \
-  "$(echo "$output" | grep -qE '^    at ' && echo true || echo false)"
-rm -rf "$STANDALONE"
-teardown_project
-
 # ============================================================================
 # ROBUSTNESS FIXES — subdir path anchoring, single-file failures,
 # key-unresolved diagnosis, dotted-name rejection
@@ -3458,28 +3439,27 @@ echo "=== Robustness Fix Tests ==="
 echo "Test R4: Bulk index from a subdirectory keeps live chunks"
 setup_project
 create_work_unit "sub-sync" "feature" "SubSync"
-write_stub_config
+write_keyword_config
 create_discussion_file "sub-sync" "sub-sync"
 init_phase_topic "sub-sync" "discussion" "sub-sync" "completed"
 run_kb index >/dev/null 2>&1
 cd "$TEST_ROOT/.workflows/sub-sync/discussion"
-subout=$(node "$BUNDLE" index 2>&1)
+subout=$(node "$ENGINE_JS" knowledge index 2>&1)
 cd "$TEST_ROOT"
 assert_eq "nothing removed from a subdirectory" "0 new, 0 changed, 0 removed, 1 unchanged." "$subout"
 teardown_project
 
 # --- Test R5: Bulk discovery finds imports from a subdirectory ---
-# Pre-fix, discoverArtifacts' existsSync checks anchored at cwd, so bulk index
-# from a subdirectory silently skipped every import/seed/analysis/discovery
-# artifact. Now root-anchored.
+# Discovery's existence checks anchor at the project root, so a bulk index
+# from a subdirectory finds every import/seed/analysis/discovery artifact.
 echo "Test R5: Bulk discovery from a subdirectory"
 setup_project
 create_work_unit "sub-bulk" "epic" "SubBulk"
-write_stub_config
+write_keyword_config
 create_import_file "sub-bulk" "seed-conversation"
 node "$ENGINE_JS" manifest push sub-bulk imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 cd "$TEST_ROOT/.workflows/sub-bulk/imports"
-subout=$(node "$BUNDLE" index 2>&1)
+subout=$(node "$ENGINE_JS" knowledge index 2>&1)
 cd "$TEST_ROOT"
 assert_eq "bulk from subdir discovers the import" "true" \
   "$(echo "$subout" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
@@ -3489,19 +3469,18 @@ assert_eq "subdir-discovered import is indexed" "true" \
 teardown_project
 
 # --- Test R6: A single-file failure exits non-zero and says the next start retries ---
-# A corrupt store forces a non-permanent failure inside indexSingleFile, so the
-# retries run out before the failure surfaces.
-echo "Test R6: Single-file transient failure exits non-zero"
+# A corrupt store fails the single-file index's write.
+echo "Test R6: Single-file write failure exits non-zero"
 setup_project
 create_work_unit "fail-wu" "feature" "Fail"
-write_stub_config
+write_keyword_config
 create_discussion_file "fail-wu" "fail-wu"
 printf 'garbage-not-a-store' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
 set +e
 out=$(run_kb index .workflows/fail-wu/discussion/fail-wu.md 2>&1)
 exit_code=$?
 set -e
-assert_eq "transient failure exits non-zero" "1" "$exit_code"
+assert_eq "write failure exits non-zero" "1" "$exit_code"
 assert_eq "names the file" "true" \
   "$(echo "$out" | grep -q 'Failed to index .workflows/fail-wu/discussion/fail-wu.md' && echo true || echo false)"
 assert_eq "says the next start retries it" "true" \
@@ -3512,9 +3491,12 @@ teardown_project
 echo "Test R6b: Permanent failure exits non-zero"
 setup_project
 create_work_unit "perm-wu" "feature" "Perm"
-write_stub_config
+write_keyword_config
 create_discussion_file "perm-wu" "perm-wu"
 run_kb index .workflows/perm-wu/discussion/perm-wu.md >/dev/null 2>&1
+# The stub provider configured over a store the metadata says openai built:
+# refused before any write, so no fill is launched.
+write_stub_config
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
@@ -3533,12 +3515,13 @@ teardown_project
 
 # --- Test R7: Configured-provider-without-key is diagnosed as a missing key ---
 # A store built with openai, and its key unresolved: the query runs keyword-only
-# and the index writes by keyword, each naming the key — never a provider change,
-# whose rebuild would discard the embeddings.
+# naming the key, a single-file index writes by keyword and launches no fill,
+# and the bulk index names the key — never a provider change, whose rebuild
+# would discard the embeddings.
 echo "Test R7: Missing key is not misdiagnosed as a provider change"
 setup_project
 create_work_unit "keyless-wu" "feature" "Keyless"
-write_stub_config
+write_keyword_config
 create_discussion_file "keyless-wu" "keyless-wu"
 run_kb index .workflows/keyless-wu/discussion/keyless-wu.md >/dev/null 2>&1
 # Rewrite metadata to claim an openai store, then point config at openai with
@@ -3564,17 +3547,16 @@ assert_eq "query message points at setup --key-only" "true" \
   "$(echo "$qout" | grep -q 'key-only' && echo true || echo false)"
 assert_eq "query does NOT misdiagnose as a provider change" "false" \
   "$(echo "$qout" | grep -q 'changed since last index' && echo true || echo false)"
-# The index writes an edit by keyword, naming the key the same way.
+# The single-file index writes an edit by keyword and embeds nothing — its
+# vectors are the fill's, and a provider without its key launches none.
 KEY_FIX='the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only'
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set keyless-wu.discussion.keyless-wu status completed >/dev/null 2>&1
 echo "A late addition to the discussion." >> "$TEST_ROOT/.workflows/keyless-wu/discussion/keyless-wu.md"
 iexit=0
 iout=$(run_kb index .workflows/keyless-wu/discussion/keyless-wu.md 2>&1) || iexit=$?
-assert_eq "single-file index exits non-zero" "1" "$iexit"
-assert_eq "single-file index names the key and its fix" "true" \
-  "$(echo "$iout" | grep -qxF "Failed to embed .workflows/keyless-wu/discussion/keyless-wu.md: $KEY_FIX" && echo true || echo false)"
-assert_eq "single-file index says the file is searchable by keyword" "true" \
-  "$(echo "$iout" | grep -qxF 'The file is searchable by keyword; its vectors come at the next start.' && echo true || echo false)"
+assert_eq "single-file index exits 0" "0" "$iexit"
+assert_eq "single-file index says what it wrote, and nothing else" "true" \
+  "$(echo "$iout" | grep -qxE 'Indexed [1-9][0-9]* chunks from .workflows/keyless-wu/discussion/keyless-wu.md' && [ "$(echo "$iout" | wc -l | tr -d ' ')" = "1" ] && echo true || echo false)"
 assert_eq "index does NOT misdiagnose as a provider change" "false" \
   "$(echo "$iout" | grep -q 'changed since last index' && echo true || echo false)"
 assert_eq "the edit is found by keyword" "true" \
@@ -3589,12 +3571,12 @@ assert_eq "bulk index counts what awaits the key" "true" \
 teardown_project
 
 # --- Test R8: Dotted work-unit / topic names rejected at index time ---
-# Pre-fix, deriveIdentity accepted dots; the artifact indexed once but was
-# unreachable by status/remove/discovery (all split identity on ".").
+# A dotted name would index once and be unreachable by status/remove/discovery,
+# which all split identity on ".".
 echo "Test R8: Dotted work-unit name rejected"
 setup_project
 create_work_unit "dot.unit" "feature" "Dotted"
-write_stub_config
+write_keyword_config
 create_discussion_file "dot.unit" "dot.unit"
 exit_code=0
 dotout=$(run_kb index .workflows/dot.unit/discussion/dot.unit.md 2>&1 || true)
@@ -3607,7 +3589,7 @@ teardown_project
 echo "Test R8b: Dotted topic name rejected"
 setup_project
 create_work_unit "cleanunit" "feature" "Clean"
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/cleanunit/discussion"
 printf '# Heading\n\nSome content that is long enough to chunk.\n' > "$TEST_ROOT/.workflows/cleanunit/discussion/a.b.md"
 exit_code=0
@@ -3619,12 +3601,12 @@ assert_eq "dotted topic explains dots are not allowed" "true" \
 teardown_project
 
 # --- Test R9: check reports not-ready for a store missing its metadata ---
-# Pre-fix, cmdCheck stopped at "store loads" and reported ready even when
-# metadata.json was absent — the exact partial state `query` then refuses.
+# A store that loads without its metadata.json is the partial state `query`
+# refuses, so check reads it not-ready.
 echo "Test R9: check not-ready when metadata is missing"
 setup_project
 create_work_unit "meta-wu" "feature" "Meta"
-write_stub_config
+write_keyword_config
 create_discussion_file "meta-wu" "meta-wu"
 run_kb index .workflows/meta-wu/discussion/meta-wu.md >/dev/null 2>&1
 baseline=$(run_kb check 2>/dev/null | tr -d '\n')
@@ -3632,26 +3614,6 @@ assert_eq "baseline is ready" "ready" "$baseline"
 rm -f "$TEST_ROOT/.workflows/.knowledge/metadata.json"
 after=$(run_kb check 2>/dev/null | tr -d '\n')
 assert_eq "flips to not-ready without metadata" "not-ready" "$after"
-teardown_project
-
-# --- Test R10: source-mode dev CLI indexes via the chunking-config fallback ---
-# Pre-fix, indexSingleFile resolved __dirname/../chunking, which exists in the
-# bundle but NOT under src/ — so the source CLI could not index at all. Now it
-# falls back to the shipped skills/workflow-knowledge/chunking directory.
-echo "Test R10: source-mode CLI indexes via the chunking fallback"
-SRC="$SCRIPT_DIR/../../src/knowledge/index.js"
-setup_project
-create_work_unit "src-wu" "feature" "Src"
-write_stub_config
-create_discussion_file "src-wu" "src-wu"
-cd "$TEST_ROOT"
-srcout=$(node "$SRC" index .workflows/src-wu/discussion/src-wu.md 2>&1 || true)
-srcexit=0
-node "$SRC" index .workflows/src-wu/discussion/src-wu.md >/dev/null 2>&1 || srcexit=$?
-cd "$TEST_ROOT"
-assert_eq "source CLI indexes successfully" "0" "$srcexit"
-assert_eq "source CLI reports chunks" "true" \
-  "$(echo "$srcout" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
 # ============================================================================
@@ -3664,7 +3626,7 @@ echo "=== Baseline Tests ==="
 # --- Test B1: Index a baseline doc (no work unit, no registry entry) ---
 echo "Test B1: Index a baseline doc"
 setup_project
-write_stub_config
+write_keyword_config
 create_baseline_file "overview"
 output=$(run_kb index .workflows/.baseline/overview.md 2>&1)
 assert_eq "indexes baseline doc" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
@@ -3673,7 +3635,7 @@ teardown_project
 # --- Test B2: Query shows [baseline | baseline/topic | low] provenance ---
 echo "Test B2: Baseline provenance in query output"
 setup_project
-write_stub_config
+write_keyword_config
 create_baseline_file "overview"
 run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
 output=$(run_kb query "dispatcher circuit breaker" 2>&1)
@@ -3686,7 +3648,7 @@ teardown_project
 # --- Test B3: Baseline session state under .baseline/.state/ is refused ---
 echo "Test B3: .baseline/.state/ paths are not indexable"
 setup_project
-write_stub_config
+write_keyword_config
 mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
 echo "# agenda" > "$TEST_ROOT/.workflows/.baseline/.state/agenda.md"
 exit_code=0
@@ -3699,7 +3661,7 @@ teardown_project
 # --- Test B4: Dotted baseline topic rejected ---
 echo "Test B4: Dotted baseline topic rejected"
 setup_project
-write_stub_config
+write_keyword_config
 create_baseline_file "dotted.name"
 exit_code=0
 output=$(run_kb index ".workflows/.baseline/dotted.name.md" 2>&1) || exit_code=$?
@@ -3711,7 +3673,7 @@ teardown_project
 # --- Test B5: remove --work-unit baseline works without a registry entry ---
 echo "Test B5: Remove baseline chunks"
 setup_project
-write_stub_config
+write_keyword_config
 create_baseline_file "overview"
 run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit baseline 2>&1)
@@ -3726,7 +3688,7 @@ teardown_project
 # --- Test B6: Bulk index discovers baseline docs with zero work units ---
 echo "Test B6: Bulk index finds baseline docs on a bare install"
 setup_project
-write_stub_config
+write_keyword_config
 create_baseline_file "overview"
 create_baseline_file "glossary"
 mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
@@ -3746,7 +3708,7 @@ setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "similarity_threshold": "0.5" } }
+{ "knowledge": { "provider": null, "similarity_threshold": "0.5" } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
@@ -3763,7 +3725,7 @@ setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "similarity_threshold": 2 } }
+{ "knowledge": { "provider": null, "similarity_threshold": 2 } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1

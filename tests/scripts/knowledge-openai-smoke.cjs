@@ -8,7 +8,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { OpenAIProvider, DEFAULT_DIMENSIONS } = require('../../src/knowledge/providers/openai');
+const { OpenAIProvider, DEFAULT_DIMENSIONS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai.cjs');
 
 describe('OpenAIProvider integration (real API)', { skip: !process.env.OPENAI_API_KEY }, () => {
   const provider = process.env.OPENAI_API_KEY

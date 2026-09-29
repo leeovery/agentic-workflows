@@ -43,7 +43,7 @@ const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/kb.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -304,7 +304,7 @@ class Sim {
     this.step = 0;
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
-    // config dir pins into the sandbox (the knowledge CLI reads it) and the
+    // config dir pins into the sandbox (the knowledge base reads it) and the
     // tmux identity is taken away, so `session label` can never rename the
     // developer's real session.
     // A real session always carries its identity, and presence reads it to
@@ -806,6 +806,9 @@ describe('pipeline simulation', () => {
     // `run` holds untracked from here on.
     assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
+    // The engine's own door reads back what the completion indexed in process.
+    assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
+    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}discussion: \d+$/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
@@ -3998,7 +4001,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /knowledge\.cjs setup[\s\S]*Has the wizard completed\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /engine\.cjs knowledge setup[\s\S]*Has the wizard completed\?/);
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);

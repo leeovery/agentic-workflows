@@ -1,12 +1,8 @@
 'use strict';
 
-// End-to-end integration test for Phase 1 of the knowledge base.
-//
-// This test imports from the BUILT bundle (not the source files) so it
-// validates that esbuild bundling preserves all functionality — catching
-// issues the source-level unit tests miss (e.g. tree-shaking dropping a
-// code path, CJS interop breakage, vectors not surviving the store file's
-// round trip).
+// End-to-end integration test for the knowledge store: documents in, the
+// file's round trip, and the query pipeline over what it holds — vectors
+// included.
 
 require('./hermetic-env.cjs');
 
@@ -16,8 +12,9 @@ const path = require('path');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
-const bundle = require('../../skills/workflow-knowledge/scripts/knowledge.cjs');
-const { StubProvider, store, querySettings, queryStore } = bundle;
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { querySettings, queryStore } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
 const {
   createStore,
   insertDocument,
@@ -126,7 +123,7 @@ function seedStore(db, provider) {
   }
 }
 
-/** The blended query the CLI runs over a store built with the stub provider — its results. */
+/** The blended query `engine knowledge query` runs over a store built with the stub provider — its results. */
 async function hybrid(db, term, provider) {
   const metadata = { provider: 'stub', model: provider.model(), dimensions: provider.dimensions() };
   const settings = querySettings(metadata, { provider: 'stub', similarity_threshold: 0 }, provider);
@@ -142,7 +139,7 @@ function stripForCompare(hits) {
   }));
 }
 
-describe('knowledge store — end-to-end integration (via built bundle)', () => {
+describe('knowledge store — end-to-end integration', () => {
   let tmpDir;
   let storePath;
   let metaPath;
@@ -150,28 +147,13 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
 
   before(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-integration-'));
-    storePath = path.join(tmpDir, store.STORE_FILE);
+    storePath = path.join(tmpDir, 'store.bin');
     metaPath = path.join(tmpDir, 'metadata.json');
     provider = new StubProvider({ dimensions: STUB_DIMS });
   });
 
   after(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  });
-
-  it('exposes the expected surface on the built bundle', () => {
-    assert.strictEqual(typeof StubProvider, 'function');
-    assert.strictEqual(typeof createStore, 'function');
-    assert.strictEqual(typeof insertDocument, 'function');
-    assert.strictEqual(typeof removeByIdentity, 'function');
-    assert.strictEqual(typeof allChunks, 'function');
-    assert.strictEqual(typeof searchKeyword, 'function');
-    assert.strictEqual(typeof searchVector, 'function');
-    assert.strictEqual(typeof queryStore, 'function');
-    assert.strictEqual(typeof saveStore, 'function');
-    assert.strictEqual(typeof loadStore, 'function');
-    assert.strictEqual(typeof writeMetadata, 'function');
-    assert.strictEqual(typeof readMetadata, 'function');
   });
 
   it('inserts multiple documents with vectors from StubProvider', () => {

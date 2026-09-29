@@ -1,9 +1,9 @@
 'use strict';
 
-// Loaded by --require ahead of the knowledge CLI's entry, so every provider
-// the CLI resolves embeds through the cache its environment names.
+// Loaded by --require ahead of the engine's entry, so every provider
+// `engine knowledge` resolves embeds through the cache its environment names.
 
-const config = require('../../src/knowledge/config');
+const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
 const { DIR_ENV, cachingProvider, embeddingCache, providerIdentity } = require('./knowledge-eval-embeddings.cjs');
 
 const dir = /** @type {string} */ (process.env[DIR_ENV]);

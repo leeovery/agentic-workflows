@@ -199,8 +199,8 @@ the world it started from.
 byte-compare it — both token-free, and this repo's only gate since there
 is no automated CI. Rebuilds are skipped when nothing feeding a world has
 changed; the hash covers each case's recipes, the shared mainlines, and
-the engine and knowledge sources, so an engine change invalidates every
-hash and forces a full rebuild. Only `/prose-test` spends tokens.
+the engine's sources, so an engine change invalidates every hash and
+forces a full rebuild. Only `/prose-test` spends tokens.
 
 Snapshots exclude `.git/`, `.workflows/.knowledge/` (checkout-local — the
 world builder sets it up afresh, never committed) and `.claude/skills|agents/` (copied into live

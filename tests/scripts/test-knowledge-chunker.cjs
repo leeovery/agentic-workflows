@@ -7,17 +7,10 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, MAX_CHUNK_CHARS } = require('../../src/knowledge/chunker.js');
+const { chunk, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
-const CHUNKING_DIR = path.resolve(
-  __dirname,
-  '..',
-  '..',
-  'skills',
-  'workflow-knowledge',
-  'chunking'
-);
+const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
 
 function loadFixture(name) {
   return fs.readFileSync(path.join(FIXTURE_DIR, name), 'utf8');
@@ -577,18 +570,11 @@ describe('phase chunking configs', () => {
   const path = require('path');
   const fs = require('fs');
 
-  const chunkingDir = path.resolve(
-    __dirname,
-    '..',
-    '..',
-    'skills',
-    'workflow-knowledge',
-    'chunking'
-  );
+  const chunkingDir = CHUNKING_DIR;
 
   // Every indexable phase ships a validated config — driven from the source
   // of truth so a new phase cannot land without one.
-  const { INDEXED_PHASES } = require('../../src/knowledge/index');
+  const { INDEXED_PHASES } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
   const phases = INDEXED_PHASES;
 
   for (const phase of phases) {

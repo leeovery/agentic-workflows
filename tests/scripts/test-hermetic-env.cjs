@@ -14,8 +14,9 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const REPO = path.resolve(__dirname, '..', '..');
-const KNOWLEDGE = path.join(REPO, 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
+const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const { recordLaunches } = require('./knowledge-harness.cjs');
+
 const HERMETIC_MODULE = './hermetic-env.cjs';
 
 /** The module a file's first require names, comments and directives skipped. */
@@ -56,13 +57,13 @@ function cleanup(dir) {
 /**
  * Index the project's one document; answers the run and the store's
  * metadata — null when no store was built.
+ * @param {string} [configDir]  the system config directory, over the suite's own
  */
 function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
-    const env = configDir === undefined ? process.env : { ...process.env, WORKFLOWS_CONFIG_DIR: configDir };
-    const res = spawnSync('node', [KNOWLEDGE, 'index', '.workflows/auth/discussion/auth.md'],
-      { cwd: project, encoding: 'utf8', env });
+    const env = configDir === undefined ? {} : { WORKFLOWS_CONFIG_DIR: configDir };
+    const res = engine.run(['knowledge', 'index', '.workflows/auth/discussion/auth.md'], { cwd: project, env });
     const metadataFile = path.join(project, '.workflows', '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {
@@ -126,7 +127,7 @@ describe('hermetic environment — the pins', () => {
 describe('hermetic environment — no embedding provider', () => {
   it('under the suite environment nothing configures a provider — a store no test chose is never built', () => {
     const { res, metadata } = indexUnderConfigDir();
-    assert.notStrictEqual(res.status, 0);
+    assert.notStrictEqual(res.code, 0);
     assert.match(res.stderr, /no embedding provider is configured and keyword-only was never chosen/);
     assert.strictEqual(metadata, null);
   });
@@ -135,14 +136,16 @@ describe('hermetic environment — no embedding provider', () => {
   // provider, not openai: an openai config with no resolvable key builds no
   // store either — so openai would pass whether the pin held or not — while
   // the stub needs no key and no network and still reaches the metadata.
-  it('a system config naming a provider would reach the store — the pin is what keeps it out', () => {
+  it('a system config naming a provider would reach the store — the pin is what keeps it out', (t) => {
     const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermetic-control-'));
+    const launched = recordLaunches(t);
     try {
       fs.writeFileSync(path.join(configDir, 'config.json'),
         JSON.stringify({ knowledge: { provider: 'stub', model: 'stub', dimensions: 128 } }));
       const { res, metadata } = indexUnderConfigDir(configDir);
-      assert.strictEqual(res.status, 0, `index failed:\n${res.stdout}\n${res.stderr}`);
+      assert.strictEqual(res.code, 0, `index failed:\n${res.stdout}\n${res.stderr}`);
       assert.strictEqual(metadata.provider, 'stub');
+      assert.strictEqual(launched.length, 1, 'its vectors handed to the fill');
     } finally {
       cleanup(configDir);
     }

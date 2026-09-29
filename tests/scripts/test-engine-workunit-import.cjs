@@ -13,9 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { git, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -57,8 +55,10 @@ function setupFixture({ feature = featureManifest() } = {}) {
   git(project, ['config', 'user.email', 'test@example.com']);
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
-  // The cache is session machinery — never staged (migration 049's gitignore).
-  writeFile(project, '.workflows/.gitignore', '.cache/\n.manifest.json.*.tmp\n');
+  // The cache is session machinery — never staged (migration 049's gitignore);
+  // the knowledge directory is checkout-local (migration 060's).
+  writeFile(project, '.workflows/.gitignore', '.cache/\n.manifest.json.*.tmp\n.knowledge/\n');
+  keywordOnlyKnowledge(project);
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
     work_units: { [feature.name]: { work_type: feature.work_type } },
   }, null, 2) + '\n');
@@ -79,10 +79,10 @@ function removeFixture(fix) {
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-const engine = (fix, args, env = {}) => stubbed.ok(fix.project, args, { env: { ...fix.env, ...env } });
+const engine = (fix, args, env = {}) => ok(fix.project, args, { env: { ...fix.env, ...env } });
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env: { ...fix.env, ...env } });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env: { ...fix.env, ...env } });
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -127,7 +127,7 @@ describe('engine workunit import — happy path', () => {
     assert.ok(fs.existsSync(path.join(fix.project, 'shots/Dockset 05 Material.JPEG')));
 
     // Only the markdown landing is knowledge-base material.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/ledger/imports/onboarding-notes.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/ledger/imports/onboarding-notes.md']);
 
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 2 file(s) for research/ledger');
   });
@@ -243,7 +243,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
     assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 
   it('a directory among the paths refuses before any copy — no half-landed batch', () => {
@@ -335,12 +335,13 @@ describe('engine workunit import — the derived tail', () => {
   afterEach(() => { removeFixture(fix); });
 
   it('a knowledge failure warns and the commit still lands', () => {
+    unreadableKnowledge(fix.project);
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
-    const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH], { STUB_KNOWLEDGE_EXIT: '1' });
+    const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge index \(imports\/brief\.md\) failed: kb exploded/);
+    assert.match(res.warnings[0], /^knowledge index \(imports\/brief\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'ledger').imports.length, 1, 'the manifest write is the source of truth');
   });

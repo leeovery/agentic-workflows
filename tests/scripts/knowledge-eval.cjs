@@ -3,8 +3,8 @@
 // The knowledge base's eval harness: judged queries over a frozen snapshot of
 // three real projects, measuring how often retrieval returns the passage an
 // agent needed, how high, and at what cost in output. Each project's fixture
-// is copied and indexed through the source CLI's bulk index; every case runs
-// in process through the query function the CLI itself calls, and the
+// is copied and indexed through `engine knowledge index`; every case runs in
+// process through the query function `engine knowledge query` calls, and the
 // measurements compare exactly with a pinned baseline.
 //
 // The gate (test-knowledge-eval.cjs) runs the keyword mode. By hand:
@@ -29,14 +29,20 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 
-const knowledge = require('../../src/knowledge/index');
+const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { deriveIdentity } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
+const { keyUnresolvedError } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
+const { boostProblem, querySettings, queryStore, renderQuery } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
+const { buildOptions } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const EVAL_DIR = path.join(REPO, 'tests', 'fixtures', 'knowledge-eval');
 const EMBEDDINGS_DIR = path.join(REPO, 'tests', '.cache', 'knowledge-eval', 'embeddings');
-const KNOWLEDGE_SRC = path.join(REPO, 'src', 'knowledge');
+const ENGINE_CJS = path.join(REPO, 'skills', 'workflow-engine', 'scripts', 'engine.cjs');
 const PROJECTS = ['portal', 'tick', 'fumi'];
 
 const CASE_KEYS = new Set(['id', 'project', 'origin', 'asked', 'from', 'need', 'terms', 'options', 'relevant']);
@@ -53,7 +59,7 @@ const OPTION_KEYS = new Set(['boosts', 'limit', ...FILTER_FLAGS]);
 const PINNED_CASE_FIELDS = ['first', 'first_primary', 'primary_found', 'primary_total', 'results', 'bytes'];
 
 const PROVIDER_IDENTITY_KEYS = ['provider', 'model', 'dimensions', 'base_url'];
-const TUNING_UNSET = Object.fromEntries(Object.keys(knowledge.config.DEFAULTS).map((key) => [key, null]));
+const TUNING_UNSET = Object.fromEntries(Object.keys(config.DEFAULTS).map((key) => [key, null]));
 const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
 
 const execFileAsync = promisify(execFile);
@@ -75,7 +81,7 @@ const execFileAsync = promisify(execFile);
  * @property {string} [from]  an off-topic negative's source — the project its query was asked in
  * @property {string} need
  * @property {string[]} terms
- * @property {Record<string, any>} [options]  the CLI's flag names: boosts, filters, limit
+ * @property {Record<string, any>} [options]  `engine knowledge query`'s flag names: boosts, filters, limit
  * @property {Judgment[]} relevant
  */
 
@@ -95,14 +101,14 @@ const execFileAsync = promisify(execFile);
  * @property {string} root
  * @property {Record<string, any>} cfg
  * @property {any} provider  embeds each query term — null in the keyword mode
- * @property {string|null} cacheDir  the embedding cache its knowledge CLI embeds through — null in the keyword mode
+ * @property {string|null} cacheDir  the embedding cache its `engine knowledge` embeds through — null in the keyword mode
  * @property {number} indexMs  how long its bulk index took
  */
 
 /**
  * @typedef {object} CaseRun
  * @property {EvalCase} evalCase
- * @property {Array<Record<string, any>>} results  ranked, as the CLI would print them
+ * @property {Array<Record<string, any>>} results  ranked, as `engine knowledge query` would print them
  * @property {number} bytes  the rendered output's size
  * @property {number} ms  how long the query took
  */
@@ -234,7 +240,7 @@ function indexableFiles(project) {
   const workType = (unit) => readJson(path.join(root, '.workflows', unit, 'manifest.json')).work_type;
   return new Map(filesUnder(root, (file) => file.endsWith('.md')).map((file) => {
     const source = path.relative(root, file);
-    const { workUnit, phase, topic } = knowledge.deriveIdentity(source);
+    const { workUnit, phase, topic } = deriveIdentity(source);
     return [source, { work_unit: workUnit, work_type: workType(workUnit), phase, topic }];
   }));
 }
@@ -280,7 +286,7 @@ function optionProblems(c, fixture) {
   ];
   const boosts = options.boosts || [];
   if (!Array.isArray(boosts)) return [...problems, 'boosts must be a list'];
-  return [...problems, ...boosts.map(knowledge.boostProblem).filter(Boolean), ...namingProblems(c.project, options, fixture)];
+  return [...problems, ...boosts.map(boostProblem).filter(Boolean), ...namingProblems(c.project, options, fixture)];
 }
 
 /**
@@ -373,13 +379,13 @@ function unmatchedJudgments(cases, chunks) {
 // ---------------------------------------------------------------------------
 
 /**
- * A project's config as the CLI resolves it there — its project config over
+ * A project's config as the engine resolves it there — its project config over
  * the system config, the key from the environment or the credentials file.
  * @param {string} root
  */
 function resolvedConfig(root) {
-  const cfg = knowledge.config.loadConfig({ projectPath: knowledge.config.projectConfigPath(root) });
-  return { cfg, provider: knowledge.config.resolveProvider(cfg) };
+  const cfg = config.loadConfig({ projectPath: knowledgeFiles(root).config });
+  return { cfg, provider: config.resolveProvider(cfg) };
 }
 
 /**
@@ -390,7 +396,7 @@ function resolvedConfig(root) {
 function stageFixture(project, parent, settings) {
   const root = fs.mkdtempSync(path.join(parent, `${project}-`));
   fs.cpSync(path.join(fixtureRoot(project), '.workflows'), path.join(root, '.workflows'), { recursive: true });
-  writeJson(knowledge.config.projectConfigPath(root), { knowledge: settings });
+  writeJson(knowledgeFiles(root).config, { knowledge: settings });
   return root;
 }
 
@@ -407,15 +413,15 @@ async function stopwatch(fn) {
 }
 
 /**
- * The knowledge CLI, from source, in the project — embedding through the
- * cache under `cacheDir`, when one is named. A command that fails throws
- * with what it printed.
+ * `engine knowledge <args>`, in the project — embedding through the cache
+ * under `cacheDir`, when one is named. A command that fails throws with what
+ * it printed.
  * @param {string} root @param {string[]} args @param {string|null} cacheDir
  */
 async function runKnowledge(root, args, cacheDir) {
   const { execArgv, env } = cacheDir ? embeddings.preloadFor(cacheDir) : { execArgv: [], env: {} };
   try {
-    await execFileAsync(process.execPath, [...execArgv, path.join(KNOWLEDGE_SRC, 'index.js'), ...args], {
+    await execFileAsync(process.execPath, [...execArgv, ENGINE_CJS, 'knowledge', ...args], {
       cwd: root,
       env: { ...process.env, ...env },
       maxBuffer: 64 * 1024 * 1024,
@@ -467,8 +473,8 @@ function openHybridMode(scratch) {
   const settings = hybridSettings();
   const settingsFile = path.join(scratch, 'hybrid-config.json');
   writeJson(settingsFile, { knowledge: settings });
-  const cfg = knowledge.config.loadConfig({ projectPath: settingsFile });
-  const provider = knowledge.config.resolveProvider(cfg);
+  const cfg = config.loadConfig({ projectPath: settingsFile });
+  const provider = config.resolveProvider(cfg);
   assertProvider(cfg, provider);
   const identity = embeddings.providerIdentity(cfg, provider);
   const cache = embeddings.embeddingCache(EMBEDDINGS_DIR, identity);
@@ -488,7 +494,7 @@ function openHybridMode(scratch) {
  * identity this machine's config names, and every tuning key unset to its default.
  */
 function hybridSettings() {
-  const system = knowledge.config.readConfigFile(knowledge.config.systemConfigPath(), { sharedFile: true }) || {};
+  const system = config.readConfigFile(config.systemConfigPath(), { sharedFile: true }) || {};
   return {
     ...Object.fromEntries(PROVIDER_IDENTITY_KEYS.map((key) => [key, system[key] ?? null])),
     ...TUNING_UNSET,
@@ -498,9 +504,9 @@ function hybridSettings() {
 /** @param {Record<string, any>} cfg @param {any} provider */
 function assertProvider(cfg, provider) {
   if (!cfg.provider) {
-    throw new Error(`the hybrid mode embeds with this machine's provider, and ${knowledge.config.systemConfigPath()} names none`);
+    throw new Error(`the hybrid mode embeds with this machine's provider, and ${config.systemConfigPath()} names none`);
   }
-  if (!provider) throw knowledge.keyUnresolvedError(cfg, 'the hybrid mode cannot embed without it.\n');
+  if (!provider) throw keyUnresolvedError(cfg, 'the hybrid mode cannot embed without it.\n');
 }
 
 /**
@@ -514,17 +520,17 @@ function workUnitsOf(root) {
 }
 
 /**
- * A built project, loaded for querying as the CLI loads it, and how long
+ * A built project, loaded for querying as the engine loads it, and how long
  * the store's load took.
  * @param {BuiltProject} built
  */
 async function openStore({ root, cfg, provider }) {
-  const metadata = knowledge.store.readMetadata(knowledge.metadataPath(root));
-  const { value: db, ms: loadMs } = await stopwatch(() => knowledge.store.loadStore(knowledge.storePath(root)));
+  const metadata = store.readMetadata(knowledgeFiles(root).metadata);
+  const { value: db, ms: loadMs } = await stopwatch(() => store.loadStore(knowledgeFiles(root).store));
   return {
     db,
     loadMs,
-    settings: knowledge.querySettings(metadata, cfg, provider),
+    settings: querySettings(metadata, cfg, provider),
     workUnits: workUnitsOf(root),
   };
 }
@@ -543,18 +549,18 @@ const MODES = {
 /** @typedef {keyof typeof MODES} Mode */
 
 /**
- * One case, called exactly as the CLI calls the query with the case's flags.
+ * One case, called exactly as `engine knowledge query` calls the query with the case's flags.
  * @param {Awaited<ReturnType<typeof openStore>>} opened @param {EvalCase} evalCase
  * @returns {Promise<CaseRun>}
  */
 async function runCase(opened, evalCase) {
   const { boosts = [], ...flags } = evalCase.options || {};
-  const { value: outcome, ms } = await stopwatch(() => knowledge.queryStore(opened.db, opened.settings, {
+  const { value: outcome, ms } = await stopwatch(() => queryStore(opened.db, opened.settings, {
     terms: evalCase.terms,
-    options: knowledge.buildOptions(flags, boosts),
+    options: buildOptions(flags, boosts),
     workUnits: opened.workUnits,
   }));
-  return { evalCase, results: outcome.results, bytes: Buffer.byteLength(knowledge.renderQuery(outcome)), ms };
+  return { evalCase, results: outcome.results, bytes: Buffer.byteLength(renderQuery(outcome)), ms };
 }
 
 /**
@@ -570,13 +576,13 @@ function representativeFile(root, chunks) {
 
 /**
  * What the project cost this machine: its store measured as built, then a
- * representative file re-indexed into it through the CLI's single-file index.
+ * representative file re-indexed into it through `engine knowledge index <file>`.
  * @param {BuiltProject} built @param {{loadMs: number}} opened
  * @param {Array<Record<string, any>>} chunks @param {CaseRun[]} runs
  * @returns {Promise<ProjectTimings>}
  */
 async function projectTimings(built, opened, chunks, runs) {
-  const storeBytes = fs.statSync(knowledge.storePath(built.root)).size;
+  const storeBytes = fs.statSync(knowledgeFiles(built.root).store).size;
   const file = representativeFile(built.root, chunks);
   const { ms: singleFileMs } = await stopwatch(() => runKnowledge(built.root, ['index', file], built.cacheDir));
   return {
@@ -597,7 +603,7 @@ async function projectTimings(built, opened, chunks, runs) {
  */
 async function runProject(built, cases, timed) {
   const opened = await openStore(built);
-  const chunks = knowledge.store.allChunks(opened.db);
+  const chunks = store.allChunks(opened.db);
   const unmatched = unmatchedJudgments(cases, chunks);
   if (unmatched.length > 0) throw new Error(`judgments no indexed chunk matches:\n  ${unmatched.join('\n  ')}`);
   const runs = [];

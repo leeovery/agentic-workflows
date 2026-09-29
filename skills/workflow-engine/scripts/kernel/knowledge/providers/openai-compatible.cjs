@@ -1,4 +1,7 @@
-// OpenAI-compatible embedding provider — entry for any local/self-hosted
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: OpenAI-compatible embedding provider — entry for any local/self-hosted
 // endpoint that speaks the OpenAI /v1/embeddings wire protocol (LM Studio,
 // Ollama's OpenAI shim, vLLM, LiteLLM, ...).
 //
@@ -11,14 +14,13 @@
 //     OpenAI `dimensions` request param.
 //   - error context carries generic/connection remedies (no
 //     platform.openai.com hints; ECONNREFUSED reads as "server not running").
+// ---------------------------------------------------------------------------
 
-'use strict';
-
-const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine');
+const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine.cjs');
 
 class OpenAICompatibleProvider {
   /**
-   * @param {{ baseUrl: string, apiKey?: string|null, model?: string, dimensions?: number } & import('./openai-engine').Patience} options
+   * @param {{ baseUrl: string, apiKey?: string|null, model?: string, dimensions?: number } & import('./openai-engine.cjs').Patience} options
    */
   constructor(options) {
     if (!options || !options.baseUrl) {
@@ -65,7 +67,7 @@ class OpenAICompatibleProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Setup descriptor — see openai.js for the toolkit contract. Prompts for
+// Setup descriptor — see openai.cjs for the toolkit contract. Prompts for
 // base_url (required), model (required), dimensions (required positive int,
 // must match the local model's native output), then a single optional key
 // (Enter = none). Validates via a test embed against the endpoint.

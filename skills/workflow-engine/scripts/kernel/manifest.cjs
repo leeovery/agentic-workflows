@@ -11,6 +11,7 @@
 // stable.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const io = require('./manifest-io.cjs');
 
@@ -63,6 +64,36 @@ function readProjectManifest(cwd) {
 }
 
 /**
+ * Every work unit's manifest: the registered names, or — while none are
+ * registered — the directories under `.workflows/`. A name whose manifest
+ * is missing or unreadable is passed over. Loud on a corrupt project
+ * manifest, as its read is.
+ * @param {string} cwd
+ * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
+ * @returns {Array<Record<string, any>>}
+ */
+function listWorkUnitManifests(cwd, project) {
+  const wfDir = workflowsDir(cwd);
+  if (!fs.existsSync(wfDir)) return [];
+  const registered = Object.keys((project || io.readProjectManifest(wfDir)).work_units || {});
+  const names = registered.length > 0
+    ? registered
+    : fs.readdirSync(wfDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+      .map((e) => e.name);
+  /** @type {Array<Record<string, any>>} */
+  const manifests = [];
+  for (const name of names) {
+    try {
+      manifests.push(io.readWorkUnitManifest(wfDir, name));
+    } catch {
+      // missing or unreadable — passed over
+    }
+  }
+  return manifests;
+}
+
+/**
  * Save the project manifest atomically.
  * @param {string} cwd
  * @param {object} data
@@ -91,6 +122,7 @@ module.exports = {
   saveWorkUnitManifest,
   withWorkUnitLock,
   readProjectManifest,
+  listWorkUnitManifests,
   writeProjectManifestAtomic,
   withProjectLock,
   ensureContainer,

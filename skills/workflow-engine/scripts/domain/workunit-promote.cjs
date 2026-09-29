@@ -29,7 +29,8 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
+const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -269,15 +270,16 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   for (const rel of missingImports) {
     warnings.push(`import carry skipped: ${rel} is tracked on "${workUnit}" but missing on disk`);
   }
-  for (const name of discussionMoves) {
-    knowledge(cwd, ['index', INDEXED_ARTIFACTS.discussion(to, name)], `knowledge index (discussion/${name})`, warnings);
-    knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'discussion', '--topic', name], `knowledge remove (discussion/${name})`, warnings);
-  }
-  for (const carried of importCarry.filter((c) => isIndexableImport(c.basename))) {
-    knowledge(cwd, ['index', importArtifact(to, carried.basename)], `knowledge index (imports/${carried.basename})`, warnings);
-  }
-  knowledge(cwd, ['index', INDEXED_ARTIFACTS.specification(to, to)], `knowledge index (specification/${to})`, warnings);
-  knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', topic], `knowledge remove (specification/${topic})`, warnings);
+  syncKnowledge(cwd, [
+    ...discussionMoves.flatMap((name) => [
+      { index: INDEXED_ARTIFACTS.discussion(to, name), label: `knowledge index (discussion/${name})` },
+      { remove: { workUnit, phase: 'discussion', topic: name }, label: `knowledge remove (discussion/${name})` },
+    ]),
+    ...importCarry.filter((c) => isIndexableImport(c.basename))
+      .map((carried) => ({ index: importArtifact(to, carried.basename), label: `knowledge index (imports/${carried.basename})` })),
+    { index: INDEXED_ARTIFACTS.specification(to, to), label: `knowledge index (specification/${to})` },
+    { remove: { workUnit, phase: 'specification', topic }, label: `knowledge remove (specification/${topic})` },
+  ], warnings);
 
   const outcome = commitTailPathspec(
     cwd,

@@ -8,9 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ENGINE, git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { ENGINE, git, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -26,6 +24,9 @@ function setupGitFixture(root) {
   git(project, ['config', 'user.email', 'test@example.com']);
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
+  // The knowledge directory is checkout-local, never committed.
+  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  keywordOnlyKnowledge(project);
   writeFile(project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
   writeFile(project, '.workflows/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
   writeFile(project, '.workflows/.inbox/quickfixes/2026-06-03--typo-fix.md', '# Typo Fix\n');
@@ -40,10 +41,10 @@ function setupFixture() {
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
-const engine = (fix, args, env = {}) => stubbed.ok(fix.project, args, { env });
+const engine = (fix, args, env = {}) => ok(fix.project, args, { env });
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
 const SESSION_LOG = '# Discovery Session 001\n\nDate: 2026-07-15\n\n## Exploration\n\nShaping prose.\n';
 const LOG_STAGE = '.workflows/.cache/payments/discovery/session-001.md';
@@ -140,9 +141,9 @@ describe('engine workunit create — happy path', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
 
     // Both landed files were KB-indexed.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'index .workflows/payments/imports/my-design-doc.md',
-      'index .workflows/payments/seeds/2026-06-01-smart-retry.md',
+    assert.deepStrictEqual(indexedFiles(fix.project), [
+      '.workflows/payments/imports/my-design-doc.md',
+      '.workflows/payments/seeds/2026-06-01-smart-retry.md',
     ]);
 
     // One commit, engine-owned message, staging the work unit AND the seed's
@@ -251,7 +252,7 @@ describe('engine workunit create — a name already taken refuses', () => {
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.inbox/bugs/2026-06-02--login-loop.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/seeds')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')));
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   }
 
   it('an existing same-type unit refuses with the clash named — nothing touched', () => {
@@ -319,7 +320,7 @@ describe('engine workunit create — import filename normalisation', () => {
     assert.deepStrictEqual(res.imports, [{ path: 'imports/good.md' }]);
     assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), ['imports/good.md']);
     // The skipped file was never indexed.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/payments/imports/good.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/payments/imports/good.md']);
   });
 
   it('suffixes batch collisions — same source twice and distinct sources normalising alike', () => {
@@ -347,7 +348,7 @@ describe('engine workunit create — import filename normalisation', () => {
       { path: 'imports/design.md' },
     ]);
     // Only the markdown-ish landing is knowledge-base material.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/payments/imports/design.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/payments/imports/design.md']);
     const entries = readManifest(fix, 'payments').imports;
     assert.deepStrictEqual(entries.map((e) => e.origin), ['discovery', 'discovery', 'discovery']);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/screenshot-one.jpeg'), 'utf8'), 'jpeg bytes\n');
@@ -430,11 +431,11 @@ describe('engine workunit create — missing imports fail fast', () => {
 
     assert.match(err.error, /import path\(s\) not found/);
     assert.deepStrictEqual(err.missing_imports, ['notes/ghost.md', 'notes/phantom.md']);
-    // No manifest, no copies, no seed move, no commit, no KB calls.
+    // No manifest, no copies, no seed move, no commit, nothing indexed.
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(commitCount(fix), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 
   it('a directory among the imports refuses before any copy — no half-landed batch', () => {
@@ -449,7 +450,7 @@ describe('engine workunit create — missing imports fail fast', () => {
     assert.deepStrictEqual(err.missing_imports, ['notes/album']);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
     assert.strictEqual(commitCount(fix), '1');
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 });
 
@@ -459,16 +460,17 @@ describe('engine workunit create — knowledge base is warn-don\'t-block', () =>
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('per-file indexing failures land in warnings; the transaction still commits', () => {
+    unreadableKnowledge(fix.project);
     writeFile(fix.project, 'notes/design.md', 'notes\n');
     const res = engine(fix, createArgs('payments', 'epic', [
       '--import', 'notes/design.md',
       '--seed', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-    ]), { STUB_KNOWLEDGE_EXIT: '1' });
+    ]));
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.warnings.length, 2);
-    assert.match(res.warnings[0], /knowledge index \(imports\/design\.md\) failed: kb exploded/);
-    assert.match(res.warnings[1], /knowledge index \(seeds\/2026-06-01-smart-retry\.md\) failed: kb exploded/);
+    assert.match(res.warnings[0], /^knowledge index \(imports\/design\.md\) failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[1], /^knowledge index \(seeds\/2026-06-01-smart-retry\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/imports/design.md')));
     assert.strictEqual(lastMessage(fix), 'discovery(payments): create work unit (epic)');

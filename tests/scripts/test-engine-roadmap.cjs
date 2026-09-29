@@ -19,7 +19,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/workflow-engine/scripts/domain/roadmap.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture: cleanup, ok, output, refuses, stubbedEngine, knowledgeCalls } = harness;
+const { git, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;
 
 /** A temp-dir git repo with an empty project manifest committed. */
 function setupGitFixture() {
@@ -480,6 +480,20 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   const epicText = () => fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
 
+  const RESEARCH = '.workflows/mvp/research/ordering.md';
+  const SIBLING = '.workflows/mvp/discussion/menus.md';
+  /**
+   * The topic's completed research indexed into a keyword-only store — the
+   * chunks a postpone takes — beside a sibling topic's discussion, which it
+   * leaves.
+   */
+  const indexResearch = () => {
+    keywordOnlyKnowledge(dir);
+    fs.writeFileSync(path.join(dir, SIBLING), '# Menus\n\nOperators maintain them.\n');
+    output(dir, ['knowledge', 'index', RESEARCH]);
+    output(dir, ['knowledge', 'index', SIBLING]);
+  };
+
   it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     assert.strictEqual(res.status, 'postponed');
@@ -553,13 +567,13 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('an illegal horizon refuses at the gate and at the verb, and the epic never moves', () => {
-    const stub = stubbedEngine();
+    indexResearch();
     const before = epicText();
     assert.throws(() => output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'v2.1']));
-    assert.match(stub.refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
+    assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
       /"v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
     assert.strictEqual(epicText(), before, 'the hold is never written');
-    assert.deepStrictEqual(knowledgeCalls(dir), [], 'and no chunk is removed for a topic that stayed');
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'and no chunk is removed for a topic that stayed');
   });
 
   it('a refusal at the landing leaves the epic manifest unsaved and its chunks in place', () => {
@@ -567,15 +581,15 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     // saved: a malformed node refuses there, with the hold written in memory
     // alone. Seeded here because the race it stands in for — a peer taking
     // the name in the window — no CLI sequence can reach.
+    indexResearch();
     const project = readProject(dir);
     project.roadmap = { horizons: {}, items: {} };
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(project, null, 2));
-    const stub = stubbedEngine();
     const before = epicText();
-    assert.match(stub.refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
+    assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
       /roadmap\.horizons is malformed/);
     assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
-    assert.deepStrictEqual(knowledgeCalls(dir), []);
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH]);
   });
 
   it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
@@ -663,14 +677,14 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('pull-forward back into the same epic restores the unit, re-indexes its completed artifacts, and drops postponed_from', () => {
-    const stub = stubbedEngine();
-    stub.ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    assert.ok(knowledgeCalls(dir).includes('remove --work-unit mvp --phase research --topic ordering'), 'the postpone removes the chunks');
-    const res = stub.ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
+    indexResearch();
+    ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING], 'the postpone removes the topic\'s chunks, and only those');
+    const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
     assert.strictEqual(res.op, 'pull-forward');
     assert.strictEqual(res.state, 'in-flight');
     assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.ok(knowledgeCalls(dir).includes('index .workflows/mvp/research/ordering.md'), 'the return re-indexes the completed artifact');
+    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'the return re-indexes the completed artifact');
     const m = epic();
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined, 'the marker is gone');
     assert.strictEqual(m.phases.discovery.items.ordering.order, 1, 'the map order returns');
@@ -684,11 +698,12 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('a return whose re-index fails still lands, carrying the failure as a warning', () => {
-    const stub = stubbedEngine();
-    stub.ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    const res = stub.ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp'], { env: { STUB_KNOWLEDGE_EXIT: '1' } });
+    ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    unreadableKnowledge(dir);
+    const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
     assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.deepStrictEqual(res.warnings, ['knowledge index failed: kb exploded']);
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the state write stands; the index is derived');
   });
 
@@ -951,8 +966,7 @@ describe('engine CLI: roadmap sessions and imports', () => {
   it('a binary lands tracked and unindexed, its extension kept and lowercased', () => {
     // Set up keyword-only, so the markdown landing indexes cleanly and any
     // warning could only be the binary's.
-    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
+    keywordOnlyKnowledge(dir);
     fs.writeFileSync(path.join(dir, 'Board Sketch.PNG'), 'png bytes\n');
     fs.writeFileSync(path.join(dir, 'notes.md'), '# notes\n');
     const res = runOk(dir, ['import', 'Board Sketch.PNG', 'notes.md']);
@@ -963,9 +977,10 @@ describe('engine CLI: roadmap sessions and imports', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')));
     const mode = fs.statSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
     assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
-    // No index was spawned for the binary: the real bundle refuses a `.png`
-    // by name, and the refusal would come back as a warning.
+    // No index was attempted for the binary: indexing refuses a `.png` by
+    // name, and the refusal would come back as a warning.
     assert.strictEqual('warnings' in res, false, JSON.stringify(res));
+    assert.deepStrictEqual(indexedFiles(dir), ['.workflows/.roadmap/imports/notes.md']);
   });
 
   it('import fails whole with missing_imports so the flow can re-prompt', () => {
@@ -1235,11 +1250,11 @@ describe('engine CLI: import edge discipline and the commit scope', () => {
   });
 
   it('close and import commit the roadmap and the project manifest — never the store', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'store.bin'), 'store\n');
+    keywordOnlyKnowledge(dir);
     fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
     runOk(dir, ['session', 'open', '--session-log-file', 'draft.md']);
     runOk(dir, ['session', 'close', '-m', 'roadmap: session 001']);
+    assert.deepStrictEqual(indexedFiles(dir), ['.workflows/.roadmap/sessions/session-001.md']);
     const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('.workflows/.roadmap/sessions/session-001.md'), 'the close commits its log');
     assert.ok(!staged.some((f) => f.startsWith('.workflows/.knowledge/')), 'and never the store its indexing touched');

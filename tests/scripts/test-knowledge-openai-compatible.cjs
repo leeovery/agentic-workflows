@@ -8,9 +8,9 @@ const assert = require('node:assert');
 const {
   OpenAICompatibleProvider,
   AuthError,
-} = require('../../src/knowledge/providers/openai-compatible');
-const { resolveProvider } = require('../../src/knowledge/config');
-const setup = require('../../src/knowledge/setup');
+} = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-compatible.cjs');
+const { resolveProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const setup = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
 
 // ---------------------------------------------------------------------------
 // Mock fetch helpers — capture the request so we can assert on URL/headers/body
@@ -281,7 +281,7 @@ describe('config merge carries base_url', () => {
   const fs = require('fs');
   const os = require('os');
   const path = require('path');
-  const { loadConfig } = require('../../src/knowledge/config');
+  const { loadConfig } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
 
   let tmpDir;
   beforeEach(() => {
@@ -374,7 +374,7 @@ describe('openai-compatible collect() against a fake prompter', () => {
   }
 
   it('collects base_url, model, dimensions and a key, validating via a test embed', async () => {
-    const { SETUP_DESCRIPTOR } = require('../../src/knowledge/providers/openai-compatible');
+    const { SETUP_DESCRIPTOR } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-compatible.cjs');
     const captured = {};
     globalThis.fetch = mockFetchCapturing(captured, {
       data: [{ index: 0, embedding: [0.1, 0.2, 0.3, 0.4] }],
@@ -396,7 +396,7 @@ describe('openai-compatible collect() against a fake prompter', () => {
   });
 
   it('returns { stub: true } when validation fails and the user declines retry', async () => {
-    const { SETUP_DESCRIPTOR } = require('../../src/knowledge/providers/openai-compatible');
+    const { SETUP_DESCRIPTOR } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-compatible.cjs');
     globalThis.fetch = mockFetchNetworkError('connect ECONNREFUSED 127.0.0.1:1234');
 
     const { tk } = fakeToolkit({

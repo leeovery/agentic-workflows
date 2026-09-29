@@ -13,7 +13,7 @@ const {
   withWorkUnitLock,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 const {
   planImports,
   copyImports,
@@ -100,9 +100,8 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
 
   /** @type {string[]} */
   const warnings = [];
-  for (const move of moves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', importArtifact(workUnit, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
-  }
+  syncKnowledge(cwd, moves.filter((m) => isIndexableImport(m.dest))
+    .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })), warnings);
 
   const outcome = commitTailPathspec(
     cwd,

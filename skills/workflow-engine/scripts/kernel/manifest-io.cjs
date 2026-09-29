@@ -21,6 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ownerAlive, processStartTime } = require('./process.cjs');
 
 // Lock discipline: a lock file created with O_EXCL is the mutex; a holder
 // that dies leaves a file whose mtime ages past LOCK_STALE_MS and is broken
@@ -221,20 +222,18 @@ function writeProjectManifestAtomic(workflowsDir, data) {
 }
 
 /**
- * Break a stale lock, at most one contender at a time. The `.breaking` guard
- * (O_EXCL, pid recorded) admits a single breaker, which re-checks the lock's
- * mtime INSIDE the guarded section before unlinking. A naive stat-then-unlink
- * lets a contender act on a pre-break observation: after the true break and a
- * re-acquire it would remove the new holder's fresh lock — two writers at
- * once. Inside the guard a stale mtime is decisive: the holder is dead
- * (nothing can release-race the unlink) and creations need the absence the
- * unlink is about to produce. Losers return false and fall back to the
- * acquire loop's wait/retry cadence. A dead breaker's guard heals by the
- * same staleness rule.
- * @param {string} lockFile
+ * Break a lock, at most one contender at a time, where `breakable` says so.
+ * The `.breaking` guard (O_EXCL, pid recorded) admits a single breaker,
+ * which asks `breakable` again INSIDE the guarded section before unlinking.
+ * A naive check-then-unlink lets a contender act on an observation made
+ * before the true break: after the break and a re-acquire it would remove
+ * the new holder's lock — two holders at once. Losers return false and
+ * fall back to their own cadence. A dead breaker's guard heals once it is
+ * older than `staleMs`.
+ * @param {string} lockFile @param {() => boolean} breakable @param {number} staleMs
  * @returns {boolean} true when this process performed the break
  */
-function breakStaleLockFile(lockFile, staleMs = LOCK_STALE_MS) {
+function breakGuarded(lockFile, breakable, staleMs) {
   const guard = `${lockFile}.breaking`;
   let fd;
   try {
@@ -247,7 +246,7 @@ function breakStaleLockFile(lockFile, staleMs = LOCK_STALE_MS) {
   }
   try {
     fs.writeSync(fd, String(process.pid));
-    if (Date.now() - fs.statSync(lockFile).mtimeMs > staleMs) {
+    if (breakable()) {
       fs.unlinkSync(lockFile);
       return true;
     }
@@ -258,6 +257,17 @@ function breakStaleLockFile(lockFile, staleMs = LOCK_STALE_MS) {
     fs.closeSync(fd);
     try { fs.unlinkSync(guard); } catch { /* healed from under us */ }
   }
+}
+
+/**
+ * Break a stale lock (see breakGuarded): inside the guard a stale mtime is
+ * decisive — the holder is dead, and creations need the absence the unlink
+ * is about to produce.
+ * @param {string} lockFile
+ * @returns {boolean} true when this process performed the break
+ */
+function breakStaleLockFile(lockFile, staleMs = LOCK_STALE_MS) {
+  return breakGuarded(lockFile, () => Date.now() - fs.statSync(lockFile).mtimeMs > staleMs, staleMs);
 }
 
 /**
@@ -308,6 +318,81 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS, 
 /** @param {string} lockFile */
 function releaseLockFile(lockFile) {
   try { fs.unlinkSync(lockFile); } catch { /* already gone */ }
+}
+
+/**
+ * The owner a claim file records — null where it cannot be read.
+ * @param {string} claimFile @returns {{pid?: number, pid_start?: string|null}|null}
+ */
+function claimOwner(claimFile) {
+  try {
+    const record = JSON.parse(fs.readFileSync(claimFile, 'utf8'));
+    return record && typeof record === 'object' ? record : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a claim stands: its owner still runs — or, where no owner can be
+ * read, it is younger than `staleMs`. A claim that is gone stands for no one.
+ * @param {string} claimFile @param {number} staleMs
+ */
+function claimStands(claimFile, staleMs) {
+  let stat;
+  try {
+    stat = fs.statSync(claimFile);
+  } catch {
+    return false;
+  }
+  const owner = claimOwner(claimFile);
+  return owner ? ownerAlive(owner) : Date.now() - stat.mtimeMs <= staleMs;
+}
+
+/**
+ * Create `claimFile` holding `record`, exclusively: the record is written
+ * whole beside it and linked into place, so no reader ever meets an empty
+ * claim.
+ * @param {string} claimFile @param {string} record
+ * @returns {boolean} whether this process created it
+ */
+function createClaim(claimFile, record) {
+  const tmp = `${claimFile}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, record);
+  try {
+    fs.linkSync(tmp, claimFile);
+    return true;
+  } catch (e) {
+    if (!(e && typeof e === 'object' && 'code' in e) || e.code !== 'EEXIST') throw e;
+    return false;
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+/**
+ * Claim `claimFile` for this process without waiting — a job only one
+ * process may run at a time, whose holder may run for as long as the job
+ * takes, so liveness is its owner's, never its age. The claim is created
+ * exclusively with this process's identity, or taken over (guarded, as a
+ * stale lock's break is) from an owner that no longer runs; a claim whose
+ * owner cannot be read stands until it is older than `staleMs`.
+ * @param {string} claimFile @param {number} [staleMs]
+ * @returns {(() => void)|null} the release — which removes the claim only
+ *   while it is still this process's — or null while another holds it
+ */
+function tryClaimFile(claimFile, staleMs = LOCK_STALE_MS) {
+  const own = { pid: process.pid, pid_start: processStartTime(process.pid) };
+  const release = () => {
+    const owner = claimOwner(claimFile);
+    if (owner && owner.pid === own.pid && owner.pid_start === own.pid_start) releaseLockFile(claimFile);
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (createClaim(claimFile, JSON.stringify(own))) return release;
+    if (claimStands(claimFile, staleMs)) return null;
+    breakGuarded(claimFile, () => !claimStands(claimFile, staleMs), staleMs);
+  }
+  return null;
 }
 
 // Block the thread for `ms` without burning CPU. Atomics.wait on a throwaway
@@ -372,6 +457,7 @@ module.exports = {
   breakStaleLockFile,
   acquireLockFile,
   releaseLockFile,
+  tryClaimFile,
   ensureContainer,
   readWorkUnitManifest,
   writeJsonAtomic,

@@ -1,19 +1,7 @@
 'use strict';
 
-// Pins the bulk-discovery artifact SET on a rich fixture. discoverArtifacts()
-// must yield exactly the completed artifacts the pre-refactor walk produced —
-// this is the equivalence guard for the perf change that dropped the per-topic
-// `engine manifest resolve` spawns and derives phase-artifact paths locally.
-//
-// File paths are compared project-root-relative: the old engine-resolve path
-// returned ABSOLUTE paths for the four phase artifacts (research, discussion,
-// investigation, specification) while imports/seeds/analysis/discovery were
-// already relative; the local derivation returns relative for all. Same on-disk
-// target either way, so normalising to `.workflows/…` proves set-equivalence.
-//
-// The golden set below was captured from the pre-refactor discoverArtifacts()
-// on this exact fixture (absolute phase paths relativised) and is unchanged by
-// the refactor.
+// Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
+// yields exactly the completed artifacts below, every path project-root-relative.
 
 require('./hermetic-env.cjs');
 
@@ -23,7 +11,13 @@ const path = require('path');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
-const { discoverArtifacts } = require('../../src/knowledge/index');
+const { discoverArtifacts, readManifests, deriveIdentity } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
+const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
+
+/** Every artifact the project's manifests name. @param {string} root */
+function discover(root) {
+  return discoverArtifacts(root, readManifests(root));
+}
 
 function writeJson(p, obj) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -196,40 +190,34 @@ function normalise(items) {
 
 describe('knowledge bulk discovery — artifact-set equivalence', () => {
   let root;
-  let cwd0;
 
   before(() => {
     root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-discover-')));
     buildFixture(root);
-    cwd0 = process.cwd();
-    process.chdir(root);
   });
 
   after(() => {
-    process.chdir(cwd0);
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('discovers exactly the expected identity + target set', () => {
-    assert.deepStrictEqual(normalise(discoverArtifacts()), EXPECTED);
+    assert.deepStrictEqual(normalise(discover(root)), EXPECTED);
   });
 
   it('leaves the retired research-analysis cache undiscovered', () => {
-    const files = normalise(discoverArtifacts()).map((it) => it.file);
+    const files = normalise(discover(root)).map((it) => it.file);
     assert.ok(!files.includes('.workflows/payments/.state/research-analysis.md'));
   });
 
   it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {
-    const files = normalise(discoverArtifacts()).map((it) => it.file);
+    const files = normalise(discover(root)).map((it) => it.file);
     assert.ok(!files.includes('.workflows/payments/imports/dockset-05.jpeg'));
     assert.ok(!files.includes('.workflows/.roadmap/imports/diagram.png'));
   });
 
-  it('accepts manifests already read and yields the identical set', () => {
-    // The bulk index and status read the manifests once and pass them in; the
-    // result must match the self-fetching path exactly.
+  it('yields the identical set over the manifests however they were read', () => {
     const workUnits = JSON.parse(require('./engine-harness.cjs').output(root, ['manifest', 'list']));
-    assert.deepStrictEqual(normalise(discoverArtifacts({ workUnits, registry: null, roadmapSession: null })), EXPECTED);
+    assert.deepStrictEqual(normalise(discoverArtifacts(root, { workUnits, registry: null, roadmapSession: null })), EXPECTED);
   });
 });
 
@@ -238,7 +226,6 @@ describe('knowledge bulk discovery — live session logs', () => {
   // is being written: the epic's `phases.discovery.active_session` and the
   // project's `roadmap.active_session` name the live one.
   let root;
-  let cwd0;
 
   before(() => {
     root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-discover-live-')));
@@ -255,58 +242,20 @@ describe('knowledge bulk discovery — live session logs', () => {
       writeFile(path.join(dir, 'session-001.md'), '# closed\n');
       writeFile(path.join(dir, 'session-002.md'), '# live\n');
     }
-    cwd0 = process.cwd();
-    process.chdir(root);
   });
 
   after(() => {
-    process.chdir(cwd0);
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it("leaves the epic's live discovery session log undiscovered", () => {
-    const sessions = normalise(discoverArtifacts()).filter((it) => it.phase === 'discovery').map((it) => it.topic);
+    const sessions = normalise(discover(root)).filter((it) => it.phase === 'discovery').map((it) => it.topic);
     assert.deepStrictEqual(sessions, ['session-001']);
   });
 
   it("leaves the roadmap's live session log undiscovered", () => {
-    const sessions = normalise(discoverArtifacts()).filter((it) => it.phase === 'roadmap').map((it) => it.topic);
+    const sessions = normalise(discover(root)).filter((it) => it.phase === 'roadmap').map((it) => it.topic);
     assert.deepStrictEqual(sessions, ['session-001']);
-  });
-});
-
-describe('knowledge vocabularies the engine also defines', () => {
-  const { ARTIFACT_PATHS, RETIRED_ITEM_STATUSES } = require('../../src/knowledge/index');
-
-  it('retires chunks under exactly the statuses the engine calls terminal', () => {
-    const { TERMINAL_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
-    assert.deepStrictEqual([...RETIRED_ITEM_STATUSES].sort(), [...TERMINAL_STATUSES].sort());
-  });
-
-  it("derives each phase artifact's path exactly as the engine does", () => {
-    const { INDEXED_ARTIFACTS } = require('../../skills/workflow-engine/scripts/domain/kb.cjs');
-    assert.deepStrictEqual(Object.keys(ARTIFACT_PATHS).sort(), Object.keys(INDEXED_ARTIFACTS).sort());
-    for (const phase of Object.keys(ARTIFACT_PATHS)) {
-      assert.strictEqual(ARTIFACT_PATHS[phase]('payments', 'ledger'), INDEXED_ARTIFACTS[phase]('payments', 'ledger'), phase);
-    }
-  });
-
-  it('names the knowledge files a worktree is given exactly as the CLI resolves them', () => {
-    const { knowledgeDir, storePath, metadataPath, config } = require('../../src/knowledge/index');
-    const { KNOWLEDGE_DIR, METADATA_FILE, STORE_FILES } = require('../../skills/workflow-engine/scripts/domain/kb.cjs');
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-paths-')));
-    const cwd0 = process.cwd();
-    try {
-      fs.mkdirSync(path.join(root, '.workflows'));
-      process.chdir(root);
-      const rel = (p) => path.relative(root, p).split(path.sep).join('/');
-      assert.strictEqual(rel(knowledgeDir()), KNOWLEDGE_DIR);
-      assert.strictEqual(rel(metadataPath()), METADATA_FILE);
-      assert.deepStrictEqual(STORE_FILES, [storePath(), metadataPath(), config.projectConfigPath()].map(rel));
-    } finally {
-      process.chdir(cwd0);
-      fs.rmSync(root, { recursive: true, force: true });
-    }
   });
 });
 
@@ -315,31 +264,25 @@ describe('knowledge bulk discovery — baseline without work units', () => {
   // unit. Discovery must yield them with no project manifest and no registry
   // to walk.
   let root;
-  let cwd0;
 
   before(() => {
     root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-discover-baseline-')));
     writeFile(path.join(root, '.workflows', '.baseline', 'overview.md'), '# Overview\n');
     writeFile(path.join(root, '.workflows', '.baseline', '.state', 'dossier-core.md'), '# session state\n');
-    cwd0 = process.cwd();
-    process.chdir(root);
   });
 
   after(() => {
-    process.chdir(cwd0);
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('discovers the baseline docs alone', () => {
-    assert.deepStrictEqual(normalise(discoverArtifacts()), [
+    assert.deepStrictEqual(normalise(discover(root)), [
       { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.workflows/.baseline/overview.md' },
     ]);
   });
 });
 
 describe('deriveIdentity: the roadmap carve-out', () => {
-  const { deriveIdentity, UserError } = require('../../src/knowledge/index');
-
   it('derives session and import identities under the reserved pseudo work-unit', () => {
     assert.deepStrictEqual(deriveIdentity('.workflows/.roadmap/sessions/session-001.md'),
       { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-001' });
@@ -363,8 +306,6 @@ describe('deriveIdentity: the roadmap carve-out', () => {
 });
 
 describe('deriveIdentity: non-markdown imports', () => {
-  const { deriveIdentity, UserError } = require('../../src/knowledge/index');
-
   const POLICY = /imports are tracked on the manifest; only markdown imports are indexed/;
   const refusedBy = (pattern) => (err) => err instanceof UserError && pattern.test(err.message);
 

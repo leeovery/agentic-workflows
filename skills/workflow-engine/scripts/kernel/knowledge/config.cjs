@@ -1,21 +1,23 @@
-// Knowledge base configuration — two-level config resolution and provider
-// instantiation.
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: the knowledge configuration — two levels merged over the defaults,
+// the provider's API key resolved, and the embedding provider it names.
 //
-// System config:  ~/.config/workflows/config.json
+// System config:  config.json in the workflows' system config directory
 // Project config: .workflows/.knowledge/config.json
 //
 // Both wrap knowledge settings under a top-level "knowledge" key. Project
 // overrides system; missing fields fall through; absent files are fine.
-
-'use strict';
+// ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-const { StubProvider } = require('./embeddings');
-const { OpenAIProvider } = require('./providers/openai');
-const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
+const { systemConfigDir } = require('../system-config.cjs');
+const { StubProvider } = require('./embeddings.cjs');
+const { OpenAIProvider } = require('./providers/openai.cjs');
+const { OpenAICompatibleProvider } = require('./providers/openai-compatible.cjs');
 
 // Default values for all config fields.
 const DEFAULTS = {
@@ -63,35 +65,20 @@ const PROVIDER_ENV_VARS = {
   openai: 'OPENAI_API_KEY',
 };
 
-/**
- * Resolve the system config directory. `WORKFLOWS_CONFIG_DIR` overrides for
- * tests — the same override the engine honours, so the two subsystems that
- * share the config file can never be pointed at different ones.
- * @returns {string}
- */
-function systemConfigDir() {
-  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
-}
-
-/**
- * Resolve the system config path.
- * @returns {string}
- */
+/** @returns {string} */
 function systemConfigPath() {
   return path.join(systemConfigDir(), 'config.json');
 }
 
 /**
- * Find the project root by walking up from `startFrom` (default cwd)
- * looking for a `.workflows/` directory. This lets KB commands work
- * regardless of which subdirectory of the project the user invoked
- * them from. Falls back to `startFrom` if no `.workflows/` is found
- * — callers (e.g. setup) can then surface their own pre-init error.
- * @param {string} [startFrom]
+ * The project root a knowledge command acts on: the nearest directory at or
+ * above `startFrom` holding a `.workflows/` directory — `startFrom` itself
+ * when none does, so a caller can surface its own not-initialised error.
+ * @param {string} startFrom
  * @returns {string}
  */
 function findProjectRoot(startFrom) {
-  let dir = path.resolve(startFrom || process.cwd());
+  let dir = path.resolve(startFrom);
   const fallback = dir;
   while (true) {
     if (fs.existsSync(path.join(dir, '.workflows'))) return dir;
@@ -102,15 +89,6 @@ function findProjectRoot(startFrom) {
 }
 
 /**
- * Resolve the project config path relative to the project root.
- * @param {string} [cwd]
- * @returns {string}
- */
-function projectConfigPath(cwd) {
-  return path.join(findProjectRoot(cwd), '.workflows', '.knowledge', 'config.json');
-}
-
-/**
  * Resolve the credentials file path. Sits alongside system config.
  * @returns {string}
  */
@@ -118,18 +96,28 @@ function credentialsPath() {
   return path.join(systemConfigDir(), 'credentials.json');
 }
 
+/** A config file that does not read, with why in words that quote nothing from it. */
+class ConfigFileError extends Error {
+  /** @param {string} message @param {string} reason */
+  constructor(message, reason) {
+    super(message);
+    this.name = 'ConfigFileError';
+    this.reason = reason;
+  }
+}
+
 /**
  * Read a single config file and return the unwrapped `knowledge` object.
  * Returns null if the file does not exist. A file without a `knowledge` key
  * throws by default — the project config is knowledge-owned, so a missing
  * wrapper there is corruption worth diagnosing. Pass `sharedFile: true` for
- * the system config, which other subsystems (e.g. `session`) share: there a
+ * the system config, which other tools' settings share: there a
  * knowledge-less file simply means no knowledge settings, and reads null.
  * Throws on invalid JSON or a malformed `knowledge` value either way.
  *
  * @param {string} filePath
  * @param {{ sharedFile?: boolean }} [opts]
- * @returns {object|null}
+ * @returns {Record<string, any>|null}
  */
 function readConfigFile(filePath, opts) {
   if (!fs.existsSync(filePath)) return null;
@@ -138,34 +126,37 @@ function readConfigFile(filePath, opts) {
   try {
     raw = fs.readFileSync(filePath, 'utf8');
   } catch (e) {
-    throw new Error(`Failed to read config file at ${filePath}: ${e.message}`);
+    throw new ConfigFileError(`Failed to read config file at ${filePath}: ${e.message}`, 'not readable');
   }
 
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    throw new Error(`Invalid JSON in config file at ${filePath}: ${e.message}`);
+    throw new ConfigFileError(`Invalid JSON in config file at ${filePath}: ${e.message}`, 'not valid JSON');
   }
 
   if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(
+    throw new ConfigFileError(
       `Config file at ${filePath} must be a JSON object. ` +
-        'Expected format: { "knowledge": { ... } }'
+        'Expected format: { "knowledge": { ... } }',
+      'not a JSON object'
     );
   }
 
   if (parsed.knowledge === undefined) {
     if (opts && opts.sharedFile) return null;
-    throw new Error(
+    throw new ConfigFileError(
       `Config file at ${filePath} is missing the required top-level "knowledge" key. ` +
-        'Expected format: { "knowledge": { ... } }'
+        'Expected format: { "knowledge": { ... } }',
+      'missing "knowledge" key'
     );
   }
 
   if (parsed.knowledge == null || typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
-    throw new Error(
-      `Config file at ${filePath}: the "knowledge" key must be an object.`
+    throw new ConfigFileError(
+      `Config file at ${filePath}: the "knowledge" key must be an object.`,
+      'invalid "knowledge" key'
     );
   }
 
@@ -179,7 +170,7 @@ function readConfigFile(filePath, opts) {
  * rather than silently ignoring a broken file.
  *
  * @param {string} filePath
- * @returns {object|null}
+ * @returns {Record<string, any>|null}
  */
 function loadCredentials(filePath) {
   if (!fs.existsSync(filePath)) return null;
@@ -289,8 +280,7 @@ function resolveApiKey(provider, opts) {
   try {
     creds = loadCredentials(credPath);
   } catch (_) {
-    // Bad credentials file — treat as missing for resolution. A future
-    // `knowledge doctor` command could surface the error to the user.
+    // Bad credentials file — treat as missing for resolution.
     return null;
   }
 
@@ -303,45 +293,35 @@ function resolveApiKey(provider, opts) {
 }
 
 /**
- * Load and merge config from system and project levels.
- *
- * @param {{ systemPath?: string, projectPath?: string, credentialsPath?: string }} [paths]
- *   Override default paths (for testing).
- * @returns {object} Merged config with defaults applied.
+ * @typedef {object} ConfigPaths
+ * @property {string} projectPath
+ * @property {string} [systemPath]  the system config — by default, the one in the system config directory
+ * @property {string} [credentialsPath]  by default, the one beside the system config
+ */
+
+/**
+ * Load and merge config from the system and project levels over the
+ * defaults. `null` at either level unsets a key, so a project config can
+ * clear a system setting — the provider included.
+ * @param {ConfigPaths} paths
+ * @returns {Record<string, any>} the merged config, the resolved key as `_api_key`
  */
 function loadConfig(paths) {
-  const sysPath = (paths && paths.systemPath) || systemConfigPath();
-  const projPath = (paths && paths.projectPath) || projectConfigPath();
+  const system = readConfigFile(paths.systemPath || systemConfigPath(), { sharedFile: true });
+  const project = readConfigFile(paths.projectPath);
 
-  const system = readConfigFile(sysPath, { sharedFile: true });
-  const project = readConfigFile(projPath);
-
-  // Merge: defaults <- system <- project. Shallow merge — all fields are
-  // scalars, no nested objects to worry about. `null` is treated as an
-  // explicit unset sentinel so a project config can clear a system default
-  // (e.g. "disable the system-configured provider for this project only").
+  /** @type {Record<string, any>} */
   const merged = Object.assign({}, DEFAULTS);
-  if (system) {
-    for (const key of Object.keys(system)) {
-      if (system[key] === undefined) continue;
-      if (system[key] === null) delete merged[key];
-      else merged[key] = system[key];
-    }
-  }
-  if (project) {
-    for (const key of Object.keys(project)) {
-      if (project[key] === undefined) continue;
-      if (project[key] === null) delete merged[key];
-      else merged[key] = project[key];
+  for (const level of [system, project]) {
+    if (!level) continue;
+    for (const key of Object.keys(level)) {
+      if (level[key] === undefined) continue;
+      if (level[key] === null) delete merged[key];
+      else merged[key] = level[key];
     }
   }
 
-  // Resolve API key via env-then-credentials-file precedence.
-  merged._api_key = resolveApiKey(
-    merged.provider,
-    { credentialsPath: paths && paths.credentialsPath }
-  );
-
+  merged._api_key = resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath });
   return merged;
 }
 
@@ -354,9 +334,9 @@ function loadConfig(paths) {
  *     (keyword-only mode)
  *   - Throws for unimplemented provider names
  *
- * @param {object} config  Merged config from loadConfig()
- * @param {import('./providers/openai-engine').Patience} [patience]  how long an endpoint provider waits on its endpoint
- * @returns {object|null}  Provider instance or null (keyword-only mode)
+ * @param {Record<string, any>} config  Merged config from loadConfig()
+ * @param {import('./providers/openai-engine.cjs').Patience} [patience]  how long an endpoint provider waits on its endpoint
+ * @returns {import('./embeddings.cjs').EmbeddingProvider|null}  Provider instance or null (keyword-only mode)
  */
 function resolveProvider(config, patience = {}) {
   if (!config || typeof config !== 'object') {
@@ -384,12 +364,12 @@ function resolveProvider(config, patience = {}) {
   }
 
   // OpenAI cloud provider — requires a key. Missing key → null (the caller
-  // degrades to keyword-only for THIS command). This null is intentionally
-  // indistinguishable here from "no provider configured"; the two are told
-  // apart at the call sites via cfg.provider (see providerKeyUnresolved in
-  // index.js) so a missing key surfaces "set your key", not the store-
-  // destroying "provider changed — rebuild". Do NOT throw here: many callers
-  // (setup, status) rely on null meaning "run keyword-only".
+  // degrades to keyword-only). This null is intentionally indistinguishable
+  // here from "no provider configured"; the two are told apart at the call
+  // sites via cfg.provider (see providerKeyUnresolved in
+  // domain/knowledge/embedder.cjs) so a missing key surfaces "set your key",
+  // not the store-destroying "provider changed — rebuild". Do NOT throw here:
+  // many callers (setup, status) rely on null meaning "run keyword-only".
   if (providerName === 'openai') {
     if (!config._api_key) {
       return null;
@@ -427,7 +407,7 @@ function resolveProvider(config, patience = {}) {
 /**
  * Atomically write a config file. The payload carries the knowledge
  * subsystem's full view (including the top-level `knowledge` wrapper); any
- * other top-level keys already on disk (e.g. `session`) are preserved —
+ * other top-level keys already on disk are preserved —
  * the file is shared, and a knowledge write must never clobber a sibling
  * subsystem. Writes to `<path>.tmp` then renames — matches the
  * manifest/store convention so a crash mid-write never leaves a truncated
@@ -470,9 +450,9 @@ module.exports = {
   AVAILABLE_PROVIDERS,
   PROVIDER_ENV_VARS,
   systemConfigPath,
-  projectConfigPath,
   findProjectRoot,
   credentialsPath,
+  ConfigFileError,
   readConfigFile,
   loadConfig,
   loadCredentials,

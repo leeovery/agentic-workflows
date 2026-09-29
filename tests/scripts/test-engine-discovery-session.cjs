@@ -8,9 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -47,6 +45,8 @@ function setupFixture({ epic = epicManifest() } = {}) {
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
 
+  // The knowledge directory is checkout-local, never committed.
+  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
     work_units: { payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
@@ -55,6 +55,7 @@ function setupFixture({ epic = epicManifest() } = {}) {
   writeFile(project, '.workflows/payments/discovery/sessions/session-002.md', '# Discovery Session 002\n\n## Conclusion\n\n(none)\n');
   git(project, ['add', '-A']);
   git(project, ['commit', '-q', '-m', 'init']);
+  keywordOnlyKnowledge(project);
 
   return { root, project };
 }
@@ -65,14 +66,14 @@ function setupFixture({ epic = epicManifest() } = {}) {
  * in `engine.lastSections`.
  */
 function engine(fix, args, env = {}) {
-  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  const { res, sections } = okSections(fix.project, args, { env });
   engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -135,7 +136,7 @@ describe('engine discovery-session close — happy path', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-002.md'), 'utf8'), finalised);
 
     // The marker's log — not a re-glob — is what gets indexed.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['index .workflows/payments/discovery/sessions/session-002.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/payments/discovery/sessions/session-002.md']);
 
     // One commit scoped to the work unit with the caller's message; the
     // Conclusion write rides along; unrelated files stay out.
@@ -166,15 +167,16 @@ describe('engine discovery-session close — happy path', () => {
 
   it('KB failure is a warning, never a block — the close still lands and commits, pure JSON', () => {
     fix = setupFixture();
-    const res = engine(fix, CLOSE, { STUB_KNOWLEDGE_EXIT: '1' });
+    unreadableKnowledge(fix.project);
+    const res = engine(fix, CLOSE);
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(discovery\/sessions\/session-002\.md\) failed/);
+    assert.match(res.warnings[0], /^knowledge index \(discovery\/sessions\/session-002\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = stubbed.output(fix.project, ['render', 'session-receipt', 'payments', '--warn']);
+    const receipt = output(fix.project, ['render', 'session-receipt', 'payments', '--warn']);
     assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. The next start retries the indexing\./);
-    assert.strictEqual(stubbed.output(fix.project, ['render', 'session-receipt', 'payments']), '',
+    assert.strictEqual(output(fix.project, ['render', 'session-receipt', 'payments']), '',
       'no --warn, no advisory — an empty receipt');
   });
 });
@@ -183,13 +185,13 @@ describe('engine discovery-session close — guards refuse loudly, everything pr
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no KB call. */
+  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, nothing indexed. */
   function refusedPristine(args, pattern) {
     const before = treeSnapshot(fix);
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 
@@ -261,13 +263,13 @@ describe('engine discovery-session open — happy path', () => {
       active_session: '003',
     });
 
-    // No commit, no KB call — the session is live; the calling flow's
+    // No commit, nothing indexed — the session is live; the calling flow's
     // commit cadence picks up the log and marker.
     assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
     const status = git(fix.project, ['status', '--porcelain']);
     assert.match(status, /\.workflows\/payments\/manifest\.json/);
     assert.match(status, /\.workflows\/payments\/discovery\/sessions\/session-003\.md/);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
 
     // Lock released.
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.workflows/payments/.lock')), false);
@@ -301,7 +303,7 @@ describe('engine discovery-session open — happy path', () => {
   it('the response is one JSON line on stdout', () => {
     fix = setupFixture({ epic: closedEpicManifest() });
     writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    const out = stubbed.output(fix.project, [...OPEN]);
+    const out = output(fix.project, [...OPEN]);
     assert.strictEqual(out, JSON.stringify({
       ok: true,
       work_unit: 'payments',
@@ -325,13 +327,13 @@ describe('engine discovery-session open — guards refuse loudly, everything pri
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Assert the refusal leaves every `.workflows/` byte identical (the draft included), no commit, no KB call. */
+  /** Assert the refusal leaves every `.workflows/` byte identical (the draft included), no commit, nothing indexed. */
   function refusedPristine(args, pattern) {
     const before = treeSnapshot(fix);
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 

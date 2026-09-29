@@ -1,6 +1,7 @@
 'use strict';
 
-// Generic markdown chunking engine for the knowledge base.
+// ---------------------------------------------------------------------------
+// Kernel: the markdown chunker for the knowledge base.
 //
 // Pure function — no external dependencies. Given a markdown string and a
 // phase config, returns an array of { content } objects. Each `content`
@@ -22,6 +23,7 @@
 // pipeline": every emitted chunk's content must be a verbatim substring of
 // the post-frontmatter source. Chunks are sliced from the source by offset,
 // never assembled by concatenating strings with a synthetic separator.
+// ---------------------------------------------------------------------------
 
 const FENCE_RE = /^\s*(```+|~~~+)/;
 const FRONTMATTER_DELIM = /^---\s*$/;
@@ -229,7 +231,7 @@ function buildSections(lines, headings, splitLevel) {
     const end =
       i + 1 < splitIndices.length ? splitIndices[i + 1] - 1 : lines.length - 1;
     sections.push({
-      heading: HEADING_RE.exec(lines[start])[2].trim(),
+      heading: /** @type {RegExpExecArray} */ (HEADING_RE.exec(lines[start]))[2].trim(),
       headingLine: lines[start],
       startLine: start,
       endLine: end,

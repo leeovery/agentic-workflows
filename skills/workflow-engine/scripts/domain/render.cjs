@@ -35,7 +35,9 @@ const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
-const { METADATA_FILE } = require('./kb.cjs');
+const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
+const { readMetadata } = require('../kernel/knowledge/store.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -5892,16 +5894,16 @@ function knowledgeGateSurface(_cwd, { variant, provider, model }) {
  * @param {string} cwd @returns {string}
  */
 function knowledgeReadySurface(cwd) {
-  const file = path.join(cwd, METADATA_FILE);
+  const file = knowledgeFiles(cwd).metadata;
+  const shown = path.relative(cwd, file);
   if (!fs.existsSync(file)) {
-    throw new Error(`render knowledge-ready: no ${METADATA_FILE} — this checkout has no knowledge store yet`);
+    throw new Error(`render knowledge-ready: no ${shown} — this checkout has no knowledge store yet`);
   }
-  /** @type {{provider?: string|null, model?: string|null}} */
   let metadata;
   try {
-    metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
+    metadata = readMetadata(file);
   } catch (err) {
-    throw new Error(`render knowledge-ready: ${METADATA_FILE} is not valid JSON — ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`render knowledge-ready: ${shown} is not valid JSON — ${messageOf(err)}`);
   }
   return knowledgeReady(metadata);
 }

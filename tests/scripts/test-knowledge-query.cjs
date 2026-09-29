@@ -1,37 +1,32 @@
 'use strict';
 
-// The query pipeline's parts, as the built bundle ships them: the settings a
-// store's metadata and the config resolve to, the search that ranks, and the
-// render that prints. The CLI composes the three; the eval harness calls them
-// in process.
+// The query pipeline's parts: the settings a store's metadata and the config
+// resolve to, the search that ranks, and the render that prints. The engine's
+// `knowledge query` composes the three; the eval harness calls them in
+// process.
 
 require('./hermetic-env.cjs');
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, knowledgeCli, withoutBackoff } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, engineKnowledge, withoutBackoff } = require('./knowledge-harness.cjs');
 
-const BUNDLE = path.join(__dirname, '..', '..', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
-
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { resolveProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
+const { QuotaError, AuthError, RateLimitError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const {
-  store,
-  StubProvider,
-  QuotaError,
-  AuthError,
-  RateLimitError,
   boostProblem,
   QUERY_TIMEOUT_MS,
   QUERY_WAIT_BUDGET_MS,
   queryProvider,
-  commandProvider,
   querySettings,
   queryStore,
   renderQuery,
-} = require(BUNDLE);
+} = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
 
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
@@ -172,6 +167,23 @@ describe('queryStore', () => {
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
+  it('never decays a specification, however far the clock has moved past its unit', async () => {
+    const specDb = store.createStore();
+    for (const d of [doc('old', 1, 'Token refresh follows the rate window.'), doc('new', 1, 'Token refresh follows the rate window.')]) {
+      store.insertDocument(specDb, { ...d, embedding: stub.embed(d.content) });
+    }
+    const spec = { ...doc('old', 2, 'Token refresh follows the rate window.'), id: 'old-specification-old-001', phase: 'specification' };
+    store.insertDocument(specDb, { ...spec, embedding: stub.embed(spec.content) });
+    const workUnits = [
+      { name: 'old', status: 'completed', completed_at: '2026-01-01', work_type: 'feature' },
+      { name: 'new', status: 'completed', completed_at: '2026-06-01', work_type: 'feature' },
+    ];
+    const results = await query(specDb, { terms: ['token'], workUnits });
+    assert.deepStrictEqual(results.map((r) => [r.work_unit, r.phase, r.scoring.decay === 1]).sort(), [
+      ['new', 'discussion', true], ['old', 'discussion', false], ['old', 'specification', true],
+    ]);
+  });
+
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
@@ -306,7 +318,7 @@ describe('queryProvider', () => {
   });
 });
 
-describe('commandProvider', () => {
+describe('provider patience', () => {
   const OPENAI = { provider: 'openai', _api_key: 'sk-test', model: 'text-embedding-3-small', dimensions: 2 };
   let fetch0;
 
@@ -337,7 +349,7 @@ describe('commandProvider', () => {
   it("gives an index the provider's own patience: a 20 s rate limit is waited out", async (t) => {
     const requests = [];
     globalThis.fetch = limitedOnce(requests);
-    const vectors = await withoutBackoff(t, () => commandProvider('index', OPENAI).embedBatch(['x']));
+    const vectors = await withoutBackoff(t, () => resolveProvider(OPENAI).embedBatch(['x']));
     assert.deepStrictEqual(vectors, [[0.6, 0.8]]);
     assert.strictEqual(requests.length, 2);
   });
@@ -345,12 +357,12 @@ describe('commandProvider', () => {
   it('gives a query its own: a 20 s rate limit is never waited', async () => {
     const requests = [];
     globalThis.fetch = limitedOnce(requests);
-    await assert.rejects(commandProvider('query', OPENAI).embedBatch(['x']), RateLimitError);
+    await assert.rejects(queryProvider(OPENAI).embedBatch(['x']), RateLimitError);
     assert.strictEqual(requests.length, 1);
   });
 });
 
-describe('knowledge query — the CLI', () => {
+describe('knowledge query — `engine knowledge query`', () => {
   let root;
 
   /** @param {string} name @param {string} completedAt */
@@ -365,11 +377,13 @@ describe('knowledge query — the CLI', () => {
   }
 
   /** @param {...string} args */
-  function knowledge(...args) {
-    return execFileSync(process.execPath, [BUNDLE, ...args], { cwd: root, encoding: 'utf8' });
+  async function knowledge(...args) {
+    const answer = await engineKnowledge(root, args);
+    assert.strictEqual(answer.code, 0, answer.stderr);
+    return answer.stdout;
   }
 
-  before(() => {
+  before(async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-'));
     fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
     fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
@@ -377,19 +391,19 @@ describe('knowledge query — the CLI', () => {
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    knowledge('index', '.workflows/alpha/discussion/alpha.md');
-    knowledge('index', '.workflows/beta/discussion/beta.md');
+    await knowledge('index', '.workflows/alpha/discussion/alpha.md');
+    await knowledge('index', '.workflows/beta/discussion/beta.md');
   });
 
   after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  it('ranks a chunk the progress clock has moved past below its equal', () => {
-    const units = [...knowledge('query', 'token refresh').matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
+  it('ranks a chunk the progress clock has moved past below its equal', async () => {
+    const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
     assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
 
-  it('explains beneath each source line how the result ranked, and prints nothing else differently', () => {
-    const explained = knowledge('query', 'token refresh', 'rate window', '--explain');
+  it('explains beneath each source line how the result ranked, and prints nothing else differently', async () => {
+    const explained = await knowledge('query', 'token refresh', 'rate window', '--explain');
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
@@ -399,15 +413,15 @@ describe('knowledge query — the CLI', () => {
         `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0200 tier = ${score}$`,
       ].join('\n'), 'm'));
     }
-    assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), knowledge('query', 'token refresh', 'rate window'));
+    assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), await knowledge('query', 'token refresh', 'rate window'));
   });
 
-  it('never reads the term after --explain as its value', () => {
-    assert.strictEqual(knowledge('query', '--explain', 'token refresh'), knowledge('query', 'token refresh', '--explain'));
+  it('never reads the term after --explain as its value', async () => {
+    assert.strictEqual(await knowledge('query', '--explain', 'token refresh'), await knowledge('query', 'token refresh', '--explain'));
   });
 });
 
-describe('knowledge query — the CLI, without a vector', () => {
+describe('knowledge query — `engine knowledge query`, without a vector', () => {
   const RESULT = /^\[1 results\]\n\n\[discussion \| alpha\/alpha \|/m;
   let endpoint;
   let root;
@@ -442,14 +456,14 @@ describe('knowledge query — the CLI, without a vector', () => {
     fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
     configure(endpoint.config);
     endpoint.mode = 'ok';
-    assert.strictEqual((await knowledgeCli(root, ['index'])).code, 0);
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
     endpoint.requests.length = 0;
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   it('embeds every framing in one request, and prints no note', async () => {
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh', 'rate window']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh', 'rate window']);
     assert.strictEqual(code, 0);
     assert.deepStrictEqual(endpoint.requests, [['token refresh', 'rate window']]);
     assert.match(stdout, /^\[1 results\]\n/);
@@ -457,7 +471,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only when the provider is down, naming the failure', async () => {
     endpoint.mode = 'down';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request failed \(HTTP 503\): .*; retry once the provider answers\]\n/);
     assert.match(stdout, RESULT);
@@ -465,7 +479,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only on a rate limit, without waiting it out', { timeout: 10000 }, async () => {
     endpoint.mode = 'rate-limited';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly\]\n/);
     assert.match(stdout, RESULT);
@@ -473,7 +487,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only when the account is out of quota', async () => {
     endpoint.mode = 'quota';
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the embedding account is out of quota; add credit to it\]\n/);
     assert.match(stdout, RESULT);
@@ -482,7 +496,7 @@ describe('knowledge query — the CLI, without a vector', () => {
   it('exits 0 keyword-only when no key resolves, naming the key', async () => {
     rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
@@ -490,7 +504,7 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('exits 0 keyword-only over a store built with another model, and asks for a rebuild', async () => {
     configure({ ...endpoint.config, model: 'another' });
-    const { code, stdout } = await knowledgeCli(root, ['query', 'token refresh']);
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
     assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
@@ -499,8 +513,8 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it("status says the mode a query runs in, naming why it runs keyword-only in the query's own words", async () => {
     const modeAndNote = async () => [
-      (await knowledgeCli(root, ['status'])).stdout.match(/^Mode: (.*)$/m)[1],
-      (await knowledgeCli(root, ['query', 'token refresh'])).stdout.split('\n')[0],
+      (await engineKnowledge(root, ['status'])).stdout.match(/^Mode: (.*)$/m)[1],
+      (await engineKnowledge(root, ['query', 'token refresh'])).stdout.split('\n')[0],
     ];
     const keywordOnly = (cause) => [`Keyword-only — ${cause}`, `[keyword-only mode — ${cause}]`];
     assert.deepStrictEqual(await modeAndNote(), ['Full (hybrid search)', '[1 results]']);
@@ -521,22 +535,22 @@ describe('knowledge query — the CLI, without a vector', () => {
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
     fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ not json');
-    const status = await knowledgeCli(root, ['status']);
+    const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
     assert.match(status.stdout, /^WARNING: Invalid JSON in config file at .*config\.json: /m);
-    assert.strictEqual((await knowledgeCli(root, ['query', 'token refresh'])).code, 1);
+    assert.strictEqual((await engineKnowledge(root, ['query', 'token refresh'])).code, 1);
   });
 
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
     const knowledgeDir = path.join(root, '.workflows', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
-    const missing = await knowledgeCli(root, ['query', 'token refresh']);
+    const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
     assert.match(missing.stderr, /^metadata\.json missing but store exists/);
 
     fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
-    const corrupt = await knowledgeCli(root, ['query', 'token refresh']);
+    const corrupt = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(corrupt.code, 1);
     assert.match(corrupt.stderr, /^Error: loadStore: corrupted store file at /);
   });

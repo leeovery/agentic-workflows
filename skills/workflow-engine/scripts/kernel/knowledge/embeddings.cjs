@@ -1,22 +1,20 @@
-// Embedding provider interface and StubProvider implementation.
-//
-// KnowledgeProvider interface contract — every concrete provider must
-// implement all four members:
-//
-//   embed(text)         -> number[]   vector of length dimensions()
-//   embedBatch(texts)   -> number[][] one vector per input, in order
-//   dimensions()        -> number     vector dimensionality
-//   model()             -> string     stable, non-empty model identifier
-//
-// Providers never return null or undefined from embed/embedBatch: the store
-// refuses a null vector, and stores a chunk given undefined without one.
-//
-// StubProvider below is a first-class provider used in tests only. It
-// returns deterministic fake vectors derived from a hash of the input
-// text. Same text in, same vector out. Different text in, different
-// vectors out. Never null. Never an API call.
-
 'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: the embedding provider interface, and StubProvider — a first-class
+// provider for tests alone: deterministic vectors from a hash of the text,
+// same text same vector, never null, never a request.
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {object} EmbeddingProvider  what every provider implements. It
+ *   never answers null or undefined for a text: the store refuses a null
+ *   vector, and keeps a chunk given undefined without one.
+ * @property {(text: string) => number[]|Promise<number[]>} [embed]  one text's vector
+ * @property {(texts: string[]) => number[][]|Promise<number[][]>} embedBatch  one vector per text, in order
+ * @property {() => number} dimensions  the vectors' width
+ * @property {() => string} model  a stable, non-empty model identifier
+ */
 
 const DEFAULT_DIMENSIONS = 128;
 const STUB_MODEL_ID = 'stub';

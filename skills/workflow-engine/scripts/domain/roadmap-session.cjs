@@ -32,7 +32,7 @@ const {
   withProjectLock,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { planImports, copyImports, importEntry, isIndexableImport, assertLandableSources } = require('./import-landing.cjs');
 const { ensureRoadmap } = require('./roadmap.cjs');
@@ -122,7 +122,7 @@ function closeRoadmapSession(cwd, { message }) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['index', session.rel], `knowledge index (roadmap/sessions/session-${session.number}.md)`, warnings);
+  syncKnowledge(cwd, [{ index: session.rel, label: `knowledge index (roadmap/sessions/session-${session.number}.md)` }], warnings);
 
   const outcome = commitTailPathspec(cwd, ROADMAP_SCOPE, message, warnings);
   /** @type {Record<string, any>} */
@@ -178,9 +178,8 @@ function importRoadmapFiles(cwd, paths) {
 
   /** @type {string[]} */
   const warnings = [];
-  for (const move of moves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', `${ROADMAP_DIR}/imports/${move.dest}`], `knowledge index (roadmap/imports/${move.dest})`, warnings);
-  }
+  syncKnowledge(cwd, moves.filter((m) => isIndexableImport(m.dest))
+    .map((move) => ({ index: `${ROADMAP_DIR}/imports/${move.dest}`, label: `knowledge index (roadmap/imports/${move.dest})` })), warnings);
 
   /** @type {Record<string, any>} */
   const result = {

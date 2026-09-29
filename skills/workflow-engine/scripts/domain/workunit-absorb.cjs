@@ -33,7 +33,8 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
+const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { IMPORT_PHASES, isPlainName } = require('../kernel/manifest-schema.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -402,21 +403,17 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   // identities (completed phase artifacts; imports and seeds always).
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['remove', '--work-unit', feature], 'knowledge remove', warnings);
-  if (discussionStatus === 'completed') {
-    knowledge(cwd, ['index', INDEXED_ARTIFACTS.discussion(into, topic)], `knowledge index (discussion/${topic})`, warnings);
-  }
-  for (const move of researchMoves) {
-    if (move.status === 'completed') {
-      knowledge(cwd, ['index', INDEXED_ARTIFACTS.research(into, move.target)], `knowledge index (research/${move.target})`, warnings);
-    }
-  }
-  for (const move of importMoves.filter((m) => isIndexableImport(m.dest))) {
-    knowledge(cwd, ['index', importArtifact(into, move.dest)], `knowledge index (imports/${move.dest})`, warnings);
-  }
-  for (const move of seedMoves) {
-    knowledge(cwd, ['index', `.workflows/${into}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
-  }
+  syncKnowledge(cwd, [
+    { remove: { workUnit: feature } },
+    ...(discussionStatus === 'completed'
+      ? [{ index: INDEXED_ARTIFACTS.discussion(into, topic), label: `knowledge index (discussion/${topic})` }]
+      : []),
+    ...researchMoves.filter((move) => move.status === 'completed')
+      .map((move) => ({ index: INDEXED_ARTIFACTS.research(into, move.target), label: `knowledge index (research/${move.target})` })),
+    ...importMoves.filter((m) => isIndexableImport(m.dest))
+      .map((move) => ({ index: importArtifact(into, move.dest), label: `knowledge index (imports/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: `.workflows/${into}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+  ], warnings);
 
   const cacheSpec = purgeWorkUnitCache(cwd, feature);
   const outcome = commitTailPathspec(

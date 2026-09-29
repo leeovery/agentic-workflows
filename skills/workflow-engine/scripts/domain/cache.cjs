@@ -18,7 +18,7 @@ const { git } = require('../kernel/git.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs } = require('./derivations.cjs');
 const { filesChecksum } = require('./reads.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 
 // Per-kind config: the model-authored cache file under `.state/` (the
 // analysis output the stamp checksums the inputs of, and the artifact the KB
@@ -89,7 +89,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['index', `.workflows/${workUnit}/.state/${cfg.cacheFile}`], `knowledge index (.state/${cfg.cacheFile})`, warnings);
+  syncKnowledge(cwd, [{ index: `.workflows/${workUnit}/.state/${cfg.cacheFile}`, label: `knowledge index (.state/${cfg.cacheFile})` }], warnings);
 
   return { ...stamped, warnings };
 }

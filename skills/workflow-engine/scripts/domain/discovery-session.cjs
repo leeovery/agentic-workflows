@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
-const { knowledge } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
 
 /**
  * The next session number: highest on-disk `session-NNN.md` plus one, `1`
@@ -167,7 +167,7 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['index', session.rel], `knowledge index (discovery/sessions/session-${session.number}.md)`, warnings);
+  syncKnowledge(cwd, [{ index: session.rel, label: `knowledge index (discovery/sessions/session-${session.number}.md)` }], warnings);
 
   const outcome = commitTailPathspec(cwd, discoveryScope(workUnit), message, warnings);
   /** @type {DiscoverySessionCloseResult} */

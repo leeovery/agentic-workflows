@@ -8,9 +8,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, knowledgeCalls, stubbedEngine } = require('./engine-harness.cjs');
-
-const stubbed = stubbedEngine();
+const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -46,6 +45,9 @@ function setupFixture(manifest = featureManifest()) {
   git(project, ['config', 'user.name', 'Test']);
   git(project, ['config', 'commit.gpgsign', 'false']);
 
+  // The knowledge directory is checkout-local, never committed.
+  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  keywordOnlyKnowledge(project);
   writeFile(project, '.workflows/manifest.json', JSON.stringify({
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
@@ -62,14 +64,28 @@ function setupFixture(manifest = featureManifest()) {
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(fix, args, env = {}) {
-  const { res, sections } = stubbed.okSections(fix.project, args, { env });
+  const { res, sections } = okSections(fix.project, args, { env });
   engine.lastSections = sections;
   return res;
 }
 engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => stubbed.refuses(fix.project, args, { env });
+const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
+
+/** The feature's artifacts the knowledge base holds. */
+const UNIT_FILES = [
+  '.workflows/auth-flow/discussion/auth-flow.md',
+  '.workflows/auth-flow/imports/notes.md',
+  '.workflows/auth-flow/research/exploration.md',
+  '.workflows/auth-flow/seeds/seed.md',
+];
+
+/** The distinct work types the store's chunks carry. */
+function chunkWorkTypes(fix) {
+  const chunks = store.allChunks(store.loadStore(path.join(fix.project, '.workflows/.knowledge/store.bin')));
+  return [...new Set(chunks.map((chunk) => chunk.work_type))];
+}
 
 function readManifest(fix, wu) {
   return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
@@ -99,6 +115,8 @@ describe('engine workunit pivot — happy path', () => {
 
   it('flips work_type in BOTH manifests, registers the backfill map item, re-indexes, commits', () => {
     fix = setupFixture();
+    for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', file]);
+    assert.deepStrictEqual(chunkWorkTypes(fix), ['feature']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
 
@@ -113,13 +131,13 @@ describe('engine workunit pivot — happy path', () => {
     // The transaction is pure JSON; the continuation menu and the kb
     // advisory are receipt surfaces fetched only by flows with a use for them.
     assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
-    const menu = stubbed.output(fix.project, ['render', 'pivot-continuation', 'auth-flow']);
+    const menu = output(fix.project, ['render', 'pivot-continuation', 'auth-flow']);
     assert.ok(menu.includes("=== MENU: pivot continuation (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), menu);
     assert.ok(menu.includes('**Auth Flow** converted from feature to epic.'), menu);
-    const advisory = stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
+    const advisory = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
     assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\./);
     assert.strictEqual(
-      stubbed.output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']),
+      output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']),
       '', 'no --warn, no advisory — an empty receipt');
 
     const m = readManifest(fix, 'auth-flow');
@@ -143,12 +161,10 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
-    // re-indexes them in ONE scoped bulk spawn (was one spawn per artifact).
-    // The bulk walk covers the same set (completed topics, imports, seeds, …).
-    assert.deepStrictEqual(knowledgeCalls(fix.project), [
-      'remove --work-unit auth-flow',
-      'index --work-unit auth-flow',
-    ]);
+    // re-indexes the unit's artifacts (completed topics, imports, seeds, …),
+    // every chunk now the epic's.
+    assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
+    assert.deepStrictEqual(chunkWorkTypes(fix), ['epic']);
   });
 
   it('routes to discussion when the feature never did research', () => {
@@ -176,13 +192,13 @@ describe('engine workunit pivot — happy path', () => {
 
   it('KB failures are warnings, never blocks — the pivot still lands', () => {
     fix = setupFixture();
-    const res = engine(fix, ['workunit', 'pivot', 'auth-flow'], { STUB_KNOWLEDGE_EXIT: '1' });
+    unreadableKnowledge(fix.project);
+    const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
 
     assert.strictEqual(res.work_type, 'epic');
-    // The clear + re-index are two spawns; both fail here → two warnings.
     assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge remove failed/);
-    assert.match(res.warnings[1], /knowledge index failed/);
+    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[1], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'epic');
     assert.strictEqual(res.committed, shortHead(fix));
   });
@@ -218,11 +234,15 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
 
   it('refuses a corrupt project manifest before flipping anything', () => {
     fix = setupFixture();
+    for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', file]);
+    const storeFile = path.join(fix.project, '.workflows/.knowledge/store.bin');
+    const before = fs.readFileSync(storeFile);
     writeFile(fix.project, '.workflows/manifest.json', '{ corrupt\n');
     const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    assert.deepStrictEqual(fs.readFileSync(storeFile), before, 'the store is as it stood — no chunk cleared or restamped');
+    assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
   });
 
   it('rejects unknown and missing work units, and extra args', () => {

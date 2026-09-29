@@ -27,7 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { syncKnowledge } = require('./knowledge/sync.cjs');
+const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
@@ -983,10 +984,8 @@ function completeTopic(cwd, workUnit, phase, topic) {
 
   /** @type {string[]} */
   const warnings = [];
-  const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
-  if (artifact) {
-    knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
-  }
+  const artifact = INDEXED_ARTIFACTS[phase];
+  if (artifact) syncKnowledge(cwd, [{ index: artifact(workUnit, topic) }], warnings);
 
   return { topic, phase, status: 'completed', warnings };
 }
@@ -1164,7 +1163,7 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+  syncKnowledge(cwd, [{ remove: { workUnit, phase, topic } }], warnings);
 
   return { topic, phase, status: 'superseded', superseded_by: by, warnings };
 }
@@ -1318,11 +1317,8 @@ function discardGroupings(manifest, names) {
  * @param {{phase: string}[]} held @param {string[]} warnings
  */
 function removeHeldChunks(cwd, workUnit, topic, held, warnings) {
-  for (const { phase } of held) {
-    if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)]) {
-      knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
-    }
-  }
+  syncKnowledge(cwd, held.filter(({ phase }) => INDEXED_ARTIFACTS[phase])
+    .map(({ phase }) => ({ remove: { workUnit, phase, topic } })), warnings);
 }
 
 /**
@@ -1331,12 +1327,8 @@ function removeHeldChunks(cwd, workUnit, topic, held, warnings) {
  * @param {RestoredItem[]} restored @param {string[]} warnings
  */
 function indexRestored(cwd, workUnit, topic, restored, warnings) {
-  for (const { phase, status } of restored) {
-    const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
-    if (status === 'completed' && artifact) {
-      knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
-    }
-  }
+  syncKnowledge(cwd, restored.filter(({ phase, status }) => status === 'completed' && INDEXED_ARTIFACTS[phase])
+    .map(({ phase }) => ({ index: INDEXED_ARTIFACTS[phase](workUnit, topic) })), warnings);
 }
 
 /** @param {object} manifest @param {string} topic */

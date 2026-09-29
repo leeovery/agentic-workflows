@@ -11,10 +11,11 @@ const { execFileSync, spawn } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, knowledgeCalls } = harness;
+const { git } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
-const REAL_KNOWLEDGE = path.resolve(REAL_SCRIPTS, '../../workflow-knowledge');
+const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
+const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -130,69 +131,63 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 }
 `;
 
-// Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; check, bulk index, and compact behaviour is env-driven.
-// STUB_CHECK answers each check in turn — `buildable,ready` is a build that
-// stood — its last answer repeating.
-const STUB_KNOWLEDGE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-const cmd = process.argv[2] || '';
-fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
-if (cmd === 'check') {
-  if (process.env.STUB_CHECK_EXIT) process.exit(parseInt(process.env.STUB_CHECK_EXIT, 10));
-  const answers = (process.env.STUB_CHECK || 'not-ready').split(',');
-  const asked = fs.readFileSync('knowledge-calls.log', 'utf8').split('\\n').filter((l) => l === 'check').length;
-  process.stdout.write(answers[Math.min(asked, answers.length) - 1] + '\\n');
-  process.exit(0);
-}
-if (cmd === 'index' && process.argv.length === 3) {
-  if (process.env.STUB_SYNC_EXIT) {
-    process.stderr.write('Failed to index .workflows/a/discussion/b.md: HTTP 400\\n');
-    process.exit(parseInt(process.env.STUB_SYNC_EXIT, 10));
-  }
-  process.exit(0);
-}
-if (cmd === 'compact') {
-  if (process.env.STUB_COMPACT_EXIT) {
-    process.stderr.write('compact blew up\\n');
-    process.exit(parseInt(process.env.STUB_COMPACT_EXIT, 10));
-  }
-  process.exit(0);
-}
-process.exit(1);
-`;
-
 /**
- * The engine copied into a temp skills root beside a stub migrate.cjs and a
- * knowledge CLI — the stub, or the real one with its chunking configs —
- * because boot resolves both relative to its own file, so the copy is what
- * exercises that resolution exactly as installed. The tree is never written
- * to during the run, so one serves the whole suite; each test brings its own
- * project.
- * @param {{realKnowledge?: boolean}} [opts]
+ * The engine copied into a temp skills root beside a stub migrate.cjs —
+ * boot resolves the migration runner relative to its own file, so the copy
+ * is what exercises that resolution exactly as installed. The knowledge base
+ * runs in the copy's own process, its chunking configs copied with it. The
+ * tree is never written to during the run, so one serves the whole suite;
+ * each test brings its own project.
  */
-function stubbedSkillsTree({ realKnowledge = false } = {}) {
+function stubbedSkillsTree() {
   const skills = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-skills-'));
   process.on('exit', () => fs.rmSync(skills, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-  fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
+  fs.cpSync(REAL_ENGINE_SKILL, path.join(skills, 'workflow-engine'), { recursive: true });
   writeFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  if (realKnowledge) {
-    fs.cpSync(REAL_KNOWLEDGE, path.join(skills, 'workflow-knowledge'), { recursive: true });
-  } else {
-    writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
-  }
   return path.join(skills, 'workflow-engine/scripts/engine.cjs');
 }
 
 const STUB_ENGINE = stubbedSkillsTree();
-/**
- * The engines a test drives: the stubbed copy, the copy with the real
- * knowledge CLI and no migrations, and the repo's real scripts.
- */
+/** The engines a test drives: the copy with the stub migrations, and the repo's real scripts. */
 const stubbed = harness.harness(STUB_ENGINE);
-const realKnowledge = harness.harness(stubbedSkillsTree({ realKnowledge: true }));
 const real = harness;
+
+/**
+ * The vector fill's launches from the stubbed copy recorded, not spawned.
+ * @param {import('node:test').TestContext} t @returns {string[]}
+ */
+function recordStubbedLaunches(t) {
+  const { launcher } = require(path.join(path.dirname(STUB_ENGINE), 'domain/knowledge/vectors.cjs'));
+  /** @type {string[]} */
+  const launched = [];
+  t.mock.method(launcher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+  return launched;
+}
+
+/**
+ * The checkout set up keyword-only with an empty store — a knowledge base
+ * that reads ready.
+ * @param {string} project @param {Record<string, unknown>} [settings]  over the keyword-only pin
+ */
+function readyKnowledge(project, settings = {}) {
+  writeFile(project, '.workflows/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
+  store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
+  store.writeMetadata(path.join(project, '.workflows/.knowledge/metadata.json'), { last_indexed: null });
+}
+
+/**
+ * A feature with one completed discussion holding `body` — something for
+ * boot's index to take in.
+ * @param {string} project @param {string} body
+ */
+function completedDiscussion(project, body) {
+  writeFile(project, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+  writeFile(project, '.workflows/payments/manifest.json', JSON.stringify({
+    name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
+    phases: { discussion: { items: { payments: { status: 'completed' } } } },
+  }, null, 2) + '\n');
+  writeFile(project, '.workflows/payments/discussion/payments.md', body);
+}
 
 /** A git-repo project carrying the settings every booted project has. */
 function setupFixture() {
@@ -211,13 +206,11 @@ describe('engine boot', () => {
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('happy path: no pending migrations, knowledge ready — the bulk index runs, then compact', () => {
+  it('happy path: no pending migrations, knowledge ready — the store brought in line, then compacted', () => {
+    readyKnowledge(fix.project);
     // TMUX pinned so the label-state leg is deterministic whatever terminal
     // runs the suite; no project manifest makes it `prompt`.
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_CHECK: 'ready',
-      TMUX: '/fake/sock,123,7',
-    });
+    const res = runEngine(stubbed, fix.project, ['boot'], { TMUX: '/fake/sock,123,7' });
 
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
@@ -239,7 +232,6 @@ describe('engine boot', () => {
       // and the tree it arrived into holds no project file.
       baseline_signal: { root_date: today, workflows_date: today, commits_total: 1, commits_before: 0, history_before: [], files_at_arrival: 0, tree_at_arrival: [] },
     });
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'compact']);
   });
 
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
@@ -247,7 +239,7 @@ describe('engine boot', () => {
 
     for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
-      const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+      const res = runEngine(stubbed, fix.project, ['boot']);
       assert.strictEqual(res.baseline, status);
       // A recorded verdict is never re-judged, so the signal travels only with `none`.
       assert.ok(!('baseline_signal' in res), `${status}: no signal once a status is recorded`);
@@ -255,21 +247,21 @@ describe('engine boot', () => {
 
     // Unrecognised value → none (the judgment-eligible default), signal attached.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
-    const weird = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const weird = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(weird.baseline, 'none');
     assert.strictEqual(weird.baseline_signal.commits_before, 0);
 
     // An object with nothing recorded → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
 
     // Malformed field shape → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: 'in-progress' }));
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
 
     // No project manifest at all → none.
     fs.rmSync(projManifest);
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
   });
 
   it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {
@@ -277,23 +269,23 @@ describe('engine boot', () => {
 
     for (const status of ['walked', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough: { status } }));
-      assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, status);
+      assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).walkthrough, status);
     }
 
     for (const walkthrough of [{ status: 'weird' }, {}, 'walked']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough }));
-      assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none', JSON.stringify(walkthrough));
+      assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).walkthrough, 'none', JSON.stringify(walkthrough));
     }
 
     // The two one-time records are independent: a recorded baseline says
     // nothing about the offer, and vice versa.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'native' }, walkthrough: { status: 'skipped' } }));
-    const both = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const both = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(both.baseline, 'native');
     assert.strictEqual(both.walkthrough, 'skipped');
 
     fs.rmSync(projManifest);
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' }).walkthrough, 'none');
+    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).walkthrough, 'none');
   });
 
   /**
@@ -334,7 +326,7 @@ describe('engine boot', () => {
     // leaves the tree alone: the whole history predates the workflows, and
     // the tree is HEAD's.
     writeFile(project, '.workflows/.state/migrations', '');
-    let res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update' });
+    let res = runEngine(stubbed, project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
     assert.strictEqual(res.baseline, 'none');
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
@@ -343,11 +335,9 @@ describe('engine boot', () => {
     });
 
     // The workflows land in a third commit: the two commits before it are
-    // the history, and the tree is the one that commit arrived into. (The
-    // stub knowledge CLI logs into the project; that is not project code.)
-    fs.rmSync(path.join(project, 'knowledge-calls.log'), { force: true });
+    // the history, and the tree is the one that commit arrived into.
     commit('add workflows', '2025-09-01');
-    res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
+    res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
@@ -360,7 +350,7 @@ describe('engine boot', () => {
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) writeFile(project, f, '# code\n');
     writeFile(project, '.workflows/.state/migrations', '');
     commit('import', '2025-01-01');
-    const res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 0, history_before: [],
       files_at_arrival: 5, tree_at_arrival: ['app/ (3)', 'config/ (1)', 'Gemfile'],
@@ -384,7 +374,7 @@ describe('engine boot', () => {
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-04-01');
     execFileSync('git', ['merge', '-q', '--no-edit', 'side'], { cwd: project, env: { ...process.env, GIT_AUTHOR_DATE: '2025-05-01T12:00:00Z', GIT_COMMITTER_DATE: '2025-05-01T12:00:00Z' } });
-    const res = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 5, commits_before: 2,
       history_before: ['2025-01-01  root', '2025-02-01  main work'],
@@ -400,7 +390,7 @@ describe('engine boot', () => {
     }
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-02-01');
-    const sig = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const sig = runEngine(stubbed, project, ['boot']).baseline_signal;
     assert.strictEqual(sig.commits_before, 15);
     assert.strictEqual(sig.history_before.length, 8 + 1 + 4);
     assert.strictEqual(sig.history_before[8], '… 3 more …');
@@ -417,9 +407,9 @@ describe('engine boot', () => {
     commit('root', '2025-01-01');
     writeFile(project, '.workflows/.state/migrations', '');
     commit('add workflows', '2025-02-01');
-    const plain = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const plain = runEngine(stubbed, project, ['boot']).baseline_signal;
     git(project, ['config', 'log.showSignature', 'true']);
-    const signed = runEngine(stubbed, project, ['boot'], { STUB_CHECK: 'ready' }).baseline_signal;
+    const signed = runEngine(stubbed, project, ['boot']).baseline_signal;
     assert.deepStrictEqual(signed, plain);
     assert.strictEqual(plain.commits_before, 1);
   });
@@ -434,7 +424,7 @@ describe('engine boot', () => {
     // needs absent.
     writeFile(empty, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
     writeFile(empty, '.worktreeinclude', WORKTREE_INCLUDE);
-    const res = runEngine(stubbed, empty, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);
 
@@ -459,7 +449,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
     fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'), JSON.stringify({ work_units: {}, baseline: {} }));
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal.commits_before, 0);
@@ -468,16 +458,13 @@ describe('engine boot', () => {
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
     fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'),
       JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'in-progress');
   });
 
   it('pending migration: changed true, report captured with the stop-gate lines stripped', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_MIGRATE_MODE: 'update',
-      STUB_CHECK: 'ready',
-    });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, true);
@@ -658,51 +645,63 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check']);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge')), 'nothing set up');
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
   it('a ready store is never committed — the index is the checkout\'s own', () => {
-    writeFile(fix.project, '.workflows/.knowledge/store.bin', 'v1\n');
-    writeFile(fix.project, '.workflows/.knowledge/metadata.json', '{}\n');
+    readyKnowledge(fix.project);
+    completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
 
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md']);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
     assert.strictEqual(git(fix.project, ['ls-files', '--', '.workflows/.knowledge']).trim(), '');
   });
 
-  it('buildable: a set-up checkout with no store has it built by the bulk index, then compacted', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'buildable,ready' });
+  it('buildable: a set-up checkout with no store has it built by the keyword side, then compacted', () => {
+    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
     assert.strictEqual(res.compacted, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.ok(!('system_config' in res), 'a store that stood needs no setup');
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'check', 'compact']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md']);
   });
 
   it('buildable: a build that did not stand is not-ready — no compact, the gate\'s report attached', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'buildable', STUB_SYNC_EXIT: '1' });
+    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeFile(fix.project, '.workflows/manifest.json', '{ not json');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
-    assert.deepStrictEqual(res.warnings, ['knowledge index failed: Failed to index .workflows/a/discussion/b.md: HTTP 400']);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: project manifest at .* is not valid JSON/);
     assert.ok('system_config' in res);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'check']);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge/store.bin')));
   });
 
   it('buildable: a store that stood with a file failing is ready, the failure a warning the next start retries', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK: 'buildable,ready', STUB_SYNC_EXIT: '1' });
+    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    completedDiscussion(fix.project, '');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: /);
+    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/discussion\/payments\.md: No chunks produced/);
   });
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
@@ -718,9 +717,7 @@ describe('engine boot', () => {
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
     git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
 
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update-config',
-    });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.warnings, []);
@@ -741,8 +738,10 @@ describe('engine boot', () => {
       '.workflows/payments/discussion/topic-a.md', 'and left it staged exactly as it was');
   });
 
-  it('a crashing knowledge check is not-ready — never a crash', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
+  it('a check that cannot read the knowledge config is not-ready — never a crash', () => {
+    fs.mkdirSync(path.join(fix.project, '.workflows/.knowledge/config.json'), { recursive: true });
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'not-ready');
@@ -751,54 +750,58 @@ describe('engine boot', () => {
   });
 
   it('a failing compact is a warning, never a block', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_CHECK: 'ready',
-      STUB_COMPACT_EXIT: '1',
-    });
+    readyKnowledge(fix.project, { decay_prune_below: 7 });
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
     assert.strictEqual(res.compacted, false);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge compact failed: compact blew up/);
+    assert.deepStrictEqual(res.warnings, ['knowledge compact failed: Invalid decay_prune_below: 7. Expected false or a number in [0, 1].']);
   });
 
-  it('a failing bulk index is its own warning, carrying its stderr — compact still runs', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_CHECK: 'ready',
-      STUB_SYNC_EXIT: '1',
-    });
+  it('a file the index cannot take is its own warning — compact still runs', () => {
+    readyKnowledge(fix.project);
+    completedDiscussion(fix.project, '');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
-    assert.deepStrictEqual(res.warnings, ['knowledge index failed: Failed to index .workflows/a/discussion/b.md: HTTP 400']);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'index', 'compact']);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/discussion\/payments\.md: No chunks produced/);
   });
 
-  it('a failing bulk index and a failing compact are two warnings', () => {
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_CHECK: 'ready',
-      STUB_SYNC_EXIT: '1',
-      STUB_COMPACT_EXIT: '1',
-    });
+  it('a failing index and a failing compact are two warnings', () => {
+    readyKnowledge(fix.project, { decay_prune_below: 7 });
+    completedDiscussion(fix.project, '');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
-    assert.deepStrictEqual(res.warnings, [
-      'knowledge index failed: Failed to index .workflows/a/discussion/b.md: HTTP 400',
-      'knowledge compact failed: compact blew up',
-    ]);
+    assert.strictEqual(res.warnings.length, 2);
+    assert.match(res.warnings[0], /^knowledge index failed: Failed to index /);
+    assert.strictEqual(res.warnings[1], 'knowledge compact failed: Invalid decay_prune_below: 7. Expected false or a number in [0, 1].');
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
+    readyKnowledge(fix.project);
+    completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
+    const knowledge = path.join(fix.project, '.workflows/.knowledge');
+    const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
+
     const err = runEngineFails(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
 
     assert.match(err.error, /migrate\.cjs failed/);
     assert.match(err.error, /never half-run silently/);
     assert.match(err.error, /boom: migration 099 exploded/);
-    // The knowledge legs never ran.
-    assert.deepStrictEqual(knowledgeCalls(fix.project), []);
+    // The knowledge legs never ran: a ready store with a completed
+    // discussion awaiting its index is left exactly as it stood.
+    const after = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
+    assert.deepStrictEqual(after, before);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), []);
   });
 });
 
@@ -983,13 +986,14 @@ describe('engine boot: a set-up checkout with no store', () => {
 
   const bootWith = (systemConfig, extra = {}) => {
     if (systemConfig !== null) writeFile(sysDir, 'config.json', JSON.stringify(systemConfig));
-    return runEngine(realKnowledge, fix.project, ['boot'], { WORKFLOWS_CONFIG_DIR: sysDir, ...extra });
+    return runEngine(stubbed, fix.project, ['boot'], { WORKFLOWS_CONFIG_DIR: sysDir, ...extra });
   };
   const CONFIG = STORE_FILES[2];
   const storePath = () => path.join(fix.project, STORE_FILES[0]);
   const metadata = () => JSON.parse(fs.readFileSync(path.join(fix.project, STORE_FILES[1]), 'utf8'));
 
-  it('a provider whose key resolves builds a full store, indexed and out of git', () => {
+  it('a provider whose key resolves builds the store by keyword, out of git, and hands its vectors to the fill', (t) => {
+    const launched = recordStubbedLaunches(t);
     const head = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
@@ -1003,25 +1007,97 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(meta.provider, 'stub');
     assert.strictEqual(meta.dimensions, 8);
     assert.ok(meta.last_indexed, 'the discussion was indexed into it');
+    assert.strictEqual(store.chunksWithoutVector(store.loadStore(storePath())).length, 1, 'its vector awaits the fill');
+    assert.deepStrictEqual(launched, [fix.project]);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
     assert.strictEqual(git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '');
   });
 
-  it('a provider that cannot be reached still builds the store by keyword — the index failing is a warning, never a block', async () => {
-    const closed = require('net').createServer();
-    await new Promise((resolve) => closed.listen(0, '127.0.0.1', () => resolve(undefined)));
-    const { port } = /** @type {import('net').AddressInfo} */ (closed.address());
-    await new Promise((resolve) => closed.close(() => resolve(undefined)));
+  it('boot never waits on embedding: an endpoint that never answers is never asked', async (t) => {
+    const launched = recordStubbedLaunches(t);
+    let requests = 0;
+    const silent = require('http').createServer(() => { requests += 1; });
+    await new Promise((resolve) => silent.listen(0, '127.0.0.1', () => resolve(undefined)));
+    const { port } = /** @type {import('net').AddressInfo} */ (silent.address());
+    try {
+      const res = bootWith({ knowledge: { provider: 'openai-compatible', base_url: `http://127.0.0.1:${port}/v1`, model: 'm', dimensions: 8 } });
 
-    const res = bootWith({ knowledge: { provider: 'openai-compatible', base_url: `http://127.0.0.1:${port}/v1`, model: 'm', dimensions: 8 } });
+      assert.strictEqual(res.knowledge, 'ready');
+      assert.strictEqual(res.indexed, true);
+      assert.deepStrictEqual(res.warnings, []);
+      assert.strictEqual(requests, 0);
+      assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
+      assert.deepStrictEqual(launched, [fix.project]);
+    } finally {
+      silent.closeAllConnections();
+      await new Promise((resolve) => silent.close(() => resolve(undefined)));
+    }
+  });
+
+  it('a store whose provider key does not resolve warns naming the key, and launches no fill', (t) => {
+    const launched = recordStubbedLaunches(t);
+    const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
+    store.saveStore(store.createStore(), storePath());
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...openai, last_indexed: null });
+    writeFile(fix.project, CONFIG, JSON.stringify({ knowledge: openai }));
+
+    const res = bootWith(null);
 
     assert.strictEqual(res.knowledge, 'ready');
-    assert.strictEqual(res.indexed, false);
-    assert.strictEqual(res.compacted, true);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0],
-      /^knowledge index failed: Failed to embed \.workflows\/payments\/discussion\/payments\.md: .*\(network error\).*\nEach is searchable by keyword; its vectors come at the next start\.$/);
-    assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
+    assert.strictEqual(res.indexed, true);
+    assert.deepStrictEqual(res.warnings, [
+      'knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only',
+    ]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md'], 'the keyword side still lands');
+    assert.deepStrictEqual(launched, []);
+  });
+
+  it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
+    const launched = recordStubbedLaunches(t);
+    bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: '.workflows/payments/discussion/payments.md: out of quota' });
+
+    const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+
+    assert.deepStrictEqual(res.warnings, ['knowledge vector fill fell short: .workflows/payments/discussion/payments.md: out of quota']);
+    assert.deepStrictEqual(launched, [fix.project, fix.project]);
+  });
+
+  it('a fill\'s shortfall stays quiet once nothing awaits a vector — its chunks since retired', (t) => {
+    recordStubbedLaunches(t);
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: '.workflows/payments/discussion/payments.md: out of quota' });
+    const unit = path.join(fix.project, '.workflows/payments/manifest.json');
+    fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
+
+    const res = bootWith(null);
+
+    assert.deepStrictEqual(res.warnings, []);
+    assert.doesNotMatch(harness.output(fix.project, ['knowledge', 'status']), /fell short/);
+  });
+
+  it('a metadata file that does not parse is a warning, never a block', () => {
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    writeFile(fix.project, STORE_FILES[1], '{ not json');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.ok(res.warnings.length > 0);
+    for (const warning of res.warnings) assert.match(warning, /^knowledge .* failed: readMetadata: invalid JSON at /);
+  });
+
+  it('a keyword-only store launches no fill', (t) => {
+    const launched = recordStubbedLaunches(t);
+    writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.deepStrictEqual(launched, []);
   });
 
   it('keyword-only chosen outright in the system config builds a keyword-only store', () => {
@@ -1147,15 +1223,16 @@ describe('engine boot system-config detection', () => {
   });
 
   it('not-ready with a knowledge-less shared config file reports absent', () => {
-    writeSystemConfig(JSON.stringify({ session: { tmux_labels: true } }));
+    writeSystemConfig(JSON.stringify({ editor: { theme: 'dark' } }));
     const res = runEngine(stubbed, fix.project, ['boot'], underHome());
     assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
   });
 
   it('ready responses carry no system_config field', () => {
     writeSystemConfig(JSON.stringify({ knowledge: { provider: 'openai', model: 'm' } }));
+    readyKnowledge(fix.project);
 
-    const res = runEngine(stubbed, fix.project, ['boot'], underHome({ STUB_CHECK: 'ready' }));
+    const res = runEngine(stubbed, fix.project, ['boot'], underHome());
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.ok(!('system_config' in res));
@@ -1516,7 +1593,7 @@ describe('engine boot (real scripts)', () => {
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('runs the real migrate.cjs and knowledge CLI against an isolated project', () => {
+  it('runs the real migrate.cjs and knowledge base against an isolated project', () => {
     const first = runEngine(real, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
@@ -1539,11 +1616,9 @@ describe('engine boot (real scripts)', () => {
 
     // The user runs knowledge setup outside the session — simulated here by
     // writing what setup writes: a keyword-only config and a real store file
-    // (created by the same store module the CLI bundles, so the real `check`
-    // loads it).
+    // the readiness check loads.
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
-    const store = require('../../src/knowledge/store.js');
     store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
 
     // …and the restart's boot finds the store ready and leaves the whole
@@ -1561,8 +1636,8 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(second.compacted, true);
     assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(), '');
 
-    // Third boot: nothing new to commit, the ledger included — a bulk index
-    // and a compact with nothing to do write nothing.
+    // Third boot: nothing new to commit, the ledger included — an index and
+    // a compact with nothing to do write nothing.
     const third = runEngine(real, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');
     assert.deepStrictEqual(third.warnings, []);
@@ -1572,7 +1647,6 @@ describe('engine boot (real scripts)', () => {
   it('a checkout that committed its knowledge directory has the removal staged by the first boot\'s migrations — boot commits none of it, and the reviewed migration commit records it beside the ignore rule', () => {
     writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
     writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
-    const store = require('../../src/knowledge/store.js');
     store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
     git(project, ['add', '-A']);
     git(project, ['commit', '-q', '-m', 'chore(knowledge): initialise store']);

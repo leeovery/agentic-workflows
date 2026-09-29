@@ -1,6 +1,6 @@
 'use strict';
 
-// The knowledge CLI the eval runs is a child process, so it reaches this
+// The `engine knowledge` the eval runs is a child process, so it reaches this
 // cache through a --require preload (knowledge-eval-embeddings-preload.cjs).
 
 const crypto = require('crypto');
@@ -22,7 +22,7 @@ const VECTOR_SUFFIX = '.f32';
  */
 
 /**
- * @typedef {object} EmbeddingProvider  the knowledge CLI's provider interface
+ * @typedef {object} EmbeddingProvider  the engine's embedding provider interface
  * @property {() => string} model
  * @property {() => number} dimensions
  * @property {(text: string) => Promise<number[]>} embed
@@ -129,7 +129,7 @@ function cachingProvider(provider, cache) {
 }
 
 /**
- * How to start a node process whose knowledge CLI embeds through the cache
+ * How to start a node process whose `engine knowledge` embeds through the cache
  * under `dir`: the preload, and the environment naming the directory.
  * @param {string} dir
  */
