@@ -105,9 +105,9 @@ file commits only a change it made itself.
 1. **The foundation — merged (#1424).** The rule written down, the
    migration commit, and the two upgrades the knowledge base's next step
    depends on, in one PR.
-2. **Step 4 of the knowledge-base programme**
-   (`design/knowledge-base-programme.md`). It moves the KB into the
-   engine, on the foundation.
+2. **Step 4 of the knowledge-base programme — merged (#1432).**
+   (`design/knowledge-base-programme.md`.) The KB moved into the engine
+   on the foundation, carrying no upgrade code with it.
 3. **The rest of the audit.** Each finding becomes a migration, then its
    runtime code is deleted.
 
