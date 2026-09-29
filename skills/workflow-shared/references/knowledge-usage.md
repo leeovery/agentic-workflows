@@ -36,7 +36,7 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document, closing on `| reopened` where its topic is in progress again — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
 Excerpts land in context; read further only when a result looks load-bearing — its source file at the result's line range, or, where the path is bare, around the passage its excerpt comes from. Most queries return a couple of mildly relevant results and one directly relevant — read that one, and skim the rest from their excerpts alone.
 
@@ -48,6 +48,8 @@ Confidence is intrinsic to the source phase — how much weight to give the cont
 - `low` — research, imports, seeds, analysis, discovery, roadmap, baseline: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
 
 Low confidence is not low value. A research result that rejected an approach stops the next work unit re-exploring the same dead end; a discussion result showing a corrected assumption explains *why* the spec says what it says. Weigh them, never filter them out.
+
+A `reopened` result is its topic's last concluded position, now being revisited — it may change.
 
 A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification result does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
 
