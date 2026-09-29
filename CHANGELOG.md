@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2026-09-29
+
+🐛 Fixed
+
+- Absorbing a feature into an epic now carries its queued triage concerns along with the discussion and research — they're no longer lost when the feature is deleted.
+- Absorbing a feature now rewrites roadmap item sources to where the files landed, or drops them when the deletion took the file — sources no longer point at missing paths.
+- Promoting a specification to a cross-cutting unit now carries roadmap sources to their new paths — items keep pointing at the specification and discussions after the move.
+
+🔧 Changed
+
+- Prose-test orchestrators now record their verdicts to a file the collation reads, so a hand-back forced early no longer spends the result on a placeholder.
+
 ## [0.8.3] - 2026-09-29
 
 ✨ Added
