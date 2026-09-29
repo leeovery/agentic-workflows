@@ -434,10 +434,10 @@ describe('loadConfig — a mistake in either file', () => {
 
   it('never reads a key outside the knowledge object, and never rewrites the file', () => {
     const systemPath = path.join(tmpDir, 'sys.json');
-    writeJSON(systemPath, { session: { tmux_labels: true }, knowledge: { strategy: 'hybrid' } });
+    writeJSON(systemPath, { editor: { theme: 'dark' }, knowledge: { strategy: 'hybrid' } });
     const before = fs.readFileSync(systemPath, 'utf8');
     const cfg = loadConfig({ systemPath, projectPath: path.join(tmpDir, 'proj.json') });
-    assert.ok(!('session' in cfg));
+    assert.ok(!('editor' in cfg));
     assert.deepStrictEqual(cfg._ignored, [`strategy in ${systemPath} is ignored: not a knowledge setting`]);
     assert.strictEqual(fs.readFileSync(systemPath, 'utf8'), before);
   });
@@ -779,9 +779,9 @@ describe('writeConfigFile', () => {
 
   it('replaces a knowledge value that is not an object', () => {
     const filePath = path.join(tmpDir, 'config.json');
-    writeJSON(filePath, { session: { tmux_labels: true }, knowledge: [1, 2] });
+    writeJSON(filePath, { editor: { theme: 'dark' }, knowledge: [1, 2] });
     writeConfigFile(filePath, { knowledge: { provider: 'stub' } });
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(filePath, 'utf8')), { session: { tmux_labels: true }, knowledge: { provider: 'stub' } });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(filePath, 'utf8')), { editor: { theme: 'dark' }, knowledge: { provider: 'stub' } });
   });
 
   it('preserves sibling subsystem keys on an existing file', () => {

@@ -3241,7 +3241,7 @@ setup_project
 rm -rf "$TEST_ROOT/.workflows/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/config.json" <<'CONF'
-{ "session": { "tmux_labels": true }, "knowledge": { "provider": "openai", "model": "old-model", "dimensions": 1536, "similarity_threshold": 0.4, "strategy": "hybrid" } }
+{ "editor": { "theme": "dark" }, "knowledge": { "provider": "openai", "model": "old-model", "dimensions": 1536, "similarity_threshold": 0.4, "strategy": "hybrid" } }
 CONF
 start_fake_embed_server 4
 exit_code=0
@@ -3254,7 +3254,7 @@ assert_eq "validated before writing" "true" \
 assert_eq "summary names provider and model" "true" \
   "$(echo "$output" | grep -q 'provider: openai-compatible' && echo "$output" | grep -q 'model:    fake-embed' && echo true || echo false)"
 assert_eq "the provider settings replaced as a set, every other key kept" \
-  "{\"session\":{\"tmux_labels\":true},\"knowledge\":{\"provider\":\"openai-compatible\",\"base_url\":\"http://127.0.0.1:$FAKE_SERVER_PORT/v1\",\"model\":\"fake-embed\",\"dimensions\":4,\"similarity_threshold\":0.4,\"strategy\":\"hybrid\"}}" \
+  "{\"editor\":{\"theme\":\"dark\"},\"knowledge\":{\"provider\":\"openai-compatible\",\"base_url\":\"http://127.0.0.1:$FAKE_SERVER_PORT/v1\",\"model\":\"fake-embed\",\"dimensions\":4,\"similarity_threshold\":0.4,\"strategy\":\"hybrid\"}}" \
   "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$HOME/.config/workflows/config.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 clean_system_config

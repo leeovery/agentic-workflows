@@ -314,11 +314,11 @@ describe('setup writes the provider settings alone', () => {
   it("the wizard's keyword-only choice replaces the system config's provider and keeps every other key", async () => {
     const system = config.systemConfigPath();
     writeJson(system, {
-      session: { tmux_labels: true },
+      editor: { theme: 'dark' },
       knowledge: { provider: 'openai-compatible', base_url: 'http://127.0.0.1:9/v1', model: 'm', dimensions: 8, ...TUNED },
     });
     await wizard(['y', '3']);
-    assert.deepStrictEqual(readJson(system), { session: { tmux_labels: true }, knowledge: TUNED });
+    assert.deepStrictEqual(readJson(system), { editor: { theme: 'dark' }, knowledge: TUNED });
   });
 
   it("the wizard's reinitialise keeps every key of the project config but the provider settings", async () => {
