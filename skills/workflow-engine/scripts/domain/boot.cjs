@@ -13,15 +13,17 @@
 // only dirt, and no reviewed commit follows a report of no changes, so boot
 // commits that line itself — this run's, or one an earlier boot stranded.
 //
-// The knowledge directory — the store, its metadata, the knowledge config —
-// is local to each checkout and git-ignored: boot keeps its files listed in
+// The knowledge directory — the store, its metadata, the knowledge config,
+// beside them the store's lock and the fill's claim — is local to each
+// checkout and git-ignored: boot keeps the first three listed in
 // `.worktreeinclude` so a worktree Claude Code creates starts with a copy.
 // A checkout set up (its local config) with no store gets one built when this
 // machine's config says how — it reads `buildable`. Anything else not-ready
 // is the caller's gate: boot never sets a checkout up itself, and a not-ready
 // response carries the system-config report so the gate can offer setup
-// without extra probes. A failing index or compact, a provider key that does
-// not resolve, and a vector fill that fell short are warnings, never blocks.
+// without extra probes. A knowledge config setting the load ignores, a
+// failing index or compact, a provider key that does not resolve, and a
+// vector fill that fell short are warnings, never blocks.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone.
@@ -91,7 +93,7 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the worktree include, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the worktree include, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those

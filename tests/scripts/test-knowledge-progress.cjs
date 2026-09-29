@@ -217,12 +217,11 @@ describe('pruneTest', () => {
     assert.strictEqual(pruneTest({}, units).floor, 0.05);
   });
 
-  for (const bad of [-0.5, 1.5, '0.5', NaN]) {
-    it(`refuses decay_prune_below ${JSON.stringify(bad)}`, () => {
-      assert.throws(
-        () => pruneTest({ decay_prune_below: bad }, units),
-        (err) => err.name === 'UserError' && /Invalid decay_prune_below/.test(err.message)
-      );
-    });
-  }
+  it('falls back to the one default stability, 5', () => {
+    // A unit one completion behind: R(1,5) ≈ 0.979 clears a 0.97 floor,
+    // where R(1,3) ≈ 0.965 would not.
+    const { prunes } = pruneTest({ decay_prune_below: 0.97 }, units);
+    assert.strictEqual(prunes('recent', 'discussion'), false);
+    assert.strictEqual(prunes('buried', 'discussion'), true);
+  });
 });

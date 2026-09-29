@@ -63,9 +63,17 @@ function projectLockPath(workflowsDir) {
  * @param {any} root @param {string} file
  */
 function assertObjectRoot(root, file) {
-  if (root === null || typeof root !== 'object' || Array.isArray(root)) {
+  if (!isObject(root)) {
     throw new Error(`manifest root is not an object in ${file} — fix it by hand; fields written to it would be silently discarded`);
   }
+}
+
+/**
+ * Whether a parsed JSON value is an object — not an array, not null.
+ * @param {unknown} v @returns {v is Record<string, any>}
+ */
+function isObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
 /**
@@ -459,6 +467,7 @@ module.exports = {
   releaseLockFile,
   tryClaimFile,
   ensureContainer,
+  isObject,
   readWorkUnitManifest,
   writeJsonAtomic,
   writeWorkUnitManifestAtomic,

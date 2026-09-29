@@ -140,7 +140,7 @@ async function validateOrRefuse(call, name, provider, dimensions, refusal) {
  * The provider the merged config names, validated — nothing to validate for
  * a providerless (keyword-only) config. The openai key must resolve;
  * openai-compatible may go keyless, as local servers usually do.
- * @param {Call} call @param {Record<string, any>} cfg
+ * @param {Call} call @param {import('./embedder.cjs').Config} cfg
  */
 async function validateConfiguredProvider(call, cfg) {
   if (!cfg.provider) return;
@@ -228,21 +228,11 @@ async function runKeywordOnly(call, root) {
   const files = knowledgeFiles(root);
   const sysPath = config.systemConfigPath();
   refuseInvalidSystemConfig(sysPath, setup.detectSystemConfig(sysPath));
-
-  /** @type {Record<string, any>} */
-  let knowledge = {};
-  if (fs.existsSync(files.config)) {
-    try {
-      knowledge = config.readConfigFile(files.config) || {};
-    } catch (err) {
-      refuse(`project config at ${files.config} is invalid: ${messageOf(err)}`);
-    }
-  }
-  knowledge.provider = null;
+  if (fs.existsSync(files.config)) setup.readProjectConfig(files.config);
 
   consistentProjectInit(files);
   fs.mkdirSync(files.dir, { recursive: true });
-  config.writeConfigFile(files.config, { knowledge });
+  config.writeConfigFile(files.config, setup.buildProjectConfigKeywordOnly());
 
   initProjectStore(call, files);
   await setup.runInitialIndexStep(call, root, files);
@@ -250,9 +240,9 @@ async function runKeywordOnly(call, root) {
 }
 
 /**
- * `setup --provider <id> ...` — the system config written from flags (its
- * `knowledge` key rewritten whole; the file's other top-level keys kept),
- * then as --from-system. The key comes from env/credentials only.
+ * `setup --provider <id> ...` — the system config's provider settings written
+ * from flags (every other key in the file kept), then as --from-system. The
+ * key comes from env/credentials only.
  * @param {Call} call @param {string} root @param {Flags} flags
  */
 async function runProviderForm(call, root, flags) {

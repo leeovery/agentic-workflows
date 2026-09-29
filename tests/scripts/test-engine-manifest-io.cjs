@@ -72,6 +72,11 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.strictEqual(io.TMP_STALE_MS, 60000);
   });
 
+  it('tells a JSON object from an array, null, and a scalar', () => {
+    assert.deepStrictEqual([{}, { a: 1 }].map(io.isObject), [true, true]);
+    assert.deepStrictEqual([[], null, 'x', 3, true, undefined].map(io.isObject), [false, false, false, false, false, false]);
+  });
+
   it('work-unit read is loud on missing and on corrupt JSON', () => {
     assert.throws(() => io.readWorkUnitManifest(dir, 'ghost'), /manifest not found/);
     writeFile(dir, 'broken/manifest.json', '{oops');

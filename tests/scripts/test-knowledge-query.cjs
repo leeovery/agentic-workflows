@@ -53,9 +53,18 @@ function doc(unit, n, content) {
   };
 }
 
+/**
+ * A config as loading makes it: `settings` merged, no key resolved, nothing
+ * ignored.
+ * @param {Record<string, any>} [settings]
+ */
+function loaded(settings = {}) {
+  return { _api_key: null, _ignored: [], ...settings };
+}
+
 /** The ranking settings a keyword-only query runs with by default. */
 function keywordSettings() {
-  return querySettings(KEYWORD_ONLY, {}, null);
+  return querySettings(KEYWORD_ONLY, loaded(), null);
 }
 
 /**
@@ -91,14 +100,14 @@ describe('querySettings', () => {
   });
 
   it('runs a keyword-only store keyword-only once a provider is configured, until the next start embeds it', () => {
-    const settings = querySettings(KEYWORD_ONLY, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }));
+    const settings = querySettings(KEYWORD_ONLY, loaded({ provider: 'stub' }), new StubProvider({ dimensions: DIMS }));
     assert.strictEqual(settings.provider, null);
     assert.strictEqual(settings.note, '[keyword-only mode — the store has no vectors yet; the next start embeds them]');
   });
 
   it('runs a store built with the configured provider in full', () => {
     const provider = new StubProvider({ dimensions: DIMS });
-    const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
+    const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     assert.strictEqual(settings.provider, provider);
     assert.strictEqual(settings.note, null);
     assert.strictEqual(settings.storeEmbedded, true);
@@ -115,7 +124,7 @@ describe('querySettings', () => {
         '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
     ];
     for (const [metadata, cfg, provider, note] of cases) {
-      const settings = querySettings(metadata, cfg, provider);
+      const settings = querySettings(metadata, loaded(cfg), provider);
       assert.strictEqual(settings.provider, null, note);
       assert.strictEqual(settings.note, note);
     }
@@ -201,7 +210,7 @@ describe('queryStore', () => {
         return stub.embedBatch(texts);
       },
     };
-    const settings = querySettings(STUB_BUILT, { provider: 'stub' }, provider);
+    const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     const outcome = await outcomeOf(db, { terms: ['token refresh', 'refunds', PARAPHRASE.term], settings });
     assert.deepStrictEqual(requests, [['token refresh', 'refunds', PARAPHRASE.term]]);
     assert.ok(outcome.results.some((r) => r.id === 'accounts-discussion-accounts-001'), 'the paraphrase found by its vector');
@@ -222,7 +231,7 @@ describe('queryStore', () => {
         '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.]'],
     ];
     for (const [error, note] of cases) {
-      const settings = querySettings(STUB_BUILT, { provider: 'stub' }, failing(error));
+      const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), failing(error));
       const outcome = await outcomeOf(db, { terms, settings });
       assert.deepStrictEqual(outcome.notes, [note]);
       assert.deepStrictEqual(outcome.results.map((r) => [r.id, r.score]), keyword.map((r) => [r.id, r.score]), error.name);
@@ -233,7 +242,7 @@ describe('queryStore', () => {
     const awaiting = store.createStore();
     store.insertDocument(awaiting, { ...doc('ledger', 1, 'Receipts reconcile nightly.'), embedding: stub.embed('receipts') });
     store.insertDocument(awaiting, doc('ledger', 2, 'Receipts arrive late.'));
-    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'], settings: full })).notes,
       ['[1 chunks await vectors — searched by keyword alone; each start retries them]']);
     assert.deepStrictEqual((await outcomeOf(awaiting, { terms: ['receipts'] })).notes, [CHOSEN_NOTE],
@@ -246,7 +255,7 @@ describe('queryStore', () => {
     store.insertDocument(blended, { ...doc('vector', 1, 'Ledgers balance at close.'), embedding: [0.6, 0.8] });
     store.insertDocument(blended, { ...doc('keyword', 1, 'Receipts arrive late.'), embedding: [0, 1] });
     const axis = { model: () => 'axis', dimensions: () => 2, embedBatch: async (texts) => texts.map(() => [2, 0]) };
-    const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, { provider: 'axis' }, axis);
+    const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, loaded({ provider: 'axis' }), axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
     const confidence = 0.03;
@@ -259,7 +268,7 @@ describe('queryStore', () => {
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
     const accounts = 'accounts-discussion-accounts-001';
-    const full = querySettings(STUB_BUILT, { provider: 'stub' }, stub);
+    const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
     assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
   });
@@ -272,7 +281,7 @@ describe('queryProvider', () => {
 
   /** The one-chunk store's query through the provider the query builds. @param {object} provider */
   function queryThrough(provider) {
-    return outcomeOf(db, { terms: ['receipts'], settings: querySettings(STAND_IN, endpoint.config, provider) });
+    return outcomeOf(db, { terms: ['receipts'], settings: querySettings(STAND_IN, loaded(endpoint.config), provider) });
   }
 
   before(async () => {
@@ -554,6 +563,100 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     const corrupt = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(corrupt.code, 1);
     assert.match(corrupt.stderr, /^Error: loadStore: corrupted store file at /);
+  });
+});
+
+describe('knowledge query and status — a mistake in the knowledge config', () => {
+  let root;
+  let configFile;
+
+  /** @param {Record<string, any>} knowledge */
+  function configure(knowledge) {
+    fs.writeFileSync(configFile, JSON.stringify({ knowledge }));
+  }
+
+  beforeEach(async () => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-config-'));
+    const unit = path.join(root, '.workflows', 'alpha');
+    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
+      phases: { discussion: { items: { alpha: { status: 'completed' } } } },
+    }));
+    fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
+    configFile = path.join(root, '.workflows', '.knowledge', 'config.json');
+    configure({ provider: null });
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('a search runs past it, its note naming each ignored key after the others', async () => {
+    configure({ provider: null, similarity_threshold: '0.5', strategy: 'hybrid' });
+    const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.strictEqual(code, 0);
+    assert.deepStrictEqual(stdout.split('\n').slice(0, 4), [
+      CHOSEN_NOTE,
+      `[knowledge config — similarity_threshold in ${configFile} is ignored: "0.5" is not a number from 0 to 1]`,
+      `[knowledge config — strategy in ${configFile} is ignored: not a knowledge setting]`,
+      '[1 results]',
+    ]);
+  });
+
+  it('a search over a sound config carries no config note', async () => {
+    const { stdout } = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.doesNotMatch(stdout, /knowledge config/);
+  });
+
+  it('status names each ignored key, and a query still runs', async () => {
+    configure({ provider: null, decay_base_stability: 0, decay_weights: [1] });
+    const status = await engineKnowledge(root, ['status']);
+    assert.strictEqual(status.code, 0);
+    assert.match(status.stdout, /^Mode: Keyword-only — /m);
+    const ignored = [
+      `decay_base_stability in ${configFile} is ignored: 0 is not a number above 0`,
+      `decay_weights in ${configFile} is ignored: [1] is not an object giving work types numbers of 0 or more`,
+    ];
+    const warnings = status.stdout.split('\n').filter((line) => line.startsWith('WARNING: '));
+    assert.deepStrictEqual(warnings, ignored.map((line) => `WARNING: ${line}`));
+    const query = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.strictEqual(query.code, 0, query.stderr);
+    assert.deepStrictEqual(query.stdout.split('\n').slice(0, 4), [
+      CHOSEN_NOTE,
+      ...ignored.map((line) => `[knowledge config — ${line}]`),
+      '[1 results]',
+    ]);
+  });
+
+  it('compact prunes at the default floor past an invalid one', async () => {
+    // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
+    // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
+    const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
+    const units = { alpha: { work_type: 'feature' } };
+    for (const [name, completedAt] of completions) {
+      const unit = path.join(root, '.workflows', name);
+      fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+      fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
+        phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+      }));
+      fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), `# Discussion\n\n${name} settled its tokens.\n`);
+      units[name] = { work_type: 'feature' };
+    }
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: units }));
+    configure({ provider: null, decay_prune_below: false, decay_base_stability: 0.05 });
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
+
+    configure({ provider: null, decay_prune_below: 'high', decay_base_stability: 0.05 });
+    const compact = await engineKnowledge(root, ['compact']);
+    assert.strictEqual(compact.code, 0, compact.stderr);
+    assert.strictEqual(compact.stdout, [
+      'Compacted: removed 1 chunks from 1 work units (retrievability < 0.05)',
+      '  • buried: 1 chunks (discussion)',
+      '',
+    ].join('\n'));
   });
 });
 

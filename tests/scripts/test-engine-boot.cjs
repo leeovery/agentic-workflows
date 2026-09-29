@@ -749,16 +749,39 @@ describe('engine boot', () => {
     assert.strictEqual(res.compacted, false);
   });
 
-  it('a failing compact is a warning, never a block', () => {
-    readyKnowledge(fix.project, { decay_prune_below: 7 });
+  it('a mistake in the knowledge config is named, never a block — compact prunes at the default floor in its place', () => {
+    // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
+    // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
+    const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({
+      work_units: Object.fromEntries(completions.map(([name]) => [name, { work_type: 'feature' }])),
+    }, null, 2) + '\n');
+    for (const [name, completedAt] of completions) {
+      writeFile(fix.project, `.workflows/${name}/manifest.json`, JSON.stringify({
+        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
+        phases: name === 'frontier' ? {} : { discussion: { items: { [name]: { status: 'completed' } } } },
+      }, null, 2) + '\n');
+      if (name !== 'frontier') writeFile(fix.project, `.workflows/${name}/discussion/${name}.md`, `# ${name}\n\nCards ship first.\n`);
+    }
+    readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.05 });
+    runEngine(stubbed, fix.project, ['boot']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/buried/discussion/buried.md', '.workflows/recent/discussion/recent.md']);
 
+    const configFile = path.join(fix.project, '.workflows/.knowledge/config.json');
+    writeFile(fix.project, '.workflows/.knowledge/config.json', JSON.stringify({
+      knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.05, strategy: 'hybrid' },
+    }) + '\n');
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
-    assert.strictEqual(res.compacted, false);
-    assert.deepStrictEqual(res.warnings, ['knowledge compact failed: Invalid decay_prune_below: 7. Expected false or a number in [0, 1].']);
+    assert.strictEqual(res.compacted, true);
+    assert.deepStrictEqual(res.warnings, [
+      `knowledge config: decay_prune_below in ${configFile} is ignored: 7 is not false or a number from 0 to 1`,
+      `knowledge config: strategy in ${configFile} is ignored: not a knowledge setting`,
+    ]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/recent/discussion/recent.md']);
   });
 
   it('a file the index cannot take is its own warning — compact still runs', () => {
@@ -774,16 +797,19 @@ describe('engine boot', () => {
     assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/discussion\/payments\.md: No chunks produced/);
   });
 
-  it('a failing index and a failing compact are two warnings', () => {
-    readyKnowledge(fix.project, { decay_prune_below: 7 });
-    completedDiscussion(fix.project, '');
+  it('a failing index and a failing compact are two warnings, never a block', () => {
+    readyKnowledge(fix.project);
+    writeFile(fix.project, '.workflows/manifest.json', '{ not json');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, false);
     assert.strictEqual(res.warnings.length, 2);
-    assert.match(res.warnings[0], /^knowledge index failed: Failed to index /);
-    assert.strictEqual(res.warnings[1], 'knowledge compact failed: Invalid decay_prune_below: 7. Expected false or a number in [0, 1].');
+    assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: /);
+    assert.match(res.warnings[1], /^knowledge compact failed: /);
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {

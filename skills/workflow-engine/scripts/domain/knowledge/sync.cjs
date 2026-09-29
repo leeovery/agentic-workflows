@@ -81,11 +81,12 @@ function syncKnowledge(cwd, changes, warnings) {
  */
 
 /**
- * Boot's pass over a set-up checkout: the keyword side brought in line with
- * the files — the store built where the checkout has none and the config
- * says how — then compacted, the provider's key checked, the last fill's
- * shortfall said, and the vector fill launched where chunks await. A
- * checkout not set up is left alone: setting it up is the person's choice.
+ * Boot's pass over a set-up checkout: the config settings loading ignores
+ * named, the keyword side brought in line with the files — the store built
+ * where the checkout has none and the config says how — then compacted, the
+ * provider's key checked, the last fill's shortfall said, and the vector fill
+ * launched where chunks await. A checkout not set up is left alone: setting
+ * it up is the person's choice.
  * @param {string} cwd  the project root @param {string[]} warnings
  * @returns {BootKnowledge}
  */
@@ -95,6 +96,7 @@ function bootKnowledge(cwd, warnings) {
 
   const files = knowledgeFiles(cwd);
   const settings = attempt(warnings, 'knowledge index', () => loadSettings(files));
+  for (const line of settings ? settings.cfg._ignored : []) warnings.push(`knowledge config: ${line}`);
   const reconciled = settings && attempt(warnings, 'knowledge index', () => reconcile(cwd, settings));
   for (const { artifact, error } of reconciled ? reconciled.failures : []) {
     warnings.push(`knowledge index failed: Failed to index ${artifact.file}: ${error.message}`);

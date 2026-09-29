@@ -16,7 +16,7 @@ const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 /** @typedef {import('../../kernel/knowledge/embeddings.cjs').EmbeddingProvider} EmbeddingProvider */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
-/** @typedef {Record<string, any>} Config  the merged knowledge config */
+/** @typedef {import('../../kernel/knowledge/config.cjs').KnowledgeConfig} Config */
 
 /**
  * The store's provider while its key cannot be resolved: it answers to the

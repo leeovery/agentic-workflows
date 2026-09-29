@@ -8,7 +8,9 @@
 // Project config: .workflows/.knowledge/config.json
 //
 // Both wrap knowledge settings under a top-level "knowledge" key. Project
-// overrides system; missing fields fall through; absent files are fine.
+// overrides system; missing fields fall through; absent files are fine. An
+// unknown key, or a tuning value its use cannot take, is ignored and named;
+// the provider settings are read as written.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -16,6 +18,7 @@ const path = require('path');
 
 const { systemConfigDir } = require('../system-config.cjs');
 const { ENGINE_COMMAND } = require('../call.cjs');
+const { isObject, writeJsonAtomic } = require('../manifest-io.cjs');
 const { StubProvider } = require('./embeddings.cjs');
 const { OpenAIProvider } = require('./providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('./providers/openai-compatible.cjs');
@@ -30,14 +33,13 @@ const DEFAULTS = {
   similarity_threshold: 0.3,
   // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S),
   // in "feature-equivalents" (see decay_weights). Higher = slower decay;
-  // half-life ≈ 6.6 × S0. Set to 5 (not 3) because weighting inflates
-  // progressElapsed for epic-heavy work, so a larger S0 keeps the curve gentle:
-  // one 4-topic epic ≈ 0.92, three ≈ 0.78.
+  // half-life ≈ 6.6 × S0. Weighting inflates progressElapsed for epic-heavy
+  // work, so S0 sits high enough to keep the curve gentle: one 4-topic epic
+  // ≈ 0.92, three ≈ 0.78.
   decay_base_stability: 5,
   // Storage backstop: `compact` prunes a unit's non-spec chunks once their
   // retrievability R falls below this floor (i.e. already unreachable in
-  // ranking). false disables pruning. Replaces the old wall-clock
-  // decay_months — decay is progress-based now.
+  // ranking). false disables pruning.
   decay_prune_below: 0.05,
   // Significance weighting for the progress clock. progressElapsed sums
   // topics(V) × weight[work_type(V)] over later units, so a quick-fix advances
@@ -54,6 +56,37 @@ const DEFAULTS = {
     'epic': 1.0,
   },
 };
+
+/**
+ * @typedef {object} TuningRule  the values a tuning key's use can take
+ * @property {string} expected  what a valid value is, as a warning words it
+ * @property {(value: unknown) => boolean} valid
+ */
+
+/** @param {unknown} value @returns {value is number} */
+function isNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** @param {unknown} value */
+function isFraction(value) {
+  return isNumber(value) && value >= 0 && value <= 1;
+}
+
+/** @type {Record<keyof typeof DEFAULTS, TuningRule>} */
+const TUNING = {
+  similarity_threshold: { expected: 'a number from 0 to 1', valid: isFraction },
+  decay_base_stability: { expected: 'a number above 0', valid: (value) => isNumber(value) && value > 0 },
+  decay_prune_below: { expected: 'false or a number from 0 to 1', valid: (value) => value === false || isFraction(value) },
+  decay_weights: {
+    expected: 'an object giving work types numbers of 0 or more',
+    valid: (value) => isObject(value) && Object.values(value).every((weight) => isNumber(weight) && weight >= 0),
+  },
+};
+
+// The settings that name the embedding provider — what setup writes, and
+// what decides the vectors a store holds.
+const PROVIDER_FIELDS = ['provider', 'model', 'dimensions', 'base_url'];
 
 // Known providers that have implementations in this codebase.
 const AVAILABLE_PROVIDERS = ['stub', 'openai', 'openai-compatible'];
@@ -301,29 +334,61 @@ function resolveApiKey(provider, opts) {
  */
 
 /**
+ * @typedef {object} LoadedFields  what loading adds to the merged settings
+ * @property {string|null} _api_key  the configured provider's key, resolved — null where none resolves
+ * @property {string[]} _ignored  a line per key loading ignored, naming it, the file, and why
+ */
+
+/** @typedef {Record<string, any> & LoadedFields} KnowledgeConfig  the merged knowledge config */
+
+/**
+ * Why loading ignores a key of a config file's knowledge settings, or null
+ * when it reads it: a provider setting is read as written — a wrong one
+ * refuses where it is used — a tuning key when its value is one its use can
+ * take, or null, and any other key never.
+ * @param {string} key @param {unknown} value
+ * @returns {string|null}
+ */
+function ignoredBecause(key, value) {
+  if (PROVIDER_FIELDS.includes(key)) return null;
+  if (!Object.hasOwn(TUNING, key)) return 'not a knowledge setting';
+  const rule = /** @type {Record<string, TuningRule>} */ (TUNING)[key];
+  return value === null || rule.valid(value) ? null : `${JSON.stringify(value)} is not ${rule.expected}`;
+}
+
+/**
  * Load and merge config from the system and project levels over the
  * defaults. `null` at either level unsets a key, so a project config can
- * clear a system setting — the provider included.
+ * clear a system setting — the provider included. A key loading ignores
+ * leaves the level beneath it in force, and is named in `_ignored`.
  * @param {ConfigPaths} paths
- * @returns {Record<string, any>} the merged config, the resolved key as `_api_key`
+ * @returns {KnowledgeConfig}
  */
 function loadConfig(paths) {
-  const system = readConfigFile(paths.systemPath || systemConfigPath(), { sharedFile: true });
-  const project = readConfigFile(paths.projectPath);
+  const systemPath = paths.systemPath || systemConfigPath();
+  const levels = [
+    { file: systemPath, settings: readConfigFile(systemPath, { sharedFile: true }) },
+    { file: paths.projectPath, settings: readConfigFile(paths.projectPath) },
+  ];
 
   /** @type {Record<string, any>} */
   const merged = Object.assign({}, DEFAULTS);
-  for (const level of [system, project]) {
-    if (!level) continue;
-    for (const key of Object.keys(level)) {
-      if (level[key] === undefined) continue;
-      if (level[key] === null) delete merged[key];
-      else merged[key] = level[key];
+  /** @type {string[]} */
+  const ignored = [];
+  for (const { file, settings } of levels) {
+    for (const [key, value] of Object.entries(settings || {})) {
+      const because = ignoredBecause(key, value);
+      if (because) ignored.push(`${key} in ${file} is ignored: ${because}`);
+      else if (value === null) delete merged[key];
+      else merged[key] = value;
     }
   }
 
-  merged._api_key = resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath });
-  return merged;
+  return {
+    ...merged,
+    _api_key: resolveApiKey(merged.provider, { credentialsPath: paths.credentialsPath }),
+    _ignored: ignored,
+  };
 }
 
 /**
@@ -331,11 +396,12 @@ function loadConfig(paths) {
  *
  * Returns:
  *   - StubProvider instance when config.provider === 'stub'
- *   - null when no provider is configured OR api_key_env resolves to empty
+ *   - null when no provider is configured, or openai's key does not resolve
  *     (keyword-only mode)
- *   - Throws for unimplemented provider names
+ *   - Throws for unimplemented provider names, and for openai-compatible
+ *     without a base_url
  *
- * @param {Record<string, any>} config  Merged config from loadConfig()
+ * @param {KnowledgeConfig} config
  * @param {import('./providers/openai-engine.cjs').Patience} [patience]  how long an endpoint provider waits on its endpoint
  * @returns {import('./embeddings.cjs').EmbeddingProvider|null}  Provider instance or null (keyword-only mode)
  */
@@ -406,16 +472,30 @@ function resolveProvider(config, patience = {}) {
 }
 
 /**
- * Atomically write a config file. The payload carries the knowledge
- * subsystem's full view (including the top-level `knowledge` wrapper); any
- * other top-level keys already on disk are preserved —
- * the file is shared, and a knowledge write must never clobber a sibling
- * subsystem. Writes to `<path>.tmp` then renames — matches the
- * manifest/store convention so a crash mid-write never leaves a truncated
- * JSON file.
+ * The parsed JSON object at a path — empty where there is no file, or where
+ * it does not parse to an object: the caller is committing to a write, and
+ * replaces it.
+ * @param {string} filePath @returns {Record<string, any>}
+ */
+function readWritableObject(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return isObject(parsed) ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Write a config file's provider settings — the payload's `knowledge`
+ * object, as setup builds it — through the kernel's atomic JSON write. They
+ * replace the provider fields the file holds as a set; every other key of
+ * its `knowledge` object, and every other top-level key (another
+ * subsystem's), stays as the file has it.
  *
  * @param {string} filePath  Absolute path to write
- * @param {object} payload   Full JSON object (must include `knowledge` key)
+ * @param {{knowledge: Record<string, unknown>}} payload  the provider settings under the `knowledge` wrapper
  */
 function writeConfigFile(filePath, payload) {
   if (!filePath) throw new Error('writeConfigFile: filePath is required');
@@ -423,31 +503,15 @@ function writeConfigFile(filePath, payload) {
     throw new Error('writeConfigFile: payload must be an object with a top-level "knowledge" key');
   }
 
-  let existing = null;
-  if (fs.existsSync(filePath)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (_) {
-      // Corrupt file — the caller is committing to a write; replace it.
-      existing = null;
-    }
-  }
-  const full = existing && typeof existing === 'object' && !Array.isArray(existing)
-    ? Object.assign({}, existing, payload)
-    : payload;
-
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const tmp = filePath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, filePath);
+  const existing = readWritableObject(filePath);
+  const kept = Object.entries(isObject(existing.knowledge) ? existing.knowledge : {}).filter(([key]) => !PROVIDER_FIELDS.includes(key));
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  writeJsonAtomic(filePath, { ...existing, knowledge: { ...payload.knowledge, ...Object.fromEntries(kept) } });
 }
 
 module.exports = {
   DEFAULTS,
+  PROVIDER_FIELDS,
   AVAILABLE_PROVIDERS,
   PROVIDER_ENV_VARS,
   systemConfigPath,

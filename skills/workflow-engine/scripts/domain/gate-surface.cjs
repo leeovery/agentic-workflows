@@ -20,7 +20,8 @@
 const fs = require('fs');
 const path = require('path');
 const { gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
-const { isObject, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 
 /** Claude Code's early-access switch — the mod loads only where it is set. */
 const FUNCTION_HOOKS_ENV = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';

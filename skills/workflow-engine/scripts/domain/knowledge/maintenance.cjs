@@ -69,7 +69,7 @@ function removeChunks(root, scope) {
 
 /**
  * What compaction prunes from the store — null when `decay_prune_below` is
- * false. Throws UserError on an invalid floor.
+ * false.
  * @param {string} root @param {Config} cfg @param {Array<Record<string, any>>} workUnits
  * @returns {Compaction|null}
  */

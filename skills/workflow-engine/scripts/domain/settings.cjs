@@ -13,17 +13,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 
 /** The settings file, as a pathspec — what a confined commit names. */
 const SETTINGS_SPEC = '.claude/settings.json';
 
 /** @typedef {{changed: boolean, error?: string}} SettingsSync */
-
-/** @param {unknown} v @returns {v is Record<string, any>} */
-function isObject(v) {
-  return v !== null && typeof v === 'object' && !Array.isArray(v);
-}
 
 /**
  * Whether the test harness holds the settings file still — its hermeticity
@@ -67,4 +62,4 @@ function writeProjectSettings(cwd, settings) {
   writeJsonAtomic(file, settings);
 }
 
-module.exports = { SETTINGS_SPEC, isObject, settingsHeld, readProjectSettings, writeProjectSettings };
+module.exports = { SETTINGS_SPEC, settingsHeld, readProjectSettings, writeProjectSettings };
