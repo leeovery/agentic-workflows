@@ -40,9 +40,6 @@ The prose should have taken this path:
    call, never the concern's
 9. one initialisation commit closes the setup, and the session opens.
    Its triage check reads this topic's own queue, which is empty
-10. the first turn is the session's own opening on the material it just
-    read — not a raise, and not the queue entry read out — and the walk
-    stops there with the turn unanswered
 
 Further claims:
 

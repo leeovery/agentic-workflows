@@ -40,7 +40,8 @@
       "manifest set managed-search.discovery.synonym-handling brief_incorporated true",
       "topic start managed-search discussion synonym-handling",
       "discussion-map add managed-search synonym-handling",
-      "discussion(managed-search): initialize synonym-handling discussion"
+      "discussion(managed-search): initialize synonym-handling discussion",
+      "topic queue managed-search discussion synonym-handling"
     ],
     "calls_in_order": [
       "manifest get managed-search.discovery.synonym-handling brief_path",
@@ -48,7 +49,8 @@
       "topic start managed-search discussion synonym-handling",
       "write:.workflows/managed-search/discussion/synonym-handling.md",
       "discussion-map add managed-search synonym-handling",
-      "discussion(managed-search): initialize synonym-handling discussion"
+      "discussion(managed-search): initialize synonym-handling discussion",
+      "topic queue managed-search discussion synonym-handling"
     ],
     "calls_exclude": [
       "topic queue search-relevance",
