@@ -36,7 +36,7 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, or why the last vector fill fell short. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
 Chunks land in context; read a source file only when a chunk looks load-bearing. Most queries return a couple of mildly relevant chunks and one directly relevant — read that one, and skim the rest from the chunk text alone.
 
