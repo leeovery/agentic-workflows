@@ -735,6 +735,16 @@ merged (#1424): migration 063 retires `store.msp`, migration 064 untracks
 the knowledge directory, and the migration commit carries every path the
 workflows own. The KB carries no upgrade code into the engine.
 
+Built as stack #1432, in review:
+- #1429, the move and the door;
+- #1430, every caller on the door, with the skill retired;
+- #1431, the config loose ends.
+
+Settled in the build:
+- The verbs a person runs to embed (a bulk `index`, `rebuild`, `setup`) still embed while they wait. Only a single-file index, a transaction's sync and boot hand the vectors to the background fill.
+- The fill works one at a time through a guarded claim.
+- The fill saves only while the store's provider, model and dimensions still match its own.
+
 ### What it starts from
 
 - **Two programmes that start each other.** The engine launches the KB
