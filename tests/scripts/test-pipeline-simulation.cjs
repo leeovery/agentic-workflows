@@ -3297,6 +3297,13 @@ describe('pipeline simulation', () => {
       '--problem', sim.write(`.workflows/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
     assert.ok(fs.existsSync(path.join(sim.dir, spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
+    // A peer reroutes a concern onto the discussion — it waits in the
+    // document's queue, and the queue follows the document.
+    const scratch = sim.write(`.workflows/.cache/${feat}/discussion/${feat}/concern-rollback-owner.md`,
+      '### Rollback owner\n*From: billing · discussion · 2026-07-23*\n\nWho owns a rollback once the cutover starts?\n');
+    const landed = sim.run(['topic', 'triage', feat, 'discussion', feat, '--concern', scratch, '--slug', 'rollback-owner',
+      '-m', `discussion(${feat}): reroute concern to ${feat}`]);
+    assert.strictEqual(landed.concern_path, `.workflows/${feat}/discussion/.triage/${feat}/001-rollback-owner.md`);
 
     // The manage flow's absorb gates render from the pre-absorb state.
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
@@ -3304,8 +3311,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
       /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
 
-    sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
+    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
+    assert.deepStrictEqual(absorbed.triage_moved, [{ phase: 'discussion', path: 'discussion/.triage/stray-topic', count: 1 }]);
+    assert.deepStrictEqual(sim.run(['topic', 'queue', epic, 'discussion', 'stray-topic']).files,
+      [`.workflows/${epic}/discussion/.triage/stray-topic/001-rollback-owner.md`],
+      'the queued concern waits on the epic topic — its session raises it');
+    assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic).epics[0].detail).replace(/\n[ │]+/g, ' '),
+      /Stray Topic[^\n]*triage waiting/, 'the epic tree cues the waiting concern');
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');

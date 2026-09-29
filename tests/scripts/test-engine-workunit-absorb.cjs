@@ -653,6 +653,72 @@ describe('engine workunit absorb — imports follow the material', () => {
   });
 });
 
+describe('engine workunit absorb — triage queues follow their documents', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  /** Feature-relative queue file → content: two concerns queued on the discussion (numbering gapped by an earlier drain), one on the research. */
+  const QUEUED = {
+    'discussion/.triage/auth-flow/001-token-rotation.md': '### Token rotation\n*From: billing · discussion · 2026-06-03*\n\nRotate on every refresh.\n',
+    'discussion/.triage/auth-flow/003-lockout-window.md': '### Lockout window\n*From: billing · discussion · 2026-06-05*\n\nHow long a lockout holds.\n',
+    'research/.triage/auth-flow/002-vendor-limits.md': '### Vendor limits\n*From: billing · research · 2026-06-04*\n\nWhat the vendor rate-limits.\n',
+  };
+
+  function setupQueued() {
+    fix = setupFixture();
+    for (const [rel, content] of Object.entries(QUEUED)) writeFile(fix.project, `.workflows/auth-flow/${rel}`, content);
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'queued concerns']);
+  }
+
+  it('moves each queue under the topic, names and contents intact, and the engine reads it there', () => {
+    setupQueued();
+    const res = engine(fix, ABSORB);
+
+    assert.deepStrictEqual(res.triage_moved, [
+      { phase: 'discussion', path: 'discussion/.triage/auth', count: 2 },
+      { phase: 'research', path: 'research/.triage/auth', count: 1 },
+    ]);
+    for (const [rel, content] of Object.entries(QUEUED)) {
+      const landed = rel.replace('/.triage/auth-flow/', '/.triage/auth/');
+      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments', landed), 'utf8'), content, `moved intact: ${landed}`);
+    }
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')), 'the feature directory is gone');
+
+    const discussionQueue = engine(fix, ['topic', 'queue', 'payments', 'discussion', 'auth']);
+    assert.deepStrictEqual(discussionQueue.files, [
+      '.workflows/payments/discussion/.triage/auth/001-token-rotation.md',
+      '.workflows/payments/discussion/.triage/auth/003-lockout-window.md',
+    ]);
+    assert.deepStrictEqual(engine(fix, ['topic', 'queue', 'payments', 'research', 'auth']).files,
+      ['.workflows/payments/research/.triage/auth/002-vendor-limits.md']);
+  });
+
+  it("the moves ride the absorb's one commit — nothing left dirty", () => {
+    setupQueued();
+    const commits = Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim());
+    engine(fix, ABSORB);
+
+    assert.strictEqual(Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
+    const staged = git(fix.project, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n');
+    for (const rel of Object.keys(QUEUED)) {
+      assert.ok(staged.includes(`.workflows/auth-flow/${rel}`), `deletion staged: ${rel}`);
+      assert.ok(staged.includes(`.workflows/payments/${rel.replace('/.triage/auth-flow/', '/.triage/auth/')}`), `landing staged: ${rel}`);
+    }
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']), '');
+  });
+
+  it('a drained queue is no move — nothing lands in the epic and no field rides the response', () => {
+    fix = setupFixture();
+    fs.mkdirSync(path.join(fix.project, '.workflows/auth-flow/discussion/.triage/auth-flow'), { recursive: true });
+    const res = engine(fix, ABSORB);
+
+    assert.strictEqual(res.triage_moved, undefined);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/discussion/.triage')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
+  });
+});
+
 describe('engine workunit absorb — roadmap sources follow the material', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
@@ -881,6 +947,15 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'orphan series dir']);
     refusedPristine(ABSORB, /experiment\/auth already exists/);
+  });
+
+  it('refuses a queue already at the topic in the epic — the concerns never merge into it', () => {
+    fix = setupFixture();
+    writeFile(fix.project, '.workflows/auth-flow/discussion/.triage/auth-flow/001-token-rotation.md', '### Token rotation\n');
+    writeFile(fix.project, '.workflows/payments/discussion/.triage/auth/001-stray.md', '### Stray\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'queue collision']);
+    refusedPristine(ABSORB, /\.workflows\/payments\/discussion\/\.triage\/auth already exists — pick a different name/);
   });
 
   it('the research lands at the topic name — a renamed absorb keeps every experiment join intact', () => {
