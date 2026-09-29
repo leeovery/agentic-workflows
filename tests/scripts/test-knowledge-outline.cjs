@@ -75,6 +75,12 @@ describe('outline — locate', () => {
     assert.deepStrictEqual(summarised.locate('Tokens refresh hourly.'), { first: 5, last: 5 });
   });
 
+  it('places a slice of an over-long line inside the line it was cut from', () => {
+    const file = outline(fileOf(['# Title', '', 'Opening words of one very long line, then its closing words.']));
+    assert.deepStrictEqual(file.locate('then its closing words.'), { first: 3, last: 3 });
+    assert.deepStrictEqual(file.headingsAt(3), ['Title']);
+  });
+
   it('finds a chunk cut with its frontmatter, and reads no heading there', () => {
     const markdown = fileOf(['---', '# yaml comment', '---', '', '# Title', '', 'Body.']);
     const [{ content }] = chunk(markdown, { strip_frontmatter: false, keep_whole_below: 50 });

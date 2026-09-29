@@ -18,7 +18,7 @@ const { sourceLines, scanStructure, lineStarts, lineHolding } = require('./chunk
 
 /**
  * @typedef {object} Outline
- * @property {(content: string) => Lines|null} locate  a chunk's lines — null where no line of the file starts with its text
+ * @property {(content: string) => Lines|null} locate  a chunk's lines — where its text starts a line, else where it sits inside one (a slice of an over-long line); null where the file no longer holds it
  * @property {(line: number) => string[]} headingsAt  the headings enclosing a line, outermost first
  */
 
@@ -43,7 +43,8 @@ function outline(markdown) {
   const headings = scanStructure(lines.slice(bodyStart)).headings.map((heading) => ({ ...heading, line: bodyStart + heading.line + 1 }));
   return {
     locate(content) {
-      const at = lineStartOf(text, content);
+      const starting = lineStartOf(text, content);
+      const at = starting === -1 ? text.indexOf(content) : starting;
       if (at === -1) return null;
       return { first: lineHolding(starts, at) + 1, last: lineHolding(starts, at + content.length - 1) + 1 };
     },
