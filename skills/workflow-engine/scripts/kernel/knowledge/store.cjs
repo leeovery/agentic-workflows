@@ -303,6 +303,16 @@ function searchKeyword(db, { term, where, limit = Infinity }) {
 }
 
 /**
+ * How rare each word is in the chunks' content: its inverse document
+ * frequency, 0 for a word no chunk's content holds.
+ * @param {Store} db
+ * @returns {(word: string) => number}
+ */
+function contentRarity(db) {
+  return keyword.rarity(keywordIndex(db)[keyword.FIELDS.indexOf('content')], db.vocabulary);
+}
+
+/**
  * Every admitted chunk with a vector, by its cosine similarity to `vector` —
  * those under `similarity` left out.
  * @param {Store} db
@@ -694,6 +704,7 @@ module.exports = {
   chunksWithoutVector,
   attachVectors,
   searchKeyword,
+  contentRarity,
   searchVector,
   saveStore,
   loadStore,

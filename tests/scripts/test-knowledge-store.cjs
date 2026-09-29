@@ -277,6 +277,17 @@ describe('knowledge store — keyword search', () => {
     store.insertDocument(db, makeDoc({ id: 'd', content: 'alpha epsilon' }));
     assert.deepStrictEqual(scores(store.searchKeyword(db, { term: 'alpha' })), { d: bm25({ count: 1, matching: 1, size: 1, length: 2, average: 2 }) });
   });
+
+  it("weighs a word by its rarity across the chunks' content, as BM25 does, and a word no content holds at nothing", () => {
+    const db = storeOf(['a', 'alpha beta'], ['b', 'alpha gamma'], ['c', 'delta']);
+    const rarity = store.contentRarity(db);
+    const idf = (matching) => Math.log(1 + (3 - matching + 0.5) / (matching + 0.5));
+    assert.strictEqual(rarity('alpha'), idf(2));
+    assert.strictEqual(rarity('delta'), idf(1));
+    assert.ok(rarity('delta') > rarity('alpha'));
+    assert.strictEqual(rarity('absent'), 0);
+    assert.strictEqual(rarity(tokenize('x/a.md')[0]), 0, 'the source path is no content');
+  });
 });
 
 describe('knowledge store — tokenizer', () => {

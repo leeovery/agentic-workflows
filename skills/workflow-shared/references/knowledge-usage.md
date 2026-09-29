@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B** and **D**, and planning entry's `cross-cutting-context.md` for **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by specification entry's `analysis-flow.md`.*
+*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning entry's `cross-cutting-context.md` for **C** and **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by specification entry's `analysis-flow.md`.*
 
 ---
 
@@ -36,9 +36,9 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the chunk text verbatim and its `Source:` path. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source document — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
-Chunks land in context; read a source file only when a chunk looks load-bearing. Most queries return a couple of mildly relevant chunks and one directly relevant — read that one, and skim the rest from the chunk text alone.
+Excerpts land in context; read further only when a result looks load-bearing — its source file at the result's line range, or, where the path is bare, around the passage its excerpt comes from. Most queries return a couple of mildly relevant results and one directly relevant — read that one, and skim the rest from their excerpts alone.
 
 Confidence is intrinsic to the source phase — how much weight to give the content, never whether to use it:
 
@@ -47,9 +47,9 @@ Confidence is intrinsic to the source phase — how much weight to give the cont
 - `low-medium` — discussion: conversational, may carry assumptions corrected later in the same file. Read for context, not conclusions.
 - `low` — research, imports, seeds, analysis, discovery, roadmap, baseline: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
 
-Low confidence is not low value. A research chunk that rejected an approach stops the next work unit re-exploring the same dead end; a discussion chunk showing a corrected assumption explains *why* the spec says what it says. Weigh them, never filter them out.
+Low confidence is not low value. A research result that rejected an approach stops the next work unit re-exploring the same dead end; a discussion result showing a corrected assumption explains *why* the spec says what it says. Weigh them, never filter them out.
 
-A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
+A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification result does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
 
 A `[roadmap | …]` hit is the product-level record — a roadmap session's exploration, staged thinking about capabilities that may never have been pulled. Exploration-grade, never a decision of record, and it may carry ground a pull's fence deliberately left behind: material beyond the work unit's pulled items informs the conversation but never silently widens the work's scope.
 
@@ -85,7 +85,7 @@ Continue the phase, recording that knowledge retrieval was skipped so the user k
 
 ## E. When a surfaced artifact is wrong
 
-A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. What happens next depends on the source phase.
+A result (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. What happens next depends on the source phase.
 
 #### If the source is a specification
 

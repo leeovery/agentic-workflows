@@ -56,11 +56,10 @@ function chunk(markdown, config) {
     skip_empty_sections: skipEmptySections = true,
   } = config;
 
-  // 0. Normalise line endings so CRLF fixtures chunk identically to LF.
-  const normalised = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-  // 1. Strip YAML frontmatter if configured.
-  const body = stripFrontmatter ? stripOpeningFrontmatter(normalised) : normalised;
+  // 1. Normalise line endings so CRLF fixtures chunk identically to LF, and
+  //    strip YAML frontmatter if configured.
+  const { lines, bodyStart } = sourceLines(markdown);
+  const body = lines.slice(stripFrontmatter ? bodyStart : 0).join('\n');
 
   if (body.trim() === '') return [];
 
@@ -114,29 +113,50 @@ function isBlank(line) {
 }
 
 /**
- * Strip only the opening YAML frontmatter block. A `---` on its own line at
- * the start of the file opens the block; the next `---` closes it. If there
- * is no opening frontmatter, the markdown is returned unchanged so a
- * horizontal-rule `---` later in the file is preserved.
+ * The markdown's lines, line endings normalised, and the line its body
+ * starts on — past the opening YAML frontmatter and the empty lines after
+ * it, 0 without one.
+ *
+ * @param {string} markdown
+ * @returns {{ lines: string[], bodyStart: number }}
  */
-function stripOpeningFrontmatter(markdown) {
-  const lines = markdown.split('\n');
-  if (lines.length === 0 || !FRONTMATTER_DELIM.test(lines[0] || '')) {
-    return markdown;
-  }
-  for (let i = 1; i < lines.length; i += 1) {
-    if (FRONTMATTER_DELIM.test(lines[i])) {
-      return lines.slice(i + 1).join('\n').replace(/^\n+/, '');
-    }
-  }
-  return '';
+function sourceLines(markdown) {
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  return { lines, bodyStart: frontmatterEnd(lines) };
 }
 
 /**
+ * Only an opening frontmatter block counts: a `---` on the first line opens
+ * it and the next `---` closes it, so a horizontal-rule `---` later in the
+ * file is preserved. An unclosed block runs to the end.
+ *
+ * @param {string[]} lines
+ * @returns {number}
+ */
+function frontmatterEnd(lines) {
+  if (!FRONTMATTER_DELIM.test(lines[0])) return 0;
+  const close = lines.findIndex((line, i) => i > 0 && FRONTMATTER_DELIM.test(line));
+  if (close === -1) return lines.length;
+  let start = close + 1;
+  while (start < lines.length && lines[start] === '') start += 1;
+  return start;
+}
+
+/**
+ * @typedef {object} Heading
+ * @property {number} level  1 for `#`, to 6
+ * @property {string} text  the heading, its `#` marks stripped
+ * @property {number} line  its index in the scanned lines
+ */
+
+/**
  * Scan markdown lines for headings and fenced code blocks. Headings inside a
- * fence are ignored. Returns the headings as { level, text, line } in
- * document order, and each fence's opening line mapped to its closing line
- * (an unclosed fence runs to the last line).
+ * fence are ignored. Returns the headings in document order, and each
+ * fence's opening line mapped to its closing line (an unclosed fence runs to
+ * the last line).
+ *
+ * @param {string[]} lines
+ * @returns {{ headings: Heading[], fenceClose: Map<number, number> }}
  */
 function scanStructure(lines) {
   const headings = [];
@@ -169,13 +189,43 @@ function scanStructure(lines) {
 }
 
 /**
+ * The offset each line starts at in the lines joined by newlines, then the
+ * offset one past the last line's end.
+ *
+ * @param {string[]} lines
+ * @returns {number[]}
+ */
+function lineStarts(lines) {
+  const starts = [0];
+  for (const line of lines) starts.push(starts[starts.length - 1] + line.length + 1);
+  return starts;
+}
+
+/**
+ * The line an offset falls on, given the offset each line starts at.
+ *
+ * @param {number[]} starts  as `lineStarts` gives them
+ * @param {number} offset
+ * @returns {number}
+ */
+function lineHolding(starts, offset) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (starts[middle] <= offset) low = middle;
+    else high = middle - 1;
+  }
+  return low;
+}
+
+/**
  * The body as lines plus the offsets that turn any line range — or any
  * character span — back into a verbatim, right-trimmed slice of the body.
  */
 function parseDocument(body) {
   const lines = body.split('\n');
-  const offsets = [0];
-  for (const line of lines) offsets.push(offsets[offsets.length - 1] + line.length + 1);
+  const offsets = lineStarts(lines);
   const { headings, fenceClose } = scanStructure(lines);
 
   const trimmedEnd = (from, to) => {
@@ -550,4 +600,4 @@ function sliceLine(doc, line) {
   return chunks;
 }
 
-module.exports = { chunk, MAX_CHUNK_CHARS };
+module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, MAX_CHUNK_CHARS };

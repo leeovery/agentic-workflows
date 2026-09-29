@@ -220,7 +220,7 @@ async function runQuery(call, { root, files, args, options }) {
     stop(call, `${path.basename(files.metadata)} missing but store exists. Run \`${ENGINE_COMMAND} knowledge rebuild\` to fix.\n`);
   }
   const settings = querySettings(store.readMetadata(files.metadata), cfg, provider);
-  const outcome = await queryStore(db, settings, { terms: args, options, workUnits: workUnitsOr(root, call.err, 'query') });
+  const outcome = await queryStore(db, settings, { terms: args, options, workUnits: workUnitsOr(root, call.err, 'query'), root });
   call.out(renderQuery(outcome, { explain: options.explain }));
 }
 

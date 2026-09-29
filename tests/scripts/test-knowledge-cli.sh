@@ -632,7 +632,10 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "has result count" "true" "$(echo "$output" | grep -qE '\[[0-9]+ results\]' && echo true || echo false)"
 assert_eq "has provenance line" "true" "$(echo "$output" | grep -q 'discussion | auth-flow/auth-flow' && echo true || echo false)"
-assert_eq "has source line" "true" "$(echo "$output" | grep -q 'Source:' && echo true || echo false)"
+assert_eq "has headings line" "true" "$(echo "$output" | grep -qxF 'Discussion › Topic One' && echo true || echo false)"
+assert_eq "has excerpt" "true" "$(echo "$output" | grep -qxF 'Some content about topic one that has enough text to exceed the' && echo true || echo false)"
+assert_eq "no heading line in the excerpt" "false" "$(echo "$output" | grep -q '^#' && echo true || echo false)"
+assert_eq "has source line at the chunk's lines" "true" "$(echo "$output" | grep -qxF 'Source: .workflows/auth-flow/discussion/auth-flow.md:L5-28' && echo true || echo false)"
 teardown_project
 
 # --- Test 18: Query returns [0 results] for non-matching query ---
@@ -811,7 +814,7 @@ output=$(run_kb query "anything" 2>&1)
 assert_eq "0 results on empty store" "true" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
 teardown_project
 
-# --- Test 25: Output format has provenance, content, source ---
+# --- Test 25: Output format has provenance, excerpt, source ---
 echo "Test 25: Output format"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"

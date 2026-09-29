@@ -56,7 +56,7 @@ const FILTER_FLAGS = Object.keys(FILTERS);
 /** The filters and boosts whose values name something a fixture's files carry. */
 const NAMING_FLAGS = ['work-unit', 'phase', 'topic'];
 const OPTION_KEYS = new Set(['boosts', 'limit', ...FILTER_FLAGS]);
-const PINNED_CASE_FIELDS = ['first', 'first_primary', 'primary_found', 'primary_total', 'results', 'bytes'];
+const PINNED_CASE_FIELDS = ['first', 'first_primary', 'first_excerpt', 'primary_found', 'primary_total', 'results', 'bytes'];
 
 const TUNING_UNSET = Object.fromEntries(Object.keys(config.DEFAULTS).map((key) => [key, null]));
 const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
@@ -527,6 +527,7 @@ async function openStore({ root, cfg, provider }) {
   const metadata = store.readMetadata(knowledgeFiles(root).metadata);
   const { value: db, ms: loadMs } = await stopwatch(() => store.loadStore(knowledgeFiles(root).store));
   return {
+    root,
     db,
     loadMs,
     settings: querySettings(metadata, cfg, provider),
@@ -558,6 +559,7 @@ async function runCase(opened, evalCase) {
     terms: evalCase.terms,
     options: buildOptions(flags, boosts),
     workUnits: opened.workUnits,
+    root: opened.root,
   }));
   return { evalCase, results: outcome.results, bytes: Buffer.byteLength(renderQuery(outcome)), ms };
 }
@@ -661,12 +663,13 @@ async function runCases(cases, mode, timed = false) {
 // ---------------------------------------------------------------------------
 
 /**
- * A result matches a judgment when it comes from the judged file and
- * carries the anchor — so judgments survive any change to chunk boundaries.
- * @param {Record<string, any>} result @param {Judgment} judgment
+ * A result matches a judgment when it comes from the judged file and its
+ * text — its chunk, unless another is named — carries the anchor, so
+ * judgments survive any change to chunk boundaries.
+ * @param {Record<string, any>} result @param {Judgment} judgment @param {string} [text]
  */
-function matches(result, judgment) {
-  return result.source_file === judgment.source && result.content.includes(judgment.anchor);
+function matches(result, judgment, text = result.content) {
+  return result.source_file === judgment.source && text.includes(judgment.anchor);
 }
 
 /** @param {Array<Record<string, any>>} results @param {(r: Record<string, any>) => boolean} test */
@@ -687,6 +690,7 @@ function measureCase({ evalCase, results, bytes }) {
     origin: evalCase.origin,
     first: rankOf(results, (r) => judged.some((j) => matches(r, j))),
     first_primary: rankOf(results, (r) => primaries.some((j) => matches(r, j))),
+    first_excerpt: rankOf(results, (r) => judged.some((j) => matches(r, j, r.excerpt))),
     primary_found: primaries.filter((j) => topTen.some((r) => matches(r, j))).length,
     primary_total: primaries.length,
     file_hit: results.slice(0, 5).some((r) => sources.has(r.source_file)),
@@ -722,6 +726,7 @@ function metricsOf(measured) {
     'mrr@10': mean(positive, (m) => (within(m.first, 10) ? 1 / m.first : 0)),
     'recall@10': mean(positive, (m) => m.primary_found / m.primary_total),
     'file_hit@5': mean(positive, (m) => Number(m.file_hit)),
+    'excerpt_hit@5': mean(positive, (m) => Number(within(m.first_excerpt, 5))),
     bytes: mean(measured, (m) => m.bytes),
     negative_results: mean(negative, (m) => m.results),
     negative_bytes: mean(negative, (m) => m.bytes),
@@ -907,11 +912,12 @@ function metricTable({ metrics }) {
 /** @param {Measured[]} measured */
 function caseTable(measured) {
   return table([
-    ['case', 'first', 'first_primary', 'primary', 'results', 'bytes'],
+    ['case', 'first', 'first_primary', 'first_excerpt', 'primary', 'results', 'bytes'],
     ...measured.map((m) => [
       m.id,
       String(m.first ?? '—'),
       String(m.first_primary ?? '—'),
+      String(m.first_excerpt ?? '—'),
       `${m.primary_found}/${m.primary_total}`,
       String(m.results),
       String(m.bytes),
@@ -976,7 +982,8 @@ function describeRun({ evalCase, results }) {
   results.forEach((r, i) => {
     const hits = evalCase.relevant.filter((j) => matches(r, j));
     lines.push(`${String(i + 1).padStart(2)}  ${r.source_file}`, `    ${chunkTitle(r.content)}`);
-    lines.push(...(hits.length ? hits.map((j) => `    ${j.grade}: ${JSON.stringify(j.anchor)}`) : ['    unjudged']));
+    const shown = (j) => (matches(r, j, r.excerpt) ? ', in the excerpt' : '');
+    lines.push(...(hits.length ? hits.map((j) => `    ${j.grade}${shown(j)}: ${JSON.stringify(j.anchor)}`) : ['    unjudged']));
   });
   const missed = evalCase.relevant.filter((j) => !results.some((r) => matches(r, j)));
   if (missed.length > 0) {

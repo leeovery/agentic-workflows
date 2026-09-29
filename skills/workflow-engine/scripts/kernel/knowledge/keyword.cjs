@@ -186,6 +186,29 @@ function indexOf(chunks, vocabularySize) {
 }
 
 /**
+ * BM25's inverse document frequency: a word's weight when `matching` of
+ * `size` chunks hold it, the rarer weighing more.
+ * @param {number} size @param {number} matching
+ */
+function inverseFrequency(size, matching) {
+  return Math.log(1 + (size - matching + 0.5) / (matching + 0.5));
+}
+
+/**
+ * Each word's inverse document frequency in one field — 0 for a word no
+ * chunk's field holds.
+ * @param {Postings} postings @param {Vocabulary} vocabulary
+ * @returns {(word: string) => number}
+ */
+function rarity(postings, vocabulary) {
+  return (word) => {
+    const id = vocabulary.idOf(word);
+    const matching = id === -1 ? 0 : postings.starts[id + 1] - postings.starts[id];
+    return matching === 0 ? 0 : inverseFrequency(postings.lengths.length, matching);
+  };
+}
+
+/**
  * Each admitted chunk's BM25 score for the query — summed over the fields and
  * the query's distinct words, and absent for a chunk matching none. Document
  * frequency and length statistics are store-wide: `admits` selects chunks,
@@ -205,7 +228,7 @@ function score(index, vocabulary, query, admits) {
       const end = field.starts[word + 1];
       const matching = end - first;
       if (matching === 0) continue;
-      const idf = Math.log(1 + (size - matching + 0.5) / (matching + 0.5));
+      const idf = inverseFrequency(size, matching);
       for (let at = first; at < end; at++) {
         const chunk = field.chunks[at];
         if (!admits(chunk)) continue;
@@ -218,4 +241,4 @@ function score(index, vocabulary, query, admits) {
   return scores;
 }
 
-module.exports = { FIELDS, TOKENIZER_VERSION, Vocabulary, tokenize, termsOf, compact, indexOf, score };
+module.exports = { FIELDS, TOKENIZER_VERSION, Vocabulary, tokenize, termsOf, compact, indexOf, rarity, score };

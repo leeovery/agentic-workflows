@@ -7,7 +7,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
+const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
 const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
@@ -22,20 +22,10 @@ function loadConfig(phase) {
   );
 }
 
-/**
- * Strip the opening YAML frontmatter block from a string so fixture tests
- * can compare chunk content against the post-frontmatter source. This
- * mirrors the chunker's own frontmatter stripping logic.
- */
-function stripFrontmatter(markdown) {
-  const lines = markdown.split('\n');
-  if (!/^---\s*$/.test(lines[0] || '')) return markdown;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (/^---\s*$/.test(lines[i])) {
-      return lines.slice(i + 1).join('\n').replace(/^\n+/, '');
-    }
-  }
-  return '';
+/** The markdown's body, past its opening frontmatter, as the chunker reads it. */
+function bodyOf(markdown) {
+  const { lines, bodyStart } = sourceLines(markdown);
+  return lines.slice(bodyStart).join('\n');
 }
 
 // Default config — mirrors the shared phase defaults. Tests override fields
@@ -414,7 +404,7 @@ describe('knowledge chunker — character budget', () => {
   // non-whitespace body content — every line but a heading — in order. A
   // heading can go: a split drops the heading-only piece it leaves behind.
   function assertFaithful(chunks, source) {
-    const body = stripFrontmatter(source);
+    const body = bodyOf(source);
     for (const c of chunks) {
       assert.ok(c.content.length <= MAX_CHUNK_CHARS, 'chunk of ' + c.content.length + ' chars exceeds the budget');
       assert.ok(body.includes(c.content), 'chunk is not a verbatim slice of the source');
@@ -560,7 +550,7 @@ describe('knowledge chunker — character budget', () => {
       const chunks = chunk(src, loadConfig(phase));
       for (const c of chunks) {
         assert.ok(c.content.length <= MAX_CHUNK_CHARS, fixture);
-        assert.ok(stripFrontmatter(src).includes(c.content), fixture);
+        assert.ok(bodyOf(src).includes(c.content), fixture);
       }
     }
   });
@@ -768,7 +758,7 @@ describe('knowledge chunker — real fixtures', () => {
   // line 74). We don't concatenate-and-compare because frontmatter,
   // skipped sections, and empty sections are legitimately dropped.
   function assertVerbatim(chunks, source) {
-    const body = stripFrontmatter(source);
+    const body = bodyOf(source);
     for (const c of chunks) {
       assert.strictEqual(
         body.includes(c.content),
@@ -1248,5 +1238,36 @@ describe('knowledge chunker — real fixtures', () => {
         'chunk must be a verbatim substring of the source'
       );
     }
+  });
+});
+
+describe('sourceLines', () => {
+  it('starts the body past the opening frontmatter and the empty lines after it', () => {
+    assert.deepStrictEqual(sourceLines('---\na: b\n---\n\n\n# Title'), { lines: ['---', 'a: b', '---', '', '', '# Title'], bodyStart: 5 });
+  });
+
+  it('starts the body at the first line without frontmatter, a later `---` a rule', () => {
+    assert.strictEqual(sourceLines('# Title\n---\nbody').bodyStart, 0);
+    assert.strictEqual(sourceLines('\n---\na: b\n---').bodyStart, 0);
+  });
+
+  it('reads an unclosed frontmatter block as running to the end', () => {
+    assert.strictEqual(sourceLines('---\na: b\nbody').bodyStart, 3);
+  });
+
+  it('normalises CRLF and lone CR line endings', () => {
+    assert.deepStrictEqual(sourceLines('---\r\na: b\r\n---\r\nbody\rmore').lines, ['---', 'a: b', '---', 'body', 'more']);
+  });
+});
+
+describe('lineStarts and lineHolding', () => {
+  const starts = lineStarts(['# Title', '', 'Body line.']);
+
+  it('gives the offset each line starts at, then one past the last', () => {
+    assert.deepStrictEqual(starts, [0, 8, 9, 20]);
+  });
+
+  it('gives the line an offset falls on, its newline included', () => {
+    assert.deepStrictEqual([0, 6, 7, 8, 9, 18].map((offset) => lineHolding(starts, offset)), [0, 0, 0, 1, 2, 2]);
   });
 });
