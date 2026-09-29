@@ -36,6 +36,7 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get managed-search.discovery.synonym-handling brief_path",
+      "manifest get managed-search.discovery.synonym-handling summary",
       "manifest get managed-search.discovery.synonym-handling prior",
       "manifest set managed-search.discovery.synonym-handling brief_incorporated true",
       "topic start managed-search discussion synonym-handling",
@@ -44,6 +45,8 @@
     ],
     "calls_in_order": [
       "manifest get managed-search.discovery.synonym-handling brief_path",
+      "manifest get managed-search.discovery.synonym-handling description",
+      "manifest get managed-search.discovery.synonym-handling summary",
       "manifest get managed-search.discovery.synonym-handling prior",
       "topic start managed-search discussion synonym-handling",
       "write:.workflows/managed-search/discussion/synonym-handling.md",
