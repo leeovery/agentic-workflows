@@ -593,7 +593,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  it('a search runs past it at the default, its note naming each ignored key after the others', async () => {
+  it('a search runs past it, its note naming each ignored key after the others', async () => {
     configure({ provider: null, similarity_threshold: '0.5', strategy: 'hybrid' });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
@@ -615,18 +615,48 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: Keyword-only — /m);
+    const ignored = [
+      `decay_base_stability in ${configFile} is ignored: 0 is not a number above 0`,
+      `decay_weights in ${configFile} is ignored: [1] is not an object giving work types numbers of 0 or more`,
+    ];
     const warnings = status.stdout.split('\n').filter((line) => line.startsWith('WARNING: '));
-    assert.deepStrictEqual(warnings, [
-      `WARNING: decay_base_stability in ${configFile} is ignored: 0 is not a number above 0`,
-      `WARNING: decay_weights in ${configFile} is ignored: [1] is not an object giving work types numbers of 0 or more`,
+    assert.deepStrictEqual(warnings, ignored.map((line) => `WARNING: ${line}`));
+    const query = await engineKnowledge(root, ['query', 'token refresh']);
+    assert.strictEqual(query.code, 0, query.stderr);
+    assert.deepStrictEqual(query.stdout.split('\n').slice(0, 4), [
+      CHOSEN_NOTE,
+      ...ignored.map((line) => `[knowledge config — ${line}]`),
+      '[1 results]',
     ]);
   });
 
-  it('compact runs at the default floor past an invalid one', async () => {
-    configure({ provider: null, decay_prune_below: 'high' });
+  it('compact prunes at the default floor past an invalid one', async () => {
+    // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
+    // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
+    const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
+    const units = { alpha: { work_type: 'feature' } };
+    for (const [name, completedAt] of completions) {
+      const unit = path.join(root, '.workflows', name);
+      fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+      fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
+        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
+        phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+      }));
+      fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), `# Discussion\n\n${name} settled its tokens.\n`);
+      units[name] = { work_type: 'feature' };
+    }
+    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: units }));
+    configure({ provider: null, decay_prune_below: false, decay_base_stability: 0.05 });
+    assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
+
+    configure({ provider: null, decay_prune_below: 'high', decay_base_stability: 0.05 });
     const compact = await engineKnowledge(root, ['compact']);
     assert.strictEqual(compact.code, 0, compact.stderr);
-    assert.strictEqual(compact.stderr, '');
+    assert.strictEqual(compact.stdout, [
+      'Compacted: removed 1 chunks from 1 work units (retrievability < 0.05)',
+      '  • buried: 1 chunks (discussion)',
+      '',
+    ].join('\n'));
   });
 });
 

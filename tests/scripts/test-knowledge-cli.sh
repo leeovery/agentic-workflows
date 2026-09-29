@@ -1744,26 +1744,43 @@ assert_eq "compact prunes them" "true" "$(echo "$output" | grep -q 'Compacted: r
 assert_eq "and the next bulk index leaves them pruned" "0 new, 0 changed, 0 removed, 1 unchanged." "$(run_kb index 2>&1)"
 teardown_project
 
-# --- Test RC13: An invalid decay_prune_below falls back to the default and blocks nothing ---
-# The bulk index and compact run at the default floor; status names the
-# ignored setting.
-echo "Test RC13: Bulk index and compact proceed past an invalid prune floor"
+# --- Test RC13: An invalid decay_prune_below falls back to the default floor and blocks nothing ---
+# S0 0.05 puts a unit two completions behind at R(2,0.05) ≈ 0.015, below the
+# default floor 0.05, and one behind at R(1,0.05) ≈ 0.12, above it: the bulk
+# index skips the first and indexes the second, compact removes the first once
+# it is indexed, and status names the ignored setting.
+echo "Test RC13: Bulk index and compact prune at the default floor past an invalid one"
 setup_project
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": null, "decay_prune_below": "high" } }
+{ "knowledge": { "provider": null, "decay_prune_below": "high", "decay_base_stability": 0.05 } }
 CONF
-create_work_unit "auth-flow" "feature" "Auth"
-create_discussion_file "auth-flow" "auth-flow"
-init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+for wu in buried recent; do
+  create_work_unit "$wu" "feature" "$wu"
+  create_discussion_file "$wu" "$wu"
+  init_phase_topic "$wu" "discussion" "$wu" "completed"
+done
+create_work_unit "frontier" "feature" "Frontier"
+cd "$TEST_ROOT"
+for completion in buried:2024-01-01 recent:2024-06-01 frontier:2024-12-01; do
+  node "$ENGINE_JS" manifest set "${completion%%:*}" status completed >/dev/null 2>&1
+  node "$ENGINE_JS" manifest set "${completion%%:*}" completed_at "${completion#*:}" >/dev/null 2>&1
+done
 exit_code=0
 output=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "exits zero" "0" "$exit_code"
-assert_eq "indexes the artifact" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
-exit_code=0
-run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "compact runs at the default floor" "0" "$exit_code"
+assert_eq "indexes the unit above the default floor" "true" \
+  "$(echo "$output" | grep -q '^Indexed .workflows/recent/discussion/recent.md' && echo true || echo false)"
+assert_eq "skips the unit below it" "false" "$(echo "$output" | grep -q 'buried/discussion' && echo true || echo false)"
+status_out=$(run_kb status 2>&1)
 assert_eq "status names the ignored setting" "true" \
-  "$(run_kb status 2>&1 | grep -q '^WARNING: decay_prune_below in .*/.workflows/.knowledge/config.json is ignored: "high" is not false or a number from 0 to 1$' && echo true || echo false)"
+  "$(echo "$status_out" | grep -q '^WARNING: decay_prune_below in .*/.workflows/.knowledge/config.json is ignored: "high" is not false or a number from 0 to 1$' && echo true || echo false)"
+assert_eq "status reports the unit below the default floor pruned" "true" \
+  "$(echo "$status_out" | grep -A1 'Pruned below the decay floor: 1' | grep -q 'buried/discussion/buried.md' && echo true || echo false)"
+run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
+output=$(run_kb compact 2>&1)
+assert_eq "compact prunes below the default floor" "true" \
+  "$(echo "$output" | grep -q '^Compacted: removed [0-9]* chunks from 1 work units (retrievability < 0.05)$' && echo true || echo false)"
+assert_eq "the buried unit alone" "true" "$(echo "$output" | grep -q '^  • buried: ' && echo true || echo false)"
 teardown_project
 
 # --- Test RC14: A registered unit whose manifest is unreadable keeps its chunks ---
@@ -2208,18 +2225,28 @@ assert_eq "names the file and the error" "true" \
   "$(echo "$stderr_out" | grep -q '^Failed to index .workflows/auth-flow/discussion/auth-flow.md: No chunks produced' && echo true || echo false)"
 teardown_project
 
-# --- Test 73: An invalid decay_prune_below falls back to the default ---
-echo "Test 73: Invalid decay_prune_below falls back to the default"
+# --- Test 73: An invalid decay_prune_below falls back to the default floor ---
+# S0 0.05: 'buried', two completions behind, sits below the default floor 0.05
+# (R ≈ 0.015); 'newer1', one behind, above it (R ≈ 0.12).
+echo "Test 73: Invalid decay_prune_below falls back to the default floor"
 for prune in '-0.5' '"0.5"' '1.5'; do
   setup_project
-  create_work_unit "alpha" "feature" "Alpha"
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  echo "{ \"knowledge\": { \"provider\": null, \"decay_prune_below\": $prune } }" > "$TEST_ROOT/.workflows/.knowledge/config.json"
-  create_discussion_file "alpha" "alpha"
-  run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+  write_config_with_prune "$prune" 0.05
+  for wu in buried newer1; do
+    create_work_unit "$wu" "feature" "$wu"
+    create_discussion_file "$wu" "$wu"
+    run_kb index ".workflows/$wu/discussion/$wu.md" >/dev/null 2>&1
+  done
+  set_completed_with_date "buried" "2024-01-01"
+  set_completed_with_date "newer1" "2024-06-01"
+  create_work_unit "newer2" "feature" "N2"; set_completed_with_date "newer2" "2024-12-01"
   exit_code=0
-  run_kb compact >/dev/null 2>&1 || exit_code=$?
+  output=$(run_kb compact 2>&1) || exit_code=$?
   assert_eq "compact exits zero past decay_prune_below $prune" "0" "$exit_code"
+  assert_eq "and prunes at the default floor" "true" \
+    "$(echo "$output" | grep -q '^Compacted: removed [0-9]* chunks from 1 work units (retrievability < 0.05)$' && echo true || echo false)"
+  assert_eq "the unit below it alone" "true" \
+    "$(echo "$output" | grep -q '^  • buried: ' && ! echo "$output" | grep -q 'newer1' && echo true || echo false)"
   assert_eq "status names decay_prune_below $prune" "true" \
     "$(run_kb status 2>&1 | grep -qF "is ignored: $prune is not false or a number from 0 to 1" && echo true || echo false)"
   teardown_project
