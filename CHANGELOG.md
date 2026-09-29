@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-09-29
+
+✨ Added
+- Background vector fill — a finished document is searchable by keyword at once and gets its meaning-based vectors moments later, so phase closes and starts never wait on the embedding service.
+- `engine commit --migrations` — the reviewed migration commit takes every path the workflows own, including removals a migration staged.
+- Migration summary and knowledge query-failure screens now render from the engine, with the failed query's error output and the `knowledge status` diagnosis shown above the retry/skip menu.
+- Documentation for running an embedding model on your own machine, including which local models held up in measurement.
+- Discovery harvest proposals now show a short description under each topic's summary.
+
+🔧 Changed
+- The knowledge base now lives inside the engine — call it as `engine knowledge <verb>`; the separate `workflow-knowledge` skill and its bundled CLI are gone, and there is no build step before release.
+- Setup keeps your tuning overrides when you change embedding provider, rewriting only provider, model, dimensions and base URL.
+- A mistaken knowledge config setting (unknown key, out-of-range tuning value) is ignored and named in query notes, `status` and boot warnings instead of stopping the knowledge base.
+- Boot indexes by keyword and compacts only, so starting a session no longer waits on embedding; a fill that fell short is reported at the next query and start.
+- Agent paths in skill prose are written as installed (`.claude/agents/…`, `.claude/skills/…`) rather than relative to the instruction file.
+- Gate replies that set a gate aside now ask in conversation whether the person is ready before putting the gate back.
+- Postponing or cancelling a topic is taken as said, and first writes what the sitting discussed into the document so nothing is lost with the exit.
+- Discovery briefs record a point the user left open as an open question, never as a decision.
+- Roadmap sources must already exist on disk and must not carry a leading `.workflows/`; discovery and roadmap sessions open their log before an op that cites it.
+- Implementation setup treats absent `project_skills` and `linters` as "never asked" and stores `[]` only once confirmed.
+- Corrigenda on specifications now record what settled each correction.
+
+🐛 Fixed
+- Resumed discovery sessions no longer open a second session log over the interrupted one.
+- Parking an idea from a session with no record yet no longer records a source that doesn't exist.
+- Resumed research and discussion sessions greet as resumed rather than as fresh starts.
+- Investigations no longer fill Symptoms fields the interview never reached.
+- A prior record's queued concern is seeded without its full case being copied into the new phase's document.
+- Specification with nothing left to construct no longer re-announces construction, and an existing Dependencies section is re-checked instead of rewritten.
+
+🗑️ Removed
+- The `workflow-knowledge` skill, the esbuild bundle (`knowledge.cjs`), `npm run build`, and the `esbuild` dev dependency.
+- Retired `store.msp` handling in runtime code, replaced by migrations 063 (retire the old store file and worktree-include line) and 064 (untrack the knowledge directory).
+- Migration 062 clears the empty `project_skills`/`linters` arrays that unstarted implementations carried.
+
 ## [0.8.2] - 2026-09-28
 
 ✨ Added
