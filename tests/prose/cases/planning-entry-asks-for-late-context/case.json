@@ -29,9 +29,9 @@
       "manifest list --work-type cross-cutting"
     ],
     "calls_exclude": [
-      "knowledge.cjs query",
-      "knowledge.cjs index",
-      "knowledge.cjs remove",
+      "engine.cjs knowledge query",
+      "engine.cjs knowledge index",
+      "engine.cjs knowledge remove",
       "topic reopen"
     ]
   }

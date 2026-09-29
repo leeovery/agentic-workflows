@@ -106,10 +106,10 @@ The full read also surfaces places where two documents' decided ground disagrees
 Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
 ```
 
-Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[workflow-knowledge SKILL.md](../../workflow-knowledge/SKILL.md)** → Query construction).
+Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** → **B. How to construct queries**).
 
 Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
 

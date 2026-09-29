@@ -22,8 +22,8 @@
     "skills/workflow-discussion-process/references/meeting-assistant.md",
     "skills/workflow-discussion-process/references/guidelines.md",
     "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
-    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
@@ -53,7 +53,7 @@
     "calls_include": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "workflow-discussion-process/scripts/gateway.cjs map pay pay",
       "agent scan pay discussion pay",
       "agent dispatch pay discussion pay --kind review --final",
@@ -79,7 +79,7 @@
       "--clean",
       "--kind perspective",
       "topic reopen",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

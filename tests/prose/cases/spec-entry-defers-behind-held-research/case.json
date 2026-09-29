@@ -33,7 +33,7 @@
       "presence scan search-relevance"
     ],
     "calls_exclude": [
-      "knowledge.cjs query",
+      "engine.cjs knowledge query",
       "manifest apply search-relevance",
       "analysis_cache.checksum",
       "engine.cjs commit search-relevance",

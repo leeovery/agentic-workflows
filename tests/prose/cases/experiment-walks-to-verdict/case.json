@@ -61,7 +61,7 @@
       "topic start search-relevance experiment",
       "topic complete search-relevance experiment",
       "agent dispatch",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "render experiment-pick",
       "render experiment-next-gate"
     ]

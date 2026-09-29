@@ -58,8 +58,8 @@ any harness substitutions. Follow it exactly.
   genuinely cannot be performed, that is a `DEVIATION`, recorded, not a
   silent omission.
 - Follow the prose literally, step by step, arm by arm. Where it names an
-  engine or knowledge call, run it from the project directory and use the
-  real response to decide which arm applies. Never predict a response.
+  engine call, run it from the project directory and use the real
+  response to decide which arm applies. Never predict a response.
 - **Run each prescribed command as written — one call per fence.** Never
   batch adjacent commands into one invocation, merge them, reorder them,
   or substitute an equivalent that lands the same state. A walk that

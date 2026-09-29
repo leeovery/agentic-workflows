@@ -24,8 +24,8 @@
     "skills/workflow-discussion-process/references/discussion-guidelines.md",
     "skills/workflow-discussion-process/references/guidelines.md",
     "skills/workflow-discussion-process/references/meeting-assistant.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
-    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
@@ -64,7 +64,7 @@
       "render requeue-offer",
       "roadmap",
       "discovery-map",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "commit search-relevance",
       "workunit create"
     ]

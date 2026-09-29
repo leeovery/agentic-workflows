@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git status), Bash(git rev-parse)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git status), Bash(git rev-parse)
 ---
 
 # Scoping Process
@@ -220,7 +220,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
 5. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
 6. Remove the spec's knowledge-base entry. A failed removal never blocks: tell the user in one line that the next start removes it, and continue:
    ```bash
-   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs knowledge remove --work-unit {work_unit} --phase specification --topic {topic}
    ```
 7. Commit the plan's cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
    ```bash
@@ -242,7 +242,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
 
 ## Step 1: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 2**.
 
@@ -264,7 +264,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
 
 → On return, proceed to **Step 3**.
 
@@ -272,7 +272,7 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 ## Step 3: Contextual Query
 
-Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 

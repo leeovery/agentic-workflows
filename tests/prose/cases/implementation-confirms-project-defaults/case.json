@@ -53,7 +53,7 @@
       "manifest set project.defaults.linters",
       "manifest push pay.implementation.pay project_skills",
       "task start",
-      "knowledge.cjs query"
+      "engine.cjs knowledge query"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

@@ -43,6 +43,7 @@ const fs = require('fs');
 const path = require('path');
 const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
 
 // Every phase a session sits in — the schema's list minus discovery.
@@ -406,7 +407,7 @@ function deferralSection(scan) {
   if (held.length === 0) return '';
   const names = held.map((r) => `${r.phase}/${r.topic} (last active ${fmtAge(r.age_seconds)} ago)`).join(', ');
   const [first] = held;
-  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${scan.work_unit} ${first.phase} ${first.topic}`;
+  const release = `${ENGINE_COMMAND} presence clear ${scan.work_unit} ${first.phase} ${first.topic}`;
   return section(
     'DISPLAY: presence deferral',
     timedInstruction('text', 'only at an analysis deferral', CONTINUE_CLAUSE),

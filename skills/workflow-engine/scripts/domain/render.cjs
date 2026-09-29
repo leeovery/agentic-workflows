@@ -34,10 +34,10 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
-const { messageOf } = require('../kernel/call.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -4839,7 +4839,7 @@ function codeGate(cwd, { dotpath }) {
       MENU_INSTRUCTION,
       menuFrame([
         'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
-          + `\`node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
+          + `\`${ENGINE_COMMAND} presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
         '',
         '**`◆ Proceed anyway?`**',
         '',
@@ -5523,6 +5523,25 @@ function shapeGateSurface(_cwd, _args) {
   ], { question: 'Have I read this right?' }));
 }
 
+/**
+ * workflow-start's migration summary — the payload is the session's summary
+ * and, where the run updated files, its two counts.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function migrationsAppliedSurface(cwd, { file }) {
+  if (!file) throw new Error('render migrations-applied: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'migrations-applied');
+  if (!isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  const given = ['migrations', 'files'].filter((key) => p[key] !== undefined);
+  if (given.length === 1) {
+    throw new Error('render migrations-applied: "migrations" and "files" come together — both counts, or neither where the run updated no file');
+  }
+  for (const key of given) {
+    if (!Number.isInteger(p[key]) || p[key] < 1) throw new Error(`render migrations-applied: "${key}" must be a positive integer`);
+  }
+  return migrationsApplied({ summary: p.summary.trim(), counts: given.length ? { migrations: p.migrations, files: p.files } : null });
+}
+
 /** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */
 function synthesisGateSurface(_cwd, _args) {
   return section('MENU: synthesis gate', MENU_INSTRUCTION, menu('', [
@@ -5532,12 +5551,43 @@ function synthesisGateSurface(_cwd, _args) {
   ], { question: 'Commit these topics?' }));
 }
 
-/** The knowledge query-failure gate — retry or proceed without context. @param {string} _cwd @param {object} _args @returns {string} */
-function queryFailureGateSurface(_cwd, _args) {
-  return section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
+/**
+ * A command's error output beneath a callout heading: each line two columns
+ * in, keeping its own indentation, wrapped at the display width.
+ * @param {string} output @returns {string[]}
+ */
+function errorOutputLines(output) {
+  const lines = output.replace(/\s+$/, '').split('\n').map((l) => l.trimEnd());
+  while (lines.length > 0 && lines[0] === '') lines.shift();
+  return lines.flatMap((line) => {
+    if (line === '') return [''];
+    const own = /** @type {RegExpMatchArray} */ (line.match(/^\s*/))[0];
+    return indentedBody([line.slice(own.length)], { indent: `  ${own}` });
+  });
+}
+
+/**
+ * The knowledge query-failure gate — the failed query's error output and how
+ * to diagnose it, then retry or proceed without context.
+ * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function queryFailureGateSurface(cwd, { file }) {
+  if (!file) throw new Error('render query-failure-gate: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'query-failure-gate');
+  if (!isFilled(p.error)) throw new Error('render query-failure-gate: "error" must be the query\'s error output, a non-empty string');
+  const display = section('DISPLAY: query failure', emitAs('text', ', directly above the menu'), [
+    '⚑ Knowledge query failed',
+    ...errorOutputLines(p.error),
+    '',
+    ...indentedBody(["Likely causes: a knowledge config that can't be read or names a provider it can't use, or a store that can't be read or has lost its metadata. Run this to diagnose:"]),
+    '',
+    `    ${ENGINE_COMMAND} knowledge status`,
+  ].join('\n'));
+  const gate = section('MENU: query failure gate', MENU_INSTRUCTION, menu('', [
     cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
     cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
   ], { question: 'How should I proceed?' }));
+  return [display, gate].join('\n');
 }
 
 // The legacy research split's dialog gates, keyed by what each asks: themes
@@ -6040,6 +6090,7 @@ const SURFACES = {
   'walkthrough-home': walkthroughHomeSurface,
   'walkthrough-topics': walkthroughTopicsSurface,
   'walkthrough-topic': walkthroughTopicSurface,
+  'migrations-applied': migrationsAppliedSurface,
   'migration-gate': () => migrationGate(),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,

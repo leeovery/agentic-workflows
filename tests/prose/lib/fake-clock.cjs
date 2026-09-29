@@ -9,7 +9,7 @@
 // Two ways in, because a recipe's calls run two ways. `withFrozenClock`
 // pins it around an in-process call (the engine, which the harness calls
 // directly); `fake-clock-preload.cjs` pins it for a spawned one (the
-// knowledge CLI, reached through NODE_OPTIONS --require).
+// engine's knowledge verbs, reached through NODE_OPTIONS --require).
 //
 // Worlds materialised for live walks do NOT use this: walker runs are
 // real sessions and never byte-compared.

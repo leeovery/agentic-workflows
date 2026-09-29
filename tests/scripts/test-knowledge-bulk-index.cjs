@@ -505,7 +505,7 @@ describe('knowledge index — vectors keyed by their text', () => {
 
 describe('knowledge index — a key that does not resolve', () => {
   const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: CFG.dimensions };
-  const KEY_FIX = 'the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only';
+  const KEY_FIX = 'the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only';
   const keyed = () => spyProvider({ model: OPENAI.model });
   let root;
   let output;
@@ -632,7 +632,7 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
     assert.strictEqual(indexed.code, 1);
     assert.strictEqual(indexed.stdout, '0 new, 0 changed, 0 removed, 3 unchanged.\n');
     assert.strictEqual(indexed.stderr,
-      'Cannot embed: the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only\n');
+      'Cannot embed: the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only\n');
     assert.strictEqual((await cli('check')).stdout, 'ready\n');
   });
 

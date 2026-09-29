@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { systemConfigDir } = require('../system-config.cjs');
+const { ENGINE_COMMAND } = require('../call.cjs');
 const { StubProvider } = require('./embeddings.cjs');
 const { OpenAIProvider } = require('./providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('./providers/openai-compatible.cjs');
@@ -389,7 +390,7 @@ function resolveProvider(config, patience = {}) {
     if (!config.base_url) {
       throw new Error(
         'Provider "openai-compatible" requires a "base_url" (e.g. http://localhost:1234/v1). ' +
-        'Add it to your config or re-run `knowledge setup`.'
+        `Add it to your config or re-run \`${ENGINE_COMMAND} knowledge setup\`.`
       );
     }
     return new OpenAICompatibleProvider({

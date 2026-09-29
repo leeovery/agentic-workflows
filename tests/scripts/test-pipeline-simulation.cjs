@@ -378,6 +378,15 @@ class Sim {
     return engine.run(args, { cwd: this.dir, env: this.envOf(identity), stdin });
   }
 
+  /**
+   * One engine call awaited — the door the knowledge verbs that wait on the
+   * embedding provider take, which `engine` refuses.
+   * @param {string[]} args @param {object|null} [identity]
+   */
+  engineAsync(args, identity = null) {
+    return engine.runAsync(args, { cwd: this.dir, env: this.envOf(identity) });
+  }
+
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args, identity = null, stdin = '') {
     this.step += 1;
@@ -1255,7 +1264,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
   });
 
-  it('cross-cutting: a specification still being written stops a peer\'s planning entry; a completed one is referenced', () => {
+  it('cross-cutting: a specification still being written stops a peer\'s planning entry; a completed one is referenced', async () => {
     const cc = 'error-envelope';
     sim.run(['workunit', 'create', cc, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, cc)]);
     sim.run(['topic', 'start', cc, 'discussion', cc]);
@@ -1279,8 +1288,16 @@ describe('pipeline simulation', () => {
 
     // Once the spec lands there is nothing left to warn a plan about — the
     // knowledge query surfaces it, and the plan references it instead.
-    sim.write(`.workflows/${cc}/specification/${cc}/specification.md`, `# Spec — ${cc}\n`);
+    sim.write(`.workflows/${cc}/specification/${cc}/specification.md`,
+      `# Spec — ${cc}\n\n## Envelope\n\nEvery error leaves in one envelope: a code, a message, and a trace id.\n`);
     sim.run(['topic', 'complete', cc, 'specification', cc]);
+    // cross-cutting-context D: the query filtered to completed cross-cutting
+    // specifications finds it, and nothing of the unit's discussion.
+    const surfaced = await sim.engineAsync(['knowledge', 'query', 'one error envelope for every failure',
+      '--work-type', 'cross-cutting', '--phase', 'specification', '--limit', '10']);
+    assert.strictEqual(surfaced.code, 0, surfaced.stderr);
+    assert.match(surfaced.stdout, /^\[specification \| error-envelope\/error-envelope \| high \| \d{4}-\d{2}-\d{2}\]$/m);
+    assert.doesNotMatch(surfaced.stdout, /^\[discussion \|/m);
     sim.refuses(['render', 'cross-cutting-gate', '--file', units],
       /"error-envelope" is not a cross-cutting work unit with a specification in progress/);
     assert.match(sim.render(['cross-cutting-references', '--file', refs], { expect: 'content' }),
@@ -2765,11 +2782,19 @@ describe('pipeline simulation', () => {
     }
     sim.render(['wait-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
 
-    // A decision landed from planning amends the discussion in place: the
-    // sibling extraction goes stale, the plan's own specification is spared
-    // because the planner re-aligned it — so the plan is never held.
+    // A decision landed from planning amends the discussion in place and
+    // reindexes it (landing-a-resolution.md): the sibling extraction goes
+    // stale, the plan's own specification is spared because the planner
+    // re-aligned it — so the plan is never held — and the landing commits
+    // over the discussion's topic.
+    const amended = `.workflows/${wu}/discussion/shared.md`;
+    sim.write(amended, '# Shared\n\n## Retention\n\nRecords are kept for a year.\n');
+    const reindexed = sim.engine(['knowledge', 'index', amended]);
+    assert.strictEqual(reindexed.code, 0, reindexed.stderr);
+    assert.match(reindexed.stdout, new RegExp(`^Indexed \\d+ chunks from ${amended.replace(/\./g, '\\.')}\\n$`));
     const staled = sim.run(['sources', 'stale', wu, 'shared', '--except', 'alpha-spec']);
     assert.deepStrictEqual(staled.staled, ['beta-spec']);
+    sim.run(['commit', wu, '-m', `discussion(${wu}/shared): records are kept for a year`, '--topic', 'discussion/shared', '--sweep']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].sources.shared.status, 'incorporated');
     sim.render(['entry-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
     sim.render(['wait-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
@@ -3053,7 +3078,13 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
     assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
-    assert.match(sim.render(['query-failure-gate'], { expect: 'content' }), /MENU: query failure gate/);
+    // A failed query's error output rides the failure gate's payload,
+    // verbatim, written to the roadmap session's own cache.
+    const queryFailure = sim.write('.workflows/.cache/roadmap/query-failure.json',
+      { error: 'Error: loadStore: corrupted store file at .workflows/.knowledge/store.bin\n' });
+    const failureGate = sim.render(['query-failure-gate', '--file', queryFailure], { expect: 'content' });
+    assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);
+    assert.match(failureGate, /MENU: query failure gate/);
 
     // The home's `b/back`: the label goes back first, then the start menu is
     // re-rendered over the state the roadmap was entered from.
@@ -3538,11 +3569,16 @@ describe('pipeline simulation', () => {
       'bounded auto holds while the phase stays open for the consolidation pass');
     // B's spec-defect settle, before any proposal is staged: a record-settled
     // correction lands on the same unit's concluded spec — in-place edit +
-    // corrigendum — then the same-unit route's scoped commit (--sweep leaves
-    // the spec topic's presence untouched), with the work unit still
-    // in-progress and implementation live.
-    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`,
+    // corrigendum, re-index through the engine's knowledge door — then the
+    // same-unit route's scoped commit (--sweep leaves the spec topic's
+    // presence untouched), with the work unit still in-progress and
+    // implementation live.
+    const correctedSpec = `.workflows/${wu}/specification/${wu}/specification.md`;
+    sim.write(correctedSpec,
       `# Spec — ${wu}\n\n## Corrigenda\n\n> **Corrigendum 2026-01-01** (from \`implementation/${wu}\`): "intent.js" — corrected: payment-intent.js.\n`);
+    const reindex = sim.engine(['knowledge', 'index', correctedSpec]);
+    assert.strictEqual(reindex.code, 0, reindex.stderr);
+    assert.match(reindex.stdout, new RegExp(`^Indexed \\d+ chunks from ${correctedSpec.replace(/\./g, '\\.')}\\n$`));
     sim.run(['commit', wu, '-m', `specification(${wu}): corrigendum from implementation/${wu}`,
       '--topic', `specification/${wu}`, '--sweep']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
@@ -4062,7 +4098,13 @@ describe('pipeline simulation', () => {
     }));
     assert.match(sim.render(['baseline-round', '--file', '.workflows/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
     assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
+    // The landing (author-doc.md C): index the doc, mark the area, commit.
+    sim.write('.workflows/.baseline/overview.md', '# Overview\n\n## What it is\n\nA dispatcher that pushes orders downstream.\n');
+    const baselineIndexed = sim.engine(['knowledge', 'index', '.workflows/.baseline/overview.md']);
+    assert.strictEqual(baselineIndexed.code, 0, baselineIndexed.stderr);
+    assert.match(baselineIndexed.stdout, /^Indexed \d+ chunks from \.workflows\/\.baseline\/overview\.md\n$/);
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
+    sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
     assert.match(sim.render(['baseline-paused'], { expect: 'content' }), /Paused — 1 of 2/);
@@ -4151,7 +4193,7 @@ describe('pipeline simulation', () => {
     const wu = 'typo';
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'scoping', wu]);
-    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n`);
+    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n\n## Change\n\nThe footer's typo is corrected.\n`);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`]);
@@ -4166,6 +4208,13 @@ describe('pipeline simulation', () => {
 
     fs.rmSync(path.join(sim.dir, `.workflows/${wu}/specification/${wu}`), { recursive: true, force: true });
     fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    // The spec's knowledge-base entry goes with its file, through the door.
+    const removal = ['knowledge', 'remove', '--work-unit', wu, '--phase', 'specification', '--topic', wu];
+    const removed = sim.engine(removal);
+    assert.strictEqual(removed.code, 0, removed.stderr);
+    assert.match(removed.stdout, new RegExp(`^Removed [1-9]\\d* chunks for ${wu}/specification/${wu}\\n$`));
+    assert.strictEqual(sim.engine([...removal, '--dry-run']).stdout, `Would remove 0 chunks for ${wu}/specification/${wu}\n`,
+      'none of the spec\'s chunks is left');
     const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
     const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
     assert.match(cleanup.committed, /^[0-9a-f]+$/);
@@ -4204,6 +4253,12 @@ describe('pipeline simulation', () => {
     sim.write('src/app.js', 'const x = 2;\n');
     git(sim.dir, ['add', '--', 'src/app.js']);
 
+    // The summary rides a payload in the cache, which the commit below never
+    // carries.
+    const applied = sim.write('.workflows/.cache/migrations-applied.json',
+      { summary: 'Restored the settings and the worktree include.', migrations: 1, files: 3 });
+    assert.match(sim.render(['migrations-applied', '--file', applied], { expect: 'content' }),
+      /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     const landed = sim.run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
     assert.match(landed.committed, /^[0-9a-f]+$/);

@@ -1,7 +1,7 @@
 ---
 name: workflow-start
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git diff)
+allowed-tools: Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git diff)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
@@ -84,16 +84,10 @@ Files were updated, or a migration handed over checks its code could not perform
    → Proceed to **Step 0.2**.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):
+4. Write the summary to `.workflows/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "migrations": {N}, "files": {M}}`, `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes — verification fixes only — leave both counts out. Fetch the summary and emit its section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**Migrations Applied**
-
-{your natural language summary}
-
-{N} migration(s), {M} file(s) updated.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render migrations-applied --file .workflows/.cache/migrations-applied.json
 ```
 
 5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:
@@ -292,7 +286,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config fals
 
 ### Step 0.5: Knowledge Gate
 
-Branch on the boot response — run no further commands (the bulk `knowledge index` and `compact` already ran inside boot when the knowledge base was ready, the index building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
+Branch on the boot response — run no further commands (boot already brought the knowledge base in line with the files and compacted it when it was ready, building the store first where this checkout had none). If it carries `warnings`, surface them and continue — boot is complete.
 
 #### If `knowledge` is `not-ready`
 

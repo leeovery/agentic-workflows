@@ -353,7 +353,7 @@ output=$(run_kb 2>&1 || true)
 exit_code=0
 run_kb 2>/dev/null || exit_code=$?
 assert_eq "exits with code 1" "1" "$exit_code"
-assert_eq "prints usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+assert_eq "prints the engine's usage" "Usage: engine knowledge <command> [options]" "$(echo "$output" | head -1)"
 
 # --- Test 2: Unknown command prints error and exits 1 ---
 echo "Test 2: Unknown command"
@@ -704,7 +704,7 @@ exit_code=0
 output=$(run_kb query "topic" 2>&1) || exit_code=$?
 assert_eq "query exits 0" "0" "$exit_code"
 assert_eq "notes it ran keyword-only, asking for a rebuild" "true" \
-  "$(echo "$output" | head -1 | grep -q '^\[keyword-only mode — .*; run knowledge rebuild\]$' && echo true || echo false)"
+  "$(echo "$output" | head -1 | grep -q '^\[keyword-only mode — .*; run node \.claude/skills/workflow-engine/scripts/engine\.cjs knowledge rebuild\]$' && echo true || echo false)"
 assert_eq "still returns results" "true" "$(echo "$output" | grep -qE '^\[[1-9][0-9]* results\]$' && echo true || echo false)"
 teardown_project
 
@@ -1378,7 +1378,7 @@ exit_code=0
 output=$(run_kb remove 2>&1 || true)
 run_kb remove 2>/dev/null || exit_code=$?
 assert_eq "exits 1" "1" "$exit_code"
-assert_eq "shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+assert_eq "shows usage" "true" "$(echo "$output" | grep -q '^Usage: engine knowledge remove --work-unit' && echo true || echo false)"
 teardown_project
 
 # --- Test 44: Remove from empty/nonexistent store reports 0 (WU exists) ---
@@ -3549,7 +3549,7 @@ assert_eq "query does NOT misdiagnose as a provider change" "false" \
   "$(echo "$qout" | grep -q 'changed since last index' && echo true || echo false)"
 # The single-file index writes an edit by keyword and embeds nothing — its
 # vectors are the fill's, and a provider without its key launches none.
-KEY_FIX='the openai API key could not be resolved; export OPENAI_API_KEY, or run knowledge setup --key-only'
+KEY_FIX='the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only'
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set keyless-wu.discussion.keyless-wu status completed >/dev/null 2>&1
 echo "A late addition to the discussion." >> "$TEST_ROOT/.workflows/keyless-wu/discussion/keyless-wu.md"
 iexit=0

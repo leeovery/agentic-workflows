@@ -128,15 +128,13 @@ A change lands in one place and is owed in several. Enumerate them.
 - The pipeline simulation is updated for any new engine verb, changed prose
   call sequence, new phase ordering, or new manifest field. A red
   simulation is a decision to make, never something to paper over.
-- A test lands alongside any change to engine scripts, adapters,
-  migrations, or `src/knowledge/`.
+- A test lands alongside any change to engine scripts (the knowledge
+  base's among them), adapters, or migrations.
 - New `.cjs` migrations have a matching node:test suite, registered in
   `package.json`, covering happy path, skip, idempotency, content
   preservation, and every defensive guard.
 - Snapshots regenerated through the runner, never hand-edited, with the
   display width pinned.
-- The knowledge bundle is rebuilt and committed alongside any
-  `src/knowledge/` change.
 - Where a finding in any other dimension describes a failure the gates
   would not have caught, the missing case is itself a finding.
 
@@ -194,9 +192,13 @@ call is for and never branches on argv shape.
 `reportSkip` — never stdout. Idempotent, and shipped migrations are never
 edited.
 
-**Knowledge.** `src/knowledge/` is the source; the committed CLI is a
-bundle. A source change without the rebuilt bundle committed alongside it
-ships a stale binary.
+**Knowledge.** The knowledge base is engine modules — mechanism in
+`kernel/knowledge/`, the workflow side in `domain/knowledge/` — reached by
+skill prose through one door, `engine knowledge`, and by the transactions
+in process. Only the verbs whose job is talking to the embedding provider
+wait on it: a transaction or boot that waits on embedding, or a second
+home for the indexed artifacts, the terminal statuses or the store's file
+names, is a finding.
 
 **Dead weight.** Code the diff orphaned — an export nothing imports, a
 branch nothing reaches, a parameter every caller passes the same value for,

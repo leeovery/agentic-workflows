@@ -32,7 +32,7 @@ The prose should have taken this path:
    Decision prose (wrapped under an Initial heading), the Trigger line
    citing the failed measurement — never specification or this
    session — and the Key Insight resting on the claim repaired in place
-7. the edited discussion is reindexed through the knowledge CLI; the
+7. the edited discussion is reindexed through `engine knowledge index`; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
 8. construction continues against the corrected record: the

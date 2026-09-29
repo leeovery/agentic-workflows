@@ -183,7 +183,7 @@ The concern stays queued and the opt-in is cleared — a half-walked entry keeps
 
 ## D. Fold
 
-Record the discussion in the topic's content. The fold is an engagement decision point: before its outcome is recorded, follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — both its triggers apply here.
+Record the discussion in the topic's content. The fold is an engagement decision point: before its outcome is recorded, follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](knowledge-usage.md)** — both its triggers apply here.
 
 A cross-topic correction tempts you to write guidance about the documents themselves. Do not: never write rules for how documents cite, edit, or point at each other, and never write lessons about how the topics drifted apart. The fold records only what changed and why, in the topic's own terms.
 

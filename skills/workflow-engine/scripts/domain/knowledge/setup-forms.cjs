@@ -24,7 +24,7 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { OpenAIProvider } = require('../../kernel/knowledge/providers/openai.cjs');
 const { OpenAICompatibleProvider } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
-const { messageOf } = require('../../kernel/call.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
 const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
 
@@ -41,7 +41,7 @@ function refuse(msg) {
 const KEY_FLAG_REFUSAL =
   '--key is not accepted: API keys must never pass through command arguments ' +
   '(argv lands in shell history and process listings). Set $OPENAI_API_KEY, or run ' +
-  '`knowledge setup --key-only` to store the key at a private prompt.';
+  `\`${ENGINE_COMMAND} knowledge setup --key-only\` to store the key at a private prompt.`;
 
 const FORM_CONFLICT_REFUSAL =
   'choose one setup form: --from-system, --keyword-only, --provider, or --key-only.';
@@ -80,8 +80,9 @@ function missingOpenAiKeyMessage() {
   return (
     'no OpenAI API key found.\n' +
     `  Checked $${envVar} and ${config.credentialsPath()}.\n` +
-    `  Export ${envVar} in your shell, or run \`knowledge setup --key-only\` to store\n` +
-    '  the key at a private prompt. Never paste the key into a chat.'
+    `  Export ${envVar} in your shell, or run\n` +
+    `  \`${ENGINE_COMMAND} knowledge setup --key-only\`\n` +
+    '  to store the key at a private prompt. Never paste the key into a chat.'
   );
 }
 
@@ -94,7 +95,8 @@ function refuseInvalidSystemConfig(sysPath, detected) {
   if (!detected.exists || detected.valid) return;
   refuse(
     `system config at ${sysPath} is not valid: ${detected.reason}.\n` +
-    '  Re-create it with `knowledge setup --provider ...` or the interactive `knowledge setup`.'
+    `  Re-create it with \`${ENGINE_COMMAND} knowledge setup --provider ...\`\n` +
+    `  or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`
   );
 }
 
@@ -109,7 +111,7 @@ function summaryLines(k) {
     return [
       'Knowledge base ready — keyword-only (BM25) mode.',
       'Semantic search is disabled until an embedding provider is configured.',
-      'Upgrade anytime: `knowledge setup --provider ...` or the interactive `knowledge setup`.',
+      `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`,
     ];
   }
   const lines = ['Knowledge base ready.', `  provider: ${k.provider}`];
@@ -161,7 +163,7 @@ async function validateConfiguredProvider(call, cfg) {
  */
 function consistentProjectInit(files) {
   if (metadataMissing(files)) {
-    refuse(`project ${setup.inconsistentStoreMessage(files)}\n  Run \`knowledge rebuild\` to re-create the store with matching metadata.`);
+    refuse(`project ${setup.inconsistentStoreMessage(files)}\n  Run \`${ENGINE_COMMAND} knowledge rebuild\` to re-create the store with matching metadata.`);
   }
   return setup.detectProjectInit(files);
 }
@@ -194,9 +196,10 @@ async function runFromSystem(call, root) {
   if (!detected.exists) {
     refuse(
       `no system config found at ${sysPath}.\n` +
-      '  `knowledge setup --from-system` reuses an existing system config.\n' +
-      '  Create one with `knowledge setup --provider ...`, run `knowledge setup\n' +
-      '  --keyword-only` for keyword-only search, or run the interactive `knowledge setup`.'
+      '  `--from-system` reuses an existing system config. Create one with\n' +
+      `  \`${ENGINE_COMMAND} knowledge setup --provider ...\`, run\n` +
+      `  \`${ENGINE_COMMAND} knowledge setup --keyword-only\` for keyword-only search,\n` +
+      `  or run the interactive \`${ENGINE_COMMAND} knowledge setup\`.`
     );
   }
   refuseInvalidSystemConfig(sysPath, detected);

@@ -79,12 +79,12 @@ No cross-cutting context exists to surface. Proceed without it.
 Run a targeted semantic query filtered to completed cross-cutting specs:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "{query_text}" --work-type cross-cutting --phase specification --limit 10
+node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "{query_text}" --work-type cross-cutting --phase specification --limit 10
 ```
 
 #### If the command exits with a non-zero code
 
-→ Load **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
+→ Load **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
 
 - **If the user chose `skip`** — the plan proceeds without cross-cutting context. → Return to caller.
 - **If a retry succeeded** — results are now available. → Proceed to **E. Interpret the results**.

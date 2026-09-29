@@ -29,9 +29,9 @@
       "manifest delete pay.planning.pay reconcile_needed"
     ],
     "calls_exclude": [
-      "knowledge.cjs query",
-      "knowledge.cjs index",
-      "knowledge.cjs remove"
+      "engine.cjs knowledge query",
+      "engine.cjs knowledge index",
+      "engine.cjs knowledge remove"
     ]
   }
 }

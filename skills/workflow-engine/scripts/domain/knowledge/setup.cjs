@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const { QuotaError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
-const { messageOf } = require('../../kernel/call.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { loadSettings } = require('./embedder.cjs');
 const { createStore } = require('./indexing.cjs');
@@ -220,7 +220,7 @@ function describeValidationError(err, remedies = {}) {
     return {
       message: 'Could not reach the embeddings endpoint (network error).',
       hint: remedies.network ||
-        'Check your connection, VPN, or proxy. No key was written — re-run `knowledge setup` once stable.',
+        `Check your connection, VPN, or proxy. No key was written — re-run \`${ENGINE_COMMAND} knowledge setup\` once stable.`,
     };
   }
   if (/HTTP 5\d\d/.test(msg)) {

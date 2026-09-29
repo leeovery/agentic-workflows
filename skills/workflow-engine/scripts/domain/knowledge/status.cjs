@@ -10,7 +10,7 @@ const fs = require('fs');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
-const { messageOf } = require('../../kernel/call.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
 const { readManifests } = require('./artifacts.cjs');
 const { loadSettings, storeBuildable, keywordOnlyCause, metadataMissing } = require('./embedder.cjs');
 const { planIndex } = require('./indexing.cjs');
@@ -78,7 +78,7 @@ function statusReport(root) {
   const files = knowledgeFiles(root);
   const out = ['=== Knowledge Base Status ===', ''];
   if (!fs.existsSync(files.store)) {
-    out.push('Store: not initialized', 'Run `knowledge index` to build the index.');
+    out.push('Store: not initialized', `Run \`${ENGINE_COMMAND} knowledge index\` to build the index.`);
     return out.join('\n') + '\n';
   }
 
@@ -107,7 +107,7 @@ function statusReport(root) {
     const shortfall = fillShortfall(metadata.fill_failure, db);
     if (shortfall) out.push(`Last vector fill fell short: ${shortfall}`);
   } else {
-    out.push('Metadata: missing (run `knowledge rebuild` to fix)');
+    out.push(`Metadata: missing (run \`${ENGINE_COMMAND} knowledge rebuild\` to fix)`);
   }
   if (settings.error) warn(settings.error);
 

@@ -19,8 +19,8 @@ npm test
 ```
 
 Node 18+. `npm install` pulls dev dependencies only — the product itself
-has no runtime dependencies, which is why the knowledge-base CLI ships
-as a committed bundle.
+has no runtime dependencies and nothing to build: it installs as
+committed.
 
 ## The gates
 
@@ -30,7 +30,7 @@ is to run them before every commit rather than at the end of a branch.
 | Command | What it covers |
 | --- | --- |
 | `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter |
-| `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, knowledge CLI and build |
+| `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, the `engine knowledge` surface |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) |
 | `npm run typecheck:mod` | Both gate mods' types (`workflow-gates` and `workflow-gates-rows`) against Claude Code's mod API declarations — owed for any change under `skills/workflow-gates*/` |
@@ -43,17 +43,11 @@ check `$?` instead. This has produced a falsely-green report before.
 
 ## After changing the knowledge base
 
-`src/knowledge/` is bundled into
-`skills/workflow-knowledge/scripts/knowledge.cjs` by esbuild. Installs
-come from git tags with no build step, so the bundle must be present and
-current whenever a tag is cut:
-
-```bash
-npm run build   # then commit the bundle alongside the source change
-```
-
-A change that moves retrieval also re-pins the eval baseline in the same
-PR, so the diff carries the before and after:
+The knowledge base is engine code — its mechanism in
+`skills/workflow-engine/scripts/kernel/knowledge/`, its workflow side in
+`skills/workflow-engine/scripts/domain/knowledge/`. A change that moves
+retrieval re-pins the eval baseline in the same PR, so the diff carries
+the before and after:
 
 ```bash
 node tests/scripts/knowledge-eval.cjs --pin
@@ -113,5 +107,6 @@ once.
 
 Open an issue before anything substantial, so the shape can be agreed
 before the work. Each idea ships as its own pull request rather than
-bundled with others, and any change to engine scripts, adapters,
-migrations or `src/knowledge/` lands with its test alongside it.
+bundled with others, and any change to engine scripts (the knowledge
+base's among them), adapters or migrations lands with its test alongside
+it.

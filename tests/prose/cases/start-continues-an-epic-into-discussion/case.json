@@ -71,7 +71,7 @@
       "topic complete",
       "topic reopen",
       "workunit create",
-      "knowledge.cjs index",
+      "engine.cjs knowledge index",
       "legacy-research-split/scripts/apply"
     ]
   }

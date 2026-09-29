@@ -14,7 +14,7 @@ const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { readProjectManifest } = require('../../kernel/manifest.cjs');
-const { ExitSignal, messageOf } = require('../../kernel/call.cjs');
+const { ENGINE_COMMAND, ExitSignal, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { RESERVED_IDENTITIES, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
 const { loadSettings, newStoreEmbedder, metadataMissing } = require('./embedder.cjs');
@@ -30,7 +30,7 @@ const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
 
-const USAGE = `Usage: knowledge <command> [options]
+const USAGE = `Usage: engine knowledge <command> [options]
 
 Commands:
   index     Index a file, or with no file bring the store in line with every artifact
@@ -198,14 +198,14 @@ async function runQuery(call, { root, files, args, options }) {
   const cfg = config.loadConfig({ projectPath: files.config });
   const provider = queryProvider(cfg);
   if (args.length === 0) {
-    stop(call, 'Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N] [--explain]\n');
+    stop(call, 'Usage: engine knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N] [--explain]\n');
   }
   // A blank term is a caller's mistake — an unsubstituted template — never a
   // request for everything.
   if (args.some((t) => t.trim() === '')) {
     throw new UserError(
-      'Empty search term. `knowledge query` requires at least one non-empty positional term. ' +
-        'If you intended to list everything indexed, use `knowledge status` instead.'
+      'Empty search term. `engine knowledge query` requires at least one non-empty positional term. ' +
+        `If you intended to list everything indexed, use \`${ENGINE_COMMAND} knowledge status\` instead.`
     );
   }
   const boostError = options.boosts.map(boostProblem).find(Boolean);
@@ -217,7 +217,7 @@ async function runQuery(call, { root, files, args, options }) {
   }
   const db = store.loadStore(files.store);
   if (metadataMissing(files)) {
-    stop(call, `${path.basename(files.metadata)} missing but store exists. Run \`knowledge rebuild\` to fix.\n`);
+    stop(call, `${path.basename(files.metadata)} missing but store exists. Run \`${ENGINE_COMMAND} knowledge rebuild\` to fix.\n`);
   }
   const settings = querySettings(store.readMetadata(files.metadata), cfg, provider);
   const outcome = await queryStore(db, settings, { terms: args, options, workUnits: workUnitsOr(root, call.err, 'query') });
@@ -243,7 +243,7 @@ function removeDescription({ workUnit, phase, topic }) {
  * @param {Call} call @param {Request} request
  */
 function runRemove(call, { root, options }) {
-  if (!options.workUnit) stop(call, 'Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]\n');
+  if (!options.workUnit) stop(call, 'Usage: engine knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]\n');
   if (options.topic && !options.phase) stop(call, 'Error: --topic requires --phase\n');
   const scope = { workUnit: options.workUnit, phase: options.phase, topic: options.topic };
 
@@ -256,7 +256,7 @@ function runRemove(call, { root, options }) {
       throw new UserError(
         `Work unit "${options.workUnit}" not found in project manifest, ` +
           'and no matching chunks exist in the knowledge base.\n' +
-          '  Check the name with `knowledge status`.'
+          `  Check the name with \`${ENGINE_COMMAND} knowledge status\`.`
       );
     }
     call.err(

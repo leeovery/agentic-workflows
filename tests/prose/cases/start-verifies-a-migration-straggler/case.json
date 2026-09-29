@@ -26,14 +26,15 @@
       "workflow-start/scripts/gateway.cjs"
     ],
     "calls_exclude": [
-      "knowledge.cjs setup",
+      "engine.cjs knowledge setup",
       "topic triage",
       "topic start",
       "discussion-map",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "engine.cjs boot",
+      "render migrations-applied --file .workflows/.cache/migrations-applied.json",
       "chore: apply workflow migrations",
       "workflow-start/scripts/gateway.cjs"
     ]

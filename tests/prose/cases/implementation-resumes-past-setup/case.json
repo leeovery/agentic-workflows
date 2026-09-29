@@ -43,7 +43,7 @@
       "manifest set pay.implementation.pay linters",
       "impl(pay): start implementation",
       "task start",
-      "knowledge.cjs query"
+      "engine.cjs knowledge query"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",

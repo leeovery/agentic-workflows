@@ -61,7 +61,7 @@
       "roadmap pull-forward",
       "workunit create",
       "topic start",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

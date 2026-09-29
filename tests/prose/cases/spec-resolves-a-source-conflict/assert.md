@@ -29,7 +29,7 @@ The prose should have taken this path:
    decision — never specification or this session — and the citing
    prose the resolution invalidates is repaired in place; the walk
    checks presence before touching the file
-7. the edited document is reindexed through the knowledge CLI directly,
+7. the edited document is reindexed through `engine knowledge index` directly,
    the sources-stale safety valve runs with --except expansion (no
    other spec exists, so nothing stales — the call still runs), and the
    resolution commits with a message naming the discussion and the

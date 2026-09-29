@@ -1,10 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: one engine invocation — what it acts on, where its answers go, how
-// a command ends it with an exit code without ending its caller, and what a
-// failure says.
+// Kernel: one engine invocation — the command a person types to start one,
+// what it acts on, where its answers go, how a command ends it with an exit
+// code without ending its caller, and what a failure says.
 // ---------------------------------------------------------------------------
+
+/** The command a person types at the project root to run the engine. */
+const ENGINE_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
 
 /**
  * The directory an invocation acts on, where its two output streams go, and
@@ -41,4 +44,4 @@ function messageOf(err) {
   return err instanceof Error ? err.message : String(err);
 }
 
-module.exports = { ExitSignal, messageOf };
+module.exports = { ENGINE_COMMAND, ExitSignal, messageOf };

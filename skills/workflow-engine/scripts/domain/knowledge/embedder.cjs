@@ -11,6 +11,7 @@ const fs = require('fs');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
+const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 
 /** @typedef {import('../../kernel/knowledge/embeddings.cjs').EmbeddingProvider} EmbeddingProvider */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -64,7 +65,7 @@ function keyUnresolvedError(cfg, consequence) {
       consequence +
       '  Provide the key and retry:\n' +
       `    • ${keySource}            (session or CI), or\n` +
-      '    • knowledge setup --key-only   (saves it to credentials.json)'
+      `    • ${ENGINE_COMMAND} knowledge setup --key-only   (saves it to credentials.json)`
   );
 }
 
@@ -75,13 +76,13 @@ function keyUnresolvedError(cfg, consequence) {
  */
 function keyCause(cfg) {
   return `the ${cfg.provider} API key could not be resolved; ` +
-    `export ${/** @type {Record<string, string>} */ (config.PROVIDER_ENV_VARS)[cfg.provider]}, or run knowledge setup --key-only`;
+    `export ${/** @type {Record<string, string>} */ (config.PROVIDER_ENV_VARS)[cfg.provider]}, or run ${ENGINE_COMMAND} knowledge setup --key-only`;
 }
 
 const NO_BUILD_CHOICE_MSG =
   'No knowledge store here, and no configuration says how to build one — no embedding provider ' +
   'is configured and keyword-only was never chosen.\n' +
-  '  Run `knowledge setup` to choose, or `knowledge setup --keyword-only` for keyword-only search.';
+  `  Run \`${ENGINE_COMMAND} knowledge setup\` to choose, or \`${ENGINE_COMMAND} knowledge setup --keyword-only\` for keyword-only search.`;
 
 /**
  * Whether keyword-only was chosen outright: the project config unsets the
@@ -204,7 +205,7 @@ function providerConflict(metadata, cfg, provider) {
 }
 
 const REBUILD_MISMATCH_MSG =
-  'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n';
+  `Provider/model changed since last index. Run \`${ENGINE_COMMAND} knowledge rebuild\` to reindex.\n`;
 
 /**
  * Why an index refuses the store it would write into, by conflict — each
@@ -298,10 +299,10 @@ const CONFLICT_CAUSES = {
   key: (_metadata, cfg) => keyCause(cfg),
   dropped: (metadata) =>
     `the store was embedded with ${embedderName(metadata)} and the config names no provider; ` +
-    'restore it in the config, or run knowledge rebuild',
+    `restore it in the config, or run ${ENGINE_COMMAND} knowledge rebuild`,
   mismatch: (metadata, cfg, provider) =>
     `the store was embedded with ${embedderName(metadata)} and the config names ` +
-    `${embedderName(embedderIdentity(cfg, provider))}; run knowledge rebuild`,
+    `${embedderName(embedderIdentity(cfg, provider))}; run ${ENGINE_COMMAND} knowledge rebuild`,
 };
 
 /**

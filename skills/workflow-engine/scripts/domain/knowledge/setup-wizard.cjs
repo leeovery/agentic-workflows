@@ -22,7 +22,7 @@ const path = require('path');
 const readline = require('readline');
 const config = require('../../kernel/knowledge/config.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
-const { ExitSignal } = require('../../kernel/call.cjs');
+const { ENGINE_COMMAND, ExitSignal } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('../../kernel/knowledge/providers/openai.cjs');
 const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
@@ -56,7 +56,7 @@ const PROVIDER_SETUPS = [OPENAI_SETUP, COMPATIBLE_SETUP];
 function requireTTY(call) {
   if (!call.terminal) {
     call.err(
-      'knowledge setup requires an interactive terminal. ' +
+      'engine knowledge setup requires an interactive terminal. ' +
       'Run it directly, not through Claude or a pipe.\n'
     );
     throw new ExitSignal(1);
@@ -291,14 +291,14 @@ async function runSystemConfigStep(call, rl) {
 
   const providerChoice = await pickProvider(call, rl);
   if (providerChoice === 'skip') {
-    writeStubSystemConfig(call, sysPath, 'Run `knowledge setup` again later to configure a provider.');
+    writeStubSystemConfig(call, sysPath, `Run \`${ENGINE_COMMAND} knowledge setup\` again later to configure a provider.`);
     return { provider: null };
   }
 
   const descriptor = /** @type {typeof PROVIDER_SETUPS[number]} */ (PROVIDER_SETUPS.find((d) => d.id === providerChoice));
   const result = await descriptor.collect(createSetupToolkit(call, rl));
   if (result.stub) {
-    writeStubSystemConfig(call, sysPath, 'Re-run `knowledge setup` once the provider is reachable.');
+    writeStubSystemConfig(call, sysPath, `Re-run \`${ENGINE_COMMAND} knowledge setup\` once the provider is reachable.`);
     return { provider: null };
   }
   // A null key came from the environment or was already stored: left alone.
@@ -322,9 +322,10 @@ async function runProjectInitStep(call, files, rl) {
   if (metadataMissing(files)) {
     call.err(
       `\nProject ${setup.inconsistentStoreMessage(files)}\n` +
-      '  Setup cannot recover this safely — run `knowledge rebuild` (which\n' +
-      '  re-creates the store from scratch and writes matching metadata) and\n' +
-      '  then re-run `knowledge setup` if needed.\n'
+      '  Setup cannot recover this safely — run\n' +
+      `  \`${ENGINE_COMMAND} knowledge rebuild\`\n` +
+      '  (which re-creates the store from scratch and writes matching metadata)\n' +
+      `  and then re-run \`${ENGINE_COMMAND} knowledge setup\` if needed.\n`
     );
     throw new ExitSignal(1);
   }

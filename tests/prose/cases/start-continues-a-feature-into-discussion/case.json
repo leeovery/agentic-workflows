@@ -59,7 +59,7 @@
       "topic reopen",
       "discovery-map add",
       "manifest set",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

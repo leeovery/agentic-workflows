@@ -23,8 +23,8 @@
     "skills/workflow-discussion-process/references/meeting-assistant.md",
     "skills/workflow-discussion-process/references/guidelines.md",
     "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
-    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-shared/references/triage-landing.md",
@@ -67,7 +67,7 @@
       "topic start search-relevance research behavioural-ranking",
       "topic reopen search-relevance discussion behavioural-ranking",
       "--kind perspective",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",

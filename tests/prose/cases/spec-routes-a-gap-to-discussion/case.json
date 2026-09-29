@@ -52,7 +52,7 @@
       "topic reopen",
       "topic complete search-relevance specification expansion",
       "sources stale search-relevance",
-      "knowledge.cjs index .workflows/search-relevance/discussion",
+      "engine.cjs knowledge index .workflows/search-relevance/discussion",
       "construction_gate_mode auto",
       "discovery-map add",
       "roadmap add"

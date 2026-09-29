@@ -14,13 +14,13 @@ This skill is a reference, not a flow. In normal use the workflow prose prescrib
 
 Three rings under `scripts/`:
 
-- **Kernel** (`kernel/`) — mechanism plus the manifest's on-disk contract: render primitives (the wrap budget `width − prefix` lives here once, so gutter-overflow bugs can exist in only one place), `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it), and `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and statuses). Every engine load→mutate→save holds the manifest lock; KB syncs and commits run after release.
-- **Domain** (`domain/`) — the workflow ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation, cache status), consumed by the domain ring and — via `lib.cjs`'s `engine.reads`/`engine.derivations` namespaces — every per-skill read adapter. Derivations may require reads; never the reverse.
+- **Kernel** (`kernel/`) — mechanism plus the manifest's on-disk contract: render primitives (the wrap budget `width − prefix` lives here once, so gutter-overflow bugs can exist in only one place), `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it), `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and statuses), and the knowledge base's mechanism under `knowledge/` (the store's file format, word search, ranking, chunking, the embedding providers, the config). Every engine load→mutate→save holds the manifest lock; KB syncs and commits run after release.
+- **Domain** (`domain/`) — the workflow ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation, cache status), consumed by the domain ring and — via `lib.cjs`'s `engine.reads`/`engine.derivations` namespaces — every per-skill read adapter. Derivations may require reads; never the reverse. The knowledge base's workflow side lives under `knowledge/`: artifact identity against the manifests, indexing, the vector fill, query, status, and setup.
 - **Gateway** (`gateway.cjs`) — the uniform verb-dispatch harness every per-skill adapter (`skills/*/scripts/gateway.cjs`) runs on, plus the demarcated output sections.
 
 Two doors:
 
-- **CLI** (`engine.cjs`) — writes: transactions, lifecycle, and the `manifest` field surface. Called from skill prose at prescribed points.
+- **CLI** (`engine.cjs`) — writes: transactions, lifecycle, and the `manifest` field surface; and the knowledge base's one door, `knowledge`, its searches included. Called from skill prose at prescribed points.
 - **Library** (`lib.cjs`) — reads: adapter scripts `require()` it in-process for detail builders, projections, and the gateway harness.
 
 Output sections are one-directional: `DATA` is for reasoning and is never displayed; `DISPLAY` and `MENU` are emitted to the user, each verbatim per its marker, and never parsed for decisions.
@@ -33,7 +33,7 @@ Output sections are one-directional: `DATA` is for reasoning and is never displa
 
 ## Reference
 
-- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `manifest`, `workunit`, `topic`, `experiment`, `sources`, `discovery-map`, `build-order`, `discovery-session`, `discussion-map`, `research-threads`, `task`, `inbox`, `roadmap`, `cache`, `presence`, `session`, `conversation`, `agent`, `commit`, `render`).
+- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `manifest`, `knowledge`, `workunit`, `topic`, `experiment`, `sources`, `discovery-map`, `build-order`, `discovery-session`, `discussion-map`, `research-threads`, `task`, `inbox`, `roadmap`, `cache`, `presence`, `session`, `conversation`, `agent`, `commit`, `render`).
 - **[library-and-gateway.md](references/library-and-gateway.md)** — the `lib.cjs` surface (render kernel, manifest IO, conventions, detail builders, projections) and the gateway contract adapter scripts implement.
 
 ## Tests

@@ -23,7 +23,7 @@
     "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
     "skills/workflow-planning-process/references/output-formats/local-markdown/graph.md",
     "skills/workflow-planning-process/references/planning-principles.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-planning-process/references/verify-source-material.md",
     "skills/workflow-planning-process/references/plan-construction.md",
     "skills/workflow-planning-process/references/define-phases.md",
@@ -78,7 +78,7 @@
       "topic triage",
       "restart planning",
       "workunit create",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ],
     "calls_in_order": [
       "render resume-gate pay.planning.pay --variant plan",

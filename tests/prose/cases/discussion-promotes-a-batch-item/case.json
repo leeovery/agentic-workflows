@@ -21,8 +21,8 @@
     "skills/workflow-discussion-process/references/discussion-guidelines.md",
     "skills/workflow-discussion-process/references/meeting-assistant.md",
     "skills/workflow-discussion-process/references/guidelines.md",
-    "skills/workflow-knowledge/references/knowledge-usage.md",
-    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
@@ -63,7 +63,7 @@
       "agent surface pay discussion pay review-001 F1,F2,F3",
       "discussion-map add",
       "topic complete",
-      "knowledge.cjs index"
+      "engine.cjs knowledge index"
     ]
   }
 }

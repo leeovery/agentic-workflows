@@ -70,7 +70,7 @@
       "discovery-map remove",
       "discovery-map add-batch",
       "topic start",
-      "knowledge.cjs query"
+      "engine.cjs knowledge query"
     ]
   }
 }
