@@ -130,7 +130,7 @@ Drawn from the owner's dex-engineering knowledge base:
 5. **The rest of retrieval quality:** excerpts, heading paths and line
    ranges, a marker on reopened topics, and contextual chunk headers
    measured. A per-file cap and printed scores were measured and dropped,
-   and the relevance floor is closed. Built as stack #1448.
+   and the relevance floor is closed. Released in v0.8.5 (stack #1448).
 6. **Lifecycle ranking within a topic.** It reads manifest state, which
    becomes a function call once the KB is in the engine.
 7. **Catalogue and decisions register.** Scope still open: part of this
