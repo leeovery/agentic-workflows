@@ -19,6 +19,7 @@ const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
 const { unitsByName } = require('./artifacts.cjs');
+const { headingPath } = require('../../kernel/knowledge/outline.cjs');
 const { itemOf } = require('../derivations.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
@@ -325,7 +326,7 @@ function renderQuery({ results, notes }, { explain = false } = {}) {
     out.push(
       '',
       provenanceLine(r),
-      ...[r.headings.join(' › '), r.excerpt].filter(Boolean),
+      ...[headingPath(r.headings), r.excerpt].filter(Boolean),
       sourceLine(r),
     );
     if (explain) out.push(...explanation(r));

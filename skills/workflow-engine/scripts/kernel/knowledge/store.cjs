@@ -15,6 +15,7 @@ const { acquireLockFile, releaseLockFile, writeJsonAtomic } = require('../manife
 const REQUIRED_FIELDS = [
   'id',
   'content',
+  'heading_path',
   'work_unit',
   'work_type',
   'phase',
@@ -28,6 +29,7 @@ const REQUIRED_FIELDS = [
  * @typedef {object} Chunk
  * @property {string} id
  * @property {string} content
+ * @property {string} [heading_path]  the headings enclosing the line its text starts on, outermost first
  * @property {string} work_unit
  * @property {string} work_type
  * @property {string} phase
@@ -35,6 +37,7 @@ const REQUIRED_FIELDS = [
  * @property {string} confidence
  * @property {string} source_file
  * @property {string} [source_hash]  the sha256 of the source file the chunk was cut from
+ * @property {number} [chunker_version]  the version of the chunker that cut it (chunker.cjs CHUNKER_VERSION)
  * @property {string} content_hash  the sha256 of `content` — the text its vector embeds
  * @property {number} timestamp
  */
@@ -80,6 +83,7 @@ function chunkOf(fields, content, hash) {
   return {
     id: fields.id,
     content,
+    heading_path: fields.heading_path,
     work_unit: fields.work_unit,
     work_type: fields.work_type,
     phase: fields.phase,
@@ -87,6 +91,7 @@ function chunkOf(fields, content, hash) {
     confidence: fields.confidence,
     source_file: fields.source_file,
     source_hash: fields.source_hash,
+    chunker_version: fields.chunker_version,
     content_hash: hash,
     timestamp: fields.timestamp,
   };
@@ -514,7 +519,7 @@ function storedTerms(buf, section, count) {
 }
 
 /**
- * Each chunk's terms derived afresh from its text, as this tokenizer derives them.
+ * Each chunk's terms derived afresh from the fields it records, as this tokenizer derives them.
  * @returns {ChunkTerms}
  */
 function derivedTerms() {
@@ -593,7 +598,7 @@ function storeStamp(storePath) {
  * Load a store from disk. A file missing, empty, or not a store this version
  * reads — another format, another format version, or damaged — throws. A
  * store another tokenizer wrote loads retokenized: every chunk's terms
- * re-derived from its text, its vectors as they were.
+ * re-derived from the fields it records, its vectors as they were.
  * @param {string} storePath
  * @returns {Store}
  */

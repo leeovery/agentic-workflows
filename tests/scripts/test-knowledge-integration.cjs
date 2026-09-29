@@ -38,6 +38,7 @@ const FIXTURE_DOCS = [
   {
     id: 'auth-discussion-1',
     content: 'Token refresh intervals should mirror the upstream rate limiting window.',
+    heading_path: '',
     work_unit: 'auth-flow',
     work_type: 'feature',
     phase: 'discussion',
@@ -49,6 +50,7 @@ const FIXTURE_DOCS = [
   {
     id: 'auth-spec-1',
     content: 'User identity uses UUID v7.',
+    heading_path: '',
     work_unit: 'auth-flow',
     work_type: 'feature',
     phase: 'specification',
@@ -60,6 +62,7 @@ const FIXTURE_DOCS = [
   {
     id: 'auth-spec-2',
     content: '[test] Brackets at the start must survive verbatim through the store.',
+    heading_path: '',
     work_unit: 'auth-flow',
     work_type: 'feature',
     phase: 'specification',
@@ -71,6 +74,7 @@ const FIXTURE_DOCS = [
   {
     id: 'data-research-1',
     content: 'Postgres partitioning strategies reviewed: range, list, hash.',
+    heading_path: '',
     work_unit: 'data-model',
     work_type: 'epic',
     phase: 'research',
@@ -82,6 +86,7 @@ const FIXTURE_DOCS = [
   {
     id: 'data-disc-1',
     content: 'Rate limiting decision deferred to the edge gateway layer.',
+    heading_path: '',
     work_unit: 'data-model',
     work_type: 'epic',
     phase: 'discussion',
@@ -93,6 +98,7 @@ const FIXTURE_DOCS = [
   {
     id: 'data-spec-1',
     content: 'Persist rate limiting counters in Redis with per-tenant prefixes.',
+    heading_path: '',
     work_unit: 'data-model',
     work_type: 'epic',
     phase: 'specification',
@@ -104,6 +110,7 @@ const FIXTURE_DOCS = [
   {
     id: 'data-analysis-1',
     content: 'Analysis surfaced caching layer as a recurring theme across discussions.',
+    heading_path: '',
     work_unit: 'data-model',
     work_type: 'epic',
     phase: 'analysis',
@@ -261,6 +268,7 @@ describe('knowledge store — end-to-end integration', () => {
       ...base,
       id: 'payments-discovery-session-001-1',
       content: 'Session one explored the offline mode surface for the ordering flow.',
+      heading_path: '',
       topic: 'session-001',
       source_file: '.workflows/payments/discovery/sessions/session-001.md',
       timestamp: 1700000070000,
@@ -270,6 +278,7 @@ describe('knowledge store — end-to-end integration', () => {
       ...base,
       id: 'payments-discovery-session-002-1',
       content: 'Session two explored the analytics dashboard tempo versus live operational state.',
+      heading_path: '',
       topic: 'session-002',
       source_file: '.workflows/payments/discovery/sessions/session-002.md',
       timestamp: 1700000080000,

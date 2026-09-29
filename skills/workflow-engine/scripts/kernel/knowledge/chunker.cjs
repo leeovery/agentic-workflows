@@ -4,9 +4,10 @@
 // Kernel: the markdown chunker for the knowledge base.
 //
 // Pure function — no external dependencies. Given a markdown string and a
-// phase config, returns an array of { content } objects. Each `content`
-// includes the heading line so it travels with its body as a semantic
-// anchor.
+// phase config, returns an array of { content, headings } objects. Each
+// `content` includes the heading line so it travels with its body as a
+// semantic anchor; `headings` is the chunk's heading path — the headings
+// enclosing the line its text starts on, outermost first.
 //
 // The algorithm is the same for every phase — only the config parameters
 // change. See the `chunk()` function for the execution order; the order
@@ -33,11 +34,19 @@ const HEADING_RE = /^(#{1,6})\s+(.*)$/;
 const MAX_CHUNK_CHARS = 16000;
 
 /**
+ * The version of what a chunk records — its text and its heading path. A
+ * change to either takes the next: each chunk records the version that cut
+ * it, and the next keyword pass cuts again the file of a chunk recording
+ * another (indexing.cjs).
+ */
+const CHUNKER_VERSION = 1;
+
+/**
  * Chunk a markdown string according to the given config.
  *
  * @param {string} markdown
  * @param {object} config
- * @returns {Array<{ content: string }>}
+ * @returns {Array<{ content: string, headings: string[] }>}
  */
 function chunk(markdown, config) {
   if (typeof markdown !== 'string') {
@@ -189,6 +198,25 @@ function scanStructure(lines) {
 }
 
 /**
+ * The headings enclosing a line, outermost first — a heading on the line
+ * itself among them.
+ *
+ * @param {Heading[]} headings  in document order
+ * @param {number} line  counted as the headings' lines are
+ * @returns {string[]}
+ */
+function enclosingHeadings(headings, line) {
+  /** @type {Heading[]} */
+  const enclosing = [];
+  for (const heading of headings) {
+    if (heading.line > line) break;
+    while (enclosing.length > 0 && enclosing[enclosing.length - 1].level >= heading.level) enclosing.pop();
+    enclosing.push(heading);
+  }
+  return enclosing.map((heading) => heading.text);
+}
+
+/**
  * The offset each line starts at in the lines joined by newlines, then the
  * offset one past the last line's end.
  *
@@ -221,7 +249,8 @@ function lineHolding(starts, offset) {
 
 /**
  * The body as lines plus the offsets that turn any line range — or any
- * character span — back into a verbatim, right-trimmed slice of the body.
+ * character span — back into a verbatim, right-trimmed slice of the body,
+ * and the headings enclosing the line any offset falls on.
  */
 function parseDocument(body) {
   const lines = body.split('\n');
@@ -240,6 +269,7 @@ function parseDocument(body) {
     fenceEnd: (line) => (fenceClose.has(line) ? fenceClose.get(line) : line),
     lineStart: (line) => offsets[line],
     lineSpan: (start, end) => ({ from: offsets[start], to: offsets[end + 1] - 1 }),
+    headingsAt: (offset) => enclosingHeadings(headings, lineHolding(offsets, offset)),
     size: ({ from, to }) => trimmedEnd(from, to) - from,
     content: ({ from, to }) => body.slice(from, trimmedEnd(from, to)),
   };
@@ -463,11 +493,14 @@ function isEmptyPiece(doc, piece) {
 }
 
 /**
- * The chunk a span yields — none when it holds only whitespace.
+ * The chunk a span yields, with the heading path its text starts under —
+ * none when it holds only whitespace.
  */
 function chunksOf(doc, span) {
   const content = doc.content(span);
-  return content.trim() === '' ? [] : [{ content }];
+  const text = content.trimStart();
+  if (text === '') return [];
+  return [{ content, headings: doc.headingsAt(span.from + content.length - text.length) }];
 }
 
 /**
@@ -600,4 +633,4 @@ function sliceLine(doc, line) {
   return chunks;
 }
 
-module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, MAX_CHUNK_CHARS };
+module.exports = { chunk, sourceLines, scanStructure, lineStarts, lineHolding, enclosingHeadings, MAX_CHUNK_CHARS, CHUNKER_VERSION };

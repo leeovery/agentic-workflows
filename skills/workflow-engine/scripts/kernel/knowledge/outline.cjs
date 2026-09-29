@@ -5,10 +5,11 @@
 // lines the chunk's text sits on in the file as it stands, and the headings
 // enclosing any line. A chunk is a verbatim slice of its file (chunker.cjs),
 // found at the first line that starts with its text; the headings are the
-// body's, never the frontmatter's.
+// body's, never the frontmatter's. And a heading path as one line, as a query
+// prints it and the store searches it.
 // ---------------------------------------------------------------------------
 
-const { sourceLines, scanStructure, lineStarts, lineHolding } = require('./chunker.cjs');
+const { sourceLines, scanStructure, lineStarts, lineHolding, enclosingHeadings } = require('./chunker.cjs');
 
 /**
  * @typedef {object} Lines  a stretch of a file's lines, counted from 1 with its frontmatter
@@ -21,6 +22,14 @@ const { sourceLines, scanStructure, lineStarts, lineHolding } = require('./chunk
  * @property {(content: string) => Lines|null} locate  a chunk's lines — where its text starts a line, else where it sits inside one (a slice of an over-long line); null where the file no longer holds it
  * @property {(line: number) => string[]} headingsAt  the headings enclosing a line, outermost first
  */
+
+/**
+ * Headings, outermost first, as one line.
+ * @param {string[]} headings
+ */
+function headingPath(headings) {
+  return headings.join(' › ');
+}
 
 /**
  * The first offset at which `content` starts a line of `text` — -1 where it starts none.
@@ -48,17 +57,8 @@ function outline(markdown) {
       if (at === -1) return null;
       return { first: lineHolding(starts, at) + 1, last: lineHolding(starts, at + content.length - 1) + 1 };
     },
-    headingsAt(line) {
-      /** @type {typeof headings} */
-      const enclosing = [];
-      for (const heading of headings) {
-        if (heading.line > line) break;
-        while (enclosing.length > 0 && enclosing[enclosing.length - 1].level >= heading.level) enclosing.pop();
-        enclosing.push(heading);
-      }
-      return enclosing.map((heading) => heading.text);
-    },
+    headingsAt: (line) => enclosingHeadings(headings, line),
   };
 }
 
-module.exports = { outline };
+module.exports = { outline, headingPath };

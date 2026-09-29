@@ -10,18 +10,19 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { tokenize, TOKENIZER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
+const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const STUB_DIMS = 16;
 const stub = new StubProvider({ dimensions: STUB_DIMS });
 
-/** A chunk whose id and source path share no word with the tests' queries. */
+/** A chunk whose id, heading path and source path share no word with the tests' queries. */
 function makeDoc(overrides = {}) {
   const id = overrides.id || 'doc-1';
   return {
     id,
     content: 'rate limiting prevents token refresh storms at the edge',
+    heading_path: '',
     work_unit: 'auth-flow',
     work_type: 'feature',
     phase: 'specification',
@@ -70,6 +71,9 @@ describe('knowledge store — chunks', () => {
     const withoutTopic = makeDoc();
     delete withoutTopic.topic;
     assert.throws(() => store.insertDocument(db, withoutTopic), /missing required field "topic"/);
+    const withoutHeadingPath = makeDoc();
+    delete withoutHeadingPath.heading_path;
+    assert.throws(() => store.insertDocument(db, withoutHeadingPath), /missing required field "heading_path"/);
     assert.throws(() => store.insertDocument(db, makeDoc({ timestamp: 'today' })), /timestamp must be a finite number/);
     assert.throws(() => store.insertDocument(db, makeDoc({ embedding: null })), /cannot be null/);
     assert.throws(() => store.insertDocument(db, makeDoc({ embedding: 'bad' })), /must be an array/);
@@ -177,17 +181,22 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(scores(store.searchKeyword(db, { term: 'queue' })).a, bm25({ count: 1, matching: 2, size: 2, length: 2, average: 2 }));
   });
 
-  it('searches the content, the source path and the chunk id', () => {
-    const db = storeOf(['content', 'alpha'], ['path', 'beta', { source_file: 'x/alpha.md' }], ['alpha', 'gamma', { source_file: 'x/id.md' }]);
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['alpha', 'content', 'path']);
+  it('searches the content, the heading path, the source path and the chunk id', () => {
+    const db = storeOf(
+      ['content', 'alpha'],
+      ['headings', 'delta', { heading_path: 'Auth › Alpha' }],
+      ['path', 'beta', { source_file: 'x/alpha.md' }],
+      ['alpha', 'gamma', { source_file: 'x/id.md' }],
+    );
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['alpha', 'content', 'headings', 'path']);
   });
 
   it('returns hits in the chunk\'s shape, with a score', () => {
     const db = storeOf(['a', 'alpha']);
     const [hit] = store.searchKeyword(db, { term: 'alpha' });
     assert.deepStrictEqual(Object.keys(hit), [
-      'id', 'content', 'work_unit', 'work_type', 'phase', 'topic', 'confidence',
-      'source_file', 'source_hash', 'content_hash', 'timestamp', 'score',
+      'id', 'content', 'heading_path', 'work_unit', 'work_type', 'phase', 'topic', 'confidence',
+      'source_file', 'source_hash', 'chunker_version', 'content_hash', 'timestamp', 'score',
     ]);
     assert.strictEqual(typeof hit.score, 'number');
   });
@@ -253,6 +262,14 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(scored.content, content(3));
   });
 
+  it('scores the heading path as a field of its own — a chunk found by the headings it sits under', () => {
+    const db = storeOf(['under', 'beta gamma', { heading_path: 'Auth › Alpha Tokens' }], ['says', 'alpha delta']);
+    const scored = scores(store.searchKeyword(db, { term: 'alpha' }));
+    assert.strictEqual(scored.under, bm25({ count: 1, matching: 1, size: 2, length: 3, average: 1.5 }));
+    assert.strictEqual(scored.says, bm25({ count: 1, matching: 1, size: 2, length: 2, average: 2 }));
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'auth' }).map((h) => h.id), ['under']);
+  });
+
   it('a query word said twice counts once', () => {
     const db = storeOf(['a', 'alpha beta'], ['b', 'gamma']);
     assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha alpha ALPHA' }), store.searchKeyword(db, { term: 'alpha' }));
@@ -302,15 +319,16 @@ describe('knowledge store — tokenizer', () => {
     assert.deepStrictEqual(tokenize('theirs'), ['their'], 'a stop word is a whole word, matched before the stem');
   });
 
-  it('pins its output to TOKENIZER_VERSION — a changed output takes the next version', () => {
+  it('pins its output and the fields it searches to TOKENIZER_VERSION — a change to either takes the next version', () => {
     const text = "The Rate-Limiters' queues are NOT draining: naïve café refreshes, it's tokens_v2 in 2026 — generously ORGANISED!";
     assert.deepStrictEqual(
-      { version: TOKENIZER_VERSION, tokens: tokenize(text) },
+      { version: TOKENIZER_VERSION, fields: FIELDS, tokens: tokenize(text) },
       {
-        version: 2,
+        version: 3,
+        fields: ['content', 'heading_path', 'source_file', 'id'],
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
-      'the tokenizer\'s output changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version and tokens',
+      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
     );
   });
 });
@@ -516,19 +534,30 @@ describe('knowledge store — the file', () => {
     return db;
   }
 
-  it('loads a store another tokenizer wrote retokenized — its terms re-derived from its text, its vectors as they were', () => {
+  /** Chunks or hits as the pre-version store holds them — recording no heading path. */
+  const pathless = (items) => items.map((item) => ({ ...item, heading_path: undefined }));
+
+  it('loads a store another tokenizer wrote retokenized — its terms re-derived from the fields it records, its vectors as they were', () => {
     fs.copyFileSync(PRE_VERSION_STORE, file);
     const loaded = store.loadStore(file);
     const fresh = preVersionChunks();
 
     assert.strictEqual(loaded.retokenized, true);
-    assert.deepStrictEqual(store.allChunks(loaded), store.allChunks(fresh));
+    assert.deepStrictEqual(store.allChunks(loaded), pathless(store.allChunks(fresh)));
     assert.deepStrictEqual(store.vectorsByContentHash(loaded), store.vectorsByContentHash(fresh));
     assert.deepStrictEqual(store.searchKeyword(loaded, { term: 'limits' }).map((h) => h.id).sort(), ['one', 'three']);
     assert.deepStrictEqual(store.searchKeyword(loaded, { term: 'the' }), []);
     for (const term of ['limits', 'throttle token', 'edge queues']) {
-      assert.deepStrictEqual(store.searchKeyword(loaded, { term }), store.searchKeyword(fresh, { term }), term);
+      assert.deepStrictEqual(store.searchKeyword(loaded, { term }), pathless(store.searchKeyword(fresh, { term })), term);
     }
+  });
+
+  it('keeps a chunk that records no heading path without one through every save — no terms for it meanwhile', () => {
+    fs.copyFileSync(PRE_VERSION_STORE, file);
+    store.saveStore(store.loadStore(file), file);
+    const again = store.loadStore(file);
+    assert.deepStrictEqual(store.allChunks(again).map((chunk) => chunk.heading_path), [undefined, undefined, undefined]);
+    assert.deepStrictEqual(store.searchKeyword(again, { term: 'limits' }), pathless(store.searchKeyword(preVersionChunks(), { term: 'limits' })));
   });
 
   it('saves a retokenized store\'s terms with its next write', () => {
@@ -540,7 +569,7 @@ describe('knowledge store — the file', () => {
     const again = store.loadStore(file);
     const fresh = preVersionChunks();
     assert.strictEqual(again.retokenized, false);
-    assert.deepStrictEqual(store.searchKeyword(again, { term: 'limits' }), store.searchKeyword(fresh, { term: 'limits' }));
+    assert.deepStrictEqual(store.searchKeyword(again, { term: 'limits' }), pathless(store.searchKeyword(fresh, { term: 'limits' })));
     assert.deepStrictEqual(store.vectorsByContentHash(again), store.vectorsByContentHash(fresh));
   });
 
