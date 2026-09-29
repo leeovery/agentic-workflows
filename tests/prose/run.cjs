@@ -17,6 +17,9 @@
 //   verify [case-id]              rebuild-compare snapshot(s)
 //   archive <case-id> --world <d> lift a failed world's evidence out before destroy
 //   destroy --world <dir>         remove a world
+//   verdict <case-id> --file <f>  record the orchestrator's final verdict, over any earlier one
+//   verdicts <case-id…>           print each case's recorded verdict, in the order named
+//   verdicts --reset <case-id…>   clear those cases' recorded verdicts before a run
 
 const fs = require('fs');
 const path = require('path');
@@ -27,6 +30,7 @@ const worlds = require('./lib/worlds.cjs');
 const prompts = require('./lib/prompts.cjs');
 const invariants = require('./lib/invariants.cjs');
 const transcripts = require('./lib/transcripts.cjs');
+const verdicts = require('./lib/verdicts.cjs');
 const { verifyAll } = require('./lib/verify-pool.cjs');
 
 const ROOT = cases.ROOT;
@@ -309,6 +313,29 @@ function cmdStop(argv) {
   process.stdout.write(`${JSON.stringify({ replayed: transcript })}\n`);
 }
 
+// --- verdict / verdicts (the result that outlives a spent hand-back) ------
+
+function cmdVerdict(argv) {
+  const from = flag(argv, '--file') || die('usage: verdict <case-id> --file <path>');
+  if (!fs.existsSync(from)) die(`no verdict file at ${from}`);
+  const text = fs.readFileSync(from, 'utf8');
+  if (!text.trim()) die(`${from} is empty — there is no verdict to record`);
+  const c = getCase(argv[0]);
+  process.stdout.write(`${JSON.stringify({ recorded: verdicts.recordVerdict(c.id, text) })}\n`);
+}
+
+function cmdVerdicts(argv) {
+  const ids = argv.filter((a) => a !== '--reset');
+  if (!ids.length) die('usage: verdicts [--reset] <case-id…>');
+  for (const id of ids) getCase(id);
+  if (argv.includes('--reset')) {
+    verdicts.clearVerdicts(ids);
+    process.stdout.write(`${JSON.stringify({ reset: ids })}\n`);
+  } else {
+    process.stdout.write(verdicts.reportVerdicts(ids));
+  }
+}
+
 // --- snap / verify --------------------------------------------------------
 
 function statesOf(c) {
@@ -382,10 +409,10 @@ const [, , command, ...rest] = process.argv;
 const commands = {
   list: cmdList, select: cmdSelect, world: cmdWorld, prompt: cmdPrompt,
   diff: cmdDiff, assert: cmdAssert, stop: cmdStop, snap: cmdSnap, verify: cmdVerify,
-  destroy: cmdDestroy, archive: cmdArchive,
+  destroy: cmdDestroy, archive: cmdArchive, verdict: cmdVerdict, verdicts: cmdVerdicts,
 };
 if (!commands[command]) {
-  die('usage: run.cjs <list|select|world|prompt|diff|assert|stop|snap|verify|archive|destroy> …');
+  die('usage: run.cjs <list|select|world|prompt|diff|assert|stop|snap|verify|archive|destroy|verdict|verdicts> …');
 }
 // `verify` fans its rebuilds out over threads, so a command may answer a
 // promise; a rejection is the same failure a synchronous throw was.

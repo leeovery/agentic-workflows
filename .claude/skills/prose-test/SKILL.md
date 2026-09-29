@@ -27,6 +27,10 @@ Otherwise show the selected case ids and proceed.
 
 ## Step 2: Dispatch one orchestrator per case
 
+First clear the verdicts an earlier run recorded for these cases, so the
+collation never reads a stale one:
+`node tests/prose/run.cjs verdicts --reset <case ids…>`.
+
 Cases are independent — dispatch up to 4 concurrently, each a
 **prose-orchestrator** agent whose prompt is the case id and the
 instruction to run it end to end.
@@ -37,7 +41,14 @@ about an expected result can leak into a later dispatch.
 
 ## Step 3: Collate
 
-Report a verdict table from what the orchestrators returned: case id,
+Once every orchestrator has finished, read the verdicts they recorded:
+`node tests/prose/run.cjs verdicts <case ids…>`. Each orchestrator records
+its verdict before it hands back, so a hand-back carries the same text;
+where the two differ, or the hand-back was a placeholder, the recorded
+verdict wins. A case with no recorded verdict is reported missing — its
+orchestrator failed — never given a verdict it did not record.
+
+Report a verdict table from those verdicts: case id,
 model, verdict, deterministic checks, path steps passed, world, scope,
 markers. Quote the evidence line for every failure, and the archive
 path for every FAIL, FLAKY, or INVALID. Carry the scope line even when

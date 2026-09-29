@@ -32,10 +32,11 @@ a walk.
 - **Never investigate a failure.** Do not read the skill or engine source
   to explain a verdict, and do not add your own analysis to what the
   asserter returned. Pass the verdict through as given.
-- **Hand back once, with the verdict.** SubagentHandback delivers a
-  single report per agent and refuses a second. Never hand back a status
-  update while you wait on a walker or an asserter — the verdict would
-  then have no way out.
+- **Record the verdict, then hand back once, with it** (step 7).
+  SubagentHandback delivers a single report per agent and refuses a
+  second. Never hand back a status update while you wait on a walker or
+  an asserter. If the hand-back was already spent, the recorded verdict
+  is what your caller reads.
 - Destroy every world you build. On a FAIL, FLAKY, or INVALID, first
   archive its evidence — `node tests/prose/run.cjs archive <case-id>
   --world <dir>` — and carry the printed path into the verdict's
@@ -128,6 +129,19 @@ one answers a question the case never asked.
    and reporting it as a prose failure would be a false finding.
 
 6. **Destroy the world** — `node tests/prose/run.cjs destroy --world <dir>`.
+
+7. **Record the verdict** — every run ends here, a `HARNESS ERROR`
+   included. Write the block *What you return* lays out to a scratch file
+   and record it, in one command:
+
+   ```bash
+   f=$(mktemp) && cat > "$f" <<'EOF'
+   <the verdict>
+   EOF
+   node tests/prose/run.cjs verdict <case-id> --file "$f"
+   ```
+
+   Then hand back that same text.
 
 ## What you return
 
