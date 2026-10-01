@@ -26,7 +26,7 @@ function writeFile(dir, rel, content) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The session hooks boot keeps in every project's `.claude/settings.json`,
-// and the function-hooks flag it keeps beside them where the mod can run.
+// and the function-hooks flag it keeps in the user's own where the mod can run.
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
@@ -495,6 +495,33 @@ describe('engine boot', () => {
       ['.claude/settings.json', '.gitignore', '.workflows/.state/migrations']);
   });
 
+  it('while a reviewed migration commit follows, boot\'s settings and include writes ride it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'labels on, no include']);
+
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'update-config',
+      STUB_MIGRATE_SETTINGS: hooked(WORKFLOW_HOOKS, { permissions: {} }),
+    });
+
+    assert.strictEqual(res.migrations.changed, true);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.strictEqual(res.worktree_include_installed, true);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'labels on, no include', 'no commit of boot\'s');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8')),
+      { permissions: {}, ...JSON.parse(LABELS_ON) }, 'the migration\'s edit and the hooks, side by side');
+
+    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+    assert.deepStrictEqual(
+      git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
+      ['.claude/settings.json', '.gitignore', '.workflows/.state/migrations', '.worktreeinclude']);
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', ...OWNED_PATHS]).trim(), '', 'the reviewed commit took it all');
+  });
+
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
     writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
@@ -706,9 +733,9 @@ describe('engine boot', () => {
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the project settings sync and
-    // the worktree include — must take their own paths and nothing else,
-    // staged peer content included.
+    // other one on the checkout. Its commits — the migration ledger, the
+    // project settings sync and the worktree include — must take their own
+    // paths and nothing else, staged peer content included.
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
@@ -717,18 +744,19 @@ describe('engine boot', () => {
     writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
     git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
 
-    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
+    const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.worktree_include_installed, true);
-    assert.deepStrictEqual(git(fix.project, ['log', '-3', '--pretty=%s']).trim().split('\n'), [
+    assert.deepStrictEqual(git(fix.project, ['log', '-4', '--pretty=%s']).trim().split('\n'), [
       'chore: copy the knowledge store into new worktrees',
       'chore: install workflow session hooks',
+      'chore: record workflow migrations',
       'a peer topic',
     ]);
-    const shas = git(fix.project, ['log', '-2', '--format=%H']).trim().split('\n');
+    const shas = git(fix.project, ['log', '-3', '--format=%H']).trim().split('\n');
     for (const sha of shas) {
       const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
       assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
@@ -1265,7 +1293,7 @@ describe('engine boot system-config detection', () => {
   });
 });
 
-describe('engine boot: the project settings — session hooks and the function-hooks flag', () => {
+describe('engine boot: the settings — the project\'s session hooks, the user\'s function-hooks flag', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
@@ -1431,9 +1459,8 @@ describe('engine boot: the project settings — session hooks and the function-h
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
   });
 
-  /** The fixture's own settings, as boot leaves a project the mod cannot run in. */
+  /** The fixture's own settings, as boot leaves every project. */
   const HOOKS_ONLY = { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] } };
-  const FLAGGED = { ...HOOKS_ONLY, env: { [FLAG]: '1' } };
   /** @param {object} value */
   const json = (value) => JSON.stringify(value, null, 2) + '\n';
   /** Claude Code's terminal app, at the oldest version the mod runs on. */
@@ -1451,162 +1478,256 @@ describe('engine boot: the project settings — session hooks and the function-h
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'install the mod']);
   }
-  /** Boot in the terminal app, `env` layered over it. */
-  const bootTerminal = (env = {}) => bootWith({ env: { ...TERMINAL, ...env } });
+  /** The fixture's Claude Code config directory — absent until a test or boot makes it. */
+  const claudeDir = () => path.join(fix.root, 'claude-config');
+  const userSettingsFile = () => path.join(claudeDir(), 'settings.json');
+  /** Write `content` as the user's Claude Code settings. */
+  const writeUserSettings = (content) => writeFile(claudeDir(), 'settings.json', content);
+  const userSettingsText = () => fs.readFileSync(userSettingsFile(), 'utf8');
+  const projectSettingsText = () => fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8');
+  /** Boot in the terminal app under the fixture's Claude Code config, `env` layered over it. */
+  const bootTerminal = (env = {}) => bootWith({ env: { ...TERMINAL, CLAUDE_CONFIG_DIR: claudeDir(), ...env } });
+  /** @param {string} text */
+  const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  it('where the mod can run, a project without the function-hooks flag gets it, committed confined, and reports restart — the next boot writes nothing and reports not-running', () => {
+  it('where the mod can run, the flag goes into the user\'s settings — file and directory made — reports restart and names the file; the project is untouched and nothing is committed', () => {
     installMod();
-    fs.writeFileSync(path.join(fix.project, 'peer-dirt.txt'), 'a peer session\'s file\n');
+    const project = projectSettingsText();
     const res = bootTerminal();
     assert.strictEqual(res.gate_surface, 'restart');
+    assert.strictEqual(res.claude_settings, userSettingsFile());
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(settings(), FLAGGED);
-    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
-    assert.match(git(fix.project, ['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the commit takes its own path and nothing else');
-
-    const at = git(fix.project, ['rev-parse', 'HEAD']);
-    assert.strictEqual(bootTerminal().gate_surface, 'not-running', 'the flag is there, and the mod did not announce itself');
-    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), at, 'nothing new to commit');
+    assert.strictEqual(userSettingsText(), json({ env: { [FLAG]: '1' } }));
+    assert.strictEqual(projectSettingsText(), project, 'the project\'s settings never carry the flag');
+    assert.strictEqual(head().subject, 'install the mod', 'the user\'s settings are not the project\'s to commit');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain']).trim(), '');
   });
 
-  it('a flag set to anything but "1" is rewritten — the restart owed all the same', () => {
+  it('a flag already "1" is left as found and reports not-running', () => {
     installMod();
-    commitSettings(json({ ...HOOKS_ONLY, env: { [FLAG]: '0' } }));
-    assert.strictEqual(bootTerminal().gate_surface, 'restart');
-    assert.deepStrictEqual(settings(), FLAGGED);
-    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow gate surface', files: ['.claude/settings.json'] });
+    writeUserSettings(json({ env: { [FLAG]: '1' } }));
+    const before = fs.statSync(userSettingsFile()).mtimeMs;
+    const res = bootTerminal();
+    assert.strictEqual(res.gate_surface, 'not-running');
+    assert.strictEqual(res.claude_settings, userSettingsFile());
+    assert.strictEqual(fs.statSync(userSettingsFile()).mtimeMs, before, 'nothing written');
   });
 
-  it('where the mod cannot run, boot writes nothing and reports unavailable', () => {
-    const before = fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8');
-    assert.strictEqual(bootTerminal().gate_surface, 'unavailable', 'the mod not installed in the project');
+  it('any other value is overwritten — the restart owed all the same', () => {
     installMod();
-    const elsewhere = [
-      ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
-      ['another entrypoint than the terminal app', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
-      ['no entrypoint', { CLAUDE_CODE_ENTRYPOINT: undefined }],
-      ['a version before 2.1.282', { AI_AGENT: 'claude-code_2-1-281_agent' }],
-      ['an older minor', { AI_AGENT: 'claude-code_2-0-999_agent' }],
-      ['an older major', { AI_AGENT: 'claude-code_1-9-999_agent' }],
-      ['no version', { AI_AGENT: undefined }],
-      ['a version that does not parse', { AI_AGENT: 'claude-code_2-1_agent' }],
-      ['an identity in another shape', { AI_AGENT: 'claude-code_2-1-300_sdk' }],
-      ['another agent', { AI_AGENT: 'cursor' }],
-    ];
-    for (const [where, env] of elsewhere) {
-      assert.strictEqual(bootTerminal(env).gate_surface, 'unavailable', where);
-      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), before, `${where}: the settings stand`);
+    for (const value of ['0', 'true', '']) {
+      writeUserSettings(json({ env: { [FLAG]: value } }));
+      assert.strictEqual(bootTerminal().gate_surface, 'restart', JSON.stringify(value));
+      assert.strictEqual(userSettingsText(), json({ env: { [FLAG]: '1' } }));
     }
-    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
   });
 
-  it('every version from 2.1.282 on is one the mod runs on', () => {
+  it('the flag joins every other env key and every other setting, all standing, in the format Claude Code writes', () => {
     installMod();
-    for (const version of ['2-1-282', '2-1-300', '2-2-0', '3-0-0']) {
-      writeFile(fix.project, '.claude/settings.json', json(HOOKS_ONLY));
-      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` }).gate_surface, 'restart', version);
+    const permissions = { allow: ['Bash(ls)'] };
+    writeUserSettings(json({ model: 'opus', env: { EDITOR: 'vim' }, permissions }));
+    assert.strictEqual(bootTerminal().gate_surface, 'restart');
+    assert.strictEqual(userSettingsText(), json({ model: 'opus', env: { EDITOR: 'vim', [FLAG]: '1' }, permissions }));
+  });
+
+  it('a symlinked settings file is written at the file it names — the link stands', () => {
+    installMod();
+    const target = path.join(fix.root, 'dotfiles', 'claude-settings.json');
+    writeFile(fix.root, 'dotfiles/claude-settings.json', json({ model: 'opus' }));
+    fs.mkdirSync(claudeDir(), { recursive: true });
+    fs.symlinkSync(target, userSettingsFile());
+    assert.strictEqual(bootTerminal().gate_surface, 'restart');
+    assert.ok(fs.lstatSync(userSettingsFile()).isSymbolicLink(), 'still a link');
+    assert.strictEqual(fs.readlinkSync(userSettingsFile()), target);
+    assert.strictEqual(fs.readFileSync(target, 'utf8'), json({ model: 'opus', env: { [FLAG]: '1' } }));
+  });
+
+  it('a link to a file not yet made is written at the file it names — the link stands', () => {
+    installMod();
+    const target = path.join(fix.root, 'dotfiles', 'claude-settings.json');
+    fs.mkdirSync(claudeDir(), { recursive: true });
+    fs.symlinkSync(target, userSettingsFile());
+    assert.strictEqual(bootTerminal().gate_surface, 'restart');
+    assert.ok(fs.lstatSync(userSettingsFile()).isSymbolicLink(), 'still a link');
+    assert.strictEqual(fs.readFileSync(target, 'utf8'), json({ env: { [FLAG]: '1' } }));
+  });
+
+  it('an existing file keeps its permission mode', () => {
+    installMod();
+    for (const mode of [0o600, 0o644]) {
+      writeUserSettings(json({ model: 'opus' }));
+      fs.chmodSync(userSettingsFile(), mode);
+      assert.strictEqual(bootTerminal().gate_surface, 'restart');
+      assert.strictEqual(fs.statSync(userSettingsFile()).mode & 0o777, mode, mode.toString(8));
+    }
+  });
+
+  it('without CLAUDE_CONFIG_DIR, or with it empty, the file is ~/.claude/settings.json', () => {
+    installMod();
+    const home = path.join(fix.root, 'home');
+    const file = path.join(home, '.claude', 'settings.json');
+    for (const configDir of [undefined, '']) {
+      fs.rmSync(home, { recursive: true, force: true });
+      const res = bootTerminal({ HOME: home, CLAUDE_CONFIG_DIR: configDir });
+      assert.strictEqual(res.gate_surface, 'restart', JSON.stringify(configDir));
+      assert.strictEqual(res.claude_settings, file);
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), json({ env: { [FLAG]: '1' } }));
     }
   });
 
   it('the mod announced in boot\'s environment reports on — the boot that wrote the flag included', () => {
     installMod();
     const announced = { WORKFLOWS_GATE_SURFACE: '1' };
-    assert.strictEqual(bootTerminal(announced).gate_surface, 'on', 'the flag came from elsewhere — the user\'s settings, the shell');
-    assert.deepStrictEqual(settings(), FLAGGED, 'and the project gets it all the same');
-    assert.strictEqual(bootTerminal(announced).gate_surface, 'on');
+    assert.strictEqual(bootTerminal(announced).gate_surface, 'on', 'the flag came from elsewhere — the shell, a managed setting');
+    assert.strictEqual(userSettingsText(), json({ env: { [FLAG]: '1' } }), 'and the user\'s settings get it all the same');
+    const again = bootTerminal(announced);
+    assert.strictEqual(again.gate_surface, 'on');
+    assert.strictEqual(again.claude_settings, userSettingsFile());
     assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '0' }).gate_surface, 'not-running', 'only `1` is the announcement');
   });
 
-  it('the flag joins every other env key and every other setting, all standing', () => {
+  it('a user settings file that does not parse is left as found — a warning naming it, settings-unreadable', () => {
     installMod();
-    const permissions = { allow: ['Bash(ls)'] };
-    commitSettings(json({ permissions, env: { EDITOR: 'vim' }, ...HOOKS_ONLY }));
-    assert.strictEqual(bootTerminal().gate_surface, 'restart');
-    assert.deepStrictEqual(settings(), { permissions, env: { EDITOR: 'vim', [FLAG]: '1' }, ...HOOKS_ONLY });
-  });
-
-  it('the flag never comes out — not when the session hooks beside it move', () => {
-    installMod();
-    commitSettings(json({ ...JSON.parse(LABELS_ON), env: { [FLAG]: '1' } }));
+    writeUserSettings('{not json');
     const res = bootTerminal();
-    assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.gate_surface, 'not-running');
-    assert.deepStrictEqual(settings(), FLAGGED);
-    assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.gate_surface, 'settings-unreadable');
+    assert.strictEqual(res.claude_settings, userSettingsFile());
+    assert.deepStrictEqual(res.warnings.map((w) => w.split(' — ')[0]), [`gate surface not synced: ${userSettingsFile()} is not valid JSON`]);
+    assert.strictEqual(userSettingsText(), '{not json');
   });
 
-  it('both syncs moving in one boot make one commit that says so', () => {
+  it('a settings file whose root is not an object is left as found — settings-unreadable', () => {
+    installMod();
+    writeUserSettings('[]\n');
+    const res = bootTerminal();
+    assert.strictEqual(res.gate_surface, 'settings-unreadable');
+    assert.match(res.warnings.join('\n'), /is not valid JSON — root is not an object/);
+    assert.strictEqual(userSettingsText(), '[]\n');
+  });
+
+  it('announced with an unparseable user settings file still reports on — the status is the mod\'s own reality, the warning stands', () => {
+    installMod();
+    writeUserSettings('{not json');
+    const res = bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' });
+    assert.strictEqual(res.gate_surface, 'on');
+    assert.strictEqual(res.claude_settings, userSettingsFile());
+    assert.deepStrictEqual(res.warnings.map((w) => w.split(' — ')[0]), [`gate surface not synced: ${userSettingsFile()} is not valid JSON`]);
+    assert.strictEqual(userSettingsText(), '{not json');
+  });
+
+  it('a user settings file that cannot be read is left as found — settings-unreadable', () => {
+    installMod();
+    fs.mkdirSync(userSettingsFile(), { recursive: true });
+    const res = bootTerminal();
+    assert.strictEqual(res.gate_surface, 'settings-unreadable');
+    assert.match(res.warnings.join('\n'), new RegExp(`^gate surface not synced: ${literal(userSettingsFile())} could not be read — `, 'm'));
+    assert.ok(fs.statSync(userSettingsFile()).isDirectory());
+  });
+
+  it('a user settings file boot cannot write is a warning and settings-unreadable — on where the mod is running', () => {
+    installMod();
+    fs.mkdirSync(claudeDir(), { recursive: true });
+    fs.chmodSync(claudeDir(), 0o500);
+    try {
+      const res = bootTerminal();
+      assert.strictEqual(res.ok, true);
+      assert.strictEqual(res.gate_surface, 'settings-unreadable');
+      assert.match(res.warnings.join('\n'), new RegExp(`^gate surface not synced: ${literal(userSettingsFile())} could not be written — `, 'm'));
+      assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on');
+    } finally {
+      fs.chmodSync(claudeDir(), 0o755);
+    }
+    assert.ok(!fs.existsSync(userSettingsFile()));
+  });
+
+  it('a readable release before 2.1.282 reports outdated and touches no file', () => {
+    installMod();
+    for (const version of ['2-1-281', '2-0-999', '1-9-999']) {
+      const res = bootTerminal({ AI_AGENT: `claude-code_${version}_agent` });
+      assert.strictEqual(res.gate_surface, 'outdated', version);
+      assert.ok(!('claude_settings' in res), `${version}: no file named`);
+    }
+    assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
+  });
+
+  it('every version from 2.1.282 on is one the mod runs on', () => {
+    installMod();
+    for (const version of ['2-1-282', '2-1-286', '2-2-0', '3-0-0']) {
+      fs.rmSync(claudeDir(), { recursive: true, force: true });
+      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` }).gate_surface, 'restart', version);
+    }
+  });
+
+  it('where the mod cannot run, boot touches no file, names none, and reports unavailable', () => {
+    const old = { AI_AGENT: 'claude-code_2-1-281_agent' };
+    assert.strictEqual(bootTerminal().gate_surface, 'unavailable', 'the mod not installed in the project');
+    assert.strictEqual(bootTerminal(old).gate_surface, 'unavailable', 'the mod not installed, whatever the version');
+    installMod();
+    const elsewhere = [
+      ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
+      ['on the web at an older release', { CLAUDE_CODE_REMOTE: 'true', ...old }],
+      ['another entrypoint than the terminal app', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
+      ['no entrypoint', { CLAUDE_CODE_ENTRYPOINT: undefined }],
+      ['no version', { AI_AGENT: undefined }],
+      ['a version that does not parse', { AI_AGENT: 'claude-code_2-1_agent' }],
+      ['an identity in another shape', { AI_AGENT: 'claude-code_2-1-300_sdk' }],
+      ['another agent', { AI_AGENT: 'cursor' }],
+    ];
+    for (const [where, env] of elsewhere) {
+      const res = bootTerminal(env);
+      assert.strictEqual(res.gate_surface, 'unavailable', where);
+      assert.ok(!('claude_settings' in res), `${where}: no file named`);
+    }
+    assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
+    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
+  });
+
+  it('the harness switch holds every settings file still where the mod could run — unavailable, whatever the version', () => {
+    installMod();
+    const project = projectSettingsText();
+    for (const version of ['2-1-282', '2-1-281']) {
+      const res = bootWith({ holdSettings: true, env: { ...TERMINAL, CLAUDE_CONFIG_DIR: claudeDir(), AI_AGENT: `claude-code_${version}_agent` } });
+      assert.strictEqual(res.gate_surface, 'unavailable', version);
+      assert.ok(!('claude_settings' in res));
+    }
+    assert.ok(!fs.existsSync(claudeDir()));
+    assert.strictEqual(projectSettingsText(), project);
+    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
+  });
+
+  it('a flag in the project\'s settings is neither read nor written — the user\'s settings alone decide', () => {
+    installMod();
+    for (const value of ['1', '0']) {
+      const project = json({ ...HOOKS_ONLY, env: { [FLAG]: value } });
+      commitSettings(project);
+      fs.rmSync(claudeDir(), { recursive: true, force: true });
+      assert.strictEqual(bootTerminal().gate_surface, 'restart', `a project flag of ${value} is not the user's`);
+      assert.strictEqual(projectSettingsText(), project, 'left as found');
+    }
+  });
+
+  it('a hook sync and the gate sync in one boot — the project commit carries the hooks alone', () => {
     installMod();
     dropSettings();
     const res = bootTerminal();
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.gate_surface, 'restart');
-    assert.deepStrictEqual(settings(), FLAGGED);
-    assert.deepStrictEqual(head(), { subject: 'chore: sync workflow project settings', files: ['.claude/settings.json'] });
+    assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
+    assert.deepStrictEqual(head(), { subject: 'chore: install workflow session hooks', files: ['.claude/settings.json'] });
   });
 
-  it('a settings file that does not parse holds no flag boot can read — a warning, unavailable, left as found', () => {
-    installMod();
-    writeFile(fix.project, '.claude/settings.json', '{not json');
-    const res = bootTerminal();
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.gate_surface, 'unavailable');
-    assert.strictEqual(res.warnings.filter((w) => /^gate surface not synced: \.claude\/settings\.json is not valid JSON/.test(w)).length, 1);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
-  });
-
-  it('announced with an unparseable settings file still reports on — the status is the mod\'s own reality', () => {
-    installMod();
-    writeFile(fix.project, '.claude/settings.json', '{not json');
-    const res = bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' });
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.gate_surface, 'on');
-    assert.strictEqual(res.warnings.filter((w) => /^gate surface not synced: \.claude\/settings\.json is not valid JSON/.test(w)).length, 1);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), '{not json');
-  });
-
-  it('a settings commit git refuses is a warning, never a block — the flag is on disk and the restart still owed', () => {
-    installMod();
+  it('a session-hooks commit git refuses is a warning, never a block — the hooks are on disk', () => {
+    dropSettings();
     writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
     fs.chmodSync(path.join(fix.project, '.git/hooks/pre-commit'), 0o755);
-    const res = bootTerminal();
+    const res = bootWith();
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.gate_surface, 'restart');
+    assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^project settings commit failed: /);
-    assert.deepStrictEqual(settings(), FLAGGED);
-    assert.strictEqual(head().subject, 'install the mod', 'nothing landed');
-  });
-
-  it('the harness switch holds the settings file still where the mod could run — no flag, no commit, unavailable', () => {
-    installMod();
-    const before = fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8');
-    assert.strictEqual(bootWith({ holdSettings: true, env: TERMINAL }).gate_surface, 'unavailable');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), before);
-    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
-  });
-
-  it('the flag is read inside the hold its write takes — one a peer wrote while boot waited on the lock is never written twice', async () => {
-    installMod();
-    const lock = path.join(fix.project, '.workflows', '.project-lock');
-    fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
-    const env = { ...process.env, ...TERMINAL };
-    delete env.CLAUDE_CODE_REMOTE;
-    delete env.TMUX;
-    delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
-    const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
-    let stdout = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    const exit = new Promise((resolve) => child.on('close', resolve));
-
-    await sleep(500);
-    const peer = json(FLAGGED);
-    writeFile(fix.project, '.claude/settings.json', peer);
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).gate_surface, 'not-running', 'a peer switched it on after this session started');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), peer);
-    assert.strictEqual(head().subject, 'install the mod', 'nothing of boot\'s landed');
+    assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(head().subject, 'no settings', 'nothing landed');
   });
 });
 
@@ -1668,6 +1789,28 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(third.knowledge, 'ready');
     assert.deepStrictEqual(third.warnings, []);
     assert.strictEqual(third.migrations_committed, null);
+  });
+
+  it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
+    writeFile(project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeFile(project, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] }, env: { [FLAG]: '1' } }, null, 2) + '\n');
+    git(project, ['add', '-A']);
+    git(project, ['commit', '-q', '-m', 'labels on, the flag in the project']);
+    const before = git(project, ['rev-parse', 'HEAD']).trim();
+
+    const res = runEngine(real, project, ['boot']);
+
+    assert.strictEqual(res.migrations.changed, true, 'the review gate owns the commit');
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), before, 'boot commits none of it');
+    const migrated = fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8');
+    assert.ok(!('env' in JSON.parse(migrated)), 'the flag out, and env with it');
+    assert.deepStrictEqual(JSON.parse(migrated).hooks, JSON.parse(LABELS_ON).hooks, 'the label hooks in');
+
+    runEngine(real, project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+    assert.strictEqual(git(project, ['show', 'HEAD:.claude/settings.json']), migrated);
+    assert.strictEqual(git(project, ['status', '--porcelain', '--', '.claude']).trim(), '');
   });
 
   it('a checkout that committed its knowledge directory has the removal staged by the first boot\'s migrations — boot commits none of it, and the reviewed migration commit records it beside the ignore rule', () => {

@@ -25,11 +25,15 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+const transcripts = require('./lib/transcripts.cjs');
+// The walkers' transcripts are under the developer's own Claude Code config,
+// so it is read before worlds.cjs pins the suite's hermetic environment over
+// this process.
+const CLAUDE_CONFIG_DIR = transcripts.claudeConfigDir();
 const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
 const prompts = require('./lib/prompts.cjs');
 const invariants = require('./lib/invariants.cjs');
-const transcripts = require('./lib/transcripts.cjs');
 const verdicts = require('./lib/verdicts.cjs');
 const { verifyAll } = require('./lib/verify-pool.cjs');
 
@@ -266,7 +270,7 @@ function cmdAssert(argv) {
 // Claude Code keeps every subagent's transcript beside its session's, so a
 // walker's own record of how it ended outlives a stop hook that never ran.
 function findTranscript(agentId) {
-  const found = transcripts.findAgentTranscript(agentId);
+  const found = transcripts.findAgentTranscript(agentId, { configDir: CLAUDE_CONFIG_DIR });
   return found.file || die(found.error);
 }
 

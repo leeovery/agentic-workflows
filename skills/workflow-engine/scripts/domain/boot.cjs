@@ -93,12 +93,13 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the worktree include, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, the worktree include, the user's Claude Code settings, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended; false when it left the file as it was
- * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, a version before 2.1.282, the mod not installed) and boot wrote nothing; where it can: `on` where it is running, its announcement in boot's own environment; `restart` where this boot wrote the function-hooks flag into `.claude/settings.json` and the mod is not running; `not-running` where the flag was already there and the mod is not running — workflow-start stops on both
+ * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.282, both touching no file; where it can: `on` where it is running, its announcement in boot's own environment; otherwise `restart` where this boot wrote the function-hooks flag into the user's Claude Code settings, `not-running` where the flag was already there, `settings-unreadable` where that file could not be read or written — workflow-start stops on all four
+ * @property {string} [claude_settings] the user's Claude Code settings file the gate sync read — present wherever it ran, absent with `unavailable` and `outdated`
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -198,18 +199,6 @@ function trimReport(stdout) {
 }
 
 /**
- * What this boot's syncs wrote into the project's settings, as a commit
- * subject — the session hooks and the function-hooks flag share the file,
- * so one commit carries whichever of them moved.
- * @param {boolean} hooks @param {boolean} gate
- * @returns {string}
- */
-function settingsCommitMessage(hooks, gate) {
-  if (hooks && gate) return 'chore: sync workflow project settings';
-  return hooks ? 'chore: install workflow session hooks' : 'chore: sync workflow gate surface';
-}
-
-/**
  * Run the boot pipeline against the project at `cwd`.
  * @param {string} cwd project root
  * @returns {BootResult}
@@ -261,40 +250,21 @@ function boot(cwd) {
 
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
 
-  // The session hooks live in the project's settings, so every boot
-  // re-syncs them: SessionEnd's `presence cleanup` for every project — a
-  // /clear'd session's heartbeats otherwise read held until its process
-  // exits — and its `conversation end`, with `session cleanup` and
-  // SessionStart's `session resume` while labels are on. The function-hooks
-  // flag the gate mod loads under lives in the same file and is put back the
-  // same way wherever the mod can run: it is part of the workflows. A checkout that predates either,
-  // or lost it to a hand edit, gets it back here. The file is written
-  // either way, and the commit failing is a warning, never a block.
-  //
-  // The opt-in read and the writes share one hold: a `label-config` landing
-  // between them would have this boot strip the hook it just installed.
-  // The commit stays outside the lock.
-  const synced = withProjectLock(cwd, () => ({
-    hooks: syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, workflows: true }),
-    gate: syncGateSurface(cwd),
-  }));
-  if (synced.hooks.error) warnings.push(`session hooks not installed: ${synced.hooks.error}`);
-  if (synced.gate.error) warnings.push(`gate surface not synced: ${synced.gate.error}`);
-  const sessionHooksInstalled = synced.hooks.changed;
-  if (synced.hooks.changed || synced.gate.changed) {
-    try {
-      commitPathspecScoped(cwd, SETTINGS_SPEC, settingsCommitMessage(synced.hooks.changed, synced.gate.changed));
-    } catch (err) {
-      warnings.push(`project settings commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  const worktreeIncludeInstalled = installWorktreeInclude(cwd, warnings);
+  // While a reviewed migration commit follows, it takes every path the
+  // workflows own, so boot's own writes there ride it as the ledger does —
+  // a confined commit of a file a migration also edited would carry that
+  // edit past the review under boot's message.
+  const commitOwn = !migrations.changed;
+  const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
+  const worktreeIncludeInstalled = installWorktreeInclude(cwd, commitOwn, warnings);
+  const gate = syncGateSurface(cwd);
+  if (gate.error) warnings.push(`gate surface not synced: ${gate.error}`);
   tidyConversations();
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: synced.gate.status, baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: gate.status, baseline, walkthrough: walkthroughState(cwd).status };
+  if (gate.settings) result.claude_settings = gate.settings;
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
@@ -306,27 +276,55 @@ function boot(cwd) {
 }
 
 /**
+ * Commit a file boot wrote, confined to it. The write is already on disk, so
+ * a commit git refuses is a warning, never a block.
+ * @param {string} cwd @param {string} spec @param {string} message
+ * @param {string} failure the warning's lead @param {string[]} warnings
+ */
+function commitPlumbing(cwd, spec, message, failure, warnings) {
+  try {
+    commitPathspecScoped(cwd, spec, message);
+  } catch (err) {
+    warnings.push(`${failure}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Keep the session hooks in the project's settings — SessionEnd's `presence
+ * cleanup` and `conversation end` for every project, `session cleanup` and
+ * SessionStart's `session resume` while labels are on — so a checkout that
+ * predates them, or lost them to a hand edit, gets them back; committed
+ * where `commit` says so. The opt-in read and the write share the project
+ * lock: a `label-config` landing between them would have this boot strip
+ * the hook it just installed. A file that cannot be read is a warning,
+ * never a block.
+ * @param {string} cwd @param {boolean} commit @param {string[]} warnings
+ * @returns {boolean} this boot wrote the hooks
+ */
+function installSessionHooks(cwd, commit, warnings) {
+  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, workflows: true }));
+  if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);
+  if (sync.changed && commit) {
+    commitPlumbing(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
+  }
+  return sync.changed;
+}
+
+/**
  * Keep the knowledge files listed in `.worktreeinclude` so a worktree Claude
- * Code creates starts with a copy, committed confined when this boot wrote
- * it. The read and the append share the project lock, so concurrent boots
- * never append twice. A file that cannot be written or committed is a
- * warning, never a block.
- * @param {string} cwd @param {string[]} warnings
+ * Code creates starts with a copy; committed where `commit` says so. The
+ * read and the append share the project lock, so concurrent boots never
+ * append twice. A file that cannot be written is a warning, never a block.
+ * @param {string} cwd @param {boolean} commit @param {string[]} warnings
  * @returns {boolean} this boot wrote the file
  */
-function installWorktreeInclude(cwd, warnings) {
+function installWorktreeInclude(cwd, commit, warnings) {
   const include = withProjectLock(cwd, () => syncWorktreeInclude(cwd));
-  if (include.error) {
-    warnings.push(`worktree include not written: ${include.error}`);
-    return false;
+  if (include.error) warnings.push(`worktree include not written: ${include.error}`);
+  if (include.changed && commit) {
+    commitPlumbing(cwd, WORKTREE_INCLUDE, 'chore: copy the knowledge store into new worktrees', 'worktree include commit failed', warnings);
   }
-  if (!include.changed) return false;
-  try {
-    commitPathspecScoped(cwd, WORKTREE_INCLUDE, 'chore: copy the knowledge store into new worktrees');
-  } catch (err) {
-    warnings.push(`worktree include commit failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  return true;
+  return include.changed;
 }
 
 module.exports = { boot, detectSystemConfig };
