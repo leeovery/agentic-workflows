@@ -109,21 +109,26 @@ function fromTranscript(transcriptPath) {
   };
 }
 
+/** Claude Code's config directory, which holds every session's transcript. */
+function claudeConfigDir() {
+  return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+}
+
 /**
  * The transcript of the agent an id names — `{file}`, or `{error}` saying
  * why there is not exactly one. `near` is a session transcript the caller
  * already holds (a hook payload's `transcript_path`): the agent's file sits
  * in that session's subagents directory, so it is looked for there first
- * and the whole projects directory is searched only when it is not.
+ * and `configDir`'s whole projects directory is searched only when it is not.
  */
-function findAgentTranscript(agentId, { near = null } = {}) {
+function findAgentTranscript(agentId, { near = null, configDir = claudeConfigDir() } = {}) {
   if (!AGENT_ID.test(String(agentId || ''))) return { error: `"${agentId}" is not an agent id` };
   const name = `agent-${agentId}.jsonl`;
   if (near) {
     const beside = path.join(path.dirname(near), path.basename(near, '.jsonl'), 'subagents', name);
     if (fs.existsSync(beside)) return { file: beside };
   }
-  const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
+  const projects = path.join(configDir, 'projects');
   const found = [];
   let keys = [];
   try { keys = fs.readdirSync(projects); } catch { /* no projects directory holds nothing */ }
@@ -144,5 +149,5 @@ function findAgentTranscript(agentId, { near = null } = {}) {
 }
 
 module.exports = {
-  WORLD, HANDBACK, SEND, DISPATCH_TOOLS, dispatchRow, worldIn, turnText, fromTranscript, findAgentTranscript,
+  WORLD, HANDBACK, SEND, DISPATCH_TOOLS, dispatchRow, worldIn, turnText, fromTranscript, claudeConfigDir, findAgentTranscript,
 };

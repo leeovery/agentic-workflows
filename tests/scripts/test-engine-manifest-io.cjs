@@ -92,6 +92,19 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'unit')), ['manifest.json']);
   });
 
+  it('a mode given is the written file\'s exactly, the umask notwithstanding; none given is the umask\'s default', () => {
+    const file = path.join(dir, 'settings.json');
+    for (const mode of [0o600, 0o666]) {
+      io.writeJsonAtomic(file, { mode }, { mode });
+      assert.strictEqual(fs.statSync(file).mode & 0o777, mode, mode.toString(8));
+    }
+    const plain = path.join(dir, 'plain.json');
+    io.writeJsonAtomic(plain, {});
+    const umask = process.umask();
+    assert.strictEqual(fs.statSync(plain).mode & 0o777, 0o666 & ~umask);
+    assert.deepStrictEqual(fs.readdirSync(dir).sort(), ['plain.json', 'settings.json'], 'no temp file left behind');
+  });
+
   it('project read: missing file is a first-write {}, corrupt JSON refuses loudly', () => {
     assert.deepStrictEqual(io.readProjectManifest(dir), {});
     fs.writeFileSync(path.join(dir, 'manifest.json'), '{"work_units": {},}');

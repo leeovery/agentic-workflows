@@ -209,9 +209,9 @@ function isSupported(version: string): boolean {
 /**
  * Whether the mod applies to the session, read as the engine's boot reads
  * it: Claude Code's terminal app — the `cli` entrypoint, not Claude Code on
- * the web — at a version the mod runs on. The flag that loads the mod is
- * committed, so a teammate's IDE extension, the web or an older Claude Code
- * can load it too.
+ * the web — at a version the mod runs on. Function hooks can be on anywhere:
+ * an IDE extension or an older Claude Code reads the same user settings, and
+ * Claude Code can switch them on for an account.
  */
 async function isApplicable($: EngineInterface): Promise<boolean> {
   if (

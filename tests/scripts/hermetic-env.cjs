@@ -1,12 +1,14 @@
 'use strict';
 
 // The suite's hermetic environment, pinned at require time and inherited by
-// every process a test spawns: an empty system-config directory, no provider
-// key, no gate surface, no Claude Code session, no user or system git config,
-// a fixed display width. A test never reads the developer's config or
-// credentials, never reaches an embedding provider — every knowledge store a
-// test builds is keyword-only — never renders a gate payload it did not
-// announce itself, and never marks a conversation it did not name itself.
+// every process a test spawns: an empty system-config directory, an empty
+// Claude Code config directory, no provider key, no gate surface, no Claude
+// Code session, no user or system git config, a fixed display width. A test
+// never reads the developer's config or credentials, never writes their
+// Claude Code settings, never reaches an embedding provider — every
+// knowledge store a test builds is keyword-only — never renders a gate
+// payload it did not announce itself, and never marks a conversation it did
+// not name itself.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -22,17 +24,34 @@ function isEmptyConfigDir(dir) {
   return ['config.json', 'credentials.json'].every((name) => !fs.existsSync(path.join(dir, name)));
 }
 
-/** An already-empty directory is reused, so requiring this twice pins once. */
-function emptyConfigDir() {
-  const inherited = process.env.WORKFLOWS_CONFIG_DIR;
-  if (isEmptyConfigDir(inherited)) return inherited;
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-config-'));
+/**
+ * A Claude Code config directory holding nothing — one Claude Code has run
+ * under never is, so a developer's own is never taken for the suite's.
+ */
+function isEmptyDir(dir) {
+  if (!dir || !fs.existsSync(dir)) return false;
+  return fs.readdirSync(dir).length === 0;
+}
+
+/** A fresh directory, removed when the process exits. */
+function scratchDir(prefix) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
 
+/**
+ * The inherited directory where it already meets the pin, so requiring this
+ * twice pins once; a fresh one otherwise.
+ */
+function pinnedDir(name, meetsPin, prefix) {
+  const inherited = process.env[name];
+  return meetsPin(inherited) ? inherited : scratchDir(prefix);
+}
+
 const HERMETIC_ENV = Object.freeze({
-  WORKFLOWS_CONFIG_DIR: emptyConfigDir(),
+  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  CLAUDE_CONFIG_DIR: pinnedDir('CLAUDE_CONFIG_DIR', isEmptyDir, 'wf-claude-config-'),
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_SYSTEM: '/dev/null',
   // Width is detected from the reader's terminal, and CLAUDE_PID reaches

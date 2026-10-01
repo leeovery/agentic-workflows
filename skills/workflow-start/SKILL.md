@@ -128,7 +128,7 @@ All documents up to date.
 
 ### Step 0.2: Claude Code Setup
 
-Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the project's settings, and loading it takes a restart; `not-running` means it was already switched on and this session did not load it; `on` and `unavailable` render nothing.
+Branch on the boot response's `gate_surface` — `restart` means this boot switched the workflows' mod on in the user's Claude Code settings, and loading it takes a restart; `not-running` means it was already switched on there and this session did not load it; `settings-unreadable` means that settings file could not be read or written; `outdated` means this Claude Code is older than the mod; `on` and `unavailable` render nothing. `{claude_settings}` below is the response's `claude_settings` — that settings file's path.
 
 #### If `gate_surface` is `restart`
 
@@ -143,7 +143,9 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The workflows have set up Claude Code in this project to show their menus as buttons above the prompt — click a row to pick it, click again to send. Typing your answer still works.
+> The workflows have set up Claude Code to show their menus as buttons above the prompt — click a row to pick it, click again to send. Typing your answer still works.
+>
+> To do that they set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` to `1` in your Claude Code settings, `{claude_settings}` — that turns on function hooks for every plugin, in every project.
 ```
 
 > *Output the next fenced block as a properties code block (```properties fence):*
@@ -173,13 +175,61 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as a properties code block (```properties fence):*
 
 ```properties
-⚑ Claude Code hasn't picked up the workflows' setup
+⚑ The workflows' Claude Code mod isn't running
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Usually Claude Code was already running when the workflows set it up — exit Claude Code, start it again in this project, then run `/workflow-start`. If that doesn't help, a setting of your own is switching Claude Code's function hooks off (`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`).
+> Function hooks are already switched on in your Claude Code settings, `{claude_settings}`. Usually Claude Code was already running when they were switched on — another session can do that — so exit Claude Code, start it again in this project, then run `/workflow-start`. If that doesn't help, remove a `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` of `0` from managed settings or a `--settings` file Claude Code was started with, which outrank that file; if neither sets it, the mod failed to load.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `gate_surface` is `settings-unreadable`
+
+If the boot response carries `warnings`, surface them first.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Claude Code Setup`**
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```properties
+⚑ Your Claude Code settings couldn't be updated
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The workflows switch Claude Code's function hooks on in your settings, `{claude_settings}`, and that file could not be read or written — the warning above says why. Fix it, then start Claude Code again in this project and run `/workflow-start`.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `gate_surface` is `outdated`
+
+If the boot response carries `warnings`, surface them first.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`▪ Claude Code Setup`**
+```
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```properties
+⚑ This Claude Code is too old for the workflows
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The workflows run on Claude Code 2.1.282 or newer. Update it with `claude update`, start it again in this project, then run `/workflow-start`.
 ```
 
 **STOP.** Do not proceed — terminal condition.

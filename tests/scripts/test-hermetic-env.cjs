@@ -1,9 +1,10 @@
 'use strict';
 
 // The suite's own guard: the hermetic environment is pinned, every node test
-// file adopts it, and a knowledge store built under it reaches no embedding
-// provider. A future suite that forgets the module fails here rather than
-// silently reading the developer's config and billing their key.
+// file adopts it, a knowledge store built under it reaches no embedding
+// provider, and Claude Code's user settings resolve inside it. A future
+// suite that forgets the module fails here rather than silently reading the
+// developer's config, billing their key, or writing their settings.
 
 const hermeticEnv = require('./hermetic-env.cjs');
 
@@ -15,6 +16,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const { userSettingsPath } = require('../../skills/workflow-engine/scripts/domain/settings.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
 
 const HERMETIC_MODULE = './hermetic-env.cjs';
@@ -83,6 +85,13 @@ describe('hermetic environment — the pins', () => {
     );
   });
 
+  it('Claude Code\'s config directory is set, exists, and holds nothing — boot writes the user\'s settings there, so no test reaches the developer\'s own', () => {
+    const dir = process.env.CLAUDE_CONFIG_DIR;
+    assert.ok(dir, 'CLAUDE_CONFIG_DIR is set');
+    assert.ok(fs.existsSync(dir), `${dir} exists`);
+    assert.deepStrictEqual(fs.readdirSync(dir), []);
+  });
+
   it('the provider key is unset — it wins over stored credentials, so isolating the directory is not enough', () => {
     assert.strictEqual(process.env.OPENAI_API_KEY, undefined);
   });
@@ -104,6 +113,7 @@ describe('hermetic environment — the pins', () => {
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
+      CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
       WORKFLOWS_DISPLAY_WIDTH: '65',
@@ -111,11 +121,12 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
       dir: process.env.WORKFLOWS_CONFIG_DIR,
+      claude: process.env.CLAUDE_CONFIG_DIR,
       key: null,
       surface: null,
       session: null,
@@ -148,6 +159,36 @@ describe('hermetic environment — no embedding provider', () => {
       assert.strictEqual(launched.length, 1, 'its vectors handed to the fill');
     } finally {
       cleanup(configDir);
+    }
+  });
+});
+
+describe('hermetic environment — Claude Code\'s user settings', () => {
+  /** The Claude Code config directory a fresh process pins, inheriting `inherited`. */
+  function pinnedUnder(inherited) {
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(process.env.CLAUDE_CONFIG_DIR)`],
+      { encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: inherited } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    return res.stdout.trim();
+  }
+
+  it('the user settings boot writes resolve inside the pinned directory', () => {
+    assert.strictEqual(userSettingsPath(), path.join(process.env.CLAUDE_CONFIG_DIR, 'settings.json'));
+  });
+
+  it('a process the suite spawns keeps the pinned directory — requiring the module twice pins once', () => {
+    assert.strictEqual(pinnedUnder(process.env.CLAUDE_CONFIG_DIR), process.env.CLAUDE_CONFIG_DIR);
+  });
+
+  it('a directory holding anything — a developer\'s own — is never taken for the pin', () => {
+    const own = fs.mkdtempSync(path.join(os.tmpdir(), 'hermetic-claude-own-'));
+    try {
+      fs.writeFileSync(path.join(own, 'settings.json'), '{}\n');
+      const pinned = pinnedUnder(own);
+      assert.notStrictEqual(pinned, own);
+      assert.notStrictEqual(pinned, '');
+    } finally {
+      cleanup(own);
     }
   });
 });

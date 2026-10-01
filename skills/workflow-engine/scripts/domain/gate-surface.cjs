@@ -4,24 +4,22 @@
 // Domain ring: the gate surface — the `workflow-gates` mod, part of the
 // workflows, which draws the engine's gates as buttons above the prompt
 // instead of leaving the model to reproduce the menu. It runs only in
-// Claude Code's terminal app, from 2.1.282, in a project that installed it;
-// anywhere else boot leaves the settings alone and the workflows carry on
+// Claude Code's terminal app, from 2.1.282, in a project that installed it.
+// Anywhere else boot touches no settings file: a terminal app older than
+// the mod is reported outdated, and everywhere else the workflows carry on
 // with the text menus. Where it can run, Claude Code loads it only with
-// function hooks enabled, so every boot puts
-// `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into the project's committed
-// `.claude/settings.json` wherever it is not already `"1"`. Nothing ever
-// takes it out: the flag turns function hooks on for every plugin in the
-// project, and it can come from the user's own settings or the shell as
-// well, so the file cannot say whether the mod is running. The mod says so
-// itself: it announces the gate surface at session start, and every command
-// the session runs inherits the announcement.
+// function hooks enabled, and only the user's own settings can enable them
+// — project and local settings cannot set the key — so every such boot
+// makes `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` `"1"` there. Whether the mod
+// is running, the mod says itself: it announces the gate surface at session
+// start, and every command the session runs inherits the announcement.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
+const { readSettings, settingsHeld, userSettingsPath, writeSettings } = require('./settings.cjs');
 
 /** Claude Code's early-access switch — the mod loads only where it is set. */
 const FUNCTION_HOOKS_ENV = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
@@ -33,7 +31,14 @@ const MOD_DIR = path.join('.claude', 'skills', 'workflow-gates');
 /** The oldest Claude Code the mod runs on. */
 const MIN_VERSION = [2, 1, 282];
 
-/** @typedef {'on'|'restart'|'not-running'|'unavailable'} GateSurface */
+/** @typedef {'on'|'restart'|'not-running'|'settings-unreadable'|'outdated'|'unavailable'} GateSurface */
+
+/**
+ * @typedef {object} GateSurfaceSync
+ * @property {GateSurface} status
+ * @property {string} [settings] the user settings file the sync read and wrote — absent where it touched none
+ * @property {string} [error] why that file could not be read or written
+ */
 
 /**
  * The running Claude Code's version, read off the agent identity it hands
@@ -56,60 +61,73 @@ function supported(version) {
 }
 
 /**
- * Whether the mod can run here: Claude Code's terminal app — not on the
- * web, not another entrypoint — at a version the mod runs on, in a project
- * that installed it.
+ * Where the mod stands before any file is touched: `unavailable` outside
+ * Claude Code's terminal app — on the web, another entrypoint — in a
+ * project that did not install it, under the test harness's settings hold,
+ * or at a version that does not read; `outdated` at a release before the
+ * mod's; null where it can run.
  * @param {string} cwd
- * @returns {boolean}
+ * @returns {'unavailable'|'outdated'|null}
  */
-function modApplies(cwd) {
-  if (process.env.CLAUDE_CODE_REMOTE) return false;
-  if (process.env.CLAUDE_CODE_ENTRYPOINT !== 'cli') return false;
+function footing(cwd) {
+  if (settingsHeld() || process.env.CLAUDE_CODE_REMOTE || process.env.CLAUDE_CODE_ENTRYPOINT !== 'cli') return 'unavailable';
+  if (!fs.existsSync(path.join(cwd, MOD_DIR))) return 'unavailable';
   const version = claudeCodeVersion(process.env.AI_AGENT);
-  if (!version || !supported(version)) return false;
-  return fs.existsSync(path.join(cwd, MOD_DIR));
+  if (!version) return 'unavailable';
+  return supported(version) ? null : 'outdated';
 }
 
 /**
- * Ensure `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` is `"1"` in the project's
- * `.claude/settings.json`, every other env key and every other setting
- * standing. A settings file that does not parse is left untouched and
+ * Make `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` exactly `"1"` in the settings
+ * at `file`, every other env key and every other setting standing. A file
+ * that cannot be read is left untouched, and it and a write that fails are
  * reported rather than thrown: boot may not fail over plumbing it cannot
- * read.
- * @param {string} cwd
+ * reach.
+ * @param {string} file
  * @returns {import('./settings.cjs').SettingsSync}
  */
-function enableFunctionHooks(cwd) {
-  const read = readProjectSettings(cwd);
+function enableFunctionHooks(file) {
+  const read = readSettings(file);
   if (read.error) return { changed: false, error: read.error };
-  const settings = read.settings;
-  const env = isObject(settings.env) ? settings.env : {};
+  const env = isObject(read.settings.env) ? read.settings.env : {};
   if (env[FUNCTION_HOOKS_ENV] === FUNCTION_HOOKS_ON) return { changed: false };
-  writeProjectSettings(cwd, { ...settings, env: { ...env, [FUNCTION_HOOKS_ENV]: FUNCTION_HOOKS_ON } });
+  try {
+    writeSettings(file, { ...read.settings, env: { ...env, [FUNCTION_HOOKS_ENV]: FUNCTION_HOOKS_ON } });
+  } catch (err) {
+    return { changed: false, error: `${file} could not be written — ${err instanceof Error ? err.message : String(err)}` };
+  }
   return { changed: true };
 }
 
 /**
- * Boot's footing for the mod, and its report. Where the mod cannot run
- * here, or the test harness holds the settings file still, nothing is read
- * or written: `unavailable`. Elsewhere the flag is made `"1"`, and the
- * report says where the mod stands — `on` where it is running, its
- * announcement in this process's environment; `restart` where this boot
- * wrote the flag, since Claude Code reads its settings only at startup;
- * `not-running` where the flag was already there and the mod is not
- * running. A settings file that does not parse holds no flag boot can read
- * or write, so it reads `unavailable`, beside its error — unless the mod is
- * already running, which reads `on` regardless: the status reports the
- * mod's own reality, not the file's.
+ * Where the mod stands once the flag is synced: `on` where it is running,
+ * its announcement in this process's environment, whatever the sync did;
+ * otherwise `settings-unreadable` where the file could not be read or
+ * written, `restart` where this boot changed it — Claude Code reads its
+ * settings only at startup — and `not-running` where the flag was already
+ * there.
+ * @param {import('./settings.cjs').SettingsSync} sync
+ * @returns {GateSurface}
+ */
+function standing(sync) {
+  if (gateSurfaceAnnounced()) return 'on';
+  if (sync.error) return 'settings-unreadable';
+  return sync.changed ? 'restart' : 'not-running';
+}
+
+/**
+ * Boot's footing for the mod, and its report: where it can run, the flag
+ * made `"1"` in the user's settings and the file named; elsewhere, and
+ * where Claude Code is older than the mod, no file touched.
  * @param {string} cwd
- * @returns {import('./settings.cjs').SettingsSync & {status: GateSurface}}
+ * @returns {GateSurfaceSync}
  */
 function syncGateSurface(cwd) {
-  if (settingsHeld() || !modApplies(cwd)) return { changed: false, status: 'unavailable' };
-  const sync = enableFunctionHooks(cwd);
-  if (gateSurfaceAnnounced()) return { ...sync, status: 'on' };
-  if (sync.changed) return { ...sync, status: 'restart' };
-  return { ...sync, status: sync.error ? 'unavailable' : 'not-running' };
+  const before = footing(cwd);
+  if (before) return { status: before };
+  const settings = userSettingsPath();
+  const sync = enableFunctionHooks(settings);
+  return { status: standing(sync), settings, error: sync.error };
 }
 
 module.exports = { MOD_DIR, syncGateSurface };
