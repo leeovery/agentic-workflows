@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.7] - 2026-10-01
+
+🔧 Changed
+- The gate mod's function-hooks flag now goes into your own Claude Code settings (`~/.claude/settings.json`, or `CLAUDE_CONFIG_DIR`) instead of the project's `.claude/settings.json`, which Claude Code no longer honours for it.
+- The first `/workflow-start` in Claude Code's terminal app now names the settings file it changed and asks for one restart.
+- `/workflow-start` now stops in the terminal app with a clear message when the mod isn't running, your settings file can't be read or written, or Claude Code is older than 2.1.282.
+- Boot's session-hook and worktree-include commits now wait for the reviewed migration commit when migrations changed files, so a migration's edits are never committed under boot's message.
+- Docs and README now state that the workflows target Claude Code 2.1.282+ in its terminal app, with soft support on the web and in IDE extensions.
+
+🐛 Fixed
+- Settings writes now follow symlinks and keep the file's existing permissions.
+- Test scripts no longer touch your real Claude Code settings, because they now use an isolated config directory.
+
+🗑️ Removed
+- A new migration (065) removes the function-hooks flag the workflows previously wrote into the project's `.claude/settings.json`.
+
 ## [0.8.6] - 2026-09-29
 
 🐛 Fixed
