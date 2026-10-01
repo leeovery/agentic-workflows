@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Kernel: ranking — each framing's keyword and vector searches blended by
 // score, the framings merged by each chunk's best, then re-ranked by decay,
-// boosts and the confidence tier; and the account `--explain` prints.
+// boosts and the confidence tier, each topic's records put in its order; and
+// the account `--explain` prints.
 // ---------------------------------------------------------------------------
 
 const store = require('./store.cjs');
@@ -47,7 +48,19 @@ const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% d
  */
 
 /**
- * @typedef {Record<string, any> & {score: number, scoring: Required<Scoring>}} Ranked  a re-ranked result
+ * @typedef {object} Moved  where a topic's order moved a result from
+ * @property {number} from  its place by score, from 1
+ * @property {number} to  the place its topic's order gave it
+ */
+
+/**
+ * @typedef {Record<string, any> & {score: number, scoring: Required<Scoring> & {moved?: Moved}}} Ranked  a re-ranked result
+ */
+
+/**
+ * @typedef {object} TopicPlace  a result's topic, and its record's stage in it
+ * @property {string} topic
+ * @property {number} stage  higher for a later record
  */
 
 /**
@@ -157,6 +170,34 @@ function rerank(results, boosts, stability) {
     .sort((a, b) => b.score - a.score);
 }
 
+/**
+ * Each topic's results in its order, among those that kept the same framing:
+ * a later record ahead of an earlier, each keeping its place among its own
+ * stage, within the places the topic's results already hold. Nothing enters
+ * or leaves, and a result the order moves records the place its score gave it.
+ * @param {Ranked[]} ranked  best first
+ * @param {(result: Ranked) => TopicPlace|null} placeOf  null for a result outside any topic
+ * @returns {Ranked[]}
+ */
+function orderTopics(ranked, placeOf) {
+  /** @type {Map<string, Array<{at: number, stage: number}>>} */
+  const topics = new Map();
+  ranked.forEach((result, at) => {
+    const place = placeOf(result);
+    if (!place) return;
+    const key = `${place.topic}\0${result.scoring.kept}`;
+    topics.set(key, [...(topics.get(key) || []), { at, stage: place.stage }]);
+  });
+  const from = ranked.map((_, at) => at);
+  for (const members of topics.values()) {
+    const ordered = [...members].sort((a, b) => b.stage - a.stage || a.at - b.at);
+    members.forEach(({ at }, n) => { from[at] = ordered[n].at; });
+  }
+  return from.map((was, at) => (was === at
+    ? ranked[was]
+    : { ...ranked[was], scoring: { ...ranked[was].scoring, moved: { from: was + 1, to: at + 1 } } }));
+}
+
 /** @param {number} value */
 function shown(value) {
   return value.toFixed(4);
@@ -174,7 +215,7 @@ function framingLine({ parts, score }) {
 /**
  * The lines `query --explain` prints beneath a ranked result: its score in
  * every framing, then the framing it kept, worked through decay, the boosts
- * and the tier.
+ * and the tier — and where its topic's order moved it.
  * @param {Ranked} result
  * @returns {string[]}
  */
@@ -185,7 +226,8 @@ function explanation({ score, scoring }) {
     ...scoring.framings.map((framing, at) => `Framing ${at + 1}: ${framing ? framingLine(framing) : unlisted}`),
     `Score: kept framing ${scoring.kept}'s ${shown(kept.score)} × ${shown(scoring.decay)} decay`
       + ` + ${shown(scoring.boost)} boost + ${shown(scoring.tier)} tier = ${shown(score)}`,
+    ...(scoring.moved ? [`Topic order: moved from ${scoring.moved.from} by score to ${scoring.moved.to}`] : []),
   ];
 }
 
-module.exports = { searchFramings, mergeFramings, rerank, retrievability, explanation };
+module.exports = { searchFramings, mergeFramings, rerank, orderTopics, retrievability, explanation };
