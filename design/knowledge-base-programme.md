@@ -131,10 +131,11 @@ Drawn from the owner's dex-engineering knowledge base:
    ranges, a marker on reopened topics, and contextual chunk headers
    measured. A per-file cap and printed scores were measured and dropped,
    and the relevance floor is closed. Released in v0.8.5 (stack #1448).
-6. **Lifecycle ranking within a topic.** It reads manifest state, which
-   becomes a function call once the KB is in the engine.
-7. **Catalogue and decisions register.** Scope still open: part of this
-   programme, or an entry in `ideas/`.
+6. **Lifecycle ranking within a topic:** a topic's specification before
+   its discussion, its discussion before its research, read from the
+   manifests at query time. #1452.
+7. **Catalogue.** Scope still open: part of this programme, or an entry in
+   `ideas/`. A register of decisions is the record-and-log programme's.
 
 Each step is designed in full here when it is reached. The steps after the
 one in hand record only what is already decided and what is known to be
@@ -1025,17 +1026,91 @@ slower index.
 
 ## Step 6 — lifecycle ranking within a topic
 
-Within one topic, the later record outranks the earlier: specification
-over discussion over research, and whether a reopened topic's results rank
-lower than they do today (step 5 marks them). This sits alongside progress
-decay across work units and never replaces it.
+A topic's specification comes before its discussion, and its discussion
+before its research. The order moves a record ahead of an earlier one of
+its own topic; it never lifts a record over another topic's, so the
+reasoning behind a decision stays in the results beside it.
 
-Open: supersession inside a single document. The eval found decisions
-amended in place, old text beside new, in all three projects; ranking one
-phase's document above another's does not reach it.
+### What it starts from
 
-## Step 7 — catalogue and decisions register
+Nothing ranked one topic's records against each other. The only phase
+signal was the confidence tier, +0.01 a step, which keyword-only breaks
+near-ties alone, and decay reaches a work unit only once later units
+complete, so nothing in a live epic decays. In 29 of the 54 cases with an
+answer, keyword-only, an earlier record of a topic ranked above a later
+one in the top ten.
+
+A topic follows the specification's `sources`, not the name: an epic's
+specification has a name of its own and carries several discussions
+(tick-core carries nine).
+
+### The order
+
+The results are ranked and cut to the limit exactly as before. Then,
+among one topic's results that kept the same framing, the specification
+comes first, then the discussion or investigation, then the research, each
+keeping its place among its own stage, within the places the topic's
+results already hold. Nothing enters or leaves.
+
+- **One topic.** A specification heads every discussion and investigation
+  its `sources` name; a cancelled, superseded, promoted or postponed one
+  heads nothing. Research joins the discussion of its name. Read from the
+  manifests at query time, like the reopened marker, and never stored: no
+  store change, no re-index.
+- **The same framing.** A query's framings ask different things. Without
+  the condition, a specification passage answering one framing jumps
+  ahead of the discussion passage that answered another (portal's
+  lazy-resume case).
+- **`--explain`** closes a moved result on
+  `Topic order: moved from N by score to M`.
+
+| | primary hit@5 | MRR@10 | recall@10 | excerpt hit@5 |
+|---|---|---|---|---|
+| keyword, before | 1 | 0.968 | 0.762 | 0.963 |
+| keyword, the order | 1 | 0.982 | 0.762 | 0.982 |
+| hybrid, before | 0.98 | 0.978 | 0.787 | 1 |
+| hybrid, the order | 1 | 0.982 | 0.789 | 1 |
+
+Hybrid recall moved only through one fumi case, re-embedded from an empty
+cache; an order cannot change what comes back.
+
+### Measured and dropped
+
+- **A score factor on a discussion under its specification.** ×0.9 lifted
+  portal's MRR and cost tick's recall (0.726 → 0.664 keyword, 0.686 →
+  0.588 hybrid). A factor lowers the discussion against every result, not
+  just its specification, so its passages fall out of the top ten — the
+  reasoning, which tick's judges graded as where the decision lives.
+- **A research factor.** ×0.8 on research whose discussion had concluded
+  raised recall in both modes before the order existed. With the order in
+  place it traded excerpt hits (keyword) and MRR (hybrid) for recall, a
+  second mechanism for a gain the order mostly already makes.
+- **A lower rank for a reopened topic.** Its text is the topic's last
+  concluded position, still the best statement there is until the revisit
+  concludes, and the marker says it may change. The order reads the phase
+  alone: a reopened discussion still follows its specification.
+
+### Supersession inside one document
+
+A discussion keeps a decision's revisions in place: the current entry
+under the Decision heading, the earlier ones beneath it, dated. Nothing
+ranks one passage of a file above another, and no rule could: dated
+entries beneath a decision are sometimes revisions and sometimes later
+additions that stay current (fumi's single-instance decision carries three
+of the second kind). The query guidance teaches the reading instead: a
+decision's current form is the top entry under its Decision heading, and
+an excerpt whose headings put it anywhere else sends the agent to that
+entry before relying on it. The structural answer, a record of current
+decisions kept apart from the journey, is a programme of its own.
+
+### The PR
+
+#1452: the order, its `--explain` line, both baselines re-pinned, and the
+guidance.
+
+## Step 7 — catalogue
 
 A catalogue: one line per concluded artifact, which an agent reads to pick
-files, with chunk search as the fallback. And a register of decisions, with
-rationale and rejected alternatives, extracted at conclusion. Scope open.
+files, with chunk search as the fallback. Scope open. A register of
+decisions is not this programme's: the record-and-log programme keeps each
+topic's current decisions apart from its journey as they land.
