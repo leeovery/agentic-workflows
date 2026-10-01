@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2026-10-01
+
+🔧 Changed
+- Knowledge queries now order each topic's records specification first, then the discussion or investigation it was built from, then research — the decision of record leads while the reasoning stays in view.
+- `query --explain` reports where a topic's order moved a result, with a `Topic order: moved from N by score to M` line.
+- Knowledge usage guidance describes discussion results as the journey to a decision, pointing readers to the entry under the Decision heading as its current form.
+
 ## [0.8.7] - 2026-10-01
 
 🔧 Changed
