@@ -4,23 +4,25 @@
 // Domain ring: a knowledge query — every framing embedded in one request or,
 // whatever keeps it from a vector the store can compare, none, the query then
 // running keyword-only with a note naming why; the framings searched, merged
-// by each chunk's best score, dated by the progress clock and re-ranked; and
-// each result's passage (passages.cjs) and whether its topic is in progress
-// again; and the text `query` prints. A query never writes.
+// by each chunk's best score, dated by the progress clock and re-ranked, each
+// topic's records put in its order; and each result's passage (passages.cjs)
+// and whether its topic is in progress again; and the text `query` prints. A
+// query never writes.
 // ---------------------------------------------------------------------------
 
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
-const { searchFramings, mergeFramings, rerank, explanation } = require('../../kernel/knowledge/ranking.cjs');
+const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../kernel/knowledge/ranking.cjs');
+const { TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { UserError, isPermanentError, withRetry } = require('../../kernel/knowledge/retry.cjs');
 const { QuotaError, RateLimitError, WaitBudget } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
-const { unitsByName } = require('./artifacts.cjs');
+const { identityKey, unitsByName } = require('./artifacts.cjs');
 const { headingPath } = require('../../kernel/knowledge/outline.cjs');
-const { itemOf } = require('../derivations.cjs');
+const { itemOf, phaseData, sourceRows } = require('../derivations.cjs');
 
 /** @typedef {import('../../kernel/knowledge/store.cjs').Store} Store */
 /** @typedef {import('../../kernel/knowledge/store.cjs').Metadata} Metadata */
@@ -254,9 +256,57 @@ function reopenedTest(workUnits) {
   };
 }
 
+// A record's stage in its topic: research explores, a discussion or an
+// investigation decides, and a specification settles what was decided.
+/** @type {Record<string, number>} */
+const TOPIC_STAGES = { research: 1, discussion: 2, investigation: 2, specification: 3 };
+
 /**
- * A query's ranked results, each carrying its passage, whether its topic is
- * in progress again, and the scoring `--explain` prints.
+ * Each record's topic and its stage in it, read from the manifests: a
+ * specification heads every discussion and investigation its sources name,
+ * and research joins the discussion of its name. A specification cancelled,
+ * superseded, promoted or postponed heads nothing.
+ * @param {Array<Record<string, any>>} workUnits
+ * @returns {(result: Record<string, any>) => import('../../kernel/knowledge/ranking.cjs').TopicPlace|null}
+ */
+function topicPlaces(workUnits) {
+  /** @type {Map<string, string>} */
+  const topics = new Map();
+  /** @param {string} workUnit @param {string} phase @param {string} name @param {string} topic */
+  const join = (workUnit, phase, name, topic) => {
+    const at = identityKey(workUnit, phase, name);
+    if (!topics.has(at)) topics.set(at, topic);
+  };
+  for (const unit of unitsByName(workUnits).values()) {
+    /** @param {string} phase */
+    const items = (phase) => Object.entries(phaseData(unit, phase).items || {});
+    for (const [name, item] of items('specification')) {
+      if (TERMINAL_STATUSES.includes(item.status)) continue;
+      const topic = identityKey(unit.name, 'specification', name);
+      join(unit.name, 'specification', name, topic);
+      for (const [source] of sourceRows(item.sources)) {
+        for (const phase of ['discussion', 'investigation']) {
+          if (itemOf(unit, phase, source)) join(unit.name, phase, source, topic);
+        }
+      }
+    }
+    for (const phase of ['discussion', 'investigation']) {
+      for (const [name] of items(phase)) join(unit.name, phase, name, identityKey(unit.name, phase, name));
+    }
+    for (const [name] of items('research')) {
+      join(unit.name, 'research', name, topics.get(identityKey(unit.name, 'discussion', name)) || identityKey(unit.name, 'research', name));
+    }
+  }
+  return (result) => {
+    const topic = topics.get(identityKey(result.work_unit, result.phase, result.topic));
+    return topic ? { topic, stage: TOPIC_STAGES[result.phase] } : null;
+  };
+}
+
+/**
+ * A query's ranked results, each topic's records in its order, each carrying
+ * its passage, whether its topic is in progress again, and the scoring
+ * `--explain` prints.
  * @param {Store} db @param {QuerySettings} settings @param {QueryRequest} request
  * @returns {Promise<QueryOutcome>}
  */
@@ -268,7 +318,7 @@ async function queryStore(db, settings, { terms, options, workUnits, root }) {
   const elapsedOf = progressElapsed(workUnits, settings.weights);
   const reopened = reopenedTest(workUnits);
   const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: elapsedOf(r.work_unit, r.phase) }));
-  const ranked = rerank(dated, boosts, settings.stability).slice(0, limit);
+  const ranked = orderTopics(rerank(dated, boosts, settings.stability).slice(0, limit), topicPlaces(workUnits));
   return {
     results: withPassages(db, ranked, terms, root).map((r) => ({ ...r, reopened: reopened(r.work_unit, r.phase, r.topic) })),
     notes: [

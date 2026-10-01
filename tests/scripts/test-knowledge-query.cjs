@@ -274,6 +274,80 @@ describe('queryStore', () => {
     });
   });
 
+  describe('the topic order', () => {
+    /**
+     * A chunk of the `auth` epic: `phase`'s record of `topic`.
+     * @param {string} phase @param {string} topic @param {string} content
+     */
+    function record(phase, topic, content) {
+      return { ...doc('auth', 1, content), id: `auth-${phase}-${topic}-001`, work_type: 'epic', phase, topic };
+    }
+
+    /**
+     * The `auth` epic: the `session` topic's research and discussion
+     * concluded, and the specifications at `specs` sourcing its discussion.
+     * @param {Record<string, string>} specs  name → status
+     */
+    function auth(specs) {
+      const specification = Object.fromEntries(Object.entries(specs).map(([name, status]) =>
+        [name, { status, sources: { session: { status: 'incorporated' } } }]));
+      return [{
+        name: 'auth', work_type: 'epic', status: 'in-progress',
+        phases: {
+          research: { items: { session: { status: 'completed' } } },
+          discussion: { items: { session: { status: 'completed' }, billing: { status: 'completed' } } },
+          specification: { items: specification },
+        },
+      }];
+    }
+
+    /** Each result as phase:topic, best first. @param {any} topicDb @param {string[]} terms @param {object[]} workUnits */
+    async function placed(topicDb, terms, workUnits) {
+      return (await query(topicDb, { terms, workUnits })).map((r) => `${r.phase}:${r.topic}`);
+    }
+
+    /** Shorter text scores higher: research best by score, then billing, the discussion, the specification. */
+    function storeOf() {
+      const topicDb = store.createStore();
+      for (const d of [
+        record('research', 'session', 'Tokens.'),
+        record('discussion', 'billing', 'Tokens expire.'),
+        record('discussion', 'session', 'Tokens expire nightly now.'),
+        record('specification', 'core', 'Tokens expire nightly now in batches.'),
+      ]) {
+        store.insertDocument(topicDb, d);
+      }
+      return topicDb;
+    }
+
+    it("heads a topic with the specification its sources name, then its discussion, then its research, in the places they hold", async () => {
+      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ core: 'completed' })), [
+        'specification:core', 'discussion:billing', 'discussion:session', 'research:session',
+      ]);
+    });
+
+    it('puts research behind the discussion of its name where no specification sources it', async () => {
+      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({})), [
+        'discussion:session', 'discussion:billing', 'research:session', 'specification:core',
+      ]);
+    });
+
+    it('lets no superseded specification head a topic, whatever its manifest order', async () => {
+      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ legacy: 'superseded', core: 'completed' })), [
+        'specification:core', 'discussion:billing', 'discussion:session', 'research:session',
+      ]);
+    });
+
+    it("orders a topic's records only where they kept the same framing", async () => {
+      const topicDb = store.createStore();
+      store.insertDocument(topicDb, record('discussion', 'session', 'Tokens.'));
+      store.insertDocument(topicDb, record('specification', 'core', 'Grace applies to every renewed login.'));
+      assert.deepStrictEqual(await placed(topicDb, ['tokens', 'grace'], auth({ core: 'completed' })), [
+        'discussion:session', 'specification:core',
+      ]);
+    });
+  });
+
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
