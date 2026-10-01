@@ -540,7 +540,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 → Proceed to **Step 0.2**.
 
 ### Step 0.2: Claude Code Setup
-[terminal stop when the boot response says the mod can run here but is not running — this boot switched it on, or it was on already; otherwise silent]
+[terminal stop when the boot response says the mod is not running in Claude Code's terminal app — this boot switched it on, it was on already, the user's settings could not be read or written, or this Claude Code is too old for it; otherwise silent]
 → Proceed to **Step 0.3**.
 
 ### Step 0.3: Walkthrough
