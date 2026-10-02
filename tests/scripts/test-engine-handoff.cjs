@@ -284,6 +284,13 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['workflow-planning-entry', 'feature', 'none'], /^work unit "none" not found$/);
   });
 
+  it('a work unit no longer in progress refuses — a handoff moves into work in progress', () => {
+    createManifest(dir, 'shipped', { work_type: 'feature', status: 'completed' });
+    createManifest(dir, 'dropped', { work_type: 'epic', status: 'cancelled' });
+    refused(dir, ['workflow-review-entry', 'feature', 'shipped'], /^work unit "shipped" is completed — a handoff moves into work in progress$/);
+    refused(dir, ['workflow-continue-epic', 'dropped'], /^work unit "dropped" is cancelled — a handoff moves into work in progress$/);
+  });
+
   it('a name that would break addressing refuses before anything is read', () => {
     refused(dir, ['workflow-planning-entry', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
     refused(dir, ['workflow-discussion-entry', 'epic', 'fumi', 'pay.ments'], /^"pay\.ments" is not a legal topic name/);

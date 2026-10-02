@@ -384,10 +384,11 @@ const submit = ($: EngineInterface, gate: Gate, option: Option) =>
   })
 
 /**
- * Carries a handoff: the conversation cleared, then the continuation sent
- * into the new one, recorded with its line in that conversation's folder
- * first. A clear that fails sends in place, so the work still goes on; a send
- * that fails or is dropped waits in the prompt box for Enter.
+ * Carries a handoff: the conversation cleared, a toast saying where the work
+ * went, then the continuation sent into the new one, recorded with its line in
+ * that conversation's folder first. A clear that fails sends in place, so the
+ * work still goes on; a send that fails or is dropped waits in the prompt box
+ * for Enter.
  */
 async function handOff($: EngineInterface, { text, line }: Handoff) {
   try {
@@ -395,6 +396,8 @@ async function handOff($: EngineInterface, { text, line }: Handoff) {
   } catch {
     // Not cleared: the continuation goes on in this conversation.
   }
+
+  $.ui.toast(`Handed off ${line}`)
 
   let isSent = false
 

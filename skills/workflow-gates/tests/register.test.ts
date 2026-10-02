@@ -728,6 +728,12 @@ function world(
     return { text: e.text, origin: e.origin }
   })
 
+  on('ui.toast', ($, e) => {
+    calls.push(`toast ${e.text}`)
+
+    return { value: undefined }
+  })
+
   on('command.run', { command: 'clear' }, async () => {
     calls.push('clear')
 
@@ -3876,7 +3882,7 @@ describe('register', () => {
     )
   })
 
-  test('the turn a handoff ended clears the conversation, then records the continuation in the new one’s folder, then sends it', async ($, on) => {
+  test('the turn a handoff ended clears the conversation, says where the work went, then records the continuation in the new one’s folder and sends it', async ($, on) => {
     const { calls, files, submitted, clock } = world($, on, HANDED_OFF)
 
     await $.session.start(SESSION)
@@ -3887,7 +3893,7 @@ describe('register', () => {
 
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
     expect(submitted).toEqual([CONTINUATION])
     expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
     expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
@@ -3921,7 +3927,7 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
   })
 
   test('an Esc on the turn that handed off carries nothing, then or at the next turn’s end: Esc means stop', async ($, on) => {
@@ -4015,7 +4021,7 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
     expect(sentIn(files)).toEqual({ answer: CONTINUATION, line: WHERE })
 
     await $.session.end(CLEARED)

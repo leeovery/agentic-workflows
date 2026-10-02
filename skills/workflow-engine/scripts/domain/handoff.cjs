@@ -60,7 +60,7 @@ function assertLegalName(kind, name) {
 }
 
 /**
- * A work unit the project holds, of `type`.
+ * A work unit the project holds, of `type`, still in progress.
  * @param {string} cwd @param {string} name @param {string} type
  */
 function assertWorkUnit(cwd, name, type) {
@@ -69,6 +69,9 @@ function assertWorkUnit(cwd, name, type) {
   if (manifest === null) throw new Error(`work unit "${name}" not found`);
   if (manifest.work_type !== type) {
     throw new Error(`work unit "${name}" is of type ${manifest.work_type}, not ${type}`);
+  }
+  if (manifest.status !== 'in-progress') {
+    throw new Error(`work unit "${name}" is ${manifest.status} — a handoff moves into work in progress`);
   }
 }
 
