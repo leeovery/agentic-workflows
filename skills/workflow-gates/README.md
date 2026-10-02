@@ -168,6 +168,17 @@ An Agent dispatch is left as Claude Code draws it: its row already names the
 agent and what it was given, with the agent's live progress beneath, which a
 redrawn row would lose.
 
+## What it refuses
+
+In a conversation the engine has marked, a Write, Edit or NotebookEdit aimed
+at a manifest the engine keeps — the project's `.workflows/manifest.json`, or
+a work unit's `.workflows/{work-unit}/manifest.json` — is refused with one
+line telling Claude to write it through the engine's `manifest` verbs. Where
+the path leads is what counts: a relative path, `..` and a symbolic link are
+followed, and a manifest not written yet is placed by its nearest folder that
+exists. Any other file under `.workflows/`, a `manifest.json` anywhere else,
+and every write in a plain conversation go through. Bash is not guarded.
+
 ## How it compacts a workflow conversation
 
 Claude Code's own summary of a conversation leaves Claude re-reading nothing,

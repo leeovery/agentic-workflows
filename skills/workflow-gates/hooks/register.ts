@@ -39,6 +39,7 @@ import type {
 } from 'claude-code'
 
 import { compaction } from './compaction.ts'
+import { guard } from './guard.ts'
 import {
   IDLE,
   NO_SENDS,
@@ -1018,5 +1019,6 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   redraw(on)
+  guard(on)
   compaction(on)
 }
