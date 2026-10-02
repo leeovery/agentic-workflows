@@ -24,16 +24,17 @@
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
  *
- * All of it happens in Claude Code's terminal app alone, from 2.1.287.
- * Elsewhere — an IDE extension, Claude Code on the web, an older Claude
- * Code — the session is not announced, and the module draws, keeps and sets
- * nothing.
+ * All of it happens in Claude Code's terminal app and the Desktop app's Code
+ * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
+ * the web, an older Claude Code — the session is not announced, and the
+ * module draws, keeps and sets nothing.
  */
 import type {
   AgentLoop,
   EngineInterface,
   PromptOrigin,
   Register,
+  RenderSurface,
   SessionMessage,
 } from 'claude-code'
 
@@ -75,6 +76,20 @@ const MARKER = 'workflow'
 
 /** The file a conversation's band is kept in for a resume. */
 const KEPT = 'gate.json'
+
+/**
+ * The entrypoints the mod runs under, as the engine's boot reads them:
+ * Claude Code's terminal app, and the Desktop app's Code tab on Anthropic's
+ * API or a third-party provider.
+ */
+const ENTRYPOINTS: ReadonlySet<string> = new Set([
+  'cli',
+  'claude-desktop',
+  'claude-desktop-3p',
+])
+
+/** The surfaces the band draws on: the terminal app's, and the Desktop app's. */
+const BAND_SURFACES: ReadonlySet<RenderSurface> = new Set(['terminal', 'desktop'])
 
 /** The oldest Claude Code the mod runs on, major, minor and patch. */
 const OLDEST = [2, 1, 287]
@@ -208,14 +223,15 @@ function isSupported(version: string): boolean {
 
 /**
  * Whether the mod applies to the session, read as the engine's boot reads
- * it: Claude Code's terminal app — the `cli` entrypoint, not Claude Code on
- * the web — at a version the mod runs on. Claude Code loads the mod wherever
- * mods are on — an IDE extension's session, or an older Claude Code's with
- * function hooks switched on — so the check is the mod's own.
+ * it: Claude Code's terminal app or the Desktop app's Code tab — one of the
+ * mod's entrypoints, not Claude Code on the web — at a version the mod runs
+ * on. Claude Code loads the mod wherever mods are on — the VS Code
+ * extension's session, or an older Claude Code's with function hooks
+ * switched on — so the check is the mod's own.
  */
 async function isApplicable($: EngineInterface): Promise<boolean> {
   if (
-    (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) !== 'cli' ||
+    !ENTRYPOINTS.has((await $.env.get('CLAUDE_CODE_ENTRYPOINT')) ?? '') ||
     (await $.env.get('CLAUDE_CODE_REMOTE'))
   ) {
     return false
@@ -240,29 +256,33 @@ const inConversation = (e: AgentLoop) => e.agentId === undefined
 
 /**
  * Whether the band takes a gate a Bash call stated: the conversation's own
- * call, not a subagent's; and the terminal the session's only screen, since
- * the band is the terminal's and any other screen shows the menu as text
- * alone.
+ * call, not a subagent's; and the session's only screen the terminal or the
+ * Desktop app, since the band is theirs and any other screen attached beside
+ * it shows the menu as text alone. The Desktop app attaches after the
+ * session starts, so this is read at the call.
  */
 async function isForBand($: EngineInterface, e: AgentLoop): Promise<boolean> {
   if (!inConversation(e)) {
     return false
   }
 
-  const surfaces = await $.session.surfaces()
+  const [only, ...others] = await $.session.surfaces()
 
-  return surfaces.length === 1 && surfaces[0] === 'terminal'
+  return only !== undefined && others.length === 0 && BAND_SURFACES.has(only)
 }
 
 /**
  * Whether a submission is the person's: their Enter at the prompt, their
- * message through Remote Control, or this plugin sending their press. One
- * with no origin is the person's own, as the engine reads it.
+ * message through Remote Control, their message in the Desktop app — whose
+ * Code tab runs the session as an SDK host, so it arrives as the host's own —
+ * or this plugin sending their press. One with no origin is the person's
+ * own, as the engine reads it.
  */
 const isPersons = (origin: PromptOrigin | undefined, plugin: string) =>
   origin === undefined ||
   origin.kind === 'composer' ||
   origin.kind === 'bridge' ||
+  origin.kind === 'sdk' ||
   (origin.kind === 'plugin' && origin.name === plugin)
 
 /** The row a post names, or null when it names none of the gate's. */
@@ -872,7 +892,11 @@ export const register: Register = on => {
 
     const gate = band.drawn
 
-    if (gate === null || e.props.hasSurvey || e.surface !== 'terminal') {
+    if (
+      gate === null ||
+      e.props.hasSurvey ||
+      (e.surface !== 'terminal' && e.surface !== 'desktop')
+    ) {
       return next(e)
     }
 
