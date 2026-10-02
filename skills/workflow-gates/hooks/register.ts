@@ -48,6 +48,7 @@ import {
   type Option,
   type Sends,
 } from './layout.ts'
+import { redraw } from './redraw.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -1016,5 +1017,6 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  redraw(on)
   compaction(on)
 }

@@ -138,6 +138,36 @@ process brings it back. A plain conversation in the same project keeps Claude
 Code's defaults and the person's own settings: the mod never touches either
 there.
 
+## What it redraws
+
+In a conversation the engine has marked, on the terminal app and the Desktop
+app, the mod redraws two of Claude Code's rows — the drawing alone, never what
+Claude reads:
+
+- A Bash call that runs one engine command, with nothing run beside it, draws
+  as the call it is, on one line cut to the row's width:
+  `▪ manifest set · payments.specification.ledger status=completed`. The verb
+  comes first and free text (a commit message, a summary) last, so a cut line
+  keeps what the call addresses. The marker is dim while the call runs and in
+  the error colour where it errored or was cut short; the result beneath it is
+  Claude Code's own. A command that pipes, chains or redirects draws as Claude
+  Code draws it, as does every other command. Claude Code's tool row says
+  nothing of the ctrl+o view, so that view shows the redrawn line too; the
+  call as made is in what Claude read and in the transcript file.
+- The spinner keeps Claude Code's animation and ellipsis, its word the phase
+  the conversation works in — `Discussing`, `Specifying`, `Implementing task
+  2.3`, `Shaping` in discovery, `Roadmapping`, `Assessing` at the baseline —
+  from the position the engine keeps in the conversation's folder
+  (`position.json`). The mod reads it once for each conversation the spinner
+  draws in, and again after each engine call that moves it (`session label`,
+  `session repair`, `task start`, `task complete`), never per frame. At a work
+  unit's menu or the start menu it keeps Claude Code's word, and on the
+  Desktop app a step that names itself (`Creating notes.md`) keeps its words.
+
+An Agent dispatch is left as Claude Code draws it: its row already names the
+agent and what it was given, with the agent's live progress beneath, which a
+redrawn row would lose.
+
 ## How it compacts a workflow conversation
 
 Claude Code's own summary of a conversation leaves Claude re-reading nothing,
