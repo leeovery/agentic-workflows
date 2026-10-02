@@ -326,12 +326,12 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     }
   });
 
-  it('a live boot — no settings hold, the walker\'s real environment in the terminal app — finds the hooks it wants, no mod to set up, and writes nothing, the user\'s Claude Code settings included', function () {
+  it('a live boot — no settings hold, the walker\'s real environment in the terminal app — finds the hooks it wants, no mod to stop on, and writes nothing, the user\'s Claude Code settings included', function () {
     if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(NATIVE_CASE);
     const claudeConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-claude-config-'));
     try {
-      const env = { ...worlds.recipeEnv(), CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-282_agent', CLAUDE_CONFIG_DIR: claudeConfig };
+      const env = { ...worlds.recipeEnv(), CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-287_agent', CLAUDE_CONFIG_DIR: claudeConfig };
       delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
       delete env.CLAUDE_CODE_REMOTE;
       const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
@@ -339,8 +339,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
       const boot = JSON.parse(out.trim());
       assert.strictEqual(boot.session_hooks_installed, false, 'the seeded set is exactly what boot wants');
-      assert.strictEqual(boot.gate_surface, 'unavailable', 'the world does not carry the mod, so no flag and no stop');
-      assert.ok(!('claude_settings' in boot), 'no user settings file looked at');
+      assert.strictEqual(boot.gate_surface, 'unavailable', 'the world does not carry the mod, so no stop');
       assert.deepStrictEqual(boot.warnings, []);
       assert.deepStrictEqual(statusLines(dir), [], 'nothing written');
       assert.deepStrictEqual(fs.readdirSync(claudeConfig), [], 'the user\'s Claude Code settings untouched');

@@ -635,9 +635,8 @@ function buildWorld(caseId) {
   }
   // Every skill but the gate mod. A walk runs inside the developer's own
   // Claude session, which never loads a world's mod, so a world carrying it
-  // would boot to workflow-start's stop for a mod that is not running, and
-  // write the developer's own Claude Code settings; without it the mod
-  // reads as not installed, and boot leaves both be.
+  // would boot to workflow-start's stop for a mod that is not running;
+  // without it the mod reads as not installed, and boot leaves it be.
   const mod = path.join(dir, MOD_DIR);
   for (const layer of ['skills', 'agents']) {
     const src = path.join(ROOT, layer);

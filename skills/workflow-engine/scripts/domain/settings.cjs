@@ -1,18 +1,15 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: Claude Code's settings files — the project's committed
-// `.claude/settings.json`, which carries the session hooks
-// (`session-label.cjs`), and the user's own, which carries the
-// function-hooks flag the gate mod loads under (`gate-surface.cjs`). Reading
-// is tolerant by contract: an absent file is an empty document, and one that
-// cannot be read is reported rather than thrown, because no sync may fail
-// over plumbing it cannot read. Each caller reconciles its own keys and
-// leaves every other one standing.
+// Domain ring: the project's committed Claude Code settings
+// (`.claude/settings.json`), which carry the session hooks
+// (`session-label.cjs`). Reading is tolerant by contract: an absent file is
+// an empty document, and one that cannot be read is reported rather than
+// thrown, because the sync may not fail over plumbing it cannot read. The
+// caller reconciles its own keys and leaves every other one standing.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 
@@ -22,23 +19,14 @@ const SETTINGS_SPEC = '.claude/settings.json';
 /** @typedef {{changed: boolean, error?: string}} SettingsSync */
 
 /**
- * Whether the test harness holds the settings files still — its hermeticity
- * switch, which keeps a recipe's boot out of a world's settings and the
- * user's. Real projects never set it: what the syncs write is
- * infrastructure, not a setting.
+ * Whether the test harness holds the settings file still — its hermeticity
+ * switch, which keeps a recipe's boot out of a world's settings. Real
+ * projects never set it: what the sync writes is infrastructure, not a
+ * setting.
  * @returns {boolean}
  */
 function settingsHeld() {
   return Boolean(process.env.WORKFLOWS_HOLD_PROJECT_SETTINGS);
-}
-
-/**
- * Claude Code's user settings file — in its config directory,
- * `CLAUDE_CONFIG_DIR` when set, else `~/.claude`.
- * @returns {string}
- */
-function userSettingsPath() {
-  return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'settings.json');
 }
 
 /** @param {unknown} err @returns {string} */
@@ -110,4 +98,4 @@ function writeProjectSettings(cwd, settings) {
   writeSettings(path.join(cwd, SETTINGS_SPEC), settings);
 }
 
-module.exports = { SETTINGS_SPEC, settingsHeld, userSettingsPath, readSettings, writeSettings, readProjectSettings, writeProjectSettings };
+module.exports = { SETTINGS_SPEC, settingsHeld, readProjectSettings, writeProjectSettings };
