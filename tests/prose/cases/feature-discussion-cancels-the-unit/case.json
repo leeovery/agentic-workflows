@@ -61,7 +61,8 @@
       "render phase-completed",
       "render phase-paused",
       "agent dispatch",
-      "workunit reactivate"
+      "workunit reactivate",
+      "engine.cjs handoff"
     ]
   }
 }

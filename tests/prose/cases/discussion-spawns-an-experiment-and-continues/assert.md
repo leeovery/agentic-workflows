@@ -51,27 +51,21 @@ The prose should have taken this path:
    experiment: the discussion is in progress behind a live evidence
    wait, and the experiment slot holds the record it waits on
 10. the feature continuation's terminal check falls through and the
-    pause routes straight to plan mode, revisitable phases or not: a
+    pause routes straight to the handoff, revisitable phases or not: a
     paused phase revisits nothing and skips nothing. No next-phase gate
     renders, no completed banner renders
-11. plan mode: the continuation resolves the plan template on the
-    paused arm — the paused-on-a-wait line, never the completed line,
-    never the revisiting line — and the resolved content lands as the
-    world's plan-handoff artifact per the capture mechanism; the walk
-    stops at the presentation, the flow's terminal handoff
+11. the handoff: the engine's handoff names `workflow-experiment-entry`
+    with `feature pay`, and the line naming where the work goes is the
+    turn's last text; the walk stops at the handoff
 
 Further claims:
 
-- the plan-handoff artifact holds the template verbatim with its
-  placeholders resolved: the title Continue Feature: pay, "The
-  previous phase paused on a wait — the pipeline continues at what it
-  waits on.", a Next Step invoking /workflow-experiment-entry feature
-  pay with the arguments line, and the How to proceed block — and
-  nothing else: no session learnings, no enrichment, no User
-  instructions heading (the user attached none)
+- the handoff carries the skill and its two arguments and nothing
+  else: no session learnings, no enrichment, no note of what the
+  conversation hopes
 - no experiment entry was invoked and no experiment record moved past
-  `conceived` — the handoff is content for the next context, not an
-  action taken in this one
+  `conceived` — the laboratory starts in the next context, not in this
+  one
 
 - the discussion item stays `in-progress` and carries
   `awaiting_experiments: ["E1"]` — written by the create transaction,

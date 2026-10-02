@@ -30,8 +30,7 @@
     "skills/workflow-shared/references/cancelling-the-topic.md",
     "skills/workflow-bridge/SKILL.md",
     "skills/workflow-bridge/references/epic-continuation.md",
-    "skills/workflow-shared/references/topic-discovery-dispatch.md",
-    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "c — continue"
@@ -46,7 +45,7 @@
       "agent scan search-relevance research synonym-handling",
       "topic cancel search-relevance discovery synonym-handling",
       "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
-      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+      "handoff workflow-continue-epic search-relevance research cancelled"
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.research.synonym-handling",
@@ -54,7 +53,7 @@
       "agent scan search-relevance research synonym-handling",
       "topic cancel search-relevance discovery synonym-handling",
       "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
-      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+      "handoff workflow-continue-epic search-relevance research cancelled"
     ],
     "calls_exclude": [
       "render research-conclude-gate",
@@ -69,7 +68,8 @@
       "render phase-completed",
       "render phase-paused",
       "agent dispatch",
-      "--kind deep-dive"
+      "--kind deep-dive",
+      "workflow-continue-epic/scripts/gateway.cjs"
     ]
   }
 }

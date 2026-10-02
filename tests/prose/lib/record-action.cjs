@@ -38,6 +38,7 @@
 const fs = require('fs');
 const path = require('path');
 const { dispatchRow, fromTranscript, worldIn } = require('./transcripts.cjs');
+const { unannounced } = require('./announce-handoff.cjs');
 
 const LOG = '.walk-actions.log';
 const WALK = '.walk-transcript.log';
@@ -85,10 +86,15 @@ function flatten(value, limit) {
   return oneLine.length > limit ? `${oneLine.slice(0, limit)}…[truncated]` : oneLine;
 }
 
-/** The salient argument, per tool, untruncated — callers flatten it. */
+/**
+ * The salient argument, per tool, untruncated — callers flatten it. A
+ * command is recorded as the walker wrote it, without the handoff
+ * announcement lib/announce-handoff.cjs puts in front of it.
+ */
 function summarise(input) {
   if (!input || typeof input !== 'object') return '';
-  return input.command || input.file_path || input.pattern || input.path || '';
+  if (typeof input.command === 'string') return unannounced(input.command);
+  return input.file_path || input.pattern || input.path || '';
 }
 
 /**

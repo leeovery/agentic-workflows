@@ -44,10 +44,12 @@ The prose should have taken this path:
     outcome and the next phase as `none`. No phase banner is rendered on
     the way through — neither the completed banner nor the paused one:
     the receipt was the session's
-12. the bridge runs the epic continuation — the scoped discovery, no
-    sequencing owed, no gap analysis owed, the epic not all done — and
-    the dashboard and menu render. The walk stops with the menu waiting
-    on a selection
+12. the bridge reads the work type — epic — and hands off to the epic
+    menu: the engine's handoff names `workflow-continue-epic` with the
+    work unit, `research` and the cancelled outcome, and the line naming
+    where the work goes is the turn's last text. No dashboard, gap
+    analysis or menu runs in this context — the menu opens in the next
+    one — and the walk stops at the handoff
 
 Further claims:
 
