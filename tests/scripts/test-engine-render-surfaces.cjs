@@ -694,7 +694,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
     assert.match(out, /◆ Pause here\?/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
-    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause lands in plan mode, never on a menu — no epic vocabulary');
+    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause hands off to what it waits on, never to a menu — no epic vocabulary');
   });
 
   it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
@@ -738,7 +738,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   });
 });
 
-describe('phase-paused — the bridge banner for a conversation leaving on a wait', () => {
+describe('phase-paused — the epic menu\'s banner for a conversation leaving on a wait', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
@@ -783,7 +783,7 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       /^.*\nResearch paused for "Lab" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
   });
 
-  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the bridge', () => {
+  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the banner', () => {
     writeManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
@@ -4218,7 +4218,7 @@ describe('selection projection', () => {
   });
 });
 
-describe('bridge continuation surfaces', () => {
+describe('pipeline continuation surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
