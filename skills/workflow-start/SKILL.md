@@ -128,7 +128,7 @@ All documents up to date.
 
 ### Step 0.2: Claude Code Setup
 
-Branch on the boot response's `gate_surface` — `not-running` means the workflows' mod can run in this Claude Code and this session did not load it; `outdated` means this Claude Code is older than the mod; `on` and `unavailable` render nothing.
+Branch on the boot response's `gate_surface` — `not-running` means the workflows' mod can run in this Claude Code and this session did not load it, a notice the session carries on past with typed menus; `outdated` means this Claude Code is older than the mod, a stop; `on` and `unavailable` render nothing.
 
 #### If `gate_surface` is `not-running`
 
@@ -140,21 +140,23 @@ If the boot response carries `warnings`, surface them first.
 **`▪ Claude Code Setup`**
 ```
 
-> *Output the next fenced block as a properties code block (```properties fence):*
+> *Output the next fenced block as a text code block (```text fence):*
 
-```properties
-⚑ The workflows' Claude Code mod isn't running
+```text
+  ⚑ The workflows' Claude Code mod isn't running
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The mod is part of the workflows, and this session didn't load it. Most often Claude Code was started before the mod was installed or updated — an install or update made while a session is open loads at the next start — so exit Claude Code, start it again in this project, then run `/workflow-start`.
+> The mod draws the workflows' menus as buttons, and this session didn't load it: the session started before the mod was installed or updated (an install or update made while a session is open loads in the next one), mods are turned off (`--safe-mode` or `--bare`, `"disableAllHooks": true`, or your organization's policy), or Anthropic has switched installed mods off remotely, which nothing on this machine turns back on.
 >
-> If it still isn't running, mods are turned off: `--safe-mode` or `--bare`, `"disableAllHooks": true` in your settings, or your organization's policy. `/plugin` names the mods a session loaded.
+> This session carries on with typed menus: they print as text, and you type your answer. A new Claude Code session in this project picks the mod up once the cause is cleared; `/plugin` names the mods a session loaded.
 ```
 
-**STOP.** Do not proceed — terminal condition.
+**Do not stop here.** The workflows run on their typed menus.
+
+→ Proceed to **Step 0.3**.
 
 #### If `gate_surface` is `outdated`
 

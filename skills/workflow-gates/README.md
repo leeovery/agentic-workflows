@@ -10,8 +10,8 @@ model reads, and draws the rows where they stay put while the transcript
 scrolls; while any screen but the terminal is attached, it leaves the menu as
 text so every screen shows it, though a screen that attaches after a menu was
 drawn on the terminal does not get that menu. No gate's prose names the mod;
-only workflow-start's setup step does, which stops the session until the mod
-is running in Claude Code's terminal app.
+only workflow-start's setup step does, with a notice when the mod could run in
+Claude Code's terminal app but is not running.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
@@ -85,13 +85,15 @@ The mod is part of the workflows, and it runs in Claude Code's terminal app,
 from 2.1.287, with this directory installed in the project; mods are on by
 default there, so nothing switches it on. Claude Code loads a plugin as a
 session starts, so a session already open when the mod was installed or
-updated loads it at its next start. In the terminal app the workflows run only
-with the mod: a `/workflow-start` that finds the mod not running — a session
-started before the mod was installed or updated, or mods turned off by
-`--safe-mode`, `--bare`, `"disableAllHooks": true` or an organization's policy
-— or that runs on a Claude Code older than 2.1.287 stops and says why.
-Anywhere else — the web, an IDE extension, another entrypoint, a project
-without this directory — the workflows carry on with the text menus.
+updated loads it in the next one. The mod is the workflows' upgrade layer and
+the engine's text menus their floor: a `/workflow-start` that finds the mod
+not running — a session started before the mod was installed or updated, mods
+turned off by `--safe-mode`, `--bare`, `"disableAllHooks": true` or an
+organization's policy, or installed mods switched off remotely by Anthropic —
+says so and carries on with typed menus; one that runs on a Claude Code older
+than 2.1.287 stops and says why. Anywhere else — the web, an IDE extension,
+another entrypoint, a project without this directory — the workflows carry on
+with the text menus and say nothing.
 
 Claude Code can load the mod where it does not run — another entrypoint, or an
 older Claude Code with function hooks switched on — so at the session's start
