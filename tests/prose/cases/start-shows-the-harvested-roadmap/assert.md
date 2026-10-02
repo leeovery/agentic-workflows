@@ -3,20 +3,16 @@ The prose should have taken this path:
 1. the start screen renders the harvested-no-work state, not an empty
    one: the overview names the roadmap's horizons with their waiting
    counts, and the menu carries the `r/roadmap` row
-2. the roadmap row lands in the roadmap's home: the map is rendered
-   from its snapshot (horizons, items, waiting states) with the
-   converse/pull menu beneath — pull offered, since waiting items exist
-3. `b/back` puts the original session label back and re-renders the
-   start menu in place — the same harvested-no-work overview and its
-   `r/roadmap` row, the flow stopped there for the user — with no
-   session opened, nothing pulled, nothing edited
+2. the roadmap row hands off: the engine's handoff names
+   `workflow-roadmap` with `open`, and the line naming where the work
+   goes is the turn's last text; the walk stops at the handoff
 
 Further claims:
 
 - at no point does any surface describe the project as having no work
   to show — the roadmap is the work, banked
-- the back neither ends the session nor tells the user to run
-  /workflow-start — the start menu is rendered from inside the roadmap
+- the roadmap starts in the next context, not this one: its gateway is
+  never read and nothing labels the session for it
 - every display is emitted from an engine snapshot; nothing is redrawn
   by hand
 

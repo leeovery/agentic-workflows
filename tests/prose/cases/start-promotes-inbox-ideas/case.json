@@ -1,5 +1,5 @@
 {
-  "origin": "the inbox promotion path had no coverage — capture-to-pipeline is how pre-captured work becomes a work unit. This walks the pickup working set end to end: two ideas selected, worked as a uniform set, shaped into one feature, and landed as seeds at the work-type commit",
+  "origin": "the inbox pickup working set had no coverage — two ideas selected, worked as a uniform set, and handed to discovery as its seeds; what discovery makes of them is discovery-lands-inbox-seeds'",
   "entry": "workflow-start",
   "world": "claims",
   "files": [
@@ -15,46 +15,32 @@
     "skills/workflow-start/references/start-from-inbox.md",
     "skills/workflow-start/references/inbox-working-set.md",
     "skills/workflow-start/references/route-to-discovery.md",
-    "skills/workflow-discovery/SKILL.md",
-    "skills/workflow-discovery/references/detection-core.md",
-    "skills/workflow-discovery/references/opener-pattern.md",
-    "skills/workflow-discovery/references/shape-and-confirm.md",
-    "skills/workflow-discovery/references/confirm-trigger.md",
-    "skills/workflow-discovery/references/name-resolution.md",
-    "skills/workflow-discovery/references/template.md"
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "i — view the inbox",
     "1 and 2 — both ideas",
-    "w — work the set",
-    "Exactly that — it's one feature. Saved filters on the orders list: a user names a combination of status, date range, and customer, it appears in a dropdown above the list, and they can mark one saved filter as their default view on login. Per-user, not shared, and nothing else about the orders list changes. Call it saved-filters. No files beyond what you've read.",
-    "y — that's the right shape, set it up"
+    "w — work the set"
   ],
   "invariants": {
-    "engine_before_write": true,
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "workunit create saved-filters feature",
-      "--seed .workflows/.inbox/ideas/2026-01-01--saved-search-filters.md",
-      "--seed .workflows/.inbox/ideas/2026-01-01--filter-default-view.md"
+      "handoff workflow-discovery none none .workflows/.inbox/ideas/2026-01-01--filter-default-view.md,.workflows/.inbox/ideas/2026-01-01--saved-search-filters.md"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "workunit create saved-filters feature"
+      "handoff workflow-discovery none none"
     ],
     "calls_exclude": [
-      "render name-gate",
       "inbox archive",
       "inbox restore",
       "inbox delete",
-      "discovery-map",
-      "discovery-session close",
-      "topic start",
-      "--import"
+      "workunit create",
+      "workflow-discovery/scripts/gateway.cjs"
     ]
   }
 }

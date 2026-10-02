@@ -8,7 +8,6 @@ each with a summary, a description, a brief under `discovery/briefs/`,
 and an `order` of 1..3. No per-phase work exists anywhere: no research
 has started, no discussion has been opened.
 
-The map is already sequenced, so the continue-epic visit runs no
-sequencing step. Both analysis caches are absent and nothing qualifies
-for the legacy backfills. The active-session marker is cleared, so no
-resume detection fires.
+The user picked the epic menu's `d` row — start a discussion on a new
+topic — and the work was handed to the discussion entry: the session
+opens cold there with the epic's name and no topic.

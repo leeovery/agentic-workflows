@@ -3,6 +3,7 @@ The prose should have taken this path:
 1. initialisation runs the boot pipeline — no migrations, knowledge
    ready — and the discovery dump shows one active epic, routing to
    the active-work display; the first scripted answer selects the epic
+   and its stored route invokes the epic continuation in place
 2. continue-epic loads the shared framework, opens with its phase title,
    and reads its own discovery dump; the work unit arrived as an
    argument, so no selection menu renders and validation runs the
@@ -17,40 +18,34 @@ The prose should have taken this path:
    1..3 order assigned over the three live topics in a single
    sequence call, and the scoped discovery re-run so the display sees
    the order
-6. the epic dashboard renders — a stage divider only where work sits,
-   here the Discovery stage alone, with the discovery map — and the
-   second scripted answer selects the behavioural-ranking discussion
-   entry; no soft gate fires (a discussion entry carries none) and the
-   route is invoked with epic, the work unit, and the topic
-7. discussion entry asks the engine whether research is outstanding on
-   the topic (it is not), validates a fresh phase — status reads empty
-   — and
-   the discovery item already exists, so nothing is added to the map;
-   its Gather Context reads the map item's source, finds it map-shaped,
-   and gathers nothing — the handoff carries session identity only into
-   the processing skill
-8. initialisation reads its inputs: the seed reference no-ops for an
-   epic, the topic's brief pointer and the brief file are read in full
-   and brief_incorporated is recorded without a commit, and the research
-   status read finds none
-9. the discussion is registered through the engine, the discussion
-   file is created from the template with a Context drawn from the
-   brief, initial subtopics land on the discussion map, and the
-   initialisation commit closes the walk — the session is never opened
-   with the user
+6. the epic arrived from no phase, so no banner renders, and the epic
+   is not all done, so no completion offer; the epic dashboard renders
+   — a stage divider only where work sits, here the Discovery stage
+   alone, with the discovery map — and the second scripted answer
+   selects the behavioural-ranking discussion entry; no soft gate fires
+   (a discussion entry carries none)
+7. the handoff: the stored route is split into the skill it names and
+   the arguments after it, and the engine's handoff names
+   `workflow-discussion-entry` with epic, the work unit, and the topic;
+   the line naming where the work goes is the turn's last text, and
+   the walk stops at the handoff
 
 Further claims:
 
 - the sequence call covers exactly the three live topics with
   contiguous order values 1..3, and the order is defensible from the
   briefs (measurement-first reasoning is available but not required)
-- the brief for behavioural-ranking was read before the discussion
-  file was written, and the discussion Context is drawn from its soft
-  decision (feed signals from the existing events pipeline) — verbatim
-  or restated, either is a legitimate stored form
-- the manifest ends with a discussion item for behavioural-ranking
-  in-progress, brief_incorporated true on its discovery item, and
-  order fields on all three discovery items
-- no research or discussion exists for the other two topics; no topic
-  was cancelled, reactivated, or completed; no new map topics were
-  added
+- the handoff carries the skill and its three arguments and nothing
+  else
+- the discussion entry starts in the next context, not this one: no
+  brief read, no discussion status read, no topic start, no
+  discussion file
+- no topic was cancelled, reactivated, or completed; no new map topics
+  were added
+
+EXPECTED WORLD — from the fixture:
+
+- order fields on all three discovery items, contiguous 1..3, committed
+- nothing else: no research or discussion item for any topic, no
+  discussion file, brief_incorporated nowhere, the briefs and the
+  session log untouched
