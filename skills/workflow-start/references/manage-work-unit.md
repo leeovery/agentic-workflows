@@ -30,7 +30,7 @@ Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
 #### If user chose `a/baseline`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-baseline`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
 
 #### If user chose a number
 
