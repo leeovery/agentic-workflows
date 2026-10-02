@@ -177,7 +177,7 @@ If the boot response carries `warnings`, surface them first.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The workflows run on Claude Code 2.1.287 or newer. Update it with `claude update`, start it again in this project, then run `/workflow-start`.
+> The workflows run on Claude Code 2.1.287 or newer. Update Claude Code — `claude update` in a terminal, or update the Desktop app — then start a new session in this project and run `/workflow-start`.
 ```
 
 **STOP.** Do not proceed — terminal condition.
