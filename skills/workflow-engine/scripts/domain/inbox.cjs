@@ -68,7 +68,7 @@ function parseInboxPath(given, { archived }) {
  * @param {string} cwd @param {string[]} paths @param {{archived: boolean}} opts
  * @returns {InboxItem[]}
  */
-function parseAll(cwd, paths, opts) {
+function parseInboxPaths(cwd, paths, opts) {
   const items = paths.map((p) => parseInboxPath(p, opts));
   // Refuse duplicates here, before anything moves: two paths naming the same
   // file both pass existence, then the second `renameSync` hits ENOENT after
@@ -132,7 +132,7 @@ function moveAndCommit(cwd, items, destDir, verb) {
  * @returns {{archived: string[], committed: string|null}}
  */
 function archiveItems(cwd, paths) {
-  const items = parseAll(cwd, paths, { archived: false });
+  const items = parseInboxPaths(cwd, paths, { archived: false });
   const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/.archived/${i.folder}`, 'archive');
   return { archived: moved, ...rest };
 }
@@ -144,7 +144,7 @@ function archiveItems(cwd, paths) {
  * @returns {{restored: string[], committed: string|null}}
  */
 function restoreItems(cwd, paths) {
-  const items = parseAll(cwd, paths, { archived: true });
+  const items = parseInboxPaths(cwd, paths, { archived: true });
   const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, 'restore');
   return { restored: moved, ...rest };
 }
@@ -157,7 +157,7 @@ function restoreItems(cwd, paths) {
  * @returns {{deleted: string[], committed: string|null}}
  */
 function deleteItems(cwd, paths) {
-  const items = parseAll(cwd, paths, { archived: true });
+  const items = parseInboxPaths(cwd, paths, { archived: true });
   /** @type {string[]} */
   const warnings = [];
   // The git rm stages index changes, so it belongs inside the same commit
@@ -175,4 +175,4 @@ function deleteItems(cwd, paths) {
   return result;
 }
 
-module.exports = { archiveItems, restoreItems, deleteItems, parseInboxPath };
+module.exports = { archiveItems, restoreItems, deleteItems, parseInboxPath, parseInboxPaths };

@@ -495,6 +495,8 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);
+    assert.match(engineFails(fix, createArgs('none', 'feature')).error, /is reserved/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/none')));
   });
 
   it('rejects a missing session-log file before any mutation', () => {

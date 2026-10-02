@@ -53,6 +53,7 @@ const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
+const { resolveHandoff, handoffSections } = require('./domain/handoff.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
@@ -217,6 +218,7 @@ Commands:
   inbox delete <path> [<path> …]
   baseline record <native|skipped>
   walkthrough record <walked|skipped>
+  handoff <skill> [args …]
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -1922,6 +1924,23 @@ function runCommit(call, argv) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// handoff — a move into work (domain/handoff.cjs): the skill and its
+// arguments checked against the table, answered in sections like a render
+// surface's. Nothing is written.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runHandoff(call, argv) {
+  const [skill, ...args] = argv;
+  try {
+    if (skill === undefined) throw new Error('Usage: engine handoff <skill> [args …]');
+    respondSections(call, handoffSections(resolveHandoff(call.cwd, skill, args)));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
@@ -2053,6 +2072,9 @@ function runCli(call, argv) {
       break;
     case 'render':
       runRender(call, rest);
+      break;
+    case 'handoff':
+      runHandoff(call, rest);
       break;
     default:
       die(call, USAGE);

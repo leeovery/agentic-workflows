@@ -219,9 +219,14 @@ const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 // project-level sessions under .workflows/.roadmap/).
 const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
 
+// The literal a skill takes in an argument's place where it has nothing to
+// name there — no work type, no work unit, no inbox seeds.
+const NO_ARGUMENT = 'none';
+
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest, and the project identities are places of their own.
-const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES];
+// project manifest, the project identities are places of their own, and the
+// placeholder must never name a unit.
+const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
 
 module.exports = {
   VALID_WORK_TYPES,
@@ -249,5 +254,6 @@ module.exports = {
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,
   PROJECT_IDENTITIES,
+  NO_ARGUMENT,
   RESERVED_WORK_UNIT_NAMES,
 };

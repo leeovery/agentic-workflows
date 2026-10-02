@@ -2,13 +2,13 @@
 
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, an empty
-// Claude Code config directory, no provider key, no gate surface, no Claude
-// Code session, no user or system git config, a fixed display width. A test
-// never reads the developer's config or credentials, never writes their
-// Claude Code settings, never reaches an embedding provider — every
-// knowledge store a test builds is keyword-only — never renders a gate
-// payload it did not announce itself, and never marks a conversation it did
-// not name itself.
+// Claude Code config directory, no provider key, no gate surface or handoff
+// announcement, no Claude Code session, no user or system git config, a
+// fixed display width. A test never reads the developer's config or
+// credentials, never writes their Claude Code settings, never reaches an
+// embedding provider — every knowledge store a test builds is keyword-only —
+// never renders a gate or handoff payload it did not announce itself, and
+// never marks a conversation it did not name itself.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -66,7 +66,9 @@ Object.assign(process.env, HERMETIC_ENV);
 delete process.env.OPENAI_API_KEY;
 // A session whose gate surface is loaded announces it to every command it
 // runs, the suite included — and every golden pins the unannounced bytes.
+// The gate mod announces the handoff the same way.
 delete process.env.WORKFLOWS_GATE_SURFACE;
+delete process.env.WORKFLOWS_HANDOFF;
 // Claude Code hands every command it runs its conversation's id, and every
 // engine call marks that conversation's folder.
 delete process.env.CLAUDE_CODE_SESSION_ID;
