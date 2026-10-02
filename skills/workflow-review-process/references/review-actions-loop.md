@@ -274,4 +274,4 @@ Resolve `{work_type}` from the manifest when not already in context:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-implementation-entry`, args = `{work_type} {work_unit} {topic}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-implementation-entry {work_type} {work_unit} {topic}`.

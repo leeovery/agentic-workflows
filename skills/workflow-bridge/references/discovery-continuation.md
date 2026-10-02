@@ -10,10 +10,10 @@ Route a concluded discovery session. The destination is **given, not derived** �
 
 The epic returns to its menu, where the person picks the next move from the map.
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-continue-epic`, args = `{work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-continue-epic {work_unit}`.
 
 #### Otherwise
 
 The work goes to the first phase the discovery endpoint supplied as `next_phase` — `research`, `discussion`, `investigation` or `scoping`.
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-{next_phase}-entry`, args = `{work_type} {work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{next_phase}-entry {work_type} {work_unit}`.
