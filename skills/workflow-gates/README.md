@@ -122,8 +122,9 @@ a handoff with a `HANDOFF` payload beside the line naming where the work goes:
 the continuation to send (``Invoke `/<skill> <args>`.``) and that line. The
 payload on a Bash result of the conversation's own call — never a subagent's —
 arms the handoff, and every call has it cut from what the model reads; the
-line and the skill stay. As the turn ends the mod clears the conversation and,
-in the conversation that follows, leaves what it sends with the line as
+line and the skill stay. As the turn ends the mod clears the conversation,
+shows a toast naming where the work went (`Handed off → Planning · auth-flow`),
+and, in the conversation that follows, leaves what it sends with the line as
 `sent.json` in that conversation's folder, then sends the continuation, which
 Claude acts on there. The clear runs from a timer started at the turn's end: a
 mod cannot run a command inside a hook the turn waits on. A send that is
