@@ -41,15 +41,11 @@ Match the user's input to its `ACTIONS` entry — a command option's letter by `
 
 #### If `action` is `open_baseline`
 
-Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-baseline`.
 
 #### If `action` is `open_roadmap`
 
-Invoke `/workflow-roadmap open` — it reads the roadmap state and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-roadmap`, args = `open`.
 
 #### If `action` is `open_help`
 
