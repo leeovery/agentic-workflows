@@ -11,8 +11,9 @@
 // baseline identities), phase-hop recomposition, peer-checkout isolation,
 // user-rename adoption, id drift across a server restart (chain resolution,
 // drifted restore, boot repair, orphan pruning), owner identity, the
-// repair's own-label restore, restore ownership, the position record a
-// resume re-applies, and the hooks' stdin contract. tmux itself is the
+// repair's own-label restore, restore ownership, the conversation's position
+// every label call records and a resume re-applies (position.cjs, whose own
+// suite is test-engine-position.cjs), and the hooks' stdin contract. tmux itself is the
 // shared PATH stub (`tmux-stub.cjs`) modelling one session; the engine only
 // ever sees the stub.
 //
@@ -444,7 +445,7 @@ describe('engine session label — the position record', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('records the calling session\'s position behind a landed label, in its conversation\'s folder', () => {
+  it('records the calling session\'s position in its conversation\'s folder', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
@@ -464,20 +465,23 @@ describe('engine session label — the position record', () => {
     assert.deepStrictEqual(fs.readdirSync(conversation('sess-1')).sort(), ['position.json', 'workflow']);
   });
 
-  it('a no-op label records nothing — disabled, outside tmux, a tmux error, a failed rename', () => {
-    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+  it('a no-op label records the position all the same — disabled, outside tmux, a tmux error, a failed rename', () => {
     optIn();
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { fail: true });
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { failRename: true });
-    assert.strictEqual(position('sess-1'), null, 'no position without a landed label');
+    engine(['session', 'label-config', 'false']);
+    engine(['session', 'label', 'pay', 'research', 'alpha']);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'research', topic: 'alpha' }, 'disabled');
+    optIn();
+    for (const [phase, opts] of [['discussion', { noTmux: true }], ['specification', { fail: true }], ['planning', { failRename: true }]]) {
+      engine(['session', 'label', 'pay', phase, 'alpha'], opts);
+      assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase, topic: 'alpha' }, JSON.stringify(opts));
+    }
   });
 
-  it('a failed stash records nothing either', () => {
+  it('a failed stash records the position all the same', () => {
     optIn();
     fs.writeFileSync(path.join(dir, '.workflows', '.cache'), '');
     assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
-    assert.strictEqual(position('sess-1'), null);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
   });
 
   it('a position that cannot be written never fails the landed label — a courtesy, never a failure', () => {
@@ -491,6 +495,8 @@ describe('engine session label — the position record', () => {
 
   it('a hook-supplied session id never escapes the store — the folder is named by its safe characters alone', () => {
     optIn();
+    engine(['session', 'label', 'pay'], { sessionId: 'a/../../evil' });
+    assert.strictEqual(position('aevil'), null, 'the first call marks the conversation after it runs — no folder to record in yet');
     engine(['session', 'label', 'pay'], { sessionId: 'a/../../evil' });
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), ['aevil', 'sess-1'], 'beside the opt-in\'s own');
     assert.deepStrictEqual(position('aevil'), { name: 'pay' });
@@ -1038,11 +1044,18 @@ describe('engine session repair', () => {
     assert.ok(position('sess-old'), 'kept for the resume');
   });
 
-  it('a failed rename keeps the position too — the label is still on', () => {
+  it('the calling session\'s own position comes off whatever the label does — a failed rename, labels off, outside tmux', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(engine(['session', 'repair'], { failRename: true }), { ok: true, repaired: false });
-    assert.ok(position('sess-1'));
+    assert.strictEqual(position('sess-1'), null);
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
+    assert.deepStrictEqual(engine(['session', 'repair'], { noTmux: true }), { ok: true, repaired: false });
+    assert.strictEqual(position('sess-1'), null);
+    engine(['session', 'label-config', 'false']);
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(engine(['session', 'repair']), { ok: true, repaired: false });
+    assert.strictEqual(position('sess-1'), null);
   });
 
   it('ages no position out — a position lives as long as its conversation\'s folder, opted in or not', () => {

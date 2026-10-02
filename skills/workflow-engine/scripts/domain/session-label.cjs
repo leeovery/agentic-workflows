@@ -9,12 +9,11 @@
 // roadmap` / `{original} · baseline`, and workflow-start puts the original
 // back through boot's `repair`. Leaving a place is never an event: the name
 // changes on arrival, and at session end, where `session cleanup` restores
-// it. A resumed session gets its label back: every landed label records
-// the session's position (`position.json` in the conversation's folder,
-// outliving the session — cleanup leaves it), and `session resume`, a
-// SessionStart hook fired on `claude --resume`, re-applies it where the
-// project has its work unit; `repair` drops the calling session's own
-// position with its own label (the start menu is no position). The feature
+// it. A resumed session gets its label back: `session resume`, a
+// SessionStart hook fired on `claude --resume`, re-applies the
+// conversation's position (position.cjs — recorded by the same arrivals,
+// labels on or off, and outliving the session) where the project has its
+// work unit. The feature
 // is a display courtesy, never state: for the user who has not opted in, or
 // outside tmux, or on any tmux error, every path degrades to a no-op JSON
 // response and the label never gates a flow. (A bad argument from an
@@ -69,7 +68,7 @@ const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
-const { conversationDir } = require('./conversation.cjs');
+const { readPosition, dropPosition } = require('./position.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -287,51 +286,6 @@ function writeRecord(file, record) {
 }
 
 /**
- * Where a labelled session's working position outlives it: the
- * conversation's own folder.
- * @param {string} sessionId
- */
-function positionPath(sessionId) {
-  return path.join(conversationDir(sessionId), 'position.json');
-}
-
-/**
- * @typedef {object} LabelPosition
- * @property {string} name     work unit, or a project identity
- * @property {string} [phase]
- * @property {string} [topic]
- */
-
-/**
- * Record the calling session's position behind a landed label — what
- * `session resume` re-applies. Nothing without a session id; a write that
- * fails costs nothing, the next label writes again.
- * @param {string} name @param {string} [phase] @param {string} [topic]
- */
-function recordPosition(name, phase, topic) {
-  const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId) return;
-  /** @type {LabelPosition} */
-  const position = { name, phase, topic };
-  try { writeRecord(positionPath(sessionId), position); } catch { /* a courtesy, never a failure */ }
-}
-
-/** @param {string} sessionId @returns {LabelPosition|null} */
-function readPosition(sessionId) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
-    if (isObject(parsed) && typeof parsed.name === 'string') return /** @type {LabelPosition} */ (parsed);
-  } catch { /* none recorded, or unreadable */ }
-  return null;
-}
-
-/** @param {string|null|undefined} sessionId */
-function dropPosition(sessionId) {
-  if (!sessionId) return;
-  try { fs.unlinkSync(positionPath(sessionId)); } catch { /* none recorded */ }
-}
-
-/**
  * @typedef {object} LabelStash
  * @property {string} tmux_id     tmux session id at apply time (`$N` — renumbered by a server restart)
  * @property {string|null} socket server socket at apply time
@@ -487,14 +441,13 @@ function applySessionLabel(cwd, name, phase, topic) {
   for (const f of visited) {
     if (f !== file) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
   }
-  recordPosition(name, phase, topic);
   return { labelled: true, name: applied };
 }
 
 /**
  * Bring a resumed session's label back — `session resume`, the SessionStart
- * hook's target on `claude --resume`. The position recorded behind the
- * session's last label is re-applied through `applySessionLabel`, so the
+ * hook's target on `claude --resume`. The conversation's position is
+ * re-applied through `applySessionLabel`, so the
  * gates are `label`'s own (disabled, no tmux, a tmux error all no-op), the
  * stash records the resuming process's identity, and a name already worn
  * costs no rename. A position naming a work unit or phase this project does
@@ -593,16 +546,16 @@ function restoreSessionLabel(cwd, sessionId) {
 
 /**
  * Boot's pass over the current terminal — workflow-start is the place
- * whose label is the original name. When the tmux session's name is a
- * name this module applied and the label is the calling session's own
- * (`ownsRow`: its session id, or its pid for a later conversation in the
- * same process) or its owner is gone — a session that never restored, a
- * restart that carried the label across — put the true original back,
- * then prune the spent and orphaned records. The calling session's own
- * position comes off with its own label — the start menu is no position —
- * while a dead owner's stays: that session may yet be resumed. Gated
- * exactly like `label` (a disabled project must never touch the terminal),
- * no-op outside tmux or on any tmux error, and a peer's label whose owning
+ * whose label is the original name, and no position: the calling
+ * conversation's own position comes off first, labels on or off, while a
+ * dead owner's stays — that session may yet be resumed. When the tmux
+ * session's name is a name this module applied and the label is the
+ * calling session's own (`ownsRow`: its session id, or its pid for a later
+ * conversation in the same process) or its owner is gone — a session that
+ * never restored, a restart that carried the label across — put the true
+ * original back, then prune the spent and orphaned records. Gated exactly
+ * like `label` (a disabled project must never touch the terminal), no-op
+ * outside tmux or on any tmux error, and a peer's label whose owning
  * process still runs is live — left alone. Prune keeps every record a live
  * session's name still chains through, touches nothing on an unreachable
  * server (an unverifiable name proves nothing).
@@ -610,6 +563,7 @@ function restoreSessionLabel(cwd, sessionId) {
  * @returns {{repaired: boolean}}
  */
 function repairSessionLabels(cwd) {
+  dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   if (resolveEnabled(cwd) !== true) return { repaired: false };
   /** @type {ReturnType<typeof tmuxContext>} */
   let ctx = null;
@@ -625,7 +579,6 @@ function repairSessionLabels(cwd) {
       tmux(['rename-session', '-t', ctx.id, original], ctx.socket);
       repaired = true;
       for (const f of visited) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
-      if (own) dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
     } catch { /* tmux errored — the records keep the repair available */ }
   }
   /** @type {Map<string, {id: string, name: string}[]|null>} */
