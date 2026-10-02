@@ -1,0 +1,164 @@
+{
+  "name": "search-relevance",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Overhaul search relevance across the catalogue",
+  "phases": {
+    "discovery": {
+      "items": {
+        "behavioural-ranking": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Close the loop from click and purchase events into the ranker.",
+          "description": "Click and purchase events land in the events pipeline but nothing feeds them back into ranking. The pipeline is reliable; the work is deciding what signals feed the ranker and how.",
+          "brief_path": "discovery/briefs/behavioural-ranking.md",
+          "order": 1
+        },
+        "synonym-handling": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Replace the hand-maintained synonym and misspelling list.",
+          "description": "Synonyms and misspellings are handled by a hand-maintained list nobody trusts. The leaning is to replace it rather than clean it, but with what is unknown.",
+          "brief_path": "discovery/briefs/synonym-handling.md",
+          "order": 2
+        },
+        "relevance-measurement": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "How to tell whether a relevance change makes results better or worse.",
+          "description": "There is no evaluation set and no metrics — every ranking tweak is decided by argument. The area the user understands least; they have never built an evaluation harness.",
+          "brief_path": "discovery/briefs/relevance-measurement.md",
+          "cancelled": true,
+          "previous_order": 3
+        }
+      },
+      "gap_analysis_cache": {
+        "checksum": "ef8f5a930a8a0231eda7662acb2a85ff",
+        "generated": "2026-01-01T00:00:00.000Z",
+        "input_files": [
+          "behavioural-ranking.md",
+          "synonym-handling.md"
+        ]
+      }
+    },
+    "discussion": {
+      "items": {
+        "behavioural-ranking": {
+          "status": "completed",
+          "subtopics": {
+            "signal-ingestion": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        },
+        "synonym-handling": {
+          "status": "completed",
+          "subtopics": {
+            "expansion-source": {
+              "status": "decided",
+              "parent": null
+            }
+          }
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "behavioural-ranking": {
+          "status": "completed",
+          "sources": {
+            "behavioural-ranking": {
+              "status": "incorporated"
+            }
+          },
+          "order": 1
+        },
+        "synonym-handling": {
+          "status": "completed",
+          "sources": {
+            "synonym-handling": {
+              "status": "incorporated"
+            }
+          },
+          "order": 2
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "behavioural-ranking": {
+          "status": "completed",
+          "format": "local-markdown",
+          "task_map": {
+            "behavioural-ranking-1-1": "behavioural-ranking-1-1"
+          },
+          "storage_paths": []
+        },
+        "synonym-handling": {
+          "status": "completed",
+          "format": "local-markdown",
+          "task_map": {
+            "synonym-handling-1-1": "synonym-handling-1-1"
+          },
+          "storage_paths": []
+        }
+      }
+    },
+    "implementation": {
+      "items": {
+        "behavioural-ranking": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "consolidation_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 0,
+          "current_phase": 1,
+          "current_task": null,
+          "completed_tasks": [
+            "behavioural-ranking-1-1"
+          ],
+          "consolidated_phases": [
+            1
+          ],
+          "completed_phases": [
+            1
+          ]
+        },
+        "synonym-handling": {
+          "status": "completed",
+          "task_gate_mode": "gated",
+          "fix_gate_mode": "gated",
+          "analysis_gate_mode": "gated",
+          "consolidation_gate_mode": "gated",
+          "fix_attempts": 0,
+          "analysis_cycle_total": 0,
+          "current_phase": 1,
+          "current_task": null,
+          "completed_tasks": [
+            "synonym-handling-1-1"
+          ],
+          "consolidated_phases": [
+            1
+          ],
+          "completed_phases": [
+            1
+          ]
+        }
+      }
+    },
+    "review": {
+      "items": {
+        "behavioural-ranking": {
+          "status": "completed"
+        },
+        "synonym-handling": {
+          "status": "completed"
+        }
+      }
+    }
+  }
+}
