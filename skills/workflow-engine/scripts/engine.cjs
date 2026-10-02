@@ -45,7 +45,7 @@ const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
-const { recordPosition, recordTask, clearTask } = require('./domain/position.cjs');
+const { recordPosition, recordTask, clearTask, positionReads, positionSections } = require('./domain/position.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -195,6 +195,7 @@ Commands:
   session cleanup [session-id]
   session resume [session-id]
   conversation end
+  conversation position [session-id]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -988,13 +989,22 @@ function runSession(call, argv) {
 function runConversation(call, argv) {
   const [command, ...rest] = argv;
   try {
-    if (command === 'end' && rest.length === 0) {
+    if (command === 'end') {
       // The SessionEnd hook's target.
+      if (rest.length !== 0) throw new Error('Usage: engine conversation end');
       const input = hookInput(call);
       respond(call, endConversation(input.session_id, input.transcript_path));
       return;
     }
-    throw new Error('Usage: engine conversation end');
+    if (command === 'position') {
+      const sessionId = rest[0] || process.env.CLAUDE_CODE_SESSION_ID;
+      if (rest.length > 1 || !sessionId) {
+        throw new Error('Usage: engine conversation position [session-id] — the calling conversation\'s CLAUDE_CODE_SESSION_ID when no id is given');
+      }
+      respondSections(call, positionSections(positionReads(call.cwd, sessionId)));
+      return;
+    }
+    throw new Error('Usage: engine conversation <end|position> …');
   } catch (err) {
     failJson(call, err);
   }

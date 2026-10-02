@@ -21,7 +21,8 @@
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, the
 //                  task in flight with it in implementation (position.cjs) —
-//                  what the tmux label's resume re-applies
+//                  what the tmux label's resume re-applies, and
+//                  `conversation position` names files for
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press (the mod's own)
 //   rows.json      each answer row the rows mod redrew, by message id (its own)

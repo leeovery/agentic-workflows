@@ -495,6 +495,20 @@ function presenceRow(scan, phase, topic) {
   return scan.sessions.find((r) => r.phase === phase && r.topic === topic);
 }
 
+// What the sim's conversation re-reads to carry on from its position — the
+// one line of JSON `conversation position` answers, its DATA the same
+// message. A read: nothing to audit.
+function carryOn(sim, identity = null) {
+  const res = sim.engine(['conversation', 'position'], identity);
+  assert.strictEqual(res.code, 0, `conversation position failed\nstderr: ${res.stderr}`);
+  const marker = '=== POSITION (json for the gate mod — never display) ===\n';
+  const at = res.stdout.indexOf(marker);
+  assert.ok(at !== -1, `conversation position answered no POSITION section:\n${res.stdout}`);
+  const answer = JSON.parse(res.stdout.slice(at + marker.length).trim());
+  assert.ok(res.stdout.slice(0, at).endsWith(`${answer.text}\n`), 'the DATA section is the message the JSON carries');
+  return answer;
+}
+
 // Shared phase walk used by the linear pipelines: specification → planning →
 // implementation (→ review), with the bookkeeping each phase records.
 // Every place labels itself on arrival: a navigation skill, the bridge, the
@@ -502,24 +516,30 @@ function presenceRow(scan, phase, topic) {
 // process skill's Step 0 refreshes the phase label before anything else
 // (`label`). The sim strips the tmux identity and pins an empty config dir,
 // so the call is the disabled or no-tmux no-op; what the sim pins is the
-// call sequence and that every name and phase literal the prose passes
-// validates.
+// call sequence, that every name and phase literal the prose passes
+// validates, and the conversation's position each arrival records.
 function arrive(sim, name) {
   const res = sim.run(['session', 'label', name]);
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${name})`);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
+  if (!['roadmap', 'baseline'].includes(name)) {
+    assert.match(here.text, /outside any phase, so there is nothing to carry on from\.$/, 'a work unit\'s menu carries nothing on');
+  }
 }
 
-// A process skill is only ever entered from a place that labelled itself
-// first — the bridge, or the work unit's continue menu — so every phase
-// entry carries the arrival label, then the process skill's own.
+// A process skill is only ever entered from the start menu, through a place
+// that labelled itself first — the bridge, or the work unit's continue menu
+// — so every phase entry carries boot's repair (the start menu is no
+// position), the arrival label, then the process skill's own.
 function label(sim, wu, phase, topic) {
+  const repair = sim.run(['session', 'repair']);
+  assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
+  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
   arrive(sim, wu);
   const res = sim.run(['session', 'label', wu, phase, topic]);
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${phase})`);
-  // Boot's repair runs at every workflow-start; hermetic here for the same
-  // reason the label is.
-  const repair = sim.run(['session', 'repair']);
-  assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase, topic }, `the process skill records its place (${phase})`);
 }
 
 function walkToLiveImplementation(sim, wu, topic) {
@@ -544,9 +564,13 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   walkToLiveImplementation(sim, wu, topic);
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic, task: '1.1' },
+    'task start puts the task in flight on the position');
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
+    'the task\'s completion takes it off');
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -669,6 +693,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
     'the first plan task banks — the deposits below are made while its phase is still open');
+  const onTask = carryOn(sim);
+  assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, task: '1.1' });
+  assert.match(onTask.text, new RegExp(`^This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
   // The loop's two stops: an executor that comes back blocked or failed
   // (task-loop C), and the analysis loop's checkpoint over files
   // implementation never wrote.
@@ -2955,11 +2982,15 @@ describe('pipeline simulation', () => {
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
     // The genesis conversation: a product-road session opens before any item
     // or work unit exists, its cadence commit is --roadmap, and imports land
-    // at the product altitude. The skill labels the terminal `roadmap` before
-    // its mode dispatch, every mode.
+    // at the product altitude. The roadmap is reached from the start menu,
+    // whose boot repairs the label and marks the conversation; the skill
+    // labels the terminal `roadmap` before its mode dispatch, every mode.
+    sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const roadmapDraft = sim.write('.workflows/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
+    assert.deepStrictEqual(carryOn(sim).files, [path.join(sim.dir, '.workflows/.roadmap/sessions/session-001.md')],
+      'the roadmap carries on from its open session\'s log');
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
     sim.run(['roadmap', 'import', bridgeDoc]);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
@@ -3121,6 +3152,7 @@ describe('pipeline simulation', () => {
   });
 
   it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
+    sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const genesis = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
