@@ -138,6 +138,30 @@ process brings it back. A plain conversation in the same project keeps Claude
 Code's defaults and the person's own settings: the mod never touches either
 there.
 
+## How it compacts a workflow conversation
+
+Claude Code's own summary of a conversation leaves Claude re-reading nothing,
+so where a workflow conversation has work to carry on with, the mod answers
+the compaction itself — `/compact`, Claude Code's threshold, or a plugin's —
+with one message in place of the summary. The message opens with what the
+engine's `conversation position` says: where the conversation was working,
+and the skill and documents to re-read there, each by its absolute path.
+Then comes a short list of what the conversation said and never wrote into a
+file — decisions, positions, open questions — from one Sonnet completion
+over the transcript: what was said, and each tool call by name with the
+start of its input, never what a tool answered. A transcript longer than 200,000 characters keeps its most
+recent part, since what was said long ago has had the session's natural
+breaks to reach the document Claude re-reads. Words typed after `/compact`
+go to the completion too, and a list of nothing leaves the note alone.
+
+It does so in a conversation the engine has marked, in its main loop, at a
+position that names a skill. A subagent's transcript, a plain conversation,
+a work unit's menu or the start menu, and an engine that cannot answer all
+compact as Claude Code does. Where the completion does not come back, Claude
+Code compacts and the mod puts the note ahead of what it hands up. The
+compaction Claude Code computes ahead of time is skipped where the mod will
+answer the one that comes, since that answer would set it aside.
+
 ## Working on it
 
     npm run mod:types       # fetch the API declarations into types/ (gitignored)

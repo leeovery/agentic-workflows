@@ -38,6 +38,7 @@ import type {
   SessionMessage,
 } from 'claude-code'
 
+import { compaction } from './compaction.ts'
 import {
   IDLE,
   NO_SENDS,
@@ -1014,4 +1015,6 @@ export const register: Register = on => {
 
     return next(e)
   }).catch(($, e, next) => next(e))
+
+  compaction(on)
 }
