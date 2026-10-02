@@ -138,8 +138,6 @@ Load **[feature-display-and-menu.md](references/feature-display-and-menu.md)** a
 
 ## Step 6: Route Selection
 
-Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from feature-display-and-menu.md (e.g. `/workflow-specification-entry feature {work_unit}`).
+Split the `route` stored for the user's selection — the selected `ACTIONS` entry's route from feature-display-and-menu.md, e.g. `/workflow-specification-entry feature {work_unit}` — into the skill it names, without the slash, as `{route_skill}`, and the arguments after it as `{route_args}`.
 
-Skills receive positional arguments: `$0` = work_type (`feature`), `$1` = work_unit. Topic is inferred from work_unit.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with skill = `{route_skill}`, args = `{route_args}`.
