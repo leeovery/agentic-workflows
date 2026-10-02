@@ -1,0 +1,44 @@
+{
+  "origin": "the roadmap home over a harvested map with no work units — rendered from its snapshot, pull offered — and its back, which must put the user on the start menu in place rather than ending the session",
+  "entry": "workflow-roadmap",
+  "world": "claims",
+  "files": [
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-roadmap/references/roadmap-guidelines.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-start/references/start-menu.md",
+    "skills/workflow-start/references/empty-state.md"
+  ],
+  "answers": [
+    "b — return to the start menu"
+  ],
+  "invariants": {
+    "calls_include": [
+      "session label roadmap",
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "engine.cjs session repair",
+      "workflow-start/scripts/gateway.cjs view"
+    ],
+    "calls_in_order": [
+      "session label roadmap",
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "engine.cjs session repair",
+      "workflow-start/scripts/gateway.cjs view"
+    ],
+    "calls_exclude": [
+      "engine.cjs handoff",
+      "workunit create",
+      "roadmap session open",
+      "roadmap pull",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs pull-set"
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 The prose should have taken this path:
 
-1. the epic is continued from the start menu and its interrupted first
-   discovery session resumed — the prior exploration briefed, the
-   conversation picked up rather than restarted
+1. discovery opens on the named epic and resumes its interrupted first
+   discovery session — the prior exploration briefed, the conversation
+   picked up rather than restarted
 2. when the merchandiser-analytics capability surfaces and the user
    stages it beyond this epic ("phase two"), the session treats it as a
    park, not a topic: placement is proposed from the user's own words

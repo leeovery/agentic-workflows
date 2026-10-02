@@ -37,14 +37,13 @@
 // build must be built.
 //
 // `entry` names where the walk starts, and it may only be somewhere a
-// real session starts: `workflow-start` (the user's way in), a
-// `workflow-*-entry` skill or `workflow-continue-epic` (where a handoff
-// lands the work in a fresh context), `workflow-discovery` (epic
-// continuation), `workflow-roadmap` (the product layer's own sessions),
-// or `workflow-help` (the start menu's `h/help` row, terminal for
-// workflow-start). Nothing else is a legitimate opening — the other
-// navigation skills and every processing skill are always invoked
-// mid-session, and a reference is never entered directly.
+// real session starts: `workflow-start` (the user's way in), a skill a
+// handoff lands the work on in a fresh context — a `workflow-*-entry`
+// skill, `workflow-continue-epic`, `workflow-discovery`, or
+// `workflow-roadmap` — or `workflow-help` (the start menu's `h/help`
+// row, terminal for workflow-start). Nothing else is a legitimate
+// opening — the other navigation skills and every processing skill are
+// always invoked mid-session, and a reference is never entered directly.
 //
 // This matters because a walk carries only the context it accumulates.
 // Start one in the middle and the world may be right while the reading
@@ -183,9 +182,9 @@ function headingExists(absPath, anchor) {
 
 /**
  * Where a walk may begin. A session starts at workflow-start, or where a
- * handoff lands the work — an entry skill, or the epic menu — or at
- * discovery for an epic continuation, or at the roadmap or help (their
- * own start-menu rows) — never anywhere else.
+ * handoff lands the work — an entry skill, the epic menu, discovery, or
+ * the roadmap — or at help (its own start-menu row) — never anywhere
+ * else.
  */
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
