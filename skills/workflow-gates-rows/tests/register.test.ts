@@ -39,13 +39,17 @@ const framed = (answer: string, plugin = 'workflow-gates') =>
     "This is how Claude Code surfaces a prompt a plugin submits between turns — it starts this turn in the user's place. Address the message above.",
   ].join('\n')
 
-type Row = RenderInput<'UserMessage', 'terminal'>
+/** The screens a row draws on: the terminal app's and the Desktop app's. */
+type Surface = 'terminal' | 'desktop'
+
+type Row = RenderInput<'UserMessage', Surface>
 
 const rowOf = (
   requestId: string,
   props: Partial<RenderPropsOf['UserMessage']> = {},
+  surface: Surface = 'terminal',
 ): Row => ({
-  surface: 'terminal',
+  surface,
   component: 'UserMessage',
   requestId,
   viewport: { columns: 72, rows: 24 },
@@ -195,11 +199,13 @@ async function drawn($: Engine, row: Row): Promise<string> {
 }
 
 describe('register', () => {
-  test('a sent answer draws as the question it answered, the answer and its label', async ($, on) => {
-    world(on, recordOf())
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`a sent answer draws as the question it answered, the answer and its label — ${surface}`, async ($, on) => {
+      world(on, recordOf())
 
-    expect(await drawn($, rowOf('m1'))).toBe(PAIRED)
-  })
+      expect(await drawn($, rowOf('m1', {}, surface))).toBe(PAIRED)
+    })
+  }
 
   test('the label is left out where it is the answer itself, or empty', async ($, on) => {
     const { leaves } = world(on)

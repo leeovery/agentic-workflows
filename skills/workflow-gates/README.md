@@ -7,11 +7,12 @@ The engine states each gate as data beside the menu it composed. This mod
 announces itself at the session's start so the engine collects that data, arms
 the gate off the Bash result that carried it, cuts the menu out of what the
 model reads, and draws the rows where they stay put while the transcript
-scrolls; while any screen but the terminal is attached, it leaves the menu as
-text so every screen shows it, though a screen that attaches after a menu was
-drawn on the terminal does not get that menu. No gate's prose names the mod;
-only workflow-start's setup step does, with a notice when the mod could run in
-Claude Code's terminal app but is not running.
+scrolls; while any screen but the terminal or the Desktop app is attached
+beside it, it leaves the menu as text so every screen shows it, though a
+screen that attaches after a menu was drawn does not get that menu. No gate's
+prose names the mod; only workflow-start's setup step does, with a notice when
+the mod could run in Claude Code's terminal app or the Desktop app's Code tab
+but is not running.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
 it as the next message, which the workflows read as the answer. Once a click
@@ -81,35 +82,42 @@ Code picks up only as a session starts, or one that crashed.
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
 
-The mod is part of the workflows, and it runs in Claude Code's terminal app,
-from 2.1.287, with this directory installed in the project; mods are on by
-default there, so nothing switches it on. Claude Code loads a plugin as a
-session starts, so a session already open when the mod was installed or
-updated loads it in the next one. The mod is the workflows' upgrade layer and
-the engine's text menus their floor: a `/workflow-start` that finds the mod
-not running — a session started before the mod was installed or updated, mods
-turned off by `--safe-mode`, `--bare`, `"disableAllHooks": true` or an
-organization's policy, or installed mods switched off remotely by Anthropic —
-says so and carries on with typed menus; one that runs on a Claude Code older
-than 2.1.287 stops and says why. Anywhere else — the web, an IDE extension,
-another entrypoint, a project without this directory — the workflows carry on
-with the text menus and say nothing.
+The mod is part of the workflows, and it runs in Claude Code's terminal app
+and the Desktop app's Code tab, from 2.1.287, with this directory installed in
+the project; mods are on by default there, so nothing switches it on. Claude
+Code loads a plugin as a session starts, so a session already open when the
+mod was installed or updated loads it in the next one. The mod is the
+workflows' upgrade layer and the engine's text menus their floor: a
+`/workflow-start` that finds the mod not running — a session started before
+the mod was installed or updated, mods turned off by `--safe-mode`, `--bare`,
+`"disableAllHooks": true` or an organization's policy, or installed mods
+switched off remotely by Anthropic — says so and carries on with typed menus;
+one that runs on a Claude Code older than 2.1.287 stops and says why. Anywhere
+else — the web, the VS Code extension, a Desktop session that runs in the
+cloud, another entrypoint, a project without this directory — the workflows
+carry on with the text menus and say nothing.
+
+The Desktop app runs the session as an SDK host: the session starts drawing
+nowhere and the app attaches after, so the band reads the screens attached at
+each Bash call that states a gate, and the person's own message there arrives
+as the host's (an `sdk` origin), which the band reads as theirs.
 
 Claude Code can load the mod where it does not run — another entrypoint, or an
 older Claude Code with function hooks switched on — so at the session's start
-the mod applies the boot's rules: where `CLAUDE_CODE_ENTRYPOINT` is other than
-`cli`, `CLAUDE_CODE_REMOTE` is set, or the version the session reports is
-older than 2.1.287 or not a release's (a development build among them), it
-announces nothing, so it draws, keeps and sets nothing — the menus stay text,
-and Claude Code runs as it would without it.
+the mod applies the boot's rules: where `CLAUDE_CODE_ENTRYPOINT` is none of
+`cli`, `claude-desktop` and `claude-desktop-3p`, `CLAUDE_CODE_REMOTE` is set,
+or the version the session reports is older than 2.1.287 or not a release's (a
+development build among them), it announces nothing, so it draws, keeps and
+sets nothing — the menus stay text, and Claude Code runs as it would without
+it.
 
 ## What it sets in Claude Code
 
-Every session in Claude Code's terminal app, from 2.1.287, starts with Claude
-Code's `SendUserMessage` tool switched on (`CLAUDE_CODE_PEWTER_OWL_TOOL=true`):
-Claude Code builds its tool list just after the session starts, so that is
-the only moment the switch counts. The mod keeps the tool behind ToolSearch
-in every such session, one answer that never changes and so never spends the
+Every session in either app, from 2.1.287, starts with Claude Code's
+`SendUserMessage` tool switched on (`CLAUDE_CODE_PEWTER_OWL_TOOL=true`):
+Claude Code builds its tool list just after the session starts, so that is the
+only moment the switch counts. The mod keeps the tool behind ToolSearch in
+every such session, one answer that never changes and so never spends the
 prompt cache; a plain session's tool list is Claude Code's own.
 
 In a conversation that runs the workflows there, the mod sets

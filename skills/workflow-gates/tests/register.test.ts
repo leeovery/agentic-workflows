@@ -25,6 +25,12 @@ const SESSION = {
   isInteractive: true,
 }
 
+/**
+ * The Desktop app's Code tab starting the session: an SDK host, drawing
+ * nowhere until the app attaches.
+ */
+const DESKTOP_SESSION = { cwd: '/work', surface: null, isInteractive: false }
+
 /** The band on a 72 by 24 terminal, not fullscreen: its rows are the terminal's. */
 const BAND = {
   hasSurvey: false,
@@ -59,6 +65,17 @@ const HOME = '/Users/person'
 
 /** Claude Code's terminal app, as its process holds it: where the mod applies. */
 const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli', HOME }
+
+/** The Desktop app's Code tab, as its process holds it over the terminal app's. */
+const DESKTOP_APP = { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop' }
+
+/** The screens the band draws on, each as its app starts the session and attaches. */
+const BAND_SURFACES = ['terminal', 'desktop'] as const
+
+const APPS = {
+  terminal: { env: {}, surfaces: ['terminal'], session: SESSION },
+  desktop: { env: DESKTOP_APP, surfaces: ['desktop'], session: DESKTOP_SESSION },
+} as const
 
 /** The oldest Claude Code the mod runs on, as the session answers its version. */
 const OLDEST = '2.1.287'
@@ -717,8 +734,11 @@ function world(
 }
 
 /** A gate rendered in a main-conversation turn that has since ended. */
-async function presented($: Engine) {
-  await $.session.start(SESSION)
+async function presented(
+  $: Engine,
+  session: typeof SESSION | typeof DESKTOP_SESSION = SESSION,
+) {
+  await $.session.start(session)
   await $.tool.call(ENGINE_CALL)
   await $.turn.complete(TURN_END)
 }
@@ -803,12 +823,15 @@ function stdoutOf(result: { result?: unknown }): string {
   return (result.result as { stdout: string }).stdout
 }
 
-/** Whether the band draws a gate over what the engine draws beneath. */
-async function isDrawn($: Engine) {
-  return JSON.stringify(await $.ui.render(DRAWING)) !== JSON.stringify(BENEATH)
+/** Whether the band draws a gate over what the engine draws beneath, on `surface`. */
+async function isDrawn($: Engine, surface: RenderSurface = 'terminal') {
+  return (
+    JSON.stringify(await $.ui.render({ ...DRAWING, surface })) !==
+    JSON.stringify(BENEATH)
+  )
 }
 
-type Band = Mounted<'terminal', 'AbovePrompt'>
+type Band = Mounted<(typeof BAND_SURFACES)[number], 'AbovePrompt'>
 
 /** What an element of a drawn tree shows, its children's text in order. */
 const shownIn = (node: unknown): string =>
@@ -897,6 +920,25 @@ describe('register', () => {
     ])
   })
 
+  for (const entrypoint of ['claude-desktop', 'claude-desktop-3p']) {
+    test(`every session start in the Desktop app’s Code tab (${entrypoint}) announces the gate surface, though it draws nowhere until the app attaches`, async ($, on) => {
+      const { written } = world($, on, '', {
+        env: { CLAUDE_CODE_ENTRYPOINT: entrypoint },
+        surfaces: [],
+      })
+
+      await $.session.start(DESKTOP_SESSION)
+      await quitAndResume($)
+
+      expect(written).toEqual([
+        ANNOUNCEMENT,
+        DISPLAY_TOOL,
+        ANNOUNCEMENT,
+        DISPLAY_TOOL,
+      ])
+    })
+  }
+
   for (const version of [OLDEST, '2.1.300', '2.2.0', '3.0.0']) {
     test(`a session on Claude Code ${version} announces the gate surface and switches the display tool on`, async ($, on) => {
       const { written } = world($, on, '', { version })
@@ -914,8 +956,16 @@ describe('register', () => {
   }[] = [
     { where: 'on Claude Code on the web', env: { CLAUDE_CODE_REMOTE: 'true' } },
     {
-      where: 'in an IDE extension',
+      where: 'in the VS Code extension',
       env: { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' },
+    },
+    {
+      where: 'in a Desktop cloud session',
+      env: { CLAUDE_CODE_ENTRYPOINT: 'remote_desktop' },
+    },
+    {
+      where: 'in the Desktop app on the web',
+      env: { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop', CLAUDE_CODE_REMOTE: 'true' },
     },
     {
       where: 'naming no entrypoint',
@@ -1018,29 +1068,72 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(false)
   })
 
-  test('with no terminal attached the menu stays text, the payload taken out', async ($, on) => {
-    world($, on, announced(), { surfaces: ['vscode'] })
+  for (const surface of ['vscode', 'mobile'] as const) {
+    test(`with neither the terminal nor the Desktop app attached — ${surface} alone — the menu stays text, the payload taken out`, async ($, on) => {
+      world($, on, announced(), { surfaces: [surface] })
 
-    await $.session.start(SESSION)
+      await $.session.start(SESSION)
 
-    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+      expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
+      await $.turn.complete(TURN_END)
+
+      expect(await isDrawn($)).toBe(false)
+    })
+  }
+
+  test('the Desktop app alone gets the band: the gate cut out of what the model reads, drawn once the turn ends', async ($, on) => {
+    world($, on, announced(), { env: DESKTOP_APP, surfaces: ['desktop'] })
+
+    await $.session.start(DESKTOP_SESSION)
+
+    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(
+      [...RESULT_SECTION, ...DRAWN_MENU].join('\n'),
+    )
+    expect(await isDrawn($, 'desktop'), 'nothing draws while the model is still writing').toBe(false)
 
     await $.turn.complete(TURN_END)
 
-    expect(await isDrawn($)).toBe(false)
+    expect(await isDrawn($, 'desktop')).toBe(true)
   })
 
-  test('with another screen attached beside the terminal the menu stays text, so every screen shows it', async ($, on) => {
-    world($, on, announced(), { surfaces: ['terminal', 'mobile'] })
+  test('the person’s message in the Desktop app — the SDK host’s own — takes the gate it answers off the band', async ($, on) => {
+    const { engineWrites } = world($, on, announced(), {
+      env: DESKTOP_APP,
+      surfaces: ['desktop'],
+    })
 
-    await $.session.start(SESSION)
+    await presented($, DESKTOP_SESSION)
 
-    expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+    engineWrites('')
+
+    await submitFrom($, { kind: 'sdk' }, 'yes')
+
+    expect(await isDrawn($, 'desktop'), 'down as the turn it opens starts').toBe(false)
 
     await $.turn.complete(TURN_END)
 
-    expect(await isDrawn($), 'the terminal draws no band for it').toBe(false)
+    expect(await isDrawn($, 'desktop'), 'and nothing put back at its end').toBe(false)
   })
+
+  for (const surface of BAND_SURFACES) {
+    test(`with another screen attached beside the ${surface} the menu stays text, so every screen shows it`, async ($, on) => {
+      const app = APPS[surface]
+
+      world($, on, announced(), {
+        env: app.env,
+        surfaces: [surface, 'mobile'],
+      })
+
+      await $.session.start(app.session)
+
+      expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
+      await $.turn.complete(TURN_END)
+
+      expect(await isDrawn($, surface), `the ${surface} draws no band for it`).toBe(false)
+    })
+  }
 
   test("a subagent's gate stays text, the payload taken out, and nothing is armed", async ($, on) => {
     const { calls } = world($, on, announced())
@@ -1147,61 +1240,68 @@ describe('register', () => {
     expect(await isDrawn($), 'the discarded gate is gone for good').toBe(false)
   })
 
-  test('a drawn gate puts its rows in the band, over what was there', async ($, on) => {
-    world($, on, announced())
+  for (const surface of BAND_SURFACES) {
+    test(`a drawn gate puts its rows in the band, over what was there — ${surface}`, async ($, on) => {
+      const app = APPS[surface]
 
-    await presented($)
+      world($, on, announced(), {
+        env: app.env,
+        surfaces: app.surfaces,
+      })
 
-    const ui = await $.ui.mount(MOUNT)
+      await presented($, app.session)
 
-    expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
-      props: { module: 'hooks/board.ts', width: 72, height: 10 },
+      const ui = await $.ui.mount({ ...MOUNT, surface })
+
+      expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
+        props: { module: 'hooks/board.ts', width: 72, height: 10 },
+      })
+
+      expect(await ui.find({ text: '? for shortcuts' })).toBeDefined()
+
+      expect(
+        (await linesOf(ui)).map(line => line.trimEnd()),
+        'the last line kept for the second row, held, to wrap onto',
+      ).toEqual([
+        '─'.repeat(72),
+        '',
+        '◆ Approve this task?',
+        '',
+        `▌ yes      ${COMMIT} (recommended)`,
+        `  2        ${AUTH} — research · ${HOLDER}`,
+        `  Comment  ${COMMENT.description}`,
+        '',
+        `  ${IDLE_FOOTER}`,
+        '',
+      ])
+
+      expect(await runOf(ui, COMMENT.description), 'a typed row draws dim').toMatchObject({
+        props: { dimColor: true },
+      })
+
+      expect(await runOf(ui, AUTH), 'a held row is struck').toMatchObject({
+        props: { strikethrough: true },
+      })
+
+      expect(
+        await runOf(ui, ' (recommended)'),
+        'the recommendation is bold in the accent colour',
+      ).toMatchObject({ props: { bold: true, color: 'permission' } })
+
+      expect(
+        (await runOf(ui, HOLDER))?.props.strikethrough,
+        'what holds it stands after the strike',
+      ).toBeUndefined()
+
+      expect(await runOf(ui, IDLE_FOOTER), 'the footer is dim').toMatchObject({
+        props: { dimColor: true },
+      })
+
+      expect(await ui.findAll({ type: 'Button', in: 'gate' })).toEqual([])
+
+      await ui.unmount()
     })
-
-    expect(await ui.find({ text: '? for shortcuts' })).toBeDefined()
-
-    expect(
-      (await linesOf(ui)).map(line => line.trimEnd()),
-      'the last line kept for the second row, held, to wrap onto',
-    ).toEqual([
-      '─'.repeat(72),
-      '',
-      '◆ Approve this task?',
-      '',
-      `▌ yes      ${COMMIT} (recommended)`,
-      `  2        ${AUTH} — research · ${HOLDER}`,
-      `  Comment  ${COMMENT.description}`,
-      '',
-      `  ${IDLE_FOOTER}`,
-      '',
-    ])
-
-    expect(await runOf(ui, COMMENT.description), 'a typed row draws dim').toMatchObject({
-      props: { dimColor: true },
-    })
-
-    expect(await runOf(ui, AUTH), 'a held row is struck').toMatchObject({
-      props: { strikethrough: true },
-    })
-
-    expect(
-      await runOf(ui, ' (recommended)'),
-      'the recommendation is bold in the accent colour',
-    ).toMatchObject({ props: { bold: true, color: 'permission' } })
-
-    expect(
-      (await runOf(ui, HOLDER))?.props.strikethrough,
-      'what holds it stands after the strike',
-    ).toBeUndefined()
-
-    expect(await runOf(ui, IDLE_FOOTER), 'the footer is dim').toMatchObject({
-      props: { dimColor: true },
-    })
-
-    expect(await ui.findAll({ type: 'Button', in: 'gate' })).toEqual([])
-
-    await ui.unmount()
-  })
+  }
 
   test('the statement draws directly above the question, level with its text', async ($, on) => {
     world($, on, announced({ statement: 'Found existing review for Auth.' }))
@@ -1322,41 +1422,52 @@ describe('register', () => {
     expect(drawn).toEqual(BENEATH)
   })
 
-  test('the band draws on the terminal alone', async ($, on) => {
+  test('the band draws on the terminal and the Desktop app alone', async ($, on) => {
     world($, on, announced())
 
     await presented($)
 
-    expect(await $.ui.render({ ...DRAWING, surface: 'desktop' })).toEqual(
-      BENEATH,
-    )
+    for (const surface of BAND_SURFACES) {
+      expect(await isDrawn($, surface), surface).toBe(true)
+    }
+
+    for (const surface of ['vscode', 'mobile'] as const) {
+      expect(await $.ui.render({ ...DRAWING, surface }), surface).toEqual(BENEATH)
+    }
   })
 
-  test('a click picks: the answer goes in the prompt box and its row is marked, nothing sent', async ($, on) => {
-    const { calls, filled, submitted } = world($, on, announced())
+  for (const surface of BAND_SURFACES) {
+    test(`a click picks: the answer goes in the prompt box and its row is marked, nothing sent — ${surface}`, async ($, on) => {
+      const app = APPS[surface]
 
-    await presented($)
+      const { calls, filled, submitted } = world($, on, announced(), {
+        env: app.env,
+        surfaces: app.surfaces,
+      })
 
-    const ui = await $.ui.mount(MOUNT)
+      await presented($, app.session)
 
-    calls.length = 0
+      const ui = await $.ui.mount({ ...MOUNT, surface })
 
-    await click(ui, COMMIT)
+      calls.length = 0
 
-    expect(filled).toEqual(['yes'])
-    expect(submitted).toEqual([])
-    expect(calls).toEqual(['fill yes', 'invalidate'])
+      await click(ui, COMMIT)
 
-    expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
-    expect(await footerOf(ui)).toBe(
-      'yes is in your prompt · click again to send',
-    )
-    expect(await runOf(ui, /^yes$/), 'the footer names the pick in bold').toMatchObject({
-      props: { bold: true },
+      expect(filled).toEqual(['yes'])
+      expect(submitted).toEqual([])
+      expect(calls).toEqual(['fill yes', 'invalidate'])
+
+      expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
+      expect(await footerOf(ui)).toBe(
+        'yes is in your prompt · click again to send',
+      )
+      expect(await runOf(ui, /^yes$/), 'the footer names the pick in bold').toMatchObject({
+        props: { bold: true },
+      })
+
+      await ui.unmount()
     })
-
-    await ui.unmount()
-  })
+  }
 
   test('picking another row replaces the box and moves the mark', async ($, on) => {
     const { filled, submitted } = world($, on, announced())
@@ -1378,40 +1489,47 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a second click on the picked row sends it: the box cleared, the send recorded, then submitted', async ($, on) => {
-    const { calls, files, submitted } = world($, on, announced())
+  for (const surface of BAND_SURFACES) {
+    test(`a second click on the picked row sends it: the box cleared, the send recorded, then submitted — ${surface}`, async ($, on) => {
+      const app = APPS[surface]
 
-    await presented($)
+      const { calls, files, submitted } = world($, on, announced(), {
+        env: app.env,
+        surfaces: app.surfaces,
+      })
 
-    const ui = await $.ui.mount(MOUNT)
+      await presented($, app.session)
 
-    await click(ui, COMMIT)
+      const ui = await $.ui.mount({ ...MOUNT, surface })
 
-    calls.length = 0
+      await click(ui, COMMIT)
 
-    await click(ui, COMMIT)
+      calls.length = 0
 
-    expect(submitted).toEqual(['yes'])
+      await click(ui, COMMIT)
 
-    expect(calls, 'the turn the answer opens takes the band down').toEqual([
-      'fill ',
-      'write',
-      'submit yes',
-      'invalidate',
-    ])
+      expect(submitted).toEqual(['yes'])
 
-    expect(sentIn(files)).toEqual({
-      answer: 'yes',
-      question: 'Approve this task?',
-      label: COMMIT,
+      expect(calls, 'the turn the answer opens takes the band down').toEqual([
+        'fill ',
+        'write',
+        'submit yes',
+        'invalidate',
+      ])
+
+      expect(sentIn(files)).toEqual({
+        answer: 'yes',
+        question: 'Approve this task?',
+        label: COMMIT,
+      })
+
+      await ui.redraw()
+
+      expect(await ui.find({ type: 'Client', key: 'gate' })).toBeUndefined()
+
+      await ui.unmount()
     })
-
-    await ui.redraw()
-
-    expect(await ui.find({ type: 'Client', key: 'gate' })).toBeUndefined()
-
-    await ui.unmount()
-  })
+  }
 
   test('Enter picks the row the cursor is on, and sends it once picked', async ($, on) => {
     const { filled, submitted } = world($, on, announced())
@@ -1789,47 +1907,54 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a menu taller than the band shows its rows a page at a time over a pager, the region exactly the band’s height', async ($, on) => {
-    world($, on, announced({ options: LONG }))
+  for (const surface of BAND_SURFACES) {
+    test(`a menu taller than the band shows its rows a page at a time over a pager, the region exactly the band’s height — ${surface}`, async ($, on) => {
+      const app = APPS[surface]
 
-    await presented($)
+      world($, on, announced({ options: LONG }), {
+        env: app.env,
+        surfaces: app.surfaces,
+      })
 
-    const ui = await $.ui.mount(SHORT_MOUNT)
+      await presented($, app.session)
 
-    expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
-      props: { height: 11 },
+      const ui = await $.ui.mount({ ...SHORT_MOUNT, surface })
+
+      expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
+        props: { height: 11 },
+      })
+
+      expect((await linesOf(ui)).map(line => line.trimEnd())).toEqual([
+        '─'.repeat(72),
+        '',
+        '◆ Approve this task?',
+        '',
+        '▌ 1        Continue "Topic 1" (recommended)',
+        '  2        Continue "Topic 2"',
+        '  3        Continue "Topic 3"',
+        '  4        Continue "Topic 4"',
+        '  ↑ previous   ↓ next   page 1 of 3',
+        '',
+        `  ${IDLE_FOOTER}`,
+      ])
+
+      const heights = [(await linesOf(ui)).length]
+
+      await turn(ui, '↓ next')
+      heights.push((await linesOf(ui)).length)
+      await turn(ui, '↓ next')
+      heights.push((await linesOf(ui)).length)
+
+      expect(await lineOf(ui, '↓ next'), 'the pager stays put under a short last page').toBe(8)
+
+      await click(ui, 'Return to the previous')
+      heights.push((await linesOf(ui)).length)
+
+      expect(heights, 'first page, second, last, a pick on it').toEqual([11, 11, 11, 11])
+
+      await ui.unmount()
     })
-
-    expect((await linesOf(ui)).map(line => line.trimEnd())).toEqual([
-      '─'.repeat(72),
-      '',
-      '◆ Approve this task?',
-      '',
-      '▌ 1        Continue "Topic 1" (recommended)',
-      '  2        Continue "Topic 2"',
-      '  3        Continue "Topic 3"',
-      '  4        Continue "Topic 4"',
-      '  ↑ previous   ↓ next   page 1 of 3',
-      '',
-      `  ${IDLE_FOOTER}`,
-    ])
-
-    const heights = [(await linesOf(ui)).length]
-
-    await turn(ui, '↓ next')
-    heights.push((await linesOf(ui)).length)
-    await turn(ui, '↓ next')
-    heights.push((await linesOf(ui)).length)
-
-    expect(await lineOf(ui, '↓ next'), 'the pager stays put under a short last page').toBe(8)
-
-    await click(ui, 'Return to the previous')
-    heights.push((await linesOf(ui)).length)
-
-    expect(heights, 'first page, second, last, a pick on it').toEqual([11, 11, 11, 11])
-
-    await ui.unmount()
-  })
+  }
 
   test('the pager draws its presses in the accent colour, one that goes nowhere dim', async ($, on) => {
     world($, on, announced({ options: LONG }))
@@ -2172,7 +2297,6 @@ describe('register', () => {
       { kind: 'task-notification' },
       { kind: 'scheduled-trigger' },
       { kind: 'peer' },
-      { kind: 'sdk' },
       { kind: 'auto-continuation' },
       { kind: 'plugin', name: 'another-plugin' },
     ]
@@ -2191,9 +2315,12 @@ describe('register', () => {
   test('a turn the person started, ending with no gate, puts nothing back', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
+    // The Desktop app's Code tab runs the session as an SDK host, so the
+    // person's message there arrives as the host's own.
     const theirs: PromptOrigin[] = [
       { kind: 'composer' },
       { kind: 'bridge' },
+      { kind: 'sdk' },
       { kind: 'plugin', name: 'workflow-gates' },
     ]
 
@@ -2275,9 +2402,12 @@ describe('register', () => {
 
     engineWrites('')
 
+    // The Desktop app's Code tab runs the session as an SDK host, so the
+    // person's message there arrives as the host's own.
     const theirs: PromptOrigin[] = [
       { kind: 'composer' },
       { kind: 'bridge' },
+      { kind: 'sdk' },
       { kind: 'plugin', name: 'workflow-gates' },
     ]
 
