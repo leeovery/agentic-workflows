@@ -19,7 +19,9 @@
 //                  id, run in a project whose `.workflows/` already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
-//   position.json  the tmux label's resume position (session-label.cjs)
+//   position.json  where in the workflows the conversation is working, the
+//                  task in flight with it in implementation (position.cjs) —
+//                  what the tmux label's resume re-applies
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press (the mod's own)
 //   rows.json      each answer row the rows mod redrew, by message id (its own)
@@ -74,6 +76,16 @@ function markConversation(cwd) {
     fs.mkdirSync(path.dirname(marker), { recursive: true });
     fs.writeFileSync(marker, '');
   } catch { /* the command stands without it */ }
+}
+
+/**
+ * Whether the engine has marked the conversation `sessionId` as one that
+ * runs the workflows — what every other writer of the folder waits on, so a
+ * conversation the engine never marked gets no folder from them.
+ * @param {string} sessionId
+ */
+function isMarked(sessionId) {
+  return fs.existsSync(path.join(conversationDir(sessionId), MARKER));
 }
 
 /**
@@ -153,4 +165,4 @@ function tidyConversations() {
   }
 }
 
-module.exports = { conversationDir, markConversation, endConversation, tidyConversations };
+module.exports = { conversationDir, isMarked, markConversation, endConversation, tidyConversations };

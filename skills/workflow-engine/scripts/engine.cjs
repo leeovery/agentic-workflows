@@ -45,6 +45,7 @@ const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
+const { recordPosition, recordTask, clearTask } = require('./domain/position.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -949,7 +950,9 @@ function runSession(call, argv) {
       if (![1, 3].includes(rest.length) || rest.some((a) => !a)) {
         throw new Error('Usage: engine session label <name> [<phase> <topic>]');
       }
-      respond(call, applySessionLabel(call.cwd, name, phase, topic));
+      const labelled = applySessionLabel(call.cwd, name, phase, topic);
+      recordPosition(call.cwd, name, phase, topic);
+      respond(call, labelled);
       return;
     }
     if (command === 'label-config') {
@@ -1216,7 +1219,9 @@ function runTask(call, argv) {
       if (!workUnit || !topic || !internalId) {
         throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
       }
-      respond(call, startTask(cwd, workUnit, topic, internalId));
+      const started = startTask(cwd, workUnit, topic, internalId);
+      recordTask(cwd, workUnit, topic, internalId);
+      respond(call, started);
     } else if (command === 'fix-attempt') {
       if (!workUnit || !topic || !internalId || !opts['findings-file']) {
         throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
@@ -1241,6 +1246,7 @@ function runTask(call, argv) {
         phase,
         phaseComplete: flags.has('phase-complete'),
       });
+      clearTask(workUnit, topic, result.internal_id);
       respond(call, result);
     } else {
       throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
