@@ -1,0 +1,50 @@
+{
+  "origin": "the banner for a concluded phase and the offer to complete an all-done epic moved from the bridge to the epic menu, which a conclusion now hands off to — this walks that arrival: the review's banner, the completion offer the state derives, and the yes completing the epic",
+  "entry": "workflow-continue-epic",
+  "world": "claims",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md"
+  ],
+  "answers": [
+    "y — mark the epic completed"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
+      "render phase-completed search-relevance --phase review",
+      "render epic-all-done-gate search-relevance",
+      "workunit complete search-relevance",
+      "workflow(search-relevance): complete epic pipeline",
+      "render workunit-receipt search-relevance --verb complete --pipeline"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
+      "render phase-completed search-relevance --phase review",
+      "render epic-all-done-gate search-relevance",
+      "workunit complete search-relevance",
+      "render workunit-receipt search-relevance --verb complete --pipeline"
+    ],
+    "calls_exclude": [
+      "gateway.cjs view",
+      "render phase-paused",
+      "engine.cjs handoff",
+      "agent dispatch",
+      "discovery-map sequence",
+      "build-order sequence",
+      "topic start",
+      "topic complete"
+    ]
+  }
+}
