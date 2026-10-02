@@ -7,7 +7,7 @@
 //
 //   gateway.cjs               → thin index dump, all active epics (head insert)
 //   gateway.cjs select        → the index dump, then the pick list and its menu (Step 3)
-//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–8, bridge)
+//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–9)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 9)
 //   gateway.cjs completed-menu {work_unit}     → Resume Completed sub-view (D)
@@ -120,8 +120,13 @@ function select(result) {
     + engine.project.selectionSections('epic', result.epics, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
+/** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
+function parkedConcerns(d) {
+  return ['research', 'discussion'].some((phase) => ((d.phases && d.phases[phase]) || []).some((i) => i.status === 'triaged'));
+}
+
 /**
- * The bridge's all-done derivation over one epic detail: review items exist
+ * The all-done derivation over one epic detail: review items exist
  * and every non-terminal one is completed, nothing is in progress or awaiting
  * its next phase, no completed discussion is unaccounted, no item carries a
  * live reconcile flag (the epic mirror of the linear types' routing override
@@ -130,11 +135,6 @@ function select(result) {
  * @param {any} d  EpicDetail
  * @returns {boolean}
  */
-/** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
-function parkedConcerns(d) {
-  return ['research', 'discussion'].some((phase) => ((d.phases && d.phases[phase]) || []).some((i) => i.status === 'triaged'));
-}
-
 function computeAllDone(d) {
   const review = (d.phases && d.phases.review) || [];
   const live = review.filter((i) => !TERMINAL_STATUSES.includes(i.status));
@@ -167,10 +167,10 @@ function reconcilePending(d) {
   return out;
 }
 
-// The scoped state dump for one epic — the reasoning surface Steps 5–8 and
-// the bridge's epic continuation read: the all-done flag, analysis-cache
-// statuses, the sequencing flag, and the discovery-map rows (tier, lifecycle,
-// routing, field presence, current summary text).
+// The scoped state dump for one epic — the reasoning surface Steps 5–9
+// read: the all-done flag, analysis-cache statuses, the sequencing flag, and
+// the discovery-map rows (tier, lifecycle, routing, field presence, current
+// summary text).
 function formatScoped(workUnit, result) {
   const e = result.epics[0];
   const lines = [];

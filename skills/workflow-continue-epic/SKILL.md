@@ -58,6 +58,11 @@ The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, 
 
 ## Step 2: Check Count and Arguments
 
+This skill receives positional arguments, each optional:
+- `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
+- `$1` — **completed_phase**: the phase that just concluded or paused, where the epic arrives from one. Held downstream as `{completed_phase}`.
+- `$2` — **outcome**: given with `$1` — `completed`, `paused`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
+
 #### If `count` is 0
 
 > *Output the next fenced block as a text code block (```text fence):*
@@ -217,6 +222,8 @@ Load **[sequence-build-order.md](../workflow-shared/references/sequence-build-or
 ---
 
 ## Step 9: Display State and Menu
+
+Load **[banner-and-completion.md](references/banner-and-completion.md)** and follow its instructions as written, then show the epic.
 
 > *Output the next fenced block as markdown (not a code block):*
 
