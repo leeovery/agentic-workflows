@@ -1,8 +1,7 @@
 The prose should have taken this path:
 
 1. loads the shared framework — instructions, casing conventions, voice,
-   altitude, ask-or-decide, and the rule for answering questions about
-   how the system works — before any state is read
+   altitude, and ask-or-decide — before any state is read
 2. runs the boot pipeline; the walkthrough answer is already recorded, so
    no offer is made and no screen of the walk is fetched, and the
    remaining initialisation renders nothing

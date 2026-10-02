@@ -1,8 +1,7 @@
 The prose should have taken this path:
 
 1. loads the shared framework — instructions, casing conventions, voice,
-   altitude, ask-or-decide, and the rule for answering questions about
-   how the system works — before any state is read
+   altitude, and ask-or-decide — before any state is read
 2. runs the boot pipeline, and since no migrations applied and the
    knowledge base is ready, raises neither the migrations confirmation
    nor the knowledge gate
@@ -20,8 +19,9 @@ The prose should have taken this path:
 6. on `n`, renders the second screen in full — title, prose, diagram,
    menu, the same forms as the first — and stops
 7. reads the free text as a question rather than an unrecognised key,
-   and answers it in a few ordinary sentences drawn from the glossary,
-   which it loads at the question and not before: what a phase is, in
+   loads the rule for answering questions about how the system works,
+   and answers it in a few ordinary sentences drawn from the glossary —
+   both loaded at the question and not before: what a phase is, in
    the product's terms and the words the screens have already used, with
    no engine verb, file path or skill name in the answer
 8. the question set the menu aside: the answer is followed by a

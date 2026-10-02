@@ -40,6 +40,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 - A reply that changes what happens next — an answer with a condition on it ("yes, but do it this way"), a comment that redirects the work — is confirmed with the person before anything acts on it. How the confirmation shows belongs to the gate's own branches.
 - Background work that arrives while a gate waits — an agent's report, a notification, anything the person did not send — is handled and said in a line, then the waiting gate is presented again, the line and the gate one step: its display and its menu fetched fresh from their surfaces, never typed out or composed from memory.
 - One gate at a time. A gate that background work surfaces while another is waiting on the person is held, and presented once the waiting gate is answered — never alongside it or in its place.
+- A question about how the workflows work — the system, the words it uses, what a screen is saying — loads **[answering-how-it-works.md](answering-how-it-works.md)** at the question; follow its instructions as written.
 - Complete each step fully before moving to the next
 
 → Return to caller.
