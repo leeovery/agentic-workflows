@@ -111,6 +111,28 @@ development build among them), it announces nothing, so it draws, keeps and
 sets nothing — the menus stay text, and Claude Code runs as it would without
 it.
 
+## Handoffs
+
+The mod also carries the workflows' handoffs: every move into work, which the
+engine names with `engine handoff`, starts in a cleared conversation. At the
+session's start, where it announces the gate surface, the mod announces that
+it carries handoffs too (`WORKFLOWS_HANDOFF=1`, a variable of its own, which
+the engine reads apart from `WORKFLOWS_GATE_SURFACE`). The engine then answers
+a handoff with a `HANDOFF` payload beside the line naming where the work goes:
+the continuation to send (``Invoke `/<skill> <args>`.``) and that line. The
+payload on a Bash result of the conversation's own call — never a subagent's —
+arms the handoff, and every call has it cut from what the model reads; the
+line and the skill stay. As the turn ends the mod clears the conversation and,
+in the conversation that follows, leaves what it sends with the line as
+`sent.json` in that conversation's folder, then sends the continuation, which
+Claude acts on there. The clear runs from a timer started at the turn's end: a
+mod cannot run a command inside a hook the turn waits on. A send that is
+dropped or fails goes into the prompt box for Enter instead; a clear that fails
+sends in place, so the work still goes on. Esc on the turn that handed off
+carries nothing: Esc means stop. `workflow-gates-rows` draws the continuation's
+transcript row as the line. Where the mod does not announce, the engine says so
+and the workflows invoke the skill in the same conversation.
+
 ## What it sets in Claude Code
 
 Every session in either app, from 2.1.287, starts with Claude Code's
@@ -132,11 +154,13 @@ conversation's Bash calls and when it starts, so a command that only mentions
 the engine marks nothing. What the settings replace, the person's own value or
 none, is kept in the process's environment (`WORKFLOWS_HARNESS_REPLACED`),
 which a reload of the mod's files keeps, and a `/clear` or a resume puts it
-back exactly. A marked conversation gets the workflow values back when the mod
-next follows it, whether `claude --resume`, a restart or `/resume` in the same
-process brings it back. A plain conversation in the same project keeps Claude
-Code's defaults and the person's own settings: the mod never touches either
-there.
+back exactly — except the clear a handoff runs, which leads into a workflow
+conversation by construction and so leaves the workflow values on, the
+person's own put back as that conversation ends. A marked conversation gets
+the workflow values back when the mod next follows it, whether
+`claude --resume`, a restart or `/resume` in the same process brings it back.
+A plain conversation in the same project keeps Claude Code's defaults and the
+person's own settings: the mod never touches either there.
 
 ## Working on it
 

@@ -80,8 +80,14 @@ const APPS = {
 /** The oldest Claude Code the mod runs on, as the session answers its version. */
 const OLDEST = '2.1.287'
 
-/** What a session start that applies sets first, for every child it starts. */
-const ANNOUNCEMENT = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
+/**
+ * What a session start that applies sets first, for every child it starts:
+ * the gate surface, and the handoff beside it.
+ */
+const ANNOUNCEMENTS = [
+  { name: 'WORKFLOWS_GATE_SURFACE', value: '1' },
+  { name: 'WORKFLOWS_HANDOFF', value: '1' },
+]
 
 /** The workflows' system config directory, in the person's home. */
 const CONFIG = `${HOME}/.config/workflows`
@@ -351,6 +357,50 @@ const CLEARED = {
   resume: { id: 's0' },
 }
 
+/** The conversation a clear the mod runs goes on as. */
+const AFTER_CLEAR = 's1'
+
+/** What a handoff sends, and the line naming where the work goes. */
+const CONTINUATION = 'Invoke `/workflow-discussion-entry feature note-window`.'
+const WHERE = '→ Discussion · note-window'
+
+/** What the model reads of a handoff: which way the work goes, and the line. */
+const HANDOFF_SECTIONS = [
+  '=== DATA (reason from this — never display or parse the sections below) ===',
+  'handoff: mod',
+  'skill: workflow-discussion-entry',
+  'args: feature note-window',
+  '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+  WHERE,
+]
+
+/** A handoff as the engine answers it under the mod's announcement. */
+const HANDED_OFF = [
+  ...HANDOFF_SECTIONS,
+  '=== HANDOFF (json for the gate mod — never display) ===',
+  JSON.stringify({
+    skill: 'workflow-discussion-entry',
+    args: 'feature note-window',
+    text: CONTINUATION,
+    line: WHERE,
+  }),
+  '',
+].join('\n')
+
+/** The call that hands the work on. */
+const HANDOFF_CALL = {
+  tool: 'Bash' as const,
+  command:
+    'node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-discussion-entry feature note-window',
+}
+
+/** The same call made inside a subagent's loop. */
+const SUBAGENT_HANDOFF = { ...HANDOFF_CALL, agentId: 'a1' }
+
+/** What the mod asked of the world, the band's redraws left out. */
+const askedOf = (calls: readonly string[]) =>
+  calls.filter(call => call !== 'invalidate')
+
 /** The main conversation's turn ending with its answer given. */
 const TURN_END = {
   answer: 'The gate is on screen.',
@@ -503,7 +553,9 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * which is the submit that fails, and `drops` refuses it with that reason;
  * `disk` holds each send's record a second on its clock, which is the clock
  * the mod reads; `lag` is awaited before a read of the transcript or of a kept gate
- * is answered. A submission made while idle resolves once the turn it opens
+ * is answered. A `clear` the mod runs ends the conversation for a /clear and
+ * goes on as `AFTER_CLEAR` with an empty transcript, as core's does, and
+ * `clears: false` refuses it. A submission made while idle resolves once the turn it opens
  * has started, as core's does; `engineWrites` changes what the next Bash call
  * answers, `reads` what the transcript holds, `resumesAs` the session's id,
  * and `stopsSubmitting` fails every submission from then on. The prompt box
@@ -516,8 +568,8 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * @param engine the test's `$`, which opens the turns
  * @param on the test's `on`
  * @param stdout what the engine wrote
- * @param options the process's environment, the surfaces attached, whether the box and a submission take, the clock a
- *   slow disk writes on, what holds a read up, the conversations marked, and the gates kept
+ * @param options the process's environment, the surfaces attached, whether the box, a submission and a clear take, the
+ *   clock a slow disk writes on, what holds a read up, the conversations marked, and the gates kept
  */
 function world(
   engine: Engine,
@@ -530,6 +582,7 @@ function world(
     fills?: boolean
     submits?: boolean
     drops?: string
+    clears?: boolean
     disk?: MockClock
     lag?: (read: 'transcript' | 'kept') => Promise<void>
     marked?: readonly string[]
@@ -543,6 +596,7 @@ function world(
     fills = true,
     submits: isSubmitting = true,
     drops,
+    clears = true,
     disk,
     lag,
     marked = [],
@@ -672,6 +726,24 @@ function world(
     }
 
     return { text: e.text, origin: e.origin }
+  })
+
+  on('command.run', { command: 'clear' }, async () => {
+    calls.push('clear')
+
+    if (!clears) {
+      throw new Error('the conversation could not be cleared')
+    }
+
+    await engine.session.end({
+      reason: 'clear',
+      sessionId,
+      resume: { id: sessionId },
+    })
+    sessionId = AFTER_CLEAR
+    transcript = []
+
+    return {}
   })
 
   on('tool.call', { tool: 'Bash' }, () => ({
@@ -906,22 +978,22 @@ async function cursorOf(ui: Band) {
 }
 
 describe('register', () => {
-  test('every session start in Claude Code’s terminal app announces the gate surface to every child it starts', async ($, on) => {
+  test('every session start in Claude Code’s terminal app announces the gate surface and the handoff to every child it starts', async ($, on) => {
     const { written } = world($, on)
 
     await $.session.start(SESSION)
     await quitAndResume($)
 
     expect(written).toEqual([
-      ANNOUNCEMENT,
+      ...ANNOUNCEMENTS,
       DISPLAY_TOOL,
-      ANNOUNCEMENT,
+      ...ANNOUNCEMENTS,
       DISPLAY_TOOL,
     ])
   })
 
   for (const entrypoint of ['claude-desktop', 'claude-desktop-3p']) {
-    test(`every session start in the Desktop app’s Code tab (${entrypoint}) announces the gate surface, though it draws nowhere until the app attaches`, async ($, on) => {
+    test(`every session start in the Desktop app’s Code tab (${entrypoint}) announces the gate surface and the handoff, though it draws nowhere until the app attaches`, async ($, on) => {
       const { written } = world($, on, '', {
         env: { CLAUDE_CODE_ENTRYPOINT: entrypoint },
         surfaces: [],
@@ -931,21 +1003,21 @@ describe('register', () => {
       await quitAndResume($)
 
       expect(written).toEqual([
-        ANNOUNCEMENT,
+        ...ANNOUNCEMENTS,
         DISPLAY_TOOL,
-        ANNOUNCEMENT,
+        ...ANNOUNCEMENTS,
         DISPLAY_TOOL,
       ])
     })
   }
 
   for (const version of [OLDEST, '2.1.300', '2.2.0', '3.0.0']) {
-    test(`a session on Claude Code ${version} announces the gate surface and switches the display tool on`, async ($, on) => {
+    test(`a session on Claude Code ${version} announces the gate surface and the handoff, and switches the display tool on`, async ($, on) => {
       const { written } = world($, on, '', { version })
 
       await $.session.start(SESSION)
 
-      expect(written).toEqual([ANNOUNCEMENT, DISPLAY_TOOL])
+      expect(written).toEqual([...ANNOUNCEMENTS, DISPLAY_TOOL])
     })
   }
 
@@ -3792,5 +3864,162 @@ describe('register', () => {
     await starting
 
     expect(harnessIn(written)).toEqual([])
+  })
+
+  test('a handoff is cut out of what the model reads, the line and the skill to invoke left', async ($, on) => {
+    world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(HANDOFF_CALL))).toBe(
+      [...HANDOFF_SECTIONS, ''].join('\n'),
+    )
+  })
+
+  test('the turn a handoff ended clears the conversation, then records the continuation in the new one’s folder, then sends it', async ($, on) => {
+    const { calls, files, submitted, clock } = world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(askedOf(calls), 'nothing runs inside the hook the turn waits on').toEqual([])
+
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+    expect(submitted).toEqual([CONTINUATION])
+    expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
+    expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
+  })
+
+  test("a subagent's handoff is cut out of what it reads, and never carried", async ($, on) => {
+    const { calls, clock } = world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+
+    expect(stdoutOf(await $.tool.call(SUBAGENT_HANDOFF))).toBe(
+      [...HANDOFF_SECTIONS, ''].join('\n'),
+    )
+
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([])
+  })
+
+  test("a subagent's turn ending carries nothing; the conversation's carries the handoff", async ($, on) => {
+    const { calls, clock } = world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete({ ...TURN_END, turnId: 't1', agentId: 'a1' })
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([])
+
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+  })
+
+  test('an Esc on the turn that handed off carries nothing, then or at the next turn’s end: Esc means stop', async ($, on) => {
+    const { calls, clock } = world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(INTERRUPTED)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([])
+
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([])
+  })
+
+  test('a handoff armed when the conversation ends goes with it', async ($, on) => {
+    const { calls, clock } = world($, on, HANDED_OFF)
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.session.end(CLEARED)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([])
+  })
+
+  test('the workflow harness stays on through the clear a handoff runs, and the person’s own values come back as the new conversation ends', async ($, on) => {
+    const { written, environment, clock } = world($, on, HANDED_OFF, {
+      env: OWN,
+      marked: ['s0'],
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+    expect(harnessHeld(environment)).toMatchObject({
+      CLAUDE_CODE_THINKING_DISPLAY_UPDATES: 'false',
+      CLAUDE_CODE_SILENT_TURN_REMINDER: 'false',
+    })
+
+    await $.session.end({
+      ...CLEARED,
+      sessionId: AFTER_CLEAR,
+      resume: { id: AFTER_CLEAR },
+    })
+
+    expect(harnessHeld(environment)).toEqual(OWN)
+  })
+
+  test('a send the session drops waits in the prompt box for Enter, no send left recorded', async ($, on) => {
+    const { filled, submitted, files, clock } = world($, on, HANDED_OFF, {
+      drops: 'the prompt was queued',
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(submitted).toEqual([CONTINUATION])
+    expect(filled).toEqual([CONTINUATION])
+    expect(files.get(sentAt(AFTER_CLEAR))).toBe('null')
+  })
+
+  test('a send that fails waits in the prompt box for Enter all the same', async ($, on) => {
+    const { filled, clock } = world($, on, HANDED_OFF, { submits: false })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(filled).toEqual([CONTINUATION])
+  })
+
+  test('a clear that fails sends in place, so the work still goes on, and a later clear still takes the harness off', async ($, on) => {
+    const { calls, files, written, clock } = world($, on, HANDED_OFF, {
+      clears: false,
+      marked: ['s0'],
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(['clear', 'write', `submit ${CONTINUATION}`])
+    expect(sentIn(files)).toEqual({ answer: CONTINUATION, line: WHERE })
+
+    await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
   })
 })

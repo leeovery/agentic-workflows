@@ -11,14 +11,22 @@ const ROWS = 'rows.json'
 
 const FRAMED = /sent a message:\n([\s\S]+?)\n\nThis is how Claude Code surfaces a prompt/
 
-type Sent = { answer: string; question: string; label: string }
+// A gate's answer, or a handoff's continuation with the line it draws as.
+type Sent =
+  | { answer: string; question: string; label: string }
+  | { answer: string; line: string }
 
 type Rows = Record<string, unknown>
 
-const isSent = (value: unknown): value is Sent => {
-  const { answer, question, label } = (value ?? {}) as Record<string, unknown>
+const isText = (field: unknown) => typeof field === 'string'
 
-  return [answer, question, label].every(field => typeof field === 'string')
+const isSent = (value: unknown): value is Sent => {
+  const sent = (value ?? {}) as Record<string, unknown>
+
+  return (
+    isText(sent.answer) &&
+    (isText(sent.line) || (isText(sent.question) && isText(sent.label)))
+  )
 }
 
 const isRows = (value: unknown): value is Rows =>
@@ -39,7 +47,12 @@ async function folderOf($: EngineInterface): Promise<string | null> {
     : `${config}/${CONVERSATIONS}/${id.replace(/[^A-Za-z0-9_-]/g, '')}`
 }
 
-function lineOf({ answer, question, label }: Sent): string {
+function lineOf(sent: Sent): string {
+  if ('line' in sent) {
+    return sent.line
+  }
+
+  const { answer, question, label } = sent
   const answered = `${question} → ${answer}`
 
   return label === '' || label === answer ? answered : `${answered} · ${label}`

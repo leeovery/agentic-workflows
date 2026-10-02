@@ -17,6 +17,11 @@
  * so where the module never loads, or a cut throws or overruns, the model
  * reads the text menu the engine wrote.
  *
+ * The module carries the workflows' handoffs too: a move into work the engine
+ * names arms off the Bash result that carried it, cut out of what the model
+ * reads, and once the turn ends the module clears the conversation and sends
+ * the continuation into the new one, an Esc on that turn carrying nothing.
+ *
  * The module also sets Claude Code's harness for the workflows: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
  * the engine has marked as running the workflows goes without Claude's
@@ -53,6 +58,9 @@ const GATE_MARKER = '=== GATE ('
 const MENU_MARKER = '=== MENU'
 const SECTION_MARKER = '=== '
 
+/** The marker of a handoff's payload. */
+const HANDOFF_MARKER = '=== HANDOFF ('
+
 /** The `Client`'s key: what `ui.message` matches the board's posts on. */
 const ELEMENT = 'gate'
 
@@ -64,6 +72,18 @@ const SENT = 'sent.json'
 
 /** The record that claims no send, which that mod draws nothing from. */
 const NOTHING_SENT = 'null'
+
+/**
+ * What a send leaves in the conversation's folder: the answer to a gate, with
+ * the question and the row's label; or a handoff's continuation, with the line
+ * naming where the work went.
+ */
+type Sent =
+  | { answer: string; question: string; label: string }
+  | { answer: string; line: string }
+
+/** A move into work the engine named: the continuation to send, and its line. */
+type Handoff = { text: string; line: string }
 
 /**
  * Where each conversation that runs the workflows keeps what belongs to it,
@@ -200,6 +220,31 @@ function gateIn(
 }
 
 /**
+ * The handoff a Bash result's stdout carries, and that stdout with its
+ * payload taken out; null where it carries none.
+ */
+function handoffIn(stdout: string): { handoff: Handoff; text: string } | null {
+  if (!stdout.includes(HANDOFF_MARKER)) {
+    return null
+  }
+
+  const lines = stdout.split('\n')
+  const at = lines.findIndex(line => line.startsWith(HANDOFF_MARKER))
+  const payload = lines[at + 1]
+
+  if (at === -1 || payload === undefined) {
+    return null
+  }
+
+  const { text, line } = JSON.parse(payload) as Handoff
+
+  return {
+    handoff: { text, line },
+    text: [...lines.slice(0, at), ...lines.slice(at + 2)].join('\n'),
+  }
+}
+
+/**
  * Whether `version` is a release the mod runs on; one that does not read as
  * a release, a development build's included, counts as older.
  */
@@ -302,16 +347,11 @@ async function fill($: EngineInterface, text: string): Promise<boolean> {
 }
 
 /**
- * Sends a row as the next message, the send recorded in the conversation's
- * folder where it has one; whether it entered. A send that fails or is
- * dropped leaves no send recorded.
+ * Sends the next message, the send recorded in the conversation's folder
+ * where it has one; whether it entered. A send that fails or is dropped
+ * leaves no send recorded.
  */
-async function submit(
-  $: EngineInterface,
-  gate: Gate,
-  option: Option,
-): Promise<boolean> {
-  const answer = answerOf(option)
+async function deliver($: EngineInterface, sent: Sent): Promise<boolean> {
   const folder = await folderOf($, await $.session.id())
   const record = async (text: string) => {
     if (folder !== null) {
@@ -321,11 +361,9 @@ async function submit(
   let isSent = false
 
   try {
-    await record(
-      JSON.stringify({ answer, question: gate.question, label: option.head }),
-    )
+    await record(JSON.stringify(sent))
     // Framed for the model and labelled on screen as this plugin's, by design.
-    const { drop } = await $.prompt.submit({ text: answer })
+    const { drop } = await $.prompt.submit({ text: sent.answer })
 
     isSent = drop === undefined
   } finally {
@@ -335,6 +373,38 @@ async function submit(
   }
 
   return isSent
+}
+
+/** Sends a row as the next message; whether it entered. */
+const submit = ($: EngineInterface, gate: Gate, option: Option) =>
+  deliver($, {
+    answer: answerOf(option),
+    question: gate.question,
+    label: option.head,
+  })
+
+/**
+ * Carries a handoff: the conversation cleared, then the continuation sent
+ * into the new one, recorded with its line in that conversation's folder
+ * first. A clear that fails sends in place, so the work still goes on; a send
+ * that fails or is dropped waits in the prompt box for Enter.
+ */
+async function handOff($: EngineInterface, { text, line }: Handoff) {
+  try {
+    await $.command.run({ command: 'clear' })
+  } catch {
+    // Not cleared: the continuation goes on in this conversation.
+  }
+
+  let isSent = false
+
+  try {
+    isSent = await deliver($, { answer: text, line })
+  } finally {
+    if (!isSent) {
+      await fill($, text)
+    }
+  }
 }
 
 /**
@@ -645,6 +715,16 @@ export const register: Register = on => {
   /** Where the conversation stood when the band was last kept or read back. */
   let seen: Place | null = null
 
+  /** The handoff a call armed, carried once its turn ends. */
+  let handoff: Handoff | null = null
+
+  /**
+   * Whether the clear under way is this module's own, for a handoff: the
+   * conversation it leads into runs the workflows by construction, so the
+   * workflow harness stays on through it.
+   */
+  let isClearingForHandoff = false
+
   /**
    * The person takes the turn: the band comes down, keeping the gate their
    * turn answers. Whether a gate came down.
@@ -728,17 +808,37 @@ export const register: Register = on => {
     }
   }
 
-  // Announced, never always-on: the engine collects a gate only for a session
-  // that asked for one, and every Bash child inherits this. Where the mod
-  // does not apply nothing is announced, which leaves it inert there. A
-  // fresh load comes back to a conversation this module has not followed, so
-  // the band is read back from the conversation's folder.
+  /**
+   * The stdout of a Bash call with any handoff's payload cut out, the handoff
+   * armed where the call is the conversation's own.
+   */
+  const takeHandoff = (e: AgentLoop, stdout: string): string => {
+    const carried = handoffIn(stdout)
+
+    if (carried === null) {
+      return stdout
+    }
+
+    if (inConversation(e)) {
+      handoff = carried.handoff
+    }
+
+    return carried.text
+  }
+
+  // Announced, never always-on: the engine collects a gate, and composes a
+  // handoff for this module to carry, only for a session that asked, and
+  // every Bash child inherits this. Where the mod does not apply nothing is
+  // announced, which leaves it inert there. A fresh load comes back to a
+  // conversation this module has not followed, so the band is read back from
+  // the conversation's folder.
   on('session.start', async ($, e, next) => {
     if (!(await isApplicable($))) {
       return next(e)
     }
 
     await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
+    await $.env.set('WORKFLOWS_HANDOFF', '1')
 
     // Claude Code builds its tool catalogue just after this hook, so only
     // here does the switch that gives the session SendUserMessage count.
@@ -758,8 +858,13 @@ export const register: Register = on => {
   // which no gate of this one answers and which is no workflow session until
   // the engine marks it or it is read back as one it has marked. What the
   // band showed is kept for this one first, stamped where its transcript
-  // ends now, which can have moved since its last turn's end.
+  // ends now, which can have moved since its last turn's end. The clear a
+  // handoff runs leads into a workflow conversation, so the harness stays on.
   on('session.end', async ($, e, next) => {
+    const isHandingOff = isClearingForHandoff && e.reason === 'clear'
+
+    isClearingForHandoff = false
+
     try {
       const place = await placeOf($)
 
@@ -769,10 +874,14 @@ export const register: Register = on => {
       }
     } finally {
       band = emptyBand()
+      handoff = null
       owed = { ended: seen }
       seen = null
       $.ui.invalidate('ui.render')
-      await harnessOff($)
+
+      if (!isHandingOff) {
+        await harnessOff($)
+      }
     }
 
     return next(e)
@@ -804,10 +913,13 @@ export const register: Register = on => {
     }
 
     const record = result.result
-    const stated = gateIn(record.stdout)
+    const stdout = takeHandoff(e, record.stdout)
+    const stated = gateIn(stdout)
 
     if (stated === null) {
-      return result
+      return stdout === record.stdout
+        ? result
+        : { result: { ...record, stdout } }
     }
 
     const isArmed = await isForBand($, e)
@@ -836,11 +948,16 @@ export const register: Register = on => {
   // and kept with where the transcript ends, which a resume must still match.
   // A held answer is not kept: it waits on a turn no resume brings back. It
   // sends once the turn is over, and one not sent is put back as a pick; the
-  // answer of a pick whose gate went leaves the prompt box.
+  // answer of a pick whose gate went leaves the prompt box. A handoff the turn
+  // armed is carried once it is over; an Esc means stop, and carries nothing.
   on('turn.complete', async ($, e, next) => {
     if (!inConversation(e)) {
       return next(e)
     }
+
+    const carried = handoff
+
+    handoff = null
 
     const settled = endTurn(e.isAborted)
     const { drawn } = band
@@ -879,6 +996,19 @@ export const register: Register = on => {
           $.ui.invalidate('ui.render')
         }
       }
+    }
+
+    if (carried !== null && !e.isAborted) {
+      // A command cannot run inside a hook the turn waits on, so the clear
+      // runs from a timer once this hook is done — proven in the lab.
+      $.clock.after(0, () => {
+        isClearingForHandoff = true
+        void handOff($, carried)
+          .catch(() => undefined)
+          .finally(() => {
+            isClearingForHandoff = false
+          })
+      })
     }
 
     return answered

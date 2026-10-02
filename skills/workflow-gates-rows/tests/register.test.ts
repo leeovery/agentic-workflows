@@ -59,6 +59,14 @@ const rowOf = (
 const recordOf = (answer = 'yes', question = QUESTION, label = COMMIT) =>
   JSON.stringify({ answer, question, label })
 
+/** What a handoff sends, and the line naming where the work goes. */
+const CONTINUATION = 'Invoke `/workflow-discussion-entry feature note-window`.'
+const WHERE = '→ Discussion · note-window'
+
+/** The record a handoff leaves: its continuation, and its line. */
+const handoffOf = (answer = CONTINUATION, line = WHERE) =>
+  JSON.stringify({ answer, line })
+
 /**
  * The world beneath the plugin: the process's environment, the files, the
  * session's id, the plugin's store, and the transcript drawing each row's
@@ -386,6 +394,8 @@ describe('register', () => {
       'another answer': recordOf('no'),
       'a field missing': JSON.stringify({ answer: 'yes', question: QUESTION }),
       'a field not text': JSON.stringify({ answer: 'yes', question: QUESTION, label: 7 }),
+      'a line not text': JSON.stringify({ answer: 'yes', line: 7 }),
+      'a line for another answer': handoffOf('no'),
     }
 
     for (const [name, record] of Object.entries(records)) {
@@ -393,6 +403,20 @@ describe('register', () => {
 
       expect(await drawn($, rowOf(name)), name).toBe('yes')
     }
+  })
+
+  test("a handoff's continuation draws as the line its record carries, kept and spent as an answer's is", async ($, on) => {
+    const { files, rowsIn } = world(on, handoffOf())
+
+    expect(await drawn($, rowOf('m1', { text: framed(CONTINUATION) }))).toBe(WHERE)
+    expect(rowsIn('s0')).toEqual({ m1: WHERE })
+    expect(files.get(SENT)).toBe('null')
+  })
+
+  test('a line drawn verbatim wins over a question and label the same record carries', async ($, on) => {
+    world(on, JSON.stringify({ answer: CONTINUATION, question: QUESTION, label: COMMIT, line: WHERE }))
+
+    expect(await drawn($, rowOf('m1', { text: framed(CONTINUATION) }))).toBe(WHERE)
   })
 
   test('rows that cannot be read keep nothing: the row pairs, and the file is written afresh', async ($, on) => {
