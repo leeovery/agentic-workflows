@@ -7,7 +7,7 @@
 // completion refusal is the backstop; this is its graceful face — the
 // blocker names what is owed, the guidance names the ways out, and the menu
 // offers the pause the spawn gate's `yes` takes. The pause's banner lives
-// here too: the bridge renders it in place of the completed banner when a
+// here too: the epic menu renders it in place of the completed banner when a
 // phase leaves on a wait rather than concluding.
 // ---------------------------------------------------------------------------
 
@@ -113,7 +113,7 @@ function waitGate(phase, topic, waits, epic) {
 }
 
 /**
- * The bridge's banner for a phase leaving on a wait —
+ * The epic menu's banner for a phase leaving on a wait —
  * `phase-completed`'s sibling. One clause per paused item naming
  * what it awaits; a linear unit's one item is the unit itself, so
  * its clause drops the name. No holder left renders the bare line.
