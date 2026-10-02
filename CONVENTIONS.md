@@ -64,6 +64,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 - `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a text code block (```text fence) — any other grammar eventually colours a stray word in uncontrolled prose, and a fence with no language draws in the menus' colour. Labelled sections may name a colouring fence where the register calls for it — a properties code block (```properties fence) for blockers, a diff code block (```diff fence) for change content — or markdown (not a code block) where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
 - `=== GATE … ===` — for code, never for a person: one line of JSON stating the gate the `MENU` directly beneath it draws. Present only while `WORKFLOWS_GATE_SURFACE=1` is in the environment, so a session without a gate surface never sees it. Never displayed, never restated, and never a substitute for the `MENU` — a flow reads neither.
+- `=== HANDOFF … ===` — for code, never for a person: one line of JSON naming the skill a handoff moves the work into, which the gate mod carries into a fresh conversation. Present only while `WORKFLOWS_HANDOFF=1` is in the environment. Never displayed and never restated — a flow reads the handoff's DATA, never this section.
 
 Every TITLE, DISPLAY and MENU marker's instruction opens `emit verbatim as ` and one of the four forms (see Rendering Instructions), then its behaviour clause where the surface gives one — `, directly above the menu`, `, then STOP for the user's response`, ` — do not stop; continue as the workflow instructs`; a moment the section waits for sits after the form (`… (```text fence) after the result summary — …`). The render sweep the engine suites run through `tests/scripts/gate-audit.cjs` fails any marker that opens otherwise.
 
@@ -802,21 +803,21 @@ Rules:
 → Load **[name.md](path)** with param = `literal`, other = `{variable}`.
 ```
 
-### Loading, Invoking, and the Bridge
+### Loading, Invoking, and Handing Off
 
 Three mechanisms move a flow forward; never blur them:
 
 - **Loading a reference** reads a file into the running context — progressive disclosure, nothing more. No parameters pass mechanically: state the variables in prose before the Load (`with topic = `{topic}``) and the loaded file references them, already in context.
-- **Invoking a skill** is a Skill tool call at a boundary (entry → process, phase end → bridge). It adds the skill's instructions to the running context — **nothing is cleared**. Two argument forms, by what the skill declares:
+- **Invoking a skill** is a Skill tool call at a boundary within the work (entry → process, phase end → bridge). It adds the skill's instructions to the running context — **nothing is cleared**. Two argument forms, by what the skill declares:
   - **Positional arguments** (the skill declares `$0`/`$1`/… — entry skills, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place.
-  - **Handoff context block** (process-skill handoffs): an imperative **before** the payload fence, the fence as pure content, nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
+  - **Context block** (an entry invoking its processing skill): an imperative **before** the payload fence, the fence as pure content, nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
 
     ```
     Invoke the **workflow-x** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
     ```
 
   Never place the imperative after the fence (it arrives too late — the command-prelude rule), and never inside it (a fence is payload; an instruction buried there gets printed, not executed).
-- **The bridge** (`workflow-bridge`) owns the only context-clearing handoff: phase → phase via plan mode. Within a phase, context is never cleared. The bridge's plan content is a verbatim template — see the bridge skill; enrichment poisons the fresh context it is designed to feed.
+- **Handing off** is a move into work: the skill it names starts the work afresh. The bridge decides where a concluded or paused phase's work goes, and `workflow-shared/references/handing-off.md` carries every move, loaded with the skill and its arguments (`with skill = `workflow-continue-epic`, args = `{work_unit} {completed_phase} {outcome}``). The engine's `handoff` command checks the move; where the gate mod carries it, the conversation is cleared and the skill starts in the next one, and elsewhere it is invoked in place. Nothing passes but the skill and its arguments — what the next skill needs is on disk before the handoff. A site loads the reference and never branches on the answer itself. Within a phase, nothing clears.
 
 ### Reference File Structure
 
@@ -868,7 +869,7 @@ This is the critical decision. Use this flowchart:
 ```
 How should this reference file exit?
 │
-├─ Is the final action invoking a processing skill?
+├─ Is the final action invoking a skill or handing off?
 │  └─ YES → Terminal. No routing instruction needed.
 │
 ├─ Are you going back to whoever loaded this file?
@@ -901,7 +902,7 @@ How should this reference file exit?
 | Single-exit reference file | `→ Return to caller.` |
 | Multi-exit, all paths resume at caller | Each path ends with `→ Return to caller.` |
 | Multi-exit, paths need different backbone steps | Each path ends with `→ Return to **[the skill](../SKILL.md)** for **Step N**.` |
-| Terminal (invokes processing skill) | No routing instruction |
+| Terminal (invokes a skill or hands off) | No routing instruction |
 
 #### Formatting rules
 
