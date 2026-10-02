@@ -245,8 +245,6 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 
 ## Step 10: Route Selection
 
-Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). Selections with route `(internal)` resolve inside that reference and never reach this step.
+Split the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md, e.g. `/workflow-discussion-entry epic {work_unit} {topic}` — into the skill it names, without the slash, as `{route_skill}`, and the arguments after it as `{route_args}`. Selections with route `(internal)` resolve inside that reference and never reach this step.
 
-Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided). The `continue_discovery` route hands to the discovery skill, which detects the existing work unit and re-shapes the map (existing-epic mode) — workflow-continue-epic navigates; discovery owns the shaping.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with skill = `{route_skill}`, args = `{route_args}`.
