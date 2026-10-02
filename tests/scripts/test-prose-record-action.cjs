@@ -65,6 +65,18 @@ describe('prose recorder — tool events', () => {
     assert.match(row, /^PreToolUse\tBash\t/);
   });
 
+  it('records a command as the walker wrote it, without the handoff announcement in front', () => {
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `export WORKFLOWS_HANDOFF=1; cd ${world} && engine handoff workflow-review-entry feature pay` },
+      tool_response: { stdout: 'handoff: mod', stderr: '' },
+    });
+    const [row] = logLines();
+    assert.match(row, /^PostToolUse\tBash\tcd \. && engine handoff workflow-review-entry feature pay\tok\t/);
+  });
+
   it('keeps a long command whole once the world path collapses — the checks match against it', () => {
     // Measured failure mode: the world prefix ate the truncation budget
     // and the trailing field name fell off, so calls_include reported

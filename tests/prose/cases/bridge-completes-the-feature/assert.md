@@ -34,14 +34,13 @@ The prose should have taken this path:
 9. the completion banner is fetched via render workunit-receipt with
    the pipeline flag, its confirmation section is emitted verbatim,
    and the walk stops at the terminal condition — no next-phase gate,
-   no plan mode, no plan file
+   no handoff
 
 Further claims:
 
 - the bridge never renders the next-phase gate — the done arm
   precedes it
-- no EnterPlanMode is attempted and no plan content is produced —
-  the terminal arm ends the pipeline instead
+- no handoff is made — the terminal arm ends the pipeline instead
 - the work unit's manifest ends with status completed and a
   completed_at stamp; the review item is completed with both internal
   ids in reviewed_tasks

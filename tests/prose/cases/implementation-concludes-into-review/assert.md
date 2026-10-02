@@ -81,12 +81,11 @@ The prose should have taken this path:
     menu carries all three rows — `y/yes` to proceed, `d/done` to skip
     the review, `r/revisit` for an earlier phase — and the walk STOPS
     once. The sixth scripted answer proceeds
-14. plan mode: the continuation resolves the plan template — the
-    continue-the-pipeline line, never the revisiting line — and the
-    resolved content lands as the world's plan-handoff artifact per the
-    capture mechanism; the walk stops at the presentation, the flow's
-    terminal handoff. No revisit-phases menu is rendered, the work unit
-    is never completed, and no review item is started
+14. the handoff: the engine's handoff names `workflow-review-entry`
+    with `feature pay`, the next phase and never a revisited one, and
+    the line naming where the work goes is the turn's last text; the
+    walk stops at the handoff. No revisit-phases menu is rendered, the
+    work unit is never completed, and no review item is started
 
 Further claims:
 
@@ -112,13 +111,8 @@ Further claims:
   consolidation_gate_mode all end gated. The work unit stays
   in-progress — never completed, never cancelled — and no review item
   exists
-- the plan-handoff artifact holds the template verbatim with its
-  placeholders resolved: the title Continue Feature: pay, "The
-  previous phase has completed. Continue the pipeline.", a Next Step
-  invoking /workflow-review-entry feature pay with the arguments line,
-  and the How to proceed block — and nothing else: no session
-  learnings, no enrichment, no User instructions heading (the user
-  attached none)
+- the handoff carries the skill and its two arguments and nothing
+  else: no session learnings, no enrichment
 - no code was written: the four source and test files hold exactly what
   the fixture left them holding, and no new source or test file exists
   outside the workflow directory

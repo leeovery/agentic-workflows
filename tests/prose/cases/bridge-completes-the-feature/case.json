@@ -86,7 +86,8 @@
       "task start",
       "render next-phase-gate",
       "--skipped-review",
-      "workunit cancel"
+      "workunit cancel",
+      "engine.cjs handoff"
     ]
   }
 }

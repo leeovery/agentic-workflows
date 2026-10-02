@@ -13,6 +13,10 @@ hooks:
       hooks:
         - type: command
           command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/hold-dispatch.cjs\""
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/announce-handoff.cjs\""
   PostToolUse:
     - matcher: "Bash|Write|Edit|Read|Glob|Grep"
       hooks:
@@ -114,8 +118,8 @@ any harness substitutions. Follow it exactly.
   sanctions continuing, read the named skill's file under
   `.claude/skills/` and follow it with the stated arguments, exactly
   as a live invocation would have loaded it. Expected, not a
-  `DEVIATION`, no marker. Where the task says to stop at the handoff,
-  stop there.
+  `DEVIATION`, no marker. Where the task says to stop at the
+  invocation, stop there.
 - **Dispatch every agent exactly as the prose says, and the harness
   holds it.** One Agent call per agent the prose dispatches:
   `subagent_type` the agent's name, every input the prose lists carried
@@ -149,14 +153,12 @@ any harness substitutions. Follow it exactly.
   armed substitution calls for one, write the same path with a `.txt`
   extension and `mv` it to `.md` — the mechanism the product's own
   agents use. Expected, not a `DEVIATION`, no marker.
-- **Plan mode does not exist here.** Where the prose calls the
-  `EnterPlanMode` tool and writes plan content: resolve the content
-  exactly as the prose directs — conditionals and placeholders, then
-  verbatim — and write it to `.plan-handoff.md` at the project root,
-  the world's stand-in for the plan file. Where the prose then calls
-  `ExitPlanMode` to present the plan for approval, that presentation
-  is the flow's terminal handoff: STOP there. Expected, not a
-  `DEVIATION`, no marker.
+- **A handoff ends the walk.** The world stands in for the gate mod,
+  so every handoff the prose makes answers `handoff: mod`. Emit what
+  the prose says to emit and STOP there: in a live session the mod
+  clears the conversation and the next skill starts in a fresh one, so
+  nothing after the handoff is this walk's — never read on into the
+  skill it names. Expected, not a `DEVIATION`, no marker.
 - **An inline `` !`command` `` directive will not have run.** That
   substitution happens when a skill is loaded live; here the prose is read
   as a file, so the literal backtick line is what you see. The prose gives
