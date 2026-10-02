@@ -61,7 +61,7 @@ const HOME = '/Users/person'
 const TERMINAL_APP = { CLAUDE_CODE_ENTRYPOINT: 'cli', HOME }
 
 /** The oldest Claude Code the mod runs on, as the session answers its version. */
-const OLDEST = '2.1.282'
+const OLDEST = '2.1.287'
 
 /** What a session start that applies sets first, for every child it starts. */
 const ANNOUNCEMENT = { name: 'WORKFLOWS_GATE_SURFACE', value: '1' }
@@ -921,7 +921,7 @@ describe('register', () => {
       where: 'naming no entrypoint',
       env: { CLAUDE_CODE_ENTRYPOINT: undefined },
     },
-    { where: 'on a version before 2.1.282', version: '2.1.281' },
+    { where: 'on a version before 2.1.287', version: '2.1.286' },
     { where: 'on an older minor', version: '2.0.999' },
     { where: 'on an older major', version: '1.9.999' },
     {
