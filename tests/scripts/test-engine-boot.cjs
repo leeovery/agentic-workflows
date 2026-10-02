@@ -1548,6 +1548,19 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
+  it('the Desktop app\'s Code tab is where the mod runs too — on Anthropic\'s API or a third-party provider: on, not-running, outdated, touching no file', () => {
+    installMod();
+    for (const entrypoint of ['claude-desktop', 'claude-desktop-3p']) {
+      const desktop = { CLAUDE_CODE_ENTRYPOINT: entrypoint };
+      assert.strictEqual(bootTerminal(desktop).gate_surface, 'not-running', entrypoint);
+      assert.strictEqual(bootTerminal({ ...desktop, WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on', entrypoint);
+      assert.strictEqual(bootTerminal({ ...desktop, AI_AGENT: 'claude-code_2-1-286_agent' }).gate_surface, 'outdated', entrypoint);
+    }
+    assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
+    assert.ok(!fs.existsSync(homeDir()), 'nor ~/.claude');
+    assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
+  });
+
   it('where the mod cannot run, boot touches no file and reports unavailable', () => {
     const old = { AI_AGENT: 'claude-code_2-1-286_agent' };
     assert.strictEqual(bootTerminal().gate_surface, 'unavailable', 'the mod not installed in the project');
@@ -1556,7 +1569,12 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const elsewhere = [
       ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
       ['on the web at an older release', { CLAUDE_CODE_REMOTE: 'true', ...old }],
-      ['another entrypoint than the terminal app', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
+      ['the VS Code extension', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
+      ['the VS Code extension, announced', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode', WORKFLOWS_GATE_SURFACE: '1' }],
+      ['a Desktop cloud session', { CLAUDE_CODE_ENTRYPOINT: 'remote_desktop' }],
+      ['a Desktop cloud session, flagged remote', { CLAUDE_CODE_ENTRYPOINT: 'remote_desktop', CLAUDE_CODE_REMOTE: 'true' }],
+      ['the Desktop app on the web', { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop', CLAUDE_CODE_REMOTE: 'true' }],
+      ['another entrypoint', { CLAUDE_CODE_ENTRYPOINT: 'sdk-cli' }],
       ['no entrypoint', { CLAUDE_CODE_ENTRYPOINT: undefined }],
       ['no version', { AI_AGENT: undefined }],
       ['a version that does not parse', { AI_AGENT: 'claude-code_2-1_agent' }],
