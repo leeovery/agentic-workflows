@@ -413,6 +413,16 @@ describe('engine workunit create — seeds', () => {
     assert.match(err.error, /inbox file not found/);
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
   });
+
+  it('rejects a seed named twice — nothing touched, the item still in the inbox', () => {
+    const seed = '.workflows/.inbox/ideas/2026-06-01--smart-retry.md';
+    const err = engineFails(fix, createArgs('payments', 'epic', ['--seed', seed, '--seed', seed]));
+
+    assert.match(err.error, /duplicate inbox path/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')));
+    assert.ok(fs.existsSync(path.join(fix.project, seed)));
+    assert.strictEqual(commitCount(fix), '1');
+  });
 });
 
 describe('engine workunit create — missing imports fail fast', () => {
