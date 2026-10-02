@@ -218,7 +218,7 @@ Commands:
   inbox delete <path> [<path> …]
   baseline record <native|skipped>
   walkthrough record <walked|skipped>
-  handoff <skill> [args …]
+  handoff <skill|/skill> [args …]
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -1934,7 +1934,7 @@ function runCommit(call, argv) {
 function runHandoff(call, argv) {
   const [skill, ...args] = argv;
   try {
-    if (skill === undefined) throw new Error('Usage: engine handoff <skill> [args …]');
+    if (skill === undefined) throw new Error('Usage: engine handoff <skill|/skill> [args …]');
     respondSections(call, handoffSections(resolveHandoff(call.cwd, skill, args)));
   } catch (err) {
     failJson(call, err);

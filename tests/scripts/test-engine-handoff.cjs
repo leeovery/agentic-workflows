@@ -146,6 +146,11 @@ describe('engine handoff — the composed answer for every target', () => {
       '→ Research · payments');
   });
 
+  it('the skill named as its slash command — a menu\'s stored route as it stands — answers as the bare name does', () => {
+    assert.strictEqual(inline(dir, ['/workflow-roadmap', 'open']), inline(dir, ['workflow-roadmap', 'open']));
+    assert.strictEqual(carried(dir, ['/workflow-continue-epic', 'fumi']), carried(dir, ['workflow-continue-epic', 'fumi']));
+  });
+
   it('the table holds the targets a move into work lands on — and every phase entry skill', () => {
     const entries = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].map((phase) => `workflow-${phase}-entry`);
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
@@ -210,7 +215,7 @@ describe('engine handoff — refusals', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('a call naming no skill refuses with the usage', () => {
-    refused(dir, [], /^Usage: engine handoff <skill> \[args …\]$/);
+    refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\]$/);
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {

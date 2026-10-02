@@ -150,12 +150,14 @@ const TARGETS = {
 
 /**
  * The handoff into `skill` with `args`, checked against the table and
- * composed. Refuses a skill no move into work lands on, the wrong number of
- * arguments, and an argument of the wrong shape.
- * @param {string} cwd @param {string} skill @param {string[]} args
+ * composed — the skill named bare or as its slash command, as a menu's
+ * stored route names it. Refuses a skill no move into work lands on, the
+ * wrong number of arguments, and an argument of the wrong shape.
+ * @param {string} cwd @param {string} named @param {string[]} args
  * @returns {Handoff}
  */
-function resolveHandoff(cwd, skill, args) {
+function resolveHandoff(cwd, named, args) {
+  const skill = named.startsWith('/') ? named.slice(1) : named;
   if (!Object.hasOwn(TARGETS, skill)) {
     throw new Error(`"${skill}" is not a handoff target — a handoff moves into work: ${Object.keys(TARGETS).join(', ')}`);
   }
