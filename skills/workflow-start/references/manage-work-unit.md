@@ -30,9 +30,7 @@ Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
 #### If user chose `a/baseline`
 
-Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-baseline`.
 
 #### If user chose a number
 

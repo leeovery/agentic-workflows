@@ -334,9 +334,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gat
 
 **If `yes`:**
 
-Invoke `/workflow-baseline`.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with skill = `workflow-baseline`.
 
 **If `no`:**
 
